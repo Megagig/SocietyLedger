@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuthStore } from '@/store/authStore';
 import {
   Container,
   Paper,
@@ -38,14 +37,32 @@ export default function LoginPage() {
     },
   });
 
-  const { login, isLoading: authLoading, error: authError } = useAuthStore();
-
   const handleSubmit = async (values: LoginForm) => {
-    const success = await login(values);
-    
-    if (success) {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       // Redirect to dashboard
       window.location.href = '/dashboard';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 

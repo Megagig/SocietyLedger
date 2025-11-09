@@ -8,7 +8,7 @@ export default function HomePage() {
       <Stack align="center" gap="xl">
         <div className="text-center">
           <Title size="h1" className="text-6xl font-bold text-gray-900 mb-4">
-            Financial Management System
+            Society Ledger
           </Title>
           <Text size="xl" className="text-gray-600 mb-8 max-w-2xl">
             A comprehensive solution for managing financial activities of associations. 
