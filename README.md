@@ -1,186 +1,213 @@
-# Financial Management System
+# SocietyLedger - Multi-Tenant SaaS Platform
 
-A comprehensive financial management system for associations built with Next.js, TypeScript, Tailwind CSS, Mantine UI, and Prisma.
+A comprehensive SaaS platform for association management (HOAs, cooperatives, town unions, clubs, religious bodies) across Africa, built with the PERN stack in a modern monorepo architecture.
 
-## Features
+## 🏗️ Architecture
 
-- 🔐 **Authentication & Authorization**: User registration with admin approval, role-based access control
-- 👥 **Member Management**: Complete CRUD operations for member profiles
-- 💰 **Financial Management**: Track dues, levies, donations, and penalties
-- 📊 **Accounting System**: Income/expense tracking with approval workflows
-- 📈 **Professional Reports**: Generate PDF and Excel reports with custom branding
-- 📤 **Export System**: Individual and bulk member data exports with filtering
-- 🔔 **Notifications**: Email notifications via Resend
-- ⚡ **Performance**: Redis caching for optimal performance
+**PERN Monorepo** (PostgreSQL, Express, React/Next.js, Node.js)
 
-## Tech Stack
+```
+societyledger/
+├── apps/
+│   ├── web/          # Next.js 14 Frontend (Port 3000)
+│   ├── api/          # Express.js Backend (Port 4000)
+│   └── jobs/         # BullMQ Background Workers (Coming soon)
+├── packages/
+│   ├── shared/       # Shared types & validators
+│   └── config/       # Shared configs (Coming soon)
+└── turbo.json        # Turborepo configuration
+```
 
-- **Frontend**: Next.js 14, React, TypeScript
-- **UI Framework**: Tailwind CSS with Mantine UI components
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT with HTTP-only cookies
-- **Email**: Resend
-- **Caching**: Redis (Upstash for dev, VPS for production)
-- **Charts**: Recharts
-- **Exports**: jsPDF/Puppeteer (PDF), ExcelJS (Excel)
-
-## Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
+- Node.js 20+
+- PostgreSQL 14+
+- npm 10+
 
-- Node.js 18+ 
-- PostgreSQL database
-- Redis server (optional but recommended)
+### Installation
 
-### Environment Setup
-
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd financial-management-system
-```
-
-2. Install dependencies:
-```bash
+# Install all dependencies
 npm install
-```
 
-3. Copy the environment file and configure:
-```bash
-cp .env.example .env
-```
+# Set up environment variables
+cp apps/web/.env.example apps/web/.env.local
+cp apps/api/.env.example apps/api/.env
 
-4. Update the `.env` file with your configuration:
-```env
-# Database (use Neon for development)
-DATABASE_URL="postgresql://username:password@localhost:5432/financial_management"
-NEON_DATABASE_URL="postgresql://username:password@neon-host/financial_management"
+# Update database connection in apps/api/.env
+# DATABASE_URL="postgresql://user:password@localhost:5432/societyledger"
 
-# NextAuth
-NEXTAUTH_SECRET="your-secret-key"
-NEXTAUTH_URL="http://localhost:3000"
-
-# Email Service (Resend)
-RESEND_API_KEY="your-resend-api-key"
-FROM_EMAIL="noreply@yourdomain.com"
-
-# Redis (optional)
-REDIS_URL="redis://localhost:6379"
-UPSTASH_REDIS_URL="your-upstash-redis-url"
-UPSTASH_REDIS_TOKEN="your-upstash-redis-token"
-
-# JWT
-JWT_SECRET="your-jwt-secret-key"
-```
-
-### Database Setup
-
-1. Generate Prisma client:
-```bash
+# Generate Prisma client
 npm run db:generate
-```
 
-2. Push the schema to your database:
-```bash
+# Push database schema
 npm run db:push
-```
-
-3. (Optional) View your database in Prisma Studio:
-```bash
-npm run db:studio
 ```
 
 ### Development
 
-Start the development server:
 ```bash
+# Start both frontend and backend
 npm run dev
+
+# Or start individually
+npm run web:dev    # Frontend only (http://localhost:3000)
+npm run api:dev    # Backend only (http://localhost:4000)
 ```
 
-The application will be available at [http://localhost:3000](http://localhost:3000).
+### Database Commands
 
-## Project Structure
-
-```
-financial-management-system/
-├── src/
-│   ├── app/                    # Next.js app router
-│   │   ├── api/               # API routes
-│   │   ├── auth/              # Authentication pages
-│   │   ├── dashboard/         # Dashboard pages
-│   │   └── layout.tsx         # Root layout
-│   ├── components/            # Reusable components
-│   │   ├── auth/              # Authentication components
-│   │   ├── common/            # Shared components
-│   │   ├── dashboard/         # Dashboard widgets
-│   │   ├── members/           # Member management
-│   │   ├── finances/          # Financial components
-│   │   └── reports/           # Reporting components
-│   ├── lib/                   # Library functions
-│   │   ├── prisma.ts          # Prisma client
-│   │   └── auth.ts            # Auth utilities
-│   ├── store/                 # Zustand stores
-│   │   ├── authStore.ts       # Authentication state
-│   │   ├── memberStore.ts     # Member management state
-│   │   └── financeStore.ts    # Financial data state
-│   ├── types/                 # TypeScript types
-│   ├── utils/                 # Utility functions
-│   └── hooks/                 # Custom React hooks
-├── prisma/
-│   └── schema.prisma          # Database schema
-├── public/                    # Static assets
-└── package.json
+```bash
+npm run db:generate    # Generate Prisma client
+npm run db:push        # Push schema to database
+npm run db:migrate     # Create a new migration
+npm run db:studio      # Open Prisma Studio
 ```
 
-## Available Scripts
+## 📦 Tech Stack
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run db:generate` - Generate Prisma client
-- `npm run db:push` - Push schema to database
-- `npm run db:migrate` - Run database migrations
-- `npm run db:studio` - Open Prisma Studio
+### Frontend (`apps/web`)
+- **Framework:** Next.js 14 (App Router)
+- **UI Library:** Mantine UI 7.0 + Tailwind CSS
+- **State Management:** Zustand
+- **Data Fetching:** TanStack Query (React Query)
+- **Forms:** React Hook Form + Zod validation
+- **HTTP Client:** Axios
 
-## User Roles
+### Backend (`apps/api`)
+- **Framework:** Express.js 4.x + TypeScript
+- **Database:** PostgreSQL + Prisma ORM
+- **Authentication:** JWT with HTTP-only cookies
+- **Validation:** Zod
+- **Security:** Helmet, CORS, Rate limiting
 
-- **Super Admin**: Full system access
-- **Admin**: User management, approvals, financial oversight
-- **Treasurer**: Financial operations, report generation
-- **Financial Secretary**: Transaction recording, payment tracking
-- **Member**: View personal information and payment history
+### Shared (`packages/shared`)
+- TypeScript types
+- Zod validation schemas
+- Shared utilities
 
-## Default Users
+## 🔐 Authentication Flow
 
-After setting up the database, you'll need to manually create an admin user in the database or use the registration flow and then manually approve the first admin user.
+1. User submits credentials to frontend
+2. Frontend calls `POST /api/auth/login` on Express backend
+3. Backend validates credentials, generates JWT
+4. JWT stored in HTTP-only cookie + returned in response
+5. Subsequent requests include cookie automatically
+6. Backend middleware verifies JWT on protected routes
 
-## Features Implementation Status
+## 📁 Project Structure
 
-### Phase 1: Project Foundation ✅
-- [x] Next.js project setup with TypeScript
-- [x] Tailwind CSS and Mantine UI configuration
-- [x] Prisma database schema
-- [x] Authentication system with JWT
-- [x] User registration with approval workflow
-- [x] Basic project structure and utilities
+### Frontend (`apps/web/src/`)
+```
+src/
+├── app/              # Next.js App Router pages
+│   ├── auth/        # Login, register pages
+│   ├── dashboard/   # Protected dashboard pages
+│   ├── layout.tsx   # Root layout
+│   └── page.tsx     # Home page
+├── components/       # React components
+├── lib/
+│   └── api-client.ts # Axios client for backend
+├── store/           # Zustand stores
+├── types/           # TypeScript types
+└── utils/           # Utility functions
+```
 
-### Upcoming Phases
-- [ ] Phase 2: Member Management (Week 3)
-- [ ] Phase 3: Financial Management Core (Week 4-5)
-- [ ] Phase 4: Advanced Features (Week 6)
-- [ ] Phase 5: Reporting System (Week 7)
-- [ ] And more... (see implementation.md for full roadmap)
+### Backend (`apps/api/src/`)
+```
+src/
+├── server.ts        # Express app entry point
+├── lib/
+│   ├── prisma.ts    # Prisma client
+│   └── auth.ts      # JWT utilities
+├── middleware/
+│   └── auth.middleware.ts  # JWT verification
+└── modules/
+    └── auth/
+        ├── auth.controller.ts  # Request handlers
+        └── auth.routes.ts      # Route definitions
+```
 
-## Contributing
+## 🌐 API Endpoints
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user (protected)
 
-## License
+### Health Check
+- `GET /health` - API health check
 
-This project is licensed under the MIT License.
+## 🔧 Environment Variables
+
+### Frontend (`apps/web/.env.local`)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_APP_NAME=SocietyLedger
+```
+
+### Backend (`apps/api/.env`)
+```env
+NODE_ENV=development
+PORT=4000
+FRONTEND_URL=http://localhost:3000
+DATABASE_URL=postgresql://user:password@localhost:5432/societyledger
+JWT_SECRET=your-super-secret-jwt-key-change-this
+```
+
+## 📋 Available Scripts
+
+### Root
+- `npm run dev` - Start all apps
+- `npm run build` - Build all apps
+- `npm run lint` - Lint all apps
+- `npm run type-check` - Type check all apps
+
+### Frontend (apps/web)
+- `npm run dev -w apps/web` - Start dev server
+- `npm run build -w apps/web` - Build for production
+- `npm run start -w apps/web` - Start production server
+
+### Backend (apps/api)
+- `npm run dev -w apps/api` - Start dev server (tsx watch)
+- `npm run build -w apps/api` - Build TypeScript to JS
+- `npm run start -w apps/api` - Start production server
+
+## 🚧 Roadmap
+
+See [plan.md](plan.md) for detailed implementation roadmap.
+
+### Current Status: Phase 0.5 Complete ✅
+- [x] Monorepo setup with Turborepo
+- [x] Express backend with modular architecture
+- [x] Next.js frontend (UI only, no API routes)
+- [x] Shared TypeScript types
+- [x] Authentication system migrated
+- [ ] Multi-tenancy implementation (Phase 0)
+- [ ] Subscription & billing (Phase 1.5)
+- [ ] All remaining features (Phases 2-17)
+
+## 🤝 Contributing
+
+This is a private project. For development team members:
+
+1. Create a feature branch: `git flow feature start feature-name`
+2. Make changes and commit
+3. Push and create a pull request
+4. Wait for review and approval
+
+## 📝 License
+
+Proprietary - All rights reserved
+
+## 👥 Team
+
+SocietyLedger Development Team
+
+---
+
+**Last Updated:** December 23, 2025  
+**Current Phase:** Phase 0.5 (PERN Refactoring) - Complete  
+**Next Phase:** Phase 0 (Multi-tenancy Architecture)
