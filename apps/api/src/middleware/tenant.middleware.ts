@@ -1,0 +1,73 @@
+import { AssociationStatus } from '@prisma/client';
+import { NextFunction, Request, Response } from 'express';
+import { extractSubdomain, findAssociationByIdentifier } from '../lib/tenant';
+
+export interface TenantRequest extends Request {
+  tenantId?: number;
+  tenant?: {
+    id: number;
+    slug: string;
+    subdomain: string;
+    status: AssociationStatus;
+    name: string;
+  } | null;
+}
+
+export async function tenantMiddleware(req: TenantRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    // Allow health checks without tenant context
+    if (req.path === '/health') {
+      return next();
+    }
+
+    const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
+    const subdomain = extractSubdomain(req.headers.host);
+
+    const association = await findAssociationByIdentifier({
+      subdomain: headerTenant || subdomain || undefined,
+      slug: headerTenant?.toLowerCase(),
+      id: headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined,
+    });
+
+    if (!association) {
+      res.status(400).json({
+        success: false,
+        message: 'Association not found. Provide a valid subdomain or tenant header.',
+      });
+      return;
+    }
+
+    if (association.status === AssociationStatus.SUSPENDED) {
+      res.status(403).json({
+        success: false,
+        message: 'Association is suspended. Please contact support.',
+      });
+      return;
+    }
+
+    if (association.status === AssociationStatus.CANCELLED) {
+      res.status(403).json({
+        success: false,
+        message: 'Association subscription is cancelled.',
+      });
+      return;
+    }
+
+    req.tenant = {
+      id: association.id,
+      slug: association.slug,
+      subdomain: association.subdomain,
+      status: association.status,
+      name: association.name,
+    };
+    req.tenantId = association.id;
+
+    next();
+  } catch (error) {
+    console.error('Tenant middleware error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resolve tenant context',
+    });
+  }
+}

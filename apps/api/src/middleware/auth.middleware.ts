@@ -1,7 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { verifyToken, TokenPayload } from '../lib/auth';
+import { TenantRequest } from './tenant.middleware';
+import { PlatformRole } from '@prisma/client';
 
-export interface AuthRequest extends Request {
+export interface AuthRequest extends TenantRequest {
   user?: TokenPayload;
 }
 
@@ -37,6 +39,17 @@ export async function authMiddleware(
         message: 'Invalid or expired token',
       });
       return;
+    }
+
+    // Enforce tenant isolation unless platform admin
+    if (req.tenantId && decoded.associationId && decoded.platformRole !== PlatformRole.SUPER_ADMIN) {
+      if (decoded.associationId !== req.tenantId) {
+        res.status(403).json({
+          success: false,
+          message: 'Access denied for this association',
+        });
+        return;
+      }
     }
 
     // Attach user to request

@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import { tenantMiddleware } from './middleware/tenant.middleware';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +30,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(tenantMiddleware);
 
 // Logging middleware
 app.use(morgan('dev'));

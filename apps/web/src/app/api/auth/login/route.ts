@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, generateToken } from '@/lib/auth';
 import { z } from 'zod';
+import { resolveAssociation } from '@/lib/tenant';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -10,12 +11,20 @@ const loginSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const association = await resolveAssociation(request);
+    if (!association) {
+      return NextResponse.json(
+        { success: false, message: 'Association not found. Use a valid subdomain.' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { email, password } = loginSchema.parse(body);
 
     // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    const user = await prisma.user.findFirst({
+      where: { email: email.toLowerCase(), associationId: association.id },
       include: {
         userApproval: true,
         member: {
@@ -74,6 +83,8 @@ export async function POST(request: NextRequest) {
       email: user.email,
       role: user.role,
       memberId: user.member?.id,
+      associationId: association.id,
+      platformRole: user.platformRole,
     });
 
     // Create response
@@ -85,6 +96,8 @@ export async function POST(request: NextRequest) {
           email: user.email,
           role: user.role,
           member: user.member,
+          associationId: association.id,
+          platformRole: user.platformRole,
         },
         token,
       },

@@ -96,7 +96,7 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
+  return function(this: any, ...args: Parameters<T>) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
@@ -113,9 +113,9 @@ export function parseQueryParams(url: string): Record<string, string> {
   const params: Record<string, string> = {};
   const urlSearchParams = new URLSearchParams(url.split('?')[1]);
   
-  for (const [key, value] of urlSearchParams.entries()) {
+  urlSearchParams.forEach((value, key) => {
     params[key] = value;
-  }
+  });
   
   return params;
 }

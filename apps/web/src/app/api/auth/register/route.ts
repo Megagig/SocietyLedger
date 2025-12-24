@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
+import { resolveAssociation } from '@/lib/tenant';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -16,12 +17,20 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const association = await resolveAssociation(request);
+    if (!association) {
+      return NextResponse.json(
+        { success: false, message: 'Association not found. Use a valid subdomain.' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { email, password, firstName, lastName } = registerSchema.parse(body);
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    const existingUser = await prisma.user.findFirst({
+      where: { email: email.toLowerCase(), associationId: association.id },
     });
 
     if (existingUser) {
@@ -35,7 +44,7 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(password);
 
     // Generate unique member ID
-    const memberCount = await prisma.member.count();
+    const memberCount = await prisma.member.count({ where: { associationId: association.id } });
     const memberId = `MEM${String(memberCount + 1).padStart(4, '0')}`;
 
     // Create user and member in a transaction
@@ -43,6 +52,7 @@ export async function POST(request: NextRequest) {
       // Create user
       const user = await tx.user.create({
         data: {
+          associationId: association.id,
           email: email.toLowerCase(),
           passwordHash,
           role: 'member',
@@ -53,6 +63,7 @@ export async function POST(request: NextRequest) {
       // Create member profile
       const member = await tx.member.create({
         data: {
+          associationId: association.id,
           userId: user.id,
           memberId,
           firstName,

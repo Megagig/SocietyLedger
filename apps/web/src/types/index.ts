@@ -3,6 +3,8 @@ export interface User {
   id: number;
   email: string;
   role: string;
+  associationId?: number;
+  platformRole?: 'SUPER_ADMIN' | 'SUPPORT_AGENT';
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -22,6 +24,7 @@ export interface UserApproval {
 export interface Member {
   id: number;
   userId?: number;
+  associationId: number;
   memberId: string;
   firstName: string;
   lastName: string;
@@ -38,6 +41,7 @@ export interface Member {
 // Financial Types
 export interface FinancialCategory {
   id: number;
+  associationId: number;
   name: string;
   type: 'due' | 'levy' | 'donation' | 'penalty';
   amount?: number;
@@ -49,6 +53,7 @@ export interface FinancialCategory {
 
 export interface Transaction {
   id: number;
+  associationId: number;
   memberId: number;
   categoryId: number;
   amount: number;
@@ -65,6 +70,7 @@ export interface Transaction {
 
 export interface Payment {
   id: number;
+  associationId: number;
   transactionId: number;
   amountPaid: number;
   paymentDate: Date;
@@ -78,6 +84,7 @@ export interface Payment {
 // Accounting Types
 export interface AccountingEntry {
   id: number;
+  associationId: number;
   entryType: 'income' | 'expense';
   category: string;
   subcategory?: string;
@@ -96,6 +103,7 @@ export interface AccountingEntry {
 // Export Types
 export interface ExportHistory {
   id: number;
+  associationId: number;
   exportType: 'financial_pdf' | 'financial_excel' | 'member_excel' | 'individual_member';
   exportFormat: 'pdf' | 'excel';
   dateRangeStart?: Date;
@@ -197,6 +205,7 @@ export interface MemberBalance {
 // Notification Types
 export interface Notification {
   id: number;
+  associationId: number;
   userId: number;
   title: string;
   message: string;

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { hashPassword, verifyPassword, generateToken } from '../../lib/auth';
+import { TenantRequest } from '../../middleware/tenant.middleware';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -17,11 +18,20 @@ const registerSchema = z.object({
 export class AuthController {
   async login(req: Request, res: Response): Promise<void> {
     try {
+      const { tenantId, tenant } = req as TenantRequest;
       const { email, password } = loginSchema.parse(req.body);
 
+      if (!tenantId) {
+        res.status(400).json({
+          success: false,
+          message: 'Missing tenant context. Ensure a valid subdomain or x-tenant header is provided.',
+        });
+        return;
+      }
+
       // Find user by email
-      const user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase() },
+      const user = await prisma.user.findFirst({
+        where: { email: email.toLowerCase(), associationId: tenantId },
         include: {
           userApproval: true,
           member: {
@@ -85,6 +95,8 @@ export class AuthController {
         email: user.email,
         role: user.role,
         memberId: user.member?.id,
+        associationId: tenantId,
+        platformRole: user.platformRole ?? undefined,
       });
 
       // Set HTTP-only cookie
@@ -103,6 +115,8 @@ export class AuthController {
             email: user.email,
             role: user.role,
             member: user.member,
+            association: tenant,
+            platformRole: user.platformRole,
           },
           token,
         },
@@ -127,11 +141,20 @@ export class AuthController {
 
   async register(req: Request, res: Response): Promise<void> {
     try {
+      const { tenantId, tenant } = req as TenantRequest;
       const { email, password, memberId } = registerSchema.parse(req.body);
 
+      if (!tenantId) {
+        res.status(400).json({
+          success: false,
+          message: 'Missing tenant context. Provide association subdomain or x-tenant header.',
+        });
+        return;
+      }
+
       // Check if user already exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email: email.toLowerCase() },
+      const existingUser = await prisma.user.findFirst({
+        where: { email: email.toLowerCase(), associationId: tenantId },
       });
 
       if (existingUser) {
@@ -148,11 +171,11 @@ export class AuthController {
       // Create user with approval pending
       const user = await prisma.user.create({
         data: {
+          associationId: tenantId,
           email: email.toLowerCase(),
           passwordHash,
           role: 'member',
           isActive: true,
-          memberId: memberId || null,
           userApproval: {
             create: {
               approvalStatus: 'pending',
@@ -172,6 +195,7 @@ export class AuthController {
             email: user.email,
             role: user.role,
             approvalStatus: user.userApproval?.approvalStatus,
+            association: tenant,
           },
         },
         message: 'Registration successful. Please wait for admin approval.',
@@ -211,8 +235,9 @@ export class AuthController {
 
   async me(req: Request, res: Response): Promise<void> {
     try {
-      const authReq = req as any;
+      const authReq = req as TenantRequest & { user?: { userId?: number } };
       const userId = authReq.user?.userId;
+      const tenantId = authReq.tenantId;
 
       if (!userId) {
         res.status(401).json({
@@ -222,13 +247,14 @@ export class AuthController {
         return;
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
+      const user = await prisma.user.findFirst({
+        where: { id: userId, associationId: tenantId ?? undefined },
         select: {
           id: true,
           email: true,
           role: true,
           isActive: true,
+          associationId: true,
           member: {
             select: {
               id: true,

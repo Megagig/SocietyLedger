@@ -4,6 +4,15 @@ import { NextRequest } from 'next/server';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+export interface TokenPayload {
+  userId: number;
+  email: string;
+  role: string;
+  associationId?: number;
+  platformRole?: string;
+  memberId?: number;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
   return bcrypt.hash(password, saltRounds);
@@ -16,11 +25,11 @@ export async function verifyPassword(
   return bcrypt.compare(password, hashedPassword);
 }
 
-export function generateToken(payload: object): string {
+export function generateToken(payload: TokenPayload): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
-export function verifyToken(token: string): any {
+export function verifyToken(token: string): TokenPayload | null {
   try {
     return jwt.verify(token, JWT_SECRET);
   } catch (error) {

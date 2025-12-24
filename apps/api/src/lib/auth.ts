@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { PlatformRole } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -16,10 +17,12 @@ export async function verifyPassword(
 }
 
 export interface TokenPayload {
-  userId: string;
+  userId: number;
   email: string;
   role: string;
-  memberId?: string;
+  associationId?: number;
+  platformRole?: PlatformRole;
+  memberId?: number;
 }
 
 export function generateToken(payload: TokenPayload): string {

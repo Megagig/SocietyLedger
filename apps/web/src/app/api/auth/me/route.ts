@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { resolveAssociation } from '@/lib/tenant';
 
 export async function GET(request: NextRequest) {
   try {
+    const association = await resolveAssociation(request);
     const currentUser = await getCurrentUser(request);
     
     if (!currentUser) {
@@ -14,13 +16,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get full user details
-    const user = await prisma.user.findUnique({
-      where: { id: currentUser.userId },
+    const user = await prisma.user.findFirst({
+      where: { id: currentUser.userId, associationId: association?.id ?? undefined },
       select: {
         id: true,
         email: true,
         role: true,
         isActive: true,
+        associationId: true,
         createdAt: true,
         member: {
           select: {
