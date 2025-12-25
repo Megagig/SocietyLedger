@@ -11,6 +11,7 @@ dotenv.config();
 
 // Import routes
 import authRoutes from './modules/auth/auth.routes';
+import associationRoutes from './modules/associations/associations.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -46,6 +47,7 @@ app.get('/health', (req: Request, res: Response) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/associations', associationRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -66,11 +68,13 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 SocietyLedger API Server running on http://localhost:${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-});
+// Start server unless running under test
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 SocietyLedger API Server running on http://localhost:${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  });
+}
 
 export default app;

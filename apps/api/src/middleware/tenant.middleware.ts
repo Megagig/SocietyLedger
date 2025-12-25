@@ -20,6 +20,14 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow public association endpoints without an existing tenant
+    if (
+      req.path.startsWith('/api/associations/check-subdomain') ||
+      req.path.startsWith('/api/associations/signup')
+    ) {
+      return next();
+    }
+
     const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
     const subdomain = extractSubdomain(req.headers.host);
 
