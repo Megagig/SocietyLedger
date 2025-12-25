@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/contexts/TenantContext';
+import { API_ROUTES } from '@/utils/constants';
 import Link from 'next/link';
 
 interface LoginForm {
@@ -39,7 +40,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(API_ROUTES.AUTH.LOGIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

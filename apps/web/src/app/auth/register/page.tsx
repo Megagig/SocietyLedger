@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/contexts/TenantContext';
+import { API_ROUTES } from '@/utils/constants';
 import Link from 'next/link';
 
 interface RegisterForm {
@@ -60,7 +61,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(API_ROUTES.AUTH.REGISTER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

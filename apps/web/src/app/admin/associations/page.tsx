@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { API_ROUTES } from '@/utils/constants';
 
 type Association = {
   id: number;
@@ -35,8 +36,14 @@ export default function SuperAdminDashboard() {
       setLoading(true);
       try {
         const [assocRes, statsRes] = await Promise.all([
-          fetch('/api/admin/associations', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(API_ROUTES.ADMIN.ASSOCIATIONS, { 
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include'
+          }),
+          fetch(API_ROUTES.ADMIN.STATS, { 
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include'
+          }),
         ]);
         const assocData = await assocRes.json();
         const statsData = await statsRes.json();
