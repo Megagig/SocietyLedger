@@ -363,20 +363,24 @@ model Subscription {
 }
 
 model PaymentHistory {
-  id             Int            @id @default(autoincrement())
-  subscriptionId Int            @map("subscription_id")
-  amount         Decimal        @db.Decimal(10, 2)
-  currency       String         @default("NGN")
-  status         PaymentStatus  @default(PENDING)
-  provider       String?
-  reference      String?        @unique
-  paidAt         DateTime?      @map("paid_at")
-  metadata       Json?
-  createdAt      DateTime       @default(now()) @map("created_at")
+  id                Int            @id @default(autoincrement())
+  subscriptionId    Int            @map("subscription_id")
+  amount            Decimal        @db.Decimal(10, 2)
+  currency          String         @default("NGN")
+  status            PaymentStatus  @default(PENDING)
+  provider          String         @default("paystack")
+  reference         String?        @unique
+  accessCode        String?        @map("access_code")
+  authorizationUrl  String?        @map("authorization_url")
+  paidAt            DateTime?      @map("paid_at")
+  metadata          Json?
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   // Relations
   subscription Subscription @relation(fields: [subscriptionId], references: [id])
 
   @@index([subscriptionId, status])
+  @@index([reference])
   @@map("payment_history")
 }

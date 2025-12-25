@@ -13,6 +13,8 @@ dotenv.config();
 import authRoutes from './modules/auth/auth.routes';
 import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import subscriptionRoutes from './modules/subscription/subscription.routes';
+import webhookRoutes from './modules/webhooks/webhooks.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -58,6 +60,11 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Webhook routes (must be before tenantMiddleware for raw body access)
+app.use('/api/webhooks', webhookRoutes);
+
+// Tenant middleware for all other routes
 app.use(tenantMiddleware);
 
 // Logging middleware
@@ -76,6 +83,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/associations', associationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
