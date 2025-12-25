@@ -5,6 +5,7 @@ import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { TenantProvider } from '@/contexts/TenantContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create a client that won't be shared between requests
@@ -19,12 +20,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TenantProvider>
-        <MantineProvider>
-          <Notifications />
-          {children}
-        </MantineProvider>
-      </TenantProvider>
+      <ThemeProvider>
+        <TenantProvider>
+          <MantineProvider>
+            <Notifications />
+            {children}
+          </MantineProvider>
+        </TenantProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
