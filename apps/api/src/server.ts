@@ -20,13 +20,39 @@ const PORT = process.env.PORT || 4000;
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+// CORS configuration - Allow subdomains for multi-tenancy
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // List of allowed origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean);
+
+    // Allow any subdomain of localhost:3000 (e.g., demo.localhost:3000)
+    const localhostPattern = /^http:\/\/([a-z0-9-]+\.)?localhost:3000$/i;
+    
+    // Check if origin is in allowed list or matches subdomain pattern
+    if (allowedOrigins.includes(origin) || localhostPattern.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json());

@@ -21,29 +21,48 @@ export class AuthController {
       const { tenantId, tenant } = req as TenantRequest;
       const { email, password } = loginSchema.parse(req.body);
 
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: 'Missing tenant context. Ensure a valid subdomain or x-tenant header is provided.',
-        });
-        return;
-      }
-
-      // Find user by email
-      const user = await prisma.user.findFirst({
-        where: { email: email.toLowerCase(), associationId: tenantId },
-        include: {
-          userApproval: true,
-          member: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              memberId: true,
+      // Find user by email - check both tenant-scoped and platform admins
+      let user;
+      
+      if (tenantId) {
+        // Try to find user in the specific tenant first
+        user = await prisma.user.findFirst({
+          where: { email: email.toLowerCase(), associationId: tenantId },
+          include: {
+            userApproval: true,
+            member: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                memberId: true,
+              },
             },
           },
-        },
-      });
+        });
+      }
+      
+      // If no user found in tenant, check for platform admin (SUPER_ADMIN)
+      if (!user) {
+        user = await prisma.user.findFirst({
+          where: { 
+            email: email.toLowerCase(), 
+            platformRole: 'SUPER_ADMIN',
+            associationId: null,
+          },
+          include: {
+            userApproval: true,
+            member: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                memberId: true,
+              },
+            },
+          },
+        });
+      }
 
       if (!user) {
         res.status(401).json({
@@ -99,12 +118,14 @@ export class AuthController {
         platformRole: user.platformRole ?? undefined,
       });
 
-      // Set HTTP-only cookie
+      // Set HTTP-only cookie with appropriate SameSite for cross-origin
+      const isProduction = process.env.NODE_ENV === 'production';
       res.cookie('token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax', // 'none' for production with HTTPS, 'lax' for dev
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+        path: '/',
       });
 
       res.status(200).json({
@@ -219,7 +240,13 @@ export class AuthController {
 
   async logout(req: Request, res: Response): Promise<void> {
     try {
-      res.clearCookie('token');
+      const isProduction = process.env.NODE_ENV === 'production';
+      res.clearCookie('token', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/',
+      });
       res.status(200).json({
         success: true,
         message: 'Logout successful',

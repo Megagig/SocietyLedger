@@ -28,6 +28,36 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow auth endpoints (login/register) to proceed even without tenant
+    // The controller will handle super admin login vs tenant user login
+    if (
+      req.path.startsWith('/api/auth/login') ||
+      req.path.startsWith('/api/auth/register')
+    ) {
+      // Try to resolve tenant but don't fail if not found
+      const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
+      const subdomain = extractSubdomain(req.headers.host);
+
+      const association = await findAssociationByIdentifier({
+        subdomain: headerTenant || subdomain || undefined,
+        slug: headerTenant?.toLowerCase(),
+        id: headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined,
+      });
+
+      if (association) {
+        req.tenant = {
+          id: association.id,
+          slug: association.slug,
+          subdomain: association.subdomain,
+          status: association.status,
+          name: association.name,
+        };
+        req.tenantId = association.id;
+      }
+      
+      return next();
+    }
+
     const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
     const subdomain = extractSubdomain(req.headers.host);
 

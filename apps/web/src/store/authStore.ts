@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types';
 import { API_ROUTES } from '@/utils/constants';
+import { createFetchHeaders } from '@/utils/tenant';
 
 interface AuthState {
   user: User | null;
@@ -40,9 +41,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await fetch(API_ROUTES.AUTH.LOGIN, {
             method: 'POST',
-            headers: {
+            headers: createFetchHeaders({
               'Content-Type': 'application/json',
-            },
+            }),
             body: JSON.stringify(credentials),
             credentials: 'include',
           });
@@ -81,9 +82,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await fetch(API_ROUTES.AUTH.REGISTER, {
             method: 'POST',
-            headers: {
+            headers: createFetchHeaders({
               'Content-Type': 'application/json',
-            },
+            }),
             body: JSON.stringify(data),
           });
 

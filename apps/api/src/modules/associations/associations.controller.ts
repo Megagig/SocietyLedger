@@ -118,11 +118,30 @@ export class AssociationsController {
       const subdomain = String(req.query.subdomain || '').toLowerCase();
       if (!subdomain) return res.status(400).json({ success: false, message: 'subdomain is required' });
 
-      const existing = await prisma.association.findUnique({ where: { subdomain } });
-      if (existing) {
-        return res.status(409).json({ success: false, message: 'Subdomain already taken' });
+      const association = await prisma.association.findUnique({ 
+        where: { subdomain },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          subdomain: true,
+          tier: true,
+          status: true,
+          logo: true,
+          primaryColor: true,
+        }
+      });
+      
+      if (!association) {
+        return res.status(404).json({ success: false, message: 'Association not found' });
       }
-      return res.json({ success: true, message: 'Subdomain available' });
+      
+      // Check if association is active
+      if (association.status === AssociationStatus.CANCELLED) {
+        return res.status(403).json({ success: false, message: 'Association is inactive' });
+      }
+      
+      return res.json({ success: true, data: association });
     } catch (error) {
       console.error('Check subdomain error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });

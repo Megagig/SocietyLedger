@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/contexts/TenantContext';
 import { API_ROUTES } from '@/utils/constants';
+import { createFetchHeaders } from '@/utils/tenant';
 import Link from 'next/link';
 
 interface LoginForm {
@@ -42,9 +43,9 @@ export default function LoginPage() {
     try {
       const response = await fetch(API_ROUTES.AUTH.LOGIN, {
         method: 'POST',
-        headers: {
+        headers: createFetchHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(formData),
         credentials: 'include',
       });

@@ -24,6 +24,16 @@ export function extractSubdomain(host?: string | null): string | null {
     return null;
   }
 
+  // Handle .localhost TLD (e.g., demo.localhost)
+  if (hostname.endsWith('.localhost')) {
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      const sub = parts[0];
+      return sub !== 'www' ? sub : null;
+    }
+  }
+
+  // Handle regular domains
   const parts = hostname.split('.');
   if (parts.length < 3) {
     // example.com => no subdomain
