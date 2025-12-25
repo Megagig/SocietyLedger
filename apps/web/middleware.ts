@@ -3,7 +3,19 @@ import { NextRequest, NextResponse } from 'next/server';
 function extractSubdomain(host?: string | null): string | null {
   if (!host) return null;
   const hostname = host.split(':')[0]?.toLowerCase();
-  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') return null;
+  if (!hostname || hostname === '127.0.0.1') return null;
+
+  // Handle localhost subdomains (e.g., demo.localhost)
+  if (hostname.endsWith('.localhost')) {
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      const sub = parts[0];
+      return sub !== 'www' ? sub : null;
+    }
+  }
+
+  // Handle regular domains
+  if (hostname === 'localhost') return null;
   const parts = hostname.split('.');
   if (parts.length < 3) return null;
   const [sub] = parts;

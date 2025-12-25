@@ -17,4 +17,8 @@ router.get('/:id', authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN
 router.patch('/:id', authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]), (req, res) => ctrl.update(req, res));
 router.delete('/:id', authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]), (req, res) => ctrl.softDelete(req, res));
 
+// Association settings (admin of the association or super admin)
+router.get('/:id/settings', authMiddleware, requireAssociationRole(['admin']), (req, res) => ctrl.getSettings(req, res));
+router.patch('/:id/settings', authMiddleware, requireAssociationRole(['admin']), (req, res) => ctrl.updateSettings(req, res));
+
 export default router;

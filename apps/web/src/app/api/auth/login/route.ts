@@ -22,9 +22,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = loginSchema.parse(body);
 
-    // Find user by email
+    // Find user by email - check both association-scoped users and platform admins
     const user = await prisma.user.findFirst({
-      where: { email: email.toLowerCase(), associationId: association.id },
+      where: { 
+        email: email.toLowerCase(),
+        OR: [
+          { associationId: association.id },
+          { platformRole: { in: ['SUPER_ADMIN', 'SUPPORT_AGENT'] } }
+        ]
+      },
       include: {
         userApproval: true,
         member: {
@@ -83,7 +89,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       role: user.role,
       memberId: user.member?.id,
-      associationId: association.id,
+      associationId: user.associationId || association.id, // Use user's association or current subdomain association
       platformRole: user.platformRole,
     });
 
@@ -96,7 +102,7 @@ export async function POST(request: NextRequest) {
           email: user.email,
           role: user.role,
           member: user.member,
-          associationId: association.id,
+          associationId: user.associationId || association.id,
           platformRole: user.platformRole,
         },
         token,

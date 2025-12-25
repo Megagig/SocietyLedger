@@ -195,4 +195,54 @@ export class AssociationsController {
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
+
+  async getSettings(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const settings = await prisma.settings.findMany({ where: { associationId: id } });
+      const association = await prisma.association.findUnique({
+        where: { id },
+        select: { logo: true, primaryColor: true, name: true },
+      });
+      return res.json({ success: true, data: { settings, branding: association } });
+    } catch (error) {
+      console.error('Get settings error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async updateSettings(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { logo, primaryColor, settings } = req.body as {
+        logo?: string;
+        primaryColor?: string;
+        settings?: { key: string; value: string }[];
+      };
+
+      // Update association branding
+      if (logo !== undefined || primaryColor !== undefined) {
+        await prisma.association.update({
+          where: { id },
+          data: { logo, primaryColor },
+        });
+      }
+
+      // Upsert individual settings
+      if (settings && Array.isArray(settings)) {
+        for (const s of settings) {
+          await prisma.settings.upsert({
+            where: { associationId_key: { associationId: id, key: s.key } },
+            update: { value: s.value, updatedBy: (req as any).user?.userId ?? 0 },
+            create: { associationId: id, key: s.key, value: s.value, updatedBy: (req as any).user?.userId ?? 0 },
+          });
+        }
+      }
+
+      return res.json({ success: true, message: 'Settings updated' });
+    } catch (error) {
+      console.error('Update settings error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
 }

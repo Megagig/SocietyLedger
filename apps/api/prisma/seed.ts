@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient, AssociationTier, AssociationStatus, BillingCycle, SubscriptionStatus } from '@prisma/client';
+import { Prisma, PrismaClient, AssociationTier, AssociationStatus, BillingCycle, SubscriptionStatus, PlatformRole } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -95,6 +96,26 @@ async function main() {
         renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
+  }
+
+  // Seed a platform super admin user (no association)
+  const superAdminEmail = 'superadmin@societyledger.com';
+  const existingSuperAdmin = await prisma.user.findFirst({
+    where: { email: superAdminEmail, platformRole: PlatformRole.SUPER_ADMIN },
+  });
+  if (!existingSuperAdmin) {
+    const passwordHash = await bcrypt.hash('SuperSecret123!', 12);
+    await prisma.user.create({
+      data: {
+        email: superAdminEmail,
+        passwordHash,
+        role: 'admin',
+        platformRole: PlatformRole.SUPER_ADMIN,
+        isActive: true,
+        userApproval: { create: { approvalStatus: 'approved' } },
+      },
+    });
+    console.log('✅ Super admin user created: superadmin@societyledger.com / SuperSecret123!');
   }
 
   console.log('✅ Seed completed: plans and demo association created');
