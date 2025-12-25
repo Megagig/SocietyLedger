@@ -1,0 +1,382 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum AssociationTier {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum AssociationStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PlatformRole {
+  SUPER_ADMIN
+  SUPPORT_AGENT
+}
+
+model Association {
+  id                    Int                  @id @default(autoincrement())
+  name                  String
+  slug                  String               @unique
+  subdomain             String               @unique
+  tier                  AssociationTier      @default(STARTER)
+  status                AssociationStatus    @default(ACTIVE)
+  logo                  String?
+  primaryColor          String?              @map("primary_color")
+  subscriptionExpiresAt DateTime?            @map("subscription_expires_at")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  users          User[]
+  members        Member[]
+  categories     FinancialCategory[]
+  transactions   Transaction[]
+  payments       Payment[]
+  accounting     AccountingEntry[]
+  exports        ExportHistory[]
+  notifications  Notification[]
+  settings       Settings[]
+  auditLogs      AuditLog[]
+  subscriptions  Subscription[]
+
+  @@map("associations")
+}
+
+model User {
+  id              Int           @id @default(autoincrement())
+  associationId   Int?          @map("association_id")
+  email           String
+  passwordHash    String        @map("password_hash")
+  role            String        @default("member")
+  platformRole    PlatformRole? @map("platform_role")
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  association     Association?   @relation(fields: [associationId], references: [id])
+  member          Member?
+  createdTransactions Transaction[] @relation("TransactionCreatedBy")
+  confirmedPayments   Payment[]     @relation("PaymentConfirmedBy")
+  createdAccountingEntries AccountingEntry[] @relation("AccountingEntryCreatedBy")
+  approvedAccountingEntries AccountingEntry[] @relation("AccountingEntryApprovedBy")
+  userApproval    UserApproval?
+  approvedUsers   UserApproval[] @relation("UserApprovedBy")
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  exports         ExportHistory[]
+  settingsUpdates Settings[] @relation("SettingsUpdatedBy")
+
+  @@index([associationId, email])
+  @@unique([associationId, email])
+  @@map("users")
+}
+
+model UserApproval {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique @map("user_id")
+  approvalStatus  String   @default("pending") @map("approval_status") // 'pending', 'approved', 'rejected'
+  approvedById    Int?     @map("approved_by")
+  approvalDate    DateTime? @map("approval_date")
+  rejectionReason String?  @map("rejection_reason")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user         User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy   User? @relation("UserApprovedBy", fields: [approvedById], references: [id])
+
+  @@map("user_approvals")
+}
+
+model Member {
+  id            Int      @id @default(autoincrement())
+  associationId Int      @map("association_id")
+  userId        Int?     @unique @map("user_id")
+  memberId      String   @map("member_id")
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  email         String?
+  phone         String?
+  address       String?
+  joinDate      DateTime? @map("join_date")
+  status        String   @default("active")
+  category      String   @default("regular")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  association   Association   @relation(fields: [associationId], references: [id])
+  user          User?         @relation(fields: [userId], references: [id])
+  transactions  Transaction[]
+  exports       ExportHistory[]
+
+  @@unique([associationId, memberId])
+  @@index([associationId, status])
+  @@map("members")
+}
+
+model FinancialCategory {
+  id            Int      @id @default(autoincrement())
+  associationId Int      @map("association_id")
+  name          String
+  type          String   // 'due', 'levy', 'donation', 'penalty'
+  amount        Decimal? @db.Decimal(10, 2)
+  frequency     String?  // 'monthly', 'quarterly', 'annual', 'one-time'
+  description   String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  association   Association   @relation(fields: [associationId], references: [id])
+  transactions  Transaction[]
+
+  @@index([associationId, type])
+  @@map("financial_categories")
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  associationId   Int      @map("association_id")
+  memberId        Int      @map("member_id")
+  categoryId      Int      @map("category_id")
+  amount          Decimal  @db.Decimal(10, 2)
+  paymentDate     DateTime? @map("payment_date")
+  dueDate         DateTime? @map("due_date")
+  paymentMethod   String?  @map("payment_method")
+  referenceNumber String?  @map("reference_number")
+  status          String   @default("pending") // 'paid', 'pending', 'overdue', 'waived'
+  notes           String?
+  createdBy       Int      @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  association Association      @relation(fields: [associationId], references: [id])
+  member       Member          @relation(fields: [memberId], references: [id])
+  category     FinancialCategory @relation(fields: [categoryId], references: [id])
+  creator      User            @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
+  payments     Payment[]
+
+  @@index([associationId, status])
+  @@map("transactions")
+}
+
+model Payment {
+  id             Int      @id @default(autoincrement())
+  associationId  Int      @map("association_id")
+  transactionId  Int      @map("transaction_id")
+  amountPaid     Decimal  @db.Decimal(10, 2) @map("amount_paid")
+  paymentDate    DateTime @map("payment_date")
+  paymentMethod  String?  @map("payment_method")
+  receiptNumber  String?  @unique @map("receipt_number")
+  confirmedBy    Int?     @map("confirmed_by")
+  confirmedAt    DateTime? @map("confirmed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  association  Association @relation(fields: [associationId], references: [id])
+  transaction  Transaction @relation(fields: [transactionId], references: [id])
+  confirmer    User?       @relation("PaymentConfirmedBy", fields: [confirmedBy], references: [id])
+
+  @@index([associationId, paymentDate])
+  @@map("payments")
+}
+
+model AccountingEntry {
+  id              Int      @id @default(autoincrement())
+  associationId   Int      @map("association_id")
+  entryType       String   @map("entry_type") // 'income', 'expense'
+  category        String
+  subcategory     String?
+  amount          Decimal  @db.Decimal(10, 2)
+  description     String?
+  transactionDate DateTime @map("transaction_date")
+  referenceNumber String?  @map("reference_number")
+  receiptFilePath String?  @map("receipt_file_path")
+  createdBy       Int      @map("created_by")
+  approvedBy      Int?     @map("approved_by")
+  approvalStatus  String   @default("pending") @map("approval_status") // 'pending', 'approved', 'rejected'
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  association Association @relation(fields: [associationId], references: [id])
+  creator  User @relation("AccountingEntryCreatedBy", fields: [createdBy], references: [id])
+  approver User? @relation("AccountingEntryApprovedBy", fields: [approvedBy], references: [id])
+
+  @@index([associationId, entryType])
+  @@map("accounting_entries")
+}
+
+model ExportHistory {
+  id             Int      @id @default(autoincrement())
+  associationId  Int      @map("association_id")
+  exportType     String   @map("export_type") // 'financial_pdf', 'financial_excel', 'member_excel', 'individual_member'
+  exportFormat   String   @map("export_format") // 'pdf', 'excel'
+  dateRangeStart DateTime? @map("date_range_start")
+  dateRangeEnd   DateTime? @map("date_range_end")
+  exportPeriod   String?  @map("export_period") // 'weekly', 'monthly', 'quarterly', 'annually', 'custom'
+  filePath       String?  @map("file_path")
+  memberId       Int?     @map("member_id")
+  createdBy      Int      @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  association Association @relation(fields: [associationId], references: [id])
+  member  Member? @relation(fields: [memberId], references: [id])
+  creator User    @relation(fields: [createdBy], references: [id])
+
+  @@index([associationId, exportType])
+  @@map("export_history")
+}
+
+model Notification {
+  id            Int      @id @default(autoincrement())
+  associationId Int      @map("association_id")
+  userId        Int      @map("user_id")
+  title         String
+  message       String
+  type          String   // 'payment_due', 'payment_received', 'system'
+  isRead        Boolean  @default(false) @map("is_read")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  association Association @relation(fields: [associationId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([associationId, type])
+  @@map("notifications")
+}
+
+model Settings {
+  id          Int      @id @default(autoincrement())
+  associationId Int    @map("association_id")
+  key         String
+  value       String?
+  description String?
+  updatedBy   Int      @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  association Association @relation(fields: [associationId], references: [id])
+  updater     User        @relation("SettingsUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@unique([associationId, key])
+  @@map("settings")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  associationId Int?  @map("association_id")
+  userId     Int      @map("user_id")
+  action     String
+  tableName  String   @map("table_name")
+  recordId   Int?     @map("record_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  association Association? @relation(fields: [associationId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+
+  @@index([associationId, tableName])
+  @@map("audit_log")
+}
+
+model Plan {
+  id            Int      @id @default(autoincrement())
+  name          String
+  code          String   @unique
+  description   String?
+  priceMonthly  Decimal  @db.Decimal(10, 2) @map("price_monthly")
+  priceAnnual   Decimal  @db.Decimal(10, 2) @map("price_annual")
+  memberLimit   Int?     @map("member_limit")
+  features      Json?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                  Int                 @id @default(autoincrement())
+  associationId       Int                 @map("association_id")
+  planId              Int                 @map("plan_id")
+  status              SubscriptionStatus  @default(TRIALING)
+  billingCycle        BillingCycle        @default(MONTHLY) @map("billing_cycle")
+  trialEndsAt         DateTime?           @map("trial_ends_at")
+  currentPeriodStart  DateTime            @map("current_period_start")
+  currentPeriodEnd    DateTime            @map("current_period_end")
+  cancelAtPeriodEnd   Boolean             @default(false) @map("cancel_at_period_end")
+  renewalDate         DateTime?           @map("renewal_date")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  association Association  @relation(fields: [associationId], references: [id])
+  plan        Plan         @relation(fields: [planId], references: [id])
+  payments    PaymentHistory[]
+
+  @@unique([associationId, planId], name: "associationId_planId")
+  @@index([associationId, status])
+  @@map("subscriptions")
+}
+
+model PaymentHistory {
+  id             Int            @id @default(autoincrement())
+  subscriptionId Int            @map("subscription_id")
+  amount         Decimal        @db.Decimal(10, 2)
+  currency       String         @default("NGN")
+  status         PaymentStatus  @default(PENDING)
+  provider       String?
+  reference      String?        @unique
+  paidAt         DateTime?      @map("paid_at")
+  metadata       Json?
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId, status])
+  @@map("payment_history")
+}

@@ -1,4 +1,5 @@
 
+# AI Rules (do not commit)
 .clinerules/byterover-rules.md
 .kilocode/rules/byterover-rules.md
 .roo/rules/byterover-rules.md
@@ -8,5 +9,64 @@
 .qoder/rules/byterover-rules.md
 .augment/rules/byterover-rules.md
 
-node_modules
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment Variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+apps/*/.env
+apps/*/.env.local
+
+# Next.js
+.next/
+out/
+apps/web/.next/
+apps/web/out/
+
+# Build outputs
+dist/
+build/
+apps/*/dist/
+apps/*/build/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.pem
+.vercel
+.turbo
+
+# Prisma
+apps/api/prisma/migrations/migration_lock.toml
+
+# Old backup files
+*.old
+*.backup
