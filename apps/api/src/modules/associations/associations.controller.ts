@@ -198,6 +198,7 @@ export class AssociationsController {
             passwordHash,
             role: 'admin',
             isActive: true,
+            emailVerified: true, // Association admin is auto-verified
             userApproval: { create: { approvalStatus: 'approved' } },
           },
         });
