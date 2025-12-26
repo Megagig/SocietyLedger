@@ -33,6 +33,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow admin routes without tenant context (super admin operates across all tenants)
+    if (req.path.startsWith('/api/admin')) {
+      return next();
+    }
+
     // Allow subscription plans endpoint without strict tenant requirement
     if (req.path === '/api/subscriptions/plans') {
       // Try to resolve tenant but don't fail if not found

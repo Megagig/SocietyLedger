@@ -138,10 +138,6 @@ export default function AssociationSignupPage() {
   };
 
   if (success) {
-    const loginUrl = typeof window !== 'undefined' 
-      ? `http://${createdSubdomain}.localhost:3000/auth/login`
-      : '#';
-    
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <div className="w-full max-w-md">
@@ -149,12 +145,15 @@ export default function AssociationSignupPage() {
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Association Created!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Email</h2>
+              <p className="text-gray-600 mb-4">
+                Your association <span className="font-semibold">{formData.associationName}</span> has been created!
+              </p>
               <p className="text-gray-600 mb-6">
-                Your association <span className="font-semibold">{formData.associationName}</span> has been created successfully.
+                We've sent a verification code to <span className="font-semibold">{formData.email}</span>. Please verify your email to continue.
               </p>
               <div className="bg-blue-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-600 mb-2">Your association URL:</p>
@@ -162,15 +161,27 @@ export default function AssociationSignupPage() {
                   {createdSubdomain}.localhost:3000
                 </p>
               </div>
-              <p className="text-sm text-gray-500 mb-6">
-                You can now login with your admin credentials at your association's URL.
-              </p>
-              <a
-                href={loginUrl}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-left">
+                    <h3 className="text-sm font-medium text-amber-800">Next Steps</h3>
+                    <ol className="text-sm text-amber-700 mt-1 list-decimal list-inside space-y-1">
+                      <li>Verify your email with the code we sent</li>
+                      <li>Wait for platform admin approval</li>
+                      <li>Once approved, you can login</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+              <Link
+                href={`/auth/verify-email?email=${encodeURIComponent(formData.email)}`}
                 className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
               >
-                Go to Login
-              </a>
+                Enter Verification Code
+              </Link>
             </div>
           </div>
         </div>

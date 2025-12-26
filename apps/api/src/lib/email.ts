@@ -34,9 +34,9 @@ function getResendClient(): Resend {
 // Lazy-load email configuration to ensure environment variables are available
 function getEmailConfig() {
   return {
-    FROM_EMAIL: process.env.EMAIL_FROM || 'SocietyLedger <noreply@societyledger.com>',
-    REPLY_TO: process.env.EMAIL_REPLY_TO || 'support@societyledger.com',
-    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO || 'support@societyledger.com',
+    FROM_EMAIL: process.env.EMAIL_FROM || 'SocietyLedger <admin@megagigsolution.com>',
+    REPLY_TO: process.env.EMAIL_REPLY_TO || 'admin@megagigsolution.com',
+    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO || 'admin@megagigsolution.com',
     WEBSITE_URL: process.env.APP_URL || 'https://societyledger.com',
   };
 }
@@ -93,13 +93,8 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       console.error('Full error:', error);
     }
     
-    // In production, you might want to:
-    // - Log to error tracking service (Sentry, etc.)
-    // - Store failed emails in database for retry
-    // - Alert monitoring system
-    
-    // Don't throw error to prevent cron job failures
-    // Emails are important but shouldn't break the system
+    // Re-throw the error so callers can handle it
+    throw error;
   }
 }
 

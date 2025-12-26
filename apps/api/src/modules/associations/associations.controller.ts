@@ -164,6 +164,14 @@ export class AssociationsController {
       const plan = await prisma.plan.findUnique({ where: { code: input.planCode } });
       if (!plan) return res.status(400).json({ success: false, message: 'Invalid plan' });
 
+      // Import auth service for verification
+      const { generateVerificationCode, hashToken, sendVerificationEmail } = await import('../auth/auth.service');
+      
+      // Generate verification code
+      const verificationCode = generateVerificationCode();
+      const hashedCode = hashToken(verificationCode);
+      const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
       const result = await prisma.$transaction(async (tx) => {
         const assoc = await tx.association.create({
           data: {
@@ -197,16 +205,49 @@ export class AssociationsController {
             email: input.admin.email.toLowerCase(),
             passwordHash,
             role: 'admin',
-            isActive: true,
-            emailVerified: true, // Association admin is auto-verified
-            userApproval: { create: { approvalStatus: 'approved' } },
+            isActive: false, // Not active until super admin approves
+            emailVerified: false, // Requires email verification
+            verificationCode: hashedCode,
+            verificationExpiresAt,
+            userApproval: { create: { approvalStatus: 'pending' } }, // Pending super admin approval
           },
         });
 
         return { assoc, user };
       });
 
-      return res.status(201).json({ success: true, data: result });
+      // Send verification email
+      try {
+        console.log('📧 Attempting to send verification email to:', input.admin.email);
+        console.log('📧 Verification code:', verificationCode);
+        await sendVerificationEmail(
+          input.admin.email,
+          verificationCode,
+          input.association.name
+        );
+        console.log('✅ Verification email sent successfully');
+      } catch (emailError: any) {
+        console.error('❌ Failed to send verification email:', emailError?.message || emailError);
+        console.error('Full error:', emailError);
+        // Don't fail the signup if email fails
+      }
+
+      return res.status(201).json({ 
+        success: true, 
+        data: {
+          association: {
+            id: result.assoc.id,
+            name: result.assoc.name,
+            subdomain: result.assoc.subdomain,
+          },
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+            emailVerified: result.user.emailVerified,
+          },
+        },
+        message: 'Association created. Please check your email for a verification code.',
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
