@@ -252,8 +252,8 @@ export class AssociationsController {
         for (const s of settings) {
           await prisma.settings.upsert({
             where: { associationId_key: { associationId: id, key: s.key } },
-            update: { value: s.value, updatedBy: (req as any).user?.userId ?? 0 },
-            create: { associationId: id, key: s.key, value: s.value, updatedBy: (req as any).user?.userId ?? 0 },
+            update: { value: s.value, updatedBy: (req as any).user?.id ?? 0 },
+            create: { associationId: id, key: s.key, value: s.value, updatedBy: (req as any).user?.id ?? 0 },
           });
         }
       }

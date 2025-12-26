@@ -131,8 +131,6 @@ export const checkTrialExpiry = cron.schedule('0 1 * * *', async () => {
   } catch (error) {
     console.error('[CRON] Error checking trial expiry:', error);
   }
-}, {
-  scheduled: false, // Don't start automatically, will be started manually
 });
 
 // Check subscription renewals - Runs daily at 2:00 AM
@@ -256,8 +254,6 @@ export const checkSubscriptionRenewal = cron.schedule('0 2 * * *', async () => {
   } catch (error) {
     console.error('[CRON] Error checking subscription renewal:', error);
   }
-}, {
-  scheduled: false,
 });
 
 // Check for past due subscriptions - Runs every 6 hours
@@ -291,8 +287,6 @@ export const checkPastDueSubscriptions = cron.schedule('0 */6 * * *', async () =
   } catch (error) {
     console.error('[CRON] Error checking past due subscriptions:', error);
   }
-}, {
-  scheduled: false,
 });
 
 // Start all cron jobs

@@ -1,5 +1,4 @@
-import { NextFunction, Response } from 'express';
-import { AuthRequest } from './auth.middleware';
+import { Request, Response, NextFunction } from 'express';
 import { PlatformRole } from '@prisma/client';
 import { Permission, hasPermission, hasAllPermissions, hasAnyPermission } from '../lib/permissions';
 
@@ -7,8 +6,8 @@ import { Permission, hasPermission, hasAllPermissions, hasAnyPermission } from '
  * Middleware to require specific platform role (SUPER_ADMIN, SUPPORT_AGENT)
  */
 export function requirePlatformRole(roles: PlatformRole[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    const platformRole = req.user?.platformRole;
+  return (req: Request, res: Response, next: NextFunction) => {
+    const platformRole = req.user?.platformRole as PlatformRole | undefined;
     if (!platformRole || !roles.includes(platformRole)) {
       return res.status(403).json({ 
         success: false, 
@@ -25,7 +24,7 @@ export function requirePlatformRole(roles: PlatformRole[]) {
  * Super admins bypass this check
  */
 export function requireAssociationRole(roles: string[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     // Super admins bypass association role checks
     if (req.user?.platformRole === PlatformRole.SUPER_ADMIN) {
       return next();
@@ -48,7 +47,7 @@ export function requireAssociationRole(roles: string[]) {
  * Middleware to require specific permission
  */
 export function requirePermission(permission: Permission) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     // Super admins have all permissions
     if (req.user?.platformRole === PlatformRole.SUPER_ADMIN) {
       return next();
@@ -71,7 +70,7 @@ export function requirePermission(permission: Permission) {
  * Middleware to require ANY of the specified permissions
  */
 export function requireAnyPermission(permissions: Permission[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     // Super admins have all permissions
     if (req.user?.platformRole === PlatformRole.SUPER_ADMIN) {
       return next();
@@ -94,7 +93,7 @@ export function requireAnyPermission(permissions: Permission[]) {
  * Middleware to require ALL of the specified permissions
  */
 export function requireAllPermissions(permissions: Permission[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     // Super admins have all permissions
     if (req.user?.platformRole === PlatformRole.SUPER_ADMIN) {
       return next();
@@ -117,8 +116,8 @@ export function requireAllPermissions(permissions: Permission[]) {
  * Middleware to check if user owns the resource
  * Admins and super admins can access any resource
  */
-export function requireOwnership(getUserIdFromRequest: (req: AuthRequest) => number | undefined) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+export function requireOwnership(getUserIdFromRequest: (req: Request) => number | undefined) {
+  return (req: Request, res: Response, next: NextFunction) => {
     // Super admins and admins bypass ownership checks
     if (req.user?.platformRole === PlatformRole.SUPER_ADMIN || req.user?.role === 'admin') {
       return next();

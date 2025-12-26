@@ -503,12 +503,11 @@ export const subscriptionController = {
           // Create payment history record
           await prisma.paymentHistory.create({
             data: {
-              associationId,
               subscriptionId: currentSubscription.id,
               amount: proratedAmount,
               reference,
               status: 'PENDING',
-              paymentProvider: 'PAYSTACK',
+              provider: 'paystack',
               accessCode: response.data.access_code,
               authorizationUrl: response.data.authorization_url,
             },
@@ -551,16 +550,16 @@ export const subscriptionController = {
             userId: req.user?.id!,
             associationId,
             action: 'CHANGE_PLAN',
-            entityType: 'subscription',
-            entityId: currentSubscription.id,
-            changes: JSON.stringify({
+            tableName: 'subscriptions',
+            recordId: currentSubscription.id,
+            newValues: {
               oldPlanId: currentSubscription.planId,
               newPlanId,
               oldBillingCycle: currentSubscription.billingCycle,
               newBillingCycle,
               changeType,
               effectiveDate: currentPeriodEnd,
-            }),
+            },
           },
         });
 

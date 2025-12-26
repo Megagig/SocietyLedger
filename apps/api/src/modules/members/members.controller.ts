@@ -198,7 +198,7 @@ export const memberController = {
           financialSummary: {
             totalDues: financialSummary._sum.amount || 0,
             totalPaid: paidAmount._sum.amountPaid || 0,
-            balance: (financialSummary._sum.amount || 0) - (paidAmount._sum.amountPaid || 0),
+            balance: Number(financialSummary._sum.amount || 0) - Number(paidAmount._sum.amountPaid || 0),
           },
         },
       });

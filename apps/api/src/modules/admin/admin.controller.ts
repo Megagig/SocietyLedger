@@ -26,7 +26,7 @@ export class AdminController {
       await prisma.auditLog.create({
         data: {
           associationId: targetAssociationId,
-          userId: superAdmin.userId,
+          userId: superAdmin.id,
           action: 'IMPERSONATE',
           tableName: 'associations',
           recordId: targetAssociationId,
@@ -36,7 +36,7 @@ export class AdminController {
 
       // Generate a short-lived token for this association
       const payload: TokenPayload = {
-        userId: superAdmin.userId,
+        id: superAdmin.id,
         email: superAdmin.email,
         role: 'admin',
         associationId: targetAssociationId,

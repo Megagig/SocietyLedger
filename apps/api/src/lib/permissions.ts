@@ -52,6 +52,9 @@ export const PERMISSIONS = {
   SUBSCRIPTION_VIEW: 'subscription:view',
   SUBSCRIPTION_MANAGE: 'subscription:manage',
   
+  // System Settings
+  SYSTEM_SETTINGS_MANAGE: 'system:settings:manage',
+  
   // Audit Logs
   AUDIT_VIEW: 'audit:view',
 } as const;

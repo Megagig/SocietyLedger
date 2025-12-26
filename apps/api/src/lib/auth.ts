@@ -17,10 +17,10 @@ export async function verifyPassword(
 }
 
 export interface TokenPayload {
-  userId: number;
+  id: number;
   email: string;
   role: string;
-  associationId?: number;
+  associationId?: number | null;
   platformRole?: PlatformRole;
   memberId?: number;
 }

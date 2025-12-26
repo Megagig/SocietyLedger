@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Member } from '@/types';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
-import { Search, Filter, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { apiGet, apiDelete } from '@/utils/api';
+import { Search, Plus, Edit, Trash2, Eye } from 'lucide-react';
 
 export default function MembersPage() {
   const router = useRouter();
@@ -37,11 +38,8 @@ export default function MembersPage() {
         ...(categoryFilter && { category: categoryFilter }),
       });
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?${params}`,
-        {
-          credentials: 'include',
-        }
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members?${params}`
       );
 
       if (!response.ok) {
@@ -64,12 +62,8 @@ export default function MembersPage() {
     if (!confirm('Are you sure you want to delete this member?')) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${id}`,
-        {
-          method: 'DELETE',
-          credentials: 'include',
-        }
+      const response = await apiDelete(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${id}`
       );
 
       const data = await response.json();

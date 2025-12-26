@@ -110,7 +110,7 @@ export class AuthController {
 
       // Generate JWT token
       const token = generateToken({
-        userId: user.id,
+        id: user.id,
         email: user.email,
         role: user.role,
         memberId: user.member?.id,
@@ -265,8 +265,8 @@ export class AuthController {
 
   async me(req: Request, res: Response): Promise<void> {
     try {
-      const authReq = req as TenantRequest & { user?: { userId?: number } };
-      const userId = authReq.user?.userId;
+      const authReq = req as TenantRequest & { user?: { id?: number } };
+      const userId = authReq.user?.id;
       const tenantId = authReq.tenantId;
 
       if (!userId) {

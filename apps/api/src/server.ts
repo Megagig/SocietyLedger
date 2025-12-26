@@ -17,6 +17,7 @@ import adminRoutes from './modules/admin/admin.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
 import webhookRoutes from './modules/webhooks/webhooks.routes';
 import memberRoutes from './modules/members/members.routes';
+import financeRoutes from './modules/finance/finance.routes';
 import cronRoutes from './modules/cron/cron.routes';
 
 const app: Express = express();
@@ -89,6 +90,7 @@ app.use('/api/associations', associationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/members', memberRoutes);
+app.use('/api/finance', financeRoutes);
 app.use('/api/cron', cronRoutes);
 
 // 404 handler

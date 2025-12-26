@@ -65,7 +65,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       to,
       subject,
       html: htmlContent,
-      replyTo: config.REPLY_TO,
+      reply_to: config.REPLY_TO,
     });
 
     if (result.error) {

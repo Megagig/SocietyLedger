@@ -150,10 +150,17 @@ export async function memberLimitMiddleware(
       return next();
     }
 
+    if (!associationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Association ID is required',
+      });
+    }
+
     // Count current members
     const memberCount = await prisma.member.count({
       where: {
-        associationId,
+        associationId: associationId,
         status: 'active',
       },
     });
