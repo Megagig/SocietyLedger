@@ -28,11 +28,13 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
-    // Allow auth endpoints (login/register) to proceed even without tenant
+    // Allow auth endpoints (login/register/me/logout) to proceed even without tenant
     // The controller will handle super admin login vs tenant user login
     if (
       req.path.startsWith('/api/auth/login') ||
-      req.path.startsWith('/api/auth/register')
+      req.path.startsWith('/api/auth/register') ||
+      req.path.startsWith('/api/auth/me') ||
+      req.path.startsWith('/api/auth/logout')
     ) {
       // Try to resolve tenant but don't fail if not found
       const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;

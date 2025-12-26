@@ -50,11 +50,12 @@ const corsOptions = {
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
-  credentials: true,
+  credentials: true, // CRITICAL: Enable credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id'],
   exposedHeaders: ['Set-Cookie'],
   maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
 };
 
 app.use(cors(corsOptions));

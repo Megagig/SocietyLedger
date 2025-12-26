@@ -40,12 +40,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
+  // Always provide context, even before mounting (for SSR compatibility)
+  const value = {
+    theme,
+    toggleTheme,
+    setTheme,
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

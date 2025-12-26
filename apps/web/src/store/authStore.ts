@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>()(
 
           const data = await response.json();
           set({
-            user: data.data,
+            user: data.data.user || data.data,
             isAuthenticated: true,
             error: null,
           });

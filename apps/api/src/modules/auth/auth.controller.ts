@@ -119,13 +119,15 @@ export class AuthController {
       });
 
       // Set HTTP-only cookie with appropriate SameSite for cross-origin
+      // Note: Browsers allow secure cookies on localhost even over HTTP
       const isProduction = process.env.NODE_ENV === 'production';
       res.cookie('token', token, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax', // 'none' for production with HTTPS, 'lax' for dev
+        secure: true, // Required for SameSite=None (browsers allow this on localhost)
+        sameSite: 'none', // Required for cross-origin cookies (localhost:3000 to localhost:4000)
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
         path: '/',
+        domain: isProduction ? process.env.COOKIE_DOMAIN : undefined, // Only set domain in production
       });
 
       res.status(200).json({
@@ -243,9 +245,10 @@ export class AuthController {
       const isProduction = process.env.NODE_ENV === 'production';
       res.clearCookie('token', {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        secure: true, // Must match the cookie settings (browsers allow this on localhost)
+        sameSite: 'none', // Must match the cookie settings used when setting
         path: '/',
+        domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
       });
       res.status(200).json({
         success: true,
