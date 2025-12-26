@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PricingCard from '@/components/subscription/PricingCard';
 import { PlanWithFeatures, BillingCycle } from '@/types/subscription';
+import { getTenantHeaders } from '@/utils/tenant';
 
 export default function PlansPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function PlansPage() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions/plans`, {
         credentials: 'include',
+        headers: getTenantHeaders(),
       });
 
       if (!response.ok) {
@@ -43,6 +45,7 @@ export default function PlansPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getTenantHeaders(),
         },
         credentials: 'include',
         body: JSON.stringify({

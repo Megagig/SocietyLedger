@@ -1,4 +1,6 @@
-import { Plan, Subscription, BillingCycle } from '@prisma/client';
+import { Plan, Subscription, BillingCycle as PrismaBillingCycle } from '@prisma/client';
+
+export type BillingCycle = PrismaBillingCycle;
 
 export interface PlanWithFeatures extends Plan {
   features: {
@@ -14,6 +16,7 @@ export interface PlanWithFeatures extends Plan {
 
 export interface SubscriptionWithPlan extends Subscription {
   plan: PlanWithFeatures;
+  payments?: any[]; // Payment history
 }
 
 export interface PaymentInitializationData {

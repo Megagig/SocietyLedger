@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SubscriptionWithPlan } from '@/types/subscription';
 import { CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { getTenantHeaders } from '@/utils/tenant';
 
 export default function SubscriptionPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function SubscriptionPage() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions/current`,
         {
           credentials: 'include',
+          headers: getTenantHeaders(),
         }
       );
 
@@ -55,6 +57,7 @@ export default function SubscriptionPage() {
         {
           method: 'POST',
           credentials: 'include',
+          headers: getTenantHeaders(),
         }
       );
 
@@ -81,6 +84,7 @@ export default function SubscriptionPage() {
         {
           method: 'POST',
           credentials: 'include',
+          headers: getTenantHeaders(),
         }
       );
 
