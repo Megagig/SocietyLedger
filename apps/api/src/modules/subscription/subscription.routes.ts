@@ -27,4 +27,7 @@ router.post('/cancel', subscriptionController.cancelSubscription);
 // Reactivate subscription (remove cancellation flag)
 router.post('/reactivate', subscriptionController.reactivateSubscription);
 
+// Change plan (upgrade/downgrade)
+router.post('/change-plan', subscriptionController.changePlan);
+
 export default router;

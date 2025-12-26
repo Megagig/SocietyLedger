@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { tenantMiddleware } from './middleware/tenant.middleware';
+import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +16,8 @@ import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
 import webhookRoutes from './modules/webhooks/webhooks.routes';
+import memberRoutes from './modules/members/members.routes';
+import cronRoutes from './modules/cron/cron.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -84,6 +87,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/associations', associationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/cron', cronRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -110,6 +115,22 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`🚀 SocietyLedger API Server running on http://localhost:${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+    
+    // Start cron jobs
+    startSubscriptionJobs();
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    stopSubscriptionJobs();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully...');
+    stopSubscriptionJobs();
+    process.exit(0);
   });
 }
 

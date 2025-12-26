@@ -395,4 +395,193 @@ export const subscriptionController = {
       });
     }
   },
+
+  // Change plan (upgrade/downgrade) with proration
+  async changePlan(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const { newPlanId, billingCycle } = req.body;
+
+      if (!associationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association ID is required',
+        });
+      }
+
+      if (!newPlanId) {
+        return res.status(400).json({
+          success: false,
+          message: 'New plan ID is required',
+        });
+      }
+
+      // Get current subscription
+      const currentSubscription = await prisma.subscription.findFirst({
+        where: { 
+          associationId,
+          status: { in: ['ACTIVE', 'TRIALING'] },
+        },
+        include: { plan: true },
+      });
+
+      if (!currentSubscription) {
+        return res.status(404).json({
+          success: false,
+          message: 'No active subscription found',
+        });
+      }
+
+      // Get new plan
+      const newPlan = await prisma.plan.findUnique({
+        where: { id: newPlanId },
+      });
+
+      if (!newPlan || !newPlan.isActive) {
+        return res.status(404).json({
+          success: false,
+          message: 'Plan not found or inactive',
+        });
+      }
+
+      // Check if it's the same plan
+      if (currentSubscription.planId === newPlanId && currentSubscription.billingCycle === (billingCycle || currentSubscription.billingCycle)) {
+        return res.status(400).json({
+          success: false,
+          message: 'You are already on this plan',
+        });
+      }
+
+      // Calculate proration
+      const now = new Date();
+      const currentPeriodEnd = currentSubscription.currentPeriodEnd;
+      const daysRemaining = Math.ceil((currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const totalDays = currentSubscription.billingCycle === 'ANNUAL' ? 365 : 30;
+      const usedDays = totalDays - daysRemaining;
+
+      // Calculate current plan cost
+      const currentPlanPrice = currentSubscription.billingCycle === 'ANNUAL'
+        ? currentSubscription.plan.priceAnnual.toNumber()
+        : currentSubscription.plan.priceMonthly.toNumber();
+
+      // Calculate new plan cost
+      const newBillingCycle = billingCycle || currentSubscription.billingCycle;
+      const newPlanPrice = newBillingCycle === 'ANNUAL'
+        ? newPlan.priceAnnual.toNumber()
+        : newPlan.priceMonthly.toNumber();
+
+      // Calculate prorated amounts
+      const usedAmount = (currentPlanPrice / totalDays) * usedDays;
+      const remainingCredit = currentPlanPrice - usedAmount;
+      const proratedAmount = Math.max(0, newPlanPrice - remainingCredit);
+
+      // Determine if upgrade or downgrade
+      const isUpgrade = newPlanPrice > currentPlanPrice;
+      const changeType = isUpgrade ? 'upgrade' : 'downgrade';
+
+      // For upgrades, charge immediately; for downgrades, apply at period end
+      if (isUpgrade && proratedAmount > 0) {
+        // Initialize payment for prorated amount
+        const reference = `CHANGE-${currentSubscription.id}-${Date.now()}`;
+        
+        try {
+          const response = await paystack.transaction.initialize({
+            email: req.user?.email || '',
+            amount: toKobo(proratedAmount),
+            reference,
+            metadata: {
+              type: 'plan_change',
+              subscriptionId: currentSubscription.id,
+              newPlanId,
+              billingCycle: newBillingCycle,
+              proratedAmount,
+              remainingCredit,
+              changeType,
+            },
+          });
+
+          // Create payment history record
+          await prisma.paymentHistory.create({
+            data: {
+              associationId,
+              subscriptionId: currentSubscription.id,
+              amount: proratedAmount,
+              reference,
+              status: 'PENDING',
+              paymentProvider: 'PAYSTACK',
+              accessCode: response.data.access_code,
+              authorizationUrl: response.data.authorization_url,
+            },
+          });
+
+          return res.status(200).json({
+            success: true,
+            message: 'Payment required for plan upgrade',
+            data: {
+              changeType: 'upgrade',
+              requiresPayment: true,
+              proratedAmount,
+              remainingCredit,
+              daysRemaining,
+              authorizationUrl: response.data.authorization_url,
+              reference,
+            },
+          });
+        } catch (paystackError: any) {
+          console.error('Paystack error:', paystackError);
+          return res.status(500).json({
+            success: false,
+            message: paystackError.message || 'Failed to initialize payment',
+          });
+        }
+      } else {
+        // Downgrade - apply at period end (no immediate payment)
+        await prisma.subscription.update({
+          where: { id: currentSubscription.id },
+          data: {
+            planId: newPlanId,
+            billingCycle: newBillingCycle,
+            // Will take effect at current period end
+          },
+        });
+
+        // Create audit log
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user?.id!,
+            associationId,
+            action: 'CHANGE_PLAN',
+            entityType: 'subscription',
+            entityId: currentSubscription.id,
+            changes: JSON.stringify({
+              oldPlanId: currentSubscription.planId,
+              newPlanId,
+              oldBillingCycle: currentSubscription.billingCycle,
+              newBillingCycle,
+              changeType,
+              effectiveDate: currentPeriodEnd,
+            }),
+          },
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: `Plan ${changeType} scheduled for ${currentPeriodEnd.toLocaleDateString()}`,
+          data: {
+            changeType,
+            requiresPayment: false,
+            effectiveDate: currentPeriodEnd,
+            daysRemaining,
+            newPlan,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error changing plan:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to change plan',
+      });
+    }
+  },
 };

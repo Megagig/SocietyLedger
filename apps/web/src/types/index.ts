@@ -28,14 +28,29 @@ export interface Member {
   memberId: string;
   firstName: string;
   lastName: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  joinDate?: Date;
-  status: string;
+  email?: string | null;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+  gender: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  occupation?: string | null;
   category: string;
-  createdAt: Date;
-  updatedAt: Date;
+  status: string;
+  joinDate?: string;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelationship?: string | null;
+  notes?: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  financialSummary?: {
+    totalDues: number;
+    totalPaid: number;
+    balance: number;
+  };
 }
 
 // Financial Types
