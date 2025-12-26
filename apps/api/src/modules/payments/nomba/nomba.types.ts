@@ -12,32 +12,37 @@ export interface NombaConfig {
 }
 
 export interface NombaAuthResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
+  code: string;
+  description: string;
+  status: boolean;
+  data: {
+    access_token: string;
+    businessId: string;
+    refresh_token: string;
+    expiresAt: string;
+  };
 }
 
 export interface NombaCheckoutOrderRequest {
-  amount: number;
-  currency: string;
-  customerEmail: string;
-  customerId?: string;
-  orderReference: string;
+  order: {
+    orderReference: string;
+    customerId?: string;
+    customerEmail: string;
+    amount: string; // Nomba expects amount as string in kobo
+    currency: string;
+  };
   callbackUrl: string;
-  metadata?: Record<string, any>;
 }
 
 export interface NombaCheckoutOrderResponse {
   code: string;
   description: string;
+  status: boolean;
   data: {
+    success: boolean;
+    message: string;
     checkoutLink: string;
     orderReference: string;
-    accountId: string;
-    amount: number;
-    currency: string;
-    customerEmail: string;
-    callbackUrl: string;
   };
 }
 

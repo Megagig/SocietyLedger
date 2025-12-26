@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { calculateSubscriptionAmount } from '../../lib/paystack';
 import { BillingCycle } from '@prisma/client';
 import { PaystackService } from '../payments/paystack/paystack.service';
+import { nombaService } from '../payments/nomba/nomba.service';
 
 export const subscriptionController = {
   // Get all available plans
@@ -75,7 +76,7 @@ export const subscriptionController = {
   // Initialize subscription payment
   async initializePayment(req: Request, res: Response) {
     try {
-      const { planId, billingCycle } = req.body;
+      const { planId, billingCycle, provider = 'paystack' } = req.body;
       const associationId = req.user?.associationId;
       const userEmail = req.user?.email;
 
@@ -90,6 +91,22 @@ export const subscriptionController = {
         return res.status(400).json({
           success: false,
           message: 'Plan ID and billing cycle are required',
+        });
+      }
+
+      // Validate provider
+      if (!['paystack', 'nomba'].includes(provider)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid payment provider. Use "paystack" or "nomba"',
+        });
+      }
+
+      // Check if Nomba is configured when selected
+      if (provider === 'nomba' && !nombaService.isConfigured()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Nomba payment provider is not configured. Please use Paystack or contact support.',
         });
       }
 
@@ -152,54 +169,16 @@ export const subscriptionController = {
         });
       }
 
-      // Initialize Paystack transaction using PaystackService
-      const reference = PaystackService.generateReference('SUB');
-      const paystackService = new PaystackService();
-      const paystackResponse = await paystackService.initializePayment({
-        email: userEmail || association.name,
-        amount: PaystackService.nairaToKobo(amount),
-        reference,
-        callback_url: `${process.env.FRONTEND_URL}/subscription/verify`,
-        metadata: {
-          subscriptionId: subscription.id,
-          associationId,
-          planId: plan.id,
-          billingCycle,
-          associationName: association.name,
-          subdomain: association.subdomain,
-        },
-      });
-
-      if (!paystackResponse.status) {
-        return res.status(400).json({
-          success: false,
-          message: 'Failed to initialize payment',
-        });
+      // Initialize payment based on provider
+      if (provider === 'paystack') {
+        return await subscriptionController.initializePaystackPayment(
+          req, res, subscription, association, userEmail, amount, plan.id, billingCycle
+        );
+      } else {
+        return await subscriptionController.initializeNombaPayment(
+          req, res, subscription, association, userEmail, amount, plan.id, billingCycle
+        );
       }
-
-      // Create payment history record
-      await prisma.paymentHistory.create({
-        data: {
-          subscriptionId: subscription.id,
-          amount,
-          currency: 'NGN',
-          status: 'PENDING',
-          provider: 'paystack',
-          reference: paystackResponse.data.reference,
-          accessCode: paystackResponse.data.access_code,
-          authorizationUrl: paystackResponse.data.authorization_url,
-        },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Payment initialized successfully',
-        data: {
-          authorizationUrl: paystackResponse.data.authorization_url,
-          accessCode: paystackResponse.data.access_code,
-          reference: paystackResponse.data.reference,
-        },
-      });
     } catch (error) {
       console.error('Error initializing payment:', error);
       return res.status(500).json({
@@ -207,6 +186,124 @@ export const subscriptionController = {
         message: 'Failed to initialize payment',
       });
     }
+  },
+
+  // Initialize Paystack payment
+  async initializePaystackPayment(
+    req: Request,
+    res: Response,
+    subscription: any,
+    association: any,
+    userEmail: string | undefined,
+    amount: number,
+    planId: number,
+    billingCycle: string
+  ) {
+    const reference = PaystackService.generateReference('SUB');
+    const paystackService = new PaystackService();
+    
+    const paystackResponse = await paystackService.initializePayment({
+      email: userEmail || association.name,
+      amount: PaystackService.nairaToKobo(amount),
+      reference,
+      callback_url: `${process.env.FRONTEND_URL}/subscription/verify`,
+      metadata: {
+        subscriptionId: subscription.id,
+        associationId: association.id,
+        planId,
+        billingCycle,
+        associationName: association.name,
+        subdomain: association.subdomain,
+        provider: 'paystack',
+      },
+    });
+
+    if (!paystackResponse.status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to initialize Paystack payment',
+      });
+    }
+
+    // Create payment history record
+    await prisma.paymentHistory.create({
+      data: {
+        subscriptionId: subscription.id,
+        amount,
+        currency: 'NGN',
+        status: 'PENDING',
+        provider: 'paystack',
+        reference: paystackResponse.data.reference,
+        accessCode: paystackResponse.data.access_code,
+        authorizationUrl: paystackResponse.data.authorization_url,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment initialized successfully',
+      data: {
+        provider: 'paystack',
+        authorizationUrl: paystackResponse.data.authorization_url,
+        accessCode: paystackResponse.data.access_code,
+        reference: paystackResponse.data.reference,
+      },
+    });
+  },
+
+  // Initialize Nomba payment
+  async initializeNombaPayment(
+    req: Request,
+    res: Response,
+    subscription: any,
+    association: any,
+    userEmail: string | undefined,
+    amount: number,
+    planId: number,
+    billingCycle: string
+  ) {
+    const reference = `NMB-SUB-${Date.now()}-${subscription.id}`;
+    
+    const nombaResponse = await nombaService.initializePayment({
+      amount: nombaService.convertToKobo(amount),
+      email: userEmail || 'noemail@societyledger.com',
+      reference,
+      callbackUrl: `${process.env.FRONTEND_URL}/subscription/verify`,
+      metadata: {
+        subscriptionId: subscription.id,
+        associationId: association.id,
+        planId,
+        billingCycle,
+        associationName: association.name,
+        subdomain: association.subdomain,
+        provider: 'nomba',
+      },
+    });
+
+    // Create payment history record
+    await prisma.paymentHistory.create({
+      data: {
+        subscriptionId: subscription.id,
+        amount,
+        currency: 'NGN',
+        status: 'PENDING',
+        provider: 'nomba',
+        reference,
+        accessCode: nombaResponse.data.orderReference,
+        authorizationUrl: nombaResponse.data.checkoutLink,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment initialized successfully',
+      data: {
+        provider: 'nomba',
+        checkoutLink: nombaResponse.data.checkoutLink,
+        orderReference: nombaResponse.data.orderReference,
+        reference,
+      },
+    });
   },
 
   // Verify payment
@@ -221,127 +318,14 @@ export const subscriptionController = {
         });
       }
 
-      // Verify with Paystack
-      const paystackService = new PaystackService();
-      const verification = await paystackService.verifyPayment(reference);
-
-      if (!verification.status || verification.data.status !== 'success') {
-        return res.status(400).json({
-          success: false,
-          message: 'Payment verification failed',
-          data: {
-            status: verification.data?.status,
-            gateway_response: verification.data?.gateway_response,
-          },
-        });
+      // Determine provider from reference prefix
+      const isNomba = reference.startsWith('NMB-');
+      
+      if (isNomba) {
+        return await subscriptionController.verifyNombaPayment(req, res, reference);
+      } else {
+        return await subscriptionController.verifyPaystackPayment(req, res, reference);
       }
-
-      // Get payment history record
-      const paymentHistory = await prisma.paymentHistory.findUnique({
-        where: { reference },
-        include: { subscription: true },
-      });
-
-      if (!paymentHistory) {
-        return res.status(404).json({
-          success: false,
-          message: 'Payment record not found',
-        });
-      }
-
-      // Check if already processed (idempotency)
-      if (paymentHistory.status === 'SUCCESS') {
-        return res.status(200).json({
-          success: true,
-          message: 'Payment already verified',
-          data: {
-            subscription: paymentHistory.subscription,
-            payment: verification.data,
-          },
-        });
-      }
-
-      // Calculate new period dates
-      const subscription = paymentHistory.subscription;
-      const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
-      const currentDate = new Date();
-      const periodEnd = new Date(currentDate);
-      periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
-
-      // Atomic transaction: update payment history, subscription, and association
-      await prisma.$transaction([
-        // Update payment history
-        prisma.paymentHistory.update({
-          where: { id: paymentHistory.id },
-          data: {
-            status: 'SUCCESS',
-            paidAt: new Date(verification.data.paid_at),
-            metadata: verification.data as any,
-          },
-        }),
-
-        // Update subscription status
-        prisma.subscription.update({
-          where: { id: subscription.id },
-          data: {
-            status: 'ACTIVE',
-            currentPeriodStart: currentDate,
-            currentPeriodEnd: periodEnd,
-            renewalDate: periodEnd,
-          },
-        }),
-
-        // Update association subscription expiry
-        prisma.association.update({
-          where: { id: subscription.associationId },
-          data: {
-            subscriptionExpiresAt: periodEnd,
-            status: 'ACTIVE',
-          },
-        }),
-
-        // Audit log
-        prisma.auditLog.create({
-          data: {
-            associationId: subscription.associationId,
-            userId: 1, // System user
-            action: 'SUBSCRIPTION_PAYMENT_VERIFIED',
-            tableName: 'subscriptions',
-            recordId: subscription.id,
-            newValues: {
-              reference,
-              amount: PaystackService.koboToNaira(verification.data.amount),
-              provider: 'paystack',
-              subscriptionId: subscription.id,
-              planId: subscription.planId,
-              billingCycle: subscription.billingCycle,
-              periodEnd: periodEnd.toISOString(),
-            },
-          },
-        }),
-      ]);
-
-      console.log(`✅ [VERIFY] Subscription payment verified successfully`);
-      console.log(`   Reference: ${reference}`);
-      console.log(`   Subscription ID: ${subscription.id}`);
-      console.log(`   Period End: ${periodEnd.toLocaleDateString()}`);
-
-      // Get association subdomain for redirect
-      const association = await prisma.association.findUnique({
-        where: { id: subscription.associationId },
-        select: { subdomain: true, name: true },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Payment verified successfully',
-        data: {
-          subscription,
-          payment: verification.data,
-          subdomain: association?.subdomain,
-          associationName: association?.name,
-        },
-      });
     } catch (error: any) {
       console.error('Error verifying payment:', error);
       return res.status(500).json({
@@ -350,6 +334,244 @@ export const subscriptionController = {
         error: error.message,
       });
     }
+  },
+
+  // Verify Paystack payment
+  async verifyPaystackPayment(req: Request, res: Response, reference: string) {
+    const paystackService = new PaystackService();
+    const verification = await paystackService.verifyPayment(reference);
+
+    if (!verification.status || verification.data.status !== 'success') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment verification failed',
+        data: {
+          status: verification.data?.status,
+          gateway_response: verification.data?.gateway_response,
+        },
+      });
+    }
+
+    // Get payment history record
+    const paymentHistory = await prisma.paymentHistory.findUnique({
+      where: { reference },
+      include: { subscription: true },
+    });
+
+    if (!paymentHistory) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment record not found',
+      });
+    }
+
+    // Check if already processed (idempotency)
+    if (paymentHistory.status === 'SUCCESS') {
+      const association = await prisma.association.findUnique({
+        where: { id: paymentHistory.subscription.associationId },
+        select: { subdomain: true, name: true },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified',
+        data: {
+          subscription: paymentHistory.subscription,
+          payment: verification.data,
+          subdomain: association?.subdomain,
+          associationName: association?.name,
+        },
+      });
+    }
+
+    // Calculate new period dates
+    const subscription = paymentHistory.subscription;
+    const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
+    const currentDate = new Date();
+    const periodEnd = new Date(currentDate);
+    periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
+
+    // Atomic transaction: update payment history, subscription, and association
+    await prisma.$transaction([
+      prisma.paymentHistory.update({
+        where: { id: paymentHistory.id },
+        data: {
+          status: 'SUCCESS',
+          paidAt: new Date(verification.data.paid_at),
+          metadata: verification.data as any,
+        },
+      }),
+      prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: 'ACTIVE',
+          currentPeriodStart: currentDate,
+          currentPeriodEnd: periodEnd,
+          renewalDate: periodEnd,
+        },
+      }),
+      prisma.association.update({
+        where: { id: subscription.associationId },
+        data: {
+          subscriptionExpiresAt: periodEnd,
+          status: 'ACTIVE',
+        },
+      }),
+      prisma.auditLog.create({
+        data: {
+          associationId: subscription.associationId,
+          userId: 1,
+          action: 'SUBSCRIPTION_PAYMENT_VERIFIED',
+          tableName: 'subscriptions',
+          recordId: subscription.id,
+          newValues: {
+            reference,
+            amount: PaystackService.koboToNaira(verification.data.amount),
+            provider: 'paystack',
+            subscriptionId: subscription.id,
+            planId: subscription.planId,
+            billingCycle: subscription.billingCycle,
+            periodEnd: periodEnd.toISOString(),
+          },
+        },
+      }),
+    ]);
+
+    console.log(`✅ [VERIFY] Paystack subscription payment verified successfully`);
+
+    const association = await prisma.association.findUnique({
+      where: { id: subscription.associationId },
+      select: { subdomain: true, name: true },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment verified successfully',
+      data: {
+        subscription,
+        payment: verification.data,
+        subdomain: association?.subdomain,
+        associationName: association?.name,
+      },
+    });
+  },
+
+  // Verify Nomba payment
+  async verifyNombaPayment(req: Request, res: Response, reference: string) {
+    const nombaVerification = await nombaService.verifyPayment(reference);
+
+    if (nombaVerification.data.status !== 'success') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment verification failed',
+        data: {
+          status: nombaVerification.data.status,
+        },
+      });
+    }
+
+    // Get payment history record
+    const paymentHistory = await prisma.paymentHistory.findUnique({
+      where: { reference },
+      include: { subscription: true },
+    });
+
+    if (!paymentHistory) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment record not found',
+      });
+    }
+
+    // Check if already processed (idempotency)
+    if (paymentHistory.status === 'SUCCESS') {
+      const association = await prisma.association.findUnique({
+        where: { id: paymentHistory.subscription.associationId },
+        select: { subdomain: true, name: true },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment already verified',
+        data: {
+          subscription: paymentHistory.subscription,
+          subdomain: association?.subdomain,
+          associationName: association?.name,
+        },
+      });
+    }
+
+    // Calculate new period dates
+    const subscription = paymentHistory.subscription;
+    const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
+    const currentDate = new Date();
+    const periodEnd = new Date(currentDate);
+    periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
+
+    const amountInNaira = nombaService.convertToNaira(nombaVerification.data.amount);
+
+    // Atomic transaction
+    await prisma.$transaction([
+      prisma.paymentHistory.update({
+        where: { id: paymentHistory.id },
+        data: {
+          status: 'SUCCESS',
+          paidAt: new Date(),
+          metadata: nombaVerification.data as any,
+        },
+      }),
+      prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: 'ACTIVE',
+          currentPeriodStart: currentDate,
+          currentPeriodEnd: periodEnd,
+          renewalDate: periodEnd,
+        },
+      }),
+      prisma.association.update({
+        where: { id: subscription.associationId },
+        data: {
+          subscriptionExpiresAt: periodEnd,
+          status: 'ACTIVE',
+        },
+      }),
+      prisma.auditLog.create({
+        data: {
+          associationId: subscription.associationId,
+          userId: 1,
+          action: 'SUBSCRIPTION_PAYMENT_VERIFIED',
+          tableName: 'subscriptions',
+          recordId: subscription.id,
+          newValues: {
+            reference,
+            amount: amountInNaira,
+            provider: 'nomba',
+            subscriptionId: subscription.id,
+            planId: subscription.planId,
+            billingCycle: subscription.billingCycle,
+            periodEnd: periodEnd.toISOString(),
+          },
+        },
+      }),
+    ]);
+
+    console.log(`✅ [VERIFY] Nomba subscription payment verified successfully`);
+
+    const association = await prisma.association.findUnique({
+      where: { id: subscription.associationId },
+      select: { subdomain: true, name: true },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment verified successfully',
+      data: {
+        subscription,
+        subdomain: association?.subdomain,
+        associationName: association?.name,
+      },
+    });
   },
 
   // Cancel subscription

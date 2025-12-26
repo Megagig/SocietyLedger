@@ -37,38 +37,8 @@ export default function PlansPage() {
   };
 
   const handleSelectPlan = async (planId: number, cycle: BillingCycle) => {
-    setLoadingPlanId(planId);
-    setError('');
-
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions/initialize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getTenantHeaders(),
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          planId,
-          billingCycle: cycle,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to initialize payment');
-      }
-
-      // Redirect to Paystack checkout
-      if (data.data?.authorizationUrl) {
-        window.location.href = data.data.authorizationUrl;
-      }
-    } catch (error: any) {
-      console.error('Error initializing payment:', error);
-      setError(error.message || 'Failed to initialize payment');
-      setLoadingPlanId(null);
-    }
+    // Redirect to checkout page with plan details
+    router.push(`/dashboard/subscription/checkout?planId=${planId}&billingCycle=${cycle}`);
   };
 
   return (

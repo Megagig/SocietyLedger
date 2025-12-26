@@ -26,12 +26,9 @@ export class NombaService {
     this.config = {
       apiKey: process.env.NOMBA_API_KEY || '',
       accountId: process.env.NOMBA_ACCOUNT_ID || '',
+      // Nomba uses same URL for sandbox and production (credentials determine environment)
       baseUrl: process.env.NOMBA_BASE_URL || 'https://api.nomba.com/v1',
     };
-
-    if (!this.config.apiKey || !this.config.accountId) {
-      throw new Error('Nomba API credentials not configured');
-    }
 
     this.client = axios.create({
       baseURL: this.config.baseUrl,
@@ -39,6 +36,24 @@ export class NombaService {
         'Content-Type': 'application/json',
       },
     });
+  }
+
+  /**
+   * Check if Nomba is configured
+   */
+  isConfigured(): boolean {
+    const hasApiKey = !!this.config.apiKey;
+    const hasAccountId = !!this.config.accountId;
+    const hasApiSecret = !!process.env.NOMBA_API_SECRET;
+    
+    console.log('Nomba config check:', {
+      hasApiKey,
+      hasAccountId, 
+      hasApiSecret,
+      baseUrl: this.config.baseUrl,
+    });
+    
+    return hasApiKey && hasAccountId && hasApiSecret;
   }
 
   /**
@@ -50,24 +65,74 @@ export class NombaService {
       return this.accessToken;
     }
 
+    const clientSecret = process.env.NOMBA_API_SECRET || '';
+    
+    if (!clientSecret) {
+      throw new Error('NOMBA_API_SECRET environment variable is not configured');
+    }
+
+    const authUrl = `${this.config.baseUrl}/auth/token/issue`;
+    const authPayload = {
+      grant_type: 'client_credentials',
+      client_id: this.config.apiKey,
+      client_secret: clientSecret,
+    };
+
+    console.log('Nomba auth request to:', authUrl);
+
     try {
       const response = await axios.post<NombaAuthResponse>(
-        `${this.config.baseUrl}/auth/token/issue`,
+        authUrl,
+        authPayload,
         {
-          grant_type: 'client_credentials',
-          client_id: this.config.apiKey,
-          client_secret: process.env.NOMBA_API_SECRET || '',
+          headers: {
+            'Content-Type': 'application/json',
+            'accountId': this.config.accountId, // Required for all Nomba API calls including auth
+          },
+          timeout: 30000, // 30 second timeout
         }
       );
 
-      this.accessToken = response.data.access_token;
+      // Token is nested in response.data.data.access_token
+      this.accessToken = response.data.data.access_token;
+      
+      // Calculate expiry from expiresAt timestamp
+      const expiresAt = new Date(response.data.data.expiresAt).getTime();
       // Set expiry to 5 minutes before actual expiry for safety
-      this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
+      this.tokenExpiry = expiresAt - (5 * 60 * 1000);
+
+      console.log('Nomba authentication successful, token obtained');
 
       return this.accessToken;
     } catch (error: any) {
-      console.error('Nomba authentication failed:', error.response?.data || error.message);
-      throw new Error('Failed to authenticate with Nomba');
+      console.error('Nomba authentication failed:');
+      
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        console.error('  Network Error: Cannot reach Nomba API at', authUrl);
+        console.error('  Error Code:', error.code);
+        throw new Error(`Cannot reach Nomba API: ${error.code}. Check your internet connection and the API URL.`);
+      }
+      
+      if (error.response) {
+        // Server responded with error status
+        console.error('  Status:', error.response.status);
+        console.error('  Response Data:', JSON.stringify(error.response.data, null, 2));
+        
+        const errorMessage = error.response.data?.description 
+          || error.response.data?.message 
+          || error.response.statusText
+          || 'Unknown server error';
+        
+        throw new Error(`Nomba authentication failed (${error.response.status}): ${errorMessage}`);
+      } else if (error.request) {
+        // Request made but no response received
+        console.error('  No response received from Nomba API');
+        throw new Error('No response from Nomba API. The service may be unavailable.');
+      } else {
+        // Error setting up request
+        console.error('  Error setting up request:', error.message);
+        throw new Error(`Failed to connect to Nomba: ${error.message}`);
+      }
     }
   }
 
@@ -93,24 +158,39 @@ export class NombaService {
     callbackUrl: string;
     metadata?: Record<string, any>;
   }): Promise<NombaCheckoutOrderResponse> {
+    if (!this.isConfigured()) {
+      throw new Error('Nomba API credentials not configured. Please set NOMBA_API_KEY and NOMBA_ACCOUNT_ID environment variables.');
+    }
+
     try {
       const headers = await this.getHeaders();
 
-      const payload: NombaCheckoutOrderRequest = {
-        amount: params.amount,
-        currency: 'NGN',
-        customerEmail: params.email,
-        customerId: params.metadata?.memberId || params.email,
-        orderReference: params.reference,
+      // Nomba expects the payload wrapped in an "order" object
+      const payload = {
+        order: {
+          orderReference: params.reference,
+          customerId: params.metadata?.memberId || params.email,
+          customerEmail: params.email,
+          amount: String(params.amount), // Nomba expects amount as string
+          currency: 'NGN',
+        },
         callbackUrl: params.callbackUrl,
-        metadata: params.metadata,
       };
 
-      const response = await this.client.post<NombaCheckoutOrderResponse>(
-        '/checkout/order',
+      console.log('Nomba checkout request payload:', JSON.stringify(payload, null, 2));
+      console.log('Nomba checkout headers:', {
+        ...headers,
+        Authorization: headers.Authorization ? `Bearer ${headers.Authorization.substring(7, 20)}...` : 'missing',
+      });
+
+      // Use axios directly instead of this.client to ensure headers are applied
+      const response = await axios.post<NombaCheckoutOrderResponse>(
+        `${this.config.baseUrl}/checkout/order`,
         payload,
         { headers }
       );
+
+      console.log('Nomba checkout response:', JSON.stringify(response.data, null, 2));
 
       return response.data;
     } catch (error: any) {
@@ -128,8 +208,9 @@ export class NombaService {
     try {
       const headers = await this.getHeaders();
 
-      const response = await this.client.get<NombaVerifyTransactionResponse>(
-        `/checkout/order/${reference}`,
+      // Use axios directly instead of this.client to ensure headers are applied
+      const response = await axios.get<NombaVerifyTransactionResponse>(
+        `${this.config.baseUrl}/checkout/order/${reference}`,
         { headers }
       );
 
