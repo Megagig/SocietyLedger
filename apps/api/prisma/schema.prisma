@@ -73,6 +73,7 @@ model Association {
   settings       Settings[]
   auditLogs      AuditLog[]
   subscriptions  Subscription[]
+  paymentGatewayTransactions PaymentGatewayTransaction[]
 
   @@map("associations")
 }
@@ -201,6 +202,7 @@ model Transaction {
   category     FinancialCategory @relation(fields: [categoryId], references: [id])
   creator      User            @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
   payments     Payment[]
+  gatewayTransactions PaymentGatewayTransaction[]
 
   @@index([associationId, status])
   @@map("transactions")
@@ -393,4 +395,28 @@ model PaymentHistory {
   @@index([subscriptionId, status])
   @@index([reference])
   @@map("payment_history")
+}
+
+model PaymentGatewayTransaction {
+  id                Int       @id @default(autoincrement())
+  associationId     Int       @map("association_id")
+  transactionId     Int?      @map("transaction_id")
+  provider          String    // 'paystack', 'nomba', 'bank_transfer'
+  reference         String    @unique
+  amount            Decimal   @db.Decimal(10, 2)
+  status            String    @default("pending") // 'pending', 'success', 'failed', 'abandoned'
+  metadata          Json?
+  webhookReceived   Boolean   @default(false) @map("webhook_received")
+  paystackResponse  Json?     @map("paystack_response")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  association       Association @relation(fields: [associationId], references: [id])
+  transaction       Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([associationId, status])
+  @@index([reference])
+  @@index([transactionId])
+  @@map("payment_gateway_transactions")
 }

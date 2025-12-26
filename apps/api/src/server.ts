@@ -19,6 +19,7 @@ import webhookRoutes from './modules/webhooks/webhooks.routes';
 import memberRoutes from './modules/members/members.routes';
 import financeRoutes from './modules/finance/finance.routes';
 import cronRoutes from './modules/cron/cron.routes';
+import paymentRoutes from './modules/payments/payments.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -91,6 +92,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/finance', financeRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/cron', cronRoutes);
 
 // 404 handler

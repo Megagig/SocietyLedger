@@ -9,6 +9,7 @@ import {
   ArrowLeft, DollarSign, User, 
   CheckCircle, Clock, AlertTriangle, Plus 
 } from 'lucide-react';
+import { PaymentButton } from '@/components/finance/PaymentButton';
 
 interface TransactionDetail {
   id: number;
@@ -153,13 +154,21 @@ export default function TransactionDetailPage() {
 
         {transaction.status !== 'paid' && transaction.status !== 'waived' && (
           <Can permission={PERMISSIONS.PAYMENT_CREATE}>
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-            >
-              <Plus className="w-4 h-4" />
-              Record Payment
-            </button>
+            <div className="flex gap-3">
+              <PaymentButton
+                transactionId={transaction.id}
+                amount={transaction.balance}
+                variant="filled"
+                size="md"
+              />
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+              >
+                <Plus className="w-4 h-4" />
+                Record Payment
+              </button>
+            </div>
           </Can>
         )}
       </div>
