@@ -59,3 +59,14 @@ body {
 * {
   @apply transition-colors duration-200;
 }
+
+/* Force transparent backgrounds on sidebar nav items */
+aside nav button,
+aside nav a {
+  background: transparent !important;
+}
+
+aside nav button:not(.bg-gradient-to-r),
+aside nav a:not(.bg-gradient-to-r) {
+  background: transparent !important;
+}

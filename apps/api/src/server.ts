@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { tenantMiddleware } from './middleware/tenant.middleware';
+import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 
 // Load environment variables
 dotenv.config();
@@ -13,6 +14,10 @@ dotenv.config();
 import authRoutes from './modules/auth/auth.routes';
 import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import subscriptionRoutes from './modules/subscription/subscription.routes';
+import webhookRoutes from './modules/webhooks/webhooks.routes';
+import memberRoutes from './modules/members/members.routes';
+import cronRoutes from './modules/cron/cron.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -45,11 +50,12 @@ const corsOptions = {
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
-  credentials: true,
+  credentials: true, // CRITICAL: Enable credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id'],
   exposedHeaders: ['Set-Cookie'],
   maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
 };
 
 app.use(cors(corsOptions));
@@ -58,6 +64,11 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Webhook routes (must be before tenantMiddleware for raw body access)
+app.use('/api/webhooks', webhookRoutes);
+
+// Tenant middleware for all other routes
 app.use(tenantMiddleware);
 
 // Logging middleware
@@ -76,6 +87,9 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/associations', associationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/cron', cronRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -102,6 +116,22 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`🚀 SocietyLedger API Server running on http://localhost:${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+    
+    // Start cron jobs
+    startSubscriptionJobs();
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    stopSubscriptionJobs();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully...');
+    stopSubscriptionJobs();
+    process.exit(0);
   });
 }
 

@@ -1,9 +1,27 @@
 'use client';
 
 import { useTheme } from '@/contexts/ThemeContext';
+import { useEffect, useState } from 'react';
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch by rendering placeholder during SSR
+  if (!mounted) {
+    return (
+      <button
+        className="p-2 rounded-lg bg-white/10 dark:bg-gray-800/50 transition-colors backdrop-blur-sm border border-white/20 dark:border-gray-700"
+        aria-label="Toggle theme"
+      >
+        <div className="w-5 h-5" />
+      </button>
+    );
+  }
 
   return (
     <button

@@ -124,20 +124,30 @@ model UserApproval {
 }
 
 model Member {
-  id            Int      @id @default(autoincrement())
-  associationId Int      @map("association_id")
-  userId        Int?     @unique @map("user_id")
-  memberId      String   @map("member_id")
-  firstName     String   @map("first_name")
-  lastName      String   @map("last_name")
-  email         String?
-  phone         String?
-  address       String?
-  joinDate      DateTime? @map("join_date")
-  status        String   @default("active")
-  category      String   @default("regular")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                          Int      @id @default(autoincrement())
+  associationId               Int      @map("association_id")
+  userId                      Int?     @unique @map("user_id")
+  memberId                    String   @map("member_id")
+  firstName                   String   @map("first_name")
+  lastName                    String   @map("last_name")
+  email                       String?
+  phone                       String?
+  dateOfBirth                 DateTime? @map("date_of_birth")
+  gender                      String   @default("male")
+  address                     String?
+  city                        String?
+  state                       String?
+  country                     String?
+  occupation                  String?
+  category                    String   @default("regular")
+  status                      String   @default("active")
+  joinDate                    DateTime? @map("join_date")
+  emergencyContactName        String?  @map("emergency_contact_name")
+  emergencyContactPhone       String?  @map("emergency_contact_phone")
+  emergencyContactRelationship String? @map("emergency_contact_relationship")
+  notes                       String?  @db.Text
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
 
   // Relations
   association   Association   @relation(fields: [associationId], references: [id])
@@ -363,20 +373,24 @@ model Subscription {
 }
 
 model PaymentHistory {
-  id             Int            @id @default(autoincrement())
-  subscriptionId Int            @map("subscription_id")
-  amount         Decimal        @db.Decimal(10, 2)
-  currency       String         @default("NGN")
-  status         PaymentStatus  @default(PENDING)
-  provider       String?
-  reference      String?        @unique
-  paidAt         DateTime?      @map("paid_at")
-  metadata       Json?
-  createdAt      DateTime       @default(now()) @map("created_at")
+  id                Int            @id @default(autoincrement())
+  subscriptionId    Int            @map("subscription_id")
+  amount            Decimal        @db.Decimal(10, 2)
+  currency          String         @default("NGN")
+  status            PaymentStatus  @default(PENDING)
+  provider          String         @default("paystack")
+  reference         String?        @unique
+  accessCode        String?        @map("access_code")
+  authorizationUrl  String?        @map("authorization_url")
+  paidAt            DateTime?      @map("paid_at")
+  metadata          Json?
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   // Relations
   subscription Subscription @relation(fields: [subscriptionId], references: [id])
 
   @@index([subscriptionId, status])
+  @@index([reference])
   @@map("payment_history")
 }

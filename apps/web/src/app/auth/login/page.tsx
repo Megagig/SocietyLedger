@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/contexts/TenantContext';
-import { API_ROUTES } from '@/utils/constants';
-import { createFetchHeaders } from '@/utils/tenant';
+import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
 
 interface LoginForm {
@@ -15,57 +14,39 @@ interface LoginForm {
 export default function LoginPage() {
   const router = useRouter();
   const { tenant, isLoading: tenantLoading, error: tenantError } = useTenant();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { login, isLoading: authLoading, error: authError } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<LoginForm>({
     email: '',
     password: '',
   });
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (tenantError) {
-      setError(tenantError);
-    }
-  }, [tenantError]);
+  // Combine tenant and auth errors
+  const error = tenantError || authError || localError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    setLocalError(null);
 
     if (!formData.email || !formData.password) {
-      setError('Please fill in all fields');
-      setLoading(false);
+      setLocalError('Please fill in all fields');
       return;
     }
 
     try {
-      const response = await fetch(API_ROUTES.AUTH.LOGIN, {
-        method: 'POST',
-        headers: createFetchHeaders({
-          'Content-Type': 'application/json',
-        }),
-        body: JSON.stringify(formData),
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+      const success = await login(formData);
+      
+      if (success) {
+        // Redirect to dashboard on successful login
+        router.push('/dashboard');
       }
-
-      // Redirect to dashboard
-      router.push('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+      setLocalError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
-  if (tenantLoading) {
+  if (tenantLoading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
@@ -121,7 +102,7 @@ export default function LoginPage() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 placeholder="your.email@example.com"
-                disabled={loading}
+                disabled={authLoading}
               />
             </div>
 
@@ -138,13 +119,13 @@ export default function LoginPage() {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
                   placeholder="Enter your password"
-                  disabled={loading}
+                  disabled={authLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
-                  disabled={loading}
+                  disabled={authLoading}
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,10 +143,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={authLoading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {loading ? (
+              {authLoading ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
