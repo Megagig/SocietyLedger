@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
-import { paystack, toKobo, fromKobo, calculateSubscriptionAmount } from '../../lib/paystack';
+import { calculateSubscriptionAmount } from '../../lib/paystack';
 import { BillingCycle } from '@prisma/client';
+import { PaystackService } from '../payments/paystack/paystack.service';
 
 export const subscriptionController = {
   // Get all available plans
@@ -151,25 +152,20 @@ export const subscriptionController = {
         });
       }
 
-      // Initialize Paystack transaction
-      const paystackResponse = await paystack.transaction.initialize({
+      // Initialize Paystack transaction using PaystackService
+      const reference = PaystackService.generateReference('SUB');
+      const paystackService = new PaystackService();
+      const paystackResponse = await paystackService.initializePayment({
         email: userEmail || association.name,
-        amount: toKobo(amount),
-        currency: 'NGN',
-        reference: `SUB-${subscription.id}-${Date.now()}`,
+        amount: PaystackService.nairaToKobo(amount),
+        reference,
         callback_url: `${process.env.FRONTEND_URL}/dashboard/subscription/verify`,
         metadata: {
           subscriptionId: subscription.id,
           associationId,
           planId: plan.id,
           billingCycle,
-          custom_fields: [
-            {
-              display_name: 'Association',
-              variable_name: 'association',
-              value: association.name,
-            },
-          ],
+          associationName: association.name,
         },
       });
 
@@ -196,6 +192,7 @@ export const subscriptionController = {
 
       return res.status(200).json({
         success: true,
+        message: 'Payment initialized successfully',
         data: {
           authorizationUrl: paystackResponse.data.authorization_url,
           accessCode: paystackResponse.data.access_code,
@@ -224,7 +221,8 @@ export const subscriptionController = {
       }
 
       // Verify with Paystack
-      const verification = await paystack.transaction.verify(reference);
+      const paystackService = new PaystackService();
+      const verification = await paystackService.verifyPayment(reference);
 
       if (!verification.status || verification.data.status !== 'success') {
         return res.status(400).json({
@@ -482,12 +480,13 @@ export const subscriptionController = {
       // For upgrades, charge immediately; for downgrades, apply at period end
       if (isUpgrade && proratedAmount > 0) {
         // Initialize payment for prorated amount
-        const reference = `CHANGE-${currentSubscription.id}-${Date.now()}`;
+        const reference = PaystackService.generateReference('CHANGE');
         
         try {
-          const response = await paystack.transaction.initialize({
+          const paystackService = new PaystackService();
+          const response = await paystackService.initializePayment({
             email: req.user?.email || '',
-            amount: toKobo(proratedAmount),
+            amount: PaystackService.nairaToKobo(proratedAmount),
             reference,
             metadata: {
               type: 'plan_change',

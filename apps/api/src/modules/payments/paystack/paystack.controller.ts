@@ -106,7 +106,7 @@ export const paystackController = {
             accessCode: paystackResponse.data.access_code,
             authorizationUrl: paystackResponse.data.authorization_url,
           },
-          paystackResponse: paystackResponse,
+          paystackResponse: paystackResponse as any,
         },
       });
 
@@ -220,7 +220,7 @@ export const paystackController = {
           where: { id: gatewayTransaction.id },
           data: {
             status: paymentData.status,
-            paystackResponse: verificationResponse,
+            paystackResponse: verificationResponse as any,
           },
         });
 
@@ -252,13 +252,13 @@ export const paystackController = {
       const newStatus = newPaidTotal.greaterThanOrEqualTo(transaction.amount) ? 'paid' : 'partial';
 
       // Atomic update: gateway transaction, payment record, transaction status
-      const [updatedGateway, payment] = await prisma.$transaction([
+      const [, payment] = await prisma.$transaction([
         prisma.paymentGatewayTransaction.update({
           where: { id: gatewayTransaction.id },
           data: {
             status: 'success',
             webhookReceived: true,
-            paystackResponse: verificationResponse,
+            paystackResponse: verificationResponse as any,
           },
         }),
         prisma.payment.create({

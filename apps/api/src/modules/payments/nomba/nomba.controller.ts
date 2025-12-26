@@ -5,15 +5,15 @@
  */
 
 import { Request, Response } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
+import { prisma } from '../../../lib/prisma';
 import { nombaService } from './nomba.service';
 import {
   NombaInitializePaymentRequest,
   NombaInitializePaymentResponse,
   NombaVerifyPaymentResponse,
 } from './nomba.types';
-
-const prisma = new PrismaClient();
 
 export class NombaController {
   /**
@@ -41,6 +41,7 @@ export class NombaController {
           associationId,
         },
         include: {
+          payments: true,
           member: {
             select: {
               id: true,
@@ -66,10 +67,14 @@ export class NombaController {
         return;
       }
 
-      // Check if transaction has outstanding balance
-      const balance = transaction.amount.toNumber() - (transaction.totalPaid?.toNumber() || 0);
+      // Calculate total paid from payments
+      const totalPaid = transaction.payments.reduce(
+        (sum, p) => sum.plus(p.amountPaid),
+        new Decimal(0)
+      );
+      const balance = new Decimal(transaction.amount).minus(totalPaid);
       
-      if (balance <= 0) {
+      if (balance.lessThanOrEqualTo(0)) {
         res.status(400).json({
           success: false,
           message: 'Transaction is already fully paid',
@@ -82,7 +87,7 @@ export class NombaController {
 
       // Initialize payment with Nomba
       const nombaResponse = await nombaService.initializePayment({
-        amount: nombaService.convertToKobo(balance),
+        amount: nombaService.convertToKobo(balance.toNumber()),
         email: transaction.member.email || 'noemail@societyledger.com',
         reference,
         callbackUrl: callbackUrl || `${process.env.FRONTEND_URL}/dashboard/finance/payments/verify`,
@@ -137,7 +142,7 @@ export class NombaController {
           reference,
           checkoutLink: nombaResponse.data.checkoutLink,
           orderReference: nombaResponse.data.orderReference,
-          amount: balance,
+          amount: balance.toNumber(),
         },
       };
 
@@ -397,18 +402,22 @@ export class NombaController {
       // Update transaction status
       const transaction = await tx.transaction.findUnique({
         where: { id: gatewayTxn.transactionId! },
+        include: { payments: true },
       });
 
       if (transaction) {
-        const newTotalPaid = (transaction.totalPaid?.toNumber() || 0) + amountInNaira;
-        const newBalance = transaction.amount.toNumber() - newTotalPaid;
-        const newStatus = newBalance <= 0 ? 'paid' : 'partial';
+        // Calculate new total paid from all payments
+        const newTotalPaid = transaction.payments.reduce(
+          (sum, p) => sum.plus(p.amountPaid),
+          new Decimal(0)
+        ).plus(amountInNaira);
+        
+        const newBalance = new Decimal(transaction.amount).minus(newTotalPaid);
+        const newStatus = newBalance.lessThanOrEqualTo(0) ? 'paid' : 'partial';
 
         await tx.transaction.update({
           where: { id: transaction.id },
           data: {
-            totalPaid: new Prisma.Decimal(newTotalPaid),
-            balance: new Prisma.Decimal(newBalance),
             status: newStatus,
             paymentDate: newStatus === 'paid' ? new Date() : transaction.paymentDate,
           },

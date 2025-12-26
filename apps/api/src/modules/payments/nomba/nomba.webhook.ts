@@ -6,11 +6,11 @@
  */
 
 import { Request, Response } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
+import { prisma } from '../../../lib/prisma';
 import { nombaService } from './nomba.service';
 import { NombaWebhookPayload } from './nomba.types';
-
-const prisma = new PrismaClient();
 
 export class NombaWebhookHandler {
   /**
@@ -90,9 +90,6 @@ export class NombaWebhookHandler {
           reference,
           provider: 'nomba',
         },
-        include: {
-          transaction: true,
-        },
       });
 
       if (!gatewayTxn) {
@@ -127,8 +124,18 @@ export class NombaWebhookHandler {
         });
         const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}`;
 
+        // Fetch transaction to get createdBy
+        const txn = await tx.transaction.findUnique({
+          where: { id: gatewayTxn.transactionId! },
+          include: { payments: true },
+        });
+
+        if (!txn) {
+          throw new Error('Transaction not found');
+        }
+
         // Create payment record
-        const payment = await tx.payment.create({
+        await tx.payment.create({
           data: {
             associationId: gatewayTxn.associationId,
             transactionId: gatewayTxn.transactionId!,
@@ -136,34 +143,34 @@ export class NombaWebhookHandler {
             paymentDate: new Date(transaction.time),
             paymentMethod: 'nomba',
             receiptNumber,
-            confirmedBy: gatewayTxn.transaction?.createdBy || 1, // System user
+            confirmedBy: txn.createdBy || 1, // System user
             confirmedAt: new Date(),
           },
         });
 
-        // Update transaction status
-        if (gatewayTxn.transaction) {
-          const txn = gatewayTxn.transaction;
-          const newTotalPaid = (txn.totalPaid?.toNumber() || 0) + amountInNaira;
-          const newBalance = txn.amount.toNumber() - newTotalPaid;
-          const newStatus = newBalance <= 0 ? 'paid' : 'partial';
+        // Calculate new total paid from all payments
+        const newTotalPaid = txn.payments.reduce(
+          (sum, p) => sum.plus(p.amountPaid),
+          new Decimal(0)
+        ).plus(amountInNaira);
+        
+        const newBalance = new Decimal(txn.amount).minus(newTotalPaid);
+        const newStatus = newBalance.lessThanOrEqualTo(0) ? 'paid' : 'partial';
 
-          await tx.transaction.update({
-            where: { id: txn.id },
-            data: {
-              totalPaid: new Prisma.Decimal(newTotalPaid),
-              balance: new Prisma.Decimal(newBalance),
-              status: newStatus,
-              paymentDate: newStatus === 'paid' ? new Date() : txn.paymentDate,
-            },
-          });
-        }
+        // Update transaction status
+        await tx.transaction.update({
+          where: { id: txn.id },
+          data: {
+            status: newStatus,
+            paymentDate: newStatus === 'paid' ? new Date() : txn.paymentDate,
+          },
+        });
 
         // Create audit log
         await tx.auditLog.create({
           data: {
             associationId: gatewayTxn.associationId,
-            userId: gatewayTxn.transaction?.createdBy || 1,
+            userId: txn.createdBy || 1,
             action: 'PAYMENT_WEBHOOK_PROCESSED',
             tableName: 'Payment',
             recordId: gatewayTxn.transactionId!,
@@ -219,11 +226,17 @@ export class NombaWebhookHandler {
         },
       });
 
+      // Get transaction for audit log
+      const txn = await prisma.transaction.findUnique({
+        where: { id: gatewayTxn.transactionId! },
+        select: { createdBy: true },
+      });
+
       // Create audit log
       await prisma.auditLog.create({
         data: {
           associationId: gatewayTxn.associationId,
-          userId: gatewayTxn.transaction?.createdBy || 1,
+          userId: txn?.createdBy || 1,
           action: 'PAYMENT_WEBHOOK_FAILED',
           tableName: 'PaymentGatewayTransaction',
           recordId: gatewayTxn.id,

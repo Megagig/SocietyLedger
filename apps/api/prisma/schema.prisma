@@ -408,6 +408,7 @@ model PaymentGatewayTransaction {
   metadata          Json?
   webhookReceived   Boolean   @default(false) @map("webhook_received")
   paystackResponse  Json?     @map("paystack_response")
+  nombaResponse     Json?     @map("nomba_response")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
