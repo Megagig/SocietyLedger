@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@mantine/core';
+import { Button, Select } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCreditCard, IconLoader2 } from '@tabler/icons-react';
 
@@ -14,6 +14,8 @@ interface PaymentButtonProps {
   fullWidth?: boolean;
 }
 
+type PaymentProvider = 'paystack' | 'nomba';
+
 export function PaymentButton({
   transactionId,
   amount,
@@ -23,12 +25,17 @@ export function PaymentButton({
   fullWidth = false,
 }: PaymentButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [provider, setProvider] = useState<PaymentProvider>('paystack');
 
   const handlePayment = async () => {
     setIsLoading(true);
     try {
+      const endpoint = provider === 'paystack' 
+        ? '/api/payments/paystack/initialize'
+        : '/api/payments/nomba/initialize';
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/payments/paystack/initialize`,
+        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -46,8 +53,12 @@ export function PaymentButton({
         throw new Error(data.message || 'Failed to initialize payment');
       }
 
-      // Redirect to Paystack checkout
-      window.location.href = data.data.authorizationUrl;
+      // Redirect to payment gateway checkout
+      const checkoutUrl = provider === 'paystack' 
+        ? data.data.authorizationUrl 
+        : data.data.checkoutLink;
+      
+      window.location.href = checkoutUrl;
     } catch (error: any) {
       notifications.show({
         title: 'Payment Error',
@@ -59,17 +70,30 @@ export function PaymentButton({
   };
 
   return (
-    <Button
-      onClick={handlePayment}
-      loading={isLoading}
-      disabled={disabled || isLoading}
-      color="green"
-      variant={variant}
-      size={size}
-      fullWidth={fullWidth}
-      leftSection={isLoading ? <IconLoader2 size={18} /> : <IconCreditCard size={18} />}
-    >
-      {isLoading ? 'Initializing...' : `Pay ₦${amount.toLocaleString()}`}
-    </Button>
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <Select
+        value={provider}
+        onChange={(value) => setProvider(value as PaymentProvider)}
+        data={[
+          { value: 'paystack', label: 'Paystack' },
+          { value: 'nomba', label: 'Nomba' },
+        ]}
+        disabled={disabled || isLoading}
+        size={size}
+        style={{ width: '140px' }}
+      />
+      <Button
+        onClick={handlePayment}
+        loading={isLoading}
+        disabled={disabled || isLoading}
+        color="green"
+        variant={variant}
+        size={size}
+        fullWidth={fullWidth}
+        leftSection={isLoading ? <IconLoader2 size={18} /> : <IconCreditCard size={18} />}
+      >
+        {isLoading ? 'Initializing...' : `Pay ₦${amount.toLocaleString()}`}
+      </Button>
+    </div>
   );
 }

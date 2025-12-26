@@ -55,8 +55,16 @@ export default function PaymentVerifyPage() {
 
   const verifyPayment = async () => {
     try {
+      // Try to detect provider from reference format
+      // Paystack: PAY-timestamp-id
+      // Nomba: NMB-timestamp-id
+      const isNomba = reference?.startsWith('NMB-');
+      const endpoint = isNomba 
+        ? `/api/payments/nomba/verify/${reference}`
+        : `/api/payments/paystack/verify/${reference}`;
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/payments/paystack/verify/${reference}`,
+        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
         {
           credentials: 'include',
         }

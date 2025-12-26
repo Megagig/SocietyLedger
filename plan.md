@@ -2724,10 +2724,33 @@ This phase adds Nigerian-specific payment methods and financial features.
 
 - [x] **TASK-PAY-NG-002:** Add Nomba (Kudi) Integration
   - **Description:** Integrate Nomba as alternative payment provider for POS and bank transfers
-  - **Files to Create:** `src/lib/nomba.ts`, `src/app/api/payments/nomba/route.ts`
+  - **Files Created:** 
+    - `apps/api/src/modules/payments/nomba/nomba.service.ts` (200 lines)
+    - `apps/api/src/modules/payments/nomba/nomba.controller.ts` (400 lines)
+    - `apps/api/src/modules/payments/nomba/nomba.webhook.ts` (250 lines)
+    - `apps/api/src/modules/payments/nomba/nomba.types.ts` (80 lines)
+    - `apps/api/src/modules/payments/nomba/nomba.routes.ts` (40 lines)
+  - **Frontend Updated:**
+    - `apps/web/src/components/finance/PaymentButton.tsx` - Added provider selection dropdown
+    - `apps/web/src/app/dashboard/finance/payments/verify/page.tsx` - Auto-detect provider
+  - **API Endpoints:**
+    - POST `/api/payments/nomba/initialize` - Initialize payment
+    - GET `/api/payments/nomba/verify/:reference` - Verify payment
+    - GET `/api/payments/nomba/status/:reference` - Get payment status
+    - POST `/api/payments/webhook/nomba` - Webhook handler (public)
   - **Dependencies:** TASK-BILL-001
-  - **Acceptance Criteria:** Can accept payments via Nomba, webhook handling for confirmation
-  - **Status:** ⚪ Deferred - Paystack primary provider sufficient for MVP
+  - **Acceptance Criteria:** ✅ Can accept payments via Nomba, webhook handling for confirmation, users can choose between Paystack and Nomba
+  - **Status:** ✅ Complete (Dec 26, 2025)
+  - **Features:**
+    - OAuth2 authentication with Nomba API
+    - Payment initialization with checkout links
+    - Webhook signature verification (HMAC SHA256)
+    - Idempotency protection
+    - Atomic transaction processing
+    - Multi-tenant isolation
+    - Audit logging
+    - Receipt generation
+    - Provider selection in UI
 
 - [x] **TASK-PAY-NG-003:** Implement Cash Payment Recording
   - **Description:** Allow admins/treasurers to record cash payments with receipt generation
