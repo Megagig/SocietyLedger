@@ -159,13 +159,14 @@ export const subscriptionController = {
         email: userEmail || association.name,
         amount: PaystackService.nairaToKobo(amount),
         reference,
-        callback_url: `${process.env.FRONTEND_URL}/dashboard/subscription/verify`,
+        callback_url: `${process.env.FRONTEND_URL}/subscription/verify`,
         metadata: {
           subscriptionId: subscription.id,
           associationId,
           planId: plan.id,
           billingCycle,
           associationName: association.name,
+          subdomain: association.subdomain,
         },
       });
 
@@ -228,6 +229,10 @@ export const subscriptionController = {
         return res.status(400).json({
           success: false,
           message: 'Payment verification failed',
+          data: {
+            status: verification.data?.status,
+            gateway_response: verification.data?.gateway_response,
+          },
         });
       }
 
@@ -244,40 +249,87 @@ export const subscriptionController = {
         });
       }
 
-      // Update payment history
-      await prisma.paymentHistory.update({
-        where: { id: paymentHistory.id },
-        data: {
-          status: 'SUCCESS',
-          paidAt: new Date(verification.data.paid_at),
-          metadata: verification.data,
-        },
-      });
+      // Check if already processed (idempotency)
+      if (paymentHistory.status === 'SUCCESS') {
+        return res.status(200).json({
+          success: true,
+          message: 'Payment already verified',
+          data: {
+            subscription: paymentHistory.subscription,
+            payment: verification.data,
+          },
+        });
+      }
 
-      // Update subscription status
+      // Calculate new period dates
       const subscription = paymentHistory.subscription;
       const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
       const currentDate = new Date();
       const periodEnd = new Date(currentDate);
       periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
 
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: 'ACTIVE',
-          currentPeriodStart: currentDate,
-          currentPeriodEnd: periodEnd,
-          renewalDate: periodEnd,
-        },
-      });
+      // Atomic transaction: update payment history, subscription, and association
+      await prisma.$transaction([
+        // Update payment history
+        prisma.paymentHistory.update({
+          where: { id: paymentHistory.id },
+          data: {
+            status: 'SUCCESS',
+            paidAt: new Date(verification.data.paid_at),
+            metadata: verification.data as any,
+          },
+        }),
 
-      // Update association subscription expiry
-      await prisma.association.update({
+        // Update subscription status
+        prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            status: 'ACTIVE',
+            currentPeriodStart: currentDate,
+            currentPeriodEnd: periodEnd,
+            renewalDate: periodEnd,
+          },
+        }),
+
+        // Update association subscription expiry
+        prisma.association.update({
+          where: { id: subscription.associationId },
+          data: {
+            subscriptionExpiresAt: periodEnd,
+            status: 'ACTIVE',
+          },
+        }),
+
+        // Audit log
+        prisma.auditLog.create({
+          data: {
+            associationId: subscription.associationId,
+            userId: 1, // System user
+            action: 'SUBSCRIPTION_PAYMENT_VERIFIED',
+            tableName: 'subscriptions',
+            recordId: subscription.id,
+            newValues: {
+              reference,
+              amount: PaystackService.koboToNaira(verification.data.amount),
+              provider: 'paystack',
+              subscriptionId: subscription.id,
+              planId: subscription.planId,
+              billingCycle: subscription.billingCycle,
+              periodEnd: periodEnd.toISOString(),
+            },
+          },
+        }),
+      ]);
+
+      console.log(`✅ [VERIFY] Subscription payment verified successfully`);
+      console.log(`   Reference: ${reference}`);
+      console.log(`   Subscription ID: ${subscription.id}`);
+      console.log(`   Period End: ${periodEnd.toLocaleDateString()}`);
+
+      // Get association subdomain for redirect
+      const association = await prisma.association.findUnique({
         where: { id: subscription.associationId },
-        data: {
-          subscriptionExpiresAt: periodEnd,
-          status: 'ACTIVE',
-        },
+        select: { subdomain: true, name: true },
       });
 
       return res.status(200).json({
@@ -286,13 +338,16 @@ export const subscriptionController = {
         data: {
           subscription,
           payment: verification.data,
+          subdomain: association?.subdomain,
+          associationName: association?.name,
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying payment:', error);
       return res.status(500).json({
         success: false,
         message: 'Failed to verify payment',
+        error: error.message,
       });
     }
   },

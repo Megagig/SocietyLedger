@@ -10,7 +10,7 @@ export default function PlansPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<PlanWithFeatures[]>([]);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('MONTHLY');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingPlanId, setLoadingPlanId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function PlansPage() {
   };
 
   const handleSelectPlan = async (planId: number, cycle: BillingCycle) => {
-    setIsLoading(true);
+    setLoadingPlanId(planId);
     setError('');
 
     try {
@@ -67,8 +67,7 @@ export default function PlansPage() {
     } catch (error: any) {
       console.error('Error initializing payment:', error);
       setError(error.message || 'Failed to initialize payment');
-    } finally {
-      setIsLoading(false);
+      setLoadingPlanId(null);
     }
   };
 
@@ -129,7 +128,7 @@ export default function PlansPage() {
                 plan={plan}
                 billingCycle={billingCycle}
                 onSelectPlan={handleSelectPlan}
-                isLoading={isLoading}
+                isLoading={loadingPlanId === plan.id}
               />
             ))}
           </div>

@@ -70,7 +70,14 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-gray-900">
             {tenant?.name || 'SocietyLedger'}
           </h1>
-          <p className="text-gray-600 mt-2">Sign in to your account</p>
+          <p className="text-gray-600 mt-2">
+            {tenant ? 'Sign in to your account' : 'Sign in to your association'}
+          </p>
+          {!tenant && (
+            <p className="text-sm text-amber-600 mt-2 bg-amber-50 rounded-lg px-3 py-2 inline-block">
+              Access your association via its subdomain (e.g., myassociation.localhost:3000)
+            </p>
+          )}
         </div>
 
         {/* Login Form Card */}
@@ -165,12 +172,18 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
-              <Link href="/auth/register" className="text-blue-600 hover:text-blue-700 font-medium">
-                Register here
-              </Link>
+              {tenant ? (
+                <Link href="/auth/register" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Register here
+                </Link>
+              ) : (
+                <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Create an association
+                </Link>
+              )}
             </p>
           </div>
         </div>

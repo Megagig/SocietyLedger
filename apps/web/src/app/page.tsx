@@ -50,7 +50,7 @@ export default function HomePage() {
               </Button>
               <Button 
                 component={Link}
-                href="/auth/register"
+                href="/signup"
                 className="bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
               >
                 Get Started
@@ -87,7 +87,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
               <Button 
                 component={Link}
-                href="/auth/register"
+                href="/signup"
                 size="xl"
                 className="bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600 text-white px-8"
                 rightSection={<IconArrowRight size={20} />}
@@ -298,7 +298,7 @@ export default function HomePage() {
                 </ul>
                 <Button 
                   component={Link}
-                  href="/auth/register"
+                  href="/signup"
                   fullWidth
                   size="lg"
                   className={

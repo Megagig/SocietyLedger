@@ -5,7 +5,10 @@ import { tenantMiddleware } from '../../middleware/tenant.middleware';
 
 const router = Router();
 
-// Apply auth and tenant middleware to all routes
+// Public route - verify payment (no auth required as user might be redirected from Paystack)
+router.get('/verify/:reference', subscriptionController.verifyPayment);
+
+// Apply auth and tenant middleware to protected routes
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
@@ -17,9 +20,6 @@ router.get('/current', subscriptionController.getCurrentSubscription);
 
 // Initialize subscription payment
 router.post('/initialize', subscriptionController.initializePayment);
-
-// Verify payment
-router.get('/verify/:reference', subscriptionController.verifyPayment);
 
 // Cancel subscription (mark for cancellation at period end)
 router.post('/cancel', subscriptionController.cancelSubscription);

@@ -143,7 +143,22 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-gray-900">
             {tenant?.name || 'SocietyLedger'}
           </h1>
-          <p className="text-gray-600 mt-2">Create your account</p>
+          <p className="text-gray-600 mt-2">
+            {tenant ? 'Create your member account' : 'Member Registration'}
+          </p>
+          {!tenant && (
+            <div className="mt-3 p-3 bg-amber-50 rounded-lg">
+              <p className="text-sm text-amber-700">
+                To register as a member, access your association's subdomain first.
+              </p>
+              <p className="text-sm text-amber-600 mt-1">
+                Want to create a new association?{' '}
+                <Link href="/signup" className="font-medium underline">
+                  Sign up here
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Register Form Card */}

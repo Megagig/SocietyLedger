@@ -37,10 +37,10 @@ export default function VerifyPaymentPage() {
         setStatus('success');
         setMessage('Payment verified successfully! Your subscription is now active.');
         
-        // Redirect to dashboard after 3 seconds
+        // Redirect to success page after 2 seconds
         setTimeout(() => {
-          router.push('/dashboard/subscription');
-        }, 3000);
+          router.push('/dashboard/subscription/success');
+        }, 2000);
       } else {
         throw new Error(data.message || 'Payment verification failed');
       }
@@ -61,6 +61,9 @@ export default function VerifyPaymentPage() {
               Verifying Payment
             </h2>
             <p className="text-gray-600 dark:text-gray-400">{message}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+              Please wait while we confirm your payment...
+            </p>
           </>
         )}
 
@@ -71,9 +74,12 @@ export default function VerifyPaymentPage() {
               Payment Successful!
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Redirecting to dashboard...
-            </p>
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-5 w-5 text-blue-600 animate-spin mr-2" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Redirecting...
+              </p>
+            </div>
           </>
         )}
 
@@ -84,12 +90,20 @@ export default function VerifyPaymentPage() {
               Verification Failed
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
-            <button
-              onClick={() => router.push('/dashboard/subscription')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-            >
-              Go to Dashboard
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push('/dashboard/subscription')}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+              >
+                Go to Subscription
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+              >
+                Go to Dashboard
+              </button>
+            </div>
           </>
         )}
       </div>

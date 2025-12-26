@@ -74,6 +74,12 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
 
   console.log(`✅ [WEBHOOK] Processing charge.success for reference: ${reference}`);
 
+  // Check if this is a subscription payment (reference starts with SUB- or CHANGE-)
+  if (reference.startsWith('SUB-') || reference.startsWith('CHANGE-')) {
+    await handleSubscriptionPayment(event);
+    return;
+  }
+
   // Find gateway transaction
   const gatewayTransaction = await prisma.paymentGatewayTransaction.findUnique({
     where: { reference },
@@ -130,7 +136,7 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
         data: {
           status: 'success',
           webhookReceived: true,
-          paystackResponse: event.data,
+          paystackResponse: event.data as any,
         },
       }),
 
@@ -191,6 +197,109 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
 
   } catch (error: any) {
     console.error(`❌ [WEBHOOK] Error recording payment:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Handle subscription payment from webhook
+ */
+async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
+  const { reference, amount, paid_at, metadata } = event.data;
+
+  console.log(`✅ [WEBHOOK] Processing subscription payment for reference: ${reference}`);
+
+  // Find payment history record
+  const paymentHistory = await prisma.paymentHistory.findUnique({
+    where: { reference },
+    include: { subscription: true },
+  });
+
+  if (!paymentHistory) {
+    console.error(`❌ [WEBHOOK] Payment history not found for reference: ${reference}`);
+    return;
+  }
+
+  // Check if already processed (idempotency)
+  if (paymentHistory.status === 'SUCCESS') {
+    console.log(`⚠️  [WEBHOOK] Subscription payment already processed for reference: ${reference}`);
+    return;
+  }
+
+  const subscription = paymentHistory.subscription;
+  const amountPaid = PaystackService.koboToNaira(amount);
+
+  try {
+    // Calculate new period dates
+    const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
+    const currentDate = new Date();
+    const periodEnd = new Date(currentDate);
+    periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
+
+    // Atomic transaction: update payment history, subscription, and association
+    await prisma.$transaction([
+      // Update payment history
+      prisma.paymentHistory.update({
+        where: { id: paymentHistory.id },
+        data: {
+          status: 'SUCCESS',
+          paidAt: new Date(paid_at),
+          metadata: event.data as any,
+        },
+      }),
+
+      // Update subscription status
+      prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: 'ACTIVE',
+          currentPeriodStart: currentDate,
+          currentPeriodEnd: periodEnd,
+          renewalDate: periodEnd,
+        },
+      }),
+
+      // Update association subscription expiry
+      prisma.association.update({
+        where: { id: subscription.associationId },
+        data: {
+          subscriptionExpiresAt: periodEnd,
+          status: 'ACTIVE',
+        },
+      }),
+
+      // Audit log
+      prisma.auditLog.create({
+        data: {
+          associationId: subscription.associationId,
+          userId: 1, // System user
+          action: 'SUBSCRIPTION_PAYMENT_SUCCESS',
+          tableName: 'subscriptions',
+          recordId: subscription.id,
+          newValues: {
+            reference,
+            amount: amountPaid,
+            provider: 'paystack',
+            subscriptionId: subscription.id,
+            planId: subscription.planId,
+            billingCycle: subscription.billingCycle,
+            periodEnd: periodEnd.toISOString(),
+          },
+        },
+      }),
+    ]);
+
+    console.log(`✅ [WEBHOOK] Subscription payment recorded successfully`);
+    console.log(`   Reference: ${reference}`);
+    console.log(`   Amount: ₦${amountPaid.toLocaleString()}`);
+    console.log(`   Subscription ID: ${subscription.id}`);
+    console.log(`   Period End: ${periodEnd.toLocaleDateString()}`);
+
+    // TODO: Send subscription confirmation email
+    // TODO: Send notification to association admins
+
+  } catch (error: any) {
+    console.error(`❌ [WEBHOOK] Error recording subscription payment:`, error);
     throw error;
   }
 }
