@@ -110,19 +110,22 @@ export default function RegisterPage() {
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
               <p className="text-gray-600 mb-6">
-                Your account has been created successfully. You can now log in with your credentials.
+                We've sent a verification code to your email address. Please check your inbox and enter the code to verify your account.
               </p>
               <Link
-                href="/auth/login"
+                href={`/auth/verify-email?email=${encodeURIComponent(formData.email)}`}
                 className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
               >
-                Go to Login
+                Enter Verification Code
               </Link>
+              <p className="text-sm text-gray-500 mt-4">
+                Didn't receive the email? Check your spam folder or request a new code on the verification page.
+              </p>
             </div>
           </div>
         </div>

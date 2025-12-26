@@ -65,7 +65,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       req.path.startsWith('/api/auth/login') ||
       req.path.startsWith('/api/auth/register') ||
       req.path.startsWith('/api/auth/me') ||
-      req.path.startsWith('/api/auth/logout')
+      req.path.startsWith('/api/auth/logout') ||
+      req.path.startsWith('/api/auth/verify-email') ||
+      req.path.startsWith('/api/auth/resend-verification') ||
+      req.path.startsWith('/api/auth/forgot-password') ||
+      req.path.startsWith('/api/auth/reset-password')
     ) {
       // Try to resolve tenant but don't fail if not found
       const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;

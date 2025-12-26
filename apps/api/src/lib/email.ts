@@ -371,6 +371,158 @@ function getTemplateContent(template: string, data: Record<string, any>): string
       </body>
       </html>
     `,
+
+    'email-verification': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📧 Verify Your Email</h1>
+          </div>
+          <div class="content">
+            <h2>Welcome to ${data.associationName}!</h2>
+            <p>Thank you for registering. Please use the verification code below to verify your email address:</p>
+            
+            <div style="text-align: center; margin: 32px 0;">
+              <div style="display: inline-block; background: #f0f9ff; border: 2px dashed #3b82f6; border-radius: 8px; padding: 24px 48px;">
+                <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1e40af;">${data.code}</span>
+              </div>
+            </div>
+            
+            <div class="highlight-box">
+              <strong>⏰ This code expires in ${data.expiryMinutes} minutes</strong>
+            </div>
+            
+            <p>Enter this code on the verification page to complete your registration.</p>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you didn't create an account with ${data.associationName}, you can safely ignore this email.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'password-reset': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 Reset Your Password</h1>
+          </div>
+          <div class="content">
+            <h2>Password Reset Request</h2>
+            <p>We received a request to reset your password for your ${data.associationName} account.</p>
+            
+            <p>Click the button below to create a new password:</p>
+            
+            <center>
+              <a href="${data.resetUrl}" class="button">Reset Password</a>
+            </center>
+            
+            <div class="highlight-box">
+              <strong>⏰ This link expires in ${data.expiryMinutes} minutes</strong>
+            </div>
+            
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #3b82f6; font-size: 14px;">${data.resetUrl}</p>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'account-approved': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Account Approved!</h1>
+          </div>
+          <div class="content">
+            <h2>Welcome to ${data.associationName}!</h2>
+            <p class="success">Great news! Your account has been approved by an administrator.</p>
+            
+            <p>You can now log in and access all the features available to you.</p>
+            
+            <center>
+              <a href="${data.loginUrl}" class="button">Log In Now</a>
+            </center>
+            
+            <p><strong>What you can do:</strong></p>
+            <ul>
+              <li>✅ View your membership details</li>
+              <li>✅ Track your dues and payments</li>
+              <li>✅ Receive important notifications</li>
+              <li>✅ Access association resources</li>
+            </ul>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you have any questions, please contact your association administrator.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'account-rejected': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Account Registration Update</h1>
+          </div>
+          <div class="content">
+            <h2>Hello,</h2>
+            <p>We regret to inform you that your registration request for ${data.associationName} was not approved.</p>
+            
+            ${data.rejectionReason ? `
+            <div class="highlight-box">
+              <strong>Reason:</strong><br>
+              ${data.rejectionReason}
+            </div>
+            ` : ''}
+            
+            <p>If you believe this was a mistake or have questions, please contact the association administrator.</p>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              You may try registering again or reach out to support for assistance.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
   };
 
   const templateFn = templates[template];

@@ -3,6 +3,15 @@ import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { hashPassword, verifyPassword, generateToken } from '../../lib/auth';
 import { TenantRequest } from '../../middleware/tenant.middleware';
+import {
+  createUserWithVerification,
+  verifyEmailCode,
+  resendVerificationCode,
+  sendVerificationEmail,
+  initiatePasswordReset,
+  sendPasswordResetEmail,
+  resetPassword,
+} from './auth.service';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
@@ -12,7 +21,26 @@ const loginSchema = z.object({
 const registerSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  memberId: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+});
+
+const verifyEmailSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  code: z.string().length(6, 'Verification code must be 6 digits'),
+});
+
+const resendCodeSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 export class AuthController {
@@ -25,7 +53,6 @@ export class AuthController {
       let user;
       
       if (tenantId) {
-        // Try to find user in the specific tenant first
         user = await prisma.user.findFirst({
           where: { email: email.toLowerCase(), associationId: tenantId },
           include: {
@@ -82,28 +109,43 @@ export class AuthController {
         return;
       }
 
+      // Check email verification (skip for super admins)
+      if (!user.platformRole && !user.emailVerified) {
+        res.status(401).json({
+          success: false,
+          message: 'Please verify your email before logging in',
+          code: 'EMAIL_NOT_VERIFIED',
+        });
+        return;
+      }
+
+      // Check approval status (skip for super admins)
+      if (!user.platformRole && user.userApproval) {
+        if (user.userApproval.approvalStatus === 'pending') {
+          res.status(401).json({
+            success: false,
+            message: 'Your account is pending admin approval',
+            code: 'PENDING_APPROVAL',
+          });
+          return;
+        }
+
+        if (user.userApproval.approvalStatus === 'rejected') {
+          res.status(401).json({
+            success: false,
+            message: 'Your account registration was rejected',
+            code: 'ACCOUNT_REJECTED',
+          });
+          return;
+        }
+      }
+
       // Check if user is active
       if (!user.isActive) {
         res.status(401).json({
           success: false,
-          message: 'Account is deactivated',
-        });
-        return;
-      }
-
-      // Check approval status
-      if (user.userApproval && user.userApproval.approvalStatus === 'pending') {
-        res.status(401).json({
-          success: false,
-          message: 'Account is pending approval',
-        });
-        return;
-      }
-
-      if (user.userApproval && user.userApproval.approvalStatus === 'rejected') {
-        res.status(401).json({
-          success: false,
-          message: 'Account registration was rejected',
+          message: 'Your account has been suspended',
+          code: 'ACCOUNT_SUSPENDED',
         });
         return;
       }
@@ -118,16 +160,15 @@ export class AuthController {
         platformRole: user.platformRole ?? undefined,
       });
 
-      // Set HTTP-only cookie with appropriate SameSite for cross-origin
-      // Note: Browsers allow secure cookies on localhost even over HTTP
+      // Set HTTP-only cookie
       const isProduction = process.env.NODE_ENV === 'production';
       res.cookie('token', token, {
         httpOnly: true,
-        secure: true, // Required for SameSite=None (browsers allow this on localhost)
-        sameSite: 'none', // Required for cross-origin cookies (localhost:3000 to localhost:4000)
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+        secure: true,
+        sameSite: 'none',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
-        domain: isProduction ? process.env.COOKIE_DOMAIN : undefined, // Only set domain in production
+        domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
       });
 
       res.status(200).json({
@@ -165,12 +206,12 @@ export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     try {
       const { tenantId, tenant } = req as TenantRequest;
-      const { email, password, memberId } = registerSchema.parse(req.body);
+      const { email, password, firstName, lastName } = registerSchema.parse(req.body);
 
       if (!tenantId) {
         res.status(400).json({
           success: false,
-          message: 'Missing tenant context. Provide association subdomain or x-tenant header.',
+          message: 'Missing tenant context. Please access via your association subdomain.',
         });
         return;
       }
@@ -183,32 +224,27 @@ export class AuthController {
       if (existingUser) {
         res.status(400).json({
           success: false,
-          message: 'User with this email already exists',
+          message: 'An account with this email already exists',
         });
         return;
       }
 
-      // Hash password
-      const passwordHash = await hashPassword(password);
-
-      // Create user with approval pending
-      const user = await prisma.user.create({
-        data: {
-          associationId: tenantId,
-          email: email.toLowerCase(),
-          passwordHash,
-          role: 'member',
-          isActive: true,
-          userApproval: {
-            create: {
-              approvalStatus: 'pending',
-            },
-          },
-        },
-        include: {
-          userApproval: true,
-        },
+      // Create user with verification code
+      const { user, verificationCode } = await createUserWithVerification({
+        email,
+        password,
+        associationId: tenantId,
+        firstName,
+        lastName,
       });
+
+      // Send verification email
+      try {
+        await sendVerificationEmail(email, verificationCode, tenant?.name);
+      } catch (emailError) {
+        console.error('Failed to send verification email:', emailError);
+        // Don't fail registration if email fails
+      }
 
       res.status(201).json({
         success: true,
@@ -216,12 +252,11 @@ export class AuthController {
           user: {
             id: user.id,
             email: user.email,
-            role: user.role,
+            emailVerified: user.emailVerified,
             approvalStatus: user.userApproval?.approvalStatus,
-            association: tenant,
           },
         },
-        message: 'Registration successful. Please wait for admin approval.',
+        message: 'Registration successful. Please check your email for a verification code.',
       });
     } catch (error) {
       console.error('Register error:', error);
@@ -240,13 +275,205 @@ export class AuthController {
     }
   }
 
+  async verifyEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req as TenantRequest;
+      const { email, code } = verifyEmailSchema.parse(req.body);
+
+      // Find user
+      const user = await prisma.user.findFirst({
+        where: { 
+          email: email.toLowerCase(),
+          ...(tenantId ? { associationId: tenantId } : {}),
+        },
+      });
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+        return;
+      }
+
+      const result = await verifyEmailCode(user.id, code);
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          message: result.message,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Email verified successfully. Your account is pending admin approval.',
+      });
+    } catch (error) {
+      console.error('Verify email error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: error.errors,
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message: 'Email verification failed',
+      });
+    }
+  }
+
+  async resendVerificationCode(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, tenant } = req as TenantRequest;
+      const { email } = resendCodeSchema.parse(req.body);
+
+      // Find user
+      const user = await prisma.user.findFirst({
+        where: { 
+          email: email.toLowerCase(),
+          ...(tenantId ? { associationId: tenantId } : {}),
+        },
+      });
+
+      if (!user) {
+        // Don't reveal if user exists
+        res.status(200).json({
+          success: true,
+          message: 'If an account exists, a new verification code has been sent.',
+        });
+        return;
+      }
+
+      if (user.emailVerified) {
+        res.status(400).json({
+          success: false,
+          message: 'Email is already verified',
+        });
+        return;
+      }
+
+      const result = await resendVerificationCode(user.id);
+
+      if (result.success && result.code) {
+        try {
+          await sendVerificationEmail(email, result.code, tenant?.name);
+        } catch (emailError) {
+          console.error('Failed to send verification email:', emailError);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'If an account exists, a new verification code has been sent.',
+      });
+    } catch (error) {
+      console.error('Resend code error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: error.errors,
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message: 'Failed to resend verification code',
+      });
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, tenant } = req as TenantRequest;
+      const { email } = forgotPasswordSchema.parse(req.body);
+
+      const result = await initiatePasswordReset(email, tenantId);
+
+      // Send email if token was generated (user exists)
+      if (result.token) {
+        try {
+          await sendPasswordResetEmail(
+            email,
+            result.token,
+            tenant?.name,
+            tenant?.subdomain
+          );
+        } catch (emailError) {
+          console.error('Failed to send password reset email:', emailError);
+        }
+      }
+
+      // Always return success to prevent email enumeration
+      res.status(200).json({
+        success: true,
+        message: 'If an account exists with this email, a password reset link has been sent.',
+      });
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: error.errors,
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process password reset request',
+      });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req as TenantRequest;
+      const { token, password } = resetPasswordSchema.parse(req.body);
+
+      const result = await resetPassword(token, password, tenantId);
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          message: result.message,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Password reset successful. You can now log in with your new password.',
+      });
+    } catch (error) {
+      console.error('Reset password error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: error.errors,
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message: 'Password reset failed',
+      });
+    }
+  }
+
   async logout(req: Request, res: Response): Promise<void> {
     try {
       const isProduction = process.env.NODE_ENV === 'production';
       res.clearCookie('token', {
         httpOnly: true,
-        secure: true, // Must match the cookie settings (browsers allow this on localhost)
-        sameSite: 'none', // Must match the cookie settings used when setting
+        secure: true,
+        sameSite: 'none',
         path: '/',
         domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
       });
@@ -284,7 +511,9 @@ export class AuthController {
           email: true,
           role: true,
           isActive: true,
+          emailVerified: true,
           associationId: true,
+          platformRole: true,
           member: {
             select: {
               id: true,
@@ -293,6 +522,11 @@ export class AuthController {
               memberId: true,
               email: true,
               phone: true,
+            },
+          },
+          userApproval: {
+            select: {
+              approvalStatus: true,
             },
           },
         },
