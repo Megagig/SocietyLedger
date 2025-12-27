@@ -1,215 +1,1099 @@
-# Automatic Onboarding Redirect on First Login - Implementation Plan
+# SocietyLedger - Multi-Tenant SaaS Platform for Association Management
 
-## Overview
-Implement automatic redirect to the onboarding wizard on first successful login after admin approval, with proper role and tenant awareness.
+**Last Updated:** December 27, 2025  
+**Product Type:** Multi-Tenant SaaS Platform (Hybrid Multi-Tenancy)  
+**Target Market:** African Associations (HOAs, Cooperatives, Town Unions, Clubs, Religious Bodies)  
+**Project Status:** Core Platform Complete - Feature Expansion Phase  
+**Overall Completion:** ~55% (Core infrastructure complete, advanced features pending)
 
-## Current State Analysis
-- **OnboardingProgress model** exists with `onboardingComplete` flag at association level
-- **User model** has `role`, `platformRole`, `isActive`, and approval status
-- **Login flow** redirects to `/dashboard` after successful login
-- **Onboarding** is accessible via `/onboarding` and visible in sidebar for admins
-- **RBAC** is implemented with `requireAssociationRole` middleware
+---
 
-## Implementation Strategy
+## 📊 PROJECT PROGRESS OVERVIEW
 
-### Phase 1: Backend Changes
+### Executive Summary
 
-#### 1.1 Modify Login Response to Include Onboarding Status
-**File:** `apps/api/src/modules/auth/auth.controller.ts`
+The SocietyLedger platform has completed its core infrastructure and is now ready for feature expansion. All foundational phases including multi-tenancy, authentication, member management, financial management, notifications, and subscription billing are fully implemented.
 
-Add onboarding status to login response for association admins:
-- Query `OnboardingProgress` for the user's association
-- Include `requiresOnboarding` flag in response
-- Only apply to association admins (role === 'admin'), not super admins
+### Phase Completion Summary
 
-#### 1.2 Modify `/auth/me` Endpoint
-**File:** `apps/api/src/modules/auth/auth.controller.ts`
+| Phase | Name | Status | Progress | Priority |
+|-------|------|--------|----------|----------|
+| **0.5** | PERN Refactoring | ✅ **COMPLETE** | 15/15 | - |
+| **0** | SaaS Foundation | ✅ **COMPLETE** | 20/20 | - |
+| **1** | Project Foundation | ✅ **COMPLETE** | 15/15 | - |
+| **1.5** | Subscription & Billing | ✅ **COMPLETE** | 12/12 | - |
+| **2** | Member Management | ✅ **COMPLETE** | 14/14 | - |
+| **3** | Financial Management Core | ✅ **COMPLETE** | 16/16 | - |
+| **6** | Notifications & Communication | ✅ **COMPLETE** | 12/12 | - |
+| **7.5** | Super Admin Dashboard | ✅ **COMPLETE** | 12/12 | - |
+| **11** | User Approval System | ✅ **COMPLETE** | 10/10 | - |
+| **11.5** | Onboarding Wizard | ✅ **COMPLETE** | 8/8 | - |
+| **5** | Reporting System | 🟡 Placeholder | 0/12 | 🔴 HIGH |
+| **10** | Export System (PDF/Excel) | 🟡 Placeholder | 0/10 | 🔴 HIGH |
+| **4** | Advanced Features (Levies/Donations/Penalties) | � PartHial | 4/10 | 🔴 HIGH |
+| **9** | Accounting System | 🟡 Placeholder | 0/12 | 🟡 MEDIUM |
+| **3.5** | Nigerian Payment Features | 🟡 Placeholder | 0/8 | 🟡 MEDIUM |
+| **4.5** | Voting & Elections | 🟡 Placeholder | 0/10 | 🟡 MEDIUM |
+| **5.5** | Welfare & Social Funds | 🟡 Placeholder | 0/8 | 🟡 MEDIUM |
+| **6.5** | SMS & Bulk Communication | 🟡 Placeholder | 0/6 | 🟡 MEDIUM |
+| **12** | Caching & Performance | ⚪ Not Started | 0/10 | 🟢 LOW |
+| **12.5** | Meetings & Attendance | 🟡 Placeholder | 0/6 | 🟢 LOW |
+| **8.5** | Cooperatives & Loans | 🟡 Placeholder | 0/10 | 🟢 LOW |
+| **13.5** | Mobile/PWA | ⚪ Not Started | 0/6 | 🟢 LOW |
+| **16** | Enterprise Features | ⚪ Not Started | 0/8 | 🟢 LOW |
+| **17** | AI Integration | ⚪ Not Started | 0/16 | 🟢 LOW |
 
-Include onboarding status in the `/me` response so the frontend can check on page load.
 
-### Phase 2: Frontend Changes
+**Legend:**
+- ✅ **COMPLETE** = Fully implemented and tested
+- 🟡 **Placeholder/Partial** = UI pages exist but backend functionality not implemented
+- ⚪ **Not Started** = No implementation exists
 
-#### 2.1 Update Auth Store
-**File:** `apps/web/src/store/authStore.ts`
+---
 
-- Add `requiresOnboarding` to the auth state
-- Update login action to capture onboarding status from response
-- Update checkAuth to include onboarding status
+## 🎯 RECOMMENDED IMPLEMENTATION ORDER (Priority Roadmap)
 
-#### 2.2 Update Login Page Redirect Logic
-**File:** `apps/web/src/app/auth/login/page.tsx`
+### Understanding Dependencies
 
-After successful login:
-- Check if user is association admin AND `requiresOnboarding` is true
-- Redirect to `/onboarding` instead of `/dashboard`
+The following diagram shows how features depend on each other:
 
-#### 2.3 Update AuthenticatedLayout
-**File:** `apps/web/src/components/layout/AuthenticatedLayout.tsx`
-
-Add onboarding redirect check:
-- On initial auth check, if user is admin and onboarding not complete, redirect to `/onboarding`
-- Skip redirect if already on `/onboarding` path
-- Skip redirect for super admins and non-admin users
-
-#### 2.4 Update Sidebar Visibility
-**File:** `apps/web/src/components/layout/Sidebar.tsx`
-
-The "Setup Wizard" link is already visible to admins via `PERMISSIONS.SETTINGS_VIEW`. No changes needed.
-
-### Phase 3: Type Updates
-
-#### 3.1 Update User Type
-**File:** `apps/web/src/types/index.ts` (or wherever User type is defined)
-
-Add `requiresOnboarding?: boolean` to the User interface.
-
-## Detailed Implementation
-
-### Backend: auth.controller.ts - Login Method
-
-```typescript
-// After successful authentication, before generating token:
-let requiresOnboarding = false;
-
-// Only check onboarding for association admins (not super admins)
-if (user.role === 'admin' && tenantId && !user.platformRole) {
-  const onboardingProgress = await prisma.onboardingProgress.findUnique({
-    where: { associationId: tenantId },
-  });
-  
-  // Requires onboarding if no progress record exists or onboarding not complete
-  requiresOnboarding = !onboardingProgress?.onboardingComplete;
-}
-
-// Include in response:
-res.status(200).json({
-  success: true,
-  data: {
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      member: user.member,
-      association: tenant,
-      platformRole: user.platformRole,
-      requiresOnboarding, // NEW
-    },
-    token,
-  },
-  message: 'Login successful',
-});
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        COMPLETED FOUNDATION                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│  │ Multi-Tenant │  │    Auth &    │  │   Member     │  │  Financial   │    │
+│  │ Architecture │  │    RBAC      │  │  Management  │  │  Core (Dues) │    │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│  │ Subscription │  │ Notifications│  │ Super Admin  │  │  Onboarding  │    │
+│  │  & Billing   │  │   System     │  │  Dashboard   │  │    Wizard    │    │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PRIORITY 1: REVENUE-CRITICAL (Next Sprint)               │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ PHASE 5: Reporting System                                             │  │
+│  │ WHY FIRST: Users expect financial reports - core value proposition    │  │
+│  │ DEPENDS ON: Financial Core ✅                                         │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                        │
+│                                    ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ PHASE 10: Export System (PDF/Excel)                                   │  │
+│  │ WHY SECOND: Reports need to be downloadable and shareable             │  │
+│  │ DEPENDS ON: Reporting System (Phase 5)                                │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                        │
+│                                    ▼                                        │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ PHASE 4: Advanced Features (Complete Levies/Donations/Penalties)      │  │
+│  │ WHY THIRD: Core financial activities beyond basic dues                │  │
+│  │ DEPENDS ON: Financial Core ✅, Export System (for receipts)           │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PRIORITY 2: MARKET DIFFERENTIATORS                       │
+│                                                                              │
+│  ┌─────────────────────┐     ┌─────────────────────┐                       │
+│  │ PHASE 9: Accounting │     │ PHASE 3.5: Nigerian │                       │
+│  │ (P&L, Balance Sheet)│     │ Payment Features    │                       │
+│  │ DEPENDS ON: Phase 5 │     │ DEPENDS ON: Phase 4 │                       │
+│  └─────────────────────┘     └─────────────────────┘                       │
+│           │                           │                                     │
+│           └───────────┬───────────────┘                                     │
+│                       ▼                                                     │
+│  ┌─────────────────────┐     ┌─────────────────────┐                       │
+│  │ PHASE 4.5: Voting & │     │ PHASE 5.5: Welfare  │                       │
+│  │ Elections           │     │ & Social Funds      │                       │
+│  │ DEPENDS ON: Members │     │ DEPENDS ON: Finance │                       │
+│  └─────────────────────┘     └─────────────────────┘                       │
+│                       │                                                     │
+│                       ▼                                                     │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ PHASE 6.5: SMS & Bulk Communication                                   │  │
+│  │ DEPENDS ON: Notifications ✅, Members ✅                              │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PRIORITY 3: GROWTH FEATURES (Future)                     │
+│                                                                              │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐ │
+│  │ PHASE 12: Caching & │  │ PHASE 12.5: Meetings│  │ PHASE 8.5: Coops &  │ │
+│  │ Performance         │  │ & Attendance        │  │ Loans (Enterprise)  │ │
+│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘ │
+│                                                                              │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐ │
+│  │ PHASE 13.5: Mobile  │  │ PHASE 16: Enterprise│  │ PHASE 17: AI        │ │
+│  │ PWA                 │  │ Features            │  │ Integration         │ │
+│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Backend: auth.controller.ts - Me Method
 
-```typescript
-// Add onboarding check for admins
-let requiresOnboarding = false;
+---
 
-if (user.role === 'admin' && user.associationId && !user.platformRole) {
-  const onboardingProgress = await prisma.onboardingProgress.findUnique({
-    where: { associationId: user.associationId },
-  });
-  requiresOnboarding = !onboardingProgress?.onboardingComplete;
-}
+## ✅ COMPLETED PHASES (Verified from Codebase)
 
-res.status(200).json({
-  success: true,
-  data: { 
-    user: {
-      ...user,
-      requiresOnboarding,
-    }
-  },
-});
+### Phase 0.5: PERN Monorepo Refactoring ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 2025
+
+All tasks completed:
+- [x] Monorepo structure with Turborepo (`turbo.json`, root `package.json`)
+- [x] Frontend app at `apps/web/` (Next.js 14 with App Router)
+- [x] Backend API at `apps/api/` (Express.js with TypeScript)
+- [x] Shared packages at `packages/shared/`
+- [x] Prisma schema moved to `apps/api/prisma/`
+- [x] API client services using Axios
+- [x] Environment configuration for both apps
+
+---
+
+### Phase 0: SaaS Foundation & Multi-Tenancy ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 2025
+
+**Database Multi-Tenancy:**
+- [x] Association model with subdomain, tier, status, branding
+- [x] All models have `associationId` foreign key
+- [x] Subscription, Plan, PaymentHistory models
+- [x] Seed script with 3 plans (Starter, Professional, Enterprise)
+- [x] Migrations applied
+
+**Subdomain Routing & Tenant Resolution:**
+- [x] Tenant middleware extracts subdomain from request
+- [x] Tenant context available throughout app
+- [x] JWT includes associationId
+- [x] Tenant isolation utilities in place
+
+**Association Management:**
+- [x] Association CRUD APIs
+- [x] Association settings (logo, colors)
+- [x] Subdomain availability check
+- [x] Association signup flow with trial
+
+**Platform Admin:**
+- [x] Platform roles (SUPER_ADMIN, SUPPORT_AGENT)
+- [x] Tenant-scoped RBAC middleware
+- [x] Admin impersonation for support
+
+---
+
+### Phase 1: Project Foundation ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented
+
+- [x] Next.js 14 with TypeScript (App Router)
+- [x] Express.js backend with modular architecture
+- [x] PostgreSQL with Prisma ORM
+- [x] Tailwind CSS + Mantine UI components
+- [x] Zustand state management
+- [x] TanStack Query for data fetching
+- [x] ESLint, Prettier configuration
+- [x] Environment variables setup
+
+---
+
+### Phase 1.5: Subscription & Billing ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Location:** `apps/api/src/modules/subscription/`, `apps/api/src/modules/payments/`
+
+**Implemented Features:**
+- [x] Multi-tier plans (Starter, Professional, Enterprise)
+- [x] Paystack integration (primary payment provider)
+- [x] Nomba integration (secondary provider)
+- [x] Payment verification and webhook handling
+- [x] Subscription status tracking (TRIALING, ACTIVE, PAST_DUE, CANCELLED, EXPIRED)
+- [x] Plan upgrade/downgrade with proration
+- [x] Trial period management (14 days)
+- [x] Billing cycles (MONTHLY, ANNUAL)
+- [x] Payment history tracking
+- [x] Subscription renewal reminders (cron job)
+
+**API Endpoints:**
+- `GET /api/subscriptions/plans` - List available plans
+- `GET /api/subscriptions/current` - Get current subscription
+- `POST /api/subscriptions/initialize` - Start payment
+- `POST /api/subscriptions/verify` - Verify payment
+- `POST /api/subscriptions/cancel` - Cancel subscription
+- `POST /api/subscriptions/reactivate` - Reactivate subscription
+- `POST /api/subscriptions/change-plan` - Upgrade/downgrade
+
+---
+
+### Phase 2: Member Management ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Location:** `apps/api/src/modules/members/`, `apps/web/src/app/dashboard/members/`
+
+**Implemented Features:**
+- [x] Full CRUD operations with soft delete
+- [x] Member categorization (regular, executive, honorary, student)
+- [x] Status tracking (active, inactive, suspended, terminated)
+- [x] Bulk import from CSV/JSON
+- [x] Search, filtering, pagination
+- [x] Emergency contact information
+- [x] Member statistics dashboard
+- [x] Member ID auto-generation
+
+**API Endpoints:**
+- `GET /api/members` - List with pagination/filters
+- `POST /api/members` - Create member
+- `GET /api/members/:id` - Get member details
+- `PUT /api/members/:id` - Update member
+- `DELETE /api/members/:id` - Soft delete
+- `POST /api/members/bulk-import` - Bulk import
+- `GET /api/members/stats` - Statistics
+
+---
+
+### Phase 3: Financial Management Core ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Location:** `apps/api/src/modules/finance/`, `apps/web/src/app/dashboard/finance/`
+
+**Implemented Features:**
+- [x] Financial category management (dues, levies, donations, penalties)
+- [x] Transaction creation and tracking
+- [x] Bulk transaction generation (assign to multiple members)
+- [x] Payment recording with 6 payment methods (cash, bank_transfer, card, mobile_money, cheque, other)
+- [x] Transaction status tracking (pending, paid, overdue, waived, partial)
+- [x] Financial dashboard with aggregated statistics
+- [x] Member financial summary (total dues, paid, balance)
+- [x] Overdue transaction detection
+- [x] Payment reminders
+
+**API Endpoints:**
+- `GET/POST /api/finance/categories` - Category management
+- `GET/POST /api/finance/transactions` - Transaction management
+- `POST /api/finance/transactions/bulk` - Bulk create
+- `POST /api/finance/payments` - Record payment
+- `GET /api/finance/dashboard` - Financial overview
+- `GET /api/finance/members/:id/summary` - Member financial summary
+- `POST /api/finance/reminders/send` - Send payment reminders
+
+---
+
+### Phase 6: Notifications & Communication ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Location:** `apps/api/src/modules/notifications/`, `apps/web/src/components/NotificationBell.tsx`
+
+**Implemented Features:**
+- [x] In-app notification system
+- [x] Notification types: payment_due, payment_received, system, announcement
+- [x] Mark as read/unread functionality
+- [x] Bulk operations (mark all read, delete all)
+- [x] Unread count tracking
+- [x] Admin announcements
+- [x] Real-time polling for new notifications
+
+**API Endpoints:**
+- `GET /api/notifications` - List notifications
+- `POST /api/notifications` - Create notification
+- `PUT /api/notifications/:id/read` - Mark as read
+- `DELETE /api/notifications/:id` - Delete notification
+- `POST /api/notifications/announcements` - Create announcement
+
+---
+
+### Phase 7.5: Super Admin Dashboard ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Location:** `apps/api/src/modules/admin/`, `apps/web/src/app/admin/`
+
+**Implemented Features:**
+- [x] Association management (list, view, suspend, reactivate)
+- [x] User approval management (approve, reject, bulk operations)
+- [x] Platform analytics and statistics
+- [x] Audit log viewing
+- [x] Admin impersonation for support
+
+**API Endpoints:**
+- `GET /api/admin/stats` - Platform statistics
+- `GET /api/admin/analytics` - Detailed analytics
+- `GET /api/admin/audit-logs` - Audit trail
+- `GET /api/admin/associations` - List all associations
+- `PUT /api/admin/associations/:id/suspend` - Suspend association
+- `PUT /api/admin/associations/:id/reactivate` - Reactivate
+- `GET /api/admin/approvals` - Pending approvals
+- `POST /api/admin/approvals/:id/approve` - Approve user
+- `POST /api/admin/approvals/:id/reject` - Reject user
+
+---
+
+### Phase 11: User Approval System ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Location:** `apps/api/src/modules/auth/`, `apps/web/src/app/dashboard/settings/approvals/`
+
+**Implemented Features:**
+- [x] Registration creates pending approval record
+- [x] Admin approval/rejection workflow
+- [x] Rejection reason tracking
+- [x] Email notifications on status change
+- [x] Login blocked until approved
+- [x] Bulk approval operations
+
+---
+
+### Phase 11.5: Onboarding Wizard ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Location:** `apps/api/src/modules/onboarding/`, `apps/web/src/app/dashboard/onboarding/`
+
+**Implemented Features:**
+- [x] Step-based progress tracking
+- [x] Steps: profile, team, members, finance
+- [x] Skip and reset capabilities
+- [x] Completion tracking
+- [x] Automatic redirect on first login
+
+**API Endpoints:**
+- `GET /api/onboarding/status` - Get progress
+- `POST /api/onboarding/complete-step` - Complete a step
+- `POST /api/onboarding/skip` - Skip onboarding
+- `POST /api/onboarding/reset` - Reset progress
+
+
+---
+
+## 🔴 PRIORITY 1: REVENUE-CRITICAL FEATURES (Implement Next)
+
+These features complete the core value proposition. Implement in this exact order:
+
+### Phase 5: Reporting System 🔴 HIGH PRIORITY
+
+**Status:** 🟡 Placeholder (UI exists, no backend)  
+**Current State:** `apps/web/src/app/dashboard/reports/page.tsx` shows "Coming Soon"  
+**Dependencies:** Financial Core ✅ (Complete)  
+**Estimated Time:** 5-7 days  
+**Why First:** Users expect to generate financial reports - this is a core expectation for any financial management system.
+
+#### Tasks to Implement:
+
+- [ ] **TASK-REP-001:** Create Report Generation Service
+  - **Description:** Build `apps/api/src/modules/reports/reports.service.ts` with methods for generating different report types
+  - **Dependencies:** None
+  - **Files to Create:** `apps/api/src/modules/reports/reports.service.ts`, `reports.controller.ts`, `reports.routes.ts`
+
+- [ ] **TASK-REP-002:** Financial Summary Report API
+  - **Description:** `GET /api/reports/financial-summary` - Returns income/expense totals, category breakdowns, period comparisons
+  - **Dependencies:** TASK-REP-001
+  - **Acceptance Criteria:** Returns aggregated financial data with date range filtering
+
+- [ ] **TASK-REP-003:** Member Payment Status Report API
+  - **Description:** `GET /api/reports/member-balances` - Returns all members with their payment status, outstanding balances
+  - **Dependencies:** TASK-REP-001
+  - **Acceptance Criteria:** Shows each member's total dues, paid amount, balance
+
+- [ ] **TASK-REP-004:** Outstanding Balances with Aging Analysis API
+  - **Description:** `GET /api/reports/aging-analysis` - Returns outstanding amounts grouped by age (0-30, 31-60, 61-90, 90+ days)
+  - **Dependencies:** TASK-REP-001
+  - **Acceptance Criteria:** Aging buckets calculated correctly, sortable by amount/age
+
+- [ ] **TASK-REP-005:** Collection Rate Report API
+  - **Description:** `GET /api/reports/collection-rate` - Returns collection efficiency metrics over time
+  - **Dependencies:** TASK-REP-001
+  - **Acceptance Criteria:** Shows percentage collected vs expected per period
+
+- [ ] **TASK-REP-006:** Category-wise Report API
+  - **Description:** `GET /api/reports/by-category` - Returns financial breakdown by category (dues, levies, donations, penalties)
+  - **Dependencies:** TASK-REP-001
+  - **Acceptance Criteria:** Each category shows total expected, collected, outstanding
+
+- [ ] **TASK-REP-007:** Build Reports Dashboard UI
+  - **Description:** Replace placeholder with actual dashboard showing report cards, quick stats, date range selector
+  - **Dependencies:** TASK-REP-002 through TASK-REP-006
+  - **Files to Update:** `apps/web/src/app/dashboard/reports/page.tsx`
+
+- [ ] **TASK-REP-008:** Financial Summary Report Page
+  - **Description:** Create detailed financial summary view with charts (income vs expense, trends)
+  - **Dependencies:** TASK-REP-002, TASK-REP-007
+  - **Files to Create:** `apps/web/src/app/dashboard/reports/financial-summary/page.tsx`
+
+- [ ] **TASK-REP-009:** Member Balances Report Page
+  - **Description:** Create member balances table with search, filters, sorting
+  - **Dependencies:** TASK-REP-003, TASK-REP-007
+  - **Files to Create:** `apps/web/src/app/dashboard/reports/member-balances/page.tsx`
+
+- [ ] **TASK-REP-010:** Aging Analysis Report Page
+  - **Description:** Create aging analysis view with visual breakdown and drill-down
+  - **Dependencies:** TASK-REP-004, TASK-REP-007
+  - **Files to Create:** `apps/web/src/app/dashboard/reports/aging-analysis/page.tsx`
+
+- [ ] **TASK-REP-011:** Add Charts and Visualizations
+  - **Description:** Integrate Recharts for visual analytics (bar charts, pie charts, line graphs)
+  - **Dependencies:** TASK-REP-007
+  - **Libraries:** recharts (already installed)
+
+- [ ] **TASK-REP-012:** Report Date Range Filtering
+  - **Description:** Add date range picker component, support preset periods (This Month, Last Month, This Quarter, This Year, Custom)
+  - **Dependencies:** TASK-REP-007
+
+---
+
+### Phase 10: Export System (PDF/Excel) 🔴 HIGH PRIORITY
+
+**Status:** 🟡 Placeholder (UI exists, no backend)  
+**Dependencies:** Reporting System (Phase 5)  
+**Estimated Time:** 4-5 days  
+**Why Second:** Reports need to be downloadable and shareable. This directly supports Phase 5.
+
+#### Tasks to Implement:
+
+- [ ] **TASK-EXP-001:** Create Export Service
+  - **Description:** Build `apps/api/src/modules/exports/exports.service.ts` with PDF and Excel generation methods
+  - **Dependencies:** Phase 5 complete
+  - **Libraries:** jsPDF, ExcelJS (already installed)
+
+- [ ] **TASK-EXP-002:** PDF Export with Association Branding
+  - **Description:** Generate branded PDF reports with association logo, colors, header/footer
+  - **Dependencies:** TASK-EXP-001
+  - **Acceptance Criteria:** PDF includes logo, association name, date, professional formatting
+
+- [ ] **TASK-EXP-003:** Excel Export with Multiple Sheets
+  - **Description:** Generate Excel files with summary sheet + detailed data sheets
+  - **Dependencies:** TASK-EXP-001
+  - **Acceptance Criteria:** Excel has proper formatting, column headers, data validation
+
+- [ ] **TASK-EXP-004:** Financial Report PDF Export API
+  - **Description:** `POST /api/exports/financial-pdf` - Generates PDF of financial summary
+  - **Dependencies:** TASK-EXP-002, Phase 5 TASK-REP-002
+
+- [ ] **TASK-EXP-005:** Financial Report Excel Export API
+  - **Description:** `POST /api/exports/financial-excel` - Generates Excel of financial data
+  - **Dependencies:** TASK-EXP-003, Phase 5 TASK-REP-002
+
+- [ ] **TASK-EXP-006:** Member Statement PDF Export API
+  - **Description:** `POST /api/exports/member-statement/:memberId` - Individual member statement
+  - **Dependencies:** TASK-EXP-002
+  - **Acceptance Criteria:** Shows member's complete transaction history, current balance
+
+- [ ] **TASK-EXP-007:** All Members Excel Export API
+  - **Description:** `POST /api/exports/members-excel` - Export all members with balances
+  - **Dependencies:** TASK-EXP-003
+
+- [ ] **TASK-EXP-008:** Export History Tracking
+  - **Description:** Track all exports in `ExportHistory` table, provide download history
+  - **Dependencies:** TASK-EXP-001
+  - **API:** `GET /api/exports/history`
+
+- [ ] **TASK-EXP-009:** Add Export Buttons to Report Pages
+  - **Description:** Add "Export PDF" and "Export Excel" buttons to all report pages
+  - **Dependencies:** TASK-EXP-004 through TASK-EXP-007
+
+- [ ] **TASK-EXP-010:** Export Download Endpoint
+  - **Description:** `GET /api/exports/download/:id` - Download previously generated export
+  - **Dependencies:** TASK-EXP-008
+
+---
+
+### Phase 4: Advanced Features (Complete Implementation) 🔴 HIGH PRIORITY
+
+**Status:** 🟡 Partial (Category types exist, advanced features missing)  
+**Current State:** Basic category CRUD exists for dues/levies/donations/penalties, but advanced features not implemented  
+**Dependencies:** Financial Core ✅, Export System (for receipts)  
+**Estimated Time:** 4-5 days  
+**Why Third:** Completes the financial management capabilities beyond basic dues.
+
+#### What's Already Implemented:
+- [x] Financial category types (due, levy, donation, penalty) in schema
+- [x] Basic CRUD for categories
+- [x] Transaction creation for all types
+- [x] Payment recording
+
+#### Tasks to Implement:
+
+- [ ] **TASK-ADV-001:** Levy Campaign Management
+  - **Description:** Create levy campaigns with target amount, deadline, progress tracking
+  - **Dependencies:** None
+  - **API:** `POST /api/finance/levies/campaigns`, `GET /api/finance/levies/campaigns/:id/progress`
+
+- [ ] **TASK-ADV-002:** Levy Assignment to Specific Members
+  - **Description:** Assign levies to selected members (not all), track individual progress
+  - **Dependencies:** TASK-ADV-001
+
+- [ ] **TASK-ADV-003:** Donation Receipt Generation
+  - **Description:** Auto-generate donation receipts with unique receipt numbers
+  - **Dependencies:** Phase 10 TASK-EXP-002
+  - **API:** `GET /api/finance/donations/:id/receipt`
+
+- [ ] **TASK-ADV-004:** Donation Allocation Tracking
+  - **Description:** Track donation purposes (general fund, specific project, emergency)
+  - **Dependencies:** None
+
+- [ ] **TASK-ADV-005:** Penalty Configuration Rules
+  - **Description:** Configure penalty rules (late fee percentage, fixed amount, grace period)
+  - **Dependencies:** None
+  - **API:** `POST /api/finance/penalties/rules`
+
+- [ ] **TASK-ADV-006:** Automated Late Fee Calculation
+  - **Description:** Cron job to calculate and apply late fees based on rules
+  - **Dependencies:** TASK-ADV-005
+  - **Files:** `apps/api/src/cron/late-fees.cron.ts`
+
+- [ ] **TASK-ADV-007:** Penalty Waiver Management
+  - **Description:** Allow admins to waive penalties with reason tracking
+  - **Dependencies:** None
+  - **API:** `POST /api/finance/penalties/:id/waive`
+
+- [ ] **TASK-ADV-008:** Levy Progress Dashboard
+  - **Description:** UI showing levy campaign progress, contributors, remaining amount
+  - **Dependencies:** TASK-ADV-001, TASK-ADV-002
+  - **Files:** `apps/web/src/app/dashboard/finance/levies/[id]/page.tsx`
+
+- [ ] **TASK-ADV-009:** Donation Management UI
+  - **Description:** Enhanced donation recording with receipt preview, allocation selection
+  - **Dependencies:** TASK-ADV-003, TASK-ADV-004
+
+- [ ] **TASK-ADV-010:** Penalty Management UI
+  - **Description:** View/manage penalties, apply waivers, see late fee history
+  - **Dependencies:** TASK-ADV-005, TASK-ADV-006, TASK-ADV-007
+
+
+---
+
+## 🟡 PRIORITY 2: MARKET DIFFERENTIATORS (Following Sprint)
+
+These features differentiate SocietyLedger from competitors. Implement after Priority 1 is complete.
+
+### Phase 9: Accounting System 🟡 MEDIUM PRIORITY
+
+**Status:** 🟡 Placeholder (UI pages exist, no backend)  
+**Current State:** Frontend pages exist at `apps/web/src/app/dashboard/accounting/` showing "Coming Soon"  
+**Dependencies:** Reporting System (Phase 5), Export System (Phase 10)  
+**Estimated Time:** 6-8 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-ACC-001:** Chart of Accounts Setup
+  - **Description:** Create standard chart of accounts (Assets, Liabilities, Equity, Income, Expenses)
+  - **API:** `GET/POST /api/accounting/chart-of-accounts`
+
+- [ ] **TASK-ACC-002:** Journal Entry System
+  - **Description:** Double-entry bookkeeping with debit/credit entries
+  - **API:** `POST /api/accounting/journal-entries`
+
+- [ ] **TASK-ACC-003:** Income Statement (P&L) Generation
+  - **Description:** Generate profit & loss statement for any period
+  - **API:** `GET /api/accounting/income-statement`
+
+- [ ] **TASK-ACC-004:** Balance Sheet Generation
+  - **Description:** Generate balance sheet showing assets, liabilities, equity
+  - **API:** `GET /api/accounting/balance-sheet`
+
+- [ ] **TASK-ACC-005:** Cash Flow Statement
+  - **Description:** Generate cash flow report (operating, investing, financing)
+  - **API:** `GET /api/accounting/cash-flow`
+
+- [ ] **TASK-ACC-006:** Budget Planning
+  - **Description:** Create budgets, track actual vs budget variance
+  - **API:** `POST /api/accounting/budgets`
+
+- [ ] **TASK-ACC-007:** Accounting Entry Approval Workflow
+  - **Description:** Maker-checker for accounting entries
+  - **Dependencies:** TASK-ACC-002
+
+- [ ] **TASK-ACC-008:** Auto-sync Transactions to Accounting
+  - **Description:** Automatically create journal entries from financial transactions
+  - **Dependencies:** TASK-ACC-002
+
+- [ ] **TASK-ACC-009:** Accounting Dashboard UI
+  - **Description:** Replace placeholder with actual accounting dashboard
+  - **Files:** `apps/web/src/app/dashboard/accounting/page.tsx`
+
+- [ ] **TASK-ACC-010:** Financial Statements UI
+  - **Description:** P&L, Balance Sheet, Cash Flow report pages
+  - **Dependencies:** TASK-ACC-003, TASK-ACC-004, TASK-ACC-005
+
+- [ ] **TASK-ACC-011:** Journal Entries UI
+  - **Description:** Create/view/approve journal entries
+  - **Dependencies:** TASK-ACC-002, TASK-ACC-007
+
+- [ ] **TASK-ACC-012:** Budget Management UI
+  - **Description:** Create budgets, view variance analysis
+  - **Dependencies:** TASK-ACC-006
+
+---
+
+### Phase 3.5: Nigerian Payment Features 🟡 MEDIUM PRIORITY
+
+**Status:** 🟡 Placeholder  
+**Dependencies:** Financial Core ✅, Advanced Features (Phase 4)  
+**Estimated Time:** 4-5 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-PAY-001:** Bank Transfer Tracking
+  - **Description:** Record bank transfers with bank name, account number, reference
+  - **API:** `POST /api/payments/bank-transfer`
+
+- [ ] **TASK-PAY-002:** Multiple Bank Account Support
+  - **Description:** Association can have multiple bank accounts for receiving payments
+  - **API:** `GET/POST /api/settings/bank-accounts`
+
+- [ ] **TASK-PAY-003:** Payment Reconciliation
+  - **Description:** Match bank statement entries to recorded payments
+  - **API:** `POST /api/payments/reconcile`
+
+- [ ] **TASK-PAY-004:** Auto-matching Transactions
+  - **Description:** Automatically match payments based on reference numbers
+  - **Dependencies:** TASK-PAY-003
+
+- [ ] **TASK-PAY-005:** Bank Statement Import
+  - **Description:** Import bank statements (CSV) for reconciliation
+  - **API:** `POST /api/payments/import-statement`
+
+- [ ] **TASK-PAY-006:** Unmatched Payments Dashboard
+  - **Description:** UI showing payments that need manual matching
+  - **Dependencies:** TASK-PAY-003
+
+- [ ] **TASK-PAY-007:** Payment Proof Upload
+  - **Description:** Members can upload payment proof (screenshot, receipt)
+  - **API:** `POST /api/payments/:id/proof`
+
+- [ ] **TASK-PAY-008:** Payment Verification Workflow
+  - **Description:** Admin verifies uploaded payment proofs
+  - **Dependencies:** TASK-PAY-007
+
+---
+
+### Phase 4.5: Voting & Elections 🟡 MEDIUM PRIORITY
+
+**Status:** 🟡 Placeholder (UI pages exist at `apps/web/src/app/dashboard/governance/`)  
+**Dependencies:** Member Management ✅  
+**Estimated Time:** 5-6 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-VOT-001:** Election Model & Schema
+  - **Description:** Create Election, Candidate, Vote models in Prisma
+  - **Files:** Update `apps/api/prisma/schema.prisma`
+
+- [ ] **TASK-VOT-002:** Election CRUD APIs
+  - **Description:** Create, update, start, end elections
+  - **API:** `GET/POST /api/elections`
+
+- [ ] **TASK-VOT-003:** Candidate Management
+  - **Description:** Add/remove candidates, candidate profiles
+  - **API:** `POST /api/elections/:id/candidates`
+
+- [ ] **TASK-VOT-004:** Voting API with Verification
+  - **Description:** Cast vote, prevent double voting, verify eligibility
+  - **API:** `POST /api/elections/:id/vote`
+
+- [ ] **TASK-VOT-005:** Results Tabulation
+  - **Description:** Calculate and display election results
+  - **API:** `GET /api/elections/:id/results`
+
+- [ ] **TASK-VOT-006:** Poll Creation (Quick Votes)
+  - **Description:** Simple yes/no or multiple choice polls
+  - **API:** `GET/POST /api/polls`
+
+- [ ] **TASK-VOT-007:** Election Dashboard UI
+  - **Description:** List elections, create new, view status
+  - **Files:** `apps/web/src/app/dashboard/governance/elections/page.tsx`
+
+- [ ] **TASK-VOT-008:** Voting Interface UI
+  - **Description:** Member voting page with candidate info
+  - **Files:** `apps/web/src/app/dashboard/governance/elections/[id]/vote/page.tsx`
+
+- [ ] **TASK-VOT-009:** Results Display UI
+  - **Description:** Show election results with charts
+  - **Files:** `apps/web/src/app/dashboard/governance/elections/[id]/results/page.tsx`
+
+- [ ] **TASK-VOT-010:** Polls UI
+  - **Description:** Create and participate in polls
+  - **Files:** `apps/web/src/app/dashboard/governance/polls/page.tsx`
+
+---
+
+### Phase 5.5: Welfare & Social Funds 🟡 MEDIUM PRIORITY
+
+**Status:** 🟡 Placeholder (UI pages exist at `apps/web/src/app/dashboard/welfare/`)  
+**Dependencies:** Financial Core ✅, Member Management ✅  
+**Estimated Time:** 4-5 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-WEL-001:** Welfare Fund Model
+  - **Description:** Create WelfareFund, WelfareContribution, WelfarePayout models
+  - **Files:** Update `apps/api/prisma/schema.prisma`
+
+- [ ] **TASK-WEL-002:** Fund Management APIs
+  - **Description:** Create funds, set contribution rules
+  - **API:** `GET/POST /api/welfare/funds`
+
+- [ ] **TASK-WEL-003:** Contribution Tracking
+  - **Description:** Track member contributions to welfare fund
+  - **API:** `POST /api/welfare/contributions`
+
+- [ ] **TASK-WEL-004:** Payout Request System
+  - **Description:** Members request payouts, admin approval workflow
+  - **API:** `POST /api/welfare/payouts/request`
+
+- [ ] **TASK-WEL-005:** Payout Approval Workflow
+  - **Description:** Admin reviews and approves/rejects payout requests
+  - **API:** `POST /api/welfare/payouts/:id/approve`
+
+- [ ] **TASK-WEL-006:** Emergency Support Requests
+  - **Description:** Fast-track emergency welfare requests
+  - **Dependencies:** TASK-WEL-004
+
+- [ ] **TASK-WEL-007:** Welfare Dashboard UI
+  - **Description:** Fund balance, contributions, payouts overview
+  - **Files:** `apps/web/src/app/dashboard/welfare/page.tsx`
+
+- [ ] **TASK-WEL-008:** Payout Request UI
+  - **Description:** Request form, status tracking
+  - **Files:** `apps/web/src/app/dashboard/welfare/request/page.tsx`
+
+---
+
+### Phase 6.5: SMS & Bulk Communication 🟡 MEDIUM PRIORITY
+
+**Status:** 🟡 Placeholder (UI pages exist at `apps/web/src/app/dashboard/communication/`)  
+**Dependencies:** Notifications ✅, Member Management ✅  
+**Estimated Time:** 3-4 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-SMS-001:** SMS Provider Integration
+  - **Description:** Integrate Termii or BulkSMSNigeria for SMS sending
+  - **Files:** `apps/api/src/lib/sms.ts`
+
+- [ ] **TASK-SMS-002:** Bulk SMS API
+  - **Description:** Send SMS to selected members or all members
+  - **API:** `POST /api/communication/sms/bulk`
+
+- [ ] **TASK-SMS-003:** SMS Templates
+  - **Description:** Create reusable SMS templates with placeholders
+  - **API:** `GET/POST /api/communication/sms/templates`
+
+- [ ] **TASK-SMS-004:** Email Campaign API
+  - **Description:** Send bulk emails with templates
+  - **API:** `POST /api/communication/email/campaign`
+
+- [ ] **TASK-SMS-005:** Communication History
+  - **Description:** Track all sent communications
+  - **API:** `GET /api/communication/history`
+
+- [ ] **TASK-SMS-006:** Communication Dashboard UI
+  - **Description:** Send SMS/Email, view history, manage templates
+  - **Files:** `apps/web/src/app/dashboard/communication/page.tsx`
+
+
+---
+
+## 🟢 PRIORITY 3: GROWTH FEATURES (Future Sprints)
+
+These features are for scaling and enterprise customers. Implement after Priority 1 and 2.
+
+### Phase 12: Caching & Performance 🟢 LOW PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** All core features complete  
+**Estimated Time:** 3-4 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-CACHE-001:** Redis Caching Setup
+- [ ] **TASK-CACHE-002:** Cache Financial Dashboard Data
+- [ ] **TASK-CACHE-003:** Cache Member Lists
+- [ ] **TASK-CACHE-004:** Cache Report Data
+- [ ] **TASK-CACHE-005:** Implement Cache Invalidation
+- [ ] **TASK-CACHE-006:** Database Query Optimization
+- [ ] **TASK-CACHE-007:** Add Database Indexes
+- [ ] **TASK-CACHE-008:** API Response Compression
+- [ ] **TASK-CACHE-009:** Implement Rate Limiting
+- [ ] **TASK-CACHE-010:** Performance Monitoring Setup
+
+---
+
+### Phase 12.5: Meetings & Attendance 🟢 LOW PRIORITY
+
+**Status:** 🟡 Placeholder  
+**Dependencies:** Member Management ✅  
+**Estimated Time:** 3-4 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-MTG-001:** Meeting Model & Schema
+- [ ] **TASK-MTG-002:** Meeting CRUD APIs
+- [ ] **TASK-MTG-003:** Attendance Tracking
+- [ ] **TASK-MTG-004:** Meeting Minutes Recording
+- [ ] **TASK-MTG-005:** Attendance-based Penalties Integration
+- [ ] **TASK-MTG-006:** Meetings Dashboard UI
+
+---
+
+### Phase 8.5: Cooperatives & Loans 🟢 LOW PRIORITY (Enterprise)
+
+**Status:** 🟡 Placeholder (UI pages exist at `apps/web/src/app/dashboard/cooperatives/`)  
+**Dependencies:** Financial Core ✅, Member Management ✅  
+**Tier:** Enterprise Only  
+**Estimated Time:** 8-10 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-COOP-001:** Loan Model & Schema
+- [ ] **TASK-COOP-002:** Savings Account Management
+- [ ] **TASK-COOP-003:** Loan Application System
+- [ ] **TASK-COOP-004:** Guarantor Management
+- [ ] **TASK-COOP-005:** Interest Calculation
+- [ ] **TASK-COOP-006:** Loan Repayment Tracking
+- [ ] **TASK-COOP-007:** Loan Approval Workflow
+- [ ] **TASK-COOP-008:** Savings Dashboard UI
+- [ ] **TASK-COOP-009:** Loan Application UI
+- [ ] **TASK-COOP-010:** Loan Management UI
+
+---
+
+### Phase 13.5: Mobile/PWA 🟢 LOW PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** All core features complete  
+**Estimated Time:** 5-7 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-PWA-001:** PWA Configuration
+- [ ] **TASK-PWA-002:** Service Worker Setup
+- [ ] **TASK-PWA-003:** Offline Support
+- [ ] **TASK-PWA-004:** Push Notifications
+- [ ] **TASK-PWA-005:** Mobile-optimized UI
+- [ ] **TASK-PWA-006:** App Install Prompt
+
+---
+
+### Phase 16: Enterprise Features 🟢 LOW PRIORITY
+
+**Status:** ⚪ Not Started  
+**Tier:** Enterprise Only  
+**Estimated Time:** 10-15 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-ENT-001:** White-label Branding
+- [ ] **TASK-ENT-002:** Custom Domain Support
+- [ ] **TASK-ENT-003:** REST API Access
+- [ ] **TASK-ENT-004:** Dedicated Database Option
+- [ ] **TASK-ENT-005:** SSO/SAML Integration
+- [ ] **TASK-ENT-006:** Advanced Audit Logs
+- [ ] **TASK-ENT-007:** Custom Report Builder
+- [ ] **TASK-ENT-008:** SLA Monitoring
+
+---
+
+### Phase 17: AI Integration 🟢 LOW PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** All core features, Reporting System  
+**Estimated Time:** 10-15 days
+
+#### Tasks to Implement:
+
+- [ ] **TASK-AI-001:** OpenRouter Integration
+- [ ] **TASK-AI-002:** AI Financial Assistant
+- [ ] **TASK-AI-003:** Natural Language Queries
+- [ ] **TASK-AI-004:** Document Q&A (RAG)
+- [ ] **TASK-AI-005:** Automated Report Generation
+- [ ] **TASK-AI-006:** Smart Payment Reminders
+- [ ] **TASK-AI-007:** Predictive Late Payment Detection
+- [ ] **TASK-AI-008:** Token Usage Tracking
+- [ ] **TASK-AI-009:** Per-tenant Rate Limiting
+- [ ] **TASK-AI-010:** Response Caching
+- [ ] **TASK-AI-011:** AI Chat Interface UI
+- [ ] **TASK-AI-012:** AI Insights Dashboard
+- [ ] **TASK-AI-013:** Document Upload for Q&A
+- [ ] **TASK-AI-014:** AI Safety Guards
+- [ ] **TASK-AI-015:** Audit Logging for AI
+- [ ] **TASK-AI-016:** AI Feature Tier Restrictions
+
+
+---
+
+## 💰 SAAS SUBSCRIPTION TIERS & FEATURES
+
+### Pricing Structure
+
+**Billing Model:** Per Association + Member Count Bands  
+**Payment Providers:** Paystack (Primary), Nomba (Secondary)  
+**Billing Cycles:** Monthly (default), Annual (10% discount)  
+**Free Trial:** 14 days (no credit card required)  
+**Currencies:** NGN (₦) primary, USD for international
+
+### Tier Breakdown
+
+#### 🆓 Starter Plan - ₦[X],000/month
+**Member Limit:** Up to 100 members  
+**Target:** Small associations, clubs, getting started
+
+**Features:**
+- ✅ Member lifecycle management
+- ✅ Basic dues tracking
+- ✅ Basic levies tracking
+- ✅ Penalty tracking
+- ✅ Manual transaction entries
+- ✅ Financial Management (income/expense recording)
+- ✅ Simple financial reports
+- ✅ Meetings & attendance tracking
+- ✅ Document storage (up to 1GB)
+- ✅ Basic member portal
+- ✅ Email notifications
+- ✅ Custom association branding (logo, colors)
+- ✅ Up to 5 admin users
+
+**Limits:**
+- ❌ No automated reminders
+- ❌ No bulk SMS
+- ❌ No advanced exports
+- ❌ No voting/elections
+- ❌ No welfare funds
+- ❌ No API access
+
+---
+
+#### 💼 Professional Plan - ₦[Y],000/month
+**Member Limit:** 100-500 members  
+**Target:** Growing associations, HOAs, professional bodies
+
+**Everything in Starter, PLUS:**
+- ✅ Full accounting system (P&L, Balance Sheet, Cash Flow)
+- ✅ Fundraising & donations tracking
+- ✅ Automated reminders (SMS + Email)
+- ✅ Bulk SMS (Pay-as-you-go or included units)
+- ✅ Advanced exports (Excel, PDF with branding)
+- ✅ Role-based permissions (custom roles)
+- ✅ Audit logs (full activity tracking)
+- ✅ Voting & elections
+- ✅ Welfare & social funds
+- ✅ Projects tracking
+- ✅ Bulk communication
+- ✅ Payment reconciliation
+- ✅ Advanced financial reports
+- ✅ Document management (up to 10GB)
+- ✅ Up to 15 admin users
+
+---
+
+#### 🏢 Enterprise Plan - Custom Pricing
+**Member Limit:** 500+ members  
+**Target:** Large associations, cooperatives, town unions
+
+**Everything in Professional, PLUS:**
+- ✅ White-label branding
+- ✅ Custom domain support
+- ✅ API access (REST API)
+- ✅ Dedicated database
+- ✅ Cooperative features (loans, savings, guarantors)
+- ✅ Advanced workflows (maker-checker)
+- ✅ Custom integrations
+- ✅ SLA guarantees (99.9% uptime)
+- ✅ Dedicated support
+- ✅ Advanced analytics
+- ✅ Custom reports
+- ✅ SSO/SAML integration
+- ✅ Unlimited admin users
+
+---
+
+## 🛠️ TECHNOLOGY STACK
+
+### Architecture
+- **Pattern:** PERN Monorepo (PostgreSQL, Express, React, Node.js)
+- **Monorepo Tool:** Turborepo
+- **Structure:**
+  - `apps/web/` - Next.js 14 frontend
+  - `apps/api/` - Express.js backend
+  - `packages/shared/` - Shared types and utilities
+
+### Frontend (apps/web)
+- Next.js 14 (App Router)
+- React 18, TypeScript 5
+- Tailwind CSS + Mantine UI 7.0
+- Zustand (state management)
+- TanStack Query (data fetching)
+- Axios (HTTP client)
+- React Hook Form + Zod (forms/validation)
+- Recharts (charts)
+
+### Backend (apps/api)
+- Express.js 4.x with TypeScript
+- Node.js 20.x LTS
+- Prisma 5.0 (ORM)
+- PostgreSQL (database)
+- Redis (caching, sessions)
+- Zod (validation)
+- JWT (authentication)
+- BullMQ (background jobs)
+
+### Payments
+- Paystack (primary)
+- Nomba (secondary)
+
+### Communication
+- Resend (email)
+- Termii/BulkSMSNigeria (SMS)
+
+### Infrastructure
+- VPS (Hetzner/DigitalOcean) or Vercel
+- Cloudflare (DNS, CDN, SSL)
+- AWS S3 or Cloudinary (file storage)
+
+---
+
+## 📋 QUICK REFERENCE: NEXT STEPS
+
+### Immediate Next Task: Phase 5 - Reporting System
+
+Start with **TASK-REP-001: Create Report Generation Service**
+
+```bash
+# Files to create:
+apps/api/src/modules/reports/
+├── reports.controller.ts
+├── reports.service.ts
+├── reports.routes.ts
+├── reports.types.ts
+└── reports.validation.ts
 ```
 
-### Frontend: authStore.ts
+### Implementation Order Summary
 
-```typescript
-interface User {
-  // ... existing fields
-  requiresOnboarding?: boolean;
-}
+1. **Phase 5: Reporting System** (5-7 days)
+   - Financial summary, member balances, aging analysis
+   - Charts and visualizations
+   
+2. **Phase 10: Export System** (4-5 days)
+   - PDF with branding
+   - Excel exports
+   - Member statements
+   
+3. **Phase 4: Advanced Features** (4-5 days)
+   - Levy campaigns
+   - Donation receipts
+   - Automated late fees
 
-// In login action, after successful response:
-set({
-  user: {
-    ...data.data.user,
-    requiresOnboarding: data.data.user.requiresOnboarding,
-  },
-  // ...
-});
-```
+4. **Phase 9: Accounting** (6-8 days)
+5. **Phase 3.5: Nigerian Payments** (4-5 days)
+6. **Phase 4.5: Voting** (5-6 days)
+7. **Phase 5.5: Welfare** (4-5 days)
+8. **Phase 6.5: SMS** (3-4 days)
 
-### Frontend: Login Page
+---
 
-```typescript
-const handleSubmit = async (e: React.FormEvent) => {
-  // ... existing code
-  
-  if (success) {
-    const { user } = useAuthStore.getState();
-    
-    // Redirect to onboarding if required
-    if (user?.requiresOnboarding && user?.role === 'admin') {
-      router.push('/onboarding');
-    } else {
-      router.push('/dashboard');
-    }
-  }
-};
-```
-
-### Frontend: AuthenticatedLayout.tsx
-
-```typescript
-useEffect(() => {
-  const verifyAuth = async () => {
-    await checkAuth();
-    setIsChecking(false);
-  };
-
-  verifyAuth();
-}, [checkAuth]);
-
-// Add onboarding redirect effect
-useEffect(() => {
-  if (!isChecking && isAuthenticated && user) {
-    // Skip if already on onboarding pages
-    if (pathname.startsWith('/onboarding')) return;
-    
-    // Redirect admins who haven't completed onboarding
-    if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
-      router.push('/onboarding');
-    }
-  }
-}, [isChecking, isAuthenticated, user, pathname, router]);
-```
-
-## Acceptance Criteria Verification
-
-| Criteria | Implementation |
-|----------|----------------|
-| ✅ Approved admin logs in → redirected to onboarding (first time only) | Login checks `requiresOnboarding` flag |
-| ✅ Onboarding completion disables future auto-redirects | `onboardingComplete` flag in DB |
-| ✅ Onboarding remains available in sidebar (admin-only) | Already implemented via RBAC |
-| ✅ No impact on non-admin users or platform super admins | Role checks exclude them |
-| ✅ Works across all tenants without leakage | Tenant-scoped queries |
-
-## Files to Modify
-
-1. `apps/api/src/modules/auth/auth.controller.ts` - Add onboarding status to login and me responses
-2. `apps/web/src/store/authStore.ts` - Add requiresOnboarding to state
-3. `apps/web/src/app/auth/login/page.tsx` - Update redirect logic
-4. `apps/web/src/components/layout/AuthenticatedLayout.tsx` - Add onboarding redirect guard
-5. `apps/web/src/types/index.ts` - Update User type (if needed)
-
-## Testing Scenarios
-
-1. **New association admin first login** → Should redirect to `/onboarding`
-2. **Admin revisits after completing onboarding** → Should go to `/dashboard`
-3. **Admin skips onboarding** → Should go to `/dashboard` (skip sets `onboardingComplete`)
-4. **Regular member login** → Should go to `/dashboard` (no onboarding check)
-5. **Super admin login** → Should go to `/dashboard` (no onboarding check)
-6. **Admin manually navigates to onboarding** → Should work anytime
+**Document Version:** 2.0  
+**Last Reorganized:** December 27, 2025  
+**Next Review:** After Phase 5 completion
