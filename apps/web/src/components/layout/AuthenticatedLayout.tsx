@@ -10,7 +10,7 @@ import { Loader } from '@mantine/core';
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
@@ -27,6 +27,19 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       router.push('/auth/login');
     }
   }, [isAuthenticated, isLoading, isChecking, router, pathname]);
+
+  // Onboarding redirect for association admins who haven't completed onboarding
+  useEffect(() => {
+    if (!isChecking && isAuthenticated && user) {
+      // Skip if already on onboarding pages
+      if (pathname.startsWith('/onboarding')) return;
+      
+      // Redirect admins who haven't completed onboarding (exclude super admins)
+      if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
+        router.push('/onboarding');
+      }
+    }
+  }, [isChecking, isAuthenticated, user, pathname, router]);
 
   if (isChecking || isLoading) {
     return (

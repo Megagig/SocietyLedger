@@ -150,6 +150,16 @@ export class AuthController {
         return;
       }
 
+      // Check onboarding status for association admins
+      let requiresOnboarding = false;
+      if (user.role === 'admin' && tenantId && !user.platformRole) {
+        const onboardingProgress = await prisma.onboardingProgress.findUnique({
+          where: { associationId: tenantId },
+        });
+        // Requires onboarding if no progress record exists or onboarding not complete
+        requiresOnboarding = !onboardingProgress?.onboardingComplete;
+      }
+
       // Generate JWT token
       const token = generateToken({
         id: user.id,
@@ -181,6 +191,7 @@ export class AuthController {
             member: user.member,
             association: tenant,
             platformRole: user.platformRole,
+            requiresOnboarding,
           },
           token,
         },
@@ -540,9 +551,23 @@ export class AuthController {
         return;
       }
 
+      // Check onboarding status for association admins
+      let requiresOnboarding = false;
+      if (user.role === 'admin' && user.associationId && !user.platformRole) {
+        const onboardingProgress = await prisma.onboardingProgress.findUnique({
+          where: { associationId: user.associationId },
+        });
+        requiresOnboarding = !onboardingProgress?.onboardingComplete;
+      }
+
       res.status(200).json({
         success: true,
-        data: { user },
+        data: { 
+          user: {
+            ...user,
+            requiresOnboarding,
+          },
+        },
       });
     } catch (error) {
       console.error('Get user error:', error);

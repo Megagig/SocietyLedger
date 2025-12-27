@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 import confetti from 'canvas-confetti';
 
@@ -80,10 +80,9 @@ export default function CompletePage() {
   const handleComplete = async () => {
     setCompleting(true);
     try {
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 5, stepName: 'complete' },
-        { withCredentials: true }
+        { step: 5, stepName: 'complete' }
       );
       router.push('/dashboard');
     } catch (error) {

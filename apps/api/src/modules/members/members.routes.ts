@@ -17,6 +17,12 @@ router.get('/stats',
   memberController.getStats
 );
 
+// Bulk import members
+router.post('/bulk',
+  requirePermission(PERMISSIONS.MEMBER_CREATE),
+  memberController.bulkImport
+);
+
 // List all members with pagination and filters
 router.get('/',
   requirePermission(PERMISSIONS.MEMBER_VIEW),

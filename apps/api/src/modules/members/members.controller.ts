@@ -26,6 +26,18 @@ const createMemberSchema = z.object({
 
 const updateMemberSchema = createMemberSchema.partial();
 
+const bulkMemberSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  category: z.string().default('regular'),
+});
+
+const bulkImportSchema = z.object({
+  members: z.array(bulkMemberSchema).min(1, 'At least one member is required'),
+});
+
 const memberQuerySchema = z.object({
   page: z.string().optional().default('1'),
   limit: z.string().optional().default('10'),
@@ -516,6 +528,113 @@ export const memberController = {
       return res.status(500).json({
         success: false,
         message: 'Failed to fetch member statistics',
+      });
+    }
+  },
+
+  // Bulk import members
+  async bulkImport(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association ID is required',
+        });
+      }
+
+      // Validate request body
+      const { members } = bulkImportSchema.parse(req.body);
+
+      // Get current member count for ID generation
+      let memberCount = await prisma.member.count({ where: { associationId } });
+
+      const results = {
+        created: 0,
+        skipped: 0,
+        errors: [] as string[],
+      };
+
+      // Process each member
+      for (const memberData of members) {
+        try {
+          // Skip if email exists (if email provided)
+          if (memberData.email) {
+            const existingMember = await prisma.member.findFirst({
+              where: {
+                associationId,
+                email: memberData.email,
+              },
+            });
+
+            if (existingMember) {
+              results.skipped++;
+              results.errors.push(`Skipped: ${memberData.firstName} ${memberData.lastName} - email already exists`);
+              continue;
+            }
+          }
+
+          // Generate member ID
+          memberCount++;
+          const memberId = `MEM${String(memberCount).padStart(4, '0')}`;
+
+          // Validate category
+          const validCategories = ['regular', 'executive', 'honorary', 'student'];
+          const category = validCategories.includes(memberData.category?.toLowerCase() || '')
+            ? memberData.category?.toLowerCase()
+            : 'regular';
+
+          // Create member
+          await prisma.member.create({
+            data: {
+              associationId,
+              memberId,
+              firstName: memberData.firstName,
+              lastName: memberData.lastName,
+              email: memberData.email || null,
+              phone: memberData.phone || null,
+              category: category as string,
+              status: 'active',
+              joinDate: new Date(),
+            },
+          });
+
+          results.created++;
+        } catch (err) {
+          results.errors.push(`Failed: ${memberData.firstName} ${memberData.lastName}`);
+        }
+      }
+
+      // Create audit log
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: req.user!.id,
+          action: 'BULK_IMPORT',
+          tableName: 'members',
+          newValues: { imported: results.created, skipped: results.skipped },
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: `Successfully imported ${results.created} members`,
+        data: results,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: error.errors,
+        });
+      }
+
+      console.error('Error bulk importing members:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to import members',
       });
     }
   },

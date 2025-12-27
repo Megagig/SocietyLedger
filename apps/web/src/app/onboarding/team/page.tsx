@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
 interface TeamMember {
@@ -46,10 +46,9 @@ export default function TeamSetupPage() {
       // TODO: Send invitations via API
       // For now, just complete the step
       
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 2, stepName: 'team' },
-        { withCredentials: true }
+        { step: 2, stepName: 'team' }
       );
       
       if (validMembers.length > 0) {
@@ -67,10 +66,9 @@ export default function TeamSetupPage() {
 
   const handleSkipStep = async () => {
     try {
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 2, stepName: 'team' },
-        { withCredentials: true }
+        { step: 2, stepName: 'team' }
       );
       router.push('/onboarding/members');
     } catch (error) {

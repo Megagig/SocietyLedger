@@ -6,6 +6,7 @@ export interface User {
   associationId?: number;
   platformRole?: 'SUPER_ADMIN' | 'SUPPORT_AGENT';
   isActive: boolean;
+  requiresOnboarding?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { API_ROUTES, FINANCIAL_TYPES, FREQUENCY_TYPES } from '@/utils/constants';
 
 interface FinancialCategory {
@@ -65,10 +65,9 @@ export default function FinanceSetupPage() {
       // Note: This would need a bulk create endpoint or loop through
       // For now, we'll just complete the step
       
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 4, stepName: 'finance' },
-        { withCredentials: true }
+        { step: 4, stepName: 'finance' }
       );
       router.push('/onboarding/complete');
     } catch (error) {
@@ -80,10 +79,9 @@ export default function FinanceSetupPage() {
 
   const handleSkipStep = async () => {
     try {
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 4, stepName: 'finance' },
-        { withCredentials: true }
+        { step: 4, stepName: 'finance' }
       );
       router.push('/onboarding/complete');
     } catch (error) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
 interface OnboardingStatus {
@@ -45,7 +45,7 @@ export default function OnboardingPage() {
 
   const fetchStatus = async () => {
     try {
-      const response = await axios.get(API_ROUTES.ONBOARDING.STATUS, { withCredentials: true });
+      const response = await api.get(API_ROUTES.ONBOARDING.STATUS);
       setStatus(response.data.data);
       
       // If onboarding is complete, redirect to dashboard
@@ -62,7 +62,7 @@ export default function OnboardingPage() {
   const handleSkip = async () => {
     setSkipping(true);
     try {
-      await axios.post(API_ROUTES.ONBOARDING.SKIP, {}, { withCredentials: true });
+      await api.post(API_ROUTES.ONBOARDING.SKIP, {});
       router.push('/dashboard');
     } catch (error) {
       console.error('Failed to skip onboarding:', error);

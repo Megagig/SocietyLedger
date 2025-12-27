@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
 interface ParsedMember {
@@ -81,17 +81,15 @@ export default function MembersImportPage() {
     try {
       // Import members via bulk API if there are any
       if (parsedMembers.length > 0) {
-        await axios.post(
+        await api.post(
           API_ROUTES.MEMBERS.BULK,
-          { members: parsedMembers },
-          { withCredentials: true }
+          { members: parsedMembers }
         );
       }
 
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 3, stepName: 'members' },
-        { withCredentials: true }
+        { step: 3, stepName: 'members' }
       );
       router.push('/onboarding/finance');
     } catch (error) {
@@ -103,10 +101,9 @@ export default function MembersImportPage() {
 
   const handleSkipStep = async () => {
     try {
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 3, stepName: 'members' },
-        { withCredentials: true }
+        { step: 3, stepName: 'members' }
       );
       router.push('/onboarding/finance');
     } catch (error) {

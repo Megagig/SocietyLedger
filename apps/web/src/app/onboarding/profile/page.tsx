@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
 export default function ProfileSetupPage() {
@@ -23,7 +23,7 @@ export default function ProfileSetupPage() {
   const fetchAssociationData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(API_ROUTES.ONBOARDING.STATUS, { withCredentials: true });
+      const response = await api.get(API_ROUTES.ONBOARDING.STATUS);
       const association = response.data.data.association;
       if (association) {
         setFormData({
@@ -45,10 +45,9 @@ export default function ProfileSetupPage() {
     setSaving(true);
     try {
       // Complete the step
-      await axios.patch(
+      await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 1, stepName: 'profile' },
-        { withCredentials: true }
+        { step: 1, stepName: 'profile' }
       );
       router.push('/onboarding/team');
     } catch (error) {

@@ -38,8 +38,15 @@ export default function LoginPage() {
       const success = await login(formData);
       
       if (success) {
-        // Redirect to dashboard on successful login
-        router.push('/dashboard');
+        // Get the updated user state to check onboarding status
+        const { user } = useAuthStore.getState();
+        
+        // Redirect to onboarding if required for association admins
+        if (user?.requiresOnboarding && user?.role === 'admin' && !user?.platformRole) {
+          router.push('/onboarding');
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'An error occurred');
