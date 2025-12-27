@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { generateToken, TokenPayload } from '../../lib/auth';
@@ -8,6 +8,18 @@ import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.
 const approvalSchema = z.object({
   status: z.enum(['approved', 'rejected']),
   rejectionReason: z.string().optional(),
+});
+
+const associationActionSchema = z.object({
+  reason: z.string().optional(),
+});
+
+const searchSchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'CANCELLED']).optional(),
+  tier: z.enum(['STARTER', 'PROFESSIONAL', 'ENTERPRISE']).optional(),
+  sortBy: z.enum(['createdAt', 'name', 'memberCount', 'userCount']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
 export class AdminController {
@@ -64,28 +76,76 @@ export class AdminController {
   }
 
   /**
-   * List all associations (super admin dashboard)
+   * List all associations (super admin dashboard) with search and filters
    */
   async listAssociations(req: AuthRequest, res: Response) {
     try {
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 20;
       const skip = (page - 1) * limit;
+      
+      // Parse search and filter params
+      const { search, status, tier, sortBy, sortOrder } = searchSchema.parse(req.query);
+
+      // Build where clause
+      const whereClause: any = {};
+      
+      if (search) {
+        whereClause.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { subdomain: { contains: search, mode: 'insensitive' } },
+          { slug: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+      
+      if (status) {
+        whereClause.status = status;
+      }
+      
+      if (tier) {
+        whereClause.tier = tier;
+      }
+
+      // Build order by
+      let orderBy: any = { createdAt: 'desc' };
+      if (sortBy) {
+        if (sortBy === 'memberCount') {
+          orderBy = { members: { _count: sortOrder || 'desc' } };
+        } else if (sortBy === 'userCount') {
+          orderBy = { users: { _count: sortOrder || 'desc' } };
+        } else {
+          orderBy = { [sortBy]: sortOrder || 'desc' };
+        }
+      }
 
       const [associations, total] = await Promise.all([
         prisma.association.findMany({
+          where: whereClause,
           skip,
           take: limit,
-          orderBy: { createdAt: 'desc' },
+          orderBy,
           include: {
-            subscriptions: { take: 1, orderBy: { createdAt: 'desc' }, include: { plan: true } },
-            _count: { select: { users: true, members: true } },
+            subscriptions: { 
+              take: 1, 
+              orderBy: { createdAt: 'desc' }, 
+              include: { plan: true } 
+            },
+            _count: { select: { users: true, members: true, transactions: true } },
           },
         }),
-        prisma.association.count(),
+        prisma.association.count({ where: whereClause }),
       ]);
 
-      return res.json({ success: true, data: { associations, total, page, limit } });
+      return res.json({ 
+        success: true, 
+        data: { 
+          associations, 
+          total, 
+          page, 
+          limit,
+          totalPages: Math.ceil(total / limit),
+        } 
+      });
     } catch (error) {
       console.error('List associations error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
@@ -93,24 +153,383 @@ export class AdminController {
   }
 
   /**
-   * Platform-wide stats
+   * Get single association details
    */
-  async stats(req: AuthRequest, res: Response) {
+  async getAssociation(req: AuthRequest, res: Response) {
     try {
-      const [totalAssociations, activeAssociations, totalUsers, totalMembers, pendingApprovals] = await Promise.all([
-        prisma.association.count(),
-        prisma.association.count({ where: { status: 'ACTIVE' } }),
-        prisma.user.count(),
-        prisma.member.count(),
-        prisma.userApproval.count({ where: { approvalStatus: 'pending' } }),
+      const associationId = Number(req.params.associationId);
+
+      const association = await prisma.association.findUnique({
+        where: { id: associationId },
+        include: {
+          subscriptions: {
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            include: { 
+              plan: true,
+              payments: { orderBy: { createdAt: 'desc' }, take: 5 }
+            },
+          },
+          _count: { 
+            select: { 
+              users: true, 
+              members: true, 
+              transactions: true,
+              payments: true,
+              accounting: true,
+            } 
+          },
+        },
+      });
+
+      if (!association) {
+        return res.status(404).json({ success: false, message: 'Association not found' });
+      }
+
+      // Get additional stats
+      const [
+        activeMembers,
+        totalRevenue,
+        pendingTransactions,
+        recentActivity,
+      ] = await Promise.all([
+        prisma.member.count({ where: { associationId, status: 'active' } }),
+        prisma.payment.aggregate({
+          where: { associationId },
+          _sum: { amountPaid: true },
+        }),
+        prisma.transaction.count({ where: { associationId, status: 'pending' } }),
+        prisma.auditLog.findMany({
+          where: { associationId },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: { user: { select: { email: true } } },
+        }),
       ]);
 
       return res.json({
         success: true,
-        data: { totalAssociations, activeAssociations, totalUsers, totalMembers, pendingApprovals },
+        data: {
+          association,
+          stats: {
+            activeMembers,
+            totalRevenue: totalRevenue._sum.amountPaid || 0,
+            pendingTransactions,
+          },
+          recentActivity,
+        },
+      });
+    } catch (error) {
+      console.error('Get association error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Suspend an association
+   */
+  async suspendAssociation(req: AuthRequest, res: Response) {
+    try {
+      const associationId = Number(req.params.associationId);
+      const adminId = req.user?.id;
+      const { reason } = associationActionSchema.parse(req.body);
+
+      if (!adminId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const association = await prisma.association.findUnique({ where: { id: associationId } });
+      if (!association) {
+        return res.status(404).json({ success: false, message: 'Association not found' });
+      }
+
+      if (association.status === 'SUSPENDED') {
+        return res.status(400).json({ success: false, message: 'Association is already suspended' });
+      }
+
+      // Update association status
+      await prisma.association.update({
+        where: { id: associationId },
+        data: { status: 'SUSPENDED' },
+      });
+
+      // Log the action
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: adminId,
+          action: 'ASSOCIATION_SUSPENDED',
+          tableName: 'associations',
+          recordId: associationId,
+          oldValues: { status: association.status },
+          newValues: { status: 'SUSPENDED', reason },
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: 'Association suspended successfully',
+      });
+    } catch (error) {
+      console.error('Suspend association error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Reactivate a suspended association
+   */
+  async reactivateAssociation(req: AuthRequest, res: Response) {
+    try {
+      const associationId = Number(req.params.associationId);
+      const adminId = req.user?.id;
+
+      if (!adminId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const association = await prisma.association.findUnique({ where: { id: associationId } });
+      if (!association) {
+        return res.status(404).json({ success: false, message: 'Association not found' });
+      }
+
+      if (association.status === 'ACTIVE') {
+        return res.status(400).json({ success: false, message: 'Association is already active' });
+      }
+
+      // Update association status
+      await prisma.association.update({
+        where: { id: associationId },
+        data: { status: 'ACTIVE' },
+      });
+
+      // Log the action
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: adminId,
+          action: 'ASSOCIATION_REACTIVATED',
+          tableName: 'associations',
+          recordId: associationId,
+          oldValues: { status: association.status },
+          newValues: { status: 'ACTIVE' },
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: 'Association reactivated successfully',
+      });
+    } catch (error) {
+      console.error('Reactivate association error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Platform-wide stats with more details
+   */
+  async stats(req: AuthRequest, res: Response) {
+    try {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const [
+        totalAssociations,
+        activeAssociations,
+        suspendedAssociations,
+        totalUsers,
+        totalMembers,
+        pendingApprovals,
+        newAssociationsThisMonth,
+        newAssociationsThisWeek,
+        subscriptionsByStatus,
+        subscriptionsByTier,
+        totalRevenue,
+        revenueThisMonth,
+      ] = await Promise.all([
+        prisma.association.count(),
+        prisma.association.count({ where: { status: 'ACTIVE' } }),
+        prisma.association.count({ where: { status: 'SUSPENDED' } }),
+        prisma.user.count(),
+        prisma.member.count(),
+        prisma.userApproval.count({ where: { approvalStatus: 'pending' } }),
+        prisma.association.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+        prisma.association.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+        prisma.subscription.groupBy({
+          by: ['status'],
+          _count: { status: true },
+        }),
+        prisma.association.groupBy({
+          by: ['tier'],
+          _count: { tier: true },
+        }),
+        prisma.paymentHistory.aggregate({
+          where: { status: 'SUCCESS' },
+          _sum: { amount: true },
+        }),
+        prisma.paymentHistory.aggregate({
+          where: { 
+            status: 'SUCCESS',
+            paidAt: { gte: thirtyDaysAgo },
+          },
+          _sum: { amount: true },
+        }),
+      ]);
+
+      // Format subscription stats
+      const subscriptionStats = subscriptionsByStatus.reduce((acc, item) => {
+        acc[item.status] = item._count.status;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Format tier stats
+      const tierStats = subscriptionsByTier.reduce((acc, item) => {
+        acc[item.tier] = item._count.tier;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return res.json({
+        success: true,
+        data: {
+          overview: {
+            totalAssociations,
+            activeAssociations,
+            suspendedAssociations,
+            totalUsers,
+            totalMembers,
+            pendingApprovals,
+          },
+          growth: {
+            newAssociationsThisMonth,
+            newAssociationsThisWeek,
+          },
+          subscriptions: subscriptionStats,
+          tiers: tierStats,
+          revenue: {
+            total: totalRevenue._sum.amount || 0,
+            thisMonth: revenueThisMonth._sum.amount || 0,
+          },
+        },
       });
     } catch (error) {
       console.error('Stats error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Get platform analytics (charts data)
+   */
+  async analytics(req: AuthRequest, res: Response) {
+    try {
+      const days = Number(req.query.days) || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      // Get daily signups
+      const dailySignups = await prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+        SELECT DATE(created_at) as date, COUNT(*) as count
+        FROM associations
+        WHERE created_at >= ${startDate}
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+      `;
+
+      // Get daily revenue
+      const dailyRevenue = await prisma.$queryRaw<{ date: Date; total: number }[]>`
+        SELECT DATE(paid_at) as date, SUM(amount) as total
+        FROM payment_history
+        WHERE paid_at >= ${startDate} AND status = 'SUCCESS'
+        GROUP BY DATE(paid_at)
+        ORDER BY date ASC
+      `;
+
+      // Get subscription status distribution
+      const subscriptionDistribution = await prisma.subscription.groupBy({
+        by: ['status'],
+        _count: { status: true },
+      });
+
+      // Get tier distribution
+      const tierDistribution = await prisma.association.groupBy({
+        by: ['tier'],
+        _count: { tier: true },
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          dailySignups: dailySignups.map(d => ({ 
+            date: d.date, 
+            count: Number(d.count) 
+          })),
+          dailyRevenue: dailyRevenue.map(d => ({ 
+            date: d.date, 
+            total: Number(d.total) 
+          })),
+          subscriptionDistribution: subscriptionDistribution.map(s => ({
+            status: s.status,
+            count: s._count.status,
+          })),
+          tierDistribution: tierDistribution.map(t => ({
+            tier: t.tier,
+            count: t._count.tier,
+          })),
+        },
+      });
+    } catch (error) {
+      console.error('Analytics error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Get audit logs (platform-wide or per association)
+   */
+  async auditLogs(req: AuthRequest, res: Response) {
+    try {
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 50;
+      const skip = (page - 1) * limit;
+      const associationId = req.query.associationId ? Number(req.query.associationId) : undefined;
+      const action = req.query.action as string | undefined;
+
+      const whereClause: any = {};
+      if (associationId) {
+        whereClause.associationId = associationId;
+      }
+      if (action) {
+        whereClause.action = { contains: action, mode: 'insensitive' };
+      }
+
+      const [logs, total] = await Promise.all([
+        prisma.auditLog.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: { select: { id: true, email: true } },
+            association: { select: { id: true, name: true, subdomain: true } },
+          },
+        }),
+        prisma.auditLog.count({ where: whereClause }),
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          logs,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error('Audit logs error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

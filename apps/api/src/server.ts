@@ -20,6 +20,8 @@ import memberRoutes from './modules/members/members.routes';
 import financeRoutes from './modules/finance/finance.routes';
 import cronRoutes from './modules/cron/cron.routes';
 import paymentRoutes from './modules/payments/payments.routes';
+import onboardingRoutes from './modules/onboarding/onboarding.routes';
+import notificationsRoutes from './modules/notifications/notifications.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -94,6 +96,8 @@ app.use('/api/members', memberRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -116,7 +116,12 @@ export const API_ROUTES = {
   },
   ADMIN: {
     STATS: `${API_BASE_URL}/api/admin/stats`,
+    ANALYTICS: `${API_BASE_URL}/api/admin/analytics`,
+    AUDIT_LOGS: `${API_BASE_URL}/api/admin/audit-logs`,
     ASSOCIATIONS: `${API_BASE_URL}/api/admin/associations`,
+    ASSOCIATION_BY_ID: (id: number) => `${API_BASE_URL}/api/admin/associations/${id}`,
+    SUSPEND_ASSOCIATION: (id: number) => `${API_BASE_URL}/api/admin/associations/${id}/suspend`,
+    REACTIVATE_ASSOCIATION: (id: number) => `${API_BASE_URL}/api/admin/associations/${id}/reactivate`,
     IMPERSONATE: (associationId: string) => `${API_BASE_URL}/api/admin/impersonate/${associationId}`,
     APPROVALS: `${API_BASE_URL}/api/admin/approvals`,
     APPROVAL_BY_ID: (userId: number) => `${API_BASE_URL}/api/admin/approvals/${userId}`,
@@ -166,6 +171,21 @@ export const API_ROUTES = {
     MEMBER_EXCEL: (id: number) => `${API_BASE_URL}/api/exports/member-excel/${id}`,
     HISTORY: `${API_BASE_URL}/api/exports/history`,
     DOWNLOAD: (id: number) => `${API_BASE_URL}/api/exports/download/${id}`,
+  },
+  ONBOARDING: {
+    STATUS: `${API_BASE_URL}/api/onboarding/status`,
+    COMPLETE_STEP: `${API_BASE_URL}/api/onboarding/complete-step`,
+    SKIP: `${API_BASE_URL}/api/onboarding/skip`,
+    RESET: `${API_BASE_URL}/api/onboarding/reset`,
+  },
+  NOTIFICATIONS: {
+    LIST: `${API_BASE_URL}/api/notifications`,
+    UNREAD_COUNT: `${API_BASE_URL}/api/notifications/unread-count`,
+    MARK_READ: (id: number) => `${API_BASE_URL}/api/notifications/${id}/read`,
+    MARK_ALL_READ: `${API_BASE_URL}/api/notifications/read-all`,
+    DELETE: (id: number) => `${API_BASE_URL}/api/notifications/${id}`,
+    CREATE: `${API_BASE_URL}/api/notifications`,
+    ANNOUNCEMENT: `${API_BASE_URL}/api/notifications/announcement`,
   },
 } as const;
 

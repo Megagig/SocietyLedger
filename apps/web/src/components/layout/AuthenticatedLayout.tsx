@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Loader } from '@mantine/core';
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,12 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Sidebar />
       <main className="flex-1 lg:ml-72 min-h-screen">
+        {/* Top Bar with Notification Bell */}
+        <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-end">
+            <NotificationBell />
+          </div>
+        </div>
         <div className="p-4 sm:p-6 lg:p-8">
           {children}
         </div>

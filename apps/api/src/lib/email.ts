@@ -518,6 +518,183 @@ function getTemplateContent(template: string, data: Record<string, any>): string
       </body>
       </html>
     `,
+
+    'notification': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔔 ${data.title}</h1>
+          </div>
+          <div class="content">
+            <p>${data.message}</p>
+            
+            <center>
+              <a href="${WEBSITE_URL}/dashboard" class="button">View in Dashboard</a>
+            </center>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'announcement': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header" style="${data.priority === 'urgent' ? 'background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);' : data.priority === 'warning' ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);' : ''}">
+            <h1>📢 ${data.title}</h1>
+          </div>
+          <div class="content">
+            <h2>Announcement from ${data.associationName}</h2>
+            
+            ${data.priority === 'urgent' ? '<p class="warning"><strong>⚠️ This is an urgent announcement</strong></p>' : ''}
+            
+            <div class="highlight-box">
+              ${data.message}
+            </div>
+            
+            <center>
+              <a href="${WEBSITE_URL}/dashboard" class="button">View in Dashboard</a>
+            </center>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'payment-reminder': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>💳 Payment Reminder</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.memberName}!</h2>
+            <p>This is a friendly reminder about your upcoming payment for <strong>${data.associationName}</strong>.</p>
+            
+            <div class="highlight-box">
+              <strong>Payment Details</strong><br><br>
+              <strong>Category:</strong> ${data.categoryName}<br>
+              <strong>Amount Due:</strong> ₦${data.amount.toLocaleString()}<br>
+              <strong>Due Date:</strong> ${data.dueDate}<br>
+              ${data.daysUntilDue > 0 
+                ? `<strong>Days Remaining:</strong> ${data.daysUntilDue} days`
+                : `<span class="warning"><strong>Status:</strong> Overdue by ${Math.abs(data.daysUntilDue)} days</span>`
+              }
+            </div>
+            
+            <p>Please make your payment before the due date to avoid any late fees.</p>
+            
+            <center>
+              <a href="${data.paymentUrl || WEBSITE_URL + '/dashboard/payments'}" class="button">Make Payment</a>
+            </center>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you have already made this payment, please disregard this reminder.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'payment-overdue': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+            <h1>⚠️ Payment Overdue</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.memberName},</h2>
+            <p class="warning">Your payment for <strong>${data.associationName}</strong> is now overdue.</p>
+            
+            <div class="highlight-box">
+              <strong>Overdue Payment Details</strong><br><br>
+              <strong>Category:</strong> ${data.categoryName}<br>
+              <strong>Amount Due:</strong> ₦${data.amount.toLocaleString()}<br>
+              <strong>Original Due Date:</strong> ${data.dueDate}<br>
+              <strong>Days Overdue:</strong> <span class="warning">${data.daysOverdue} days</span>
+            </div>
+            
+            <p>Please make your payment as soon as possible to avoid additional penalties.</p>
+            
+            <center>
+              <a href="${data.paymentUrl || WEBSITE_URL + '/dashboard/payments'}" class="button">Pay Now</a>
+            </center>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you're experiencing difficulties, please contact your association administrator.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'payment-receipt': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🧾 Payment Receipt</h1>
+          </div>
+          <div class="content">
+            <h2>Thank you, ${data.memberName}!</h2>
+            <p class="success">Your payment has been received and confirmed.</p>
+            
+            <div class="highlight-box">
+              <strong>Receipt Details</strong><br><br>
+              <strong>Receipt Number:</strong> ${data.receiptNumber}<br>
+              <strong>Amount Paid:</strong> ₦${data.amount.toLocaleString()}<br>
+              <strong>Category:</strong> ${data.categoryName}<br>
+              <strong>Payment Method:</strong> ${data.paymentMethod}<br>
+              <strong>Date:</strong> ${data.paymentDate}<br>
+              <strong>Association:</strong> ${data.associationName}
+            </div>
+            
+            <p>This email serves as your official receipt. Please keep it for your records.</p>
+            
+            <center>
+              <a href="${WEBSITE_URL}/dashboard/transactions" class="button">View Transaction History</a>
+            </center>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
   };
 
   const templateFn = templates[template];

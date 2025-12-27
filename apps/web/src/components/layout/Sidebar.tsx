@@ -253,8 +253,12 @@ export function Sidebar() {
         {
           label: 'Notifications',
           icon: <IconBell size={18} />,
-          href: '/dashboard/communication/notifications',
-          comingSoon: true,
+          href: '/dashboard/notifications',
+        },
+        {
+          label: 'Announcements',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/communication/announcements',
         },
         {
           label: 'Bulk SMS',
@@ -320,6 +324,12 @@ export function Sidebar() {
       icon: <IconHelp size={20} />,
       href: '/dashboard/help',
       comingSoon: true,
+    },
+    {
+      label: 'Setup Wizard',
+      icon: <IconBadge size={20} />,
+      href: '/onboarding',
+      permission: PERMISSIONS.SETTINGS_VIEW,
     },
   ];
 

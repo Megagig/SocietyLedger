@@ -10,9 +10,16 @@ const ctrl = new AdminController();
 // All routes require SUPER_ADMIN
 router.use(authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]));
 
+// Dashboard stats and analytics
+router.get('/stats', (req, res) => ctrl.stats(req as any, res));
+router.get('/analytics', (req, res) => ctrl.analytics(req as any, res));
+router.get('/audit-logs', (req, res) => ctrl.auditLogs(req as any, res));
+
 // Association management
 router.get('/associations', (req, res) => ctrl.listAssociations(req as any, res));
-router.get('/stats', (req, res) => ctrl.stats(req as any, res));
+router.get('/associations/:associationId', (req, res) => ctrl.getAssociation(req as any, res));
+router.post('/associations/:associationId/suspend', (req, res) => ctrl.suspendAssociation(req as any, res));
+router.post('/associations/:associationId/reactivate', (req, res) => ctrl.reactivateAssociation(req as any, res));
 router.post('/impersonate/:associationId', (req, res) => ctrl.impersonate(req as any, res));
 
 // User approval management

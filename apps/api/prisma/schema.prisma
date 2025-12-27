@@ -432,3 +432,21 @@ model PaymentGatewayTransaction {
   @@index([transactionId])
   @@map("payment_gateway_transactions")
 }
+
+model OnboardingProgress {
+  id                Int       @id @default(autoincrement())
+  associationId     Int       @unique @map("association_id")
+  currentStep       Int       @default(1) @map("current_step")
+  completedSteps    Json      @default("[]") @map("completed_steps") // Array of step numbers
+  profileCompleted  Boolean   @default(false) @map("profile_completed")
+  teamInvited       Boolean   @default(false) @map("team_invited")
+  membersImported   Boolean   @default(false) @map("members_imported")
+  financeConfigured Boolean   @default(false) @map("finance_configured")
+  onboardingComplete Boolean  @default(false) @map("onboarding_complete")
+  skippedAt         DateTime? @map("skipped_at")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("onboarding_progress")
+}
