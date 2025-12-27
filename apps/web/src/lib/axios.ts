@@ -12,10 +12,11 @@ const api = axios.create({
 // Add tenant headers to all requests
 api.interceptors.request.use((config) => {
   const tenantHeaders = getTenantHeaders();
-  config.headers = {
-    ...config.headers,
-    ...tenantHeaders,
-  };
+  Object.entries(tenantHeaders).forEach(([key, value]) => {
+    if (value) {
+      config.headers.set(key, value);
+    }
+  });
   return config;
 });
 
