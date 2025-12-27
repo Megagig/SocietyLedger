@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTenant } from '@/contexts/TenantContext';
 import { API_ROUTES } from '@/utils/constants';
 import { createFetchHeaders } from '@/utils/tenant';
+import { toast } from '@/lib/toast';
 import Link from 'next/link';
 
 export default function VerifyEmailPage() {
@@ -128,9 +129,10 @@ export default function VerifyEmailPage() {
 
       // Show success message briefly
       setError(null);
-      alert('A new verification code has been sent to your email.');
+      toast.success('A new verification code has been sent to your email.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to resend code');
+      toast.error(err instanceof Error ? err.message : 'Failed to resend code');
     } finally {
       setResending(false);
     }

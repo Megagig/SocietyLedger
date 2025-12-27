@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   Gift, Plus, Edit, Trash2, Heart,
   CheckCircle, Clock
@@ -116,13 +119,13 @@ export default function DonationsPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to save donation category');
 
-      alert(editingDonation ? 'Category updated successfully' : 'Category created successfully');
+      toast.success(editingDonation ? 'Category updated successfully' : 'Category created successfully');
       setShowCategoryModal(false);
       setEditingDonation(null);
       setCategoryForm({ name: '', amount: '', description: '', isActive: true });
       fetchDonations();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to save donation category');
     } finally {
       setIsSubmitting(false);
     }
@@ -161,13 +164,13 @@ export default function DonationsPage() {
       const paymentData = await paymentResponse.json();
       if (!paymentResponse.ok) throw new Error(paymentData.message || 'Failed to record payment');
 
-      alert('Donation recorded successfully!');
+      toast.success('Donation recorded successfully!');
       setShowRecordModal(false);
       setSelectedCategory(null);
       setRecordForm({ memberId: '', amount: '', notes: '' });
       router.push('/dashboard/finance/transactions');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to record donation');
     } finally {
       setIsSubmitting(false);
     }
@@ -185,21 +188,31 @@ export default function DonationsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this donation category?')) return;
+    modals.openConfirmModal({
+      title: 'Delete Donation Category',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this donation category? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const response = await apiDelete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
+          );
 
-    try {
-      const response = await apiDelete(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
-      );
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      alert('Category deleted successfully');
-      fetchDonations();
-    } catch (err: any) {
-      alert(err.message);
-    }
+          toast.success('Category deleted successfully');
+          fetchDonations();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete category');
+        }
+      },
+    });
   };
 
   const openRecordModal = (donation: DonationCategory) => {

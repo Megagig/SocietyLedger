@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   Gavel, Plus, Edit, Trash2, AlertTriangle,
   Clock, CheckCircle, Search
@@ -114,13 +117,13 @@ export default function PenaltiesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to save penalty');
 
-      alert(editingPenalty ? 'Penalty updated successfully' : 'Penalty created successfully');
+      toast.success(editingPenalty ? 'Penalty updated successfully' : 'Penalty created successfully');
       setShowCategoryModal(false);
       setEditingPenalty(null);
       setCategoryForm({ name: '', amount: '', description: '', isActive: true });
       fetchPenalties();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to save penalty');
     } finally {
       setIsSubmitting(false);
     }
@@ -150,13 +153,13 @@ export default function PenaltiesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to assign penalty');
 
-      alert('Penalty assigned successfully');
+      toast.success('Penalty assigned successfully');
       setShowAssignModal(false);
       setSelectedPenalty(null);
       setAssignForm({ memberId: '', amount: '', notes: '' });
       router.push('/dashboard/finance/transactions');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to assign penalty');
     } finally {
       setIsSubmitting(false);
     }
@@ -174,21 +177,31 @@ export default function PenaltiesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this penalty type?')) return;
+    modals.openConfirmModal({
+      title: 'Delete Penalty Type',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this penalty type? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const response = await apiDelete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
+          );
 
-    try {
-      const response = await apiDelete(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
-      );
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      alert('Penalty deleted successfully');
-      fetchPenalties();
-    } catch (err: any) {
-      alert(err.message);
-    }
+          toast.success('Penalty deleted successfully');
+          fetchPenalties();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete penalty');
+        }
+      },
+    });
   };
 
   const openAssignModal = (penalty: PenaltyCategory) => {

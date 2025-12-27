@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/lib/toast';
 import { ArrowLeft, Save } from 'lucide-react';
 
 export default function CreateMemberPage() {
@@ -62,11 +63,12 @@ export default function CreateMemberPage() {
         throw new Error(data.message || 'Failed to create member');
       }
 
-      alert('Member created successfully!');
+      toast.success('Member created successfully!');
       router.push('/dashboard/members');
     } catch (error: any) {
       console.error('Error creating member:', error);
       setError(error.message);
+      toast.error(error.message || 'Failed to create member');
     } finally {
       setIsLoading(false);
     }
