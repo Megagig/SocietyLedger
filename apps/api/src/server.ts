@@ -23,6 +23,7 @@ import paymentRoutes from './modules/payments/payments.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import memberInviteRoutes from './modules/member-invites/member-invites.routes';
+import reportsRoutes from './modules/reports/reports.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -100,6 +101,7 @@ app.use('/api/cron', cronRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/member-invites', memberInviteRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

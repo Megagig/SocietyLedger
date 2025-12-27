@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Text } from '@mantine/core';
 import {
   IconLayoutDashboard,
   IconUsers,
@@ -26,6 +27,8 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { toast } from '@/lib/toast';
+import { modals } from '@mantine/modals';
 
 interface NavItem {
   label: string;
@@ -169,9 +172,44 @@ export function Sidebar() {
     {
       label: 'Reports',
       icon: <IconChartBar size={20} />,
-      href: '/dashboard/reports',
       permission: PERMISSIONS.REPORT_VIEW,
-      comingSoon: true,
+      children: [
+        {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/reports',
+        },
+        {
+          label: 'Financial Summary',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/reports/financial-summary',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'Member Balances',
+          icon: <IconUsers size={18} />,
+          href: '/dashboard/reports/member-balances',
+          permission: PERMISSIONS.REPORT_MEMBER,
+        },
+        {
+          label: 'Aging Analysis',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/reports/aging-analysis',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'Collection Rate',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/reports/collection-rate',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'By Category',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/reports/by-category',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+      ],
     },
     {
       label: 'Governance',
@@ -360,10 +398,26 @@ export function Sidebar() {
   };
 
   const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to log out?')) {
-      await logout();
-      window.location.href = '/auth/login';
-    }
+    modals.openConfirmModal({
+      title: 'Confirm Logout',
+      children: (
+        <Text size="sm">
+          Are you sure you want to log out? You will need to sign in again to access your account.
+        </Text>
+      ),
+      labels: { confirm: 'Logout', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        const loadingId = toast.loading('Logging out...');
+        try {
+          await logout();
+          toast.updateSuccess(loadingId, 'Logged out successfully');
+          window.location.href = '/auth/login';
+        } catch (error) {
+          toast.updateError(loadingId, 'Failed to logout. Please try again.');
+        }
+      },
+    });
   };
 
   return (

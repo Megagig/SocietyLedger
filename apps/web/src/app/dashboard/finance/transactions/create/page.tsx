@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FinancialCategory, Member } from '@/types';
 import { apiGet, apiPost } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { ArrowLeft, Users, DollarSign } from 'lucide-react';
 
 interface FormData {
@@ -86,7 +87,7 @@ export default function CreateTransactionPage() {
             memberIds: selectedMembers,
             categoryId: parseInt(formData.categoryId),
             amount: parseFloat(formData.amount),
-            dueDate: formData.dueDate || null,
+            dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
             notes: formData.notes || null,
           }
         );
@@ -94,7 +95,7 @@ export default function CreateTransactionPage() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
 
-        alert(`${data.data.count} transactions created successfully`);
+        toast.success(`${data.data.count} transactions created successfully`);
         router.push('/dashboard/finance/transactions');
       } else {
         // Single transaction
@@ -104,7 +105,7 @@ export default function CreateTransactionPage() {
             memberId: parseInt(formData.memberId),
             categoryId: parseInt(formData.categoryId),
             amount: parseFloat(formData.amount),
-            dueDate: formData.dueDate || null,
+            dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
             notes: formData.notes || null,
           }
         );
@@ -112,11 +113,11 @@ export default function CreateTransactionPage() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
 
-        alert('Transaction created successfully');
+        toast.success('Transaction created successfully');
         router.push('/dashboard/finance/transactions');
       }
     } catch (err: any) {
-      alert(err.message);
+      toast.apiError(err, 'Failed to create transaction');
     } finally {
       setIsLoading(false);
     }

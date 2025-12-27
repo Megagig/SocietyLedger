@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   DollarSign, Users, Calendar, Target, Plus, Edit, Trash2,
   TrendingUp, Clock, CheckCircle, AlertCircle
@@ -102,13 +105,13 @@ export default function LeviesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to save levy');
 
-      alert(editingLevy ? 'Levy updated successfully' : 'Levy created successfully');
+      toast.success(editingLevy ? 'Levy updated successfully' : 'Levy created successfully');
       setShowModal(false);
       setEditingLevy(null);
       setFormData({ name: '', amount: '', description: '', isActive: true });
       fetchLevies();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to save levy');
     } finally {
       setIsSubmitting(false);
     }
@@ -126,21 +129,31 @@ export default function LeviesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this levy?')) return;
+    modals.openConfirmModal({
+      title: 'Delete Levy',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this levy? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const response = await apiDelete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
+          );
 
-    try {
-      const response = await apiDelete(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
-      );
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      alert('Levy deleted successfully');
-      fetchLevies();
-    } catch (err: any) {
-      alert(err.message);
-    }
+          toast.success('Levy deleted successfully');
+          fetchLevies();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete levy');
+        }
+      },
+    });
   };
 
   const handleAssignLevy = (levyId: number) => {

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   ArrowLeft, DollarSign, User, 
   CheckCircle, Clock, AlertTriangle, Plus 
@@ -87,11 +88,11 @@ export default function TransactionDetailPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
 
-      alert('Payment recorded successfully');
+      toast.success('Payment recorded successfully');
       setShowPaymentModal(false);
       fetchTransaction();
     } catch (err: any) {
-      alert(err.message);
+      toast.apiError(err, 'Failed to record payment');
     } finally {
       setIsSubmitting(false);
     }
