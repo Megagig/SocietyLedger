@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar, User, DollarSign } from 'lucide-react';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
+import { apiGet, apiDelete } from '@/utils/api';
 
 interface MemberDetails {
   id: number;
@@ -52,11 +53,8 @@ export default function MemberDetailPage() {
   const fetchMember = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`,
-        {
-          credentials: 'include',
-        }
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`
       );
 
       if (!response.ok) {
@@ -79,12 +77,8 @@ export default function MemberDetailPage() {
     }
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`,
-        {
-          method: 'DELETE',
-          credentials: 'include',
-        }
+      const response = await apiDelete(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`
       );
 
       const data = await response.json();

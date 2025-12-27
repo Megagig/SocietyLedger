@@ -28,6 +28,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **7.5** | Super Admin Dashboard | ✅ **COMPLETE** | 12/12 | - |
 | **11** | User Approval System | ✅ **COMPLETE** | 10/10 | - |
 | **11.5** | Onboarding Wizard | ✅ **COMPLETE** | 8/8 | - |
+| **11.6** | Member Login Activation & Self-Registration | ✅ **COMPLETE** | 10/10 | - |
 | **5** | Reporting System | 🟡 Placeholder | 0/12 | 🔴 HIGH |
 | **10** | Export System (PDF/Excel) | 🟡 Placeholder | 0/10 | 🔴 HIGH |
 | **4** | Advanced Features (Levies/Donations/Penalties) | � PartHial | 4/10 | 🔴 HIGH |
@@ -364,6 +365,75 @@ All tasks completed:
 - `POST /api/onboarding/complete-step` - Complete a step
 - `POST /api/onboarding/skip` - Skip onboarding
 - `POST /api/onboarding/reset` - Reset progress
+
+---
+
+### Phase 11.6: Member Login Activation & Self-Registration ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 27, 2025  
+**Location:** `apps/api/src/modules/member-invites/`
+
+**Core Design Principles:**
+- Member ≠ User: Members can exist without user accounts (for bulk-imported/passive members)
+- Login is optional: Financial operations work regardless of login status
+- Zero breaking changes: Enhances existing auth without replacing it
+
+**Member Login States:**
+- `no_login` - Default for imported members, no user account
+- `invited` - Admin has sent login invite, pending activation
+- `active` - Member has activated login and has user account
+
+**Implemented Features:**
+
+**Admin-Invite Login Flow (Primary):**
+- [x] Admin can invite existing members to activate login
+- [x] Secure, time-bound (72 hours), single-use invite tokens
+- [x] Invite sent via email with activation link
+- [x] Resend and revoke invite capabilities
+- [x] Bulk invite multiple members at once
+- [x] View pending invites and invite history
+- [x] Auto-approved user creation (admin invited = trusted)
+
+**Member Self-Registration Flow:**
+- [x] Public member signup endpoint with tenant context
+- [x] Auto-links to existing member if email/phone matches
+- [x] Creates new member + user if no match found
+- [x] Requires email verification and admin approval
+- [x] Prevents duplicate members/users
+
+**Passive Member Support:**
+- [x] Members can exist without login capability
+- [x] Admins can record payments, dues, penalties for passive members
+- [x] Financial operations work regardless of login status
+- [x] No auto-user creation during bulk import
+
+**Database Changes:**
+- [x] Added `loginStatus` field to Member model (`no_login`, `invited`, `active`)
+- [x] Added `MemberInvite` model for tracking invitations
+
+**API Endpoints:**
+- `POST /api/member-invites/invite` - Admin invites member to activate login
+- `POST /api/member-invites/bulk-invite` - Bulk invite multiple members
+- `GET /api/member-invites/verify?token=xxx` - Verify invite token (public)
+- `POST /api/member-invites/accept` - Accept invite and create account (public)
+- `POST /api/member-invites/self-register` - Member self-registration (public)
+- `GET /api/member-invites/pending` - List pending invites
+- `GET /api/member-invites/invitable` - List members eligible for invite
+- `GET /api/member-invites/member/:memberId/history` - Invite history for member
+- `POST /api/member-invites/:id/resend` - Resend invite
+- `DELETE /api/member-invites/:id` - Revoke invite
+
+**Email Templates:**
+- [x] `member-invite` - Invitation email with activation link
+
+**Security:**
+- [x] Invite tokens are SHA256 hashed before storage
+- [x] Tokens expire after 72 hours
+- [x] Single-use tokens (marked as accepted/expired after use)
+- [x] Tenant isolation enforced on all operations
+
+---
 
 
 ---

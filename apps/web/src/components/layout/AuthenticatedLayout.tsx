@@ -34,6 +34,12 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       // Skip if already on onboarding pages
       if (pathname.startsWith('/onboarding')) return;
       
+      // Super admin should use /admin routes, not /dashboard
+      if (user.platformRole === 'SUPER_ADMIN' && pathname.startsWith('/dashboard')) {
+        router.push('/admin');
+        return;
+      }
+      
       // Redirect admins who haven't completed onboarding (exclude super admins)
       if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
         router.push('/onboarding');

@@ -20,20 +20,16 @@ export class OnboardingController {
         return res.status(400).json({ success: false, message: 'Association ID required' });
       }
 
-      let onboarding = await prisma.onboardingProgress.findUnique({
+      // Use upsert to avoid race condition with unique constraint
+      const onboarding = await prisma.onboardingProgress.upsert({
         where: { associationId },
+        create: {
+          associationId,
+          currentStep: 1,
+          completedSteps: [],
+        },
+        update: {}, // No update needed, just return existing
       });
-
-      // Create onboarding record if it doesn't exist
-      if (!onboarding) {
-        onboarding = await prisma.onboardingProgress.create({
-          data: {
-            associationId,
-            currentStep: 1,
-            completedSteps: [],
-          },
-        });
-      }
 
       // Get association details for context
       const association = await prisma.association.findUnique({
@@ -90,19 +86,16 @@ export class OnboardingController {
 
       const { step, stepName } = completeStepSchema.parse(req.body);
 
-      let onboarding = await prisma.onboardingProgress.findUnique({
+      // Use upsert to avoid race condition with unique constraint
+      let onboarding = await prisma.onboardingProgress.upsert({
         where: { associationId },
+        create: {
+          associationId,
+          currentStep: 1,
+          completedSteps: [],
+        },
+        update: {}, // No update needed for initial fetch
       });
-
-      if (!onboarding) {
-        onboarding = await prisma.onboardingProgress.create({
-          data: {
-            associationId,
-            currentStep: 1,
-            completedSteps: [],
-          },
-        });
-      }
 
       // Update completed steps
       const completedSteps = onboarding.completedSteps as number[];

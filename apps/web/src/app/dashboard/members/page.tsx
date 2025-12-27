@@ -6,7 +6,7 @@ import { Member } from '@/types';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiDelete } from '@/utils/api';
-import { Search, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, UserPlus } from 'lucide-react';
 
 export default function MembersPage() {
   const router = useRouter();
@@ -107,15 +107,27 @@ export default function MembersPage() {
           </p>
         </div>
         
-        <Can permission={PERMISSIONS.MEMBER_CREATE}>
-          <button
-            onClick={() => router.push('/dashboard/members/create')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Member
-          </button>
-        </Can>
+        <div className="flex items-center gap-2">
+          <Can permission={PERMISSIONS.MEMBER_CREATE}>
+            <button
+              onClick={() => router.push('/dashboard/members/invite')}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <UserPlus className="w-4 h-4" />
+              Invite Members
+            </button>
+          </Can>
+          
+          <Can permission={PERMISSIONS.MEMBER_CREATE}>
+            <button
+              onClick={() => router.push('/dashboard/members/create')}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Member
+            </button>
+          </Can>
+        </div>
       </div>
 
       {/* Filters */}

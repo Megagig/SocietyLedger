@@ -41,8 +41,12 @@ export default function LoginPage() {
         // Get the updated user state to check onboarding status
         const { user } = useAuthStore.getState();
         
+        // Super admin goes to admin dashboard
+        if (user?.platformRole === 'SUPER_ADMIN') {
+          router.push('/admin');
+        }
         // Redirect to onboarding if required for association admins
-        if (user?.requiresOnboarding && user?.role === 'admin' && !user?.platformRole) {
+        else if (user?.requiresOnboarding && user?.role === 'admin' && !user?.platformRole) {
           router.push('/onboarding');
         } else {
           router.push('/dashboard');

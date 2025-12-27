@@ -42,8 +42,51 @@ function getEmailConfig() {
 }
 
 /**
+ * Helper function to retry operations with exponential backoff
+ * Increased timeouts for slow/unstable networks
+ */
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 3000  // Increased from 2000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if it's a network/timeout error worth retrying
+      const isRetryableError = 
+        error.message?.includes('fetch failed') ||
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('ECONNRESET') ||
+        error.message?.includes('ENOTFOUND') ||
+        error.message?.includes('ECONNREFUSED') ||
+        error.message?.includes('socket hang up') ||
+        error.code === 'ETIMEDOUT' ||
+        error.code === 'ECONNRESET' ||
+        error.code === 'UND_ERR_CONNECT_TIMEOUT';
+      
+      if (isRetryableError && attempt < maxRetries) {
+        const delay = baseDelayMs * attempt;  // 3s, 6s, 9s
+        console.log(`⏳ [EMAIL] Network error, retrying in ${delay/1000}s (attempt ${attempt}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
  * Send email using Resend
- * Production-ready implementation with error handling and logging
+ * Production-ready implementation with error handling, logging, and retry logic
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
   const { to, subject, template, data } = options;
@@ -58,14 +101,16 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     // Log email attempt
     console.log(`📧 [EMAIL] Sending ${template} to ${to}`);
 
-    // Send via Resend (use lazy-loaded client)
-    const resend = getResendClient();
-    const result = await resend.emails.send({
-      from: config.FROM_EMAIL,
-      to,
-      subject,
-      html: htmlContent,
-      reply_to: config.REPLY_TO,
+    // Send via Resend with retry logic for network failures
+    const result = await withRetry(async () => {
+      const resend = getResendClient();
+      return resend.emails.send({
+        from: config.FROM_EMAIL,
+        to,
+        subject,
+        html: htmlContent,
+        reply_to: config.REPLY_TO,
+      });
     });
 
     if (result.error) {
@@ -686,6 +731,51 @@ function getTemplateContent(template: string, data: Record<string, any>): string
             <center>
               <a href="${WEBSITE_URL}/dashboard/transactions" class="button">View Transaction History</a>
             </center>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'member-invite': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 You're Invited!</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.memberName}!</h2>
+            <p>You've been invited to activate your login account for <strong>${data.associationName}</strong> on SocietyLedger.</p>
+            
+            <p>With your account, you'll be able to:</p>
+            <ul>
+              <li>✅ View your membership details</li>
+              <li>✅ Track your dues and payments</li>
+              <li>✅ Receive important notifications</li>
+              <li>✅ Access association resources</li>
+            </ul>
+            
+            <center>
+              <a href="${data.activateUrl}" class="button">Activate Your Account</a>
+            </center>
+            
+            <div class="highlight-box">
+              <strong>⏰ This invitation expires in ${data.expiryHours} hours</strong>
+            </div>
+            
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #3b82f6; font-size: 14px;">${data.activateUrl}</p>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you didn't expect this invitation or have questions, please contact your association administrator.
+            </p>
           </div>
           <div class="footer">
             <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
