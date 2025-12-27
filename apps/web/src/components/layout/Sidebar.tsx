@@ -1,0 +1,555 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  IconLayoutDashboard,
+  IconUsers,
+  IconCurrencyNaira,
+  IconReceipt,
+  IconChartBar,
+  IconHeart,
+  IconBell,
+  IconSettings,
+  IconHelp,
+  IconMenu2,
+  IconX,
+  IconLogout,
+  IconWallet,
+  IconFileAnalytics,
+  IconCreditCard,
+  IconChevronDown,
+  IconBuildingCommunity,
+  IconBadge
+} from '@tabler/icons-react';
+import { useAuthStore } from '@/store/authStore';
+import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { ThemeToggle } from '@/components/ThemeToggle';
+
+interface NavItem {
+  label: string;
+  icon: React.ReactNode;
+  href?: string;
+  permission?: string | string[];
+  comingSoon?: boolean;
+  badge?: string;
+  children?: NavItem[];
+}
+
+export function Sidebar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const pathname = usePathname();
+  const { user, logout } = useAuthStore();
+
+  const toggleExpanded = (label: string) => {
+    setExpandedItems(prev =>
+      prev.includes(label)
+        ? prev.filter(item => item !== label)
+        : [...prev, label]
+    );
+  };
+
+  const checkPermission = (permission: string | string[] | undefined): boolean => {
+    if (!permission) return true;
+    if (!user?.role) return false;
+    
+    // Super admin has access to everything
+    if (user.platformRole === 'SUPER_ADMIN') return true;
+    
+    if (Array.isArray(permission)) {
+      return permission.some(p => hasPermission(user.role, p as any));
+    }
+    
+    return hasPermission(user.role, permission as any);
+  };
+
+  const navItems: NavItem[] = [
+    {
+      label: 'Dashboard',
+      icon: <IconLayoutDashboard size={20} />,
+      href: '/dashboard',
+    },
+    {
+      label: 'Members',
+      icon: <IconUsers size={20} />,
+      href: '/dashboard/members',
+      permission: PERMISSIONS.MEMBER_VIEW,
+    },
+    {
+      label: 'Finance',
+      icon: <IconCurrencyNaira size={20} />,
+      permission: PERMISSIONS.FINANCE_VIEW,
+      children: [
+        {
+          label: 'Overview',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/finance/overview',
+        },
+        {
+          label: 'Categories',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/finance/categories',
+        },
+        {
+          label: 'Transactions',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/finance/transactions',
+        },
+        {
+          label: 'Dues',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/finance/dues',
+        },
+        {
+          label: 'Levies',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/finance/levies',
+        },
+        {
+          label: 'Donations',
+          icon: <IconHeart size={18} />,
+          href: '/dashboard/finance/donations',
+        },
+        {
+          label: 'Penalties',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/finance/penalties',
+        },
+        {
+          label: 'Overdue',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/finance/overdue',
+        },
+        {
+          label: 'Reminders',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/finance/reminders',
+        },
+      ],
+    },
+    {
+      label: 'Accounting',
+      icon: <IconFileAnalytics size={20} />,
+      permission: PERMISSIONS.FINANCE_VIEW,
+      children: [
+        {
+          label: 'Chart of Accounts',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/accounting/chart-of-accounts',
+          comingSoon: true,
+        },
+        {
+          label: 'Journal Entries',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/accounting/journal-entries',
+          comingSoon: true,
+        },
+        {
+          label: 'Income Statement',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/accounting/income-statement',
+          comingSoon: true,
+        },
+        {
+          label: 'Balance Sheet',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/accounting/balance-sheet',
+          comingSoon: true,
+        },
+        {
+          label: 'Cash Flow',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/accounting/cash-flow',
+          comingSoon: true,
+        },
+      ],
+    },
+    {
+      label: 'Reports',
+      icon: <IconChartBar size={20} />,
+      href: '/dashboard/reports',
+      permission: PERMISSIONS.REPORT_VIEW,
+      comingSoon: true,
+    },
+    {
+      label: 'Governance',
+      icon: <IconBadge size={20} />,
+      children: [
+        {
+          label: 'Voting & Elections',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/governance/voting',
+          comingSoon: true,
+        },
+        {
+          label: 'Meetings',
+          icon: <IconUsers size={18} />,
+          href: '/dashboard/governance/meetings',
+          comingSoon: true,
+        },
+        {
+          label: 'Attendance',
+          icon: <IconBuildingCommunity size={18} />,
+          href: '/dashboard/governance/attendance',
+          comingSoon: true,
+        },
+      ],
+    },
+    {
+      label: 'Welfare',
+      icon: <IconHeart size={20} />,
+      children: [
+        {
+          label: 'Social Funds',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/welfare/social-funds',
+          comingSoon: true,
+        },
+        {
+          label: 'Contributions',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/welfare/contributions',
+          comingSoon: true,
+        },
+        {
+          label: 'Requests & Payouts',
+          icon: <IconHeart size={18} />,
+          href: '/dashboard/welfare/requests',
+          comingSoon: true,
+        },
+      ],
+    },
+    {
+      label: 'Cooperatives',
+      icon: <IconBuildingCommunity size={20} />,
+      badge: 'Enterprise',
+      children: [
+        {
+          label: 'Loans',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/cooperatives/loans',
+          comingSoon: true,
+        },
+        {
+          label: 'Savings',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/cooperatives/savings',
+          comingSoon: true,
+        },
+        {
+          label: 'Guarantors',
+          icon: <IconUsers size={18} />,
+          href: '/dashboard/cooperatives/guarantors',
+          comingSoon: true,
+        },
+      ],
+    },
+    {
+      label: 'Communication',
+      icon: <IconBell size={20} />,
+      children: [
+        {
+          label: 'Notifications',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/notifications',
+        },
+        {
+          label: 'Announcements',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/communication/announcements',
+        },
+        {
+          label: 'Bulk SMS',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/communication/sms',
+          comingSoon: true,
+        },
+        {
+          label: 'Email Campaigns',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/communication/email',
+          comingSoon: true,
+        },
+        {
+          label: 'WhatsApp',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/communication/whatsapp',
+          comingSoon: true,
+          badge: 'Pro',
+        },
+      ],
+    },
+    {
+      label: 'AI Assistant',
+      icon: <IconBadge size={20} />,
+      badge: 'Beta',
+      children: [
+        {
+          label: 'Ask AI',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/ai/assistant',
+          comingSoon: true,
+        },
+        {
+          label: 'Document Q&A',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/ai/documents',
+          comingSoon: true,
+        },
+        {
+          label: 'Smart Reports',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/ai/reports',
+          comingSoon: true,
+        },
+      ],
+    },
+    {
+      label: 'Subscription',
+      icon: <IconCreditCard size={20} />,
+      href: '/dashboard/subscription',
+      permission: PERMISSIONS.SUBSCRIPTION_VIEW,
+    },
+    {
+      label: 'Settings',
+      icon: <IconSettings size={20} />,
+      href: '/dashboard/settings',
+      permission: PERMISSIONS.SETTINGS_VIEW,
+      comingSoon: true,
+    },
+    {
+      label: 'Help & Support',
+      icon: <IconHelp size={20} />,
+      href: '/dashboard/help',
+      comingSoon: true,
+    },
+    {
+      label: 'Setup Wizard',
+      icon: <IconBadge size={20} />,
+      href: '/onboarding',
+      permission: PERMISSIONS.SETTINGS_VIEW,
+    },
+  ];
+
+  // Add super admin specific items
+  if (user?.platformRole === 'SUPER_ADMIN') {
+    navItems.unshift({
+      label: 'Super Admin',
+      icon: <IconBadge size={20} />,
+      children: [
+        {
+          label: 'All Associations',
+          icon: <IconBuildingCommunity size={18} />,
+          href: '/admin/associations',
+        },
+        {
+          label: 'Platform Analytics',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/admin/analytics',
+          comingSoon: true,
+        },
+      ],
+    });
+  }
+
+  const isActive = (href?: string) => {
+    if (!href) return false;
+    return pathname === href || pathname.startsWith(href + '/');
+  };
+
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to log out?')) {
+      await logout();
+      window.location.href = '/auth/login';
+    }
+  };
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg glass-strong border border-gray-200/50 dark:border-gray-700/50"
+      >
+        {isOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
+      </button>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed top-0 left-0 h-screen w-72 glass-strong border-r border-gray-200/50 dark:border-gray-700/50 
+          z-40 transition-transform duration-300 flex flex-col
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        {/* Logo/Brand */}
+        <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50">
+          <Link href="/dashboard" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <IconUsers className="text-white" size={24} />
+            </div>
+            <div>
+              <span className="text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
+                SocietyLedger
+              </span>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {user?.platformRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Association Portal'}
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        {/* User Info */}
+        {user && user.email && (
+          <div className="px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-white font-semibold">
+                {user.email.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  {user.email}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                  {user.role.replace('_', ' ')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+          {navItems.map((item) => {
+            if (!checkPermission(item.permission)) return null;
+
+            const hasChildren = item.children && item.children.length > 0;
+            const isExpanded = expandedItems.includes(item.label);
+            const active = isActive(item.href);
+
+            return (
+              <div key={item.label}>
+                {hasChildren ? (
+                  <>
+                    <button
+                      onClick={() => toggleExpanded(item.label)}
+                      className={`
+                        w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg
+                        transition-all duration-200 group bg-transparent
+                        ${active
+                          ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
+                          : 'text-gray-800 dark:text-white hover:text-teal-600 dark:hover:text-teal-400'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        {item.icon}
+                        <span className="font-medium">{item.label}</span>
+                      </div>
+                      <IconChevronDown
+                        size={16}
+                        className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {isExpanded && item.children && (
+                      <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+                        {item.children.map((child) => {
+                          if (!checkPermission(child.permission)) return null;
+
+                          return (
+                            <Link
+                              key={child.label}
+                              href={child.comingSoon ? '#' : (child.href || '#')}
+                              onClick={(e) => {
+                                if (child.comingSoon) {
+                                  e.preventDefault();
+                                }
+                                setIsOpen(false);
+                              }}
+                              className={`
+                                flex items-center justify-between gap-2 px-3 py-2 rounded-lg
+                                transition-all duration-200 text-sm bg-transparent
+                                ${isActive(child.href)
+                                  ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
+                                  : 'text-gray-700 dark:text-white hover:text-teal-600 dark:hover:text-teal-400'
+                                }
+                              `}
+                            >
+                              <div className="flex items-center gap-2">
+                                {child.icon}
+                                <span>{child.label}</span>
+                              </div>
+                              {child.comingSoon && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                  Soon
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Link
+                    href={item.comingSoon ? '#' : (item.href || '#')}
+                    onClick={(e) => {
+                      if (item.comingSoon) {
+                        e.preventDefault();
+                      }
+                      setIsOpen(false);
+                    }}
+                    className={`
+                      flex items-center justify-between gap-3 px-4 py-3 rounded-lg
+                      transition-all duration-200 group bg-transparent
+                      ${active
+                        ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
+                        : 'text-gray-800 dark:text-white hover:text-teal-600 dark:hover:text-teal-400'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.icon}
+                      <span className="font-medium">{item.label}</span>
+                    </div>
+                    {(item.comingSoon || item.badge) && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                        {item.badge || 'Soon'}
+                      </span>
+                    )}
+                  </Link>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 space-y-2">
+          <div className="flex items-center justify-center">
+            <ThemeToggle />
+          </div>
+          
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 font-medium"
+          >
+            <IconLogout size={20} />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}

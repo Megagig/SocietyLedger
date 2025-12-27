@@ -1,59 +1,28 @@
 {
-  "name": "financial-management-system",
-  "version": "0.1.0",
+  "name": "societyledger-monorepo",
+  "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@10.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
-  },
-  "dependencies": {
-    "next": "14.0.0",
-    "react": "^18",
-    "react-dom": "^18",
-    "@mantine/core": "^7.0.0",
-    "@mantine/hooks": "^7.0.0",
-    "@mantine/form": "^7.0.0",
-    "@mantine/notifications": "^7.0.0",
-    "@mantine/dates": "^7.0.0",
-    "next-auth": "^4.24.0",
-    "@prisma/client": "^5.0.0",
-    "prisma": "^5.0.0",
-    "@tanstack/react-query": "^4.32.0",
-    "zustand": "^4.4.0",
-    "axios": "^1.5.0",
-    "react-hook-form": "^7.45.0",
-    "zod": "^3.22.0",
-    "@hookform/resolvers": "^3.3.0",
-    "recharts": "^2.8.0",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.0",
-    "resend": "^2.0.0",
-    "redis": "^4.6.0",
-    "jspdf": "^2.5.0",
-    "exceljs": "^4.4.0",
-    "dayjs": "^1.11.0",
-    "@tabler/icons-react": "^2.40.0"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "db:generate": "turbo run db:generate",
+    "db:push": "turbo run db:push",
+    "db:migrate": "turbo run db:migrate",
+    "api:dev": "npm run dev --workspace=apps/api",
+    "web:dev": "npm run dev --workspace=apps/web"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "@types/bcryptjs": "^2.4.0",
-    "@types/jsonwebtoken": "^9.0.0",
-    "autoprefixer": "^10",
-    "postcss": "^8",
-    "tailwindcss": "^3",
-    "eslint": "^8",
-    "eslint-config-next": "14.0.0",
-    "prettier": "^3.0.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0"
+    "turbo": "^2.7.1"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   }
 }
