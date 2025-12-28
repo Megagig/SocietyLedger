@@ -47,6 +47,16 @@ export async function apiPatch(url: string, data?: any): Promise<Response> {
 }
 
 /**
+ * Make a PUT request to the API
+ */
+export async function apiPut(url: string, data?: any): Promise<Response> {
+  return apiFetch(url, {
+    method: 'PUT',
+    body: data ? JSON.stringify(data) : undefined,
+  });
+}
+
+/**
  * Make a DELETE request to the API
  */
 export async function apiDelete(url: string): Promise<Response> {

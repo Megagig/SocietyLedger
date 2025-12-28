@@ -306,24 +306,31 @@ export function Sidebar() {
     {
       label: 'Welfare',
       icon: <IconHeart size={20} />,
+      permission: PERMISSIONS.WELFARE_VIEW,
       children: [
+        {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/welfare',
+          permission: PERMISSIONS.WELFARE_VIEW,
+        },
         {
           label: 'Social Funds',
           icon: <IconWallet size={18} />,
           href: '/dashboard/welfare/social-funds',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_VIEW,
         },
         {
           label: 'Contributions',
           icon: <IconCurrencyNaira size={18} />,
           href: '/dashboard/welfare/contributions',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
         },
         {
           label: 'Requests & Payouts',
           icon: <IconHeart size={18} />,
           href: '/dashboard/welfare/requests',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_PAYOUT_VIEW,
         },
       ],
     },
