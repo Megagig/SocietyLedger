@@ -27,6 +27,7 @@ import reportsRoutes from './modules/reports/reports.routes';
 import exportsRoutes from './modules/exports/exports.routes';
 import advancedFinanceRoutes from './modules/finance/advanced/advanced.routes';
 import accountingRoutes from './modules/accounting/accounting.routes';
+import nigerianPaymentsRoutes from './modules/nigerian-payments/nigerian-payments.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -108,6 +109,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/exports', exportsRoutes);
 app.use('/api/finance/advanced', advancedFinanceRoutes);
 app.use('/api/accounting', accountingRoutes);
+app.use('/api/payments/nigerian', nigerianPaymentsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

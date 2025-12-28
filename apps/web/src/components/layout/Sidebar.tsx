@@ -22,7 +22,8 @@ import {
   IconCreditCard,
   IconChevronDown,
   IconBuildingCommunity,
-  IconBadge
+  IconBadge,
+  IconBuildingBank
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -129,6 +130,11 @@ export function Sidebar() {
           label: 'Reminders',
           icon: <IconBell size={18} />,
           href: '/dashboard/finance/reminders',
+        },
+        {
+          label: 'Bank Payments',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/finance/payments/nigerian',
         },
       ],
     },

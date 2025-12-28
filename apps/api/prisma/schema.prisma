@@ -42,44 +42,50 @@ model Association {
   journalEntries             JournalEntry[]
   budgets                    Budget[]
   accountingPeriods          AccountingPeriod[]
+  // Phase 3.5: Nigerian Payment Features
+  bankAccounts               AssociationBankAccount[]
+  bankTransfers              BankTransfer[]
+  bankStatementImports       BankStatementImport[]
+  paymentReconciliations     PaymentReconciliation[]
+  paymentProofs              PaymentProof[]
 
   @@map("associations")
 }
 
 model User {
-  id                        Int               @id @default(autoincrement())
-  associationId             Int?              @map("association_id")
+  id                        Int                @id @default(autoincrement())
+  associationId             Int?               @map("association_id")
   email                     String
-  passwordHash              String            @map("password_hash")
-  role                      String            @default("member")
-  platformRole              PlatformRole?     @map("platform_role")
-  isActive                  Boolean           @default(false) @map("is_active")
-  createdAt                 DateTime          @default(now()) @map("created_at")
-  updatedAt                 DateTime          @updatedAt @map("updated_at")
-  emailVerified             Boolean           @default(false) @map("email_verified")
-  passwordResetExpiresAt    DateTime?         @map("password_reset_expires_at")
-  passwordResetToken        String?           @map("password_reset_token")
-  verificationCode          String?           @map("verification_code")
-  verificationExpiresAt     DateTime?         @map("verification_expires_at")
-  approvedAccountingEntries AccountingEntry[] @relation("AccountingEntryApprovedBy")
-  createdAccountingEntries  AccountingEntry[] @relation("AccountingEntryCreatedBy")
+  passwordHash              String             @map("password_hash")
+  role                      String             @default("member")
+  platformRole              PlatformRole?      @map("platform_role")
+  isActive                  Boolean            @default(false) @map("is_active")
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  updatedAt                 DateTime           @updatedAt @map("updated_at")
+  emailVerified             Boolean            @default(false) @map("email_verified")
+  passwordResetExpiresAt    DateTime?          @map("password_reset_expires_at")
+  passwordResetToken        String?            @map("password_reset_token")
+  verificationCode          String?            @map("verification_code")
+  verificationExpiresAt     DateTime?          @map("verification_expires_at")
+  approvedAccountingEntries AccountingEntry[]  @relation("AccountingEntryApprovedBy")
+  createdAccountingEntries  AccountingEntry[]  @relation("AccountingEntryCreatedBy")
   auditLogs                 AuditLog[]
   exports                   ExportHistory[]
-  sentMemberInvites         MemberInvite[]    @relation("MemberInvitedBy")
+  sentMemberInvites         MemberInvite[]     @relation("MemberInvitedBy")
   member                    Member?
   notifications             Notification[]
-  confirmedPayments         Payment[]         @relation("PaymentConfirmedBy")
-  settingsUpdates           Settings[]        @relation("SettingsUpdatedBy")
-  createdTransactions       Transaction[]     @relation("TransactionCreatedBy")
-  approvedUsers             UserApproval[]    @relation("UserApprovedBy")
+  confirmedPayments         Payment[]          @relation("PaymentConfirmedBy")
+  settingsUpdates           Settings[]         @relation("SettingsUpdatedBy")
+  createdTransactions       Transaction[]      @relation("TransactionCreatedBy")
+  approvedUsers             UserApproval[]     @relation("UserApprovedBy")
   userApproval              UserApproval?
-  association               Association?      @relation(fields: [associationId], references: [id])
+  association               Association?       @relation(fields: [associationId], references: [id])
   // Phase 9: Accounting System
-  createdJournalEntries     JournalEntry[]    @relation("JournalEntryCreatedBy")
-  approvedJournalEntries    JournalEntry[]    @relation("JournalEntryApprovedBy")
-  rejectedJournalEntries    JournalEntry[]    @relation("JournalEntryRejectedBy")
-  createdBudgets            Budget[]          @relation("BudgetCreatedBy")
-  approvedBudgets           Budget[]          @relation("BudgetApprovedBy")
+  createdJournalEntries     JournalEntry[]     @relation("JournalEntryCreatedBy")
+  approvedJournalEntries    JournalEntry[]     @relation("JournalEntryApprovedBy")
+  rejectedJournalEntries    JournalEntry[]     @relation("JournalEntryRejectedBy")
+  createdBudgets            Budget[]           @relation("BudgetCreatedBy")
+  approvedBudgets           Budget[]           @relation("BudgetApprovedBy")
   closedPeriods             AccountingPeriod[] @relation("PeriodClosedBy")
 
   @@unique([associationId, email])
@@ -103,36 +109,39 @@ model UserApproval {
 }
 
 model Member {
-  id                           Int             @id @default(autoincrement())
-  associationId                Int             @map("association_id")
-  userId                       Int?            @unique @map("user_id")
-  memberId                     String          @map("member_id")
-  firstName                    String          @map("first_name")
-  lastName                     String          @map("last_name")
+  id                           Int                      @id @default(autoincrement())
+  associationId                Int                      @map("association_id")
+  userId                       Int?                     @unique @map("user_id")
+  memberId                     String                   @map("member_id")
+  firstName                    String                   @map("first_name")
+  lastName                     String                   @map("last_name")
   email                        String?
   phone                        String?
   address                      String?
-  joinDate                     DateTime?       @map("join_date")
-  status                       String          @default("active")
-  category                     String          @default("regular")
-  createdAt                    DateTime        @default(now()) @map("created_at")
-  updatedAt                    DateTime        @updatedAt @map("updated_at")
+  joinDate                     DateTime?                @map("join_date")
+  status                       String                   @default("active")
+  category                     String                   @default("regular")
+  createdAt                    DateTime                 @default(now()) @map("created_at")
+  updatedAt                    DateTime                 @updatedAt @map("updated_at")
   city                         String?
   country                      String?
-  dateOfBirth                  DateTime?       @map("date_of_birth")
-  emergencyContactName         String?         @map("emergency_contact_name")
-  emergencyContactPhone        String?         @map("emergency_contact_phone")
-  emergencyContactRelationship String?         @map("emergency_contact_relationship")
-  gender                       String          @default("male")
+  dateOfBirth                  DateTime?                @map("date_of_birth")
+  emergencyContactName         String?                  @map("emergency_contact_name")
+  emergencyContactPhone        String?                  @map("emergency_contact_phone")
+  emergencyContactRelationship String?                  @map("emergency_contact_relationship")
+  gender                       String                   @default("male")
   notes                        String?
   occupation                   String?
   state                        String?
-  loginStatus                  String          @default("no_login") @map("login_status")
+  loginStatus                  String                   @default("no_login") @map("login_status")
   invites                      MemberInvite[]
-  association                  Association     @relation(fields: [associationId], references: [id])
-  user                         User?           @relation(fields: [userId], references: [id])
+  association                  Association              @relation(fields: [associationId], references: [id])
+  user                         User?                    @relation(fields: [userId], references: [id])
   transactions                 Transaction[]
   levyAssignments              LevyCampaignAssignment[]
+  // Phase 3.5: Nigerian Payment Features
+  bankTransfers                BankTransfer[]
+  paymentProofs                PaymentProof[]
 
   @@unique([associationId, memberId])
   @@index([associationId, status])
@@ -164,16 +173,16 @@ model MemberInvite {
 }
 
 model FinancialCategory {
-  id            Int           @id @default(autoincrement())
-  associationId Int           @map("association_id")
+  id            Int            @id @default(autoincrement())
+  associationId Int            @map("association_id")
   name          String
   type          String
-  amount        Decimal?      @db.Decimal(10, 2)
+  amount        Decimal?       @db.Decimal(10, 2)
   frequency     String?
   description   String?
-  isActive      Boolean       @default(true) @map("is_active")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  association   Association   @relation(fields: [associationId], references: [id])
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  association   Association    @relation(fields: [associationId], references: [id])
   transactions  Transaction[]
   levyCampaigns LevyCampaign[]
   penaltyRules  PenaltyRule[]
@@ -208,6 +217,10 @@ model Transaction {
   penaltyWaivers      PenaltyWaiver[]
   sourcePenalties     AppliedPenalty[]            @relation("SourceTransaction")
   asPenalty           AppliedPenalty?             @relation("PenaltyTransaction")
+  // Phase 3.5: Nigerian Payment Features
+  bankTransfers       BankTransfer[]
+  reconciliations     PaymentReconciliation[]
+  paymentProofs       PaymentProof[]
 
   @@index([associationId, status])
   @@map("transactions")
@@ -467,20 +480,20 @@ enum PlatformRole {
 
 // Levy Campaign Management (TASK-ADV-001, TASK-ADV-002)
 model LevyCampaign {
-  id              Int                     @id @default(autoincrement())
-  associationId   Int                     @map("association_id")
-  categoryId      Int                     @map("category_id")
+  id              Int                      @id @default(autoincrement())
+  associationId   Int                      @map("association_id")
+  categoryId      Int                      @map("category_id")
   name            String
   description     String?
-  targetAmount    Decimal                 @map("target_amount") @db.Decimal(12, 2)
-  amountPerMember Decimal?                @map("amount_per_member") @db.Decimal(10, 2)
+  targetAmount    Decimal                  @map("target_amount") @db.Decimal(12, 2)
+  amountPerMember Decimal?                 @map("amount_per_member") @db.Decimal(10, 2)
   deadline        DateTime
-  status          LevyCampaignStatus      @default(ACTIVE)
-  createdBy       Int                     @map("created_by")
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
-  association     Association             @relation(fields: [associationId], references: [id])
-  category        FinancialCategory       @relation(fields: [categoryId], references: [id])
+  status          LevyCampaignStatus       @default(ACTIVE)
+  createdBy       Int                      @map("created_by")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+  association     Association              @relation(fields: [associationId], references: [id])
+  category        FinancialCategory        @relation(fields: [categoryId], references: [id])
   assignments     LevyCampaignAssignment[]
 
   @@index([associationId, status])
@@ -513,16 +526,16 @@ enum LevyCampaignStatus {
 
 // Donation Allocation Tracking (TASK-ADV-004)
 model DonationAllocation {
-  id            Int         @id @default(autoincrement())
-  associationId Int         @map("association_id")
+  id            Int              @id @default(autoincrement())
+  associationId Int              @map("association_id")
   name          String
   description   String?
-  type          String      @default("general") // general, project, emergency, other
-  targetAmount  Decimal?    @map("target_amount") @db.Decimal(12, 2)
-  isActive      Boolean     @default(true) @map("is_active")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  association   Association @relation(fields: [associationId], references: [id])
+  type          String           @default("general") // general, project, emergency, other
+  targetAmount  Decimal?         @map("target_amount") @db.Decimal(12, 2)
+  isActive      Boolean          @default(true) @map("is_active")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  association   Association      @relation(fields: [associationId], references: [id])
   donations     DonationRecord[]
 
   @@index([associationId, type])
@@ -546,23 +559,23 @@ model DonationRecord {
 
 // Penalty Configuration Rules (TASK-ADV-005)
 model PenaltyRule {
-  id              Int         @id @default(autoincrement())
-  associationId   Int         @map("association_id")
-  categoryId      Int?        @map("category_id") // If null, applies to all categories
-  name            String
-  description     String?
-  triggerType     String      @default("late_payment") // late_payment, missed_meeting, custom
-  gracePeriodDays Int         @default(0) @map("grace_period_days")
-  feeType         String      @default("fixed") // fixed, percentage
-  feeAmount       Decimal     @map("fee_amount") @db.Decimal(10, 2)
-  maxFeeAmount    Decimal?    @map("max_fee_amount") @db.Decimal(10, 2) // Cap for percentage-based
-  isCompounding   Boolean     @default(false) @map("is_compounding") // Apply repeatedly
-  compoundingDays Int?        @map("compounding_days") // Days between compounds
-  isActive        Boolean     @default(true) @map("is_active")
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
-  association     Association @relation(fields: [associationId], references: [id])
-  category        FinancialCategory? @relation(fields: [categoryId], references: [id])
+  id               Int                @id @default(autoincrement())
+  associationId    Int                @map("association_id")
+  categoryId       Int?               @map("category_id") // If null, applies to all categories
+  name             String
+  description      String?
+  triggerType      String             @default("late_payment") // late_payment, missed_meeting, custom
+  gracePeriodDays  Int                @default(0) @map("grace_period_days")
+  feeType          String             @default("fixed") // fixed, percentage
+  feeAmount        Decimal            @map("fee_amount") @db.Decimal(10, 2)
+  maxFeeAmount     Decimal?           @map("max_fee_amount") @db.Decimal(10, 2) // Cap for percentage-based
+  isCompounding    Boolean            @default(false) @map("is_compounding") // Apply repeatedly
+  compoundingDays  Int?               @map("compounding_days") // Days between compounds
+  isActive         Boolean            @default(true) @map("is_active")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  association      Association        @relation(fields: [associationId], references: [id])
+  category         FinancialCategory? @relation(fields: [categoryId], references: [id])
   appliedPenalties AppliedPenalty[]
 
   @@index([associationId, isActive])
@@ -571,15 +584,15 @@ model PenaltyRule {
 
 // Track applied penalties from rules (TASK-ADV-006)
 model AppliedPenalty {
-  id                  Int         @id @default(autoincrement())
-  ruleId              Int         @map("rule_id")
-  sourceTransactionId Int         @map("source_transaction_id") // The overdue transaction
-  penaltyTransactionId Int?       @unique @map("penalty_transaction_id") // The penalty transaction created
-  amount              Decimal     @db.Decimal(10, 2)
-  appliedAt           DateTime    @default(now()) @map("applied_at")
-  rule                PenaltyRule @relation(fields: [ruleId], references: [id])
-  sourceTransaction   Transaction @relation("SourceTransaction", fields: [sourceTransactionId], references: [id])
-  penaltyTransaction  Transaction? @relation("PenaltyTransaction", fields: [penaltyTransactionId], references: [id])
+  id                   Int          @id @default(autoincrement())
+  ruleId               Int          @map("rule_id")
+  sourceTransactionId  Int          @map("source_transaction_id") // The overdue transaction
+  penaltyTransactionId Int?         @unique @map("penalty_transaction_id") // The penalty transaction created
+  amount               Decimal      @db.Decimal(10, 2)
+  appliedAt            DateTime     @default(now()) @map("applied_at")
+  rule                 PenaltyRule  @relation(fields: [ruleId], references: [id])
+  sourceTransaction    Transaction  @relation("SourceTransaction", fields: [sourceTransactionId], references: [id])
+  penaltyTransaction   Transaction? @relation("PenaltyTransaction", fields: [penaltyTransactionId], references: [id])
 
   @@index([ruleId])
   @@index([sourceTransactionId])
@@ -609,24 +622,24 @@ model PenaltyWaiver {
 
 // Chart of Accounts (TASK-ACC-001)
 model ChartOfAccount {
-  id              Int                @id @default(autoincrement())
-  associationId   Int                @map("association_id")
-  code            String             // Account code (e.g., "1000", "2000")
-  name            String
-  type            AccountType        // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
-  subType         String?            @map("sub_type") // e.g., "current_asset", "fixed_asset"
-  description     String?
-  parentId        Int?               @map("parent_id")
-  isActive        Boolean            @default(true) @map("is_active")
-  isSystemAccount Boolean            @default(false) @map("is_system_account") // Cannot be deleted
-  normalBalance   NormalBalance      @default(DEBIT) @map("normal_balance")
-  createdAt       DateTime           @default(now()) @map("created_at")
-  updatedAt       DateTime           @updatedAt @map("updated_at")
-  association     Association        @relation(fields: [associationId], references: [id])
-  parent          ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children        ChartOfAccount[]   @relation("AccountHierarchy")
+  id                Int                @id @default(autoincrement())
+  associationId     Int                @map("association_id")
+  code              String // Account code (e.g., "1000", "2000")
+  name              String
+  type              AccountType // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  subType           String?            @map("sub_type") // e.g., "current_asset", "fixed_asset"
+  description       String?
+  parentId          Int?               @map("parent_id")
+  isActive          Boolean            @default(true) @map("is_active")
+  isSystemAccount   Boolean            @default(false) @map("is_system_account") // Cannot be deleted
+  normalBalance     NormalBalance      @default(DEBIT) @map("normal_balance")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  association       Association        @relation(fields: [associationId], references: [id])
+  parent            ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children          ChartOfAccount[]   @relation("AccountHierarchy")
   journalEntryLines JournalEntryLine[]
-  budgetItems     BudgetItem[]
+  budgetItems       BudgetItem[]
 
   @@unique([associationId, code])
   @@index([associationId, type])
@@ -641,7 +654,7 @@ model JournalEntry {
   entryNumber     String             @map("entry_number") // Auto-generated
   entryDate       DateTime           @map("entry_date")
   description     String
-  reference       String?            // External reference (e.g., invoice number)
+  reference       String? // External reference (e.g., invoice number)
   sourceType      String?            @map("source_type") // manual, auto_sync, adjustment
   sourceId        Int?               @map("source_id") // Reference to source transaction
   status          JournalEntryStatus @default(DRAFT)
@@ -732,18 +745,18 @@ model BudgetItem {
 
 // Accounting Period (for closing books)
 model AccountingPeriod {
-  id            Int           @id @default(autoincrement())
-  associationId Int           @map("association_id")
-  name          String        // e.g., "January 2025", "Q1 2025"
-  periodType    String        @map("period_type") // month, quarter, year
-  startDate     DateTime      @map("start_date")
-  endDate       DateTime      @map("end_date")
-  status        PeriodStatus  @default(OPEN)
-  closedBy      Int?          @map("closed_by")
-  closedAt      DateTime?     @map("closed_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  association   Association   @relation(fields: [associationId], references: [id])
-  closer        User?         @relation("PeriodClosedBy", fields: [closedBy], references: [id])
+  id            Int          @id @default(autoincrement())
+  associationId Int          @map("association_id")
+  name          String // e.g., "January 2025", "Q1 2025"
+  periodType    String       @map("period_type") // month, quarter, year
+  startDate     DateTime     @map("start_date")
+  endDate       DateTime     @map("end_date")
+  status        PeriodStatus @default(OPEN)
+  closedBy      Int?         @map("closed_by")
+  closedAt      DateTime?    @map("closed_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  association   Association  @relation(fields: [associationId], references: [id])
+  closer        User?        @relation("PeriodClosedBy", fields: [closedBy], references: [id])
 
   @@unique([associationId, startDate, endDate])
   @@index([associationId, status])
@@ -784,4 +797,201 @@ enum PeriodStatus {
   OPEN
   CLOSED
   LOCKED
+}
+
+// ============================================
+// PHASE 3.5: NIGERIAN PAYMENT FEATURES MODELS
+// ============================================
+
+// Association Bank Accounts (TASK-PAY-002)
+model AssociationBankAccount {
+  id               Int                   @id @default(autoincrement())
+  associationId    Int                   @map("association_id")
+  bankName         String                @map("bank_name")
+  accountName      String                @map("account_name")
+  accountNumber    String                @map("account_number")
+  bankCode         String?               @map("bank_code") // Nigerian bank codes
+  isDefault        Boolean               @default(false) @map("is_default")
+  isActive         Boolean               @default(true) @map("is_active")
+  description      String?
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  association      Association           @relation(fields: [associationId], references: [id])
+  bankTransfers    BankTransfer[]
+  statementImports BankStatementImport[]
+
+  @@unique([associationId, accountNumber])
+  @@index([associationId, isActive])
+  @@map("association_bank_accounts")
+}
+
+// Bank Transfer Tracking (TASK-PAY-001)
+model BankTransfer {
+  id                  Int                     @id @default(autoincrement())
+  associationId       Int                     @map("association_id")
+  transactionId       Int?                    @map("transaction_id") // Link to financial transaction
+  bankAccountId       Int?                    @map("bank_account_id") // Receiving bank account
+  memberId            Int?                    @map("member_id")
+  senderBankName      String                  @map("sender_bank_name")
+  senderAccountNumber String?                 @map("sender_account_number")
+  senderAccountName   String?                 @map("sender_account_name")
+  amount              Decimal                 @db.Decimal(12, 2)
+  reference           String // Bank transfer reference
+  transferDate        DateTime                @map("transfer_date")
+  narration           String?
+  status              BankTransferStatus      @default(PENDING)
+  reconciliationId    Int?                    @map("reconciliation_id")
+  verifiedBy          Int?                    @map("verified_by")
+  verifiedAt          DateTime?               @map("verified_at")
+  notes               String?
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @updatedAt @map("updated_at")
+  association         Association             @relation(fields: [associationId], references: [id])
+  transaction         Transaction?            @relation(fields: [transactionId], references: [id])
+  bankAccount         AssociationBankAccount? @relation(fields: [bankAccountId], references: [id])
+  member              Member?                 @relation(fields: [memberId], references: [id])
+  reconciliation      PaymentReconciliation?  @relation(fields: [reconciliationId], references: [id])
+  paymentProofs       PaymentProof[]
+
+  @@index([associationId, status])
+  @@index([reference])
+  @@index([transactionId])
+  @@map("bank_transfers")
+}
+
+// Bank Statement Import (TASK-PAY-005)
+model BankStatementImport {
+  id               Int                    @id @default(autoincrement())
+  associationId    Int                    @map("association_id")
+  bankAccountId    Int                    @map("bank_account_id")
+  filename         String
+  importDate       DateTime               @default(now()) @map("import_date")
+  startDate        DateTime?              @map("start_date")
+  endDate          DateTime?              @map("end_date")
+  totalEntries     Int                    @default(0) @map("total_entries")
+  matchedEntries   Int                    @default(0) @map("matched_entries")
+  unmatchedEntries Int                    @default(0) @map("unmatched_entries")
+  status           ImportStatus           @default(PROCESSING)
+  importedBy       Int                    @map("imported_by")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  association      Association            @relation(fields: [associationId], references: [id])
+  bankAccount      AssociationBankAccount @relation(fields: [bankAccountId], references: [id])
+  entries          BankStatementEntry[]
+
+  @@index([associationId, status])
+  @@map("bank_statement_imports")
+}
+
+// Bank Statement Entry (individual rows from imported statement)
+model BankStatementEntry {
+  id                    Int                 @id @default(autoincrement())
+  importId              Int                 @map("import_id")
+  transactionDate       DateTime            @map("transaction_date")
+  valueDate             DateTime?           @map("value_date")
+  reference             String?
+  description           String
+  debitAmount           Decimal?            @map("debit_amount") @db.Decimal(12, 2)
+  creditAmount          Decimal?            @map("credit_amount") @db.Decimal(12, 2)
+  balance               Decimal?            @db.Decimal(12, 2)
+  matchStatus           MatchStatus         @default(UNMATCHED) @map("match_status")
+  matchedTransactionId  Int?                @map("matched_transaction_id")
+  matchedBankTransferId Int?                @map("matched_bank_transfer_id")
+  matchConfidence       Int?                @map("match_confidence") // 0-100 percentage
+  matchedAt             DateTime?           @map("matched_at")
+  matchedBy             Int?                @map("matched_by")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  import                BankStatementImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId, matchStatus])
+  @@index([reference])
+  @@map("bank_statement_entries")
+}
+
+// Payment Reconciliation (TASK-PAY-003)
+model PaymentReconciliation {
+  id               Int                     @id @default(autoincrement())
+  associationId    Int                     @map("association_id")
+  transactionId    Int                     @map("transaction_id")
+  statementEntryId Int?                    @map("statement_entry_id")
+  matchType        ReconciliationMatchType @map("match_type")
+  matchedAmount    Decimal                 @map("matched_amount") @db.Decimal(12, 2)
+  variance         Decimal                 @default(0) @db.Decimal(12, 2) // Difference if any
+  status           ReconciliationStatus    @default(PENDING)
+  reconciledBy     Int?                    @map("reconciled_by")
+  reconciledAt     DateTime?               @map("reconciled_at")
+  notes            String?
+  createdAt        DateTime                @default(now()) @map("created_at")
+  association      Association             @relation(fields: [associationId], references: [id])
+  transaction      Transaction             @relation(fields: [transactionId], references: [id])
+  bankTransfers    BankTransfer[]
+
+  @@index([associationId, status])
+  @@index([transactionId])
+  @@map("payment_reconciliations")
+}
+
+// Payment Proof Upload (TASK-PAY-007)
+model PaymentProof {
+  id              Int                @id @default(autoincrement())
+  associationId   Int                @map("association_id")
+  transactionId   Int?               @map("transaction_id")
+  bankTransferId  Int?               @map("bank_transfer_id")
+  memberId        Int                @map("member_id")
+  filename        String
+  filepath        String
+  fileSize        Int                @map("file_size")
+  mimeType        String             @map("mime_type")
+  status          PaymentProofStatus @default(PENDING)
+  uploadedAt      DateTime           @default(now()) @map("uploaded_at")
+  verifiedBy      Int?               @map("verified_by")
+  verifiedAt      DateTime?          @map("verified_at")
+  rejectionReason String?            @map("rejection_reason")
+  notes           String?
+  association     Association        @relation(fields: [associationId], references: [id])
+  transaction     Transaction?       @relation(fields: [transactionId], references: [id])
+  bankTransfer    BankTransfer?      @relation(fields: [bankTransferId], references: [id])
+  member          Member             @relation(fields: [memberId], references: [id])
+
+  @@index([associationId, status])
+  @@index([transactionId])
+  @@index([memberId])
+  @@map("payment_proofs")
+}
+
+enum BankTransferStatus {
+  PENDING
+  VERIFIED
+  MATCHED
+  REJECTED
+}
+
+enum ImportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum MatchStatus {
+  UNMATCHED
+  AUTO_MATCHED
+  MANUAL_MATCHED
+  REJECTED
+}
+
+enum ReconciliationMatchType {
+  AUTO_REFERENCE // Matched by reference number
+  AUTO_AMOUNT // Matched by amount
+  MANUAL // Manually matched by admin
+}
+
+enum ReconciliationStatus {
+  PENDING
+  CONFIRMED
+  DISPUTED
+}
+
+enum PaymentProofStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
