@@ -493,17 +493,17 @@ export default function MemberLedgerDetailPage() {
                   <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <p className="text-sm text-gray-500">Opening Balance</p>
                     <p className="text-2xl font-bold">
-                      {statement.openingBalance >= 0 
-                        ? formatCurrency(statement.openingBalance) 
-                        : `-${formatCurrency(statement.openingBalance)}`}
+                      {(statement.openingBalance || 0) >= 0 
+                        ? formatCurrency(statement.openingBalance || 0) 
+                        : `-${formatCurrency(statement.openingBalance || 0)}`}
                     </p>
                   </div>
                   <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <p className="text-sm text-gray-500">Closing Balance</p>
                     <p className="text-2xl font-bold">
-                      {statement.closingBalance >= 0 
-                        ? formatCurrency(statement.closingBalance) 
-                        : `-${formatCurrency(statement.closingBalance)}`}
+                      {(statement.closingBalance || 0) >= 0 
+                        ? formatCurrency(statement.closingBalance || 0) 
+                        : `-${formatCurrency(statement.closingBalance || 0)}`}
                     </p>
                   </div>
                 </div>
@@ -512,11 +512,11 @@ export default function MemberLedgerDetailPage() {
                 <div className="flex gap-4">
                   <div className="flex-1 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
                     <p className="text-sm text-red-600">Total Debits</p>
-                    <p className="text-xl font-bold text-red-600">{formatCurrency(statement.totalDebits)}</p>
+                    <p className="text-xl font-bold text-red-600">{formatCurrency(statement.totals?.totalDebits || 0)}</p>
                   </div>
                   <div className="flex-1 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
                     <p className="text-sm text-green-600">Total Credits</p>
-                    <p className="text-xl font-bold text-green-600">{formatCurrency(statement.totalCredits)}</p>
+                    <p className="text-xl font-bold text-green-600">{formatCurrency(statement.totals?.totalCredits || 0)}</p>
                   </div>
                 </div>
 
@@ -533,18 +533,18 @@ export default function MemberLedgerDetailPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {statement.entries.map((entry) => (
+                      {statement.entries.map((entry: any) => (
                         <Table.Tr key={entry.id}>
-                          <Table.Td>{formatDate(entry.effectiveDate)}</Table.Td>
+                          <Table.Td>{formatDate(entry.date)}</Table.Td>
                           <Table.Td>{entry.description}</Table.Td>
                           <Table.Td className="text-right text-red-600">
-                            {entry.entryType === 'DEBIT' ? formatCurrency(entry.amount) : '-'}
+                            {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
                           </Table.Td>
                           <Table.Td className="text-right text-green-600">
-                            {entry.entryType === 'CREDIT' ? formatCurrency(entry.amount) : '-'}
+                            {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                           </Table.Td>
                           <Table.Td className="text-right font-medium">
-                            {entry.runningBalance >= 0 ? formatCurrency(entry.runningBalance) : `-${formatCurrency(entry.runningBalance)}`}
+                            {(entry.balance || 0) >= 0 ? formatCurrency(entry.balance || 0) : `-${formatCurrency(entry.balance || 0)}`}
                           </Table.Td>
                         </Table.Tr>
                       ))}

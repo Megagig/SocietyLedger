@@ -48,7 +48,7 @@ export interface LedgerStatement {
     lastName: string;
     memberId: string;
     email: string | null;
-    phone: string | null;
+    phone?: string | null;
   };
   period: {
     startDate: string;
@@ -56,9 +56,20 @@ export interface LedgerStatement {
   };
   openingBalance: number;
   closingBalance: number;
-  totalDebits: number;
-  totalCredits: number;
-  entries: LedgerEntry[];
+  totals: {
+    totalDebits: number;
+    totalCredits: number;
+  };
+  entries: Array<{
+    id: number;
+    date: string;
+    description: string;
+    category: string;
+    debit: number;
+    credit: number;
+    balance: number;
+    reference: string | null;
+  }>;
 }
 
 export interface MemberBalance {
@@ -135,12 +146,16 @@ export async function exportMyStatement(params: {
   startDate: string;
   endDate: string;
 }): Promise<Blob> {
-  const response = await apiPost(`${API_URL}/api/member-ledger/my-ledger/export`, params);
+  const searchParams = new URLSearchParams();
+  searchParams.set('startDate', params.startDate);
+  searchParams.set('endDate', params.endDate);
+  
+  const response = await apiPost(`${API_URL}/api/member-ledger/my-ledger/export?${searchParams}`, {});
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to export statement');
   }
-  return response.blob();
+  return response.json();
 }
 
 // ============================================

@@ -4,24 +4,67 @@
 
 The Member Finance Self-Service module allows association members to view and manage their own financial data including dues, levies, penalties, donations, and payment history. This module provides a member-centric view of financial obligations and enables self-service payments.
 
-## New Feature: Member Financial Ledger
+## New Feature: Member Financial Ledger (Phase 11.7)
 
-The Member Financial Ledger provides a complete, auditable financial history per member with:
-- Opening and closing balance calculations
-- All debits (charges) and credits (payments)
-- Statement of Account generation
-- PDF export capability
+The Member Financial Ledger provides a complete, auditable financial history per member - a single source of truth for all member financial activity.
+
+### Key Features
+- **Complete Financial History**: Every financial action affecting a member creates a ledger entry
+- **Opening/Closing Balance**: Statement generation with accurate balance calculations
+- **Append-Only Design**: Ledger entries are never deleted; corrections use reversal/adjustment entries
+- **Multi-Source Integration**: Automatically captures transactions, payments, waivers, cooperative activities
+- **PDF Export**: Generate professional statements for members
+- **RBAC Enforcement**: Members see only their own data; admins can view any member
 
 ### Ledger Entry Types
-- **DEBIT**: Charges to member (dues, levies, penalties)
-- **CREDIT**: Payments, refunds, waivers
-- **ADJUSTMENT**: Corrections
+| Type | Description | Effect on Balance |
+|------|-------------|-------------------|
+| DEBIT | Charges to member (dues, levies, penalties) | Increases outstanding |
+| CREDIT | Payments, refunds, waivers | Decreases outstanding |
+| ADJUSTMENT | Manual corrections | Varies |
 
 ### Ledger Categories
-- DUES, LEVY, PENALTY, DONATION
-- REFUND, WAIVER, ADJUSTMENT
-- SAVINGS_DEPOSIT, SAVINGS_WITHDRAWAL
-- LOAN_DISBURSEMENT, LOAN_REPAYMENT, OTHER
+| Category | Description |
+|----------|-------------|
+| DUES | Membership dues |
+| LEVY | Special levies/contributions |
+| PENALTY | Late fees, fines |
+| DONATION | Voluntary donations |
+| REFUND | Refunds to member |
+| WAIVER | Waived amounts |
+| ADJUSTMENT | Manual adjustments |
+| SAVINGS_DEPOSIT | Cooperative savings deposit |
+| SAVINGS_WITHDRAWAL | Cooperative savings withdrawal |
+| LOAN_DISBURSEMENT | Loan disbursement |
+| LOAN_REPAYMENT | Loan repayment |
+| OTHER | Other transactions |
+
+### Balance Calculation
+Balance is computed as: `SUM(DEBITS) - SUM(CREDITS)`
+- Positive balance = Member owes money (outstanding)
+- Negative balance = Member has credit
+- Zero balance = Account is balanced
+
+### Frontend Pages
+
+#### Member Self-Service (`/dashboard/my-finances/ledger`)
+- Balance overview card
+- Summary statistics (debits, credits, adjustments, entry count)
+- Category breakdown
+- Filterable entries table
+- Statement generation with date range
+- PDF export
+
+#### Admin View (`/dashboard/finance/member-ledger`)
+- All members list with balances
+- Search and sort functionality
+- Bulk sync capability
+- Click to view individual member ledger
+
+#### Admin Member Detail (`/dashboard/finance/member-ledger/[memberId]`)
+- Same features as member self-service
+- Sync individual member ledger
+- Export statements for any member
 
 ## Architecture
 

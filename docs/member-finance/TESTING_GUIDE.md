@@ -374,3 +374,555 @@ After any changes to the member finance module, verify:
 2. **No Payment Gateway**: Payments are recorded manually (no online payment integration)
 3. **No Receipt Download**: Receipt numbers generated but no PDF download
 4. **No Email Notifications**: No automatic email on payment/donation
+
+
+---
+
+# Member Financial Ledger - Testing Guide
+
+## Overview
+
+The Member Financial Ledger provides a complete, auditable financial history per member. This guide covers manual testing procedures for both member self-service and admin functionality.
+
+## Prerequisites
+
+1. Running API server (`npm run dev` in `apps/api`)
+2. Running Web server (`npm run dev` in `apps/web`)
+3. Database with `MemberFinancialLedger` table (run migrations)
+4. At least one association with:
+   - Active members with user accounts
+   - Financial transactions (dues, levies, penalties)
+   - Payments recorded against transactions
+
+## Test Data Setup
+
+### Sync Existing Transactions to Ledger
+
+Before testing, sync existing transactions to create ledger entries:
+
+**Option 1: Bulk Sync (Admin)**
+1. Login as Admin/Treasurer/Financial Secretary
+2. Navigate to Finance → Member Ledgers
+3. Click "Sync All Ledgers" button
+4. Wait for sync to complete
+
+**Option 2: Individual Sync**
+1. Navigate to Finance → Member Ledgers
+2. Click on a member
+3. Click "Sync Ledger" button
+
+**Option 3: API**
+```bash
+# Bulk sync
+curl -X POST http://localhost:4000/api/member-ledger/ledger/bulk-sync \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "X-Tenant-Id: <association_id>"
+
+# Individual sync
+curl -X POST http://localhost:4000/api/member-ledger/ledger/5/sync \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "X-Tenant-Id: <association_id>"
+```
+
+---
+
+## Member Self-Service Tests
+
+### Location: `/dashboard/my-finances/ledger`
+
+### TC-L1: View Ledger Summary
+
+**Steps:**
+1. Login as member
+2. Navigate to My Finances → My Ledger
+3. View the Summary tab
+
+**Expected Results:**
+- Balance card shows current balance with correct sign (positive = outstanding, negative = credit)
+- Summary stats show Total Debits, Total Credits, Adjustments, Total Entries
+- Category breakdown shows debits/credits/net per category
+- All amounts formatted as Nigerian Naira (₦)
+
+### TC-L2: View Ledger Entries
+
+**Steps:**
+1. Navigate to My Ledger → All Entries tab
+2. View the entries table
+
+**Expected Results:**
+- Entries listed in reverse chronological order (newest first)
+- Each entry shows: Date, Type (badge), Category, Description, Amount, Running Balance
+- DEBIT entries show red amount with minus sign
+- CREDIT entries show green amount with plus sign
+- Running balance updates correctly per entry
+
+### TC-L3: Filter Ledger Entries
+
+**Steps:**
+1. On All Entries tab, use filters:
+   - Select Category: "DUES"
+   - Select Type: "DEBIT"
+   - Select Date Range: Last 30 days
+2. Click Refresh
+
+**Expected Results:**
+- Only entries matching all filters are displayed
+- Pagination updates to reflect filtered count
+- Clear filters restores full list
+
+### TC-L4: Generate Statement
+
+**Steps:**
+1. Navigate to My Ledger → Statement tab
+2. Select date range (e.g., current month)
+3. Click "Generate Statement"
+
+**Expected Results:**
+- Statement header shows period dates
+- Opening Balance shows balance before start date
+- Closing Balance shows balance at end date
+- Entries table shows Date, Description, Debit, Credit, Balance columns
+- Total Debits and Total Credits match sum of entries
+- Closing Balance = Opening Balance + Total Debits - Total Credits
+
+### TC-L5: Export Statement PDF
+
+**Steps:**
+1. On Statement tab with generated statement
+2. Click "Export PDF" button
+3. Wait for download
+
+**Expected Results:**
+- PDF file downloads with filename format: `ledger-statement-YYYY-MM-DD-YYYY-MM-DD.pdf`
+- PDF contains member info, period, opening/closing balance, all entries
+- PDF is properly formatted and readable
+
+### TC-L6: Empty Ledger State
+
+**Steps:**
+1. Login as member with no transactions
+2. Navigate to My Ledger
+
+**Expected Results:**
+- Balance shows ₦0
+- Summary stats show 0 for all values
+- "No transactions yet" message in category breakdown
+- "No ledger entries found" in entries table
+
+---
+
+## Admin Tests
+
+### Location: `/dashboard/finance/member-ledger`
+
+### TC-L7: View All Members with Balances
+
+**Steps:**
+1. Login as Admin/Treasurer/Financial Secretary
+2. Navigate to Finance → Member Ledgers
+
+**Expected Results:**
+- Stats cards show: Total Members, Total Outstanding, Total Credit, Members with Balance
+- Table shows all members with: Member ID, Name, Balance, Status, Last Activity
+- Balance column colored: Red for outstanding, Green for credit, Gray for zero
+- Status badges: "Outstanding", "Credit", or "Balanced"
+
+### TC-L8: Search Members
+
+**Steps:**
+1. On Member Ledgers page
+2. Enter search term (name, email, or member ID)
+3. Press Enter or click Refresh
+
+**Expected Results:**
+- Table filters to matching members
+- Pagination updates
+- Stats reflect filtered results
+
+### TC-L9: Sort Members
+
+**Steps:**
+1. Use Sort By dropdown: Balance, Name, Last Activity
+2. Use Order dropdown: Ascending, Descending
+
+**Expected Results:**
+- Table reorders according to selection
+- Balance sort shows highest/lowest first
+- Name sort alphabetizes
+
+### TC-L10: View Individual Member Ledger
+
+**Steps:**
+1. Click on a member row or the eye icon
+2. View member's ledger detail page
+
+**Expected Results:**
+- Page shows member name and ID
+- Balance card shows member's current balance
+- Summary, Entries, Statement tabs function same as member self-service
+- Back button returns to member list
+
+### TC-L11: Sync Individual Member
+
+**Steps:**
+1. On member ledger detail page
+2. Click "Sync Ledger" button
+3. Wait for completion
+
+**Expected Results:**
+- Success toast shows number of entries synced
+- Ledger entries refresh with new data
+- Balance updates if new transactions found
+
+### TC-L12: Bulk Sync All Members
+
+**Steps:**
+1. On Member Ledgers list page
+2. Click "Sync All Ledgers" button
+3. Wait for completion
+
+**Expected Results:**
+- Loading spinner shows during sync
+- Success toast shows: "Synced X of Y members"
+- Member list refreshes with updated balances
+
+### TC-L13: Export Member Statement (Admin)
+
+**Steps:**
+1. Navigate to specific member's ledger
+2. Select date range on Statement tab
+3. Click "Export PDF"
+
+**Expected Results:**
+- PDF downloads with member-specific filename
+- PDF contains member's statement data
+- Audit log created for export action
+
+---
+
+## API Tests
+
+### TC-L14: Member Self-Service Endpoints
+
+```bash
+# Get my ledger summary
+curl -X GET "http://localhost:4000/api/member-ledger/my-ledger/summary" \
+  -H "Authorization: Bearer <member_token>" \
+  -H "X-Tenant-Id: <association_id>"
+
+# Get my ledger entries
+curl -X GET "http://localhost:4000/api/member-ledger/my-ledger/entries?page=1&limit=20" \
+  -H "Authorization: Bearer <member_token>" \
+  -H "X-Tenant-Id: <association_id>"
+
+# Get my statement
+curl -X GET "http://localhost:4000/api/member-ledger/my-ledger/statement?startDate=2025-01-01&endDate=2025-01-31" \
+  -H "Authorization: Bearer <member_token>" \
+  -H "X-Tenant-Id: <association_id>"
+
+# Get my balance
+curl -X GET "http://localhost:4000/api/member-ledger/my-ledger/balance" \
+  -H "Authorization: Bearer <member_token>" \
+  -H "X-Tenant-Id: <association_id>"
+```
+
+**Expected:** 200 OK with appropriate data structure
+
+### TC-L15: Admin Endpoints
+
+```bash
+# Get all members with balances
+curl -X GET "http://localhost:4000/api/member-ledger/ledger/members?page=1&limit=50" \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "X-Tenant-Id: <association_id>"
+
+# Get specific member's summary
+curl -X GET "http://localhost:4000/api/member-ledger/ledger/5/summary" \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "X-Tenant-Id: <association_id>"
+
+# Sync member ledger
+curl -X POST "http://localhost:4000/api/member-ledger/ledger/5/sync" \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "X-Tenant-Id: <association_id>"
+```
+
+**Expected:** 200 OK with appropriate data structure
+
+### TC-L16: Permission Denied
+
+```bash
+# Member trying to access admin endpoint
+curl -X GET "http://localhost:4000/api/member-ledger/ledger/members" \
+  -H "Authorization: Bearer <member_token>" \
+  -H "X-Tenant-Id: <association_id>"
+```
+
+**Expected:** 403 Forbidden
+
+### TC-L17: Cross-Tenant Isolation
+
+```bash
+# Try to access member from different association
+curl -X GET "http://localhost:4000/api/member-ledger/ledger/999/summary" \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "X-Tenant-Id: <association_id>"
+```
+
+**Expected:** 404 Member not found
+
+---
+
+## Edge Cases
+
+### TC-L18: Member with No Transactions
+
+**Scenario:** Member exists but has no financial transactions
+
+**Steps:**
+1. Create new member without any transactions
+2. Try to sync their ledger
+3. View their ledger
+
+**Expected Results:**
+- Sync completes with 0 entries created
+- Ledger shows empty state
+- Balance is ₦0
+
+### TC-L19: Member with Only Credits (Overpayment)
+
+**Scenario:** Member has paid more than owed
+
+**Steps:**
+1. Create transaction for ₦5,000
+2. Record payment of ₦7,000
+3. Sync ledger
+4. View ledger
+
+**Expected Results:**
+- Balance shows negative (credit) amount: -₦2,000
+- Balance card indicates "credit balance"
+- Status badge shows "Credit" (green)
+
+### TC-L20: Large Number of Entries
+
+**Scenario:** Member with 500+ ledger entries
+
+**Steps:**
+1. Generate many transactions for a member
+2. Sync ledger
+3. View entries with pagination
+
+**Expected Results:**
+- Page loads within 2 seconds
+- Pagination works correctly
+- Filters work on large dataset
+- Statement generation completes
+
+### TC-L21: Date Range Edge Cases
+
+**Scenario:** Statement with no entries in range
+
+**Steps:**
+1. Generate statement for date range with no transactions
+2. View results
+
+**Expected Results:**
+- Opening balance shows balance before start date
+- Entries table is empty
+- Closing balance equals opening balance
+- Total Debits and Credits show ₦0
+
+### TC-L22: Future Date Range
+
+**Scenario:** Statement with future dates
+
+**Steps:**
+1. Select date range entirely in the future
+2. Generate statement
+
+**Expected Results:**
+- Statement generates successfully
+- No entries (none exist in future)
+- Opening balance = current balance
+- Closing balance = opening balance
+
+### TC-L23: Concurrent Sync Attempts
+
+**Scenario:** Multiple sync requests for same member
+
+**Steps:**
+1. Open two browser tabs
+2. Navigate to same member's ledger
+3. Click "Sync Ledger" in both tabs simultaneously
+
+**Expected Results:**
+- First sync succeeds
+- Second sync fails with "Member already has ledger entries" error
+- No duplicate entries created
+
+### TC-L24: Already Synced Member
+
+**Scenario:** Try to sync member who already has ledger entries
+
+**Steps:**
+1. Sync member's ledger
+2. Try to sync again
+
+**Expected Results:**
+- Error: "Member already has ledger entries. Use reconciliation instead."
+- Existing entries preserved
+
+### TC-L25: Statement Spanning Multiple Years
+
+**Scenario:** Statement from 2024-01-01 to 2025-12-31
+
+**Steps:**
+1. Select 2-year date range
+2. Generate statement
+
+**Expected Results:**
+- All entries in range included
+- Opening balance calculated correctly
+- Closing balance accurate
+- PDF export handles large statement
+
+### TC-L26: Zero Amount Entries
+
+**Scenario:** Transaction with ₦0 amount
+
+**Steps:**
+1. Create transaction with amount = 0
+2. Sync ledger
+3. View entries
+
+**Expected Results:**
+- Entry created with ₦0 amount
+- Running balance unchanged
+- Entry displays correctly in table
+
+### TC-L27: Very Large Amounts
+
+**Scenario:** Transaction with ₦999,999,999
+
+**Steps:**
+1. Create transaction with large amount
+2. Sync ledger
+3. View ledger
+
+**Expected Results:**
+- Amount displays correctly with commas: ₦999,999,999
+- Balance calculations accurate
+- No overflow errors
+
+### TC-L28: Special Characters in Description
+
+**Scenario:** Transaction with special characters in notes
+
+**Steps:**
+1. Create transaction with notes: "Payment for <script>alert('xss')</script>"
+2. Sync ledger
+3. View entries
+
+**Expected Results:**
+- Description displays safely (HTML escaped)
+- No XSS vulnerability
+- PDF export handles special characters
+
+---
+
+## RBAC Tests
+
+### TC-L29: Member Access Control
+
+| User Role | My Ledger | Admin Ledger List | Other Member Ledger |
+|-----------|-----------|-------------------|---------------------|
+| Member | ✅ | ❌ | ❌ |
+| Admin | ✅ | ✅ | ✅ |
+| Treasurer | ✅ | ✅ | ✅ |
+| Financial Secretary | ✅ | ✅ | ✅ |
+
+### TC-L30: Sync Permission
+
+| User Role | Sync Own | Sync Other | Bulk Sync |
+|-----------|----------|------------|-----------|
+| Member | ❌ | ❌ | ❌ |
+| Admin | ✅ | ✅ | ✅ |
+| Treasurer | ✅ | ✅ | ✅ |
+| Financial Secretary | ❌ | ❌ | ❌ |
+
+---
+
+## Performance Benchmarks
+
+| Operation | Expected Time | Max Acceptable |
+|-----------|---------------|----------------|
+| Ledger Summary Load | < 300ms | 1000ms |
+| Entries List (50 items) | < 200ms | 500ms |
+| Statement Generation | < 500ms | 2000ms |
+| PDF Export | < 2000ms | 5000ms |
+| Bulk Sync (100 members) | < 30s | 60s |
+| Member List Load | < 500ms | 1500ms |
+
+---
+
+## Regression Checklist
+
+After any changes to the ledger module, verify:
+
+- [ ] Member can view their own ledger summary
+- [ ] Member can view their own ledger entries
+- [ ] Member can filter entries by category, type, date
+- [ ] Member can generate statement with date range
+- [ ] Member can export statement as PDF
+- [ ] Admin can view all members with balances
+- [ ] Admin can search and sort member list
+- [ ] Admin can view any member's ledger
+- [ ] Admin can sync individual member ledger
+- [ ] Admin can bulk sync all ledgers
+- [ ] Admin can export any member's statement
+- [ ] Balance calculations are accurate
+- [ ] Running balance updates correctly
+- [ ] Opening/closing balance in statements correct
+- [ ] RBAC permissions enforced
+- [ ] Tenant isolation maintained
+- [ ] Audit logs created for sync and export actions
+
+---
+
+## Known Limitations
+
+1. **No Real-Time Updates**: Ledger entries created on transaction/payment creation, but existing data requires manual sync
+2. **No Reconciliation**: Once synced, cannot re-sync; must use adjustments for corrections
+3. **No Partial Sync**: Sync is all-or-nothing per member
+4. **PDF Export Async**: Large statements may take time; no progress indicator
+5. **No Email Delivery**: Statements must be downloaded; no email option
+
+---
+
+## Troubleshooting
+
+### Issue: "Member already has ledger entries" on sync
+
+**Cause:** Member was previously synced
+**Solution:** Use adjustment entries for corrections, or delete existing entries (admin only, not recommended)
+
+### Issue: Balance doesn't match expected
+
+**Cause:** Missing transactions or payments not synced
+**Solution:** Check source tables (transactions, payments) for missing records
+
+### Issue: Statement shows wrong opening balance
+
+**Cause:** Entries before start date not properly calculated
+**Solution:** Verify all historical entries exist; check effectiveDate vs createdAt
+
+### Issue: PDF export fails
+
+**Cause:** Large statement or server timeout
+**Solution:** Use smaller date range; check server logs for errors
+
+### Issue: Entries not appearing after payment
+
+**Cause:** Ledger entry not created on payment
+**Solution:** Ensure payment creation triggers ledger entry creation; check for errors in payment flow
