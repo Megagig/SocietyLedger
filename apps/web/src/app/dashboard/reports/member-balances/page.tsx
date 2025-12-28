@@ -27,9 +27,12 @@ import {
   IconUser,
   IconMail,
   IconPhone,
+  IconFileSpreadsheet,
 } from '@tabler/icons-react';
 import { reportsApi } from '@/lib/api/reports';
+import { exportsApi } from '@/lib/api/exports';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
+import { notifications } from '@mantine/notifications';
 import Link from 'next/link';
 import { useDebouncedValue } from '@mantine/hooks';
 
@@ -40,6 +43,32 @@ export default function MemberBalancesPage() {
   const [status, setStatus] = useState<'all' | 'with_balance' | 'overdue'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'balance' | 'lastPayment'>('balance');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Export handler
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      const result = await exportsApi.exportAllMembersExcel({ status });
+
+      if (result.success) {
+        notifications.show({
+          title: 'Export Successful',
+          message: 'Your Excel file is ready for download',
+          color: 'green',
+        });
+        exportsApi.downloadExport(result.data.id);
+      }
+    } catch (error: any) {
+      notifications.show({
+        title: 'Export Failed',
+        message: error.response?.data?.message || 'Failed to generate Excel',
+        color: 'red',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['member-balances', page, debouncedSearch, status, sortBy, sortOrder],
@@ -145,10 +174,24 @@ export default function MemberBalancesPage() {
           Back to Reports
         </Button>
 
-        <Title order={2} mb="xs">
-          Member Balances Report
-        </Title>
-        <Text c="dimmed">Outstanding balances by member</Text>
+        <Group justify="space-between" align="flex-start" mb="xs">
+          <div>
+            <Title order={2} mb="xs">
+              Member Balances Report
+            </Title>
+            <Text c="dimmed">Outstanding balances by member</Text>
+          </div>
+          
+          <Button
+            leftSection={<IconFileSpreadsheet size={16} />}
+            variant="light"
+            color="green"
+            onClick={handleExportExcel}
+            loading={isExporting}
+          >
+            Export Excel
+          </Button>
+        </Group>
       </div>
 
       {/* Summary Stats */}

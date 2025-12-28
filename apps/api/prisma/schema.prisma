@@ -112,7 +112,6 @@ model Member {
   occupation                   String?
   state                        String?
   loginStatus                  String          @default("no_login") @map("login_status")
-  exports                      ExportHistory[]
   invites                      MemberInvite[]
   association                  Association     @relation(fields: [associationId], references: [id])
   user                         User?           @relation(fields: [userId], references: [id])
@@ -234,22 +233,21 @@ model AccountingEntry {
 }
 
 model ExportHistory {
-  id             Int         @id @default(autoincrement())
-  associationId  Int         @map("association_id")
-  exportType     String      @map("export_type")
-  exportFormat   String      @map("export_format")
-  dateRangeStart DateTime?   @map("date_range_start")
-  dateRangeEnd   DateTime?   @map("date_range_end")
-  exportPeriod   String?     @map("export_period")
-  filePath       String?     @map("file_path")
-  memberId       Int?        @map("member_id")
-  createdBy      Int         @map("created_by")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  association    Association @relation(fields: [associationId], references: [id])
-  creator        User        @relation(fields: [createdBy], references: [id])
-  member         Member?     @relation(fields: [memberId], references: [id])
+  id            Int         @id @default(autoincrement())
+  associationId Int         @map("association_id")
+  userId        Int         @map("user_id")
+  type          String
+  format        String
+  filename      String
+  filepath      String
+  fileSize      Int         @map("file_size")
+  expiresAt     DateTime    @map("expires_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  association   Association @relation(fields: [associationId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
 
-  @@index([associationId, exportType])
+  @@index([associationId, type])
+  @@index([expiresAt])
   @@map("export_history")
 }
 

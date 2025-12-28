@@ -22,11 +22,16 @@ import {
   IconTrendingDown,
   IconMinus,
   IconChartBar,
+  IconFileTypePdf,
+  IconFileSpreadsheet,
+  IconDownload,
 } from '@tabler/icons-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { reportsApi } from '@/lib/api/reports';
+import { exportsApi } from '@/lib/api/exports';
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
+import { notifications } from '@mantine/notifications';
 import Link from 'next/link';
 
 export default function FinancialSummaryPage() {
@@ -38,6 +43,68 @@ export default function FinancialSummaryPage() {
     period: 'this_month',
   });
   const [includeComparison, setIncludeComparison] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Export handlers
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      const result = await exportsApi.exportFinancialPDF({
+        period: dateRange.period,
+        startDate: dateRange.startDate?.toISOString(),
+        endDate: dateRange.endDate?.toISOString(),
+        includeComparison,
+      });
+
+      if (result.success) {
+        notifications.show({
+          title: 'Export Successful',
+          message: 'Your PDF is ready for download',
+          color: 'green',
+        });
+        // Trigger download
+        exportsApi.downloadExport(result.data.id);
+      }
+    } catch (error: any) {
+      notifications.show({
+        title: 'Export Failed',
+        message: error.response?.data?.message || 'Failed to generate PDF',
+        color: 'red',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      const result = await exportsApi.exportFinancialExcel({
+        period: dateRange.period,
+        startDate: dateRange.startDate?.toISOString(),
+        endDate: dateRange.endDate?.toISOString(),
+        includeComparison,
+      });
+
+      if (result.success) {
+        notifications.show({
+          title: 'Export Successful',
+          message: 'Your Excel file is ready for download',
+          color: 'green',
+        });
+        // Trigger download
+        exportsApi.downloadExport(result.data.id);
+      }
+    } catch (error: any) {
+      notifications.show({
+        title: 'Export Failed',
+        message: error.response?.data?.message || 'Failed to generate Excel',
+        color: 'red',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['financial-summary', dateRange, includeComparison],
@@ -147,10 +214,35 @@ export default function FinancialSummaryPage() {
           Back to Reports
         </Button>
 
-        <Title order={2} mb="xs">
-          Financial Summary Report
-        </Title>
-        <Text c="dimmed">{report.period.label}</Text>
+        <Group justify="space-between" align="flex-start" mb="xs">
+          <div>
+            <Title order={2} mb="xs">
+              Financial Summary Report
+            </Title>
+            <Text c="dimmed">{report.period.label}</Text>
+          </div>
+          
+          <Group gap="sm">
+            <Button
+              leftSection={<IconFileTypePdf size={16} />}
+              variant="light"
+              color="red"
+              onClick={handleExportPDF}
+              loading={isExporting}
+            >
+              Export PDF
+            </Button>
+            <Button
+              leftSection={<IconFileSpreadsheet size={16} />}
+              variant="light"
+              color="green"
+              onClick={handleExportExcel}
+              loading={isExporting}
+            >
+              Export Excel
+            </Button>
+          </Group>
+        </Group>
       </div>
 
       {/* Filters */}
