@@ -81,6 +81,55 @@ export function Sidebar() {
       href: '/dashboard/members',
       permission: PERMISSIONS.MEMBER_VIEW,
     },
+    // Member Self-Service Finance Section
+    {
+      label: 'My Finances',
+      icon: <IconCurrencyNaira size={20} />,
+      permission: PERMISSIONS.MEMBER_FINANCE_VIEW,
+      children: [
+        {
+          label: 'Overview',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/my-finances',
+        },
+        {
+          label: 'My Ledger',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/my-finances/ledger',
+        },
+        {
+          label: 'My Dues',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/my-finances/dues',
+        },
+        {
+          label: 'My Levies',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/my-finances/levies',
+        },
+        {
+          label: 'My Donations',
+          icon: <IconHeart size={18} />,
+          href: '/dashboard/my-finances/donations',
+        },
+        {
+          label: 'Penalties',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/my-finances/penalties',
+        },
+        {
+          label: 'Payment History',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/my-finances/payments',
+        },
+        {
+          label: 'Make Payment',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/my-finances/pay',
+        },
+      ],
+    },
+    // Admin Finance Section
     {
       label: 'Finance',
       icon: <IconCurrencyNaira size={20} />,
@@ -90,6 +139,11 @@ export function Sidebar() {
           label: 'Overview',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/finance/overview',
+        },
+        {
+          label: 'Member Ledgers',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/finance/member-ledger',
         },
         {
           label: 'Categories',
@@ -274,24 +328,61 @@ export function Sidebar() {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
       badge: 'Enterprise',
+      permission: PERMISSIONS.COOPERATIVE_VIEW,
       children: [
         {
-          label: 'Loans',
-          icon: <IconWallet size={18} />,
-          href: '/dashboard/cooperatives/loans',
-          comingSoon: true,
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/cooperatives',
+          permission: PERMISSIONS.COOPERATIVE_VIEW,
         },
         {
-          label: 'Savings',
+          label: 'My Savings',
           icon: <IconCurrencyNaira size={18} />,
-          href: '/dashboard/cooperatives/savings',
-          comingSoon: true,
+          href: '/dashboard/cooperatives/my-savings',
+          permission: PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
         },
         {
-          label: 'Guarantors',
+          label: 'My Loans',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/cooperatives/my-loans',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_VIEW,
+        },
+        {
+          label: 'Apply for Loan',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/cooperatives/apply',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_APPLY,
+        },
+        {
+          label: 'Guarantor Requests',
           icon: <IconUsers size={18} />,
           href: '/dashboard/cooperatives/guarantors',
-          comingSoon: true,
+          permission: PERMISSIONS.COOPERATIVE_GUARANTOR,
+        },
+        {
+          label: 'All Savings',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/cooperatives/savings',
+          permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+        },
+        {
+          label: 'All Loans',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/cooperatives/loans',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
+        },
+        {
+          label: 'Loan Products',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/cooperatives/loan-products',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
+        },
+        {
+          label: 'Applications',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/cooperatives/applications',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
         },
       ],
     },

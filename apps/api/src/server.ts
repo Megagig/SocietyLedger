@@ -28,6 +28,9 @@ import exportsRoutes from './modules/exports/exports.routes';
 import advancedFinanceRoutes from './modules/finance/advanced/advanced.routes';
 import accountingRoutes from './modules/accounting/accounting.routes';
 import nigerianPaymentsRoutes from './modules/nigerian-payments/nigerian-payments.routes';
+import cooperativesRoutes from './modules/cooperatives/cooperatives.routes';
+import memberFinanceRoutes from './modules/member-finance/member-finance.routes';
+import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -110,6 +113,9 @@ app.use('/api/exports', exportsRoutes);
 app.use('/api/finance/advanced', advancedFinanceRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/payments/nigerian', nigerianPaymentsRoutes);
+app.use('/api/cooperatives', cooperativesRoutes);
+app.use('/api/members/me', memberFinanceRoutes);
+app.use('/api/member-ledger', memberLedgerRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

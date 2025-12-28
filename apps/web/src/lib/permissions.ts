@@ -54,6 +54,18 @@ export const PERMISSIONS = {
   
   // Audit Logs
   AUDIT_VIEW: 'audit:view',
+  
+  // Cooperative Management (Phase 8.5)
+  COOPERATIVE_VIEW: 'cooperative:view',           // View cooperative dashboard & own data
+  COOPERATIVE_SAVINGS_VIEW: 'cooperative:savings:view',    // View savings accounts
+  COOPERATIVE_SAVINGS_MANAGE: 'cooperative:savings:manage', // Create accounts, process transactions
+  COOPERATIVE_LOANS_VIEW: 'cooperative:loans:view',        // View loans
+  COOPERATIVE_LOANS_APPLY: 'cooperative:loans:apply',      // Apply for loans
+  COOPERATIVE_LOANS_MANAGE: 'cooperative:loans:manage',    // Approve, disburse loans
+  COOPERATIVE_GUARANTOR: 'cooperative:guarantor',          // Act as guarantor
+  
+  // Member Self-Service Finance
+  MEMBER_FINANCE_VIEW: 'member:finance:view',     // View own financial data (dues, levies, etc.)
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -97,6 +109,15 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.SUBSCRIPTION_VIEW,
     PERMISSIONS.SUBSCRIPTION_MANAGE,
     PERMISSIONS.AUDIT_VIEW,
+    
+    // Cooperative - Full management
+    PERMISSIONS.COOPERATIVE_VIEW,
+    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
+    PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
+    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
+    PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
+    PERMISSIONS.COOPERATIVE_GUARANTOR,
   ],
   
   treasurer: [
@@ -117,6 +138,15 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.REPORT_FINANCIAL,
     PERMISSIONS.REPORT_EXPORT,
     PERMISSIONS.SETTINGS_VIEW,
+    
+    // Cooperative - Financial management
+    PERMISSIONS.COOPERATIVE_VIEW,
+    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
+    PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
+    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
+    PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
+    PERMISSIONS.COOPERATIVE_GUARANTOR,
   ],
   
   financial_secretary: [
@@ -133,6 +163,14 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.REPORT_FINANCIAL,
     PERMISSIONS.REPORT_MEMBER,
     PERMISSIONS.SETTINGS_VIEW,
+    
+    // Cooperative - Record keeping
+    PERMISSIONS.COOPERATIVE_VIEW,
+    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
+    PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
+    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
+    PERMISSIONS.COOPERATIVE_GUARANTOR,
   ],
   
   member: [
@@ -140,6 +178,16 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.TRANSACTION_VIEW,
     PERMISSIONS.PAYMENT_VIEW,
     PERMISSIONS.REPORT_VIEW,
+    
+    // Cooperative access for members
+    PERMISSIONS.COOPERATIVE_VIEW,
+    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
+    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
+    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
+    PERMISSIONS.COOPERATIVE_GUARANTOR,
+    
+    // Member self-service finance
+    PERMISSIONS.MEMBER_FINANCE_VIEW,
   ],
 };
 

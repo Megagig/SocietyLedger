@@ -39,7 +39,8 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **6.5** | SMS & Bulk Communication | 🟡 Placeholder | 0/6 | 🟡 MEDIUM |
 | **12** | Caching & Performance | ⚪ Not Started | 0/10 | 🟢 LOW |
 | **12.5** | Meetings & Attendance | 🟡 Placeholder | 0/6 | 🟢 LOW |
-| **8.5** | Cooperatives & Loans | 🟡 Placeholder | 0/10 | 🟢 LOW |
+| **8.5** | Cooperatives & Loans | ✅ **COMPLETE** | 10/10 | 🟢 LOW |
+| **11.7** | Member Financial Ledger | ✅ **COMPLETE** | 8/8 | 🔴 HIGH |
 | **13.5** | Mobile/PWA | ⚪ Not Started | 0/6 | 🟢 LOW |
 | **16** | Enterprise Features | ⚪ Not Started | 0/8 | 🟢 LOW |
 | **17** | AI Integration | ⚪ Not Started | 0/16 | 🟢 LOW |
@@ -127,7 +128,7 @@ The following diagram shows how features depend on each other:
 │                                                                              │
 │  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐ │
 │  │ PHASE 12: Caching & │  │ PHASE 12.5: Meetings│  │ PHASE 8.5: Coops &  │ │
-│  │ Performance         │  │ & Attendance        │  │ Loans (Enterprise)  │ │
+│  │ Performance         │  │ & Attendance        │  │ Loans ✅ COMPLETE   │ │
 │  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘ │
 │                                                                              │
 │  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐ │
@@ -432,6 +433,80 @@ All tasks completed:
 - [x] Tokens expire after 72 hours
 - [x] Single-use tokens (marked as accepted/expired after use)
 - [x] Tenant isolation enforced on all operations
+
+---
+
+### Phase 11.7: Member Financial Ledger ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 28, 2025  
+**Location:** `apps/api/src/modules/member-finance/member-ledger.service.ts`, `member-ledger.controller.ts`, `member-ledger.routes.ts`
+
+**Core Design Principles:**
+- Single source of truth for all member financial activity
+- Append-only ledger for audit integrity (no deletes)
+- Computed balance strategy (no stored balances)
+- Works for both logged-in and passive members
+
+**Implemented Features:**
+
+**Ledger Entry System:**
+- [x] Append-only ledger entries with running balance
+- [x] Entry types: DEBIT (charges), CREDIT (payments), ADJUSTMENT
+- [x] Categories: DUES, LEVY, PENALTY, DONATION, REFUND, WAIVER, ADJUSTMENT, SAVINGS_DEPOSIT, SAVINGS_WITHDRAWAL, LOAN_DISBURSEMENT, LOAN_REPAYMENT, OTHER
+- [x] Source reference tracking (table + record ID) for audit trail
+- [x] Automatic ledger entry creation from transactions and payments
+
+**Balance Calculation:**
+- [x] Computed balance: SUM(CREDITS) - SUM(DEBITS)
+- [x] Date-based balance queries (as of specific date)
+- [x] Running balance maintained on each entry
+
+**Statement Generation:**
+- [x] Full member statement with opening/closing balance
+- [x] Date range filtering
+- [x] Transaction details with debit/credit columns
+- [x] Summary totals
+
+**Data Migration:**
+- [x] Sync existing transactions to ledger (per member)
+- [x] Bulk sync all members' ledgers
+- [x] Prevents duplicate syncing
+
+**PDF Export:**
+- [x] Branded PDF statements with association logo/colors
+- [x] Opening/closing balance display
+- [x] Transaction history table
+- [x] Summary section
+
+**Database Model:**
+- [x] `MemberFinancialLedger` model with all required fields
+- [x] Indexes for performance (association+member, effective_date, source)
+- [x] Relations to Association and Member
+
+**API Endpoints:**
+
+*Member Self-Service (requires MEMBER_FINANCE_VIEW):*
+- `GET /api/member-ledger/my-ledger/summary` - Ledger summary
+- `GET /api/member-ledger/my-ledger/entries` - Ledger entries with pagination
+- `GET /api/member-ledger/my-ledger/statement?startDate=&endDate=` - Statement
+- `GET /api/member-ledger/my-ledger/balance` - Current balance
+- `POST /api/member-ledger/my-ledger/export` - Export PDF statement
+
+*Admin Endpoints (requires FINANCE_VIEW/FINANCE_APPROVE):*
+- `GET /api/member-ledger/ledger/members` - All members with balances
+- `GET /api/member-ledger/ledger/:memberId/summary` - Member summary
+- `GET /api/member-ledger/ledger/:memberId/entries` - Member entries
+- `GET /api/member-ledger/ledger/:memberId/statement` - Member statement
+- `GET /api/member-ledger/ledger/:memberId/balance` - Member balance
+- `POST /api/member-ledger/ledger/:memberId/sync` - Sync member ledger
+- `POST /api/member-ledger/ledger/:memberId/export` - Export member PDF
+- `POST /api/member-ledger/ledger/bulk-sync` - Bulk sync all members
+
+**Access Control:**
+- [x] Admin/Treasurer/Financial Secretary: View any member ledger
+- [x] Members: View only their own ledger
+- [x] Members without login: Admin generates statements for them
 
 ---
 
@@ -1065,25 +1140,72 @@ These features are for scaling and enterprise customers. Implement after Priorit
 
 ---
 
-### Phase 8.5: Cooperatives & Loans 🟢 LOW PRIORITY (Enterprise)
+### Phase 8.5: Cooperatives & Loans ✅ COMPLETE (Enterprise)
 
-**Status:** 🟡 Placeholder (UI pages exist at `apps/web/src/app/dashboard/cooperatives/`)  
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 28, 2025  
+**Location:** `apps/api/src/modules/cooperatives/`  
 **Dependencies:** Financial Core ✅, Member Management ✅  
-**Tier:** Enterprise Only  
-**Estimated Time:** 8-10 days
+**Tier:** Enterprise Only
 
-#### Tasks to Implement:
+**Implemented Features:**
 
-- [ ] **TASK-COOP-001:** Loan Model & Schema
-- [ ] **TASK-COOP-002:** Savings Account Management
-- [ ] **TASK-COOP-003:** Loan Application System
-- [ ] **TASK-COOP-004:** Guarantor Management
-- [ ] **TASK-COOP-005:** Interest Calculation
-- [ ] **TASK-COOP-006:** Loan Repayment Tracking
-- [ ] **TASK-COOP-007:** Loan Approval Workflow
-- [ ] **TASK-COOP-008:** Savings Dashboard UI
-- [ ] **TASK-COOP-009:** Loan Application UI
-- [ ] **TASK-COOP-010:** Loan Management UI
+**Savings Account Management:**
+- [x] Savings account creation with types (REGULAR, THRIFT, TARGET, FIXED_DEPOSIT)
+- [x] Deposit and withdrawal processing
+- [x] Interest tracking and accrual
+- [x] Account balance management
+- [x] Transaction history
+
+**Loan Products:**
+- [x] Configurable loan products with interest rates
+- [x] Support for FLAT, REDUCING_BALANCE, and COMPOUND interest types
+- [x] Processing fee configuration (percentage + fixed)
+- [x] Tenure limits (min/max months)
+- [x] Loan-to-savings ratio enforcement
+
+**Loan Application System:**
+- [x] Loan application submission
+- [x] Automatic repayment calculation (EMI)
+- [x] Application status workflow (DRAFT → PENDING_GUARANTORS → PENDING_REVIEW → APPROVED → DISBURSED)
+- [x] Collateral tracking
+
+**Guarantor Management:**
+- [x] Guarantor assignment to loan applications
+- [x] Accept/decline workflow for guarantors
+- [x] Guarantee amount tracking
+- [x] Guarantor exposure calculation
+
+**Loan Disbursement & Repayment:**
+- [x] Loan disbursement with multiple methods (bank_transfer, cash, cheque, savings_credit)
+- [x] Automatic amortization schedule generation
+- [x] Repayment processing with principal/interest allocation
+- [x] Overdue tracking and late fee calculation
+- [x] Loan status management (ACTIVE, OVERDUE, DEFAULTED, PAID_OFF, WRITTEN_OFF)
+
+**Dashboard & Profiles:**
+- [x] Cooperative dashboard with savings and loans summary
+- [x] Member cooperative profile with credit score
+- [x] Loan eligibility calculation
+- [x] Pending actions tracking
+
+**Database Models:**
+- [x] SavingsAccount, SavingsTransaction
+- [x] LoanProduct, LoanApplication, LoanGuarantor
+- [x] Loan, LoanRepaymentSchedule, LoanRepayment
+
+**API Endpoints:**
+- `GET/POST /api/cooperatives/savings-accounts` - Savings account management
+- `GET/POST /api/cooperatives/savings-transactions` - Deposit/withdrawal
+- `GET/POST/PUT /api/cooperatives/loan-products` - Loan product management
+- `GET/POST /api/cooperatives/loan-applications` - Loan applications
+- `POST /api/cooperatives/loan-applications/:id/review` - Approve/reject
+- `POST /api/cooperatives/loan-applications/:id/disburse` - Disburse loan
+- `GET/POST /api/cooperatives/guarantor-requests` - Guarantor management
+- `GET /api/cooperatives/loans` - Active loans
+- `GET/POST /api/cooperatives/loan-repayments` - Repayment processing
+- `GET /api/cooperatives/dashboard` - Dashboard statistics
+- `GET /api/cooperatives/my-profile` - Member cooperative profile
 
 ---
 

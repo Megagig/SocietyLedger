@@ -435,7 +435,7 @@ export default function JournalEntriesPage() {
                         {...form.getInputProps(`lines.${index}.debitAmount`)}
                         onChange={(value) => {
                           form.setFieldValue(`lines.${index}.debitAmount`, value || 0);
-                          if (value && value > 0) {
+                          if (value && Number(value) > 0) {
                             form.setFieldValue(`lines.${index}.creditAmount`, 0);
                           }
                         }}
@@ -449,7 +449,7 @@ export default function JournalEntriesPage() {
                         {...form.getInputProps(`lines.${index}.creditAmount`)}
                         onChange={(value) => {
                           form.setFieldValue(`lines.${index}.creditAmount`, value || 0);
-                          if (value && value > 0) {
+                          if (value && Number(value) > 0) {
                             form.setFieldValue(`lines.${index}.debitAmount`, 0);
                           }
                         }}

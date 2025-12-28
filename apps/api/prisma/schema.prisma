@@ -48,45 +48,60 @@ model Association {
   bankStatementImports       BankStatementImport[]
   paymentReconciliations     PaymentReconciliation[]
   paymentProofs              PaymentProof[]
+  // Phase 8.5: Cooperatives & Loans
+  savingsAccounts            SavingsAccount[]
+  savingsTransactions        SavingsTransaction[]
+  loanProducts               LoanProduct[]
+  loanApplications           LoanApplication[]
+  loanGuarantors             LoanGuarantor[]
+  loans                      Loan[]
+  loanRepayments             LoanRepayment[]
+  // Member Financial Ledger
+  memberLedgerEntries        MemberFinancialLedger[]
 
   @@map("associations")
 }
 
 model User {
-  id                        Int                @id @default(autoincrement())
-  associationId             Int?               @map("association_id")
-  email                     String
-  passwordHash              String             @map("password_hash")
-  role                      String             @default("member")
-  platformRole              PlatformRole?      @map("platform_role")
-  isActive                  Boolean            @default(false) @map("is_active")
-  createdAt                 DateTime           @default(now()) @map("created_at")
-  updatedAt                 DateTime           @updatedAt @map("updated_at")
-  emailVerified             Boolean            @default(false) @map("email_verified")
-  passwordResetExpiresAt    DateTime?          @map("password_reset_expires_at")
-  passwordResetToken        String?            @map("password_reset_token")
-  verificationCode          String?            @map("verification_code")
-  verificationExpiresAt     DateTime?          @map("verification_expires_at")
-  approvedAccountingEntries AccountingEntry[]  @relation("AccountingEntryApprovedBy")
-  createdAccountingEntries  AccountingEntry[]  @relation("AccountingEntryCreatedBy")
-  auditLogs                 AuditLog[]
-  exports                   ExportHistory[]
-  sentMemberInvites         MemberInvite[]     @relation("MemberInvitedBy")
-  member                    Member?
-  notifications             Notification[]
-  confirmedPayments         Payment[]          @relation("PaymentConfirmedBy")
-  settingsUpdates           Settings[]         @relation("SettingsUpdatedBy")
-  createdTransactions       Transaction[]      @relation("TransactionCreatedBy")
-  approvedUsers             UserApproval[]     @relation("UserApprovedBy")
-  userApproval              UserApproval?
-  association               Association?       @relation(fields: [associationId], references: [id])
+  id                           Int                  @id @default(autoincrement())
+  associationId                Int?                 @map("association_id")
+  email                        String
+  passwordHash                 String               @map("password_hash")
+  role                         String               @default("member")
+  platformRole                 PlatformRole?        @map("platform_role")
+  isActive                     Boolean              @default(false) @map("is_active")
+  createdAt                    DateTime             @default(now()) @map("created_at")
+  updatedAt                    DateTime             @updatedAt @map("updated_at")
+  emailVerified                Boolean              @default(false) @map("email_verified")
+  passwordResetExpiresAt       DateTime?            @map("password_reset_expires_at")
+  passwordResetToken           String?              @map("password_reset_token")
+  verificationCode             String?              @map("verification_code")
+  verificationExpiresAt        DateTime?            @map("verification_expires_at")
+  approvedAccountingEntries    AccountingEntry[]    @relation("AccountingEntryApprovedBy")
+  createdAccountingEntries     AccountingEntry[]    @relation("AccountingEntryCreatedBy")
+  auditLogs                    AuditLog[]
+  exports                      ExportHistory[]
+  sentMemberInvites            MemberInvite[]       @relation("MemberInvitedBy")
+  member                       Member?
+  notifications                Notification[]
+  confirmedPayments            Payment[]            @relation("PaymentConfirmedBy")
+  settingsUpdates              Settings[]           @relation("SettingsUpdatedBy")
+  createdTransactions          Transaction[]        @relation("TransactionCreatedBy")
+  approvedUsers                UserApproval[]       @relation("UserApprovedBy")
+  userApproval                 UserApproval?
+  association                  Association?         @relation(fields: [associationId], references: [id])
   // Phase 9: Accounting System
-  createdJournalEntries     JournalEntry[]     @relation("JournalEntryCreatedBy")
-  approvedJournalEntries    JournalEntry[]     @relation("JournalEntryApprovedBy")
-  rejectedJournalEntries    JournalEntry[]     @relation("JournalEntryRejectedBy")
-  createdBudgets            Budget[]           @relation("BudgetCreatedBy")
-  approvedBudgets           Budget[]           @relation("BudgetApprovedBy")
-  closedPeriods             AccountingPeriod[] @relation("PeriodClosedBy")
+  createdJournalEntries        JournalEntry[]       @relation("JournalEntryCreatedBy")
+  approvedJournalEntries       JournalEntry[]       @relation("JournalEntryApprovedBy")
+  rejectedJournalEntries       JournalEntry[]       @relation("JournalEntryRejectedBy")
+  createdBudgets               Budget[]             @relation("BudgetCreatedBy")
+  approvedBudgets              Budget[]             @relation("BudgetApprovedBy")
+  closedPeriods                AccountingPeriod[]   @relation("PeriodClosedBy")
+  // Phase 8.5: Cooperatives & Loans
+  processedSavingsTransactions SavingsTransaction[] @relation("SavingsTransactionProcessor")
+  reviewedLoanApplications     LoanApplication[]    @relation("LoanApplicationReviewer")
+  approvedLoanApplications     LoanApplication[]    @relation("LoanApplicationApprover")
+  processedLoanRepayments      LoanRepayment[]      @relation("LoanRepaymentProcessor")
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -142,6 +157,13 @@ model Member {
   // Phase 3.5: Nigerian Payment Features
   bankTransfers                BankTransfer[]
   paymentProofs                PaymentProof[]
+  // Phase 8.5: Cooperatives & Loans
+  savingsAccounts              SavingsAccount[]
+  loanApplications             LoanApplication[]
+  guaranteedLoans              LoanGuarantor[]
+  loans                        Loan[]
+  // Member Financial Ledger
+  ledgerEntries                MemberFinancialLedger[]
 
   @@unique([associationId, memberId])
   @@index([associationId, status])
@@ -994,4 +1016,377 @@ enum PaymentProofStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ============================================
+// PHASE 8.5: COOPERATIVES & LOANS MODELS
+// Enterprise Feature - Thrift & Savings, Loans, Guarantors
+// ============================================
+
+// Savings Account
+model SavingsAccount {
+  id                  Int                  @id @default(autoincrement())
+  associationId       Int                  @map("association_id")
+  memberId            Int                  @map("member_id")
+  accountNumber       String               @map("account_number")
+  accountType         SavingsAccountType   @default(REGULAR) @map("account_type")
+  balance             Decimal              @default(0) @db.Decimal(12, 2)
+  targetAmount        Decimal?             @map("target_amount") @db.Decimal(12, 2)
+  monthlyContribution Decimal?             @map("monthly_contribution") @db.Decimal(12, 2)
+  interestRate        Decimal              @default(0) @map("interest_rate") @db.Decimal(5, 2)
+  accruedInterest     Decimal              @default(0) @map("accrued_interest") @db.Decimal(12, 2)
+  totalDeposits       Decimal              @default(0) @map("total_deposits") @db.Decimal(12, 2)
+  totalWithdrawals    Decimal              @default(0) @map("total_withdrawals") @db.Decimal(12, 2)
+  status              SavingsAccountStatus @default(ACTIVE)
+  maturityDate        DateTime?            @map("maturity_date")
+  openedAt            DateTime             @default(now()) @map("opened_at")
+  closedAt            DateTime?            @map("closed_at")
+  notes               String?
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  association         Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member              Member               @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  transactions        SavingsTransaction[]
+
+  @@unique([associationId, accountNumber])
+  @@index([associationId, status])
+  @@index([memberId])
+  @@map("savings_accounts")
+}
+
+// Savings Transaction
+model SavingsTransaction {
+  id               Int                    @id @default(autoincrement())
+  associationId    Int                    @map("association_id")
+  savingsAccountId Int                    @map("savings_account_id")
+  type             SavingsTransactionType
+  amount           Decimal                @db.Decimal(12, 2)
+  balanceAfter     Decimal                @map("balance_after") @db.Decimal(12, 2)
+  paymentMethod    String?                @map("payment_method")
+  reference        String?
+  processedBy      Int                    @map("processed_by")
+  notes            String?
+  createdAt        DateTime               @default(now()) @map("created_at")
+  association      Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  savingsAccount   SavingsAccount         @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
+  processor        User                   @relation("SavingsTransactionProcessor", fields: [processedBy], references: [id])
+
+  @@index([savingsAccountId])
+  @@index([createdAt])
+  @@map("savings_transactions")
+}
+
+// Loan Product
+model LoanProduct {
+  id                    Int               @id @default(autoincrement())
+  associationId         Int               @map("association_id")
+  name                  String
+  description           String?
+  minAmount             Decimal           @map("min_amount") @db.Decimal(12, 2)
+  maxAmount             Decimal           @map("max_amount") @db.Decimal(12, 2)
+  interestRate          Decimal           @map("interest_rate") @db.Decimal(5, 2)
+  interestType          InterestType      @default(REDUCING_BALANCE) @map("interest_type")
+  minTenureMonths       Int               @map("min_tenure_months")
+  maxTenureMonths       Int               @map("max_tenure_months")
+  processingFeePercent  Decimal           @default(0) @map("processing_fee_percent") @db.Decimal(5, 2)
+  processingFeeFixed    Decimal           @default(0) @map("processing_fee_fixed") @db.Decimal(10, 2)
+  requiresGuarantor     Boolean           @default(true) @map("requires_guarantor")
+  minGuarantors         Int               @default(1) @map("min_guarantors")
+  maxLoanToSavingsRatio Decimal?          @map("max_loan_to_savings_ratio") @db.Decimal(5, 2)
+  gracePeriodDays       Int               @default(0) @map("grace_period_days")
+  lateFeePercent        Decimal           @default(0) @map("late_fee_percent") @db.Decimal(5, 2)
+  lateFeeFixed          Decimal           @default(0) @map("late_fee_fixed") @db.Decimal(10, 2)
+  isActive              Boolean           @default(true) @map("is_active")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  association           Association       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  applications          LoanApplication[]
+  loans                 Loan[]
+
+  @@unique([associationId, name])
+  @@index([associationId, isActive])
+  @@map("loan_products")
+}
+
+// Loan Application
+model LoanApplication {
+  id                    Int                   @id @default(autoincrement())
+  associationId         Int                   @map("association_id")
+  applicationNumber     String                @map("application_number")
+  memberId              Int                   @map("member_id")
+  loanProductId         Int                   @map("loan_product_id")
+  amount                Decimal               @db.Decimal(12, 2)
+  tenureMonths          Int                   @map("tenure_months")
+  interestRate          Decimal               @map("interest_rate") @db.Decimal(5, 2)
+  interestType          InterestType          @map("interest_type")
+  monthlyRepayment      Decimal               @map("monthly_repayment") @db.Decimal(12, 2)
+  totalRepayment        Decimal               @map("total_repayment") @db.Decimal(12, 2)
+  totalInterest         Decimal               @map("total_interest") @db.Decimal(12, 2)
+  processingFee         Decimal               @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  purpose               String
+  status                LoanApplicationStatus @default(DRAFT)
+  collateralDescription String?               @map("collateral_description")
+  collateralValue       Decimal?              @map("collateral_value") @db.Decimal(12, 2)
+  appliedAt             DateTime              @default(now()) @map("applied_at")
+  reviewedBy            Int?                  @map("reviewed_by")
+  reviewedAt            DateTime?             @map("reviewed_at")
+  reviewComments        String?               @map("review_comments")
+  approvedBy            Int?                  @map("approved_by")
+  approvedAt            DateTime?             @map("approved_at")
+  rejectionReason       String?               @map("rejection_reason")
+  disbursedAt           DateTime?             @map("disbursed_at")
+  cancelledAt           DateTime?             @map("cancelled_at")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+  association           Association           @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member                Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  loanProduct           LoanProduct           @relation(fields: [loanProductId], references: [id])
+  reviewer              User?                 @relation("LoanApplicationReviewer", fields: [reviewedBy], references: [id])
+  approver              User?                 @relation("LoanApplicationApprover", fields: [approvedBy], references: [id])
+  guarantors            LoanGuarantor[]
+  loan                  Loan?
+
+  @@unique([associationId, applicationNumber])
+  @@index([associationId, status])
+  @@index([memberId])
+  @@map("loan_applications")
+}
+
+// Loan Guarantor
+model LoanGuarantor {
+  id                Int             @id @default(autoincrement())
+  associationId     Int             @map("association_id")
+  loanApplicationId Int             @map("loan_application_id")
+  guarantorMemberId Int             @map("guarantor_member_id")
+  guaranteeAmount   Decimal         @map("guarantee_amount") @db.Decimal(12, 2)
+  status            GuarantorStatus @default(PENDING)
+  acceptedAt        DateTime?       @map("accepted_at")
+  declinedAt        DateTime?       @map("declined_at")
+  declineReason     String?         @map("decline_reason")
+  releasedAt        DateTime?       @map("released_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  association       Association     @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  loanApplication   LoanApplication @relation(fields: [loanApplicationId], references: [id], onDelete: Cascade)
+  guarantorMember   Member          @relation(fields: [guarantorMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([loanApplicationId, guarantorMemberId])
+  @@index([loanApplicationId])
+  @@index([guarantorMemberId, status])
+  @@map("loan_guarantors")
+}
+
+// Active Loan
+model Loan {
+  id                 Int                     @id @default(autoincrement())
+  associationId      Int                     @map("association_id")
+  loanNumber         String                  @map("loan_number")
+  applicationId      Int                     @unique @map("application_id")
+  memberId           Int                     @map("member_id")
+  loanProductId      Int                     @map("loan_product_id")
+  principalAmount    Decimal                 @map("principal_amount") @db.Decimal(12, 2)
+  interestRate       Decimal                 @map("interest_rate") @db.Decimal(5, 2)
+  interestType       InterestType            @map("interest_type")
+  tenureMonths       Int                     @map("tenure_months")
+  monthlyRepayment   Decimal                 @map("monthly_repayment") @db.Decimal(12, 2)
+  totalRepayment     Decimal                 @map("total_repayment") @db.Decimal(12, 2)
+  totalInterest      Decimal                 @map("total_interest") @db.Decimal(12, 2)
+  processingFee      Decimal                 @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  amountDisbursed    Decimal                 @map("amount_disbursed") @db.Decimal(12, 2)
+  totalPaid          Decimal                 @default(0) @map("total_paid") @db.Decimal(12, 2)
+  principalPaid      Decimal                 @default(0) @map("principal_paid") @db.Decimal(12, 2)
+  interestPaid       Decimal                 @default(0) @map("interest_paid") @db.Decimal(12, 2)
+  outstandingBalance Decimal                 @map("outstanding_balance") @db.Decimal(12, 2)
+  nextPaymentDate    DateTime?               @map("next_payment_date") @db.Date
+  nextPaymentAmount  Decimal?                @map("next_payment_amount") @db.Decimal(12, 2)
+  status             LoanStatus              @default(ACTIVE)
+  disbursedAt        DateTime                @map("disbursed_at")
+  maturityDate       DateTime                @map("maturity_date") @db.Date
+  closedAt           DateTime?               @map("closed_at")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  association        Association             @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  application        LoanApplication         @relation(fields: [applicationId], references: [id])
+  member             Member                  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  loanProduct        LoanProduct             @relation(fields: [loanProductId], references: [id])
+  repaymentSchedule  LoanRepaymentSchedule[]
+  repayments         LoanRepayment[]
+
+  @@unique([associationId, loanNumber])
+  @@index([associationId, status])
+  @@index([memberId])
+  @@index([nextPaymentDate])
+  @@map("loans")
+}
+
+// Loan Repayment Schedule
+model LoanRepaymentSchedule {
+  id                Int             @id @default(autoincrement())
+  loanId            Int             @map("loan_id")
+  installmentNumber Int             @map("installment_number")
+  dueDate           DateTime        @map("due_date") @db.Date
+  principalDue      Decimal         @map("principal_due") @db.Decimal(12, 2)
+  interestDue       Decimal         @map("interest_due") @db.Decimal(12, 2)
+  totalDue          Decimal         @map("total_due") @db.Decimal(12, 2)
+  principalPaid     Decimal         @default(0) @map("principal_paid") @db.Decimal(12, 2)
+  interestPaid      Decimal         @default(0) @map("interest_paid") @db.Decimal(12, 2)
+  totalPaid         Decimal         @default(0) @map("total_paid") @db.Decimal(12, 2)
+  lateFee           Decimal         @default(0) @map("late_fee") @db.Decimal(10, 2)
+  status            RepaymentStatus @default(PENDING)
+  paidAt            DateTime?       @map("paid_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  loan              Loan            @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  repayments        LoanRepayment[]
+
+  @@unique([loanId, installmentNumber])
+  @@index([loanId])
+  @@index([dueDate, status])
+  @@map("loan_repayment_schedule")
+}
+
+// Loan Repayment
+model LoanRepayment {
+  id               Int                    @id @default(autoincrement())
+  associationId    Int                    @map("association_id")
+  loanId           Int                    @map("loan_id")
+  scheduleItemId   Int?                   @map("schedule_item_id")
+  amount           Decimal                @db.Decimal(12, 2)
+  principalPortion Decimal                @map("principal_portion") @db.Decimal(12, 2)
+  interestPortion  Decimal                @map("interest_portion") @db.Decimal(12, 2)
+  lateFee          Decimal                @default(0) @map("late_fee") @db.Decimal(10, 2)
+  paymentMethod    String                 @map("payment_method")
+  reference        String?
+  processedBy      Int                    @map("processed_by")
+  notes            String?
+  paidAt           DateTime               @default(now()) @map("paid_at")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  association      Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  loan             Loan                   @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  scheduleItem     LoanRepaymentSchedule? @relation(fields: [scheduleItemId], references: [id])
+  processor        User                   @relation("LoanRepaymentProcessor", fields: [processedBy], references: [id])
+
+  @@index([loanId])
+  @@index([paidAt])
+  @@map("loan_repayments")
+}
+
+// Enums for Cooperatives
+enum SavingsAccountType {
+  REGULAR
+  THRIFT
+  TARGET
+  FIXED_DEPOSIT
+}
+
+enum SavingsAccountStatus {
+  ACTIVE
+  DORMANT
+  CLOSED
+  MATURED
+}
+
+enum SavingsTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  INTEREST
+  TRANSFER_IN
+  TRANSFER_OUT
+  FEE
+}
+
+enum InterestType {
+  FLAT
+  REDUCING_BALANCE
+  COMPOUND
+}
+
+enum LoanApplicationStatus {
+  DRAFT
+  PENDING_GUARANTORS
+  PENDING_REVIEW
+  UNDER_REVIEW
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DISBURSED
+  CANCELLED
+}
+
+enum GuarantorStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  RELEASED
+}
+
+enum LoanStatus {
+  ACTIVE
+  OVERDUE
+  DEFAULTED
+  PAID_OFF
+  WRITTEN_OFF
+}
+
+enum RepaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+// ============================================
+// MEMBER FINANCIAL LEDGER
+// Single source of truth for member financial activity
+// Append-only ledger for audit trail
+// ============================================
+
+model MemberFinancialLedger {
+  id              Int             @id @default(autoincrement())
+  associationId   Int             @map("association_id")
+  memberId        Int             @map("member_id")
+  entryType       LedgerEntryType @map("entry_type")
+  category        LedgerCategory
+  amount          Decimal         @db.Decimal(12, 2)
+  runningBalance  Decimal         @default(0) @map("running_balance") @db.Decimal(12, 2)
+  effectiveDate   DateTime        @map("effective_date")
+  description     String
+  // Source reference for audit trail
+  sourceTable     String          @map("source_table") // transaction, payment, savings_transaction, loan_repayment, etc.
+  sourceId        Int             @map("source_id")
+  referenceNumber String?         @map("reference_number")
+  // Metadata
+  createdBy       Int             @map("created_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  // Relations
+  association     Association     @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member          Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, memberId])
+  @@index([associationId, memberId, effectiveDate])
+  @@index([sourceTable, sourceId])
+  @@index([effectiveDate])
+  @@map("member_financial_ledger")
+}
+
+enum LedgerEntryType {
+  DEBIT // Outflow from member (charges, dues, penalties)
+  CREDIT // Inflow to member (payments, refunds, waivers)
+  ADJUSTMENT // Corrections
+}
+
+enum LedgerCategory {
+  DUES
+  LEVY
+  PENALTY
+  DONATION
+  REFUND
+  WAIVER
+  ADJUSTMENT
+  SAVINGS_DEPOSIT
+  SAVINGS_WITHDRAWAL
+  LOAN_DISBURSEMENT
+  LOAN_REPAYMENT
+  OTHER
 }

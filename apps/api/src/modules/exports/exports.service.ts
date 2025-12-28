@@ -7,9 +7,11 @@ import {
   ExportResult,
   AssociationBranding,
   MemberStatementData,
+  LedgerStatementData,
 } from './exports.types';
 import { pdfService } from './pdf.service';
 import { excelService } from './excel.service';
+import { memberLedgerService } from '../member-finance/member-ledger.service';
 
 // ============================================
 // EXPORT SERVICE
@@ -463,6 +465,54 @@ export const exportsService = {
       userId,
       'all_members',
       'excel',
+      filename,
+      filepath,
+      stats.size
+    );
+  },
+
+  /**
+   * Export member ledger statement as PDF
+   * Complete financial history with opening/closing balance
+   */
+  async exportLedgerStatementPDF(
+    memberId: number,
+    associationId: number,
+    userId: number,
+    filters: { startDate: Date; endDate: Date }
+  ): Promise<ExportResult> {
+    const branding = await this.getAssociationBranding(associationId);
+    
+    // Generate ledger statement data
+    const statementData = await memberLedgerService.generateStatement(
+      associationId,
+      memberId,
+      filters.startDate,
+      filters.endDate
+    );
+
+    // Convert to LedgerStatementData format
+    const ledgerData: LedgerStatementData = {
+      member: statementData.member,
+      period: statementData.period,
+      openingBalance: statementData.openingBalance,
+      entries: statementData.entries,
+      totals: statementData.totals,
+      closingBalance: statementData.closingBalance,
+    };
+
+    const exportDir = this.ensureExportDirectory();
+    const filename = this.generateFilename(`ledger_statement_${memberId}`, 'pdf', associationId);
+    const filepath = path.join(exportDir, filename);
+
+    await pdfService.generateLedgerStatementPDF(ledgerData, branding, filepath);
+
+    const stats = fs.statSync(filepath);
+    return this.saveExportRecord(
+      associationId,
+      userId,
+      'ledger_statement',
+      'pdf',
       filename,
       filepath,
       stats.size
