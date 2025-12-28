@@ -145,7 +145,7 @@ export async function getMyBalance(): Promise<{ data: { balance: number } }> {
 export async function exportMyStatement(params: {
   startDate: string;
   endDate: string;
-}): Promise<Blob> {
+}): Promise<any> {
   const searchParams = new URLSearchParams();
   searchParams.set('startDate', params.startDate);
   searchParams.set('endDate', params.endDate);
@@ -254,11 +254,15 @@ export async function bulkSyncLedgers(): Promise<{ data: { synced: number; membe
 export async function exportMemberStatement(memberId: number, params: {
   startDate: string;
   endDate: string;
-}): Promise<Blob> {
-  const response = await apiPost(`${API_URL}/api/member-ledger/ledger/${memberId}/export`, params);
+}): Promise<any> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('startDate', params.startDate);
+  searchParams.set('endDate', params.endDate);
+  
+  const response = await apiPost(`${API_URL}/api/member-ledger/ledger/${memberId}/export?${searchParams}`, {});
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to export member statement');
   }
-  return response.blob();
+  return response.json();
 }

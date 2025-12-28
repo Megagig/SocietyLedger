@@ -148,19 +148,19 @@ export default function MemberLedgerDetailPage() {
     }
     try {
       setIsExporting(true);
-      const blob = await exportMemberStatement(memberId, {
+      const result = await exportMemberStatement(memberId, {
         startDate: statementDates[0].toISOString().split('T')[0],
         endDate: statementDates[1].toISOString().split('T')[0],
       });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `member-${memberId}-statement-${statementDates[0].toISOString().split('T')[0]}-${statementDates[1].toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Statement exported successfully');
+      
+      // API returns { data: { downloadUrl, filename, ... } }
+      if (result.data?.downloadUrl) {
+        // Open download URL in new tab or trigger download
+        window.open(`${process.env.NEXT_PUBLIC_API_URL}${result.data.downloadUrl}`, '_blank');
+        toast.success('Statement exported successfully');
+      } else {
+        toast.success(result.message || 'Statement exported successfully');
+      }
     } catch (err: any) {
       toast.error(err.message);
     } finally {

@@ -212,35 +212,48 @@ export default function ApplyForLoanPage() {
         <Stepper.Step label="Select Product" description="Choose loan type" icon={<IconWallet size={18} />}>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-4">
             <h3 className="text-lg font-semibold mb-4">Select a Loan Product</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              {loanProducts.map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => handleProductChange(product.id.toString())}
-                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    formData.loanProductId === product.id.toString()
-                      ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-teal-300'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold">{product.name}</h4>
-                    {formData.loanProductId === product.id.toString() && (
-                      <IconCheck className="text-teal-500" size={20} />
-                    )}
+            {loanProducts.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {loanProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => handleProductChange(product.id.toString())}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      formData.loanProductId === product.id.toString()
+                        ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-teal-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold">{product.name}</h4>
+                      {formData.loanProductId === product.id.toString() && (
+                        <IconCheck className="text-teal-500" size={20} />
+                      )}
+                    </div>
+                    {product.description && <p className="text-sm text-gray-500 mb-3">{product.description}</p>}
+                    <div className="space-y-1 text-sm">
+                      <p><span className="text-gray-500">Amount:</span> {formatCurrency(product.minAmount)} - {formatCurrency(product.maxAmount)}</p>
+                      <p><span className="text-gray-500">Interest:</span> {product.interestRate}% ({product.interestType.replace(/_/g, ' ')})</p>
+                      <p><span className="text-gray-500">Tenure:</span> {product.minTenureMonths} - {product.maxTenureMonths} months</p>
+                      {product.requiresGuarantor && (
+                        <p className="text-amber-600"><span className="text-gray-500">Guarantors:</span> {product.minGuarantors} required</p>
+                      )}
+                    </div>
                   </div>
-                  {product.description && <p className="text-sm text-gray-500 mb-3">{product.description}</p>}
-                  <div className="space-y-1 text-sm">
-                    <p><span className="text-gray-500">Amount:</span> {formatCurrency(product.minAmount)} - {formatCurrency(product.maxAmount)}</p>
-                    <p><span className="text-gray-500">Interest:</span> {product.interestRate}% ({product.interestType.replace(/_/g, ' ')})</p>
-                    <p><span className="text-gray-500">Tenure:</span> {product.minTenureMonths} - {product.maxTenureMonths} months</p>
-                    {product.requiresGuarantor && (
-                      <p className="text-amber-600"><span className="text-gray-500">Guarantors:</span> {product.minGuarantors} required</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <IconWallet size={48} className="mx-auto text-gray-400 mb-4" />
+                <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No Loan Products Available</h4>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  There are no active loan products configured for your association yet.
+                </p>
+                <p className="text-sm text-gray-400">
+                  Please contact your administrator or treasurer to set up loan products.
+                </p>
+              </div>
+            )}
           </div>
         </Stepper.Step>
 

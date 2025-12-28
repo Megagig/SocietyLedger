@@ -20,19 +20,23 @@ interface LoanApplicationDetail {
   status: string;
   monthlyRepayment: string;
   totalRepayment: string;
-  interestAmount: string;
+  totalInterest: string;
   processingFee: string;
+  interestRate: string;
+  interestType: string;
   collateralDescription?: string;
   reviewComments?: string;
   rejectionReason?: string;
-  createdAt: string;
+  appliedAt: string;
   reviewedAt?: string;
   approvedAt?: string;
-  member: { id: number; firstName: string; lastName: string; membershipId: string; email?: string; phone?: string };
-  loanProduct: { id: number; name: string; interestRate: string; interestType: string };
-  guarantors: Array<{ id: number; status: string; guaranteedAmount: string; member: { firstName: string; lastName: string; membershipId: string } }>;
-  reviewedBy?: { email: string };
-  approvedBy?: { email: string };
+  memberId: number;
+  memberName: string;
+  loanProductId: number;
+  loanProductName: string;
+  guarantors: Array<{ id: number; status: string; guaranteeAmount: string; guarantorMemberId: number; guarantorName: string }>;
+  reviewedBy?: number;
+  approvedBy?: number;
 }
 
 export default function ApplicationDetailPage() {
@@ -115,7 +119,7 @@ export default function ApplicationDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{application.applicationNumber}</h1>
             <Badge color={getStatusColor(application.status)} size="lg">{application.status.replace(/_/g, ' ')}</Badge>
           </div>
-          <p className="text-gray-500">Submitted on {formatDate(application.createdAt)}</p>
+          <p className="text-gray-500">Submitted on {formatDate(application.appliedAt)}</p>
         </div>
         {application.status === 'PENDING_REVIEW' && (
           <div className="flex gap-2">
@@ -134,14 +138,14 @@ export default function ApplicationDetailPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><IconFileAnalytics size={20} />Loan Details</h2>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-sm text-gray-500">Loan Product</p><p className="font-medium">{application.loanProduct.name}</p></div>
-              <div><p className="text-sm text-gray-500">Interest Rate</p><p className="font-medium">{application.loanProduct.interestRate}% ({application.loanProduct.interestType})</p></div>
+              <div><p className="text-sm text-gray-500">Loan Product</p><p className="font-medium">{application.loanProductName || 'N/A'}</p></div>
+              <div><p className="text-sm text-gray-500">Interest Rate</p><p className="font-medium">{application.interestRate || '0'}% ({application.interestType || 'N/A'})</p></div>
               <div><p className="text-sm text-gray-500">Principal Amount</p><p className="text-xl font-bold text-blue-600">{formatCurrency(application.amount)}</p></div>
               <div><p className="text-sm text-gray-500">Tenure</p><p className="font-medium">{application.tenureMonths} months</p></div>
-              <div><p className="text-sm text-gray-500">Interest Amount</p><p className="font-medium">{formatCurrency(application.interestAmount)}</p></div>
-              <div><p className="text-sm text-gray-500">Processing Fee</p><p className="font-medium">{formatCurrency(application.processingFee)}</p></div>
-              <div><p className="text-sm text-gray-500">Total Repayment</p><p className="text-xl font-bold text-green-600">{formatCurrency(application.totalRepayment)}</p></div>
-              <div><p className="text-sm text-gray-500">Monthly Repayment</p><p className="font-medium">{formatCurrency(application.monthlyRepayment)}</p></div>
+              <div><p className="text-sm text-gray-500">Interest Amount</p><p className="font-medium">{formatCurrency(application.totalInterest || 0)}</p></div>
+              <div><p className="text-sm text-gray-500">Processing Fee</p><p className="font-medium">{formatCurrency(application.processingFee || 0)}</p></div>
+              <div><p className="text-sm text-gray-500">Total Repayment</p><p className="text-xl font-bold text-green-600">{formatCurrency(application.totalRepayment || 0)}</p></div>
+              <div><p className="text-sm text-gray-500">Monthly Repayment</p><p className="font-medium">{formatCurrency(application.monthlyRepayment || 0)}</p></div>
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <p className="text-sm text-gray-500">Purpose</p>
@@ -156,19 +160,19 @@ export default function ApplicationDetailPage() {
           </div>
 
           {/* Guarantors */}
-          {application.guarantors.length > 0 && (
+          {application.guarantors && application.guarantors.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><IconUsers size={20} />Guarantors</h2>
               <div className="space-y-3">
                 {application.guarantors.map((g) => (
                   <div key={g.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div>
-                      <p className="font-medium">{g.member.firstName} {g.member.lastName}</p>
-                      <p className="text-sm text-gray-500">{g.member.membershipId}</p>
+                      <p className="font-medium">{g.guarantorName || 'Unknown'}</p>
+                      <p className="text-sm text-gray-500">Guarantor ID: {g.guarantorMemberId || 'N/A'}</p>
                     </div>
                     <div className="text-right">
                       <Badge color={getGuarantorStatusColor(g.status)}>{g.status}</Badge>
-                      <p className="text-sm font-medium mt-1">{formatCurrency(g.guaranteedAmount)}</p>
+                      <p className="text-sm font-medium mt-1">{formatCurrency(g.guaranteeAmount || 0)}</p>
                     </div>
                   </div>
                 ))}
@@ -183,10 +187,8 @@ export default function ApplicationDetailPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><IconUser size={20} />Applicant</h2>
             <div className="space-y-3">
-              <div><p className="text-sm text-gray-500">Name</p><p className="font-medium">{application.member.firstName} {application.member.lastName}</p></div>
-              <div><p className="text-sm text-gray-500">Member ID</p><p className="font-medium">{application.member.membershipId}</p></div>
-              {application.member.email && <div><p className="text-sm text-gray-500">Email</p><p className="font-medium">{application.member.email}</p></div>}
-              {application.member.phone && <div><p className="text-sm text-gray-500">Phone</p><p className="font-medium">{application.member.phone}</p></div>}
+              <div><p className="text-sm text-gray-500">Name</p><p className="font-medium">{application.memberName || 'Unknown'}</p></div>
+              <div><p className="text-sm text-gray-500">Member ID</p><p className="font-medium">{application.memberId || 'N/A'}</p></div>
             </div>
           </div>
 
@@ -196,8 +198,7 @@ export default function ApplicationDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Review Info</h2>
               <div className="space-y-3">
                 {application.reviewedAt && <div><p className="text-sm text-gray-500">Reviewed On</p><p className="font-medium">{formatDate(application.reviewedAt)}</p></div>}
-                {application.reviewedBy && <div><p className="text-sm text-gray-500">Reviewed By</p><p className="font-medium">{application.reviewedBy.email}</p></div>}
-                {application.reviewComments && <div><p className="text-sm text-gray-500">Comments</p><p className="mt-1">{application.reviewComments}</p></div>}
+                {application.reviewedBy && <div><p className="text-sm text-gray-500">Reviewed By</p><p className="font-medium">User #{application.reviewedBy}</p></div>}
                 {application.rejectionReason && <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg"><p className="text-sm text-red-600 font-medium">Rejection Reason</p><p className="mt-1 text-red-700 dark:text-red-300">{application.rejectionReason}</p></div>}
               </div>
             </div>
@@ -209,8 +210,8 @@ export default function ApplicationDetailPage() {
       <Modal opened={reviewOpened} onClose={closeReview} title={reviewAction === 'approve' ? 'Approve Application' : 'Reject Application'} size="md">
         <div className="space-y-4">
           <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <p className="font-medium">{application.member.firstName} {application.member.lastName}</p>
-            <p className="text-sm text-gray-500">{application.loanProduct.name} • {formatCurrency(application.amount)}</p>
+            <p className="font-medium">{application.memberName || 'Unknown'}</p>
+            <p className="text-sm text-gray-500">{application.loanProductName || 'Loan'} • {formatCurrency(application.amount)}</p>
           </div>
           <Textarea label="Comments" placeholder="Add review comments (optional)" value={reviewData.comments} onChange={(e) => setReviewData({ ...reviewData, comments: e.target.value })} />
           {reviewAction === 'reject' && <Textarea label="Rejection Reason" placeholder="Explain why this application is being rejected" value={reviewData.rejectionReason} onChange={(e) => setReviewData({ ...reviewData, rejectionReason: e.target.value })} required />}
@@ -225,7 +226,7 @@ export default function ApplicationDetailPage() {
       <Modal opened={disburseOpened} onClose={closeDisburse} title="Disburse Loan" size="md">
         <div className="space-y-4">
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <p className="font-medium">{application.member.firstName} {application.member.lastName}</p>
+            <p className="font-medium">{application.memberName || 'Unknown'}</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrency(application.amount)}</p>
           </div>
           <Select label="Disbursement Method" data={[{ value: 'BANK_TRANSFER', label: 'Bank Transfer' }, { value: 'CASH', label: 'Cash' }, { value: 'CHEQUE', label: 'Cheque' }, { value: 'SAVINGS_CREDIT', label: 'Credit to Savings' }]} value={disburseData.disbursementMethod} onChange={(v) => setDisburseData({ ...disburseData, disbursementMethod: v || 'BANK_TRANSFER' })} />
