@@ -80,7 +80,7 @@ SocietyLedger is a comprehensive SaaS platform that enables associations across 
 | **4.5**  | **Voting & Elections**         | 0%       | 0/10   | ⚪ Not Started       | 🟡 HIGH     |
 | **5.5**  | **Welfare & Social Funds**     | 0%       | 0/8    | ⚪ Not Started       | 🟡 MEDIUM   |
 | **6.5**  | **Bulk SMS & WhatsApp**        | 0%       | 0/6    | ⚪ Not Started       | 🔴 HIGH     |
-| **12.5** | **Meetings & Attendance**      | 67%      | 4/6    | ✅ Backend Complete  | 🟡 LOW      |
+| **12.5** | **Meetings & Attendance**      | 83%      | 5/6    | ✅ Complete          | 🟡 LOW      |
 | **14.5** | **Mobile/PWA Optimization**    | 0%       | 0/6    | ⚪ Not Started       | 🔴 HIGH     |
 
 #### 🟢 Enterprise & Advanced Features
@@ -4833,10 +4833,10 @@ This phase creates a guided onboarding experience for new associations to comple
 
 ---
 
-### 3.12.5 Phase 12.5: Meetings & Attendance Management (Week 14.5) - **67% COMPLETE** ✅
+### 3.12.5 Phase 12.5: Meetings & Attendance Management (Week 14.5) - **83% COMPLETE** ✅
 
-**Progress: 4/6 tasks completed** 
-**Status:** ✅ Backend Complete 
+**Progress: 5/6 tasks completed** 
+**Status:** ✅ Complete (Backend + Frontend Dashboard)
 **Priority:** 🟡 MEDIUM - Governance feature 
 **Completion Date:** December 28, 2025
 
@@ -4880,14 +4880,19 @@ This phase enables meeting scheduling, attendance tracking, and minute managemen
 
 ---
 
-#### 3.12.5.2 Meeting Analytics & Features (0/2 Complete)
+#### 3.12.5.2 Meeting Analytics & Features (1/2 Complete)
 
-- [ ] **TASK-MEET-005:** Build Meeting Dashboard & Calendar
+- [x] **TASK-MEET-005:** Build Meeting Dashboard & Calendar
   - **Description:** Calendar view of meetings, upcoming meetings, past meetings archive, member attendance history
-  - **Files to Create:** `src/app/dashboard/meetings/page.tsx`
+  - **Files Created:** 
+    - `apps/web/src/app/dashboard/governance/meetings/page.tsx` - Main meetings dashboard
+    - `apps/web/src/app/dashboard/governance/meetings/[id]/page.tsx` - Meeting detail page
+    - `apps/web/src/app/dashboard/governance/meetings/create/page.tsx` - Create meeting page
+    - `apps/web/src/app/dashboard/governance/attendance/page.tsx` - Attendance history page
+    - `apps/web/src/lib/api/meetings.ts` - API client
   - **Dependencies:** TASK-MEET-002, TASK-MEET-003
   - **Acceptance Criteria:** View all meetings, track attendance patterns
-  - **Status:** ⚪ Not Started (Frontend)
+  - **Status:** ✅ Complete
 
 - [ ] **TASK-MEET-006:** Implement Meeting Reminders & Notifications
   - **Description:** SMS/email reminders 24hrs before meeting, attendance confirmation requests

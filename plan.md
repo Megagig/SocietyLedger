@@ -38,7 +38,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **5.5** | Welfare & Social Funds | 🟡 Placeholder | 0/8 | 🟡 MEDIUM |
 | **6.5** | SMS & Bulk Communication | 🟡 Placeholder | 0/6 | 🟡 MEDIUM |
 | **12** | Caching & Performance | ⚪ Not Started | 0/10 | 🟢 LOW |
-| **12.5** | Meetings & Attendance | ✅ **COMPLETE** | 4/6 | 🟢 LOW |
+| **12.5** | Meetings & Attendance | ✅ **COMPLETE** | 5/6 | 🟢 LOW |
 | **8.5** | Cooperatives & Loans | ✅ **COMPLETE** | 10/10 | 🟢 LOW |
 | **11.7** | Member Financial Ledger | ✅ **COMPLETE** | 8/8 | 🔴 HIGH |
 | **13.5** | Mobile/PWA | ⚪ Not Started | 0/6 | 🟢 LOW |
