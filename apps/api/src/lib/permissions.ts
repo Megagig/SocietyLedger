@@ -69,6 +69,14 @@ export const PERMISSIONS = {
   
   // Member Self-Service Finance
   MEMBER_FINANCE_VIEW: 'member:finance:view',     // View own financial data (dues, levies, etc.)
+  
+  // Meeting Management (Phase 12.5)
+  MEETING_VIEW: 'meeting:view',           // View meetings
+  MEETING_CREATE: 'meeting:create',       // Create/schedule meetings
+  MEETING_EDIT: 'meeting:edit',           // Edit meeting details
+  MEETING_DELETE: 'meeting:delete',       // Cancel/delete meetings
+  MEETING_ATTENDANCE: 'meeting:attendance', // Mark attendance
+  MEETING_MINUTES: 'meeting:minutes',     // Record/approve minutes
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -142,6 +150,14 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.COOPERATIVE_LOANS_APPLY,
     PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
     PERMISSIONS.COOPERATIVE_GUARANTOR,
+    
+    // Meetings - Full management
+    PERMISSIONS.MEETING_VIEW,
+    PERMISSIONS.MEETING_CREATE,
+    PERMISSIONS.MEETING_EDIT,
+    PERMISSIONS.MEETING_DELETE,
+    PERMISSIONS.MEETING_ATTENDANCE,
+    PERMISSIONS.MEETING_MINUTES,
   ],
   
   // Treasurer - Financial focus
@@ -177,6 +193,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.COOPERATIVE_LOANS_APPLY,
     PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
     PERMISSIONS.COOPERATIVE_GUARANTOR,
+    
+    // Meetings - View and attendance
+    PERMISSIONS.MEETING_VIEW,
+    PERMISSIONS.MEETING_ATTENDANCE,
   ],
   
   // Financial Secretary - Record keeping
@@ -207,6 +227,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.COOPERATIVE_LOANS_VIEW,
     PERMISSIONS.COOPERATIVE_LOANS_APPLY,
     PERMISSIONS.COOPERATIVE_GUARANTOR,
+    
+    // Meetings - View and minutes
+    PERMISSIONS.MEETING_VIEW,
+    PERMISSIONS.MEETING_MINUTES,
   ],
   
   // Member - Basic access
@@ -225,6 +249,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     
     // Member self-service finance
     PERMISSIONS.MEMBER_FINANCE_VIEW,
+    
+    // Meetings - View only
+    PERMISSIONS.MEETING_VIEW,
   ],
 };
 

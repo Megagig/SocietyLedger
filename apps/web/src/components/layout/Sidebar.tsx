@@ -23,7 +23,9 @@ import {
   IconChevronDown,
   IconBuildingCommunity,
   IconBadge,
-  IconBuildingBank
+  IconBuildingBank,
+  IconCalendarEvent,
+  IconClipboardCheck,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -279,23 +281,24 @@ export function Sidebar() {
     {
       label: 'Governance',
       icon: <IconBadge size={20} />,
+      permission: PERMISSIONS.MEETING_VIEW,
       children: [
+        {
+          label: 'Meetings',
+          icon: <IconCalendarEvent size={18} />,
+          href: '/dashboard/governance/meetings',
+          permission: PERMISSIONS.MEETING_VIEW,
+        },
+        {
+          label: 'Attendance History',
+          icon: <IconClipboardCheck size={18} />,
+          href: '/dashboard/governance/attendance',
+          permission: PERMISSIONS.MEETING_VIEW,
+        },
         {
           label: 'Voting & Elections',
           icon: <IconBadge size={18} />,
           href: '/dashboard/governance/voting',
-          comingSoon: true,
-        },
-        {
-          label: 'Meetings',
-          icon: <IconUsers size={18} />,
-          href: '/dashboard/governance/meetings',
-          comingSoon: true,
-        },
-        {
-          label: 'Attendance',
-          icon: <IconBuildingCommunity size={18} />,
-          href: '/dashboard/governance/attendance',
           comingSoon: true,
         },
       ],

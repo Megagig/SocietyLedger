@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { tenantMiddleware } from './middleware/tenant.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
+import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 
 // Load environment variables
 dotenv.config();
@@ -31,6 +32,7 @@ import nigerianPaymentsRoutes from './modules/nigerian-payments/nigerian-payment
 import cooperativesRoutes from './modules/cooperatives/cooperatives.routes';
 import memberFinanceRoutes from './modules/member-finance/member-finance.routes';
 import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
+import meetingsRoutes from './modules/meetings/meetings.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -116,6 +118,7 @@ app.use('/api/payments/nigerian', nigerianPaymentsRoutes);
 app.use('/api/cooperatives', cooperativesRoutes);
 app.use('/api/members/me', memberFinanceRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
+app.use('/api/meetings', meetingsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -145,18 +148,21 @@ if (process.env.NODE_ENV !== 'test') {
     
     // Start cron jobs
     startSubscriptionJobs();
+    startMeetingJobs();
   });
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully...');
     stopSubscriptionJobs();
+    stopMeetingJobs();
     process.exit(0);
   });
 
   process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully...');
     stopSubscriptionJobs();
+    stopMeetingJobs();
     process.exit(0);
   });
 }
