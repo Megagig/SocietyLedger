@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
+import { toast } from '@/lib/toast';
 import Link from 'next/link';
 
 type Association = {
@@ -117,11 +118,12 @@ export default function AssociationsPage() {
       const data = await res.json();
       if (data.success) {
         fetchData();
+        toast.success('Association suspended successfully');
       } else {
-        alert(data.message || 'Failed to suspend');
+        toast.error(data.message || 'Failed to suspend');
       }
     } catch (e) {
-      alert('Failed to suspend association');
+      toast.error('Failed to suspend association');
     } finally {
       setActionLoading(null);
     }
@@ -140,11 +142,12 @@ export default function AssociationsPage() {
       const data = await res.json();
       if (data.success) {
         fetchData();
+        toast.success('Association reactivated successfully');
       } else {
-        alert(data.message || 'Failed to reactivate');
+        toast.error(data.message || 'Failed to reactivate');
       }
     } catch (e) {
-      alert('Failed to reactivate association');
+      toast.error('Failed to reactivate association');
     } finally {
       setActionLoading(null);
     }
@@ -166,11 +169,12 @@ export default function AssociationsPage() {
       const data = await res.json();
       if (data.success) {
         fetchData();
+        toast.success(`User ${status} successfully`);
       } else {
-        alert(data.message || 'Action failed');
+        toast.error(data.message || 'Action failed');
       }
     } catch (e) {
-      alert('Action failed');
+      toast.error('Action failed');
     } finally {
       setActionLoading(null);
     }

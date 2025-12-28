@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar, User, DollarSign } from 'lucide-react';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 
 interface MemberDetails {
   id: number;
@@ -72,26 +75,34 @@ export default function MemberDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
-      return;
-    }
+    modals.openConfirmModal({
+      title: 'Delete Member',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this member? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const response = await apiDelete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`
+          );
 
-    try {
-      const response = await apiDelete(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`
-      );
+          const data = await response.json();
 
-      const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.message || 'Failed to delete member');
+          }
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to delete member');
-      }
-
-      alert('Member deleted successfully');
-      router.push('/dashboard/members');
-    } catch (error: any) {
-      alert(error.message);
-    }
+          toast.success('Member deleted successfully');
+          router.push('/dashboard/members');
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to delete member');
+        }
+      },
+    });
   };
 
   const getStatusBadge = (status: string) => {

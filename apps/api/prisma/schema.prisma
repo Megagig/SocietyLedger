@@ -33,6 +33,10 @@ model Association {
   subscriptions              Subscription[]
   transactions               Transaction[]
   users                      User[]
+  levyCampaigns              LevyCampaign[]
+  penaltyRules               PenaltyRule[]
+  penaltyWaivers             PenaltyWaiver[]
+  donationAllocations        DonationAllocation[]
 
   @@map("associations")
 }
@@ -112,11 +116,11 @@ model Member {
   occupation                   String?
   state                        String?
   loginStatus                  String          @default("no_login") @map("login_status")
-  exports                      ExportHistory[]
   invites                      MemberInvite[]
   association                  Association     @relation(fields: [associationId], references: [id])
   user                         User?           @relation(fields: [userId], references: [id])
   transactions                 Transaction[]
+  levyAssignments              LevyCampaignAssignment[]
 
   @@unique([associationId, memberId])
   @@index([associationId, status])
@@ -159,6 +163,8 @@ model FinancialCategory {
   createdAt     DateTime      @default(now()) @map("created_at")
   association   Association   @relation(fields: [associationId], references: [id])
   transactions  Transaction[]
+  levyCampaigns LevyCampaign[]
+  penaltyRules  PenaltyRule[]
 
   @@index([associationId, type])
   @@map("financial_categories")
@@ -185,6 +191,11 @@ model Transaction {
   category            FinancialCategory           @relation(fields: [categoryId], references: [id])
   creator             User                        @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
   member              Member                      @relation(fields: [memberId], references: [id])
+  levyAssignment      LevyCampaignAssignment?
+  donationRecord      DonationRecord?
+  penaltyWaivers      PenaltyWaiver[]
+  sourcePenalties     AppliedPenalty[]            @relation("SourceTransaction")
+  asPenalty           AppliedPenalty?             @relation("PenaltyTransaction")
 
   @@index([associationId, status])
   @@map("transactions")
@@ -234,22 +245,21 @@ model AccountingEntry {
 }
 
 model ExportHistory {
-  id             Int         @id @default(autoincrement())
-  associationId  Int         @map("association_id")
-  exportType     String      @map("export_type")
-  exportFormat   String      @map("export_format")
-  dateRangeStart DateTime?   @map("date_range_start")
-  dateRangeEnd   DateTime?   @map("date_range_end")
-  exportPeriod   String?     @map("export_period")
-  filePath       String?     @map("file_path")
-  memberId       Int?        @map("member_id")
-  createdBy      Int         @map("created_by")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  association    Association @relation(fields: [associationId], references: [id])
-  creator        User        @relation(fields: [createdBy], references: [id])
-  member         Member?     @relation(fields: [memberId], references: [id])
+  id            Int         @id @default(autoincrement())
+  associationId Int         @map("association_id")
+  userId        Int         @map("user_id")
+  type          String
+  format        String
+  filename      String
+  filepath      String
+  fileSize      Int         @map("file_size")
+  expiresAt     DateTime    @map("expires_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  association   Association @relation(fields: [associationId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
 
-  @@index([associationId, exportType])
+  @@index([associationId, type])
+  @@index([expiresAt])
   @@map("export_history")
 }
 
@@ -437,4 +447,146 @@ enum PaymentStatus {
 enum PlatformRole {
   SUPER_ADMIN
   SUPPORT_AGENT
+}
+
+// ============================================
+// PHASE 4: ADVANCED FEATURES MODELS
+// ============================================
+
+// Levy Campaign Management (TASK-ADV-001, TASK-ADV-002)
+model LevyCampaign {
+  id              Int                     @id @default(autoincrement())
+  associationId   Int                     @map("association_id")
+  categoryId      Int                     @map("category_id")
+  name            String
+  description     String?
+  targetAmount    Decimal                 @map("target_amount") @db.Decimal(12, 2)
+  amountPerMember Decimal?                @map("amount_per_member") @db.Decimal(10, 2)
+  deadline        DateTime
+  status          LevyCampaignStatus      @default(ACTIVE)
+  createdBy       Int                     @map("created_by")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  association     Association             @relation(fields: [associationId], references: [id])
+  category        FinancialCategory       @relation(fields: [categoryId], references: [id])
+  assignments     LevyCampaignAssignment[]
+
+  @@index([associationId, status])
+  @@map("levy_campaigns")
+}
+
+model LevyCampaignAssignment {
+  id            Int          @id @default(autoincrement())
+  campaignId    Int          @map("campaign_id")
+  memberId      Int          @map("member_id")
+  transactionId Int?         @unique @map("transaction_id")
+  amount        Decimal      @db.Decimal(10, 2)
+  status        String       @default("pending") // pending, paid, partial, waived
+  assignedAt    DateTime     @default(now()) @map("assigned_at")
+  campaign      LevyCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  member        Member       @relation(fields: [memberId], references: [id])
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@unique([campaignId, memberId])
+  @@index([campaignId, status])
+  @@map("levy_campaign_assignments")
+}
+
+enum LevyCampaignStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Donation Allocation Tracking (TASK-ADV-004)
+model DonationAllocation {
+  id            Int         @id @default(autoincrement())
+  associationId Int         @map("association_id")
+  name          String
+  description   String?
+  type          String      @default("general") // general, project, emergency, other
+  targetAmount  Decimal?    @map("target_amount") @db.Decimal(12, 2)
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  association   Association @relation(fields: [associationId], references: [id])
+  donations     DonationRecord[]
+
+  @@index([associationId, type])
+  @@map("donation_allocations")
+}
+
+model DonationRecord {
+  id            Int                 @id @default(autoincrement())
+  transactionId Int                 @unique @map("transaction_id")
+  allocationId  Int?                @map("allocation_id")
+  receiptNumber String              @unique @map("receipt_number")
+  donorMessage  String?             @map("donor_message")
+  isAnonymous   Boolean             @default(false) @map("is_anonymous")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  transaction   Transaction         @relation(fields: [transactionId], references: [id])
+  allocation    DonationAllocation? @relation(fields: [allocationId], references: [id])
+
+  @@index([allocationId])
+  @@map("donation_records")
+}
+
+// Penalty Configuration Rules (TASK-ADV-005)
+model PenaltyRule {
+  id              Int         @id @default(autoincrement())
+  associationId   Int         @map("association_id")
+  categoryId      Int?        @map("category_id") // If null, applies to all categories
+  name            String
+  description     String?
+  triggerType     String      @default("late_payment") // late_payment, missed_meeting, custom
+  gracePeriodDays Int         @default(0) @map("grace_period_days")
+  feeType         String      @default("fixed") // fixed, percentage
+  feeAmount       Decimal     @map("fee_amount") @db.Decimal(10, 2)
+  maxFeeAmount    Decimal?    @map("max_fee_amount") @db.Decimal(10, 2) // Cap for percentage-based
+  isCompounding   Boolean     @default(false) @map("is_compounding") // Apply repeatedly
+  compoundingDays Int?        @map("compounding_days") // Days between compounds
+  isActive        Boolean     @default(true) @map("is_active")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  association     Association @relation(fields: [associationId], references: [id])
+  category        FinancialCategory? @relation(fields: [categoryId], references: [id])
+  appliedPenalties AppliedPenalty[]
+
+  @@index([associationId, isActive])
+  @@map("penalty_rules")
+}
+
+// Track applied penalties from rules (TASK-ADV-006)
+model AppliedPenalty {
+  id                  Int         @id @default(autoincrement())
+  ruleId              Int         @map("rule_id")
+  sourceTransactionId Int         @map("source_transaction_id") // The overdue transaction
+  penaltyTransactionId Int?       @unique @map("penalty_transaction_id") // The penalty transaction created
+  amount              Decimal     @db.Decimal(10, 2)
+  appliedAt           DateTime    @default(now()) @map("applied_at")
+  rule                PenaltyRule @relation(fields: [ruleId], references: [id])
+  sourceTransaction   Transaction @relation("SourceTransaction", fields: [sourceTransactionId], references: [id])
+  penaltyTransaction  Transaction? @relation("PenaltyTransaction", fields: [penaltyTransactionId], references: [id])
+
+  @@index([ruleId])
+  @@index([sourceTransactionId])
+  @@map("applied_penalties")
+}
+
+// Penalty Waiver Management (TASK-ADV-007)
+model PenaltyWaiver {
+  id            Int         @id @default(autoincrement())
+  associationId Int         @map("association_id")
+  transactionId Int         @map("transaction_id")
+  waivedAmount  Decimal     @map("waived_amount") @db.Decimal(10, 2)
+  reason        String
+  waivedBy      Int         @map("waived_by")
+  waivedAt      DateTime    @default(now()) @map("waived_at")
+  association   Association @relation(fields: [associationId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  @@index([associationId])
+  @@index([transactionId])
+  @@map("penalty_waivers")
 }

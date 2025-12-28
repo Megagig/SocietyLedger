@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { toast } from '@/lib/toast';
 import { ArrowLeft, Save } from 'lucide-react';
 
 export default function EditMemberPage() {
@@ -121,11 +122,12 @@ export default function EditMemberPage() {
         throw new Error(data.message || 'Failed to update member');
       }
 
-      alert('Member updated successfully!');
+      toast.success('Member updated successfully!');
       router.push(`/dashboard/members/${memberId}`);
     } catch (error: any) {
       console.error('Error updating member:', error);
       setError(error.message);
+      toast.error(error.message || 'Failed to update member');
     } finally {
       setIsLoading(false);
     }

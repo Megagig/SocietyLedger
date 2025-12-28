@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { apiGet, apiPost, apiPatch, apiDelete as apiDeleteRequest } from '@/utils/api';
 import { API_ROUTES } from '@/utils/constants';
 import { IconBell, IconCheck, IconTrash } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
@@ -53,14 +53,15 @@ export function NotificationBell() {
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await axios.get(API_ROUTES.NOTIFICATIONS.UNREAD_COUNT, { withCredentials: true });
-      setUnreadCount(response.data.data.unreadCount);
-      setHasAssociation(true);
+      const response = await apiGet(API_ROUTES.NOTIFICATIONS.UNREAD_COUNT);
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadCount(data.data.unreadCount);
+        setHasAssociation(true);
+      }
     } catch (error: any) {
       // Silently handle association not found errors (expected for super admins)
-      if (error.response?.status === 400) {
-        setHasAssociation(false);
-      }
+      setHasAssociation(false);
     }
   };
 
@@ -68,17 +69,15 @@ export function NotificationBell() {
     if (!hasAssociation) return;
     setLoading(true);
     try {
-      const response = await axios.get(API_ROUTES.NOTIFICATIONS.LIST, { 
-        params: { limit: 10 },
-        withCredentials: true 
-      });
-      setNotifications(response.data.data.notifications);
-      setUnreadCount(response.data.data.unreadCount);
+      const response = await apiGet(`${API_ROUTES.NOTIFICATIONS.LIST}?limit=10`);
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.data.notifications);
+        setUnreadCount(data.data.unreadCount);
+      }
     } catch (error: any) {
       // Silently handle association not found errors
-      if (error.response?.status === 400) {
-        setHasAssociation(false);
-      }
+      setHasAssociation(false);
     } finally {
       setLoading(false);
     }
@@ -86,11 +85,13 @@ export function NotificationBell() {
 
   const markAsRead = async (id: number) => {
     try {
-      await axios.put(API_ROUTES.NOTIFICATIONS.MARK_READ(id), {}, { withCredentials: true });
-      setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, isRead: true } : n
-      ));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      const response = await apiPatch(API_ROUTES.NOTIFICATIONS.MARK_READ(id), {});
+      if (response.ok) {
+        setNotifications(notifications.map(n => 
+          n.id === id ? { ...n, isRead: true } : n
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
     } catch (error) {
       console.error('Failed to mark as read:', error);
     }
@@ -98,9 +99,11 @@ export function NotificationBell() {
 
   const markAllAsRead = async () => {
     try {
-      await axios.put(API_ROUTES.NOTIFICATIONS.MARK_ALL_READ, {}, { withCredentials: true });
-      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
+      const response = await apiPatch(API_ROUTES.NOTIFICATIONS.MARK_ALL_READ, {});
+      if (response.ok) {
+        setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+      }
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
@@ -108,11 +111,13 @@ export function NotificationBell() {
 
   const deleteNotification = async (id: number) => {
     try {
-      await axios.delete(API_ROUTES.NOTIFICATIONS.DELETE(id), { withCredentials: true });
-      const notification = notifications.find(n => n.id === id);
-      setNotifications(notifications.filter(n => n.id !== id));
-      if (notification && !notification.isRead) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
+      const response = await apiDeleteRequest(API_ROUTES.NOTIFICATIONS.DELETE(id));
+      if (response.ok) {
+        const notification = notifications.find(n => n.id === id);
+        setNotifications(notifications.filter(n => n.id !== id));
+        if (notification && !notification.isRead) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
       }
     } catch (error) {
       console.error('Failed to delete notification:', error);
