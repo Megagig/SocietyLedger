@@ -36,7 +36,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **3.5** | Nigerian Payment Features | ✅ **COMPLETE** | 8/8 | 🟡 MEDIUM |
 | **4.5** | Voting & Elections | 🟡 Placeholder | 0/10 | 🟡 MEDIUM |
 | **5.5** | Welfare & Social Funds | ✅ **COMPLETE** | 8/8 | 🟡 MEDIUM |
-| **6.5** | SMS & Bulk Communication | 🟡 Placeholder | 0/6 | 🟡 MEDIUM |
+| **6.5** | SMS & Bulk Communication | ✅ **COMPLETE** | 6/6 | 🟡 MEDIUM |
 | **12** | Caching & Performance | ⚪ Not Started | 0/10 | 🟢 LOW |
 | **12.5** | Meetings & Attendance | ✅ **COMPLETE** | 5/6 | 🟢 LOW |
 | **8.5** | Cooperatives & Loans | ✅ **COMPLETE** | 10/10 | 🟢 LOW |
@@ -1057,37 +1057,69 @@ These features differentiate SocietyLedger from competitors. Implement after Pri
 
 ---
 
-### Phase 6.5: SMS & Bulk Communication 🟡 MEDIUM PRIORITY
+### Phase 6.5: SMS & Bulk Communication ✅ COMPLETE
 
-**Status:** 🟡 Placeholder (UI pages exist at `apps/web/src/app/dashboard/communication/`)  
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 29, 2025  
 **Dependencies:** Notifications ✅, Member Management ✅  
-**Estimated Time:** 3-4 days
+**Location:** `apps/api/src/modules/sms/`, `apps/api/src/lib/sms.ts`
 
-#### Tasks to Implement:
+#### Implemented Features:
 
-- [ ] **TASK-SMS-001:** SMS Provider Integration
-  - **Description:** Integrate Termii or BulkSMSNigeria for SMS sending
-  - **Files:** `apps/api/src/lib/sms.ts`
+**Termii SMS Integration (`apps/api/src/lib/sms.ts`):**
+- [x] Termii API integration with axios
+- [x] Single SMS sending with retry logic
+- [x] Bulk SMS to multiple recipients (batched)
+- [x] Phone number formatting (Nigerian 234xxx format)
+- [x] SMS balance checking
+- [x] Delivery status tracking
+- [x] SMS segment calculation
+- [x] Template placeholder replacement
 
-- [ ] **TASK-SMS-002:** Bulk SMS API
-  - **Description:** Send SMS to selected members or all members
-  - **API:** `POST /api/communication/sms/bulk`
+**Database Models (Prisma):**
+- [x] SMSMessage - Individual message tracking
+- [x] SMSCampaign - Bulk campaign management
+- [x] SMSTemplate - Reusable message templates
+- [x] SMSCreditBalance - Per-association credit tracking
+- [x] SMSCreditTransaction - Credit purchase/usage history
 
-- [ ] **TASK-SMS-003:** SMS Templates
-  - **Description:** Create reusable SMS templates with placeholders
-  - **API:** `GET/POST /api/communication/sms/templates`
+**SMS Service (`apps/api/src/modules/sms/sms.service.ts`):**
+- [x] Dashboard statistics (sent/delivered/failed counts, delivery rate)
+- [x] Quick SMS sending to phone numbers or member IDs
+- [x] Campaign CRUD (create, list, get, start, cancel, delete)
+- [x] Template CRUD (create, update, delete, list)
+- [x] Credit management (balance, top-up, history)
+- [x] Message listing and history
+- [x] Recipient resolution (by member ID, category, status, custom numbers)
 
-- [ ] **TASK-SMS-004:** Email Campaign API
-  - **Description:** Send bulk emails with templates
-  - **API:** `POST /api/communication/email/campaign`
+**API Endpoints:**
+- `GET /api/sms/dashboard` - SMS statistics
+- `POST /api/sms/send` - Quick SMS sending
+- `GET/POST /api/sms/campaigns` - Campaign management
+- `GET /api/sms/campaigns/:id` - Get campaign details
+- `POST /api/sms/campaigns/:id/start` - Execute campaign
+- `POST /api/sms/campaigns/:id/cancel` - Cancel campaign
+- `DELETE /api/sms/campaigns/:id` - Delete draft campaign
+- `GET/POST /api/sms/templates` - Template management
+- `GET/PUT/DELETE /api/sms/templates/:id` - Template CRUD
+- `GET /api/sms/messages` - Message history
+- `GET /api/sms/messages/:id` - Message details
+- `GET /api/sms/credits/balance` - Credit balance
+- `POST /api/sms/credits/topup` - Top up credits
+- `GET /api/sms/credits/history` - Credit transactions
 
-- [ ] **TASK-SMS-005:** Communication History
-  - **Description:** Track all sent communications
-  - **API:** `GET /api/communication/history`
+**Permissions Added:**
+- `sms:view` - View SMS dashboard, messages, history
+- `sms:send` - Send quick SMS messages
+- `sms:campaign:manage` - Create, edit, execute campaigns
+- `sms:template:manage` - Create, edit, delete templates
+- `sms:credit:manage` - Top up and manage SMS credits
 
-- [ ] **TASK-SMS-006:** Communication Dashboard UI
-  - **Description:** Send SMS/Email, view history, manage templates
-  - **Files:** `apps/web/src/app/dashboard/communication/page.tsx`
+**Role Permissions:**
+- Admin: Full SMS access
+- Treasurer: Send, campaigns, templates (no credit management)
+- Financial Secretary: View and send only
+- Member: No SMS access
 
 
 ---
