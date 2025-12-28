@@ -58,6 +58,8 @@ model Association {
   loanRepayments             LoanRepayment[]
   // Member Financial Ledger
   memberLedgerEntries        MemberFinancialLedger[]
+  // Phase 12.5: Meetings & Attendance
+  meetings                   Meeting[]
 
   @@map("associations")
 }
@@ -102,6 +104,12 @@ model User {
   reviewedLoanApplications     LoanApplication[]    @relation("LoanApplicationReviewer")
   approvedLoanApplications     LoanApplication[]    @relation("LoanApplicationApprover")
   processedLoanRepayments      LoanRepayment[]      @relation("LoanRepaymentProcessor")
+  // Phase 12.5: Meetings & Attendance
+  createdMeetings              Meeting[]            @relation("MeetingCreatedBy")
+  cancelledMeetings            Meeting[]            @relation("MeetingCancelledBy")
+  markedAttendances            MeetingAttendance[]  @relation("AttendanceMarkedBy")
+  recordedMinutes              MeetingMinutes[]     @relation("MinutesRecordedBy")
+  approvedMinutes              MeetingMinutes[]     @relation("MinutesApprovedBy")
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -164,6 +172,8 @@ model Member {
   loans                        Loan[]
   // Member Financial Ledger
   ledgerEntries                MemberFinancialLedger[]
+  // Phase 12.5: Meetings & Attendance
+  meetingAttendances           MeetingAttendance[]
 
   @@unique([associationId, memberId])
   @@index([associationId, status])
@@ -1389,4 +1399,131 @@ enum LedgerCategory {
   LOAN_DISBURSEMENT
   LOAN_REPAYMENT
   OTHER
+}
+
+
+// ============================================
+// PHASE 12.5: MEETINGS & ATTENDANCE MANAGEMENT
+// Professional/Enterprise Feature
+// ============================================
+
+// Meeting Model
+model Meeting {
+  id              Int                 @id @default(autoincrement())
+  associationId   Int                 @map("association_id")
+  title           String
+  description     String?
+  meetingType     MeetingType         @default(REGULAR) @map("meeting_type")
+  location        String?
+  virtualLink     String?             @map("virtual_link") // Zoom/Google Meet link
+  startTime       DateTime            @map("start_time")
+  endTime         DateTime?           @map("end_time")
+  status          MeetingStatus       @default(SCHEDULED)
+  quorumRequired  Int?                @map("quorum_required") // Minimum attendees needed
+  createdBy       Int                 @map("created_by")
+  cancelledBy     Int?                @map("cancelled_by")
+  cancelledAt     DateTime?           @map("cancelled_at")
+  cancellationReason String?          @map("cancellation_reason")
+  reminderSent    Boolean             @default(false) @map("reminder_sent")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  association     Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  creator         User                @relation("MeetingCreatedBy", fields: [createdBy], references: [id])
+  canceller       User?               @relation("MeetingCancelledBy", fields: [cancelledBy], references: [id])
+  agendaItems     MeetingAgenda[]
+  attendances     MeetingAttendance[]
+  minutes         MeetingMinutes?
+
+  @@index([associationId, status])
+  @@index([associationId, startTime])
+  @@index([startTime])
+  @@map("meetings")
+}
+
+// Meeting Agenda Items
+model MeetingAgenda {
+  id          Int      @id @default(autoincrement())
+  meetingId   Int      @map("meeting_id")
+  orderNumber Int      @map("order_number")
+  title       String
+  description String?
+  duration    Int?     // Duration in minutes
+  presenter   String?  // Name of person presenting this item
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, orderNumber])
+  @@index([meetingId])
+  @@map("meeting_agenda")
+}
+
+// Meeting Attendance
+model MeetingAttendance {
+  id            Int              @id @default(autoincrement())
+  meetingId     Int              @map("meeting_id")
+  memberId      Int              @map("member_id")
+  status        AttendanceStatus @default(PENDING)
+  checkInTime   DateTime?        @map("check_in_time")
+  checkOutTime  DateTime?        @map("check_out_time")
+  apologyReason String?          @map("apology_reason")
+  markedBy      Int?             @map("marked_by") // Admin who marked attendance
+  markedAt      DateTime?        @map("marked_at")
+  notes         String?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  meeting       Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  member        Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  marker        User?            @relation("AttendanceMarkedBy", fields: [markedBy], references: [id])
+
+  @@unique([meetingId, memberId])
+  @@index([meetingId])
+  @@index([memberId])
+  @@map("meeting_attendance")
+}
+
+// Meeting Minutes
+model MeetingMinutes {
+  id              Int      @id @default(autoincrement())
+  meetingId       Int      @unique @map("meeting_id")
+  content         String   @db.Text // Rich text content
+  decisions       String?  @db.Text // Key decisions made
+  actionItems     String?  @db.Text // Action items from meeting
+  nextMeetingDate DateTime? @map("next_meeting_date")
+  recordedBy      Int      @map("recorded_by")
+  approvedBy      Int?     @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  meeting         Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  recorder        User     @relation("MinutesRecordedBy", fields: [recordedBy], references: [id])
+  approver        User?    @relation("MinutesApprovedBy", fields: [approvedBy], references: [id])
+
+  @@map("meeting_minutes")
+}
+
+// Meeting Enums
+enum MeetingType {
+  REGULAR       // Regular scheduled meeting
+  EMERGENCY     // Emergency/urgent meeting
+  AGM           // Annual General Meeting
+  EGM           // Extraordinary General Meeting
+  COMMITTEE     // Committee meeting
+  SPECIAL       // Special purpose meeting
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum AttendanceStatus {
+  PENDING       // Not yet marked
+  PRESENT       // Attended
+  ABSENT        // Did not attend
+  APOLOGY       // Sent apology/excuse
+  LATE          // Arrived late
 }
