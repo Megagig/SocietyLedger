@@ -274,24 +274,37 @@ export function Sidebar() {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
       badge: 'Enterprise',
+      permission: PERMISSIONS.FINANCE_VIEW,
       children: [
         {
-          label: 'Loans',
-          icon: <IconWallet size={18} />,
-          href: '/dashboard/cooperatives/loans',
-          comingSoon: true,
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/cooperatives',
         },
         {
           label: 'Savings',
           icon: <IconCurrencyNaira size={18} />,
           href: '/dashboard/cooperatives/savings',
-          comingSoon: true,
+        },
+        {
+          label: 'Loans',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/cooperatives/loans',
+        },
+        {
+          label: 'Loan Products',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/cooperatives/loan-products',
+        },
+        {
+          label: 'Applications',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/cooperatives/applications',
         },
         {
           label: 'Guarantors',
           icon: <IconUsers size={18} />,
           href: '/dashboard/cooperatives/guarantors',
-          comingSoon: true,
         },
       ],
     },
