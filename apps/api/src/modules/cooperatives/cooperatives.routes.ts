@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { cooperativesController } from './cooperatives.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { requirePermission } from '../../middleware/rbac';
+import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
 const router = Router();
@@ -19,31 +19,32 @@ router.use(authMiddleware);
 // ==========================================
 
 /**
- * Get cooperative dashboard
+ * Get cooperative dashboard (admin view)
  * GET /api/cooperatives/dashboard
  */
 router.get(
   '/dashboard',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.getDashboard
 );
 
 /**
- * Get current user's cooperative profile
+ * Get current user's cooperative profile (member view)
  * GET /api/cooperatives/my-profile
  */
 router.get(
   '/my-profile',
+  requirePermission(PERMISSIONS.COOPERATIVE_VIEW),
   cooperativesController.getMyCooperativeProfile
 );
 
 /**
- * Get member's cooperative profile
+ * Get member's cooperative profile (admin view)
  * GET /api/cooperatives/members/:id/profile
  */
 router.get(
   '/members/:id/profile',
-  requirePermission(PERMISSIONS.MEMBER_VIEW),
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
   cooperativesController.getMemberCooperativeProfile
 );
 
@@ -52,22 +53,22 @@ router.get(
 // ==========================================
 
 /**
- * Get savings accounts
+ * Get all savings accounts (admin view)
  * GET /api/cooperatives/savings-accounts
  */
 router.get(
   '/savings-accounts',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
   cooperativesController.getSavingsAccounts
 );
 
 /**
- * Create a savings account
+ * Create a savings account (admin only)
  * POST /api/cooperatives/savings-accounts
  */
 router.post(
   '/savings-accounts',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
   cooperativesController.createSavingsAccount
 );
 
@@ -77,7 +78,7 @@ router.post(
  */
 router.get(
   '/savings-accounts/:id',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]),
   cooperativesController.getSavingsAccount
 );
 
@@ -91,7 +92,7 @@ router.get(
  */
 router.get(
   '/savings-transactions',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]),
   cooperativesController.getSavingsTransactions
 );
 
@@ -101,7 +102,7 @@ router.get(
  */
 router.post(
   '/savings-transactions',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]),
   cooperativesController.processSavingsTransaction
 );
 
@@ -110,32 +111,32 @@ router.post(
 // ==========================================
 
 /**
- * Get loan products
+ * Get loan products (all users can view active products)
  * GET /api/cooperatives/loan-products
  */
 router.get(
   '/loan-products',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.getLoanProducts
 );
 
 /**
- * Create a loan product
+ * Create a loan product (admin only)
  * POST /api/cooperatives/loan-products
  */
 router.post(
   '/loan-products',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
   cooperativesController.createLoanProduct
 );
 
 /**
- * Update a loan product
+ * Update a loan product (admin only)
  * PUT /api/cooperatives/loan-products/:id
  */
 router.put(
   '/loan-products/:id',
-  requirePermission(PERMISSIONS.FINANCE_EDIT),
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
   cooperativesController.updateLoanProduct
 );
 
@@ -144,21 +145,22 @@ router.put(
 // ==========================================
 
 /**
- * Get loan applications
+ * Get loan applications (admin sees all, member sees own)
  * GET /api/cooperatives/loan-applications
  */
 router.get(
   '/loan-applications',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.getLoanApplications
 );
 
 /**
- * Create a loan application
+ * Create a loan application (members can apply)
  * POST /api/cooperatives/loan-applications
  */
 router.post(
   '/loan-applications',
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_APPLY),
   cooperativesController.createLoanApplication
 );
 
@@ -168,27 +170,27 @@ router.post(
  */
 router.get(
   '/loan-applications/:id',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.getLoanApplication
 );
 
 /**
- * Review a loan application (approve/reject)
+ * Review a loan application (approve/reject) - admin only
  * POST /api/cooperatives/loan-applications/:id/review
  */
 router.post(
   '/loan-applications/:id/review',
-  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
   cooperativesController.reviewLoanApplication
 );
 
 /**
- * Disburse an approved loan
+ * Disburse an approved loan - admin only
  * POST /api/cooperatives/loan-applications/:id/disburse
  */
 router.post(
   '/loan-applications/:id/disburse',
-  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
   cooperativesController.disburseLoan
 );
 
@@ -202,6 +204,7 @@ router.post(
  */
 router.get(
   '/guarantor-requests/pending',
+  requirePermission(PERMISSIONS.COOPERATIVE_GUARANTOR),
   cooperativesController.getPendingGuarantorRequests
 );
 
@@ -211,6 +214,7 @@ router.get(
  */
 router.post(
   '/guarantor-requests/:id/respond',
+  requirePermission(PERMISSIONS.COOPERATIVE_GUARANTOR),
   cooperativesController.respondToGuarantorRequest
 );
 
@@ -219,12 +223,12 @@ router.post(
 // ==========================================
 
 /**
- * Get active loans
+ * Get active loans (admin sees all, member sees own)
  * GET /api/cooperatives/loans
  */
 router.get(
   '/loans',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.getLoans
 );
 
@@ -234,7 +238,7 @@ router.get(
  */
 router.get(
   '/loans/:id',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.getLoan
 );
 
@@ -248,17 +252,17 @@ router.get(
  */
 router.get(
   '/loan-repayments',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.getLoanRepayments
 );
 
 /**
- * Process a loan repayment
+ * Process a loan repayment (members can pay their own loans)
  * POST /api/cooperatives/loan-repayments
  */
 router.post(
   '/loan-repayments',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
   cooperativesController.processLoanRepayment
 );
 
