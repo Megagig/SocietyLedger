@@ -48,6 +48,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow accounting routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/accounting')) {
+      return next();
+    }
+
     // Allow subscription plans endpoint without strict tenant requirement
     if (req.path === '/api/subscriptions/plans') {
       // Try to resolve tenant but don't fail if not found

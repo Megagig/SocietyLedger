@@ -14,8 +14,9 @@ import {
   Divider,
   Badge,
   ThemeIcon,
+  Button,
 } from '@mantine/core';
-import { IconCreditCard, IconArrowUpRight, IconArrowDownRight, IconCash } from '@tabler/icons-react';
+import { IconCreditCard, IconArrowUpRight, IconArrowDownRight, IconCash, IconRefresh } from '@tabler/icons-react';
 import { accountingApi, CashFlowStatement, CashFlowItem } from '@/lib/api/accounting';
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { toast } from '@/lib/toast';
@@ -39,7 +40,7 @@ export default function CashFlowPage() {
     period: 'this_year',
   });
 
-  const { data: reportData, isLoading, error } = useQuery({
+  const { data: reportData, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['cash-flow', dateRange],
     queryFn: () =>
       accountingApi.getCashFlowStatement({
@@ -49,6 +50,15 @@ export default function CashFlowPage() {
       }),
     retry: false,
   });
+
+  const handleGenerateReport = async () => {
+    try {
+      await refetch();
+      toast.success('Report generated successfully');
+    } catch (err) {
+      toast.error('Failed to generate report');
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -210,10 +220,34 @@ export default function CashFlowPage() {
 
       {/* Date Range Filter */}
       <Paper p="md" mb="xl" withBorder>
-        <div style={{ maxWidth: 300 }}>
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
-        </div>
+        <Group justify="space-between" align="flex-end">
+          <div style={{ maxWidth: 300 }}>
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
+          </div>
+          <Button
+            leftSection={<IconRefresh size={16} />}
+            onClick={handleGenerateReport}
+            loading={isFetching}
+          >
+            Generate Report
+          </Button>
+        </Group>
       </Paper>
+
+      {!report && !isLoading && !error && (
+        <Alert icon={<IconCreditCard size={20} />} title="No Report Data" color="blue" mb="xl">
+          <Text size="sm">
+            No cash flow data available for the selected period. This could be because:
+          </Text>
+          <ul className="list-disc ml-4 mt-2 text-sm">
+            <li>The chart of accounts has not been initialized yet</li>
+            <li>There are no posted journal entries affecting cash accounts</li>
+          </ul>
+          <Text size="sm" mt="sm">
+            Go to Chart of Accounts and click "Initialize" to set up your accounts, then create and post journal entries.
+          </Text>
+        </Alert>
+      )}
 
       {report && (
         <>

@@ -1,15 +1,14 @@
 import { Router } from 'express';
 import { accountingController } from './accounting.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
 const router = Router();
 
-// Apply auth and tenant middleware to all routes
+// Apply auth middleware to all routes
+// Note: Tenant context comes from authenticated user's associationId (set by authMiddleware)
 router.use(authMiddleware);
-router.use(tenantMiddleware);
 
 // ==========================================
 // CHART OF ACCOUNTS ROUTES (TASK-ACC-001)
@@ -152,7 +151,7 @@ router.post(
  */
 router.get(
   '/income-statement',
-  requirePermission(PERMISSIONS.REPORT_FINANCIAL),
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
   accountingController.getIncomeStatement
 );
 
@@ -163,7 +162,7 @@ router.get(
  */
 router.get(
   '/balance-sheet',
-  requirePermission(PERMISSIONS.REPORT_FINANCIAL),
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
   accountingController.getBalanceSheet
 );
 
@@ -174,7 +173,7 @@ router.get(
  */
 router.get(
   '/cash-flow',
-  requirePermission(PERMISSIONS.REPORT_FINANCIAL),
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
   accountingController.getCashFlowStatement
 );
 
@@ -250,7 +249,7 @@ router.post(
  */
 router.get(
   '/budgets/:id/variance',
-  requirePermission(PERMISSIONS.REPORT_FINANCIAL),
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
   accountingController.getBudgetVariance
 );
 

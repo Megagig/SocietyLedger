@@ -61,6 +61,7 @@ export default function JournalEntriesPage() {
   const [filterStatus, setFilterStatus] = useState<string>(initialStatus);
   const [search, setSearch] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
 
   const form = useForm({
     initialValues: {
@@ -128,6 +129,7 @@ export default function JournalEntriesPage() {
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
       closeApproval();
       setRejectionReason('');
+      setApprovalAction(null);
     },
     onError: (error: any) => {
       toast.apiError(error, 'Failed to process approval');
@@ -613,26 +615,30 @@ export default function JournalEntriesPage() {
                     toast.error('Please provide a rejection reason');
                     return;
                   }
+                  setApprovalAction('reject');
                   approveMutation.mutate({
                     id: selectedEntry.id,
                     action: 'reject',
                     reason: rejectionReason,
                   });
                 }}
-                loading={approveMutation.isPending}
+                loading={approveMutation.isPending && approvalAction === 'reject'}
+                disabled={approveMutation.isPending && approvalAction === 'approve'}
               >
                 Reject
               </Button>
               <Button
                 color="green"
                 leftSection={<IconCheck size={16} />}
-                onClick={() =>
+                onClick={() => {
+                  setApprovalAction('approve');
                   approveMutation.mutate({
                     id: selectedEntry.id,
                     action: 'approve',
-                  })
-                }
-                loading={approveMutation.isPending}
+                  });
+                }}
+                loading={approveMutation.isPending && approvalAction === 'approve'}
+                disabled={approveMutation.isPending && approvalAction === 'reject'}
               >
                 Approve
               </Button>

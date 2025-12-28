@@ -13,8 +13,10 @@ import {
   Table,
   Divider,
   Badge,
+  Switch,
+  Button,
 } from '@mantine/core';
-import { IconChartBar, IconTrendingUp, IconTrendingDown, IconArrowUp, IconArrowDown } from '@tabler/icons-react';
+import { IconChartBar, IconTrendingUp, IconTrendingDown, IconArrowUp, IconArrowDown, IconRefresh } from '@tabler/icons-react';
 import { accountingApi, IncomeStatement, AccountBalance } from '@/lib/api/accounting';
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { toast } from '@/lib/toast';
@@ -37,18 +39,28 @@ export default function IncomeStatementPage() {
   }>({
     period: 'this_year',
   });
+  const [includeComparison, setIncludeComparison] = useState(true);
 
-  const { data: reportData, isLoading, error } = useQuery({
-    queryKey: ['income-statement', dateRange],
+  const { data: reportData, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ['income-statement', dateRange, includeComparison],
     queryFn: () =>
       accountingApi.getIncomeStatement({
         period: dateRange.period,
         startDate: dateRange.startDate?.toISOString(),
         endDate: dateRange.endDate?.toISOString(),
-        includeComparison: true,
+        includeComparison,
       }),
     retry: false,
   });
+
+  const handleGenerateReport = async () => {
+    try {
+      await refetch();
+      toast.success('Report generated successfully');
+    } catch (err) {
+      toast.error('Failed to generate report');
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -125,10 +137,42 @@ export default function IncomeStatementPage() {
 
       {/* Date Range Filter */}
       <Paper p="md" mb="xl" withBorder>
-        <div style={{ maxWidth: 300 }}>
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
-        </div>
+        <Group justify="space-between" align="flex-end">
+          <Group align="flex-end">
+            <div style={{ maxWidth: 300 }}>
+              <DateRangePicker value={dateRange} onChange={setDateRange} />
+            </div>
+            <Switch
+              label="Include Comparison"
+              description="Compare with previous period"
+              checked={includeComparison}
+              onChange={(event) => setIncludeComparison(event.currentTarget.checked)}
+            />
+          </Group>
+          <Button
+            leftSection={<IconRefresh size={16} />}
+            onClick={handleGenerateReport}
+            loading={isFetching}
+          >
+            Generate Report
+          </Button>
+        </Group>
       </Paper>
+
+      {!report && !isLoading && !error && (
+        <Alert icon={<IconChartBar size={20} />} title="No Report Data" color="blue" mb="xl">
+          <Text size="sm">
+            No financial data available for the selected period. This could be because:
+          </Text>
+          <ul className="list-disc ml-4 mt-2 text-sm">
+            <li>The chart of accounts has not been initialized yet</li>
+            <li>There are no posted journal entries for this period</li>
+          </ul>
+          <Text size="sm" mt="sm">
+            Go to Chart of Accounts and click "Initialize" to set up your accounts, then create and post journal entries.
+          </Text>
+        </Alert>
+      )}
 
       {report && (
         <>

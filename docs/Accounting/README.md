@@ -397,7 +397,7 @@ This guide provides step-by-step instructions for manually testing all features 
 3. Click "Reject" and provide reason: "Incorrect account used"
 
 **Expected Results:**
-- ✅ Status changes to "REJECTED"
+- ✅ Status changes to "REJECTED" => cannot reject your own entry
 - ✅ Rejection reason is saved and displayed
 
 ---

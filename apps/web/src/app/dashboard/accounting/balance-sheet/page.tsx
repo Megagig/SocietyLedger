@@ -14,16 +14,17 @@ import {
   Divider,
   Badge,
   ThemeIcon,
+  Button,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
-import { IconWallet, IconCheck, IconX, IconScale } from '@tabler/icons-react';
+import { IconWallet, IconCheck, IconX, IconScale, IconRefresh } from '@tabler/icons-react';
 import { accountingApi, BalanceSheet, AccountBalance } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
 
 export default function BalanceSheetPage() {
   const [asOfDate, setAsOfDate] = useState<Date | null>(new Date());
 
-  const { data: reportData, isLoading, error } = useQuery({
+  const { data: reportData, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['balance-sheet', asOfDate?.toISOString()],
     queryFn: () =>
       accountingApi.getBalanceSheet({
@@ -31,6 +32,15 @@ export default function BalanceSheetPage() {
       }),
     retry: false,
   });
+
+  const handleGenerateReport = async () => {
+    try {
+      await refetch();
+      toast.success('Report generated successfully');
+    } catch (err) {
+      toast.error('Failed to generate report');
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -115,7 +125,7 @@ export default function BalanceSheetPage() {
 
       {/* Date Filter */}
       <Paper p="md" mb="xl" withBorder>
-        <Group>
+        <Group justify="space-between" align="flex-end">
           <DateInput
             label="As of Date"
             value={asOfDate}
@@ -123,8 +133,30 @@ export default function BalanceSheetPage() {
             maxDate={new Date()}
             w={200}
           />
+          <Button
+            leftSection={<IconRefresh size={16} />}
+            onClick={handleGenerateReport}
+            loading={isFetching}
+          >
+            Generate Report
+          </Button>
         </Group>
       </Paper>
+
+      {!report && !isLoading && !error && (
+        <Alert icon={<IconWallet size={20} />} title="No Report Data" color="blue" mb="xl">
+          <Text size="sm">
+            No financial data available. This could be because:
+          </Text>
+          <ul className="list-disc ml-4 mt-2 text-sm">
+            <li>The chart of accounts has not been initialized yet</li>
+            <li>There are no posted journal entries</li>
+          </ul>
+          <Text size="sm" mt="sm">
+            Go to Chart of Accounts and click "Initialize" to set up your accounts, then create and post journal entries.
+          </Text>
+        </Alert>
+      )}
 
       {report && (
         <>
