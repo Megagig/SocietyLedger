@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { tenantMiddleware } from './middleware/tenant.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
+import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 
 // Load environment variables
 dotenv.config();
@@ -147,18 +148,21 @@ if (process.env.NODE_ENV !== 'test') {
     
     // Start cron jobs
     startSubscriptionJobs();
+    startMeetingJobs();
   });
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully...');
     stopSubscriptionJobs();
+    stopMeetingJobs();
     process.exit(0);
   });
 
   process.on('SIGINT', () => {
     console.log('SIGINT received, shutting down gracefully...');
     stopSubscriptionJobs();
+    stopMeetingJobs();
     process.exit(0);
   });
 }

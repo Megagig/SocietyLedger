@@ -14,6 +14,7 @@ import {
   meetingQuerySchema,
 } from './meetings.validation';
 import { prisma } from '../../lib/prisma';
+import { notifyMeetingScheduled, notifyMeetingCancelled, notifyAttendanceMarked } from '../../jobs/meeting-jobs';
 
 export const meetingsController = {
   // ==================== MEETING CRUD ====================
@@ -53,6 +54,16 @@ export const meetingsController = {
           newValues: meeting,
         },
       });
+
+      // Send notifications to all members about the new meeting
+      notifyMeetingScheduled(associationId, {
+        id: meeting.id,
+        title: meeting.title,
+        startTime: meeting.startTime,
+        location: meeting.location,
+        virtualLink: meeting.virtualLink,
+        meetingType: meeting.meetingType,
+      }).catch(err => console.error('Failed to send meeting scheduled notification:', err));
 
       return res.status(201).json({
         success: true,
@@ -255,6 +266,14 @@ export const meetingsController = {
           newValues: { status: 'CANCELLED', reason },
         },
       });
+
+      // Send cancellation notifications to all members
+      notifyMeetingCancelled(associationId, {
+        id: meeting.id,
+        title: meeting.title,
+        startTime: meeting.startTime,
+        cancellationReason: meeting.cancellationReason,
+      }).catch(err => console.error('Failed to send meeting cancelled notification:', err));
 
       return res.status(200).json({
         success: true,
@@ -482,6 +501,21 @@ export const meetingsController = {
 
       const validatedData = markAttendanceSchema.parse(req.body);
       const attendance = await meetingsService.markAttendance(meetingId, userId, validatedData);
+
+      // Get member's user ID to send notification
+      const member = await prisma.member.findUnique({
+        where: { id: validatedData.memberId },
+        select: { userId: true },
+      });
+
+      if (member?.userId) {
+        notifyAttendanceMarked(
+          member.userId,
+          associationId,
+          { id: meetingId, title: meeting.title },
+          validatedData.status
+        ).catch(err => console.error('Failed to send attendance notification:', err));
+      }
 
       return res.status(200).json({
         success: true,

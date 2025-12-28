@@ -785,6 +785,129 @@ function getTemplateContent(template: string, data: Record<string, any>): string
       </body>
       </html>
     `,
+
+    'meeting-reminder': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📅 Meeting Reminder</h1>
+          </div>
+          <div class="content">
+            <h2>Hello!</h2>
+            <p>This is a friendly reminder about an upcoming meeting for <strong>${data.associationName}</strong>.</p>
+            
+            <div class="highlight-box">
+              <strong>Meeting Details</strong><br><br>
+              <strong>Title:</strong> ${data.meetingTitle}<br>
+              <strong>Date:</strong> ${data.meetingDate}<br>
+              <strong>Time:</strong> ${data.meetingTime}<br>
+              <strong>Type:</strong> ${data.meetingType}<br>
+              <strong>Location:</strong> ${data.location}
+              ${data.virtualLink ? `<br><strong>Virtual Link:</strong> <a href="${data.virtualLink}" style="color: #3b82f6;">${data.virtualLink}</a>` : ''}
+            </div>
+            
+            <p>Please make sure to attend on time. Your participation is important!</p>
+            
+            <center>
+              <a href="${WEBSITE_URL}/dashboard/governance/meetings" class="button">View Meeting Details</a>
+            </center>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you cannot attend, please inform the meeting organizer in advance.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'meeting-cancelled': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+            <h1>❌ Meeting Cancelled</h1>
+          </div>
+          <div class="content">
+            <h2>Hello!</h2>
+            <p>We regret to inform you that the following meeting for <strong>${data.associationName}</strong> has been cancelled.</p>
+            
+            <div class="highlight-box">
+              <strong>Cancelled Meeting Details</strong><br><br>
+              <strong>Title:</strong> ${data.meetingTitle}<br>
+              <strong>Originally Scheduled:</strong> ${data.meetingDate}<br>
+              <strong>Reason:</strong> ${data.cancellationReason}
+            </div>
+            
+            <p>We apologize for any inconvenience this may cause. A new meeting may be scheduled soon.</p>
+            
+            <center>
+              <a href="${WEBSITE_URL}/dashboard/governance/meetings" class="button">View Upcoming Meetings</a>
+            </center>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              If you have any questions, please contact your association administrator.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'meeting-scheduled': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📅 New Meeting Scheduled</h1>
+          </div>
+          <div class="content">
+            <h2>Hello!</h2>
+            <p>A new meeting has been scheduled for <strong>${data.associationName}</strong>.</p>
+            
+            <div class="highlight-box">
+              <strong>Meeting Details</strong><br><br>
+              <strong>Title:</strong> ${data.meetingTitle}<br>
+              <strong>Date:</strong> ${data.meetingDate}<br>
+              <strong>Time:</strong> ${data.meetingTime}<br>
+              <strong>Type:</strong> ${data.meetingType}<br>
+              <strong>Location:</strong> ${data.location}
+              ${data.virtualLink ? `<br><strong>Virtual Link:</strong> <a href="${data.virtualLink}" style="color: #3b82f6;">${data.virtualLink}</a>` : ''}
+            </div>
+            
+            <p>Please mark your calendar and plan to attend. Your participation is valued!</p>
+            
+            <center>
+              <a href="${WEBSITE_URL}/dashboard/governance/meetings" class="button">View Meeting Details</a>
+            </center>
+            
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              You will receive a reminder 24 hours before the meeting.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
   };
 
   const templateFn = templates[template];
