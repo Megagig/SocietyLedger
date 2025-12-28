@@ -77,6 +77,17 @@ export const PERMISSIONS = {
   MEETING_DELETE: 'meeting:delete',       // Cancel/delete meetings
   MEETING_ATTENDANCE: 'meeting:attendance', // Mark attendance
   MEETING_MINUTES: 'meeting:minutes',     // Record/approve minutes
+  
+  // Welfare & Social Funds (Phase 5.5)
+  WELFARE_VIEW: 'welfare:view',                           // View welfare dashboard & funds
+  WELFARE_MANAGE: 'welfare:manage',                       // Create/edit/delete welfare funds
+  WELFARE_CONTRIBUTION_VIEW: 'welfare:contribution:view', // View contributions
+  WELFARE_CONTRIBUTION_MANAGE: 'welfare:contribution:manage', // Record contributions
+  WELFARE_CONTRIBUTION_CONFIRM: 'welfare:contribution:confirm', // Confirm/reject contributions
+  WELFARE_PAYOUT_VIEW: 'welfare:payout:view',             // View payout requests
+  WELFARE_PAYOUT_REQUEST: 'welfare:payout:request',       // Request payouts
+  WELFARE_PAYOUT_APPROVE: 'welfare:payout:approve',       // Approve/reject payout requests
+  WELFARE_PAYOUT_DISBURSE: 'welfare:payout:disburse',     // Disburse approved payouts
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -158,6 +169,17 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.MEETING_DELETE,
     PERMISSIONS.MEETING_ATTENDANCE,
     PERMISSIONS.MEETING_MINUTES,
+    
+    // Welfare - Full management
+    PERMISSIONS.WELFARE_VIEW,
+    PERMISSIONS.WELFARE_MANAGE,
+    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
+    PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
+    PERMISSIONS.WELFARE_CONTRIBUTION_CONFIRM,
+    PERMISSIONS.WELFARE_PAYOUT_VIEW,
+    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
+    PERMISSIONS.WELFARE_PAYOUT_APPROVE,
+    PERMISSIONS.WELFARE_PAYOUT_DISBURSE,
   ],
   
   // Treasurer - Financial focus
@@ -197,6 +219,17 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Meetings - View and attendance
     PERMISSIONS.MEETING_VIEW,
     PERMISSIONS.MEETING_ATTENDANCE,
+    
+    // Welfare - Financial management
+    PERMISSIONS.WELFARE_VIEW,
+    PERMISSIONS.WELFARE_MANAGE,
+    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
+    PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
+    PERMISSIONS.WELFARE_CONTRIBUTION_CONFIRM,
+    PERMISSIONS.WELFARE_PAYOUT_VIEW,
+    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
+    PERMISSIONS.WELFARE_PAYOUT_APPROVE,
+    PERMISSIONS.WELFARE_PAYOUT_DISBURSE,
   ],
   
   // Financial Secretary - Record keeping
@@ -231,6 +264,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Meetings - View and minutes
     PERMISSIONS.MEETING_VIEW,
     PERMISSIONS.MEETING_MINUTES,
+    
+    // Welfare - Record keeping
+    PERMISSIONS.WELFARE_VIEW,
+    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
+    PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
+    PERMISSIONS.WELFARE_PAYOUT_VIEW,
+    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
   ],
   
   // Member - Basic access
@@ -252,6 +292,12 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     
     // Meetings - View only
     PERMISSIONS.MEETING_VIEW,
+    
+    // Welfare - Member access
+    PERMISSIONS.WELFARE_VIEW,
+    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
+    PERMISSIONS.WELFARE_PAYOUT_VIEW,
+    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
   ],
 };
 

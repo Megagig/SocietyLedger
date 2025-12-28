@@ -33,6 +33,7 @@ import cooperativesRoutes from './modules/cooperatives/cooperatives.routes';
 import memberFinanceRoutes from './modules/member-finance/member-finance.routes';
 import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 import meetingsRoutes from './modules/meetings/meetings.routes';
+import welfareRoutes from './modules/welfare/welfare.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -119,6 +120,7 @@ app.use('/api/cooperatives', cooperativesRoutes);
 app.use('/api/members/me', memberFinanceRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
+app.use('/api/welfare', welfareRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
