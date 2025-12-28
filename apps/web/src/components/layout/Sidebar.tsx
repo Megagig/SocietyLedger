@@ -93,6 +93,11 @@ export function Sidebar() {
           href: '/dashboard/my-finances',
         },
         {
+          label: 'My Ledger',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/my-finances/ledger',
+        },
+        {
           label: 'My Dues',
           icon: <IconReceipt size={18} />,
           href: '/dashboard/my-finances/dues',
@@ -134,6 +139,11 @@ export function Sidebar() {
           label: 'Overview',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/finance/overview',
+        },
+        {
+          label: 'Member Ledgers',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/finance/member-ledger',
         },
         {
           label: 'Categories',
