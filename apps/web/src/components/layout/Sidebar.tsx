@@ -366,7 +366,7 @@ export function Sidebar() {
     {
       label: 'Setup Wizard',
       icon: <IconBadge size={20} />,
-      href: '/onboarding',
+      href: '/onboarding?rerun=true',
       permission: PERMISSIONS.SETTINGS_VIEW,
     },
   ];

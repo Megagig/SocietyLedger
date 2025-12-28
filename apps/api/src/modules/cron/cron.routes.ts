@@ -4,6 +4,7 @@ import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { prisma } from '../../lib/prisma';
 import { sendEmail } from '../../lib/email';
+import { processLateFees, updateOverdueStatus } from './late-fees.cron';
 
 const router = Router();
 
@@ -170,6 +171,49 @@ router.get('/status', requirePermission(PERMISSIONS.SYSTEM_SETTINGS_MANAGE), asy
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch status',
+    });
+  }
+});
+
+/**
+ * Manual trigger for late fees processing
+ * For testing and admin purposes
+ */
+router.post('/late-fees', requirePermission(PERMISSIONS.SYSTEM_SETTINGS_MANAGE), async (req: Request, res: Response) => {
+  try {
+    const result = await processLateFees();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Late fees processing completed',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error processing late fees:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process late fees',
+    });
+  }
+});
+
+/**
+ * Manual trigger for overdue status update
+ */
+router.post('/update-overdue', requirePermission(PERMISSIONS.SYSTEM_SETTINGS_MANAGE), async (req: Request, res: Response) => {
+  try {
+    const result = await updateOverdueStatus();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Overdue status update completed',
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error updating overdue status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update overdue status',
     });
   }
 });
