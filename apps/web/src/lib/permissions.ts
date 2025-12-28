@@ -63,6 +63,9 @@ export const PERMISSIONS = {
   COOPERATIVE_LOANS_APPLY: 'cooperative:loans:apply',      // Apply for loans
   COOPERATIVE_LOANS_MANAGE: 'cooperative:loans:manage',    // Approve, disburse loans
   COOPERATIVE_GUARANTOR: 'cooperative:guarantor',          // Act as guarantor
+  
+  // Member Self-Service Finance
+  MEMBER_FINANCE_VIEW: 'member:finance:view',     // View own financial data (dues, levies, etc.)
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -182,6 +185,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.COOPERATIVE_LOANS_VIEW,
     PERMISSIONS.COOPERATIVE_LOANS_APPLY,
     PERMISSIONS.COOPERATIVE_GUARANTOR,
+    
+    // Member self-service finance
+    PERMISSIONS.MEMBER_FINANCE_VIEW,
   ],
 };
 

@@ -81,6 +81,50 @@ export function Sidebar() {
       href: '/dashboard/members',
       permission: PERMISSIONS.MEMBER_VIEW,
     },
+    // Member Self-Service Finance Section
+    {
+      label: 'My Finances',
+      icon: <IconCurrencyNaira size={20} />,
+      permission: PERMISSIONS.MEMBER_FINANCE_VIEW,
+      children: [
+        {
+          label: 'Overview',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/my-finances',
+        },
+        {
+          label: 'My Dues',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/my-finances/dues',
+        },
+        {
+          label: 'My Levies',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/my-finances/levies',
+        },
+        {
+          label: 'My Donations',
+          icon: <IconHeart size={18} />,
+          href: '/dashboard/my-finances/donations',
+        },
+        {
+          label: 'Penalties',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/my-finances/penalties',
+        },
+        {
+          label: 'Payment History',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/my-finances/payments',
+        },
+        {
+          label: 'Make Payment',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/my-finances/pay',
+        },
+      ],
+    },
+    // Admin Finance Section
     {
       label: 'Finance',
       icon: <IconCurrencyNaira size={20} />,
