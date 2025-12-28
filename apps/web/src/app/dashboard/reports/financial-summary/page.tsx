@@ -43,12 +43,13 @@ export default function FinancialSummaryPage() {
     period: 'this_month',
   });
   const [includeComparison, setIncludeComparison] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   // Export handlers
   const handleExportPDF = async () => {
     try {
-      setIsExporting(true);
+      setIsExportingPDF(true);
       const result = await exportsApi.exportFinancialPDF({
         period: dateRange.period,
         startDate: dateRange.startDate?.toISOString(),
@@ -72,13 +73,13 @@ export default function FinancialSummaryPage() {
         color: 'red',
       });
     } finally {
-      setIsExporting(false);
+      setIsExportingPDF(false);
     }
   };
 
   const handleExportExcel = async () => {
     try {
-      setIsExporting(true);
+      setIsExportingExcel(true);
       const result = await exportsApi.exportFinancialExcel({
         period: dateRange.period,
         startDate: dateRange.startDate?.toISOString(),
@@ -102,7 +103,7 @@ export default function FinancialSummaryPage() {
         color: 'red',
       });
     } finally {
-      setIsExporting(false);
+      setIsExportingExcel(false);
     }
   };
 
@@ -228,7 +229,7 @@ export default function FinancialSummaryPage() {
               variant="light"
               color="red"
               onClick={handleExportPDF}
-              loading={isExporting}
+              loading={isExportingPDF}
             >
               Export PDF
             </Button>
@@ -237,7 +238,7 @@ export default function FinancialSummaryPage() {
               variant="light"
               color="green"
               onClick={handleExportExcel}
-              loading={isExporting}
+              loading={isExportingExcel}
             >
               Export Excel
             </Button>

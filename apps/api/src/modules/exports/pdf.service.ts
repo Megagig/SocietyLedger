@@ -14,7 +14,8 @@ export const pdfService = {
    */
   formatCurrency(amount: Decimal | number): string {
     const value = typeof amount === 'number' ? amount : amount.toNumber();
-    return `₦${value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Use NGN instead of ₦ symbol for better PDF compatibility
+    return `NGN ${value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   },
 
   /**

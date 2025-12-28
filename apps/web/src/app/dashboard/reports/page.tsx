@@ -141,7 +141,7 @@ export default function ReportsPage() {
           color="orange"
           mb="xl"
         >
-          {summaryError?.response?.status === 403 ? (
+          {(summaryError as any)?.response?.status === 403 ? (
             <div>
               <Text size="sm" mb="xs">
                 You don't have permission to view financial reports. This feature is available to:
@@ -291,16 +291,6 @@ export default function ReportsPage() {
         </Stack>
       </Card>
 
-      {/* Info Alert */}
-      <Alert
-        icon={<IconAlertCircle size={16} />}
-        title="Export Reports"
-        color="blue"
-        mt="xl"
-      >
-        Export functionality (PDF/Excel) will be available in Phase 10. For now, you can view all
-        reports online and use your browser's print function.
-      </Alert>
     </div>
   );
 }

@@ -10,9 +10,18 @@ import { reportsService } from '../reports/reports.service';
 export const excelService = {
   /**
    * Format currency for Excel
+   * Handles Decimal objects, numbers, and serialized Decimal strings
    */
-  formatCurrency(amount: Decimal | number): number {
-    return typeof amount === 'number' ? amount : amount.toNumber();
+  formatCurrency(amount: any): number {
+    if (amount === null || amount === undefined) return 0;
+    if (typeof amount === 'number') return amount;
+    if (typeof amount === 'string') return parseFloat(amount) || 0;
+    if (amount && typeof amount.toNumber === 'function') return amount.toNumber();
+    if (amount && typeof amount === 'object' && 'd' in amount) {
+      // Serialized Decimal object - reconstruct and convert
+      return new Decimal(amount).toNumber();
+    }
+    return parseFloat(String(amount)) || 0;
   },
 
   /**
@@ -98,17 +107,24 @@ export const excelService = {
     summarySheet.addRow(['Metric', 'Amount']);
     this.styleHeaderRow(summarySheet.lastRow!);
 
-    summarySheet.addRow(['Total Income', this.formatCurrency(report.income.total)]);
-    summarySheet.addRow(['Total Expenses', this.formatCurrency(report.expenses.total)]);
-    summarySheet.addRow(['Net', this.formatCurrency(report.income.total.minus(report.expenses.total))]);
+    const incomeTotal = this.formatCurrency(report.income.total);
+    const expensesTotal = this.formatCurrency(report.expenses.total);
+    const netAmount = incomeTotal - expensesTotal;
+    const expectedCollections = this.formatCurrency(report.collections.expected);
+    const collected = this.formatCurrency(report.collections.collected);
+    const outstanding = this.formatCurrency(report.collections.outstanding);
+
+    summarySheet.addRow(['Total Income', incomeTotal]);
+    summarySheet.addRow(['Total Expenses', expensesTotal]);
+    summarySheet.addRow(['Net', netAmount]);
     summarySheet.addRow([]);
-    summarySheet.addRow(['Expected Collections', this.formatCurrency(report.collections.expected)]);
-    summarySheet.addRow(['Collected', this.formatCurrency(report.collections.collected)]);
-    summarySheet.addRow(['Outstanding', this.formatCurrency(report.collections.outstanding)]);
+    summarySheet.addRow(['Expected Collections', expectedCollections]);
+    summarySheet.addRow(['Collected', collected]);
+    summarySheet.addRow(['Outstanding', outstanding]);
     summarySheet.addRow(['Collection Rate', `${report.collections.collectionRate.toFixed(2)}%`]);
 
-    // Format currency columns
-    summarySheet.getColumn(2).numFmt = '₦#,##0.00';
+    // Format currency columns - use simple number format first
+    // summarySheet.getColumn(2).numFmt = '₦#,##0.00';
     summarySheet.getColumn(1).width = 30;
     summarySheet.getColumn(2).width = 20;
 
@@ -144,7 +160,7 @@ export const excelService = {
       incomeSheet.getColumn(2).width = 15;
       incomeSheet.getColumn(3).width = 18;
       incomeSheet.getColumn(4).width = 20;
-      incomeSheet.getColumn(4).numFmt = '₦#,##0.00';
+      // incomeSheet.getColumn(4).numFmt = '₦#,##0.00';
     }
 
     // ===== EXPENSES BY CATEGORY SHEET =====
@@ -179,7 +195,8 @@ export const excelService = {
       expenseSheet.getColumn(2).width = 15;
       expenseSheet.getColumn(3).width = 18;
       expenseSheet.getColumn(4).width = 20;
-      expenseSheet.getColumn(4).numFmt = '₦#,##0.00';
+      // Disabled currency format - causes display issues
+      // expenseSheet.getColumn(4).numFmt = '₦#,##0.00';
     }
 
     // ===== COMPARISON SHEET =====
@@ -221,9 +238,10 @@ export const excelService = {
       comparisonSheet.getColumn(3).width = 20;
       comparisonSheet.getColumn(4).width = 15;
       comparisonSheet.getColumn(5).width = 15;
-      comparisonSheet.getColumn(2).numFmt = '₦#,##0.00';
-      comparisonSheet.getColumn(3).numFmt = '₦#,##0.00';
-      comparisonSheet.getColumn(4).numFmt = '₦#,##0.00';
+      // Disabled currency format - causes display issues
+      // comparisonSheet.getColumn(2).numFmt = '₦#,##0.00';
+      // comparisonSheet.getColumn(3).numFmt = '₦#,##0.00';
+      // comparisonSheet.getColumn(4).numFmt = '₦#,##0.00';
     }
 
     // Save workbook
@@ -323,10 +341,10 @@ export const excelService = {
     membersSheet.getColumn(11).width = 18;
     membersSheet.getColumn(12).width = 12;
 
-    // Format currency columns
-    membersSheet.getColumn(6).numFmt = '₦#,##0.00';
-    membersSheet.getColumn(7).numFmt = '₦#,##0.00';
-    membersSheet.getColumn(8).numFmt = '₦#,##0.00';
+    // Format currency columns - disabled to test
+    // membersSheet.getColumn(6).numFmt = '₦#,##0.00';
+    // membersSheet.getColumn(7).numFmt = '₦#,##0.00';
+    // membersSheet.getColumn(8).numFmt = '₦#,##0.00';
 
     // Freeze header row
     membersSheet.views = [{ state: 'frozen', ySplit: 6 }];
@@ -340,7 +358,7 @@ export const excelService = {
     this.styleHeaderRow(summarySheet.lastRow!);
 
     summarySheet.addRow(['Total Members', members.length]);
-    summarySheet.addRow(['Members with Balance', members.filter(m => m.balance.greaterThan(0)).length]);
+    summarySheet.addRow(['Members with Balance', members.filter(m => this.formatCurrency(m.balance) > 0).length]);
     summarySheet.addRow(['Members with Overdue', members.filter(m => m.overdueTransactions > 0).length]);
     summarySheet.addRow([]);
     summarySheet.addRow(['Total Dues', totalDues]);
@@ -353,7 +371,8 @@ export const excelService = {
 
     summarySheet.getColumn(1).width = 25;
     summarySheet.getColumn(2).width = 20;
-    summarySheet.getColumn(2).numFmt = '₦#,##0.00';
+    // Disabled currency format - causes display issues
+    // summarySheet.getColumn(2).numFmt = '₦#,##0.00';
 
     // Save workbook
     await workbook.xlsx.writeFile(filepath);
