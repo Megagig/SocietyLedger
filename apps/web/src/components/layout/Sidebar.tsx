@@ -138,34 +138,39 @@ export function Sidebar() {
       permission: PERMISSIONS.FINANCE_VIEW,
       children: [
         {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/accounting',
+        },
+        {
           label: 'Chart of Accounts',
           icon: <IconReceipt size={18} />,
           href: '/dashboard/accounting/chart-of-accounts',
-          comingSoon: true,
         },
         {
           label: 'Journal Entries',
           icon: <IconFileAnalytics size={18} />,
           href: '/dashboard/accounting/journal-entries',
-          comingSoon: true,
         },
         {
           label: 'Income Statement',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/accounting/income-statement',
-          comingSoon: true,
         },
         {
           label: 'Balance Sheet',
           icon: <IconWallet size={18} />,
           href: '/dashboard/accounting/balance-sheet',
-          comingSoon: true,
         },
         {
           label: 'Cash Flow',
           icon: <IconCreditCard size={18} />,
           href: '/dashboard/accounting/cash-flow',
-          comingSoon: true,
+        },
+        {
+          label: 'Budgets',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/accounting/budgets',
         },
       ],
     },
