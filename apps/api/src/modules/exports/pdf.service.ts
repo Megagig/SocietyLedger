@@ -1,7 +1,7 @@
 import PDFDocument from 'pdfkit';
 import * as fs from 'fs';
 import { Decimal } from '@prisma/client/runtime/library';
-import { AssociationBranding, MemberStatementData } from './exports.types';
+import { AssociationBranding, MemberStatementData, LedgerStatementData } from './exports.types';
 import { reportsService } from '../reports/reports.service';
 
 // ============================================
@@ -442,6 +442,168 @@ export const pdfService = {
             currentY
           );
         }
+
+        // Add footer
+        this.addFooter(doc, branding, 1);
+
+        // Finalize PDF
+        doc.end();
+
+        stream.on('finish', () => resolve());
+        stream.on('error', reject);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
+  /**
+   * Generate Member Ledger Statement PDF
+   * Complete financial history with opening/closing balance
+   */
+  async generateLedgerStatementPDF(
+    statementData: LedgerStatementData,
+    branding: AssociationBranding,
+    filepath: string
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        const stream = fs.createWriteStream(filepath);
+
+        doc.pipe(stream);
+
+        // Add header
+        this.addHeader(doc, branding, 'Member Financial Ledger Statement');
+
+        // Member information
+        let currentY = 100;
+
+        doc.fontSize(14)
+          .font('Helvetica-Bold')
+          .text('Member Information', 50, currentY);
+
+        currentY += 25;
+
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Member ID: ${statementData.member.memberId}`, 50, currentY);
+        currentY += 15;
+        doc.text(
+          `Name: ${statementData.member.firstName} ${statementData.member.lastName}`,
+          50,
+          currentY
+        );
+        currentY += 15;
+        if (statementData.member.email) {
+          doc.text(`Email: ${statementData.member.email}`, 50, currentY);
+          currentY += 15;
+        }
+
+        currentY += 20;
+
+        // Statement period
+        doc.fontSize(12)
+          .font('Helvetica-Bold')
+          .text('Statement Period', 50, currentY);
+
+        currentY += 20;
+
+        doc.fontSize(10).font('Helvetica');
+        doc.text(
+          `From: ${this.formatDate(statementData.period.startDate)}  To: ${this.formatDate(statementData.period.endDate)}`,
+          50,
+          currentY
+        );
+
+        currentY += 30;
+
+        // Opening Balance
+        doc.fontSize(12)
+          .font('Helvetica-Bold')
+          .fillColor('#1e40af')
+          .text('Opening Balance:', 50, currentY);
+        doc.text(this.formatCurrency(statementData.openingBalance), 200, currentY);
+        doc.fillColor('#000000');
+
+        currentY += 30;
+
+        // Ledger entries table
+        if (statementData.entries.length > 0) {
+          doc.fontSize(12)
+            .font('Helvetica-Bold')
+            .text('Transaction Details', 50, currentY);
+
+          currentY += 25;
+
+          const entryRows = statementData.entries.map(entry => [
+            this.formatDate(entry.date),
+            entry.description.substring(0, 30) + (entry.description.length > 30 ? '...' : ''),
+            entry.debit > 0 ? this.formatCurrency(entry.debit) : '-',
+            entry.credit > 0 ? this.formatCurrency(entry.credit) : '-',
+            this.formatCurrency(entry.balance),
+          ]);
+
+          currentY = this.addTable(
+            doc,
+            ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
+            entryRows,
+            [70, 180, 80, 80, 85],
+            currentY
+          );
+        } else {
+          doc.fontSize(10)
+            .font('Helvetica')
+            .text('No transactions in this period.', 50, currentY);
+          currentY += 20;
+        }
+
+        currentY += 30;
+
+        // Totals
+        doc.fontSize(12)
+          .font('Helvetica-Bold')
+          .text('Summary', 50, currentY);
+
+        currentY += 25;
+
+        const summaryRows = [
+          ['Total Debits (Charges)', this.formatCurrency(statementData.totals.totalDebits)],
+          ['Total Credits (Payments)', this.formatCurrency(statementData.totals.totalCredits)],
+        ];
+
+        currentY = this.addTable(doc, ['Description', 'Amount'], summaryRows, [300, 195], currentY);
+
+        currentY += 20;
+
+        // Closing Balance
+        const closingBalanceColor = statementData.closingBalance > 0 ? '#dc2626' : '#16a34a';
+        doc.fontSize(14)
+          .font('Helvetica-Bold')
+          .fillColor(closingBalanceColor)
+          .text('Closing Balance:', 50, currentY);
+        doc.text(this.formatCurrency(statementData.closingBalance), 200, currentY);
+        doc.fillColor('#000000');
+
+        currentY += 20;
+
+        // Balance status
+        if (statementData.closingBalance > 0) {
+          doc.fontSize(10)
+            .font('Helvetica')
+            .fillColor('#dc2626')
+            .text('(Amount Outstanding)', 50, currentY);
+        } else if (statementData.closingBalance < 0) {
+          doc.fontSize(10)
+            .font('Helvetica')
+            .fillColor('#16a34a')
+            .text('(Credit Balance)', 50, currentY);
+        } else {
+          doc.fontSize(10)
+            .font('Helvetica')
+            .fillColor('#16a34a')
+            .text('(Account Settled)', 50, currentY);
+        }
+        doc.fillColor('#000000');
 
         // Add footer
         this.addFooter(doc, branding, 1);

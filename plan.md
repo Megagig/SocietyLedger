@@ -40,6 +40,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **12** | Caching & Performance | ⚪ Not Started | 0/10 | 🟢 LOW |
 | **12.5** | Meetings & Attendance | 🟡 Placeholder | 0/6 | 🟢 LOW |
 | **8.5** | Cooperatives & Loans | ✅ **COMPLETE** | 10/10 | 🟢 LOW |
+| **11.7** | Member Financial Ledger | ✅ **COMPLETE** | 8/8 | 🔴 HIGH |
 | **13.5** | Mobile/PWA | ⚪ Not Started | 0/6 | 🟢 LOW |
 | **16** | Enterprise Features | ⚪ Not Started | 0/8 | 🟢 LOW |
 | **17** | AI Integration | ⚪ Not Started | 0/16 | 🟢 LOW |
@@ -432,6 +433,80 @@ All tasks completed:
 - [x] Tokens expire after 72 hours
 - [x] Single-use tokens (marked as accepted/expired after use)
 - [x] Tenant isolation enforced on all operations
+
+---
+
+### Phase 11.7: Member Financial Ledger ✅ COMPLETE
+
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 28, 2025  
+**Location:** `apps/api/src/modules/member-finance/member-ledger.service.ts`, `member-ledger.controller.ts`, `member-ledger.routes.ts`
+
+**Core Design Principles:**
+- Single source of truth for all member financial activity
+- Append-only ledger for audit integrity (no deletes)
+- Computed balance strategy (no stored balances)
+- Works for both logged-in and passive members
+
+**Implemented Features:**
+
+**Ledger Entry System:**
+- [x] Append-only ledger entries with running balance
+- [x] Entry types: DEBIT (charges), CREDIT (payments), ADJUSTMENT
+- [x] Categories: DUES, LEVY, PENALTY, DONATION, REFUND, WAIVER, ADJUSTMENT, SAVINGS_DEPOSIT, SAVINGS_WITHDRAWAL, LOAN_DISBURSEMENT, LOAN_REPAYMENT, OTHER
+- [x] Source reference tracking (table + record ID) for audit trail
+- [x] Automatic ledger entry creation from transactions and payments
+
+**Balance Calculation:**
+- [x] Computed balance: SUM(CREDITS) - SUM(DEBITS)
+- [x] Date-based balance queries (as of specific date)
+- [x] Running balance maintained on each entry
+
+**Statement Generation:**
+- [x] Full member statement with opening/closing balance
+- [x] Date range filtering
+- [x] Transaction details with debit/credit columns
+- [x] Summary totals
+
+**Data Migration:**
+- [x] Sync existing transactions to ledger (per member)
+- [x] Bulk sync all members' ledgers
+- [x] Prevents duplicate syncing
+
+**PDF Export:**
+- [x] Branded PDF statements with association logo/colors
+- [x] Opening/closing balance display
+- [x] Transaction history table
+- [x] Summary section
+
+**Database Model:**
+- [x] `MemberFinancialLedger` model with all required fields
+- [x] Indexes for performance (association+member, effective_date, source)
+- [x] Relations to Association and Member
+
+**API Endpoints:**
+
+*Member Self-Service (requires MEMBER_FINANCE_VIEW):*
+- `GET /api/member-ledger/my-ledger/summary` - Ledger summary
+- `GET /api/member-ledger/my-ledger/entries` - Ledger entries with pagination
+- `GET /api/member-ledger/my-ledger/statement?startDate=&endDate=` - Statement
+- `GET /api/member-ledger/my-ledger/balance` - Current balance
+- `POST /api/member-ledger/my-ledger/export` - Export PDF statement
+
+*Admin Endpoints (requires FINANCE_VIEW/FINANCE_APPROVE):*
+- `GET /api/member-ledger/ledger/members` - All members with balances
+- `GET /api/member-ledger/ledger/:memberId/summary` - Member summary
+- `GET /api/member-ledger/ledger/:memberId/entries` - Member entries
+- `GET /api/member-ledger/ledger/:memberId/statement` - Member statement
+- `GET /api/member-ledger/ledger/:memberId/balance` - Member balance
+- `POST /api/member-ledger/ledger/:memberId/sync` - Sync member ledger
+- `POST /api/member-ledger/ledger/:memberId/export` - Export member PDF
+- `POST /api/member-ledger/ledger/bulk-sync` - Bulk sync all members
+
+**Access Control:**
+- [x] Admin/Treasurer/Financial Secretary: View any member ledger
+- [x] Members: View only their own ledger
+- [x] Members without login: Admin generates statements for them
 
 ---
 

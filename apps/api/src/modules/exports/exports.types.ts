@@ -108,3 +108,35 @@ export interface MemberStatementData {
   periodStart?: Date;
   periodEnd?: Date;
 }
+
+
+// Ledger Statement Data (for Member Financial Ledger)
+export interface LedgerStatementData {
+  member: {
+    id: number;
+    memberId: string;
+    firstName: string;
+    lastName: string;
+    email: string | null;
+  };
+  period: {
+    startDate: Date;
+    endDate: Date;
+  };
+  openingBalance: number;
+  entries: Array<{
+    id: number;
+    date: Date;
+    description: string;
+    category: string;
+    debit: number;
+    credit: number;
+    balance: number;
+    reference: string | null;
+  }>;
+  totals: {
+    totalDebits: number;
+    totalCredits: number;
+  };
+  closingBalance: number;
+}

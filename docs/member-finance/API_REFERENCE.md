@@ -572,3 +572,407 @@ Audit logs include:
 - Timestamp
 - Action details
 - New values
+
+
+---
+
+# Member Financial Ledger API Reference
+
+## Base URL
+
+```
+/api/member-ledger
+```
+
+## Authentication
+
+All endpoints require:
+- Valid JWT token in `Authorization: Bearer <token>` header
+- Association context via `X-Tenant-Id` header or subdomain
+
+## Member Self-Service Endpoints
+
+These endpoints require `MEMBER_FINANCE_VIEW` permission.
+
+---
+
+### Get My Ledger Summary
+
+Returns comprehensive ledger summary for the authenticated member.
+
+```http
+GET /api/member-ledger/my-ledger/summary
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "currentBalance": 25000,
+    "totalDebits": 150000,
+    "totalCredits": 125000,
+    "byCategory": {
+      "DUES": { "debits": 100000, "credits": 90000 },
+      "LEVY": { "debits": 30000, "credits": 25000 },
+      "PENALTY": { "debits": 20000, "credits": 10000 }
+    },
+    "recentEntries": [...]
+  }
+}
+```
+
+---
+
+### Get My Ledger Entries
+
+Returns paginated ledger entries for the authenticated member.
+
+```http
+GET /api/member-ledger/my-ledger/entries
+```
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| startDate | string | No | Filter from date (ISO 8601) |
+| endDate | string | No | Filter to date (ISO 8601) |
+| category | string | No | Filter by category |
+| page | number | No | Page number (default: 1) |
+| limit | number | No | Items per page (default: 50) |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "entries": [
+      {
+        "id": 1,
+        "entryType": "DEBIT",
+        "category": "DUES",
+        "amount": 5000,
+        "runningBalance": 5000,
+        "effectiveDate": "2025-01-01T00:00:00.000Z",
+        "description": "Monthly Dues - January 2025",
+        "referenceNumber": "TXN000001"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 50,
+      "total": 25,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+---
+
+### Get My Statement
+
+Returns a complete statement with opening/closing balance.
+
+```http
+GET /api/member-ledger/my-ledger/statement
+```
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| startDate | string | Yes | Statement start date (ISO 8601) |
+| endDate | string | Yes | Statement end date (ISO 8601) |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "member": {
+      "id": 1,
+      "memberId": "MEM001",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com"
+    },
+    "period": {
+      "startDate": "2025-01-01T00:00:00.000Z",
+      "endDate": "2025-01-31T23:59:59.000Z"
+    },
+    "openingBalance": 0,
+    "entries": [
+      {
+        "id": 1,
+        "date": "2025-01-05T00:00:00.000Z",
+        "description": "Monthly Dues - January",
+        "category": "DUES",
+        "debit": 5000,
+        "credit": 0,
+        "balance": 5000,
+        "reference": "TXN000001"
+      },
+      {
+        "id": 2,
+        "date": "2025-01-15T00:00:00.000Z",
+        "description": "Payment for Monthly Dues",
+        "category": "DUES",
+        "debit": 0,
+        "credit": 5000,
+        "balance": 0,
+        "reference": "PAY000001"
+      }
+    ],
+    "totals": {
+      "totalDebits": 5000,
+      "totalCredits": 5000
+    },
+    "closingBalance": 0
+  }
+}
+```
+
+---
+
+### Get My Balance
+
+Returns current balance for the authenticated member.
+
+```http
+GET /api/member-ledger/my-ledger/balance
+```
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| asOfDate | string | No | Balance as of date (ISO 8601) |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "memberId": 1,
+    "memberNumber": "MEM001",
+    "balance": 25000,
+    "asOfDate": "2025-01-31T23:59:59.000Z"
+  }
+}
+```
+
+---
+
+### Export My Statement (PDF)
+
+Generates and exports a PDF statement.
+
+```http
+POST /api/member-ledger/my-ledger/export
+```
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| startDate | string | Yes | Statement start date (ISO 8601) |
+| endDate | string | Yes | Statement end date (ISO 8601) |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Statement exported successfully",
+  "data": {
+    "id": 15,
+    "filename": "ledger_statement_1_2025-01-31.pdf",
+    "downloadUrl": "/api/exports/download/15",
+    "expiresAt": "2025-02-07T00:00:00.000Z"
+  }
+}
+```
+
+---
+
+## Admin Endpoints
+
+These endpoints require `FINANCE_VIEW` or `FINANCE_APPROVE` permission.
+
+---
+
+### Get All Members with Balances
+
+Returns paginated list of all members with their current balances.
+
+```http
+GET /api/member-ledger/ledger/members
+```
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| page | number | No | Page number (default: 1) |
+| limit | number | No | Items per page (default: 50) |
+| search | string | No | Search by name, email, or member ID |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "members": [
+      {
+        "id": 1,
+        "memberId": "MEM001",
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com",
+        "status": "active",
+        "balance": 25000
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 50,
+      "total": 100,
+      "totalPages": 2
+    }
+  }
+}
+```
+
+---
+
+### Get Member Ledger Summary
+
+Returns ledger summary for a specific member.
+
+```http
+GET /api/member-ledger/ledger/:memberId/summary
+```
+
+---
+
+### Get Member Ledger Entries
+
+Returns paginated ledger entries for a specific member.
+
+```http
+GET /api/member-ledger/ledger/:memberId/entries
+```
+
+---
+
+### Get Member Statement
+
+Returns statement for a specific member.
+
+```http
+GET /api/member-ledger/ledger/:memberId/statement
+```
+
+---
+
+### Get Member Balance
+
+Returns balance for a specific member.
+
+```http
+GET /api/member-ledger/ledger/:memberId/balance
+```
+
+---
+
+### Sync Member Ledger
+
+Syncs existing transactions to ledger for a member (migration/backfill).
+
+```http
+POST /api/member-ledger/ledger/:memberId/sync
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Successfully synced 25 ledger entries",
+  "data": {
+    "entriesCreated": 25,
+    "finalBalance": 15000
+  }
+}
+```
+
+---
+
+### Bulk Sync All Members
+
+Syncs ledger for all members without existing entries.
+
+```http
+POST /api/member-ledger/ledger/bulk-sync
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Synced 45 of 50 members",
+  "data": {
+    "total": 50,
+    "synced": 45,
+    "failed": 5,
+    "errors": [
+      { "memberId": 10, "error": "No transactions found" }
+    ]
+  }
+}
+```
+
+---
+
+### Export Member Statement (PDF)
+
+Generates PDF statement for a specific member.
+
+```http
+POST /api/member-ledger/ledger/:memberId/export
+```
+
+---
+
+## Ledger Entry Types
+
+| Type | Description |
+|------|-------------|
+| DEBIT | Charges to member (increases outstanding) |
+| CREDIT | Payments/refunds (decreases outstanding) |
+| ADJUSTMENT | Corrections |
+
+## Ledger Categories
+
+| Category | Description |
+|----------|-------------|
+| DUES | Membership dues |
+| LEVY | Special levies |
+| PENALTY | Late fees/fines |
+| DONATION | Donations |
+| REFUND | Refunds |
+| WAIVER | Waived amounts |
+| ADJUSTMENT | Manual adjustments |
+| SAVINGS_DEPOSIT | Cooperative savings deposit |
+| SAVINGS_WITHDRAWAL | Cooperative savings withdrawal |
+| LOAN_DISBURSEMENT | Loan disbursement |
+| LOAN_REPAYMENT | Loan repayment |
+| OTHER | Other transactions |

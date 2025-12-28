@@ -4,6 +4,25 @@
 
 The Member Finance Self-Service module allows association members to view and manage their own financial data including dues, levies, penalties, donations, and payment history. This module provides a member-centric view of financial obligations and enables self-service payments.
 
+## New Feature: Member Financial Ledger
+
+The Member Financial Ledger provides a complete, auditable financial history per member with:
+- Opening and closing balance calculations
+- All debits (charges) and credits (payments)
+- Statement of Account generation
+- PDF export capability
+
+### Ledger Entry Types
+- **DEBIT**: Charges to member (dues, levies, penalties)
+- **CREDIT**: Payments, refunds, waivers
+- **ADJUSTMENT**: Corrections
+
+### Ledger Categories
+- DUES, LEVY, PENALTY, DONATION
+- REFUND, WAIVER, ADJUSTMENT
+- SAVINGS_DEPOSIT, SAVINGS_WITHDRAWAL
+- LOAN_DISBURSEMENT, LOAN_REPAYMENT, OTHER
+
 ## Architecture
 
 ### Backend Structure
