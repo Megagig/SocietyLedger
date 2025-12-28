@@ -298,6 +298,7 @@ export default function PenaltiesPage() {
 
       toast.success('Penalty rule created successfully');
       setShowRuleModal(false);
+      fetchRules();
       setRuleForm({
         name: '', description: '', categoryId: '', triggerType: 'late_payment',
         gracePeriodDays: '7', feeType: 'fixed', feeAmount: '', maxFeeAmount: '',
@@ -399,6 +400,24 @@ export default function PenaltiesPage() {
         }
       },
     });
+  };
+
+  const handleToggleRule = async (rule: PenaltyRule) => {
+    try {
+      const response = await apiPatch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/rules/${rule.id}`,
+        { isActive: !rule.isActive }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to update rule');
+
+      toast.success(`Rule ${rule.isActive ? 'deactivated' : 'activated'} successfully`);
+      fetchRules();
+      fetchStats();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update rule status');
+    }
   };
 
   const openAssignModal = (penalty: PenaltyCategory) => {
@@ -713,6 +732,28 @@ export default function PenaltiesPage() {
                       <span>{rule._count?.appliedPenalties || 0} times</span>
                     </div>
                   </div>
+                  <Can permission={PERMISSIONS.FINANCE_EDIT}>
+                    <button
+                      onClick={() => handleToggleRule(rule)}
+                      className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        rule.isActive
+                          ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40'
+                          : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40'
+                      }`}
+                    >
+                      {rule.isActive ? (
+                        <>
+                          <XCircle className="w-4 h-4" />
+                          Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          Activate
+                        </>
+                      )}
+                    </button>
+                  </Can>
                 </div>
               ))}
             </div>
