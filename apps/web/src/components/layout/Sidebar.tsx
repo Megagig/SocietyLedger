@@ -26,6 +26,12 @@ import {
   IconBuildingBank,
   IconCalendarEvent,
   IconClipboardCheck,
+  IconMessage,
+  IconMail,
+  IconBrandWhatsapp,
+  IconHistory,
+  IconTemplate,
+  IconSpeakerphone,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -306,24 +312,31 @@ export function Sidebar() {
     {
       label: 'Welfare',
       icon: <IconHeart size={20} />,
+      permission: PERMISSIONS.WELFARE_VIEW,
       children: [
+        {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/welfare',
+          permission: PERMISSIONS.WELFARE_VIEW,
+        },
         {
           label: 'Social Funds',
           icon: <IconWallet size={18} />,
           href: '/dashboard/welfare/social-funds',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_VIEW,
         },
         {
           label: 'Contributions',
           icon: <IconCurrencyNaira size={18} />,
           href: '/dashboard/welfare/contributions',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
         },
         {
           label: 'Requests & Payouts',
           icon: <IconHeart size={18} />,
           href: '/dashboard/welfare/requests',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_PAYOUT_VIEW,
         },
       ],
     },
@@ -391,7 +404,7 @@ export function Sidebar() {
     },
     {
       label: 'Communication',
-      icon: <IconBell size={20} />,
+      icon: <IconSpeakerphone size={20} />,
       children: [
         {
           label: 'Notifications',
@@ -404,23 +417,41 @@ export function Sidebar() {
           href: '/dashboard/communication/announcements',
         },
         {
-          label: 'Bulk SMS',
-          icon: <IconBell size={18} />,
+          label: 'SMS Dashboard',
+          icon: <IconMessage size={18} />,
           href: '/dashboard/communication/sms',
-          comingSoon: true,
+          permission: PERMISSIONS.SMS_VIEW,
+        },
+        {
+          label: 'SMS Campaigns',
+          icon: <IconSpeakerphone size={18} />,
+          href: '/dashboard/communication/sms/campaigns',
+          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
+        },
+        {
+          label: 'SMS Templates',
+          icon: <IconTemplate size={18} />,
+          href: '/dashboard/communication/sms/templates',
+          permission: PERMISSIONS.SMS_TEMPLATE_MANAGE,
+        },
+        {
+          label: 'SMS History',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/communication/sms/history',
+          permission: PERMISSIONS.SMS_VIEW,
         },
         {
           label: 'Email Campaigns',
-          icon: <IconBell size={18} />,
+          icon: <IconMail size={18} />,
           href: '/dashboard/communication/email',
-          comingSoon: true,
+          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
         },
         {
           label: 'WhatsApp',
-          icon: <IconBell size={18} />,
+          icon: <IconBrandWhatsapp size={18} />,
           href: '/dashboard/communication/whatsapp',
-          comingSoon: true,
           badge: 'Pro',
+          permission: PERMISSIONS.SMS_VIEW,
         },
       ],
     },

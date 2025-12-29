@@ -60,56 +60,71 @@ model Association {
   memberLedgerEntries        MemberFinancialLedger[]
   // Phase 12.5: Meetings & Attendance
   meetings                   Meeting[]
+  // Phase 5.5: Welfare & Social Funds
+  welfareFunds               WelfareFund[]
+  welfareContributions       WelfareContribution[]
+  welfarePayoutRequests      WelfarePayoutRequest[]
+  // Phase 6.5: SMS & Bulk Communication
+  smsMessages                SMSMessage[]
+  smsCampaigns               SMSCampaign[]
+  smsTemplates               SMSTemplate[]
+  smsCreditBalance           SMSCreditBalance?
 
   @@map("associations")
 }
 
 model User {
-  id                           Int                  @id @default(autoincrement())
-  associationId                Int?                 @map("association_id")
-  email                        String
-  passwordHash                 String               @map("password_hash")
-  role                         String               @default("member")
-  platformRole                 PlatformRole?        @map("platform_role")
-  isActive                     Boolean              @default(false) @map("is_active")
-  createdAt                    DateTime             @default(now()) @map("created_at")
-  updatedAt                    DateTime             @updatedAt @map("updated_at")
-  emailVerified                Boolean              @default(false) @map("email_verified")
-  passwordResetExpiresAt       DateTime?            @map("password_reset_expires_at")
-  passwordResetToken           String?              @map("password_reset_token")
-  verificationCode             String?              @map("verification_code")
-  verificationExpiresAt        DateTime?            @map("verification_expires_at")
-  approvedAccountingEntries    AccountingEntry[]    @relation("AccountingEntryApprovedBy")
-  createdAccountingEntries     AccountingEntry[]    @relation("AccountingEntryCreatedBy")
-  auditLogs                    AuditLog[]
-  exports                      ExportHistory[]
-  sentMemberInvites            MemberInvite[]       @relation("MemberInvitedBy")
-  member                       Member?
-  notifications                Notification[]
-  confirmedPayments            Payment[]            @relation("PaymentConfirmedBy")
-  settingsUpdates              Settings[]           @relation("SettingsUpdatedBy")
-  createdTransactions          Transaction[]        @relation("TransactionCreatedBy")
-  approvedUsers                UserApproval[]       @relation("UserApprovedBy")
-  userApproval                 UserApproval?
-  association                  Association?         @relation(fields: [associationId], references: [id])
+  id                            Int                    @id @default(autoincrement())
+  associationId                 Int?                   @map("association_id")
+  email                         String
+  passwordHash                  String                 @map("password_hash")
+  role                          String                 @default("member")
+  platformRole                  PlatformRole?          @map("platform_role")
+  isActive                      Boolean                @default(false) @map("is_active")
+  createdAt                     DateTime               @default(now()) @map("created_at")
+  updatedAt                     DateTime               @updatedAt @map("updated_at")
+  emailVerified                 Boolean                @default(false) @map("email_verified")
+  passwordResetExpiresAt        DateTime?              @map("password_reset_expires_at")
+  passwordResetToken            String?                @map("password_reset_token")
+  verificationCode              String?                @map("verification_code")
+  verificationExpiresAt         DateTime?              @map("verification_expires_at")
+  approvedAccountingEntries     AccountingEntry[]      @relation("AccountingEntryApprovedBy")
+  createdAccountingEntries      AccountingEntry[]      @relation("AccountingEntryCreatedBy")
+  auditLogs                     AuditLog[]
+  exports                       ExportHistory[]
+  sentMemberInvites             MemberInvite[]         @relation("MemberInvitedBy")
+  member                        Member?
+  notifications                 Notification[]
+  confirmedPayments             Payment[]              @relation("PaymentConfirmedBy")
+  settingsUpdates               Settings[]             @relation("SettingsUpdatedBy")
+  createdTransactions           Transaction[]          @relation("TransactionCreatedBy")
+  approvedUsers                 UserApproval[]         @relation("UserApprovedBy")
+  userApproval                  UserApproval?
+  association                   Association?           @relation(fields: [associationId], references: [id])
   // Phase 9: Accounting System
-  createdJournalEntries        JournalEntry[]       @relation("JournalEntryCreatedBy")
-  approvedJournalEntries       JournalEntry[]       @relation("JournalEntryApprovedBy")
-  rejectedJournalEntries       JournalEntry[]       @relation("JournalEntryRejectedBy")
-  createdBudgets               Budget[]             @relation("BudgetCreatedBy")
-  approvedBudgets              Budget[]             @relation("BudgetApprovedBy")
-  closedPeriods                AccountingPeriod[]   @relation("PeriodClosedBy")
+  createdJournalEntries         JournalEntry[]         @relation("JournalEntryCreatedBy")
+  approvedJournalEntries        JournalEntry[]         @relation("JournalEntryApprovedBy")
+  rejectedJournalEntries        JournalEntry[]         @relation("JournalEntryRejectedBy")
+  createdBudgets                Budget[]               @relation("BudgetCreatedBy")
+  approvedBudgets               Budget[]               @relation("BudgetApprovedBy")
+  closedPeriods                 AccountingPeriod[]     @relation("PeriodClosedBy")
   // Phase 8.5: Cooperatives & Loans
-  processedSavingsTransactions SavingsTransaction[] @relation("SavingsTransactionProcessor")
-  reviewedLoanApplications     LoanApplication[]    @relation("LoanApplicationReviewer")
-  approvedLoanApplications     LoanApplication[]    @relation("LoanApplicationApprover")
-  processedLoanRepayments      LoanRepayment[]      @relation("LoanRepaymentProcessor")
+  processedSavingsTransactions  SavingsTransaction[]   @relation("SavingsTransactionProcessor")
+  reviewedLoanApplications      LoanApplication[]      @relation("LoanApplicationReviewer")
+  approvedLoanApplications      LoanApplication[]      @relation("LoanApplicationApprover")
+  processedLoanRepayments       LoanRepayment[]        @relation("LoanRepaymentProcessor")
   // Phase 12.5: Meetings & Attendance
-  createdMeetings              Meeting[]            @relation("MeetingCreatedBy")
-  cancelledMeetings            Meeting[]            @relation("MeetingCancelledBy")
-  markedAttendances            MeetingAttendance[]  @relation("AttendanceMarkedBy")
-  recordedMinutes              MeetingMinutes[]     @relation("MinutesRecordedBy")
-  approvedMinutes              MeetingMinutes[]     @relation("MinutesApprovedBy")
+  createdMeetings               Meeting[]              @relation("MeetingCreatedBy")
+  cancelledMeetings             Meeting[]              @relation("MeetingCancelledBy")
+  markedAttendances             MeetingAttendance[]    @relation("AttendanceMarkedBy")
+  recordedMinutes               MeetingMinutes[]       @relation("MinutesRecordedBy")
+  approvedMinutes               MeetingMinutes[]       @relation("MinutesApprovedBy")
+  // Phase 5.5: Welfare & Social Funds
+  createdWelfareFunds           WelfareFund[]          @relation("WelfareFundCreator")
+  confirmedWelfareContributions WelfareContribution[]  @relation("WelfareContributionConfirmer")
+  reviewedWelfarePayouts        WelfarePayoutRequest[] @relation("WelfarePayoutReviewer")
+  approvedWelfarePayouts        WelfarePayoutRequest[] @relation("WelfarePayoutApprover")
+  disbursedWelfarePayouts       WelfarePayoutRequest[] @relation("WelfarePayoutDisburser")
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -174,6 +189,9 @@ model Member {
   ledgerEntries                MemberFinancialLedger[]
   // Phase 12.5: Meetings & Attendance
   meetingAttendances           MeetingAttendance[]
+  // Phase 5.5: Welfare & Social Funds
+  welfareContributions         WelfareContribution[]
+  welfarePayoutRequests        WelfarePayoutRequest[]
 
   @@unique([associationId, memberId])
   @@index([associationId, status])
@@ -1401,7 +1419,6 @@ enum LedgerCategory {
   OTHER
 }
 
-
 // ============================================
 // PHASE 12.5: MEETINGS & ATTENDANCE MANAGEMENT
 // Professional/Enterprise Feature
@@ -1409,30 +1426,30 @@ enum LedgerCategory {
 
 // Meeting Model
 model Meeting {
-  id              Int                 @id @default(autoincrement())
-  associationId   Int                 @map("association_id")
-  title           String
-  description     String?
-  meetingType     MeetingType         @default(REGULAR) @map("meeting_type")
-  location        String?
-  virtualLink     String?             @map("virtual_link") // Zoom/Google Meet link
-  startTime       DateTime            @map("start_time")
-  endTime         DateTime?           @map("end_time")
-  status          MeetingStatus       @default(SCHEDULED)
-  quorumRequired  Int?                @map("quorum_required") // Minimum attendees needed
-  createdBy       Int                 @map("created_by")
-  cancelledBy     Int?                @map("cancelled_by")
-  cancelledAt     DateTime?           @map("cancelled_at")
-  cancellationReason String?          @map("cancellation_reason")
-  reminderSent    Boolean             @default(false) @map("reminder_sent")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
-  association     Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  creator         User                @relation("MeetingCreatedBy", fields: [createdBy], references: [id])
-  canceller       User?               @relation("MeetingCancelledBy", fields: [cancelledBy], references: [id])
-  agendaItems     MeetingAgenda[]
-  attendances     MeetingAttendance[]
-  minutes         MeetingMinutes?
+  id                 Int                 @id @default(autoincrement())
+  associationId      Int                 @map("association_id")
+  title              String
+  description        String?
+  meetingType        MeetingType         @default(REGULAR) @map("meeting_type")
+  location           String?
+  virtualLink        String?             @map("virtual_link") // Zoom/Google Meet link
+  startTime          DateTime            @map("start_time")
+  endTime            DateTime?           @map("end_time")
+  status             MeetingStatus       @default(SCHEDULED)
+  quorumRequired     Int?                @map("quorum_required") // Minimum attendees needed
+  createdBy          Int                 @map("created_by")
+  cancelledBy        Int?                @map("cancelled_by")
+  cancelledAt        DateTime?           @map("cancelled_at")
+  cancellationReason String?             @map("cancellation_reason")
+  reminderSent       Boolean             @default(false) @map("reminder_sent")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  association        Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  creator            User                @relation("MeetingCreatedBy", fields: [createdBy], references: [id])
+  canceller          User?               @relation("MeetingCancelledBy", fields: [cancelledBy], references: [id])
+  agendaItems        MeetingAgenda[]
+  attendances        MeetingAttendance[]
+  minutes            MeetingMinutes?
 
   @@index([associationId, status])
   @@index([associationId, startTime])
@@ -1447,8 +1464,8 @@ model MeetingAgenda {
   orderNumber Int      @map("order_number")
   title       String
   description String?
-  duration    Int?     // Duration in minutes
-  presenter   String?  // Name of person presenting this item
+  duration    Int? // Duration in minutes
+  presenter   String? // Name of person presenting this item
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
@@ -1484,32 +1501,32 @@ model MeetingAttendance {
 
 // Meeting Minutes
 model MeetingMinutes {
-  id              Int      @id @default(autoincrement())
-  meetingId       Int      @unique @map("meeting_id")
-  content         String   @db.Text // Rich text content
-  decisions       String?  @db.Text // Key decisions made
-  actionItems     String?  @db.Text // Action items from meeting
+  id              Int       @id @default(autoincrement())
+  meetingId       Int       @unique @map("meeting_id")
+  content         String    @db.Text // Rich text content
+  decisions       String?   @db.Text // Key decisions made
+  actionItems     String?   @db.Text // Action items from meeting
   nextMeetingDate DateTime? @map("next_meeting_date")
-  recordedBy      Int      @map("recorded_by")
-  approvedBy      Int?     @map("approved_by")
+  recordedBy      Int       @map("recorded_by")
+  approvedBy      Int?      @map("approved_by")
   approvedAt      DateTime? @map("approved_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  meeting         Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  recorder        User     @relation("MinutesRecordedBy", fields: [recordedBy], references: [id])
-  approver        User?    @relation("MinutesApprovedBy", fields: [approvedBy], references: [id])
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  meeting         Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  recorder        User      @relation("MinutesRecordedBy", fields: [recordedBy], references: [id])
+  approver        User?     @relation("MinutesApprovedBy", fields: [approvedBy], references: [id])
 
   @@map("meeting_minutes")
 }
 
 // Meeting Enums
 enum MeetingType {
-  REGULAR       // Regular scheduled meeting
-  EMERGENCY     // Emergency/urgent meeting
-  AGM           // Annual General Meeting
-  EGM           // Extraordinary General Meeting
-  COMMITTEE     // Committee meeting
-  SPECIAL       // Special purpose meeting
+  REGULAR // Regular scheduled meeting
+  EMERGENCY // Emergency/urgent meeting
+  AGM // Annual General Meeting
+  EGM // Extraordinary General Meeting
+  COMMITTEE // Committee meeting
+  SPECIAL // Special purpose meeting
 }
 
 enum MeetingStatus {
@@ -1521,9 +1538,323 @@ enum MeetingStatus {
 }
 
 enum AttendanceStatus {
-  PENDING       // Not yet marked
-  PRESENT       // Attended
-  ABSENT        // Did not attend
-  APOLOGY       // Sent apology/excuse
-  LATE          // Arrived late
+  PENDING // Not yet marked
+  PRESENT // Attended
+  ABSENT // Did not attend
+  APOLOGY // Sent apology/excuse
+  LATE // Arrived late
+}
+
+// ============================================
+// PHASE 5.5: WELFARE & SOCIAL FUNDS MODELS
+// Nigerian/African Market Feature
+// Bereavement, Medical, Education, Emergency Support
+// ============================================
+
+// Welfare Fund
+model WelfareFund {
+  id                      Int                    @id @default(autoincrement())
+  associationId           Int                    @map("association_id")
+  name                    String
+  description             String?
+  fundType                WelfareFundType        @default(GENERAL) @map("fund_type")
+  targetBalance           Decimal?               @map("target_balance") @db.Decimal(12, 2)
+  currentBalance          Decimal                @default(0) @map("current_balance") @db.Decimal(12, 2)
+  monthlyContribution     Decimal?               @map("monthly_contribution") @db.Decimal(12, 2)
+  isContributionMandatory Boolean                @default(false) @map("is_contribution_mandatory")
+  minContribution         Decimal?               @map("min_contribution") @db.Decimal(12, 2)
+  maxPayout               Decimal?               @map("max_payout") @db.Decimal(12, 2)
+  waitingPeriodDays       Int                    @default(0) @map("waiting_period_days")
+  minContributionMonths   Int                    @default(0) @map("min_contribution_months")
+  status                  WelfareFundStatus      @default(ACTIVE)
+  createdBy               Int                    @map("created_by")
+  createdAt               DateTime               @default(now()) @map("created_at")
+  updatedAt               DateTime               @updatedAt @map("updated_at")
+  association             Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  creator                 User                   @relation("WelfareFundCreator", fields: [createdBy], references: [id])
+  contributions           WelfareContribution[]
+  payoutRequests          WelfarePayoutRequest[]
+
+  @@unique([associationId, name])
+  @@index([associationId, status])
+  @@map("welfare_funds")
+}
+
+// Welfare Contribution
+model WelfareContribution {
+  id               Int                       @id @default(autoincrement())
+  associationId    Int                       @map("association_id")
+  fundId           Int                       @map("fund_id")
+  memberId         Int                       @map("member_id")
+  amount           Decimal                   @db.Decimal(12, 2)
+  contributionDate DateTime                  @map("contribution_date")
+  paymentMethod    String?                   @map("payment_method")
+  reference        String?
+  notes            String?
+  status           WelfareContributionStatus @default(PENDING)
+  confirmedBy      Int?                      @map("confirmed_by")
+  confirmedAt      DateTime?                 @map("confirmed_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  association      Association               @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  fund             WelfareFund               @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  member           Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  confirmer        User?                     @relation("WelfareContributionConfirmer", fields: [confirmedBy], references: [id])
+
+  @@index([associationId, fundId])
+  @@index([memberId])
+  @@index([contributionDate])
+  @@index([status])
+  @@map("welfare_contributions")
+}
+
+// Welfare Payout Request
+model WelfarePayoutRequest {
+  id                    Int                 @id @default(autoincrement())
+  associationId         Int                 @map("association_id")
+  fundId                Int                 @map("fund_id")
+  memberId              Int                 @map("member_id")
+  requestNumber         String              @map("request_number")
+  payoutType            WelfarePayoutType   @map("payout_type")
+  amount                Decimal             @db.Decimal(12, 2)
+  reason                String
+  supportingDocuments   String?             @map("supporting_documents")
+  status                WelfarePayoutStatus @default(PENDING)
+  reviewedBy            Int?                @map("reviewed_by")
+  reviewedAt            DateTime?           @map("reviewed_at")
+  reviewComments        String?             @map("review_comments")
+  approvedBy            Int?                @map("approved_by")
+  approvedAt            DateTime?           @map("approved_at")
+  approvedAmount        Decimal?            @map("approved_amount") @db.Decimal(12, 2)
+  rejectionReason       String?             @map("rejection_reason")
+  disbursedBy           Int?                @map("disbursed_by")
+  disbursedAt           DateTime?           @map("disbursed_at")
+  disbursementMethod    String?             @map("disbursement_method")
+  disbursementReference String?             @map("disbursement_reference")
+  requestedAt           DateTime            @default(now()) @map("requested_at")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  association           Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  fund                  WelfareFund         @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  member                Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  reviewer              User?               @relation("WelfarePayoutReviewer", fields: [reviewedBy], references: [id])
+  approver              User?               @relation("WelfarePayoutApprover", fields: [approvedBy], references: [id])
+  disburser             User?               @relation("WelfarePayoutDisburser", fields: [disbursedBy], references: [id])
+
+  @@unique([associationId, requestNumber])
+  @@index([associationId, status])
+  @@index([fundId])
+  @@index([memberId])
+  @@index([requestedAt])
+  @@map("welfare_payout_requests")
+}
+
+// Welfare Enums
+enum WelfareFundType {
+  GENERAL // General welfare fund
+  BEREAVEMENT // Death/funeral support
+  MEDICAL // Medical emergencies
+  EDUCATION // Educational support
+  EMERGENCY // General emergencies
+  MATERNITY // Childbirth support
+  WEDDING // Marriage support
+}
+
+enum WelfareFundStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum WelfareContributionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum WelfarePayoutType {
+  BEREAVEMENT // Death of member or family
+  MEDICAL // Medical emergency
+  EDUCATION // School fees, etc.
+  EMERGENCY // General emergency
+  MATERNITY // Childbirth
+  WEDDING // Marriage
+  OTHER // Other welfare needs
+}
+
+enum WelfarePayoutStatus {
+  PENDING // Awaiting review
+  UNDER_REVIEW // Being reviewed
+  APPROVED // Approved, awaiting disbursement
+  REJECTED // Request rejected
+  DISBURSED // Payment made
+  CANCELLED // Cancelled by requester
+}
+
+// ============================================
+// PHASE 6.5: SMS & BULK COMMUNICATION
+// ============================================
+
+// SMS Message Log - Track all sent SMS messages
+model SMSMessage {
+  id              Int              @id @default(autoincrement())
+  associationId   Int              @map("association_id")
+  campaignId      Int?             @map("campaign_id")
+  recipientPhone  String           @map("recipient_phone")
+  recipientName   String?          @map("recipient_name")
+  memberId        Int?             @map("member_id")
+  message         String
+  messageType     SMSMessageType   @default(SINGLE) @map("message_type")
+  status          SMSStatus        @default(PENDING)
+  termiiMessageId String?          @map("termii_message_id")
+  segments        Int              @default(1)
+  cost            Decimal?         @db.Decimal(10, 4)
+  errorMessage    String?          @map("error_message")
+  sentAt          DateTime?        @map("sent_at")
+  deliveredAt     DateTime?        @map("delivered_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  campaign        SMSCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([associationId, status])
+  @@index([campaignId])
+  @@index([memberId])
+  @@index([sentAt])
+  @@map("sms_messages")
+}
+
+// SMS Campaign - For bulk SMS sends
+model SMSCampaign {
+  id              Int              @id @default(autoincrement())
+  associationId   Int              @map("association_id")
+  name            String
+  message         String
+  templateId      Int?             @map("template_id")
+  recipientType   SMSRecipientType @default(ALL_MEMBERS) @map("recipient_type")
+  recipientFilter Json?            @map("recipient_filter") // Filter criteria for recipients
+  totalRecipients Int              @default(0) @map("total_recipients")
+  sentCount       Int              @default(0) @map("sent_count")
+  deliveredCount  Int              @default(0) @map("delivered_count")
+  failedCount     Int              @default(0) @map("failed_count")
+  status          SMSCampaignStatus @default(DRAFT)
+  scheduledAt     DateTime?        @map("scheduled_at")
+  startedAt       DateTime?        @map("started_at")
+  completedAt     DateTime?        @map("completed_at")
+  createdBy       Int              @map("created_by")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  template        SMSTemplate?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  messages        SMSMessage[]
+
+  @@index([associationId, status])
+  @@index([scheduledAt])
+  @@map("sms_campaigns")
+}
+
+// SMS Template - Reusable message templates
+model SMSTemplate {
+  id            Int           @id @default(autoincrement())
+  associationId Int           @map("association_id")
+  name          String
+  content       String
+  category      SMSTemplateCategory @default(GENERAL)
+  placeholders  String[]      @default([]) // List of placeholders like {{name}}, {{amount}}
+  isActive      Boolean       @default(true) @map("is_active")
+  usageCount    Int           @default(0) @map("usage_count")
+  createdBy     Int           @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  association   Association   @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  campaigns     SMSCampaign[]
+
+  @@unique([associationId, name])
+  @@index([associationId, category])
+  @@map("sms_templates")
+}
+
+// SMS Credit Balance - Track SMS credits per association
+model SMSCreditBalance {
+  id            Int         @id @default(autoincrement())
+  associationId Int         @unique @map("association_id")
+  balance       Decimal     @default(0) @db.Decimal(12, 4)
+  totalPurchased Decimal    @default(0) @map("total_purchased") @db.Decimal(12, 4)
+  totalUsed     Decimal     @default(0) @map("total_used") @db.Decimal(12, 4)
+  lastTopUpAt   DateTime?   @map("last_top_up_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  transactions  SMSCreditTransaction[]
+
+  @@map("sms_credit_balances")
+}
+
+// SMS Credit Transaction - Track credit purchases and usage
+model SMSCreditTransaction {
+  id              Int                    @id @default(autoincrement())
+  balanceId       Int                    @map("balance_id")
+  type            SMSCreditTransactionType
+  amount          Decimal                @db.Decimal(12, 4)
+  description     String?
+  reference       String?
+  campaignId      Int?                   @map("campaign_id")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  balance         SMSCreditBalance       @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+
+  @@index([balanceId, type])
+  @@index([createdAt])
+  @@map("sms_credit_transactions")
+}
+
+// SMS Enums
+enum SMSMessageType {
+  SINGLE      // Single recipient
+  BULK        // Part of bulk campaign
+  AUTOMATED   // Automated reminder/notification
+}
+
+enum SMSStatus {
+  PENDING     // Queued for sending
+  SENT        // Sent to provider
+  DELIVERED   // Confirmed delivered
+  FAILED      // Failed to send
+  REJECTED    // Rejected by provider
+}
+
+enum SMSCampaignStatus {
+  DRAFT       // Being created
+  SCHEDULED   // Scheduled for future
+  IN_PROGRESS // Currently sending
+  COMPLETED   // All messages sent
+  CANCELLED   // Cancelled before completion
+  FAILED      // Failed to complete
+}
+
+enum SMSRecipientType {
+  ALL_MEMBERS       // All active members
+  SELECTED_MEMBERS  // Specific members selected
+  MEMBER_CATEGORY   // Members by category
+  CUSTOM_NUMBERS    // Custom phone numbers
+  OWING_MEMBERS     // Members with outstanding dues
+  PAID_MEMBERS      // Members who are paid up
+}
+
+enum SMSTemplateCategory {
+  GENERAL           // General announcements
+  PAYMENT_REMINDER  // Payment reminders
+  MEETING           // Meeting notifications
+  DUES              // Dues notifications
+  LEVY              // Levy notifications
+  WELFARE           // Welfare notifications
+  ELECTION          // Election/voting notifications
+  CUSTOM            // Custom templates
+}
+
+enum SMSCreditTransactionType {
+  PURCHASE    // Credit purchase
+  USAGE       // Credit used for SMS
+  REFUND      // Credit refunded
+  BONUS       // Bonus credits
+  ADJUSTMENT  // Manual adjustment
 }

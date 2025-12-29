@@ -1,0 +1,599 @@
+/**
+ * SMS Controller
+ * Phase 6.5: SMS & Bulk Communication
+ */
+
+import { Request, Response } from 'express';
+import { z } from 'zod';
+import { SMSService } from './sms.service';
+import {
+  quickSMSSchema,
+  createCampaignSchema,
+  updateCampaignSchema,
+  createTemplateSchema,
+  updateTemplateSchema,
+  topUpCreditsSchema,
+  listMessagesQuerySchema,
+  listCampaignsQuerySchema,
+  listTemplatesQuerySchema,
+} from './sms.validation';
+import { prisma } from '../../lib/prisma';
+
+const smsService = new SMSService();
+
+export const smsController = {
+  // ============================================
+  // Dashboard
+  // ============================================
+
+  async getDashboard(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const stats = await smsService.getDashboardStats(associationId);
+
+      return res.status(200).json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      console.error('Error fetching SMS dashboard:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch dashboard' });
+    }
+  },
+
+  // ============================================
+  // Quick SMS
+  // ============================================
+
+  async sendQuickSMS(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const validatedData = quickSMSSchema.parse(req.body);
+      const result = await smsService.sendQuickSMS(associationId, userId, validatedData);
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'CREATE',
+          tableName: 'sms_messages',
+          recordId: 0,
+          newValues: { 
+            recipients: validatedData.recipients.length,
+            sent: result.totalSent,
+            failed: result.totalFailed,
+          },
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `SMS sent to ${result.totalSent} recipients`,
+        data: result,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error sending quick SMS:', error);
+      const message = error instanceof Error ? error.message : 'Failed to send SMS';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  // ============================================
+  // Campaigns
+  // ============================================
+
+  async createCampaign(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const validatedData = createCampaignSchema.parse(req.body);
+      const campaign = await smsService.createCampaign(associationId, userId, validatedData);
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'CREATE',
+          tableName: 'sms_campaigns',
+          recordId: campaign.id,
+          newValues: campaign,
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Campaign created successfully',
+        data: campaign,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error creating campaign:', error);
+      const message = error instanceof Error ? error.message : 'Failed to create campaign';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  async getCampaign(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const campaign = await smsService.getCampaign(associationId, parseInt(id));
+
+      if (!campaign) {
+        return res.status(404).json({ success: false, message: 'Campaign not found' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: campaign,
+      });
+    } catch (error) {
+      console.error('Error fetching campaign:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch campaign' });
+    }
+  },
+
+  async listCampaigns(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const queryParams = listCampaignsQuerySchema.parse(req.query);
+      const result = await smsService.listCampaigns(associationId, {
+        page: queryParams.page,
+        limit: queryParams.limit,
+        status: queryParams.status,
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error listing campaigns:', error);
+      return res.status(500).json({ success: false, message: 'Failed to list campaigns' });
+    }
+  },
+
+  async startCampaign(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const stats = await smsService.startCampaign(associationId, parseInt(id));
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'UPDATE',
+          tableName: 'sms_campaigns',
+          recordId: parseInt(id),
+          newValues: { status: 'COMPLETED', ...stats },
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Campaign executed successfully',
+        data: stats,
+      });
+    } catch (error) {
+      console.error('Error starting campaign:', error);
+      const message = error instanceof Error ? error.message : 'Failed to start campaign';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  async cancelCampaign(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const campaign = await smsService.cancelCampaign(associationId, parseInt(id));
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'UPDATE',
+          tableName: 'sms_campaigns',
+          recordId: parseInt(id),
+          newValues: { status: 'CANCELLED' },
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Campaign cancelled successfully',
+        data: campaign,
+      });
+    } catch (error) {
+      console.error('Error cancelling campaign:', error);
+      const message = error instanceof Error ? error.message : 'Failed to cancel campaign';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  async deleteCampaign(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      await smsService.deleteCampaign(associationId, parseInt(id));
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'DELETE',
+          tableName: 'sms_campaigns',
+          recordId: parseInt(id),
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Campaign deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      const message = error instanceof Error ? error.message : 'Failed to delete campaign';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+
+  // ============================================
+  // Templates
+  // ============================================
+
+  async createTemplate(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const validatedData = createTemplateSchema.parse(req.body);
+      const template = await smsService.createTemplate(associationId, userId, validatedData);
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'CREATE',
+          tableName: 'sms_templates',
+          recordId: template.id,
+          newValues: template,
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Template created successfully',
+        data: template,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error creating template:', error);
+      const message = error instanceof Error ? error.message : 'Failed to create template';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  async getTemplate(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const template = await smsService.getTemplate(associationId, parseInt(id));
+
+      if (!template) {
+        return res.status(404).json({ success: false, message: 'Template not found' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: template,
+      });
+    } catch (error) {
+      console.error('Error fetching template:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch template' });
+    }
+  },
+
+  async listTemplates(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const queryParams = listTemplatesQuerySchema.parse(req.query);
+      const result = await smsService.listTemplates(associationId, {
+        page: queryParams.page,
+        limit: queryParams.limit,
+        category: queryParams.category,
+        isActive: queryParams.isActive,
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error listing templates:', error);
+      return res.status(500).json({ success: false, message: 'Failed to list templates' });
+    }
+  },
+
+  async updateTemplate(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const validatedData = updateTemplateSchema.parse(req.body);
+      const template = await smsService.updateTemplate(associationId, parseInt(id), validatedData);
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'UPDATE',
+          tableName: 'sms_templates',
+          recordId: parseInt(id),
+          newValues: template,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Template updated successfully',
+        data: template,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error updating template:', error);
+      const message = error instanceof Error ? error.message : 'Failed to update template';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  async deleteTemplate(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      await smsService.deleteTemplate(associationId, parseInt(id));
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'DELETE',
+          tableName: 'sms_templates',
+          recordId: parseInt(id),
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Template deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      const message = error instanceof Error ? error.message : 'Failed to delete template';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  // ============================================
+  // Messages
+  // ============================================
+
+  async listMessages(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const queryParams = listMessagesQuerySchema.parse(req.query);
+      const result = await smsService.listMessages(associationId, {
+        page: queryParams.page,
+        limit: queryParams.limit,
+        status: queryParams.status,
+        campaignId: queryParams.campaignId,
+        startDate: queryParams.startDate,
+        endDate: queryParams.endDate,
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error listing messages:', error);
+      return res.status(500).json({ success: false, message: 'Failed to list messages' });
+    }
+  },
+
+  async getMessage(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const message = await smsService.getMessage(associationId, parseInt(id));
+
+      return res.status(200).json({
+        success: true,
+        data: message,
+      });
+    } catch (error) {
+      console.error('Error fetching message:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch message';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  // ============================================
+  // Credits
+  // ============================================
+
+  async getCreditBalance(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const balance = await smsService.getCreditBalance(associationId);
+
+      return res.status(200).json({
+        success: true,
+        data: balance,
+      });
+    } catch (error) {
+      console.error('Error fetching credit balance:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch credit balance' });
+    }
+  },
+
+  async topUpCredits(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const validatedData = topUpCreditsSchema.parse(req.body);
+      const balance = await smsService.topUpCredits(
+        associationId,
+        validatedData.amount,
+        validatedData.reference,
+        validatedData.description
+      );
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'CREATE',
+          tableName: 'sms_credit_transactions',
+          recordId: 0,
+          newValues: { type: 'PURCHASE', amount: validatedData.amount },
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Credits topped up successfully',
+        data: balance,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error topping up credits:', error);
+      const message = error instanceof Error ? error.message : 'Failed to top up credits';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  async getCreditHistory(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      const result = await smsService.getCreditHistory(associationId, { page, limit });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error fetching credit history:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch credit history' });
+    }
+  },
+};
