@@ -32,6 +32,10 @@ import {
   IconHistory,
   IconTemplate,
   IconSpeakerphone,
+  IconRobot,
+  IconMessageChatbot,
+  IconBrain,
+  IconSparkles,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -457,26 +461,39 @@ export function Sidebar() {
     },
     {
       label: 'AI Assistant',
-      icon: <IconBadge size={20} />,
+      icon: <IconRobot size={20} />,
       badge: 'Beta',
+      permission: PERMISSIONS.AI_VIEW,
       children: [
         {
-          label: 'Ask AI',
-          icon: <IconBadge size={18} />,
+          label: 'Financial Assistant',
+          icon: <IconMessageChatbot size={18} />,
           href: '/dashboard/ai/assistant',
-          comingSoon: true,
-        },
-        {
-          label: 'Document Q&A',
-          icon: <IconFileAnalytics size={18} />,
-          href: '/dashboard/ai/documents',
-          comingSoon: true,
+          permission: PERMISSIONS.AI_FINANCIAL_ASSISTANT,
         },
         {
           label: 'Smart Reports',
-          icon: <IconChartBar size={18} />,
+          icon: <IconSparkles size={18} />,
           href: '/dashboard/ai/reports',
-          comingSoon: true,
+          permission: PERMISSIONS.AI_REPORTS,
+        },
+        {
+          label: 'Smart Reminders',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/ai/reminders',
+          permission: PERMISSIONS.AI_FINANCIAL_ASSISTANT,
+        },
+        {
+          label: 'Data Query',
+          icon: <IconBrain size={18} />,
+          href: '/dashboard/ai/query',
+          permission: PERMISSIONS.AI_QUERY,
+        },
+        {
+          label: 'Usage & Stats',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/ai/usage',
+          permission: PERMISSIONS.AI_USAGE_VIEW,
         },
       ],
     },

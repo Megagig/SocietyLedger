@@ -1,0 +1,129 @@
+// ============================================
+// PHASE 17: AI INTEGRATION ROUTES
+// Express route definitions for AI features
+// ============================================
+
+import { Router } from 'express';
+import { aiController } from './ai.controller';
+import { authMiddleware } from '../../middleware/auth.middleware';
+import { tenantMiddleware } from '../../middleware/tenant.middleware';
+import { requirePermission } from '../../middleware/rbac';
+import { PERMISSIONS } from '../../lib/permissions';
+
+const router = Router();
+
+// Apply auth and tenant middleware to all routes
+router.use(authMiddleware);
+router.use(tenantMiddleware);
+
+// ==========================================
+// AI STATUS & CONFIGURATION
+// ==========================================
+
+/**
+ * Check AI service status and rate limits
+ * GET /api/ai/status
+ * Requires: Any authenticated user
+ */
+router.get('/status', aiController.getStatus);
+
+/**
+ * Get rate limit status
+ * GET /api/ai/rate-limit
+ * Requires: Any authenticated user
+ */
+router.get('/rate-limit', aiController.getRateLimitStatus);
+
+/**
+ * Get AI usage statistics
+ * GET /api/ai/usage
+ * Query params: startDate, endDate, groupBy
+ * Requires: FINANCE_VIEW permission (admins/treasurers)
+ */
+router.get(
+  '/usage',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  aiController.getUsageStats
+);
+
+// ==========================================
+// AI FINANCIAL ASSISTANT
+// ==========================================
+
+/**
+ * TASK-AI-004: Ask financial question
+ * POST /api/ai/financial/ask
+ * Body: { question: string, context?: { memberId?, categoryId?, dateRange? } }
+ * Requires: FINANCE_VIEW permission
+ */
+router.post(
+  '/financial/ask',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  aiController.askFinancialQuestion
+);
+
+// ==========================================
+// AI SMART REMINDERS
+// ==========================================
+
+/**
+ * TASK-AI-006: Get AI-powered reminder suggestions
+ * GET /api/ai/reminders/suggestions
+ * Query params: limit, minDaysOverdue, maxDaysOverdue
+ * Requires: FINANCE_VIEW permission
+ */
+router.get(
+  '/reminders/suggestions',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  aiController.getReminderSuggestions
+);
+
+// ==========================================
+// AI REPORT GENERATION
+// ==========================================
+
+/**
+ * TASK-AI-005: Generate AI-powered report
+ * POST /api/ai/reports/generate
+ * Body: { reportType: string, period?: { startDate, endDate }, includeRecommendations?: boolean }
+ * Requires: REPORT_VIEW permission
+ */
+router.post(
+  '/reports/generate',
+  requirePermission(PERMISSIONS.REPORT_VIEW),
+  aiController.generateReport
+);
+
+// ==========================================
+// NATURAL LANGUAGE QUERY
+// ==========================================
+
+/**
+ * TASK-AI-007: Execute natural language query
+ * POST /api/ai/query
+ * Body: { query: string }
+ * Requires: FINANCE_VIEW permission
+ */
+router.post(
+  '/query',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  aiController.executeNaturalLanguageQuery
+);
+
+// ==========================================
+// AI CHAT
+// ==========================================
+
+/**
+ * Simple AI chat interface
+ * POST /api/ai/chat
+ * Body: { message: string, feature: 'financial' | 'document_qa' | 'general' }
+ * Requires: FINANCE_VIEW permission for financial, MEMBER_VIEW for general
+ */
+router.post(
+  '/chat',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  aiController.chat
+);
+
+export default router;

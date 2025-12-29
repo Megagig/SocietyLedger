@@ -35,6 +35,7 @@ import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 import meetingsRoutes from './modules/meetings/meetings.routes';
 import welfareRoutes from './modules/welfare/welfare.routes';
 import smsRoutes from './modules/sms/sms.routes';
+import aiRoutes from './modules/ai/ai.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -123,6 +124,7 @@ app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
