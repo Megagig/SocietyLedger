@@ -37,6 +37,7 @@ import welfareRoutes from './modules/welfare/welfare.routes';
 import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
+import rbacRoutes from './modules/rbac/rbac.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -127,6 +128,7 @@ app.use('/api/welfare', welfareRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/voting', votingRoutes);
+app.use('/api/rbac', rbacRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

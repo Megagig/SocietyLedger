@@ -75,6 +75,10 @@ model Association {
   // Phase 4.5: Voting & Elections
   elections                  Election[]
   polls                      Poll[]
+  
+  // RBAC System Relations
+  roles                      Role[]
+  userRoles                  UserRole[]
 
   @@map("associations")
 }
@@ -140,6 +144,10 @@ model User {
   nominatedCandidates           Candidate[]        @relation("CandidateNominatedBy")
   approvedCandidates            Candidate[]        @relation("CandidateApprovedBy")
   createdPolls                  Poll[]             @relation("PollCreatedBy")
+  
+  // RBAC System Relations
+  userRoles                     UserRole[]
+  assignedUserRoles             UserRole[]         @relation("UserRoleAssigner")
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -2148,4 +2156,84 @@ enum PollStatus {
   ACTIVE // Poll is live
   CLOSED // Poll ended
   CANCELLED // Poll cancelled
+}
+
+// ============================================
+// RBAC SYSTEM MODELS - Database-driven Roles & Permissions
+// ============================================
+
+// Permission Model - Global permissions registry
+model Permission {
+  id            Int                @id @default(autoincrement())
+  key           String             @unique // e.g., "members.view", "ledger.create"
+  description   String
+  module        String             // e.g., "Members", "Finance/Ledger"
+  examples      String[]           @default([]) // Usage examples
+  isActive      Boolean            @default(true) @map("is_active")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@index([isActive])
+  @@map("permissions")
+}
+
+// Role Model - Association-scoped roles (except platform roles)
+model Role {
+  id            Int                @id @default(autoincrement())
+  associationId Int?               @map("association_id") // NULL for platform roles
+  name          String
+  displayName   String             @map("display_name")
+  description   String?
+  isSystemRole  Boolean            @default(false) @map("is_system_role") // Cannot be deleted/modified
+  isActive      Boolean            @default(true) @map("is_active")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+  association   Association?       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  permissions   RolePermission[]
+  userRoles     UserRole[]
+
+  @@unique([associationId, name])
+  @@index([associationId, isActive])
+  @@index([isSystemRole])
+  @@map("roles")
+}
+
+// Role-Permission Junction Table
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int        @map("role_id")
+  permissionId Int        @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// User-Role Junction Table - Users can have multiple roles per association
+model UserRole {
+  id            Int         @id @default(autoincrement())
+  userId        Int         @map("user_id")
+  roleId        Int         @map("role_id")
+  associationId Int         @map("association_id")
+  assignedBy    Int?        @map("assigned_by")
+  assignedAt    DateTime    @default(now()) @map("assigned_at")
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  assigner      User?       @relation("UserRoleAssigner", fields: [assignedBy], references: [id])
+
+  @@unique([userId, roleId, associationId])
+  @@index([userId, associationId])
+  @@index([roleId])
+  @@index([associationId])
+  @@map("user_roles")
 }

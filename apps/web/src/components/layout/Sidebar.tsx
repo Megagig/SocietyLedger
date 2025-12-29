@@ -521,9 +521,38 @@ export function Sidebar() {
     {
       label: 'Settings',
       icon: <IconSettings size={20} />,
-      href: '/dashboard/settings',
       permission: PERMISSIONS.SETTINGS_VIEW,
-      comingSoon: true,
+      children: [
+        {
+          label: 'Overview',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/settings',
+        },
+        {
+          label: 'Roles & Permissions',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/settings/roles',
+          permission: PERMISSIONS.SETTINGS_VIEW,
+        },
+        {
+          label: 'User Management',
+          icon: <IconUserPlus size={18} />,
+          href: '/dashboard/settings/users',
+          permission: PERMISSIONS.USER_VIEW,
+        },
+        {
+          label: 'Association Profile',
+          icon: <IconBuildingCommunity size={18} />,
+          href: '/dashboard/settings/profile',
+          comingSoon: true,
+        },
+        {
+          label: 'Notifications',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/settings/notifications',
+          comingSoon: true,
+        },
+      ],
     },
     {
       label: 'Help & Support',
