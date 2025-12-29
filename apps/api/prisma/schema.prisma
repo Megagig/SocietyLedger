@@ -69,6 +69,9 @@ model Association {
   smsCampaigns               SMSCampaign[]
   smsTemplates               SMSTemplate[]
   smsCreditBalance           SMSCreditBalance?
+  // Phase 17: AI Integration
+  aiAuditLogs                AIAuditLog[]
+  documentEmbeddings         DocumentEmbedding[]
 
   @@map("associations")
 }
@@ -125,6 +128,8 @@ model User {
   reviewedWelfarePayouts        WelfarePayoutRequest[] @relation("WelfarePayoutReviewer")
   approvedWelfarePayouts        WelfarePayoutRequest[] @relation("WelfarePayoutApprover")
   disbursedWelfarePayouts       WelfarePayoutRequest[] @relation("WelfarePayoutDisburser")
+  // Phase 17: AI Integration
+  aiAuditLogs                   AIAuditLog[]
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -1697,25 +1702,25 @@ enum WelfarePayoutStatus {
 
 // SMS Message Log - Track all sent SMS messages
 model SMSMessage {
-  id              Int              @id @default(autoincrement())
-  associationId   Int              @map("association_id")
-  campaignId      Int?             @map("campaign_id")
-  recipientPhone  String           @map("recipient_phone")
-  recipientName   String?          @map("recipient_name")
-  memberId        Int?             @map("member_id")
+  id              Int            @id @default(autoincrement())
+  associationId   Int            @map("association_id")
+  campaignId      Int?           @map("campaign_id")
+  recipientPhone  String         @map("recipient_phone")
+  recipientName   String?        @map("recipient_name")
+  memberId        Int?           @map("member_id")
   message         String
-  messageType     SMSMessageType   @default(SINGLE) @map("message_type")
-  status          SMSStatus        @default(PENDING)
-  termiiMessageId String?          @map("termii_message_id")
-  segments        Int              @default(1)
-  cost            Decimal?         @db.Decimal(10, 4)
-  errorMessage    String?          @map("error_message")
-  sentAt          DateTime?        @map("sent_at")
-  deliveredAt     DateTime?        @map("delivered_at")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  campaign        SMSCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  messageType     SMSMessageType @default(SINGLE) @map("message_type")
+  status          SMSStatus      @default(PENDING)
+  termiiMessageId String?        @map("termii_message_id")
+  segments        Int            @default(1)
+  cost            Decimal?       @db.Decimal(10, 4)
+  errorMessage    String?        @map("error_message")
+  sentAt          DateTime?      @map("sent_at")
+  deliveredAt     DateTime?      @map("delivered_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  association     Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  campaign        SMSCampaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@index([associationId, status])
   @@index([campaignId])
@@ -1726,26 +1731,26 @@ model SMSMessage {
 
 // SMS Campaign - For bulk SMS sends
 model SMSCampaign {
-  id              Int              @id @default(autoincrement())
-  associationId   Int              @map("association_id")
+  id              Int               @id @default(autoincrement())
+  associationId   Int               @map("association_id")
   name            String
   message         String
-  templateId      Int?             @map("template_id")
-  recipientType   SMSRecipientType @default(ALL_MEMBERS) @map("recipient_type")
-  recipientFilter Json?            @map("recipient_filter") // Filter criteria for recipients
-  totalRecipients Int              @default(0) @map("total_recipients")
-  sentCount       Int              @default(0) @map("sent_count")
-  deliveredCount  Int              @default(0) @map("delivered_count")
-  failedCount     Int              @default(0) @map("failed_count")
+  templateId      Int?              @map("template_id")
+  recipientType   SMSRecipientType  @default(ALL_MEMBERS) @map("recipient_type")
+  recipientFilter Json?             @map("recipient_filter") // Filter criteria for recipients
+  totalRecipients Int               @default(0) @map("total_recipients")
+  sentCount       Int               @default(0) @map("sent_count")
+  deliveredCount  Int               @default(0) @map("delivered_count")
+  failedCount     Int               @default(0) @map("failed_count")
   status          SMSCampaignStatus @default(DRAFT)
-  scheduledAt     DateTime?        @map("scheduled_at")
-  startedAt       DateTime?        @map("started_at")
-  completedAt     DateTime?        @map("completed_at")
-  createdBy       Int              @map("created_by")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  template        SMSTemplate?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  scheduledAt     DateTime?         @map("scheduled_at")
+  startedAt       DateTime?         @map("started_at")
+  completedAt     DateTime?         @map("completed_at")
+  createdBy       Int               @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  association     Association       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  template        SMSTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
   messages        SMSMessage[]
 
   @@index([associationId, status])
@@ -1755,18 +1760,18 @@ model SMSCampaign {
 
 // SMS Template - Reusable message templates
 model SMSTemplate {
-  id            Int           @id @default(autoincrement())
-  associationId Int           @map("association_id")
+  id            Int                 @id @default(autoincrement())
+  associationId Int                 @map("association_id")
   name          String
   content       String
   category      SMSTemplateCategory @default(GENERAL)
-  placeholders  String[]      @default([]) // List of placeholders like {{name}}, {{amount}}
-  isActive      Boolean       @default(true) @map("is_active")
-  usageCount    Int           @default(0) @map("usage_count")
-  createdBy     Int           @map("created_by")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-  association   Association   @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  placeholders  String[]            @default([]) // List of placeholders like {{name}}, {{amount}}
+  isActive      Boolean             @default(true) @map("is_active")
+  usageCount    Int                 @default(0) @map("usage_count")
+  createdBy     Int                 @map("created_by")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  association   Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
   campaigns     SMSCampaign[]
 
   @@unique([associationId, name])
@@ -1776,31 +1781,31 @@ model SMSTemplate {
 
 // SMS Credit Balance - Track SMS credits per association
 model SMSCreditBalance {
-  id            Int         @id @default(autoincrement())
-  associationId Int         @unique @map("association_id")
-  balance       Decimal     @default(0) @db.Decimal(12, 4)
-  totalPurchased Decimal    @default(0) @map("total_purchased") @db.Decimal(12, 4)
-  totalUsed     Decimal     @default(0) @map("total_used") @db.Decimal(12, 4)
-  lastTopUpAt   DateTime?   @map("last_top_up_at")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  transactions  SMSCreditTransaction[]
+  id             Int                    @id @default(autoincrement())
+  associationId  Int                    @unique @map("association_id")
+  balance        Decimal                @default(0) @db.Decimal(12, 4)
+  totalPurchased Decimal                @default(0) @map("total_purchased") @db.Decimal(12, 4)
+  totalUsed      Decimal                @default(0) @map("total_used") @db.Decimal(12, 4)
+  lastTopUpAt    DateTime?              @map("last_top_up_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  association    Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  transactions   SMSCreditTransaction[]
 
   @@map("sms_credit_balances")
 }
 
 // SMS Credit Transaction - Track credit purchases and usage
 model SMSCreditTransaction {
-  id              Int                    @id @default(autoincrement())
-  balanceId       Int                    @map("balance_id")
-  type            SMSCreditTransactionType
-  amount          Decimal                @db.Decimal(12, 4)
-  description     String?
-  reference       String?
-  campaignId      Int?                   @map("campaign_id")
-  createdAt       DateTime               @default(now()) @map("created_at")
-  balance         SMSCreditBalance       @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+  id          Int                      @id @default(autoincrement())
+  balanceId   Int                      @map("balance_id")
+  type        SMSCreditTransactionType
+  amount      Decimal                  @db.Decimal(12, 4)
+  description String?
+  reference   String?
+  campaignId  Int?                     @map("campaign_id")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  balance     SMSCreditBalance         @relation(fields: [balanceId], references: [id], onDelete: Cascade)
 
   @@index([balanceId, type])
   @@index([createdAt])
@@ -1809,52 +1814,102 @@ model SMSCreditTransaction {
 
 // SMS Enums
 enum SMSMessageType {
-  SINGLE      // Single recipient
-  BULK        // Part of bulk campaign
-  AUTOMATED   // Automated reminder/notification
+  SINGLE // Single recipient
+  BULK // Part of bulk campaign
+  AUTOMATED // Automated reminder/notification
 }
 
 enum SMSStatus {
-  PENDING     // Queued for sending
-  SENT        // Sent to provider
-  DELIVERED   // Confirmed delivered
-  FAILED      // Failed to send
-  REJECTED    // Rejected by provider
+  PENDING // Queued for sending
+  SENT // Sent to provider
+  DELIVERED // Confirmed delivered
+  FAILED // Failed to send
+  REJECTED // Rejected by provider
 }
 
 enum SMSCampaignStatus {
-  DRAFT       // Being created
-  SCHEDULED   // Scheduled for future
+  DRAFT // Being created
+  SCHEDULED // Scheduled for future
   IN_PROGRESS // Currently sending
-  COMPLETED   // All messages sent
-  CANCELLED   // Cancelled before completion
-  FAILED      // Failed to complete
+  COMPLETED // All messages sent
+  CANCELLED // Cancelled before completion
+  FAILED // Failed to complete
 }
 
 enum SMSRecipientType {
-  ALL_MEMBERS       // All active members
-  SELECTED_MEMBERS  // Specific members selected
-  MEMBER_CATEGORY   // Members by category
-  CUSTOM_NUMBERS    // Custom phone numbers
-  OWING_MEMBERS     // Members with outstanding dues
-  PAID_MEMBERS      // Members who are paid up
+  ALL_MEMBERS // All active members
+  SELECTED_MEMBERS // Specific members selected
+  MEMBER_CATEGORY // Members by category
+  CUSTOM_NUMBERS // Custom phone numbers
+  OWING_MEMBERS // Members with outstanding dues
+  PAID_MEMBERS // Members who are paid up
 }
 
 enum SMSTemplateCategory {
-  GENERAL           // General announcements
-  PAYMENT_REMINDER  // Payment reminders
-  MEETING           // Meeting notifications
-  DUES              // Dues notifications
-  LEVY              // Levy notifications
-  WELFARE           // Welfare notifications
-  ELECTION          // Election/voting notifications
-  CUSTOM            // Custom templates
+  GENERAL // General announcements
+  PAYMENT_REMINDER // Payment reminders
+  MEETING // Meeting notifications
+  DUES // Dues notifications
+  LEVY // Levy notifications
+  WELFARE // Welfare notifications
+  ELECTION // Election/voting notifications
+  CUSTOM // Custom templates
 }
 
 enum SMSCreditTransactionType {
-  PURCHASE    // Credit purchase
-  USAGE       // Credit used for SMS
-  REFUND      // Credit refunded
-  BONUS       // Bonus credits
-  ADJUSTMENT  // Manual adjustment
+  PURCHASE // Credit purchase
+  USAGE // Credit used for SMS
+  REFUND // Credit refunded
+  BONUS // Bonus credits
+  ADJUSTMENT // Manual adjustment
+}
+
+// ============================================
+// PHASE 17: AI INTEGRATION MODELS
+// ============================================
+
+// AI Audit Log - Track all AI requests for compliance
+model AIAuditLog {
+  id            Int         @id @default(autoincrement())
+  associationId Int         @map("association_id")
+  userId        Int         @map("user_id")
+  promptType    String      @map("prompt_type") // financial_assistant, reminder_suggestions, report_generation, nl_query, chat
+  modelUsed     String      @map("model_used")
+  tokensInput   Int         @default(0) @map("tokens_input")
+  tokensOutput  Int         @default(0) @map("tokens_output")
+  costUsd       Decimal     @default(0) @map("cost_usd") @db.Decimal(10, 6)
+  outputSummary String?     @map("output_summary") @db.Text
+  status        String      @default("success") // success, error, rate_limited
+  errorMessage  String?     @map("error_message")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, createdAt])
+  @@index([userId])
+  @@index([promptType])
+  @@index([status])
+  @@map("ai_audit_logs")
+}
+
+// Document Embedding - For RAG-based document Q&A (Phase 17 - Future)
+model DocumentEmbedding {
+  id            Int         @id @default(autoincrement())
+  associationId Int         @map("association_id")
+  documentType  String      @map("document_type") // constitution, bylaw, policy, minutes, other
+  filename      String
+  content       String      @db.Text
+  chunkIndex    Int         @default(0) @map("chunk_index")
+  // Note: embedding vector stored as JSON until pgvector is enabled
+  // For production, use: embedding Unsupported("vector(1536)")?
+  embeddingJson String?     @map("embedding_json") @db.Text
+  metadata      Json?
+  isProcessed   Boolean     @default(false) @map("is_processed")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, documentType])
+  @@index([associationId, isProcessed])
+  @@map("document_embeddings")
 }

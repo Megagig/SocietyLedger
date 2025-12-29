@@ -95,6 +95,13 @@ export const PERMISSIONS = {
   SMS_CAMPAIGN_MANAGE: 'sms:campaign:manage', // Create, edit, execute campaigns
   SMS_TEMPLATE_MANAGE: 'sms:template:manage', // Create, edit, delete templates
   SMS_CREDIT_MANAGE: 'sms:credit:manage',   // Top up and manage SMS credits
+  
+  // AI Integration (Phase 17)
+  AI_VIEW: 'ai:view',                       // View AI features and usage
+  AI_FINANCIAL_ASSISTANT: 'ai:financial',   // Use AI financial assistant
+  AI_REPORTS: 'ai:reports',                 // Generate AI reports
+  AI_QUERY: 'ai:query',                     // Use natural language queries
+  AI_USAGE_VIEW: 'ai:usage:view',           // View AI usage statistics
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -194,6 +201,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.SMS_CAMPAIGN_MANAGE,
     PERMISSIONS.SMS_TEMPLATE_MANAGE,
     PERMISSIONS.SMS_CREDIT_MANAGE,
+    
+    // AI - Full access
+    PERMISSIONS.AI_VIEW,
+    PERMISSIONS.AI_FINANCIAL_ASSISTANT,
+    PERMISSIONS.AI_REPORTS,
+    PERMISSIONS.AI_QUERY,
+    PERMISSIONS.AI_USAGE_VIEW,
   ],
   
   // Treasurer - Financial focus
@@ -250,6 +264,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.SMS_SEND,
     PERMISSIONS.SMS_CAMPAIGN_MANAGE,
     PERMISSIONS.SMS_TEMPLATE_MANAGE,
+    
+    // AI - Financial access
+    PERMISSIONS.AI_VIEW,
+    PERMISSIONS.AI_FINANCIAL_ASSISTANT,
+    PERMISSIONS.AI_REPORTS,
+    PERMISSIONS.AI_QUERY,
+    PERMISSIONS.AI_USAGE_VIEW,
   ],
   
   // Financial Secretary - Record keeping
@@ -295,6 +316,11 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // SMS - View and send
     PERMISSIONS.SMS_VIEW,
     PERMISSIONS.SMS_SEND,
+    
+    // AI - View and financial assistant
+    PERMISSIONS.AI_VIEW,
+    PERMISSIONS.AI_FINANCIAL_ASSISTANT,
+    PERMISSIONS.AI_REPORTS,
   ],
   
   // Member - Basic access
@@ -322,6 +348,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
     PERMISSIONS.WELFARE_PAYOUT_VIEW,
     PERMISSIONS.WELFARE_PAYOUT_REQUEST,
+    
+    // AI - Limited view access
+    PERMISSIONS.AI_VIEW,
   ],
 };
 
