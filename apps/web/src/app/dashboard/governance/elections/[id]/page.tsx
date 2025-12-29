@@ -33,8 +33,11 @@ import {
   Candidate,
   ElectionStatus
 } from '@/lib/api/voting';
-import { formatDate, formatDateTime } from '@/utils/format';
 import { toast } from '@/lib/toast';
+
+// Helper functions
+const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+const formatDateTime = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 // Status badge component
 function StatusBadge({ status }: { status: ElectionStatus }) {

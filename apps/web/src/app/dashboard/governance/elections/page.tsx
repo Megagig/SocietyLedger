@@ -20,8 +20,10 @@ import {
   IconX
 } from '@tabler/icons-react';
 import { getElections, deleteElection, Election, ElectionStatus, ElectionType } from '@/lib/api/voting';
-import { formatDate } from '@/utils/format';
 import { toast } from '@/lib/toast';
+
+// Helper functions
+const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
 
 // Status badge component
 function StatusBadge({ status }: { status: ElectionStatus }) {

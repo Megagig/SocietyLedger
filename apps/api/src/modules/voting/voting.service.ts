@@ -820,7 +820,7 @@ export const votingService = {
     for (const vote of data.votes) {
       try {
         const result = await this.castVote(associationId, electionId, memberId, vote);
-        results.push({ positionId: vote.positionId, success: true, ...result });
+        results.push({ positionId: vote.positionId, ...result });
       } catch (error) {
         results.push({
           positionId: vote.positionId,

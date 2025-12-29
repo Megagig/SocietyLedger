@@ -16,7 +16,9 @@ import {
   IconChartPie
 } from '@tabler/icons-react';
 import { getVotingDashboard, getActiveVotingItems, Election, Poll } from '@/lib/api/voting';
-import { formatDate } from '@/utils/format';
+
+// Helper functions
+const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
