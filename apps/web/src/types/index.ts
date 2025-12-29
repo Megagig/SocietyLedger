@@ -7,6 +7,8 @@ export interface User {
   platformRole?: 'SUPER_ADMIN' | 'SUPPORT_AGENT';
   isActive: boolean;
   requiresOnboarding?: boolean;
+  permissions?: string[];
+  roles?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

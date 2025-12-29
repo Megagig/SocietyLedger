@@ -1,7 +1,6 @@
-import { PrismaClient, PlatformRole } from '@prisma/client';
+import { PlatformRole } from '@prisma/client';
 import { Request } from 'express';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 export interface UserPermissions {
   permissions: Set<string>;
@@ -18,10 +17,9 @@ export interface RBACContext {
 /**
  * RBAC Service - Database-driven permission resolution
  * 
- * This service implements the gradual migration strategy:
- * - Phase 1: Shadow mode - runs alongside hardcoded checks
- * - Phase 2: Hybrid mode - replaces hardcoded checks
- * - Phase 3: Full RBAC - complete database-driven system
+ * This service implements the full enforcement mode:
+ * - Database is the SINGLE SOURCE OF TRUTH for permissions
+ * - No fallback to hardcoded permissions
  */
 export class RBACService {
   private static permissionCache = new Map<string, UserPermissions>();
@@ -71,7 +69,7 @@ export class RBACService {
       };
     }
 
-    // Get user roles for this association
+    // Get user roles for this association with their permissions
     const userRoles = await prisma.userRole.findMany({
       where: {
         userId,
@@ -83,9 +81,7 @@ export class RBACService {
           include: {
             permissions: {
               include: {
-                permission: {
-                  where: { isActive: true }
-                }
+                permission: true
               }
             }
           }
@@ -93,7 +89,7 @@ export class RBACService {
       }
     });
 
-    // Collect all permissions from all roles
+    // Collect all permissions from all roles (filter active permissions in code)
     const permissions = new Set<string>();
     const roles: string[] = [];
 
@@ -101,7 +97,10 @@ export class RBACService {
       roles.push(userRole.role.name);
       
       for (const rolePermission of userRole.role.permissions) {
-        permissions.add(rolePermission.permission.key);
+        // Only add active permissions
+        if (rolePermission.permission.isActive) {
+          permissions.add(rolePermission.permission.key);
+        }
       }
     }
 
@@ -186,8 +185,8 @@ export class RBACService {
 
     const context: RBACContext = {
       userId: req.user.id,
-      associationId: req.user.associationId,
-      platformRole: req.user.platformRole
+      associationId: req.user.associationId ?? null,
+      platformRole: req.user.platformRole ?? null
     };
 
     const userPermissions = await this.resolveUserPermissions(context);
@@ -232,7 +231,7 @@ export class RBACService {
     context: RBACContext,
     permissionKey: string,
     granted: boolean,
-    resourceInfo?: any
+    resourceInfo?: Record<string, unknown>
   ): Promise<void> {
     // Log permission attempts for audit and discovery
     try {
@@ -243,13 +242,12 @@ export class RBACService {
           action: granted ? 'PERMISSION_GRANTED' : 'PERMISSION_DENIED',
           tableName: 'permissions',
           recordId: null,
-          oldValues: null,
-          newValues: {
+          newValues: JSON.parse(JSON.stringify({
             permissionKey,
             granted,
-            resourceInfo,
+            resourceInfo: resourceInfo || null,
             timestamp: new Date().toISOString()
-          }
+          }))
         }
       });
     } catch (error) {

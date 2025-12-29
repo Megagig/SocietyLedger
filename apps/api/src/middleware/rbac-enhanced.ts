@@ -1,40 +1,41 @@
 import { Request, Response, NextFunction } from 'express';
 import { PlatformRole } from '@prisma/client';
-import { RBACService, RBACContext, LegacyPermissionMapper } from '../services/rbac.service';
-import { Permission, hasPermission, hasAllPermissions, hasAnyPermission } from '../lib/permissions';
+import { RBACService, RBACContext } from '../services/rbac.service';
 
 /**
- * Enhanced RBAC Middleware - Database-driven with backward compatibility
+ * Database-Driven RBAC Middleware
  * 
- * Migration Strategy:
- * - Phase 1 (Shadow Mode): Run new checks alongside old ones, log differences
- * - Phase 2 (Hybrid Mode): Use new system but preserve existing behavior
- * - Phase 3 (Full RBAC): Complete database-driven system
+ * This middleware enforces permissions from the database.
+ * The database is the single source of truth for all permissions.
  */
 
-// Configuration for migration phases
+// Configuration
 const RBAC_CONFIG = {
-  // Set to 'shadow' for Phase 1, 'hybrid' for Phase 2, 'full' for Phase 3
-  mode: process.env.RBAC_MODE || 'shadow',
+  // Log permission checks for debugging
+  logChecks: process.env.RBAC_LOG_CHECKS === 'true',
   
-  // Log permission mismatches during shadow mode
-  logMismatches: process.env.RBAC_LOG_MISMATCHES === 'true',
-  
-  // Fail on permission denials (false for shadow mode)
-  enforcePermissions: process.env.RBAC_ENFORCE === 'true'
+  // Audit all permission checks to database
+  auditEnabled: process.env.RBAC_AUDIT_ENABLED !== 'false'
 };
 
 /**
- * Enhanced permission middleware with database-driven RBAC
+ * Create RBAC context from request
  */
-export function requirePermissionEnhanced(permission: Permission | string) {
+function createRBACContext(req: Request): RBACContext {
+  return {
+    userId: req.user!.id,
+    associationId: req.user?.associationId ?? null,
+    platformRole: req.user?.platformRole ?? null
+  };
+}
+
+/**
+ * Middleware to require a specific permission (database-driven)
+ */
+export function requirePermission(permission: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Super admins bypass all permission checks
-      if (req.user?.platformRole === PlatformRole.SUPER_ADMIN) {
-        return next();
-      }
-
+      // Check authentication
       if (!req.user) {
         return res.status(401).json({ 
           success: false, 
@@ -42,146 +43,52 @@ export function requirePermissionEnhanced(permission: Permission | string) {
         });
       }
 
-      const context: RBACContext = {
-        userId: req.user.id,
-        associationId: req.user.associationId,
-        platformRole: req.user.platformRole
-      };
-
-      // Phase 1: Shadow Mode - Run both old and new systems
-      if (RBAC_CONFIG.mode === 'shadow') {
-        const legacyResult = hasPermission(req.user.role, permission as Permission);
-        const newResult = await RBACService.hasPermission(context, permission);
-
-        // Log mismatches for analysis
-        if (RBAC_CONFIG.logMismatches && legacyResult !== newResult) {
-          console.warn(`🔍 RBAC Mismatch: ${permission}`, {
-            user: req.user.id,
-            role: req.user.role,
-            association: req.user.associationId,
-            legacy: legacyResult,
-            new: newResult,
-            timestamp: new Date().toISOString()
-          });
-        }
-
-        // Audit the permission check
-        await RBACService.auditPermissionCheck(context, permission, newResult, {
-          route: req.route?.path,
-          method: req.method,
-          legacyResult,
-          mode: 'shadow'
-        });
-
-        // In shadow mode, use legacy result but don't fail
-        if (!legacyResult && RBAC_CONFIG.enforcePermissions) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'Permission denied',
-            requiredPermission: permission,
-            userRole: req.user.role,
-            mode: 'shadow'
-          });
-        }
-
+      // Super admins bypass all permission checks
+      if (req.user.platformRole === PlatformRole.SUPER_ADMIN) {
         return next();
       }
 
-      // Phase 2: Hybrid Mode - Use new system but preserve behavior
-      if (RBAC_CONFIG.mode === 'hybrid') {
-        // Try new system first
-        let hasNewPermission = await RBACService.hasPermission(context, permission);
-        
-        // Fallback to legacy mapping if not found
-        if (!hasNewPermission) {
-          hasNewPermission = await LegacyPermissionMapper.checkLegacyPermission(context, permission);
-        }
+      const context = createRBACContext(req);
+      const hasPermission = await RBACService.hasPermission(context, permission);
 
-        // Audit the permission check
-        await RBACService.auditPermissionCheck(context, permission, hasNewPermission, {
-          route: req.route?.path,
-          method: req.method,
-          mode: 'hybrid'
-        });
-
-        if (!hasNewPermission) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'Permission denied',
-            requiredPermission: permission,
-            mode: 'hybrid'
-          });
-        }
-
-        return next();
+      if (RBAC_CONFIG.logChecks) {
+        console.log(`🔐 Permission check: ${permission} for user ${req.user.id} = ${hasPermission}`);
       }
 
-      // Phase 3: Full RBAC - Complete database-driven system
-      if (RBAC_CONFIG.mode === 'full') {
-        const hasNewPermission = await RBACService.hasPermission(context, permission);
-
-        // Audit the permission check
-        await RBACService.auditPermissionCheck(context, permission, hasNewPermission, {
-          route: req.route?.path,
-          method: req.method,
-          mode: 'full'
-        });
-
-        if (!hasNewPermission) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'Permission denied',
-            requiredPermission: permission,
-            mode: 'full'
-          });
-        }
-
-        return next();
+      // Audit the permission check
+      if (RBAC_CONFIG.auditEnabled) {
+        await RBACService.auditPermissionCheck(context, permission, hasPermission, {
+          route: req.route?.path || req.path,
+          method: req.method
+        }).catch(err => console.error('Audit log error:', err));
       }
 
-      // Default fallback to legacy system
-      const role = req.user?.role;
-      if (!role || !hasPermission(role, permission as Permission)) {
+      if (!hasPermission) {
         return res.status(403).json({ 
           success: false, 
           message: 'Permission denied',
-          requiredPermission: permission,
-          userRole: role,
-          mode: 'legacy'
+          requiredPermission: permission
         });
       }
 
       next();
     } catch (error) {
       console.error('RBAC middleware error:', error);
-      
-      // In case of error, fall back to legacy system to avoid breaking functionality
-      const role = req.user?.role;
-      if (!role || !hasPermission(role, permission as Permission)) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Permission denied (fallback)',
-          requiredPermission: permission,
-          userRole: role 
-        });
-      }
-      
-      next();
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authorization check failed' 
+      });
     }
   };
 }
 
 /**
- * Enhanced middleware to require ANY of the specified permissions
+ * Middleware to require ANY of the specified permissions
  */
-export function requireAnyPermissionEnhanced(permissions: (Permission | string)[]) {
+export function requireAnyPermission(permissions: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Super admins bypass all permission checks
-      if (req.user?.platformRole === PlatformRole.SUPER_ADMIN) {
-        return next();
-      }
-
+      // Check authentication
       if (!req.user) {
         return res.status(401).json({ 
           success: false, 
@@ -189,95 +96,44 @@ export function requireAnyPermissionEnhanced(permissions: (Permission | string)[
         });
       }
 
-      const context: RBACContext = {
-        userId: req.user.id,
-        associationId: req.user.associationId,
-        platformRole: req.user.platformRole
-      };
-
-      // Handle different modes
-      if (RBAC_CONFIG.mode === 'shadow') {
-        const legacyResult = hasAnyPermission(req.user.role, permissions as Permission[]);
-        const newResult = await RBACService.hasAnyPermission(context, permissions);
-
-        if (RBAC_CONFIG.logMismatches && legacyResult !== newResult) {
-          console.warn(`🔍 RBAC Mismatch (ANY): ${permissions.join(', ')}`, {
-            user: req.user.id,
-            role: req.user.role,
-            legacy: legacyResult,
-            new: newResult
-          });
-        }
-
-        if (!legacyResult && RBAC_CONFIG.enforcePermissions) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'Permission denied',
-            requiredPermissions: permissions,
-            userRole: req.user.role 
-          });
-        }
-
+      // Super admins bypass all permission checks
+      if (req.user.platformRole === PlatformRole.SUPER_ADMIN) {
         return next();
       }
 
-      if (RBAC_CONFIG.mode === 'hybrid' || RBAC_CONFIG.mode === 'full') {
-        const hasNewPermission = await RBACService.hasAnyPermission(context, permissions);
+      const context = createRBACContext(req);
+      const hasPermission = await RBACService.hasAnyPermission(context, permissions);
 
-        if (!hasNewPermission) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'Permission denied',
-            requiredPermissions: permissions,
-            mode: RBAC_CONFIG.mode
-          });
-        }
-
-        return next();
+      if (RBAC_CONFIG.logChecks) {
+        console.log(`🔐 Permission check (ANY): ${permissions.join(', ')} for user ${req.user.id} = ${hasPermission}`);
       }
 
-      // Legacy fallback
-      const role = req.user?.role;
-      if (!role || !hasAnyPermission(role, permissions as Permission[])) {
+      if (!hasPermission) {
         return res.status(403).json({ 
           success: false, 
           message: 'Permission denied',
-          requiredPermissions: permissions,
-          userRole: role 
+          requiredPermissions: permissions
         });
       }
 
       next();
     } catch (error) {
       console.error('RBAC middleware error:', error);
-      
-      // Fallback to legacy
-      const role = req.user?.role;
-      if (!role || !hasAnyPermission(role, permissions as Permission[])) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Permission denied (fallback)',
-          requiredPermissions: permissions,
-          userRole: role 
-        });
-      }
-      
-      next();
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authorization check failed' 
+      });
     }
   };
 }
 
 /**
- * Enhanced middleware to require ALL of the specified permissions
+ * Middleware to require ALL of the specified permissions
  */
-export function requireAllPermissionsEnhanced(permissions: (Permission | string)[]) {
+export function requireAllPermissions(permissions: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Super admins bypass all permission checks
-      if (req.user?.platformRole === PlatformRole.SUPER_ADMIN) {
-        return next();
-      }
-
+      // Check authentication
       if (!req.user) {
         return res.status(401).json({ 
           success: false, 
@@ -285,103 +141,68 @@ export function requireAllPermissionsEnhanced(permissions: (Permission | string)
         });
       }
 
-      const context: RBACContext = {
-        userId: req.user.id,
-        associationId: req.user.associationId,
-        platformRole: req.user.platformRole
-      };
-
-      // Handle different modes
-      if (RBAC_CONFIG.mode === 'shadow') {
-        const legacyResult = hasAllPermissions(req.user.role, permissions as Permission[]);
-        const newResult = await RBACService.hasAllPermissions(context, permissions);
-
-        if (RBAC_CONFIG.logMismatches && legacyResult !== newResult) {
-          console.warn(`🔍 RBAC Mismatch (ALL): ${permissions.join(', ')}`, {
-            user: req.user.id,
-            role: req.user.role,
-            legacy: legacyResult,
-            new: newResult
-          });
-        }
-
-        if (!legacyResult && RBAC_CONFIG.enforcePermissions) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'Insufficient permissions',
-            requiredPermissions: permissions,
-            userRole: req.user.role 
-          });
-        }
-
+      // Super admins bypass all permission checks
+      if (req.user.platformRole === PlatformRole.SUPER_ADMIN) {
         return next();
       }
 
-      if (RBAC_CONFIG.mode === 'hybrid' || RBAC_CONFIG.mode === 'full') {
-        const hasNewPermission = await RBACService.hasAllPermissions(context, permissions);
+      const context = createRBACContext(req);
+      const hasPermission = await RBACService.hasAllPermissions(context, permissions);
 
-        if (!hasNewPermission) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'Insufficient permissions',
-            requiredPermissions: permissions,
-            mode: RBAC_CONFIG.mode
-          });
-        }
-
-        return next();
+      if (RBAC_CONFIG.logChecks) {
+        console.log(`🔐 Permission check (ALL): ${permissions.join(', ')} for user ${req.user.id} = ${hasPermission}`);
       }
 
-      // Legacy fallback
-      const role = req.user?.role;
-      if (!role || !hasAllPermissions(role, permissions as Permission[])) {
+      if (!hasPermission) {
         return res.status(403).json({ 
           success: false, 
           message: 'Insufficient permissions',
-          requiredPermissions: permissions,
-          userRole: role 
+          requiredPermissions: permissions
         });
       }
 
       next();
     } catch (error) {
       console.error('RBAC middleware error:', error);
-      
-      // Fallback to legacy
-      const role = req.user?.role;
-      if (!role || !hasAllPermissions(role, permissions as Permission[])) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Insufficient permissions (fallback)',
-          requiredPermissions: permissions,
-          userRole: role 
-        });
-      }
-      
-      next();
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authorization check failed' 
+      });
     }
   };
 }
 
 /**
- * Enhanced ownership middleware with _own permission support
+ * Middleware to check ownership with _own permission support
  */
-export function requireOwnershipEnhanced(
+export function requireOwnership(
   getUserIdFromRequest: (req: Request) => number | undefined,
   permission?: string
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Super admins and admins bypass ownership checks
-      if (req.user?.platformRole === PlatformRole.SUPER_ADMIN || req.user?.role === 'admin') {
-        return next();
-      }
-
+      // Check authentication
       if (!req.user) {
         return res.status(401).json({ 
           success: false, 
           message: 'Authentication required' 
         });
+      }
+
+      // Super admins bypass ownership checks
+      if (req.user.platformRole === PlatformRole.SUPER_ADMIN) {
+        return next();
+      }
+
+      const context = createRBACContext(req);
+      
+      // Check if user has _all permission (bypasses ownership)
+      if (permission) {
+        const allPermission = permission.replace('_own', '_all');
+        const hasAllAccess = await RBACService.hasPermission(context, allPermission);
+        if (hasAllAccess) {
+          return next();
+        }
       }
 
       const resourceUserId = getUserIdFromRequest(req);
@@ -392,60 +213,113 @@ export function requireOwnershipEnhanced(
         });
       }
 
-      const context: RBACContext = {
-        userId: req.user.id,
-        associationId: req.user.associationId,
-        platformRole: req.user.platformRole
-      };
-
-      // If permission is specified, check _own variant
-      if (permission) {
-        const ownPermission = permission.endsWith('_own') ? permission : `${permission}_own`;
-        const hasOwnershipPermission = await RBACService.checkPermissionWithOwnership(
-          context, 
-          ownPermission, 
-          resourceUserId
-        );
-
-        if (!hasOwnershipPermission) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'You can only access your own resources',
-            requiredPermission: ownPermission
-          });
+      // Check ownership
+      if (resourceUserId !== req.user.id) {
+        // If permission specified, check _own variant
+        if (permission) {
+          const ownPermission = permission.endsWith('_own') ? permission : `${permission}_own`;
+          const hasOwnPermission = await RBACService.hasPermission(context, ownPermission);
+          
+          if (!hasOwnPermission) {
+            return res.status(403).json({ 
+              success: false, 
+              message: 'You can only access your own resources',
+              requiredPermission: ownPermission
+            });
+          }
         }
-      } else {
-        // Basic ownership check
-        if (resourceUserId !== req.user.id) {
-          return res.status(403).json({ 
-            success: false, 
-            message: 'You can only access your own resources' 
-          });
-        }
+        
+        return res.status(403).json({ 
+          success: false, 
+          message: 'You can only access your own resources' 
+        });
       }
 
       next();
     } catch (error) {
       console.error('Ownership middleware error:', error);
-      
-      // Fallback to basic ownership check
-      const resourceUserId = getUserIdFromRequest(req);
-      if (!resourceUserId || resourceUserId !== req.user?.id) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'You can only access your own resources (fallback)' 
-        });
-      }
-      
-      next();
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authorization check failed' 
+      });
     }
   };
 }
 
 /**
- * Middleware to attach permissions to request context
+ * Middleware to require specific association role
+ * Checks if user has a role with the given name in the current association
  */
-export function attachPermissionsMiddleware() {
+export function requireAssociationRole(roleNames: string[]) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Check authentication
+      if (!req.user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Authentication required' 
+        });
+      }
+
+      // Super admins bypass role checks
+      if (req.user.platformRole === PlatformRole.SUPER_ADMIN) {
+        return next();
+      }
+
+      const context = createRBACContext(req);
+      const userPermissions = await RBACService.resolveUserPermissions(context);
+      
+      // Check if user has any of the required roles
+      const hasRole = roleNames.some(roleName => userPermissions.roles.includes(roleName));
+
+      if (!hasRole) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Access denied',
+          requiredRoles: roleNames
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Role middleware error:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authorization check failed' 
+      });
+    }
+  };
+}
+
+/**
+ * Middleware to require platform role (SUPER_ADMIN, SUPPORT_AGENT)
+ */
+export function requirePlatformRole(roles: PlatformRole[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Authentication required' 
+      });
+    }
+
+    const platformRole = req.user.platformRole;
+    if (!platformRole || !roles.includes(platformRole)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Platform access denied',
+        requiredRole: roles 
+      });
+    }
+    
+    next();
+  };
+}
+
+/**
+ * Middleware to attach user permissions to request context
+ */
+export function attachPermissions() {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (req.user) {
@@ -459,17 +333,11 @@ export function attachPermissionsMiddleware() {
   };
 }
 
-/**
- * Utility to check if RBAC is in shadow mode
- */
-export function isRBACInShadowMode(): boolean {
-  return RBAC_CONFIG.mode === 'shadow';
-}
-
-/**
- * Utility to switch RBAC mode (for testing/gradual rollout)
- */
-export function setRBACMode(mode: 'shadow' | 'hybrid' | 'full'): void {
-  RBAC_CONFIG.mode = mode;
-  console.log(`🔐 RBAC mode switched to: ${mode}`);
-}
+// Re-export for backward compatibility during migration
+export {
+  requirePermission as requirePermissionEnhanced,
+  requireAnyPermission as requireAnyPermissionEnhanced,
+  requireAllPermissions as requireAllPermissionsEnhanced,
+  requireOwnership as requireOwnershipEnhanced,
+  attachPermissions as attachPermissionsMiddleware
+};

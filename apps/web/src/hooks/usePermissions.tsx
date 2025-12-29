@@ -13,6 +13,10 @@ interface CanProps {
 
 /**
  * Conditional rendering based on user permissions
+ * 
+ * Permissions are fetched from the database via the API and stored in the user object.
+ * The database is the SINGLE SOURCE OF TRUTH for permissions.
+ * 
  * Usage:
  * <Can permission={PERMISSIONS.MEMBER_CREATE}>
  *   <button>Add Member</button>
@@ -29,21 +33,29 @@ export function Can({
 
   if (!user) return <>{fallback}</>;
 
+  // Get permissions array from user (fetched from API/database)
+  const userPermissions = user.permissions || [];
+
+  // Super admins have all permissions
+  if (user.platformRole === 'SUPER_ADMIN') {
+    return <>{children}</>;
+  }
+
   let hasAccess = true;
 
   // Check single permission
   if (permission) {
-    hasAccess = hasPermission(user.role, permission);
+    hasAccess = hasPermission(userPermissions, permission);
   }
 
   // Check if user has ANY of the permissions
   if (anyPermissions && anyPermissions.length > 0) {
-    hasAccess = hasAnyPermission(user.role, anyPermissions);
+    hasAccess = hasAnyPermission(userPermissions, anyPermissions);
   }
 
   // Check if user has ALL of the permissions
   if (allPermissions && allPermissions.length > 0) {
-    hasAccess = hasAllPermissions(user.role, allPermissions);
+    hasAccess = hasAllPermissions(userPermissions, allPermissions);
   }
 
   return hasAccess ? <>{children}</> : <>{fallback}</>;
@@ -51,6 +63,10 @@ export function Can({
 
 /**
  * Hook to check permissions
+ * 
+ * Permissions are fetched from the database via the API and stored in the user object.
+ * The database is the SINGLE SOURCE OF TRUTH for permissions.
+ * 
  * Usage:
  * const { can, canAny, canAll } = usePermissions();
  * if (can(PERMISSIONS.MEMBER_CREATE)) { ... }
@@ -58,19 +74,28 @@ export function Can({
 export function usePermissions() {
   const { user } = useAuthStore();
 
+  // Get permissions array from user (fetched from API/database)
+  const userPermissions = user?.permissions || [];
+
   const can = (permission: Permission): boolean => {
     if (!user) return false;
-    return hasPermission(user.role, permission);
+    // Super admins have all permissions
+    if (user.platformRole === 'SUPER_ADMIN') return true;
+    return hasPermission(userPermissions, permission);
   };
 
   const canAny = (permissions: Permission[]): boolean => {
     if (!user) return false;
-    return hasAnyPermission(user.role, permissions);
+    // Super admins have all permissions
+    if (user.platformRole === 'SUPER_ADMIN') return true;
+    return hasAnyPermission(userPermissions, permissions);
   };
 
   const canAll = (permissions: Permission[]): boolean => {
     if (!user) return false;
-    return hasAllPermissions(user.role, permissions);
+    // Super admins have all permissions
+    if (user.platformRole === 'SUPER_ADMIN') return true;
+    return hasAllPermissions(userPermissions, permissions);
   };
 
   const isAdmin = (): boolean => {
@@ -90,5 +115,7 @@ export function usePermissions() {
     isAdmin,
     isSuperAdmin,
     user,
+    permissions: userPermissions,
+    roles: user?.roles || [],
   };
 }

@@ -8,7 +8,23 @@ The migration follows a **gradual, non-breaking approach** with three phases:
 
 1. **Phase 1 - Shadow Mode**: New RBAC runs alongside legacy system
 2. **Phase 2 - Hybrid Mode**: New RBAC with legacy fallback  
-3. **Phase 3 - Full RBAC**: Complete database-driven system
+3. **Phase 3 - Enforced Mode**: Complete database-driven system (DATABASE IS SINGLE SOURCE OF TRUTH)
+
+## ✅ Current Status: ENFORCED MODE
+
+The RBAC system is now in **full enforcement mode**:
+
+- Database is the **SINGLE SOURCE OF TRUTH** for all permissions
+- Hardcoded role-permission mappings have been removed
+- Frontend fetches permissions from API on login/auth check
+- All permission checks use the database-driven system
+
+### Key Changes in Enforced Mode
+
+1. **Backend**: `apps/api/src/middleware/rbac.ts` now uses database-only permission resolution
+2. **Frontend**: `apps/web/src/hooks/usePermissions.tsx` uses `user.permissions` array from API
+3. **Auth**: Login and `/auth/me` endpoints return user permissions from database
+4. **Legacy**: Old `ROLE_PERMISSIONS` mappings are deprecated (kept for reference only)
 
 ## 🏗️ Architecture
 
@@ -130,17 +146,24 @@ RBAC_ENFORCE=true
 npm run start
 ```
 
-### Step 7: Switch to Full RBAC
+### Step 7: Switch to Enforced Mode (CURRENT)
 
 After successful hybrid mode operation:
 
 ```bash
-# Final mode
-RBAC_MODE=full
+# Final mode - Database is SINGLE SOURCE OF TRUTH
+RBAC_MODE=enforced
+RBAC_LOG_MISMATCHES=false
 
 # Restart application  
 npm run start
 ```
+
+In enforced mode:
+- All permission checks use the database
+- Frontend receives permissions from API on login
+- No fallback to hardcoded permissions
+- Full UI-based role and permission management enabled
 
 ## 🔧 Configuration
 
@@ -148,9 +171,9 @@ npm run start
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RBAC_MODE` | `shadow` | Migration phase: shadow/hybrid/full |
-| `RBAC_LOG_MISMATCHES` | `true` | Log permission mismatches |
-| `RBAC_ENFORCE` | `false` | Enforce permission denials |
+| `RBAC_MODE` | `enforced` | Migration phase: shadow/hybrid/enforced |
+| `RBAC_LOG_MISMATCHES` | `false` | Log permission mismatches (shadow/hybrid only) |
+| `RBAC_ENFORCE` | `true` | Enforce permission denials |
 | `RBAC_CACHE_TTL` | `300000` | Permission cache TTL (ms) |
 | `RBAC_AUDIT_ENABLED` | `true` | Enable audit logging |
 
@@ -227,11 +250,23 @@ const canEdit = await RBACService.checkPermissionWithOwnership(
 ### Frontend Integration
 
 ```typescript
-// Frontend permission checking (updated)
-import { hasPermission } from '@/lib/permissions';
+// Frontend permission checking (database-driven)
+import { usePermissions, Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 
-// Works with both legacy and new system
-const canCreateMember = hasPermission(user.role, 'members.create');
+// Hook usage
+const { can, canAny, canAll, permissions } = usePermissions();
+if (can(PERMISSIONS.MEMBER_CREATE)) {
+  // User has permission from database
+}
+
+// Component usage
+<Can permission={PERMISSIONS.MEMBER_CREATE}>
+  <button>Add Member</button>
+</Can>
+
+// Permissions are fetched from API on login and stored in user object
+// user.permissions = ['members.view', 'members.create', ...]
 ```
 
 ## 🔍 Troubleshooting

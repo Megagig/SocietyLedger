@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { hashPassword, verifyPassword, generateToken } from '../../lib/auth';
 import { TenantRequest } from '../../middleware/tenant.middleware';
+import { RBACService, RBACContext } from '../../services/rbac.service';
 import {
   createUserWithVerification,
   verifyEmailCode,
@@ -170,6 +171,14 @@ export class AuthController {
         platformRole: user.platformRole ?? undefined,
       });
 
+      // Resolve user permissions from database
+      const rbacContext: RBACContext = {
+        userId: user.id,
+        associationId: tenantId ?? null,
+        platformRole: user.platformRole,
+      };
+      const userPermissions = await RBACService.resolveUserPermissions(rbacContext);
+
       // Set HTTP-only cookie
       const isProduction = process.env.NODE_ENV === 'production';
       res.cookie('token', token, {
@@ -192,6 +201,8 @@ export class AuthController {
             association: tenant,
             platformRole: user.platformRole,
             requiresOnboarding,
+            permissions: Array.from(userPermissions.permissions),
+            roles: userPermissions.roles,
           },
           token,
         },
@@ -560,12 +571,22 @@ export class AuthController {
         requiresOnboarding = !onboardingProgress?.onboardingComplete;
       }
 
+      // Resolve user permissions from database
+      const rbacContext: RBACContext = {
+        userId: user.id,
+        associationId: user.associationId,
+        platformRole: user.platformRole,
+      };
+      const userPermissions = await RBACService.resolveUserPermissions(rbacContext);
+
       res.status(200).json({
         success: true,
         data: { 
           user: {
             ...user,
             requiresOnboarding,
+            permissions: Array.from(userPermissions.permissions),
+            roles: userPermissions.roles,
           },
         },
       });

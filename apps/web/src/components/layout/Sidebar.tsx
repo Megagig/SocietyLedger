@@ -72,16 +72,24 @@ export function Sidebar() {
 
   const checkPermission = (permission: string | string[] | undefined): boolean => {
     if (!permission) return true;
-    if (!user?.role) return false;
     
     // Super admin has access to everything
-    if (user.platformRole === 'SUPER_ADMIN') return true;
+    if (user?.platformRole === 'SUPER_ADMIN') return true;
     
-    if (Array.isArray(permission)) {
-      return permission.some(p => hasPermission(user.role, p as any));
+    // Get permissions array from user (fetched from API/database)
+    const userPermissions = user?.permissions || [];
+    
+    // If no permissions loaded yet, fall back to showing items for admin role
+    // This handles the case where permissions haven't been fetched yet
+    if (userPermissions.length === 0 && user?.role === 'admin') {
+      return true;
     }
     
-    return hasPermission(user.role, permission as any);
+    if (Array.isArray(permission)) {
+      return permission.some(p => hasPermission(userPermissions, p as any));
+    }
+    
+    return hasPermission(userPermissions, permission as any);
   };
 
   const navItems: NavItem[] = [
