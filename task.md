@@ -6637,3 +6637,295 @@ This phase implements premium features exclusively for Enterprise tier clients.
 **Document End** - Total: 150+ tasks tracked across 15 phases
 
 *This implementation plan is a living document. Update regularly as tasks are completed and requirements evolve.*
+
+
+---
+
+## Phase 18: Settings Page Architecture & Implementation
+
+**Status:** 🟡 In Progress  
+**Dependencies:** RBAC Migration ✅, Multi-tenancy ✅  
+**Estimated Time:** 8-10 days  
+**Priority:** 🔴 HIGH
+
+### Phase 18.1: Foundation & Architecture (Day 1-2)
+
+- [x] **TASK-SET-001:** Create Settings Module Structure ✅
+  - **Description:** Set up backend module structure at `apps/api/src/modules/settings/` with base service, controller, routes
+  - **Files to Create:** 
+    - `apps/api/src/modules/settings/settings.service.ts`
+    - `apps/api/src/modules/settings/settings.controller.ts`
+    - `apps/api/src/modules/settings/settings.routes.ts`
+    - `apps/api/src/modules/settings/settings.types.ts`
+  - **Dependencies:** None
+  - **Acceptance Criteria:** Base settings module registered in server.ts
+
+- [x] **TASK-SET-002:** Add Settings Permissions to Registry ✅
+  - **Description:** Add new settings-specific permissions to the permission registry and seed them
+  - **New Permissions:**
+    - `settings.association` - Manage association profile
+    - `settings.members_access` - Manage member access rules
+    - `settings.financial` - Manage financial configuration
+    - `settings.payments` - Manage payment settings
+    - `settings.notifications` - Manage notification settings
+    - `settings.data_privacy` - Manage data/privacy settings
+    - `settings.platform` - Platform settings (super admin)
+  - **Files to Update:** `apps/api/prisma/seeds/rbac-seed.ts`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** New permissions seeded and assignable to roles
+  - **Note:** Permissions already exist in RBAC seed from previous migration
+
+- [x] **TASK-SET-003:** Create Settings Database Models ✅
+  - **Description:** Add AssociationSettings model for storing per-tenant configuration
+  - **Fields:** associationId, category, key, value, updatedBy, updatedAt
+  - **Files to Update:** `apps/api/prisma/schema.prisma`
+  - **Dependencies:** None
+  - **Acceptance Criteria:** Settings can be stored and retrieved per association
+  - **Note:** Using existing Settings model with category.key format
+
+- [x] **TASK-SET-004:** Create Settings Layout & Navigation (Frontend) ✅
+  - **Description:** Build settings page layout with sidebar navigation for all sections
+  - **Files to Create/Update:**
+    - `apps/web/src/app/dashboard/settings/layout.tsx` (update existing)
+    - `apps/web/src/components/settings/SettingsNav.tsx`
+  - **Dependencies:** None
+  - **Acceptance Criteria:** Settings sections visible based on user permissions
+
+### Phase 18.2: Association Profile Settings (Day 2-3)
+
+- [x] **TASK-SET-005:** Association Profile API ✅
+  - **Description:** Create GET/PATCH endpoints for association profile settings
+  - **Endpoints:**
+    - `GET /api/settings/association/profile` - Get association profile
+    - `PATCH /api/settings/association/profile` - Update association profile
+  - **Files to Create:** `apps/api/src/modules/settings/settings.service.ts`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** Can view and update association name, logo, colors, type
+
+- [x] **TASK-SET-006:** Association Profile UI ✅
+  - **Description:** Build association profile settings page with form
+  - **Features:** Name, logo upload, brand colors, association type, address, fiscal year
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/association/page.tsx`
+  - **Dependencies:** TASK-SET-005
+  - **Acceptance Criteria:** Admins can update association branding
+
+- [ ] **TASK-SET-007:** Logo Upload Service
+  - **Description:** Implement file upload for association logo with validation
+  - **Requirements:** Max 2MB, PNG/JPG only, resize to standard dimensions
+  - **Files to Create:** `apps/api/src/modules/settings/association/logo.service.ts`
+  - **Dependencies:** TASK-SET-005
+  - **Acceptance Criteria:** Logo uploads work and display in UI
+
+### Phase 18.3: Members & Access Settings (Day 3-4)
+
+- [x] **TASK-SET-008:** Members Access Settings API ✅
+  - **Description:** Create endpoints for member access configuration
+  - **Endpoints:**
+    - `GET /api/settings/members_access`
+    - `PATCH /api/settings/members_access`
+  - **Settings:** selfSignupEnabled, defaultRole, requireApproval, activationRules
+  - **Files to Create:** `apps/api/src/modules/settings/settings.service.ts`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** Can configure member onboarding rules
+
+- [x] **TASK-SET-009:** Members Access Settings UI ✅
+  - **Description:** Build members access settings page
+  - **Features:** Toggle self-signup, select default role, approval toggle, activation rules
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/members-access/page.tsx`
+  - **Dependencies:** TASK-SET-008
+  - **Acceptance Criteria:** Admins can configure member access rules
+
+### Phase 18.4: Financial Settings (Day 4-5) - HIGH RISK
+
+- [x] **TASK-SET-010:** Financial Settings API ✅
+  - **Description:** Create endpoints for financial configuration (PROSPECTIVE ONLY)
+  - **Endpoints:**
+    - `GET /api/settings/financial`
+    - `PATCH /api/settings/financial`
+  - **Settings:** penaltyRules, gracePeriods, approvalWorkflows, fiscalYear, currencyRounding
+  - **Files to Create:** `apps/api/src/modules/settings/settings.service.ts`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** Financial settings affect only NEW transactions
+
+- [x] **TASK-SET-011:** Financial Settings UI ✅
+  - **Description:** Build financial settings page with warnings for dangerous changes
+  - **Features:** Penalty rules editor, grace period config, approval workflow toggles
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/financial/page.tsx`
+  - **Dependencies:** TASK-SET-010
+  - **Acceptance Criteria:** Clear warnings shown, confirmation required for changes
+
+- [ ] **TASK-SET-012:** Ledger Categories Management
+  - **Description:** UI for managing ledger categories (dues, levies, fines, donations)
+  - **Features:** Add/edit/disable categories, set default amounts, frequency
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/financial/categories/page.tsx`
+  - **Dependencies:** TASK-SET-010
+  - **Acceptance Criteria:** Can manage financial categories without breaking existing data
+
+### Phase 18.5: Payments & Billing Settings (Day 5-6)
+
+- [ ] **TASK-SET-013:** Payments Settings API
+  - **Description:** Create endpoints for payment channel configuration
+  - **Endpoints:**
+    - `GET /api/settings/payments`
+    - `PATCH /api/settings/payments`
+  - **Settings:** enabledChannels, defaultMethod, manualApprovalRules, partialPayments
+  - **Files to Create:** `apps/api/src/modules/settings/payments/`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** Can enable/disable payment channels
+
+- [ ] **TASK-SET-014:** Payments Settings UI
+  - **Description:** Build payments settings page
+  - **Features:** Toggle payment channels, approval rules, receipt templates
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/payments/page.tsx`
+  - **Dependencies:** TASK-SET-013
+  - **Acceptance Criteria:** Admins can configure payment options
+
+- [ ] **TASK-SET-015:** Subscription Info Display
+  - **Description:** Show current SaaS subscription info (read-only)
+  - **Features:** Current plan, billing date, usage stats, upgrade link
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/payments/subscription/page.tsx`
+  - **Dependencies:** Existing subscription module
+  - **Acceptance Criteria:** Subscription info displayed, upgrade CTA shown
+
+### Phase 18.6: Notifications Settings (Day 6-7)
+
+- [x] **TASK-SET-016:** Notifications Settings API ✅
+  - **Description:** Create endpoints for notification configuration
+  - **Endpoints:**
+    - `GET /api/settings/notifications`
+    - `PATCH /api/settings/notifications`
+  - **Settings:** emailEnabled, smsEnabled, reminderRules, quietHours, senderIdentity
+  - **Files to Create:** `apps/api/src/modules/settings/settings.service.ts`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** Can configure notification preferences
+
+- [x] **TASK-SET-017:** Notifications Settings UI ✅
+  - **Description:** Build notifications settings page
+  - **Features:** Email/SMS toggles, reminder rules, template editor, quiet hours
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/notifications/page.tsx`
+  - **Dependencies:** TASK-SET-016
+  - **Acceptance Criteria:** Admins can configure notification rules
+
+- [ ] **TASK-SET-018:** Message Templates Editor
+  - **Description:** UI for editing notification templates with placeholders
+  - **Features:** Template list, WYSIWYG editor, placeholder insertion, preview
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/notifications/templates/page.tsx`
+  - **Dependencies:** TASK-SET-016
+  - **Acceptance Criteria:** Can customize notification messages
+
+### Phase 18.7: Integrations Settings (Day 7-8)
+
+- [ ] **TASK-SET-019:** Integrations Settings API
+  - **Description:** Create endpoints for external service configuration
+  - **Endpoints:**
+    - `GET /api/settings/integrations`
+    - `PATCH /api/settings/integrations`
+  - **Settings:** paymentGateway, smsProvider, webhooks, apiKeys
+  - **Files to Create:** `apps/api/src/modules/settings/integrations/`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** Can configure external integrations
+
+- [ ] **TASK-SET-020:** Integrations Settings UI
+  - **Description:** Build integrations settings page
+  - **Features:** Gateway config, SMS provider, webhook URLs, API key management
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/integrations/page.tsx`
+  - **Dependencies:** TASK-SET-019
+  - **Acceptance Criteria:** Admins can configure integrations
+
+### Phase 18.8: Data & Privacy Settings (Day 8)
+
+- [ ] **TASK-SET-021:** Data Privacy Settings API
+  - **Description:** Create endpoints for data management and compliance
+  - **Endpoints:**
+    - `GET /api/settings/data-privacy`
+    - `POST /api/settings/data-privacy/export` - Export all association data
+  - **Settings:** retentionPeriod, softDeletePolicy, anonymizationRules
+  - **Files to Create:** `apps/api/src/modules/settings/data-privacy/`
+  - **Dependencies:** TASK-SET-001
+  - **Acceptance Criteria:** Can configure data retention and export data
+
+- [ ] **TASK-SET-022:** Data Privacy Settings UI
+  - **Description:** Build data privacy settings page
+  - **Features:** Export data button, retention config, compliance info
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/data-privacy/page.tsx`
+  - **Dependencies:** TASK-SET-021
+  - **Acceptance Criteria:** Admins can manage data privacy settings
+
+### Phase 18.9: Audit Logs (Day 8-9)
+
+- [x] **TASK-SET-023:** Audit Logs API Enhancement ✅
+  - **Description:** Enhance existing audit log API with filtering and export
+  - **Endpoints:**
+    - `GET /api/admin/audit-logs` - List with filters (existing)
+  - **Filters:** dateRange, action, userId, tableName
+  - **Files to Update:** Using existing admin audit logs endpoint
+  - **Dependencies:** Existing audit log system
+  - **Acceptance Criteria:** Can view and export audit logs
+
+- [x] **TASK-SET-024:** Audit Logs UI ✅
+  - **Description:** Build audit logs viewer page
+  - **Features:** Filterable table, date range picker, export button, detail modal
+  - **Files to Create:** `apps/web/src/app/dashboard/settings/audit-logs/page.tsx`
+  - **Dependencies:** TASK-SET-023
+  - **Acceptance Criteria:** Admins can view activity history
+
+### Phase 18.10: Platform Settings - Super Admin (Day 9-10)
+
+- [ ] **TASK-SET-025:** Platform Settings API
+  - **Description:** Create super admin only endpoints for platform management
+  - **Endpoints:**
+    - `GET /api/admin/settings/platform`
+    - `POST /api/admin/associations/:id/suspend`
+    - `POST /api/admin/associations/:id/override-limits`
+  - **Files to Create:** `apps/api/src/modules/admin/platform-settings/`
+  - **Dependencies:** TASK-SET-001, Super admin role
+  - **Acceptance Criteria:** Super admins can manage platform-level settings
+
+- [ ] **TASK-SET-026:** Platform Settings UI
+  - **Description:** Build platform settings page (super admin only)
+  - **Features:** Association management, limit overrides, debug tools
+  - **Files to Create:** `apps/web/src/app/admin/settings/platform/page.tsx`
+  - **Dependencies:** TASK-SET-025
+  - **Acceptance Criteria:** Super admins can manage all associations
+
+### Phase 18.11: Testing & Documentation (Day 10)
+
+- [ ] **TASK-SET-027:** Settings Module Tests
+  - **Description:** Write tests for all settings endpoints
+  - **Coverage:** Permission checks, validation, audit logging
+  - **Files to Create:** `apps/api/src/modules/settings/__tests__/`
+  - **Dependencies:** All TASK-SET-* tasks
+  - **Acceptance Criteria:** All settings endpoints tested
+
+- [ ] **TASK-SET-028:** Settings Documentation
+  - **Description:** Document settings architecture and usage
+  - **Files to Create:** `docs/settings/README.md`, `docs/settings/PERMISSIONS.md`
+  - **Dependencies:** All TASK-SET-* tasks
+  - **Acceptance Criteria:** Settings module fully documented
+
+---
+
+### Phase 18 Summary
+
+**Total Tasks:** 28  
+**Estimated Time:** 8-10 days  
+**Priority:** 🔴 HIGH
+
+**Key Deliverables:**
+1. Modular settings architecture with 10 sections
+2. Permission-gated access to all settings
+3. Audit logging for all changes
+4. Financial settings with prospective-only changes
+5. Super admin platform management
+
+**Dependencies:**
+- ✅ RBAC Migration (Complete)
+- ✅ Multi-tenancy (Complete)
+- ✅ Existing subscription module
+- ✅ Existing audit log system
+
+**Risk Areas:**
+- Financial settings must not affect historical data
+- Permission checks must be comprehensive
+- Audit logging must capture all changes
+

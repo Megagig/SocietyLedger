@@ -38,6 +38,7 @@ import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
 import rbacRoutes from './modules/rbac/rbac.routes';
+import settingsRoutes from './modules/settings/settings.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -129,6 +130,7 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/voting', votingRoutes);
 app.use('/api/rbac', rbacRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

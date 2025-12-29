@@ -5,7 +5,7 @@ import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import { 
   Shield, Users, Settings, Building, CreditCard, 
-  Bell, Palette, ChevronRight, Lock
+  Bell, ChevronRight, Lock
 } from 'lucide-react';
 
 interface SettingsCard {
@@ -18,6 +18,13 @@ interface SettingsCard {
 }
 
 const settingsCards: SettingsCard[] = [
+  {
+    title: 'Association Profile',
+    description: 'Update your association details, logo, and branding',
+    icon: <Building className="w-6 h-6" />,
+    href: '/dashboard/settings/association',
+    permission: PERMISSIONS.SETTINGS_VIEW
+  },
   {
     title: 'Roles & Permissions',
     description: 'Manage user roles and configure permissions for your association',
@@ -33,11 +40,18 @@ const settingsCards: SettingsCard[] = [
     permission: PERMISSIONS.USER_VIEW
   },
   {
-    title: 'Association Profile',
-    description: 'Update your association details, logo, and branding',
-    icon: <Building className="w-6 h-6" />,
-    href: '/dashboard/settings/profile',
-    comingSoon: true
+    title: 'Members Access',
+    description: 'Configure member signup, approval, and access rules',
+    icon: <Lock className="w-6 h-6" />,
+    href: '/dashboard/settings/members-access',
+    permission: PERMISSIONS.SETTINGS_EDIT
+  },
+  {
+    title: 'Financial Settings',
+    description: 'Configure currency, late fees, and payment rules',
+    icon: <CreditCard className="w-6 h-6" />,
+    href: '/dashboard/settings/financial',
+    permission: PERMISSIONS.SETTINGS_EDIT
   },
   {
     title: 'Billing & Subscription',
@@ -51,27 +65,29 @@ const settingsCards: SettingsCard[] = [
     description: 'Configure email and SMS notification preferences',
     icon: <Bell className="w-6 h-6" />,
     href: '/dashboard/settings/notifications',
-    comingSoon: true
+    permission: PERMISSIONS.SETTINGS_EDIT
   },
   {
-    title: 'Appearance',
-    description: 'Customize colors, themes, and display preferences',
-    icon: <Palette className="w-6 h-6" />,
-    href: '/dashboard/settings/appearance',
-    comingSoon: true
-  },
-  {
-    title: 'Security',
-    description: 'Password policies, two-factor authentication, and audit logs',
-    icon: <Lock className="w-6 h-6" />,
-    href: '/dashboard/settings/security',
-    comingSoon: true
-  },
-  {
-    title: 'General Settings',
-    description: 'Fiscal year, currency, timezone, and other preferences',
+    title: 'Audit Logs',
+    description: 'View activity history and changes in your association',
     icon: <Settings className="w-6 h-6" />,
-    href: '/dashboard/settings/general',
+    href: '/dashboard/settings/audit-logs',
+    permission: PERMISSIONS.AUDIT_VIEW
+  },
+  {
+    title: 'Integrations',
+    description: 'Configure payment gateways and external services',
+    icon: <Settings className="w-6 h-6" />,
+    href: '/dashboard/settings/integrations',
+    permission: PERMISSIONS.SETTINGS_INTEGRATIONS,
+    comingSoon: true
+  },
+  {
+    title: 'Data & Privacy',
+    description: 'Data retention, export, and privacy settings',
+    icon: <Lock className="w-6 h-6" />,
+    href: '/dashboard/settings/data-privacy',
+    permission: PERMISSIONS.SETTINGS_EDIT,
     comingSoon: true
   }
 ];

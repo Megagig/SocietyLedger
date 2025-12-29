@@ -1552,3 +1552,152 @@ apps/api/src/modules/reports/
 **Document Version:** 2.0  
 **Last Reorganized:** December 27, 2025  
 **Next Review:** After Phase 5 completion
+
+
+---
+
+### Phase 18: Settings Page Architecture & Implementation 🔴 HIGH PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** RBAC Migration ✅ (Complete), Multi-tenancy ✅ (Complete)  
+**Estimated Time:** 8-10 days  
+**Priority:** 🔴 HIGH - Essential for association self-management
+
+#### Overview
+
+The Settings module is a comprehensive control center for association administrators to manage their organization's configuration, access control, financial rules, and integrations. It follows a route-based modular architecture where each section is independently deployable and permission-gated.
+
+#### Design Principles
+
+1. **Settings is a control center, not a CRUD dump** - Each section has a specific purpose
+2. **Changes apply prospectively, not retroactively** - Financial settings don't affect historical data
+3. **Financially sensitive actions must be gated** - Approval workflows for dangerous changes
+4. **Each section is independently extensible** - Modular services and routes
+5. **UI degrades gracefully if permission is missing** - Hide or show read-only
+
+#### Route Structure
+
+```
+/dashboard/settings
+├── /association          # Identity & branding
+├── /roles                # Role management (existing)
+├── /users                # User role assignment (existing)
+├── /members-access       # Member onboarding & access rules
+├── /financial            # Ledger categories, penalties, fiscal year
+├── /payments-billing     # Payment channels, approval rules, subscription
+├── /notifications        # Email/SMS templates, reminders
+├── /integrations         # Payment gateways, SMS providers, webhooks
+├── /data-privacy         # Export, retention, compliance
+├── /audit-logs           # Activity logs, permission denials
+└── /platform             # Super admin only (suspend, override)
+```
+
+#### Module Specifications
+
+**1. Association Profile Settings**
+- Association name, logo, brand colors
+- Association type (church, union, club, HOA)
+- Address & location
+- Fiscal year start month
+- Subdomain (read-only)
+- Permissions: `settings.view`, `settings.edit`
+
+**2. Roles & Permissions** (Partially exists)
+- View/create/edit/delete roles
+- Assign permissions to roles
+- Assign roles to users
+- Lock core system roles
+- Clone roles
+- Permissions: `roles.view`, `roles.create`, `roles.edit`, `roles.assign`, `permissions.manage`
+
+**3. Members & Access Settings**
+- Enable/disable self-signup
+- Default role for new members
+- Admin approval toggle
+- Member activation rules
+- Bulk role assignment
+- Permissions: `members.manage_roles`, `settings.edit`
+
+**4. Financial Settings** (HIGH RISK)
+- Ledger categories management
+- Penalty rules (flat/percentage)
+- Grace periods
+- Approval workflows
+- Currency & rounding rules
+- Changes affect only NEW transactions
+- Permissions: `ledger.edit`, `settings.edit`
+
+**5. Payments & Billing**
+- Enable payment channels (Paystack, Bank, Cash)
+- Manual payment approval rules
+- Partial payment support
+- Receipt/invoice templates
+- SaaS subscription info (read-only)
+- Permissions: `payments.manual_create`, `payments.approve`, `settings.billing`
+
+**6. Notifications & Communication**
+- Email/SMS toggle
+- Reminder rules (dues, meetings)
+- Message templates
+- Sender identity
+- Quiet hours
+- Permissions: `settings.edit`
+
+**7. Integrations**
+- Payment gateway configuration
+- SMS provider settings
+- Webhook management
+- API keys (enterprise)
+- Permissions: `settings.integrations`
+
+**8. Data & Privacy**
+- Export association data
+- Data retention rules
+- Soft delete policies
+- GDPR/compliance tools
+- Permissions: `settings.view`, `settings.edit`, `audit.export`
+
+**9. Audit & Logs**
+- Role change logs
+- Financial edit logs
+- Login history
+- Permission denial logs
+- Export logs
+- Permissions: `audit.view`, `audit.export`
+
+**10. Platform/Advanced** (Super Admin Only)
+- Suspend association
+- Override limits
+- Debug tenant issues
+- Access: `SUPER_ADMIN` platform role only
+
+#### New Permissions Required
+
+```typescript
+// Add to permission registry
+"settings.association": "Manage association profile settings"
+"settings.members_access": "Manage member access and onboarding rules"
+"settings.financial": "Manage financial configuration (HIGH RISK)"
+"settings.payments": "Manage payment channel settings"
+"settings.notifications": "Manage notification settings"
+"settings.data_privacy": "Manage data export and retention"
+"settings.platform": "Platform-level settings (super admin)"
+```
+
+#### Technical Requirements
+
+- Use existing RBAC middleware for all endpoints
+- No new hardcoded permissions
+- Modular services per settings section
+- Audit logging for every change
+- Settings stored per-tenant (association_id)
+- Optimistic UI with rollback on error
+
+#### Success Criteria
+
+- ✅ Settings page does not break existing functionality
+- ✅ Fully permission-aware (hide/disable based on permissions)
+- ✅ Financially safe (prospective changes only)
+- ✅ Enterprise-ready (audit trails, compliance)
+- ✅ Easily extensible (add new sections without refactoring)
+
