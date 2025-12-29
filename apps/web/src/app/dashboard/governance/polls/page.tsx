@@ -1,0 +1,305 @@
+'use client';
+
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
+import { 
+  IconPlus, 
+  IconSearch, 
+  IconChartBar,
+  IconUsers,
+  IconClock,
+  IconDotsVertical,
+  IconEdit,
+  IconTrash,
+  IconPlayerPlay,
+  IconPlayerStop,
+  IconChartPie
+} from '@tabler/icons-react';
+import { getPolls, deletePoll, Poll, PollStatus, PollType } from '@/lib/api/voting';
+import { formatDate } from '@/utils/format';
+import { toast } from '@/lib/toast';
+
+// Status badge component
+function StatusBadge({ status }: { status: PollStatus }) {
+  const statusConfig: Record<PollStatus, { color: string; label: string }> = {
+    DRAFT: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', label: 'Draft' },
+    ACTIVE: { color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', label: 'Active' },
+    CLOSED: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Closed' },
+    CANCELLED: { color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', label: 'Cancelled' },
+  };
+
+  const config = statusConfig[status];
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      {config.label}
+    </span>
+  );
+}
+
+// Poll type badge
+function TypeBadge({ type }: { type: PollType }) {
+  const typeConfig: Record<PollType, { color: string; label: string }> = {
+    SINGLE_CHOICE: { color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', label: 'Single Choice' },
+    MULTIPLE_CHOICE: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', label: 'Multiple Choice' },
+    RANKED_CHOICE: { color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', label: 'Ranked Choice' },
+    YES_NO: { color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', label: 'Yes/No' },
+  };
+
+  const config = typeConfig[type];
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      {config.label}
+    </span>
+  );
+}
+
+export default function PollsListPage() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<PollStatus | ''>('');
+  const [typeFilter, setTypeFilter] = useState<PollType | ''>('');
+  const [page, setPage] = useState(1);
+  const [openMenu, setOpenMenu] = useState<number | null>(null);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['polls', { page, search, status: statusFilter, pollType: typeFilter }],
+    queryFn: () => getPolls({ 
+      page, 
+      limit: 10, 
+      search: search || undefined,
+      status: statusFilter || undefined,
+      pollType: typeFilter || undefined,
+    }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deletePoll,
+    onSuccess: () => {
+      toast.success('Poll deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['polls'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleDelete = (id: number) => {
+    if (confirm('Are you sure you want to delete this poll? This action cannot be undone.')) {
+      deleteMutation.mutate(id);
+    }
+    setOpenMenu(null);
+  };
+
+  const polls = data?.data?.polls || [];
+  const pagination = data?.data?.pagination;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Polls</h1>
+          <p className="text-gray-600 dark:text-gray-400">Create and manage polls to gather member opinions</p>
+        </div>
+        <Link
+          href="/dashboard/governance/polls/new"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+        >
+          <IconPlus size={18} />
+          New Poll
+        </Link>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <IconSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search polls..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value as PollStatus | ''); setPage(1); }}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="">All Statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ACTIVE">Active</option>
+            <option value="CLOSED">Closed</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value as PollType | ''); setPage(1); }}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="">All Types</option>
+            <option value="SINGLE_CHOICE">Single Choice</option>
+            <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+            <option value="RANKED_CHOICE">Ranked Choice</option>
+            <option value="YES_NO">Yes/No</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Polls List */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6 text-center">
+          <p className="text-red-600 dark:text-red-400">Failed to load polls. Please try again.</p>
+        </div>
+      ) : polls.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
+          <IconChartBar size={48} className="mx-auto mb-4 text-gray-400" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No polls found</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {search || statusFilter || typeFilter 
+              ? 'Try adjusting your filters'
+              : 'Get started by creating your first poll'}
+          </p>
+          {!search && !statusFilter && !typeFilter && (
+            <Link
+              href="/dashboard/governance/polls/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              <IconPlus size={18} />
+              Create Poll
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {polls.map((poll: Poll) => (
+            <div
+              key={poll.id}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Link 
+                      href={`/dashboard/governance/polls/${poll.id}`}
+                      className="text-lg font-semibold text-gray-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400"
+                    >
+                      {poll.title}
+                    </Link>
+                    <StatusBadge status={poll.status} />
+                    <TypeBadge type={poll.pollType} />
+                  </div>
+                  {poll.description && (
+                    <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{poll.description}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <IconChartPie size={16} />
+                      {poll._count?.options || 0} options
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <IconUsers size={16} />
+                      {poll._count?.responses || 0} responses
+                    </span>
+                    {poll.endDate && (
+                      <span className="flex items-center gap-1">
+                        <IconClock size={16} />
+                        Ends {formatDate(poll.endDate)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenMenu(openMenu === poll.id ? null : poll.id)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <IconDotsVertical size={20} className="text-gray-500" />
+                  </button>
+                  {openMenu === poll.id && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-10">
+                      <Link
+                        href={`/dashboard/governance/polls/${poll.id}`}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setOpenMenu(null)}
+                      >
+                        <IconChartBar size={16} />
+                        View Details
+                      </Link>
+                      {poll.status === 'DRAFT' && (
+                        <Link
+                          href={`/dashboard/governance/polls/${poll.id}/edit`}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setOpenMenu(null)}
+                        >
+                          <IconEdit size={16} />
+                          Edit
+                        </Link>
+                      )}
+                      {(poll.status === 'ACTIVE' || poll.status === 'CLOSED') && (
+                        <Link
+                          href={`/dashboard/governance/polls/${poll.id}/results`}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setOpenMenu(null)}
+                        >
+                          <IconChartPie size={16} />
+                          View Results
+                        </Link>
+                      )}
+                      {poll.status === 'DRAFT' && (
+                        <button
+                          onClick={() => handleDelete(poll.id)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+                        >
+                          <IconTrash size={16} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-6 py-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, pagination.total)} of {pagination.total} polls
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+              disabled={page === pagination.totalPages}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -36,6 +36,9 @@ import {
   IconMessageChatbot,
   IconBrain,
   IconSparkles,
+  IconChecklist,
+  IconChartPie,
+  IconUserPlus,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -291,7 +294,7 @@ export function Sidebar() {
     {
       label: 'Governance',
       icon: <IconBadge size={20} />,
-      permission: PERMISSIONS.MEETING_VIEW,
+      permission: [PERMISSIONS.MEETING_VIEW, PERMISSIONS.ELECTION_VIEW],
       children: [
         {
           label: 'Meetings',
@@ -306,10 +309,22 @@ export function Sidebar() {
           permission: PERMISSIONS.MEETING_VIEW,
         },
         {
-          label: 'Voting & Elections',
-          icon: <IconBadge size={18} />,
+          label: 'Voting Dashboard',
+          icon: <IconChecklist size={18} />,
           href: '/dashboard/governance/voting',
-          comingSoon: true,
+          permission: PERMISSIONS.ELECTION_VIEW,
+        },
+        {
+          label: 'Elections',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/governance/elections',
+          permission: PERMISSIONS.ELECTION_VIEW,
+        },
+        {
+          label: 'Polls',
+          icon: <IconChartPie size={18} />,
+          href: '/dashboard/governance/polls',
+          permission: PERMISSIONS.POLL_VIEW,
         },
       ],
     },

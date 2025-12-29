@@ -102,6 +102,15 @@ export const PERMISSIONS = {
   AI_REPORTS: 'ai:reports',                 // Generate AI reports
   AI_QUERY: 'ai:query',                     // Use natural language queries
   AI_USAGE_VIEW: 'ai:usage:view',           // View AI usage statistics
+  
+  // Voting & Elections (Phase 4.5)
+  ELECTION_VIEW: 'election:view',           // View elections and results
+  ELECTION_MANAGE: 'election:manage',       // Create, edit, manage elections
+  ELECTION_NOMINATE: 'election:nominate',   // Nominate self or others as candidates
+  ELECTION_VOTE: 'election:vote',           // Cast votes in elections
+  POLL_VIEW: 'poll:view',                   // View polls and results
+  POLL_MANAGE: 'poll:manage',               // Create, edit, manage polls
+  POLL_VOTE: 'poll:vote',                   // Respond to polls
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -208,6 +217,15 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.AI_REPORTS,
     PERMISSIONS.AI_QUERY,
     PERMISSIONS.AI_USAGE_VIEW,
+    
+    // Voting & Elections - Full management
+    PERMISSIONS.ELECTION_VIEW,
+    PERMISSIONS.ELECTION_MANAGE,
+    PERMISSIONS.ELECTION_NOMINATE,
+    PERMISSIONS.ELECTION_VOTE,
+    PERMISSIONS.POLL_VIEW,
+    PERMISSIONS.POLL_MANAGE,
+    PERMISSIONS.POLL_VOTE,
   ],
   
   // Treasurer - Financial focus
@@ -271,6 +289,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.AI_REPORTS,
     PERMISSIONS.AI_QUERY,
     PERMISSIONS.AI_USAGE_VIEW,
+    
+    // Voting & Elections - View and vote
+    PERMISSIONS.ELECTION_VIEW,
+    PERMISSIONS.ELECTION_NOMINATE,
+    PERMISSIONS.ELECTION_VOTE,
+    PERMISSIONS.POLL_VIEW,
+    PERMISSIONS.POLL_VOTE,
   ],
   
   // Financial Secretary - Record keeping
@@ -321,6 +346,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.AI_VIEW,
     PERMISSIONS.AI_FINANCIAL_ASSISTANT,
     PERMISSIONS.AI_REPORTS,
+    
+    // Voting & Elections - View and vote
+    PERMISSIONS.ELECTION_VIEW,
+    PERMISSIONS.ELECTION_NOMINATE,
+    PERMISSIONS.ELECTION_VOTE,
+    PERMISSIONS.POLL_VIEW,
+    PERMISSIONS.POLL_VOTE,
   ],
   
   // Member - Basic access
@@ -351,6 +383,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     
     // AI - Limited view access
     PERMISSIONS.AI_VIEW,
+    
+    // Voting & Elections - View and vote
+    PERMISSIONS.ELECTION_VIEW,
+    PERMISSIONS.ELECTION_NOMINATE,
+    PERMISSIONS.ELECTION_VOTE,
+    PERMISSIONS.POLL_VIEW,
+    PERMISSIONS.POLL_VOTE,
   ],
 };
 
