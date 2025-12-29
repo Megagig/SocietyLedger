@@ -85,6 +85,13 @@ export const PERMISSIONS = {
   WELFARE_PAYOUT_REQUEST: 'welfare:payout:request',       // Request payouts
   WELFARE_PAYOUT_APPROVE: 'welfare:payout:approve',       // Approve/reject payout requests
   WELFARE_PAYOUT_DISBURSE: 'welfare:payout:disburse',     // Disburse approved payouts
+  
+  // SMS & Bulk Communication (Phase 6.5)
+  SMS_VIEW: 'sms:view',                     // View SMS dashboard, messages, history
+  SMS_SEND: 'sms:send',                     // Send quick SMS messages
+  SMS_CAMPAIGN_MANAGE: 'sms:campaign:manage', // Create, edit, execute campaigns
+  SMS_TEMPLATE_MANAGE: 'sms:template:manage', // Create, edit, delete templates
+  SMS_CREDIT_MANAGE: 'sms:credit:manage',   // Top up and manage SMS credits
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -156,6 +163,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.WELFARE_PAYOUT_REQUEST,
     PERMISSIONS.WELFARE_PAYOUT_APPROVE,
     PERMISSIONS.WELFARE_PAYOUT_DISBURSE,
+    
+    // SMS - Full management
+    PERMISSIONS.SMS_VIEW,
+    PERMISSIONS.SMS_SEND,
+    PERMISSIONS.SMS_CAMPAIGN_MANAGE,
+    PERMISSIONS.SMS_TEMPLATE_MANAGE,
+    PERMISSIONS.SMS_CREDIT_MANAGE,
   ],
   
   treasurer: [
@@ -200,6 +214,12 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.WELFARE_PAYOUT_REQUEST,
     PERMISSIONS.WELFARE_PAYOUT_APPROVE,
     PERMISSIONS.WELFARE_PAYOUT_DISBURSE,
+    
+    // SMS - Send and view
+    PERMISSIONS.SMS_VIEW,
+    PERMISSIONS.SMS_SEND,
+    PERMISSIONS.SMS_CAMPAIGN_MANAGE,
+    PERMISSIONS.SMS_TEMPLATE_MANAGE,
   ],
   
   financial_secretary: [
@@ -235,6 +255,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
     PERMISSIONS.WELFARE_PAYOUT_VIEW,
     PERMISSIONS.WELFARE_PAYOUT_REQUEST,
+    
+    // SMS - View and send
+    PERMISSIONS.SMS_VIEW,
+    PERMISSIONS.SMS_SEND,
   ],
   
   member: [
