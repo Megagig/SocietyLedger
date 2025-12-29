@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Save, Loader2, Info } from 'lucide-react';
 import api from '@/lib/axios';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface MembersAccessSettings {
   selfSignupEnabled: boolean;

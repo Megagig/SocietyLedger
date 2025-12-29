@@ -317,6 +317,28 @@ export function requirePlatformRole(roles: PlatformRole[]) {
 }
 
 /**
+ * Middleware to require SUPER_ADMIN platform role
+ * Convenience wrapper for requirePlatformRole([PlatformRole.SUPER_ADMIN])
+ */
+export function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Authentication required' 
+    });
+  }
+
+  if (req.user.platformRole !== PlatformRole.SUPER_ADMIN) {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Super admin access required' 
+    });
+  }
+  
+  next();
+}
+
+/**
  * Middleware to attach user permissions to request context
  */
 export function attachPermissions() {

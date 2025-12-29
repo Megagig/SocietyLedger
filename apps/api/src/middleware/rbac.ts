@@ -15,6 +15,7 @@ export {
   requireOwnership,
   requireAssociationRole,
   requirePlatformRole,
+  requireSuperAdmin,
   attachPermissions
 } from './rbac-enhanced';
 
