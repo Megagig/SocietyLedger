@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building, Upload, Save, Loader2, Check } from 'lucide-react';
+import { Building, Upload, Save, Loader2, Trash2 } from 'lucide-react';
 import api from '@/lib/axios';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface AssociationProfile {
   name: string;
@@ -70,6 +70,7 @@ const CURRENCIES = [
 
 export default function AssociationProfilePage() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<AssociationProfile>({
     name: '',
     associationType: 'general',
@@ -78,6 +79,7 @@ export default function AssociationProfilePage() {
     currency: 'NGN',
   });
   const [hasChanges, setHasChanges] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Fetch association profile
   const { data, isLoading, error } = useQuery({
@@ -115,6 +117,62 @@ export default function AssociationProfilePage() {
   const handleChange = (field: keyof AssociationProfile, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('File size must be less than 2MB');
+      return;
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Only JPEG, PNG, and WebP images are allowed');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      const response = await api.post('/settings/association/logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data.success) {
+        toast.success('Logo uploaded successfully');
+        queryClient.invalidateQueries({ queryKey: ['settings', 'association'] });
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to upload logo');
+    } finally {
+      setIsUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    if (!formData.logo) return;
+
+    setIsUploadingLogo(true);
+    try {
+      const response = await api.delete('/settings/association/logo');
+      if (response.data.success) {
+        toast.success('Logo deleted successfully');
+        setFormData(prev => ({ ...prev, logo: undefined }));
+        queryClient.invalidateQueries({ queryKey: ['settings', 'association'] });
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete logo');
+    } finally {
+      setIsUploadingLogo(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -307,15 +365,41 @@ export default function AssociationProfilePage() {
                     <Building className="w-8 h-8 text-gray-400" />
                   </div>
                 )}
-                <button
-                  type="button"
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload Logo
-                </button>
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingLogo}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isUploadingLogo ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    {formData.logo ? 'Change Logo' : 'Upload Logo'}
+                  </button>
+                  {formData.logo && (
+                    <button
+                      type="button"
+                      onClick={handleLogoDelete}
+                      disabled={isUploadingLogo}
+                      className="px-4 py-2 border border-red-300 dark:border-red-600 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">PNG or JPG, max 2MB</p>
+              <p className="text-xs text-gray-500 mt-1">PNG, JPG, or WebP, max 2MB</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

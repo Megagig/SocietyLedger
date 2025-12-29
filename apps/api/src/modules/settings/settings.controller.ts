@@ -7,6 +7,7 @@
 
 import { Request, Response } from 'express';
 import { SettingsService } from './settings.service';
+import { LogoService } from './logo.service';
 import { SettingsCategory } from './settings.types';
 
 const VALID_CATEGORIES: SettingsCategory[] = [
@@ -211,6 +212,91 @@ export class SettingsController {
       res.status(500).json({
         success: false,
         message: 'Failed to export settings'
+      });
+    }
+  }
+
+  /**
+   * POST /api/settings/association/logo
+   * Upload association logo
+   */
+  static async uploadLogo(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association context required'
+        });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded'
+        });
+      }
+
+      const result = await LogoService.uploadLogo(associationId, file, userId);
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.message
+        });
+      }
+
+      res.json({
+        success: true,
+        message: result.message,
+        data: { logoUrl: result.logoUrl }
+      });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to upload logo'
+      });
+    }
+  }
+
+  /**
+   * DELETE /api/settings/association/logo
+   * Delete association logo
+   */
+  static async deleteLogo(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association context required'
+        });
+      }
+
+      const result = await LogoService.deleteLogo(associationId, userId);
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.message
+        });
+      }
+
+      res.json({
+        success: true,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('Error deleting logo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete logo'
       });
     }
   }

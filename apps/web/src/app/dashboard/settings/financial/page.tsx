@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, Save, Loader2, AlertTriangle, Info } from 'lucide-react';
+import { CreditCard, Save, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import api from '@/lib/axios';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface FinancialSettings {
   defaultGracePeriodDays: number;
@@ -150,6 +151,27 @@ export default function FinancialSettingsPage() {
             Changes to financial settings will only affect <strong>new transactions</strong>. 
             Existing transactions, payments, and penalties will not be modified.
           </p>
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Related Settings</h3>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/dashboard/finance/categories"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-sm font-medium"
+          >
+            Manage Financial Categories
+            <ExternalLink className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/dashboard/settings/payments"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+          >
+            Payment Channels
+            <ExternalLink className="w-4 h-4" />
+          </Link>
         </div>
       </div>
 

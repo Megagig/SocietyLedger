@@ -5,7 +5,7 @@ import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import { 
   Shield, Users, Settings, Building, CreditCard, 
-  Bell, ChevronRight, Lock
+  Bell, ChevronRight, Lock, Plug, FileText
 } from 'lucide-react';
 
 interface SettingsCard {
@@ -70,25 +70,30 @@ const settingsCards: SettingsCard[] = [
   {
     title: 'Audit Logs',
     description: 'View activity history and changes in your association',
-    icon: <Settings className="w-6 h-6" />,
+    icon: <FileText className="w-6 h-6" />,
     href: '/dashboard/settings/audit-logs',
     permission: PERMISSIONS.AUDIT_VIEW
   },
   {
     title: 'Integrations',
     description: 'Configure payment gateways and external services',
-    icon: <Settings className="w-6 h-6" />,
+    icon: <Plug className="w-6 h-6" />,
     href: '/dashboard/settings/integrations',
-    permission: PERMISSIONS.SETTINGS_INTEGRATIONS,
-    comingSoon: true
+    permission: PERMISSIONS.SETTINGS_INTEGRATIONS
   },
   {
     title: 'Data & Privacy',
     description: 'Data retention, export, and privacy settings',
     icon: <Lock className="w-6 h-6" />,
     href: '/dashboard/settings/data-privacy',
-    permission: PERMISSIONS.SETTINGS_EDIT,
-    comingSoon: true
+    permission: PERMISSIONS.SETTINGS_EDIT
+  },
+  {
+    title: 'Payments & Billing',
+    description: 'Configure payment channels and billing options',
+    icon: <CreditCard className="w-6 h-6" />,
+    href: '/dashboard/settings/payments',
+    permission: PERMISSIONS.SETTINGS_BILLING
   }
 ];
 

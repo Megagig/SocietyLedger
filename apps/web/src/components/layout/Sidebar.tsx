@@ -567,9 +567,27 @@ export function Sidebar() {
           permission: PERMISSIONS.SETTINGS_EDIT,
         },
         {
+          label: 'Payments & Billing',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/settings/payments',
+          permission: PERMISSIONS.SETTINGS_BILLING,
+        },
+        {
           label: 'Notifications',
           icon: <IconBell size={18} />,
           href: '/dashboard/settings/notifications',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Integrations',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/settings/integrations',
+          permission: PERMISSIONS.SETTINGS_INTEGRATIONS,
+        },
+        {
+          label: 'Data & Privacy',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/settings/data-privacy',
           permission: PERMISSIONS.SETTINGS_EDIT,
         },
         {

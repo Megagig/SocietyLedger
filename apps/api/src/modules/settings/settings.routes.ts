@@ -6,12 +6,27 @@
  */
 
 import { Router } from 'express';
+import multer from 'multer';
 import { SettingsController } from './settings.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
 const router = Router();
+
+// Configure multer for logo uploads (memory storage for processing)
+const logoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.'));
+    }
+  }
+});
 
 // All routes require authentication
 router.use(authMiddleware);
@@ -32,6 +47,25 @@ router.patch(
   '/association/profile',
   requirePermission(PERMISSIONS.SETTINGS_EDIT),
   SettingsController.updateAssociationProfile
+);
+
+/**
+ * Logo Upload Routes (TASK-SET-007)
+ */
+
+// POST /api/settings/association/logo - Upload association logo
+router.post(
+  '/association/logo',
+  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  logoUpload.single('logo'),
+  SettingsController.uploadLogo
+);
+
+// DELETE /api/settings/association/logo - Delete association logo
+router.delete(
+  '/association/logo',
+  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  SettingsController.deleteLogo
 );
 
 /**
