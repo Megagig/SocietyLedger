@@ -72,6 +72,9 @@ model Association {
   // Phase 17: AI Integration
   aiAuditLogs                AIAuditLog[]
   documentEmbeddings         DocumentEmbedding[]
+  // Phase 4.5: Voting & Elections
+  elections                  Election[]
+  polls                      Poll[]
 
   @@map("associations")
 }
@@ -130,6 +133,13 @@ model User {
   disbursedWelfarePayouts       WelfarePayoutRequest[] @relation("WelfarePayoutDisburser")
   // Phase 17: AI Integration
   aiAuditLogs                   AIAuditLog[]
+  // Phase 4.5: Voting & Elections
+  createdElections              Election[]         @relation("ElectionCreatedBy")
+  publishedElections            Election[]         @relation("ElectionPublishedBy")
+  cancelledElections            Election[]         @relation("ElectionCancelledBy")
+  nominatedCandidates           Candidate[]        @relation("CandidateNominatedBy")
+  approvedCandidates            Candidate[]        @relation("CandidateApprovedBy")
+  createdPolls                  Poll[]             @relation("PollCreatedBy")
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -197,6 +207,10 @@ model Member {
   // Phase 5.5: Welfare & Social Funds
   welfareContributions         WelfareContribution[]
   welfarePayoutRequests        WelfarePayoutRequest[]
+  // Phase 4.5: Voting & Elections
+  candidacies                  Candidate[]
+  votes                        Vote[]
+  pollResponses                PollResponse[]
 
   @@unique([associationId, memberId])
   @@index([associationId, status])
@@ -1912,4 +1926,226 @@ model DocumentEmbedding {
   @@index([associationId, documentType])
   @@index([associationId, isProcessed])
   @@map("document_embeddings")
+}
+
+// ============================================
+// PHASE 4.5: VOTING & ELECTIONS MODELS
+// Digital voting, elections, and polls
+// ============================================
+
+// Election Model
+model Election {
+  id                   Int                @id @default(autoincrement())
+  associationId        Int                @map("association_id")
+  title                String
+  description          String?            @db.Text
+  electionType         ElectionType       @default(GENERAL) @map("election_type")
+  status               ElectionStatus     @default(DRAFT)
+  nominationStartDate  DateTime?          @map("nomination_start_date")
+  nominationEndDate    DateTime?          @map("nomination_end_date")
+  votingStartDate      DateTime           @map("voting_start_date")
+  votingEndDate        DateTime           @map("voting_end_date")
+  maxVotesPerMember    Int                @default(1) @map("max_votes_per_member")
+  allowAbstention      Boolean            @default(true) @map("allow_abstention")
+  isAnonymous          Boolean            @default(true) @map("is_anonymous")
+  requiresQuorum       Boolean            @default(false) @map("requires_quorum")
+  quorumPercentage     Int?               @map("quorum_percentage")
+  eligibleVoterCount   Int                @default(0) @map("eligible_voter_count")
+  totalVotesCast       Int                @default(0) @map("total_votes_cast")
+  createdBy            Int                @map("created_by")
+  publishedBy          Int?               @map("published_by")
+  publishedAt          DateTime?          @map("published_at")
+  cancelledBy          Int?               @map("cancelled_by")
+  cancelledAt          DateTime?          @map("cancelled_at")
+  cancellationReason   String?            @map("cancellation_reason")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  association          Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  creator              User               @relation("ElectionCreatedBy", fields: [createdBy], references: [id])
+  publisher            User?              @relation("ElectionPublishedBy", fields: [publishedBy], references: [id])
+  canceller            User?              @relation("ElectionCancelledBy", fields: [cancelledBy], references: [id])
+  positions            ElectionPosition[]
+  candidates           Candidate[]
+  votes                Vote[]
+
+  @@index([associationId, status])
+  @@index([associationId, votingStartDate])
+  @@index([votingStartDate, votingEndDate])
+  @@map("elections")
+}
+
+// Election Position (for elections with multiple positions)
+model ElectionPosition {
+  id            Int         @id @default(autoincrement())
+  electionId    Int         @map("election_id")
+  title         String
+  description   String?
+  maxCandidates Int         @default(1) @map("max_candidates")
+  orderNumber   Int         @default(0) @map("order_number")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  election      Election    @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  candidates    Candidate[]
+  votes         Vote[]
+
+  @@unique([electionId, orderNumber])
+  @@index([electionId])
+  @@map("election_positions")
+}
+
+// Candidate Model
+model Candidate {
+  id               Int               @id @default(autoincrement())
+  electionId       Int               @map("election_id")
+  positionId       Int?              @map("position_id")
+  memberId         Int               @map("member_id")
+  manifesto        String?           @db.Text
+  photoUrl         String?           @map("photo_url")
+  status           CandidateStatus   @default(PENDING)
+  nominatedBy      Int?              @map("nominated_by")
+  nominatedAt      DateTime          @default(now()) @map("nominated_at")
+  approvedBy       Int?              @map("approved_by")
+  approvedAt       DateTime?         @map("approved_at")
+  rejectionReason  String?           @map("rejection_reason")
+  withdrawnAt      DateTime?         @map("withdrawn_at")
+  withdrawalReason String?           @map("withdrawal_reason")
+  voteCount        Int               @default(0) @map("vote_count")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  election         Election          @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  position         ElectionPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  member           Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  nominator        User?             @relation("CandidateNominatedBy", fields: [nominatedBy], references: [id])
+  approver         User?             @relation("CandidateApprovedBy", fields: [approvedBy], references: [id])
+  votes            Vote[]
+
+  @@unique([electionId, positionId, memberId])
+  @@index([electionId, status])
+  @@index([positionId])
+  @@index([memberId])
+  @@map("candidates")
+}
+
+// Vote Model
+model Vote {
+  id          Int               @id @default(autoincrement())
+  electionId  Int               @map("election_id")
+  positionId  Int?              @map("position_id")
+  candidateId Int?              @map("candidate_id")
+  voterId     Int               @map("voter_id")
+  voteHash    String            @map("vote_hash") // For verification without revealing voter
+  isAbstention Boolean          @default(false) @map("is_abstention")
+  votedAt     DateTime          @default(now()) @map("voted_at")
+  election    Election          @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  position    ElectionPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  candidate   Candidate?        @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  voter       Member            @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, positionId, voterId])
+  @@index([electionId])
+  @@index([candidateId])
+  @@index([voterId])
+  @@map("votes")
+}
+
+// Poll Model
+model Poll {
+  id                   Int            @id @default(autoincrement())
+  associationId        Int            @map("association_id")
+  title                String
+  description          String?        @db.Text
+  pollType             PollType       @default(SINGLE_CHOICE) @map("poll_type")
+  status               PollStatus     @default(DRAFT)
+  startDate            DateTime       @map("start_date")
+  endDate              DateTime       @map("end_date")
+  allowMultipleVotes   Boolean        @default(false) @map("allow_multiple_votes")
+  maxChoices           Int?           @map("max_choices")
+  isAnonymous          Boolean        @default(true) @map("is_anonymous")
+  showResultsBeforeEnd Boolean        @default(false) @map("show_results_before_end")
+  totalResponses       Int            @default(0) @map("total_responses")
+  createdBy            Int            @map("created_by")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+  association          Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  creator              User           @relation("PollCreatedBy", fields: [createdBy], references: [id])
+  options              PollOption[]
+  responses            PollResponse[]
+
+  @@index([associationId, status])
+  @@index([associationId, startDate])
+  @@index([startDate, endDate])
+  @@map("polls")
+}
+
+// Poll Option Model
+model PollOption {
+  id          Int            @id @default(autoincrement())
+  pollId      Int            @map("poll_id")
+  optionText  String         @map("option_text")
+  orderNumber Int            @default(0) @map("order_number")
+  voteCount   Int            @default(0) @map("vote_count")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  poll        Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  responses   PollResponse[]
+
+  @@unique([pollId, orderNumber])
+  @@index([pollId])
+  @@map("poll_options")
+}
+
+// Poll Response Model
+model PollResponse {
+  id           Int        @id @default(autoincrement())
+  pollId       Int        @map("poll_id")
+  optionId     Int        @map("option_id")
+  responderId  Int        @map("responder_id")
+  responseHash String     @map("response_hash") // For verification without revealing responder
+  respondedAt  DateTime   @default(now()) @map("responded_at")
+  poll         Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option       PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  responder    Member     @relation(fields: [responderId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, optionId, responderId])
+  @@index([pollId])
+  @@index([optionId])
+  @@index([responderId])
+  @@map("poll_responses")
+}
+
+// Voting Enums
+enum ElectionType {
+  GENERAL // General election for all positions
+  EXECUTIVE // Executive committee election
+  COMMITTEE // Committee member election
+  SPECIAL // Special purpose election
+}
+
+enum ElectionStatus {
+  DRAFT // Being created
+  NOMINATIONS_OPEN // Accepting nominations
+  VOTING_OPEN // Voting in progress
+  VOTING_CLOSED // Voting ended, results being processed
+  RESULTS_PUBLISHED // Results announced
+  CANCELLED // Election cancelled
+}
+
+enum CandidateStatus {
+  PENDING // Awaiting approval
+  APPROVED // Approved to contest
+  REJECTED // Nomination rejected
+  WITHDRAWN // Candidate withdrew
+}
+
+enum PollType {
+  YES_NO // Simple yes/no poll
+  MULTIPLE_CHOICE // Select multiple options
+  SINGLE_CHOICE // Select one option
+  RATING // Rating scale (1-5, 1-10, etc.)
+}
+
+enum PollStatus {
+  DRAFT // Being created
+  ACTIVE // Poll is live
+  CLOSED // Poll ended
+  CANCELLED // Poll cancelled
 }

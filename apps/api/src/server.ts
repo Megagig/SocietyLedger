@@ -36,6 +36,7 @@ import meetingsRoutes from './modules/meetings/meetings.routes';
 import welfareRoutes from './modules/welfare/welfare.routes';
 import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
+import votingRoutes from './modules/voting/voting.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -125,6 +126,7 @@ app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/voting', votingRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
