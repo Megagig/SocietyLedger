@@ -68,9 +68,9 @@ export const helpService = {
    * List articles with filtering
    */
   async listArticles(
-    params: ArticleSearchParams & { associationId?: number; userRole?: string }
+    params: ArticleSearchParams & { associationId?: number; userRole?: string; isSuper?: boolean }
   ): Promise<ArticleSearchResult> {
-    const { query, category, tags, role, limit = 20, offset = 0, associationId, userRole } = params;
+    const { query, category, tags, role, limit = 20, offset = 0, associationId, userRole, isSuper } = params;
 
     const where: any = {
       isPublished: true,
@@ -90,8 +90,8 @@ export const helpService = {
       where.tags = { hasSome: tags };
     }
 
-    // Filter by role visibility
-    if (userRole) {
+    // Filter by role visibility (skip for super admin)
+    if (userRole && !isSuper) {
       where.roleVisibility = { has: userRole };
     }
 
@@ -126,9 +126,9 @@ export const helpService = {
    */
   async searchArticles(
     query: string,
-    options: { associationId?: number; userRole?: string; limit?: number }
+    options: { associationId?: number; userRole?: string; limit?: number; isSuper?: boolean }
   ): Promise<HelpArticle[]> {
-    const { associationId, userRole, limit = 10 } = options;
+    const { associationId, userRole, limit = 10, isSuper } = options;
 
     const where: any = {
       isPublished: true,
@@ -147,7 +147,7 @@ export const helpService = {
       ],
     };
 
-    if (userRole) {
+    if (userRole && !isSuper) {
       where.roleVisibility = { has: userRole };
     }
 
@@ -165,9 +165,9 @@ export const helpService = {
    */
   async getArticleBySlug(
     slug: string,
-    options: { associationId?: number; userRole?: string; incrementView?: boolean }
+    options: { associationId?: number; userRole?: string; incrementView?: boolean; isSuper?: boolean }
   ): Promise<HelpArticle | null> {
-    const { associationId, userRole, incrementView = true } = options;
+    const { associationId, userRole, incrementView = true, isSuper } = options;
 
     const article = await prisma.helpArticle.findUnique({
       where: { slug },
@@ -175,10 +175,10 @@ export const helpService = {
 
     if (!article) return null;
 
-    // Check visibility
+    // Check visibility (skip role check for super admin)
     if (!article.isPublished) return null;
-    if (article.associationId && article.associationId !== associationId) return null;
-    if (userRole && !article.roleVisibility.includes(userRole)) return null;
+    if (article.associationId && article.associationId !== associationId && !isSuper) return null;
+    if (userRole && !isSuper && !article.roleVisibility.includes(userRole)) return null;
 
     // Increment view count
     if (incrementView) {
@@ -195,9 +195,9 @@ export const helpService = {
    * Get featured articles
    */
   async getFeaturedArticles(
-    options: { associationId?: number; userRole?: string; limit?: number }
+    options: { associationId?: number; userRole?: string; limit?: number; isSuper?: boolean }
   ): Promise<HelpArticle[]> {
-    const { associationId, userRole, limit = 5 } = options;
+    const { associationId, userRole, limit = 5, isSuper } = options;
 
     const where: any = {
       isPublished: true,
@@ -208,7 +208,7 @@ export const helpService = {
       ],
     };
 
-    if (userRole) {
+    if (userRole && !isSuper) {
       where.roleVisibility = { has: userRole };
     }
 
@@ -307,9 +307,9 @@ export const helpService = {
    * List FAQs
    */
   async listFAQs(
-    options: { associationId?: number; userRole?: string; category?: string }
+    options: { associationId?: number; userRole?: string; category?: string; isSuper?: boolean }
   ): Promise<FAQItem[]> {
-    const { associationId, userRole, category } = options;
+    const { associationId, userRole, category, isSuper } = options;
 
     const where: any = {
       isActive: true,
@@ -323,7 +323,7 @@ export const helpService = {
       where.category = category;
     }
 
-    if (userRole) {
+    if (userRole && !isSuper) {
       where.roleVisibility = { has: userRole };
     }
 
@@ -339,7 +339,7 @@ export const helpService = {
    * Get FAQs grouped by category
    */
   async getFAQsByCategory(
-    options: { associationId?: number; userRole?: string }
+    options: { associationId?: number; userRole?: string; isSuper?: boolean }
   ): Promise<FAQByCategory[]> {
     const faqs = await this.listFAQs(options);
 
@@ -361,9 +361,9 @@ export const helpService = {
    * Get top FAQs
    */
   async getTopFAQs(
-    options: { associationId?: number; userRole?: string; limit?: number }
+    options: { associationId?: number; userRole?: string; limit?: number; isSuper?: boolean }
   ): Promise<FAQItem[]> {
-    const { associationId, userRole, limit = 5 } = options;
+    const { associationId, userRole, limit = 5, isSuper } = options;
 
     const where: any = {
       isActive: true,
@@ -373,7 +373,7 @@ export const helpService = {
       ],
     };
 
-    if (userRole) {
+    if (userRole && !isSuper) {
       where.roleVisibility = { has: userRole };
     }
 
@@ -446,13 +446,13 @@ export const helpService = {
    * Get help center homepage data
    */
   async getHelpCenterData(
-    options: { associationId?: number; userRole?: string }
+    options: { associationId?: number; userRole?: string; isSuper?: boolean }
   ): Promise<HelpCenterData> {
-    const { associationId, userRole } = options;
+    const { associationId, userRole, isSuper } = options;
 
     const [featuredArticles, topFAQs, categoryCountsRaw] = await Promise.all([
-      this.getFeaturedArticles({ associationId, userRole, limit: 4 }),
-      this.getTopFAQs({ associationId, userRole, limit: 5 }),
+      this.getFeaturedArticles({ associationId, userRole, limit: 4, isSuper }),
+      this.getTopFAQs({ associationId, userRole, limit: 5, isSuper }),
       prisma.helpArticle.groupBy({
         by: ['category'],
         where: {
@@ -461,7 +461,7 @@ export const helpService = {
             { associationId: null },
             { associationId: associationId },
           ],
-          ...(userRole && { roleVisibility: { has: userRole } }),
+          ...(!isSuper && userRole && { roleVisibility: { has: userRole } }),
         },
         _count: { id: true },
       }),

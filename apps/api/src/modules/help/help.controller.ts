@@ -34,11 +34,17 @@ export const helpController = {
     try {
       const associationId = req.user?.associationId;
       const userRole = req.user?.role || 'member';
+      const isSuper = req.user?.platformRole === 'SUPER_ADMIN';
+
+      console.log('[Help] getHelpCenter called - associationId:', associationId, 'userRole:', userRole, 'isSuper:', isSuper);
 
       const data = await helpService.getHelpCenterData({
         associationId: associationId || undefined,
         userRole,
+        isSuper,
       });
+
+      console.log('[Help] Data fetched - articles:', data.featuredArticles.length, 'faqs:', data.topFAQs.length);
 
       // Add quick actions based on role
       data.quickActions = quickActionsService.getQuickActionsForRole(userRole);
@@ -78,11 +84,13 @@ export const helpController = {
 
       const associationId = req.user?.associationId;
       const userRole = req.user?.role || 'member';
+      const isSuper = req.user?.platformRole === 'SUPER_ADMIN';
 
       const result = await helpService.listArticles({
         ...validation.data,
         associationId: associationId || undefined,
         userRole,
+        isSuper,
       });
 
       res.json({
@@ -115,12 +123,14 @@ export const helpController = {
 
       const associationId = req.user?.associationId;
       const userRole = req.user?.role || 'member';
+      const isSuper = req.user?.platformRole === 'SUPER_ADMIN';
       const limit = parseInt(req.query.limit as string) || 10;
 
       const articles = await helpService.searchArticles(query, {
         associationId: associationId || undefined,
         userRole,
         limit,
+        isSuper,
       });
 
       res.json({
@@ -146,11 +156,13 @@ export const helpController = {
       const { slug } = req.params;
       const associationId = req.user?.associationId;
       const userRole = req.user?.role || 'member';
+      const isSuper = req.user?.platformRole === 'SUPER_ADMIN';
 
       const article = await helpService.getArticleBySlug(slug, {
         associationId: associationId || undefined,
         userRole,
         incrementView: true,
+        isSuper,
       });
 
       if (!article) {
@@ -383,11 +395,13 @@ export const helpController = {
 
       const associationId = req.user?.associationId;
       const userRole = req.user?.role || 'member';
+      const isSuper = req.user?.platformRole === 'SUPER_ADMIN';
 
       const faqs = await helpService.listFAQs({
         associationId: associationId || undefined,
         userRole,
         category: validation.data.category,
+        isSuper,
       });
 
       res.json({
@@ -412,10 +426,12 @@ export const helpController = {
     try {
       const associationId = req.user?.associationId;
       const userRole = req.user?.role || 'member';
+      const isSuper = req.user?.platformRole === 'SUPER_ADMIN';
 
       const grouped = await helpService.getFAQsByCategory({
         associationId: associationId || undefined,
         userRole,
+        isSuper,
       });
 
       res.json({

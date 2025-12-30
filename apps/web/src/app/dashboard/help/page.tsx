@@ -68,10 +68,11 @@ export default function HelpPage() {
   async function loadHelpCenter() {
     try {
       const data = await getHelpCenter();
-      setFeaturedArticles(data.featuredArticles);
-      setTopFAQs(data.topFAQs);
-      setQuickActions(data.quickActions);
-      setCategories(data.categories);
+      console.log('Help center data:', data);
+      setFeaturedArticles(data.featuredArticles || []);
+      setTopFAQs(data.topFAQs || []);
+      setQuickActions(data.quickActions || []);
+      setCategories(data.categories || []);
     } catch (error) {
       console.error('Failed to load help center:', error);
     } finally {

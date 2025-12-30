@@ -14,7 +14,9 @@ import {
   Lock,
   FileText,
   Settings,
-  ChevronRight
+  ChevronRight,
+  HelpCircle,
+  MessageSquare
 } from 'lucide-react';
 
 interface NavItem {
@@ -81,6 +83,20 @@ const navItems: NavItem[] = [
     icon: <Plug className="w-5 h-5" />,
     permission: PERMISSIONS.SETTINGS_INTEGRATIONS,
     description: 'External services'
+  },
+  {
+    label: 'Help Content',
+    href: '/dashboard/settings/help-content',
+    icon: <HelpCircle className="w-5 h-5" />,
+    permission: PERMISSIONS.HELP_MANAGE,
+    description: 'Articles & FAQs'
+  },
+  {
+    label: 'Support Tickets',
+    href: '/dashboard/settings/support',
+    icon: <MessageSquare className="w-5 h-5" />,
+    permission: PERMISSIONS.SUPPORT_MANAGE,
+    description: 'Manage member tickets'
   },
   {
     label: 'Data & Privacy',
