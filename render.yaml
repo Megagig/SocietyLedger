@@ -4,10 +4,9 @@ services:
     env: node
     region: oregon
     plan: starter
-    rootDir: apps/api
-    buildCommand: npm install && npx prisma generate && npm run build
-    preDeployCommand: npx prisma migrate deploy
-    startCommand: npm start
+    buildCommand: cd ../.. && npm install && cd apps/api && npx prisma generate && npm run build
+    preDeployCommand: cd ../.. && cd apps/api && npx prisma migrate deploy
+    startCommand: cd ../.. && npm start --workspace=apps/api
     envVars:
       - key: NODE_ENV
         value: production
