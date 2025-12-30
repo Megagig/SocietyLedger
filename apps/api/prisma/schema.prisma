@@ -18,6 +18,15 @@ model Association {
   logo                       String?
   primaryColor               String?                     @map("primary_color")
   subscriptionExpiresAt      DateTime?                   @map("subscription_expires_at")
+  // Phase 19: Platform Admin - Soft Delete
+  deletedAt                  DateTime?                   @map("deleted_at")
+  deletedBy                  Int?                        @map("deleted_by")
+  deletionReason             String?                     @map("deletion_reason")
+  // Phase 19: Platform Admin - Security Settings
+  force2FA                   Boolean                     @default(false) @map("force_2fa")
+  passwordPolicyLevel        String                      @default("standard") @map("password_policy_level")
+  sessionTimeoutMinutes      Int                         @default(480) @map("session_timeout_minutes")
+  ipRestrictions             String[]                    @default([]) @map("ip_restrictions")
   createdAt                  DateTime                    @default(now()) @map("created_at")
   updatedAt                  DateTime                    @updatedAt @map("updated_at")
   accounting                 AccountingEntry[]
@@ -79,7 +88,13 @@ model Association {
   // RBAC System Relations
   roles                      Role[]
   userRoles                  UserRole[]
+  
+  // Phase 19: Platform Admin - Module & Feature Overrides
+  tenantModules              TenantModule[]
+  tenantFeatures             TenantFeature[]
+  billingOverrides           BillingOverride[]
 
+  @@index([deletedAt])
   @@map("associations")
 }
 
@@ -426,6 +441,9 @@ model Plan {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   subscriptions Subscription[]
+  // Phase 19: Platform Admin - Module & Feature Assignments
+  planModules   PlanModule[]
+  planFeatures  PlanFeature[]
 
   @@map("plans")
 }
@@ -549,6 +567,8 @@ enum PaymentStatus {
 enum PlatformRole {
   SUPER_ADMIN
   SUPPORT_AGENT
+  FINANCE_ADMIN
+  COMPLIANCE_ADMIN
 }
 
 // ============================================
@@ -2236,4 +2256,190 @@ model UserRole {
   @@index([roleId])
   @@index([associationId])
   @@map("user_roles")
+}
+
+
+// ============================================
+// PHASE 19: SAAS OWNER / SUPER ADMIN PLATFORM CONTROLS
+// Module & Feature Flags, Billing Overrides, Platform Action Logging
+// ============================================
+
+// Platform Module Definition - High-level modules
+model PlatformModule {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique // e.g., "members", "ledger", "payments"
+  name          String
+  description   String?
+  isCore        Boolean         @default(false) @map("is_core") // Core modules can't be disabled
+  sortOrder     Int             @default(0) @map("sort_order")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  features      PlatformFeature[]
+  planModules   PlanModule[]
+  tenantModules TenantModule[]
+
+  @@index([isCore])
+  @@map("platform_modules")
+}
+
+// Platform Feature Definition - Fine-grained features within modules
+model PlatformFeature {
+  id             Int              @id @default(autoincrement())
+  moduleId       Int              @map("module_id")
+  code           String           @unique // e.g., "ledger.export", "audit.export"
+  name           String
+  description    String?
+  isCore         Boolean          @default(false) @map("is_core")
+  sortOrder      Int              @default(0) @map("sort_order")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  module         PlatformModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  planFeatures   PlanFeature[]
+  tenantFeatures TenantFeature[]
+
+  @@index([moduleId])
+  @@map("platform_features")
+}
+
+// Plan-Module Assignment - What modules each plan includes
+model PlanModule {
+  id        Int            @id @default(autoincrement())
+  planId    Int            @map("plan_id")
+  moduleId  Int            @map("module_id")
+  isEnabled Boolean        @default(true) @map("is_enabled")
+  createdAt DateTime       @default(now()) @map("created_at")
+  plan      Plan           @relation(fields: [planId], references: [id], onDelete: Cascade)
+  module    PlatformModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, moduleId])
+  @@index([planId])
+  @@index([moduleId])
+  @@map("plan_modules")
+}
+
+// Plan-Feature Assignment - What features each plan includes
+model PlanFeature {
+  id        Int             @id @default(autoincrement())
+  planId    Int             @map("plan_id")
+  featureId Int             @map("feature_id")
+  isEnabled Boolean         @default(true) @map("is_enabled")
+  createdAt DateTime        @default(now()) @map("created_at")
+  plan      Plan            @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature   PlatformFeature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureId])
+  @@index([planId])
+  @@index([featureId])
+  @@map("plan_features")
+}
+
+// Tenant-Module Override - Per-tenant module overrides
+model TenantModule {
+  id            Int            @id @default(autoincrement())
+  associationId Int            @map("association_id")
+  moduleId      Int            @map("module_id")
+  isEnabled     Boolean        @map("is_enabled")
+  overrideType  OverrideType   @default(MANUAL) @map("override_type")
+  reason        String?
+  overriddenBy  Int            @map("overridden_by")
+  expiresAt     DateTime?      @map("expires_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  association   Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  module        PlatformModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([associationId, moduleId])
+  @@index([associationId])
+  @@index([moduleId])
+  @@index([expiresAt])
+  @@map("tenant_modules")
+}
+
+// Tenant-Feature Override - Per-tenant feature overrides
+model TenantFeature {
+  id            Int             @id @default(autoincrement())
+  associationId Int             @map("association_id")
+  featureId     Int             @map("feature_id")
+  isEnabled     Boolean         @map("is_enabled")
+  overrideType  OverrideType    @default(MANUAL) @map("override_type")
+  reason        String?
+  overriddenBy  Int             @map("overridden_by")
+  expiresAt     DateTime?       @map("expires_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  association   Association     @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  feature       PlatformFeature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([associationId, featureId])
+  @@index([associationId])
+  @@index([featureId])
+  @@index([expiresAt])
+  @@map("tenant_features")
+}
+
+// Billing Override - Billing exceptions and manual controls
+model BillingOverride {
+  id            Int                 @id @default(autoincrement())
+  associationId Int                 @map("association_id")
+  overrideType  BillingOverrideType @map("override_type")
+  value         String?             // JSON or simple value depending on type
+  reason        String
+  startDate     DateTime            @default(now()) @map("start_date")
+  endDate       DateTime?           @map("end_date")
+  isActive      Boolean             @default(true) @map("is_active")
+  createdBy     Int                 @map("created_by")
+  revokedBy     Int?                @map("revoked_by")
+  revokedAt     DateTime?           @map("revoked_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  association   Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, isActive])
+  @@index([overrideType])
+  @@index([endDate])
+  @@map("billing_overrides")
+}
+
+// Platform Action Log - Comprehensive audit trail for platform admin actions
+model PlatformActionLog {
+  id            Int       @id @default(autoincrement())
+  actorId       Int       @map("actor_id")
+  actorRole     String    @map("actor_role")
+  actionType    String    @map("action_type")
+  targetType    String    @map("target_type") // association, user, module, feature, billing
+  targetId      Int?      @map("target_id")
+  associationId Int?      @map("association_id")
+  beforeState   Json?     @map("before_state")
+  afterState    Json?     @map("after_state")
+  reason        String?
+  ipAddress     String?   @map("ip_address")
+  userAgent     String?   @map("user_agent")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([actorId])
+  @@index([actionType])
+  @@index([targetType])
+  @@index([associationId])
+  @@index([createdAt])
+  @@map("platform_action_logs")
+}
+
+// Override Type Enum - Types of tenant overrides
+enum OverrideType {
+  MANUAL      // Admin manually set
+  TRIAL       // Trial period override
+  PROMOTION   // Promotional access
+  SUPPORT     // Support-granted access
+  COMPLIANCE  // Compliance requirement
+}
+
+// Billing Override Type Enum - Types of billing exceptions
+enum BillingOverrideType {
+  BYPASS_BILLING      // Skip all billing
+  EXTEND_TRIAL        // Extend trial period
+  PAUSE_BILLING       // Pause billing temporarily
+  APPLY_CREDIT        // Apply credit to account
+  MARK_PAID_EXTERNAL  // Paid outside system
+  OVERRIDE_PLAN       // Force specific plan
+  GRACE_PERIOD        // Grace period for payment
 }

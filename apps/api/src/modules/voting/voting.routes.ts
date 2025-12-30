@@ -7,11 +7,16 @@ import { votingController } from './voting.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
+import { requireModule } from '../../middleware/module-feature.middleware';
 
 const router = Router();
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
+
+// Phase 19: Apply module check to all voting routes
+// In shadow mode, this logs but doesn't block; in enforce mode, it blocks access
+router.use(requireModule('voting'));
 
 // ==========================================
 // DASHBOARD ROUTES
