@@ -8,13 +8,12 @@
 import { Router } from 'express';
 import { dashboardController } from './dashboard.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { tenantMiddleware } from '../../middleware/tenant.middleware';
 
 const router = Router();
 
-// Apply auth and tenant middleware to all routes
+// Apply auth middleware - tenant context comes from user's associationId in JWT
+// Note: tenantMiddleware is bypassed globally for /api/dashboard routes
 router.use(authMiddleware);
-router.use(tenantMiddleware);
 
 // ==========================================
 // DASHBOARD ROUTES
