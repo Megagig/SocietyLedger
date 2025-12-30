@@ -39,6 +39,9 @@ import {
   IconChecklist,
   IconChartPie,
   IconUserPlus,
+  IconQuestionMark,
+  IconTicket,
+  IconPlus,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -602,7 +605,33 @@ export function Sidebar() {
     {
       label: 'Help & Support',
       icon: <IconHelp size={20} />,
-      href: '/dashboard/help',
+      children: [
+        {
+          label: 'Help Center',
+          icon: <IconHelp size={18} />,
+          href: '/dashboard/help',
+        },
+        {
+          label: 'Articles',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/help/articles',
+        },
+        {
+          label: 'FAQs',
+          icon: <IconQuestionMark size={18} />,
+          href: '/dashboard/help/faqs',
+        },
+        {
+          label: 'My Tickets',
+          icon: <IconTicket size={18} />,
+          href: '/dashboard/help/tickets',
+        },
+        {
+          label: 'Create Ticket',
+          icon: <IconPlus size={18} />,
+          href: '/dashboard/help/tickets/new',
+        },
+      ],
     },
     {
       label: 'Setup Wizard',
@@ -614,6 +643,23 @@ export function Sidebar() {
 
   // Add super admin specific items
   if (user?.platformRole === 'SUPER_ADMIN') {
+    // Find Help & Support menu and add admin items
+    const helpMenu = navItems.find(item => item.label === 'Help & Support');
+    if (helpMenu && helpMenu.children) {
+      helpMenu.children.push(
+        {
+          label: 'Manage Content',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/settings/help-content',
+        },
+        {
+          label: 'Manage Tickets',
+          icon: <IconClipboardCheck size={18} />,
+          href: '/dashboard/settings/support',
+        }
+      );
+    }
+
     navItems.unshift({
       label: 'Super Admin',
       icon: <IconBadge size={20} />,

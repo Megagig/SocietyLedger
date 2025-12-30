@@ -24,10 +24,12 @@ import {
   IconClock,
   IconMessageCircle,
   IconSparkles,
+  IconPencil,
 } from '@tabler/icons-react';
 import { getHelpCenter, searchArticles, HelpArticle, FAQItem, QuickAction } from '@/lib/api/help';
 import { getOpenTicketCount } from '@/lib/api/support';
 import { AIChatbot } from '@/components/help/AIChatbot';
+import { useAuthStore } from '@/store/authStore';
 
 // Icon mapping for quick actions
 const iconMap: Record<string, React.ReactNode> = {
@@ -48,6 +50,7 @@ const iconMap: Record<string, React.ReactNode> = {
   'chat-bubble-left-right': <IconMessageCircle size={24} />,
 };
 
+
 export default function HelpPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<HelpArticle[]>([]);
@@ -59,6 +62,10 @@ export default function HelpPage() {
   const [openTicketCount, setOpenTicketCount] = useState(0);
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Must call hooks at the top, before any conditional returns
+  const { user } = useAuthStore();
+  const canManageContent = user?.platformRole === 'SUPER_ADMIN';
 
   useEffect(() => {
     loadHelpCenter();
@@ -129,13 +136,24 @@ export default function HelpPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          Help & Support
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Find answers, browse articles, or create a support ticket
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+            Help & Support
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Find answers, browse articles, or create a support ticket
+          </p>
+        </div>
+        {canManageContent && (
+          <Link
+            href="/dashboard/settings/help-content"
+            className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
+          >
+            <IconPencil size={18} />
+            Manage Content
+          </Link>
+        )}
       </div>
 
       {/* Search Bar */}
