@@ -227,6 +227,37 @@ export const API_ROUTES = {
   DASHBOARD: {
     OVERVIEW: `${API_BASE_URL}/api/dashboard/overview`,
   },
+  // Phase 21: Help & Support Module
+  HELP: {
+    CENTER: `${API_BASE_URL}/api/help`,
+    ARTICLES: `${API_BASE_URL}/api/help/articles`,
+    ARTICLE_BY_SLUG: (slug: string) => `${API_BASE_URL}/api/help/articles/${slug}`,
+    ARTICLE_SEARCH: `${API_BASE_URL}/api/help/articles/search`,
+    ARTICLE_HELPFUL: (id: number) => `${API_BASE_URL}/api/help/articles/${id}/helpful`,
+    FAQS: `${API_BASE_URL}/api/help/faqs`,
+    FAQS_BY_CATEGORY: `${API_BASE_URL}/api/help/faqs/by-category`,
+    QUICK_ACTIONS: `${API_BASE_URL}/api/help/quick-actions`,
+    CATEGORIES_ARTICLES: `${API_BASE_URL}/api/help/categories/articles`,
+    CATEGORIES_FAQS: `${API_BASE_URL}/api/help/categories/faqs`,
+    ARTICLE_CATEGORIES: `${API_BASE_URL}/api/help/categories/articles`,
+    FAQ_CATEGORIES: `${API_BASE_URL}/api/help/categories/faqs`,
+    // AI Endpoints
+    AI_STATUS: `${API_BASE_URL}/api/help/ai/status`,
+    AI_SUGGEST_ARTICLES: `${API_BASE_URL}/api/help/ai/suggest-articles`,
+    AI_ANSWER: `${API_BASE_URL}/api/help/ai/answer`,
+    AI_CATEGORIZE: `${API_BASE_URL}/api/help/ai/categorize`,
+    AI_SENTIMENT: `${API_BASE_URL}/api/help/ai/sentiment`,
+    AI_SUGGEST_RESPONSE: `${API_BASE_URL}/api/help/ai/suggest-response`,
+  },
+  SUPPORT: {
+    TICKETS: `${API_BASE_URL}/api/support/tickets`,
+    TICKET_BY_ID: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}`,
+    TICKET_RESPOND: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/respond`,
+    TICKET_CLOSE: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/close`,
+    TICKET_REOPEN: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/reopen`,
+    TICKET_STATS: `${API_BASE_URL}/api/support/tickets/stats`,
+    TICKET_COUNT: `${API_BASE_URL}/api/support/tickets/count`,
+  },
 } as const;
 
 // App Settings

@@ -58,6 +58,17 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow help routes - tenant context comes from authenticated user's associationId
+    // Help content is global or association-specific, handled by the service
+    if (req.path.startsWith('/api/help')) {
+      return next();
+    }
+
+    // Allow support routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/support')) {
+      return next();
+    }
+
     // Allow member self-service routes - tenant context comes from authenticated user's associationId
     if (req.path.startsWith('/api/members/me')) {
       return next();

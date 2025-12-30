@@ -47,6 +47,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **18** | Settings Page Architecture | ⚪ Not Started | 0/10 | 🔴 HIGH |
 | **19** | SaaS Owner / Super Admin Platform Controls | ⚪ Not Started | 0/24 | 🔴 HIGH |
 | **20** | Dashboard Real-Data Integration | ✅ **COMPLETE** | 17/17 | 🔴 HIGH |
+| **21** | Help & Support Module | ⚪ Not Started | 0/28 | 🟡 MEDIUM |
 
 
 **Legend:**
@@ -2052,4 +2053,659 @@ Leverage existing services:
 - `reportsService.generateCollectionRate()` for collection rate
 - Member model queries for member stats
 - Transaction/Payment models for recent activity
+
+
+
+---
+
+### Phase 21: Help & Support Module 🟡 MEDIUM PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** RBAC ✅, Multi-tenancy ✅, Notifications ✅, AI Integration ✅  
+**Estimated Time:** 8-10 days  
+**Priority:** 🟡 MEDIUM - User Experience & Support Critical  
+**Documentation:** `docs/help-support/README.md`
+
+#### Overview
+
+The Help & Support module provides a comprehensive self-service help center and support ticket system for all association users. It is role-aware, multi-tenant safe, and designed to be extensible for future AI-powered support features.
+
+#### Design Principles
+
+1. **Role-aware content** - Users only see help content relevant to their role
+2. **Multi-tenant isolation** - Tickets and custom content scoped to association
+3. **Non-intrusive** - Does not modify existing functionality
+4. **AI-ready architecture** - Designed for future AI assistant integration
+5. **Scalable** - Supports global (platform-wide) and association-specific content
+
+#### Core Features
+
+**1. Help Center (Self-Service)**
+- Searchable help articles (global + association-specific)
+- Role-filtered FAQs
+- Quick action cards based on user role
+- Category-based navigation
+
+**2. Support Ticket System**
+- Create, view, and track support tickets
+- Ticket categories: Access, Payments, Reports, Bug, Feature Request, Other
+- Priority levels: Low, Medium, High, Urgent
+- Status workflow: OPEN → IN_PROGRESS → WAITING_FOR_USER → RESOLVED → CLOSED
+- File attachments support
+- Ticket responses/comments thread
+
+**3. Role-Based Quick Actions**
+- **Admin:** Association onboarding, bulk import, role management, reports
+- **Treasurer/Financial Secretary:** Ledger management, payment approvals, member statements
+- **Member:** View financial statement, payment history, account issues
+
+#### Database Models
+
+```prisma
+// Help Articles (Global + Association-specific)
+model HelpArticle {
+  id              Int          @id @default(autoincrement())
+  associationId   Int?         @map("association_id") // null = global article
+  title           String
+  slug            String
+  content         String       @db.Text // Markdown supported
+  category        String       // getting-started, members, finance, reports, etc.
+  roleVisibility  String[]     @default(["all"]) @map("role_visibility") // admin, treasurer, member, all
+  tags            String[]     @default([])
+  published       Boolean      @default(false)
+  viewCount       Int          @default(0) @map("view_count")
+  helpfulCount    Int          @default(0) @map("helpful_count")
+  createdBy       Int          @map("created_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  association     Association? @relation(fields: [associationId], references: [id])
+
+  @@unique([associationId, slug])
+  @@index([associationId, category])
+  @@index([published, roleVisibility])
+  @@map("help_articles")
+}
+
+// FAQ Items
+model FAQItem {
+  id              Int          @id @default(autoincrement())
+  associationId   Int?         @map("association_id") // null = global FAQ
+  question        String
+  answer          String       @db.Text
+  category        String       // general, payments, members, technical, etc.
+  roleVisibility  String[]     @default(["all"]) @map("role_visibility")
+  displayOrder    Int          @default(0) @map("display_order")
+  published       Boolean      @default(true)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  association     Association? @relation(fields: [associationId], references: [id])
+
+  @@index([associationId, category])
+  @@index([published, roleVisibility])
+  @@map("faq_items")
+}
+
+// Support Tickets
+model SupportTicket {
+  id              Int                @id @default(autoincrement())
+  associationId   Int                @map("association_id")
+  userId          Int                @map("user_id")
+  ticketNumber    String             @unique @map("ticket_number") // TKT-YYYYMMDD-XXXX
+  subject         String
+  category        SupportCategory
+  priority        SupportPriority    @default(MEDIUM)
+  status          SupportStatus      @default(OPEN)
+  description     String             @db.Text
+  userRole        String             @map("user_role") // Role at time of creation
+  assignedTo      Int?               @map("assigned_to")
+  resolvedAt      DateTime?          @map("resolved_at")
+  closedAt        DateTime?          @map("closed_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  association     Association        @relation(fields: [associationId], references: [id])
+  user            User               @relation("TicketCreator", fields: [userId], references: [id])
+  assignee        User?              @relation("TicketAssignee", fields: [assignedTo], references: [id])
+  responses       TicketResponse[]
+  attachments     TicketAttachment[]
+
+  @@index([associationId, status])
+  @@index([userId])
+  @@index([assignedTo])
+  @@index([ticketNumber])
+  @@map("support_tickets")
+}
+
+// Ticket Responses/Comments
+model TicketResponse {
+  id              Int            @id @default(autoincrement())
+  ticketId        Int            @map("ticket_id")
+  userId          Int            @map("user_id")
+  message         String         @db.Text
+  isStaffResponse Boolean        @default(false) @map("is_staff_response")
+  isInternal      Boolean        @default(false) @map("is_internal") // Internal notes
+  createdAt       DateTime       @default(now()) @map("created_at")
+  ticket          SupportTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id])
+  attachments     TicketAttachment[]
+
+  @@index([ticketId])
+  @@map("ticket_responses")
+}
+
+// Ticket Attachments
+model TicketAttachment {
+  id              Int             @id @default(autoincrement())
+  ticketId        Int             @map("ticket_id")
+  responseId      Int?            @map("response_id")
+  filename        String
+  filepath        String
+  fileSize        Int             @map("file_size")
+  mimeType        String          @map("mime_type")
+  uploadedBy      Int             @map("uploaded_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  ticket          SupportTicket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  response        TicketResponse? @relation(fields: [responseId], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_attachments")
+}
+
+enum SupportCategory {
+  ACCESS
+  PAYMENTS
+  REPORTS
+  MEMBERS
+  TECHNICAL
+  BUG
+  FEATURE_REQUEST
+  OTHER
+}
+
+enum SupportPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_USER
+  RESOLVED
+  CLOSED
+}
+```
+
+#### New Permissions
+
+```typescript
+// Add to permission registry
+"support.create": "Create support tickets"
+"support.view_own": "View own support tickets"
+"support.view_all": "View all association tickets (admin)"
+"support.manage": "Manage and respond to tickets (admin)"
+"support.assign": "Assign tickets to staff"
+"help.view": "View help articles and FAQs"
+"help.manage": "Manage help content (platform admin)"
+```
+
+#### Role Permission Matrix
+
+| Permission | Admin | Treasurer | Fin. Secretary | Secretary | Member |
+|------------|-------|-----------|----------------|-----------|--------|
+| support.create | ✅ | ✅ | ✅ | ✅ | ✅ |
+| support.view_own | ✅ | ✅ | ✅ | ✅ | ✅ |
+| support.view_all | ✅ | ❌ | ❌ | ❌ | ❌ |
+| support.manage | ✅ | ❌ | ❌ | ❌ | ❌ |
+| help.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| help.manage | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+*Note: `help.manage` is for SUPER_ADMIN platform role only*
+
+#### API Endpoints
+
+**Help Content APIs:**
+```
+GET  /api/help/articles              # List articles (role-filtered)
+GET  /api/help/articles/:slug        # Get article by slug
+GET  /api/help/articles/search       # Search articles
+GET  /api/help/faqs                  # List FAQs (role-filtered)
+GET  /api/help/faqs/by-category      # FAQs grouped by category
+GET  /api/help/quick-actions         # Role-based quick action cards
+POST /api/help/articles/:id/helpful  # Mark article as helpful
+```
+
+**Support Ticket APIs:**
+```
+GET    /api/support/tickets              # List tickets (own or all based on permission)
+POST   /api/support/tickets              # Create ticket
+GET    /api/support/tickets/:id          # Get ticket details
+PATCH  /api/support/tickets/:id          # Update ticket (status, priority, assignee)
+POST   /api/support/tickets/:id/respond  # Add response to ticket
+POST   /api/support/tickets/:id/close    # Close ticket
+POST   /api/support/tickets/:id/reopen   # Reopen closed ticket
+GET    /api/support/tickets/stats        # Ticket statistics (admin)
+POST   /api/support/attachments          # Upload attachment
+```
+
+**Admin Help Management APIs (Platform Admin):**
+```
+POST   /api/admin/help/articles          # Create article
+PUT    /api/admin/help/articles/:id      # Update article
+DELETE /api/admin/help/articles/:id      # Delete article
+POST   /api/admin/help/faqs              # Create FAQ
+PUT    /api/admin/help/faqs/:id          # Update FAQ
+DELETE /api/admin/help/faqs/:id          # Delete FAQ
+```
+
+#### Frontend Routes
+
+```
+/dashboard/help                          # Main help center page
+/dashboard/help/articles                 # Browse all articles
+/dashboard/help/articles/:slug           # View single article
+/dashboard/help/faqs                     # Browse FAQs
+/dashboard/help/tickets                  # My support tickets
+/dashboard/help/tickets/new              # Create new ticket
+/dashboard/help/tickets/:id              # View ticket details
+/dashboard/settings/support              # Admin: Association ticket management
+```
+
+#### Quick Action Cards by Role
+
+**Admin Quick Actions:**
+- 📋 How to onboard your association
+- 👥 Bulk import members guide
+- 🔐 Managing roles and permissions
+- 📊 Generating financial reports
+- ⚙️ Association settings guide
+
+**Treasurer/Financial Secretary Quick Actions:**
+- 💰 Recording payments guide
+- 📝 Managing the financial ledger
+- ✅ Approving pending payments
+- 📄 Generating member statements
+- 🔄 Payment reconciliation
+
+**Member Quick Actions:**
+- 📊 View my financial statement
+- 💳 Payment history
+- 🔑 Account and login issues
+- 📱 Mobile app guide
+- ❓ Contact support
+
+#### Implementation Tasks
+
+**Backend Tasks (12 tasks):**
+
+- [ ] **TASK-HELP-001:** Database Schema & Migration
+  - Add HelpArticle, FAQItem, SupportTicket, TicketResponse, TicketAttachment models
+  - Create migration and apply
+  - **Files:** `apps/api/prisma/schema.prisma`
+
+- [ ] **TASK-HELP-002:** Help Service Implementation
+  - Create HelpService with article/FAQ CRUD and search
+  - Role-based filtering logic
+  - View count and helpful tracking
+  - **Files:** `apps/api/src/modules/help/help.service.ts`
+
+- [ ] **TASK-HELP-003:** Help Controller & Routes
+  - Implement all help content endpoints
+  - Apply RBAC middleware
+  - **Files:** `apps/api/src/modules/help/help.controller.ts`, `help.routes.ts`
+
+- [ ] **TASK-HELP-004:** Support Ticket Service
+  - Ticket CRUD operations
+  - Ticket number generation (TKT-YYYYMMDD-XXXX)
+  - Status workflow management
+  - **Files:** `apps/api/src/modules/support/support.service.ts`
+
+- [ ] **TASK-HELP-005:** Support Ticket Controller & Routes
+  - Implement all ticket endpoints
+  - Permission-based access (own vs all)
+  - **Files:** `apps/api/src/modules/support/support.controller.ts`, `support.routes.ts`
+
+- [ ] **TASK-HELP-006:** Ticket Response System
+  - Add responses to tickets
+  - Staff vs user response differentiation
+  - Internal notes support
+  - **Files:** `apps/api/src/modules/support/support.service.ts`
+
+- [ ] **TASK-HELP-007:** File Attachment Handling
+  - Upload attachments to tickets/responses
+  - File validation (type, size)
+  - Secure file storage
+  - **Files:** `apps/api/src/modules/support/attachments.service.ts`
+
+- [ ] **TASK-HELP-008:** Quick Actions Service
+  - Role-based quick action card generation
+  - Dynamic content based on user permissions
+  - **Files:** `apps/api/src/modules/help/quick-actions.service.ts`
+
+- [ ] **TASK-HELP-009:** Ticket Notifications
+  - Email notifications for ticket updates
+  - In-app notifications for responses
+  - **Files:** `apps/api/src/modules/support/support.service.ts`
+
+- [ ] **TASK-HELP-010:** Audit Logging Integration
+  - Log all ticket actions (create, update, close)
+  - Log help content changes
+  - **Files:** Integrate with existing audit system
+
+- [ ] **TASK-HELP-011:** Seed Help Content
+  - Create seed script with initial articles and FAQs
+  - Cover common topics for all roles
+  - **Files:** `apps/api/prisma/seeds/help-content.seed.ts`
+
+- [ ] **TASK-HELP-012:** Add Permissions to RBAC
+  - Add support.* and help.* permissions
+  - Assign to default roles
+  - **Files:** Update permission seed data
+
+**AI Integration Tasks (6 tasks):**
+
+- [ ] **TASK-HELP-AI-001:** AI Help Service Implementation
+  - **Description:** Create AIHelpService that integrates with existing OpenRouter client to provide AI-powered help features
+  - **Dependencies:** TASK-HELP-003, Phase 17 AI Integration
+  - **Files to Create:** `apps/api/src/modules/help/ai-help.service.ts`
+  - **Key Methods:**
+    - `suggestArticles(associationId, query)` - Semantic search for relevant articles
+    - `answerFromKnowledgeBase(associationId, question)` - AI answers from help content
+  - **Acceptance Criteria:**
+    - Uses existing OpenRouter client
+    - Rate limited per association
+    - Audit logged
+
+- [ ] **TASK-HELP-AI-002:** AI Ticket Categorization
+  - **Description:** Implement auto-categorization of tickets based on description using AI
+  - **Dependencies:** TASK-HELP-007, Phase 17 AI Integration
+  - **Files to Create:** `apps/api/src/modules/support/ai-support.service.ts`
+  - **Key Methods:**
+    - `categorizeTicket(description)` - Returns category and priority suggestion
+    - `analyzeSentiment(text)` - Returns sentiment and escalation recommendation
+  - **Acceptance Criteria:**
+    - Categorization confidence score returned
+    - Sentiment analysis detects urgent issues
+    - Falls back gracefully if AI unavailable
+
+- [ ] **TASK-HELP-AI-003:** AI Response Suggestions
+  - **Description:** Generate AI-powered response suggestions for support staff
+  - **Dependencies:** TASK-HELP-AI-002
+  - **Files to Update:** `apps/api/src/modules/support/ai-support.service.ts`
+  - **Key Methods:**
+    - `generateResponseSuggestion(ticket)` - Generate response based on ticket and similar past tickets
+  - **Acceptance Criteria:**
+    - Suggestions are editable by staff
+    - Sources/reasoning provided
+    - Staff approval required before sending
+
+- [ ] **TASK-HELP-AI-004:** AI Help Controller & Routes
+  - **Description:** Create API endpoints for AI help features
+  - **Dependencies:** TASK-HELP-AI-001, TASK-HELP-AI-002, TASK-HELP-AI-003
+  - **Files to Create:** `apps/api/src/modules/help/ai-help.controller.ts`, `ai-help.routes.ts`
+  - **Endpoints:**
+    - POST /api/help/ai/suggest-articles
+    - POST /api/help/ai/answer
+    - POST /api/support/ai/categorize
+    - POST /api/support/ai/sentiment
+    - POST /api/support/ai/suggest-response
+  - **Acceptance Criteria:**
+    - All endpoints rate limited
+    - Audit logging for all AI calls
+    - Graceful degradation if AI unavailable
+
+- [ ] **TASK-HELP-AI-005:** AI Chatbot Component
+  - **Description:** Create AI chatbot UI component for help center that answers questions from knowledge base
+  - **Dependencies:** TASK-HELP-AI-004, TASK-HELP-016
+  - **Files to Create:** `apps/web/src/components/help/AIChatbot.tsx`
+  - **Features:**
+    - Chat interface with message history
+    - Shows sources for answers
+    - "Create Ticket" button if AI can't help
+    - Typing indicator during AI response
+  - **Acceptance Criteria:**
+    - Smooth chat UX
+    - Sources displayed for transparency
+    - Easy escalation to ticket
+
+- [ ] **TASK-HELP-AI-006:** AI-Powered Ticket Form
+  - **Description:** Enhance ticket creation form with AI features
+  - **Dependencies:** TASK-HELP-AI-004, TASK-HELP-019
+  - **Files to Update:** `apps/web/src/app/dashboard/help/tickets/new/page.tsx`
+  - **Features:**
+    - Show suggested articles as user types description
+    - Auto-suggest category and priority
+    - Sentiment indicator for staff
+    - "AI couldn't help" tracking
+  - **Acceptance Criteria:**
+    - Suggestions appear after 3+ words typed
+    - User can dismiss suggestions
+    - Category/priority auto-filled but editable
+
+**Frontend Tasks (10 tasks):**
+
+- [ ] **TASK-HELP-013:** Help Center Main Page
+  - Search bar with instant filtering
+  - Quick action cards (role-based)
+  - Featured articles section
+  - FAQ accordion
+  - **Files:** `apps/web/src/app/dashboard/help/page.tsx`
+
+- [ ] **TASK-HELP-014:** Article List & Detail Pages
+  - Browse articles by category
+  - Article detail with markdown rendering
+  - Helpful/not helpful feedback
+  - Related articles
+  - **Files:** `apps/web/src/app/dashboard/help/articles/`
+
+- [ ] **TASK-HELP-015:** FAQ Page
+  - Grouped by category
+  - Expandable accordion
+  - Search within FAQs
+  - **Files:** `apps/web/src/app/dashboard/help/faqs/page.tsx`
+
+- [ ] **TASK-HELP-016:** Support Tickets List Page
+  - List user's tickets (or all for admin)
+  - Filter by status, priority, category
+  - Pagination
+  - **Files:** `apps/web/src/app/dashboard/help/tickets/page.tsx`
+
+- [ ] **TASK-HELP-017:** Create Ticket Form
+  - Subject, category, priority, description
+  - File attachment upload
+  - AI-suggested articles before submission (future)
+  - **Files:** `apps/web/src/app/dashboard/help/tickets/new/page.tsx`
+
+- [ ] **TASK-HELP-018:** Ticket Detail Page
+  - Ticket info and status
+  - Response thread
+  - Add response form
+  - Status change actions (admin)
+  - **Files:** `apps/web/src/app/dashboard/help/tickets/[id]/page.tsx`
+
+- [ ] **TASK-HELP-019:** Admin Ticket Management
+  - View all association tickets
+  - Assign tickets
+  - Change status/priority
+  - Internal notes
+  - **Files:** `apps/web/src/app/dashboard/settings/support/page.tsx`
+
+- [ ] **TASK-HELP-020:** API Client & Types
+  - Help API client functions
+  - Support API client functions
+  - TypeScript interfaces
+  - **Files:** `apps/web/src/lib/api/help.ts`, `support.ts`
+
+- [ ] **TASK-HELP-021:** Add API Routes to Constants
+  - Add HELP and SUPPORT routes
+  - **Files:** `apps/web/src/utils/constants.ts`
+
+- [ ] **TASK-HELP-022:** Update Sidebar Navigation
+  - Add Help & Support link
+  - Badge for open tickets (admin)
+  - **Files:** Update sidebar component
+
+#### AI Integration (Core Feature)
+
+The Help & Support module integrates with the existing AI system (Phase 17) to provide intelligent assistance:
+
+**1. AI-Suggested Articles (Before Ticket Submission)**
+- When user starts typing a ticket, AI suggests relevant help articles
+- Reduces ticket volume by helping users self-serve
+- Uses semantic search against article content
+
+**2. Smart Ticket Categorization**
+- AI automatically categorizes tickets based on description
+- Suggests priority level based on content analysis
+- Reduces admin workload for ticket triage
+
+**3. Sentiment Analysis**
+- Detect frustrated/urgent users from ticket content
+- Auto-escalate high-sentiment tickets
+- Alert admins to potentially critical issues
+
+**4. AI-Assisted Responses**
+- Generate response suggestions for common issues
+- Staff can edit/approve before sending
+- Learn from past successful resolutions
+
+**5. Knowledge Base Q&A**
+- AI chatbot answers questions from help content
+- Falls back to ticket creation if unable to help
+- Available on help center page
+
+```typescript
+// AI Help Integration Service
+interface AIHelpService {
+  // Suggest articles based on user query
+  suggestArticles(associationId: number, query: string): Promise<{
+    articles: HelpArticle[];
+    confidence: number;
+  }>;
+  
+  // Auto-categorize ticket from description
+  categorizeTicket(description: string): Promise<{
+    category: SupportCategory;
+    priority: SupportPriority;
+    confidence: number;
+  }>;
+  
+  // Analyze sentiment of ticket content
+  analyzeSentiment(text: string): Promise<{
+    sentiment: 'positive' | 'neutral' | 'negative' | 'urgent';
+    score: number;
+    shouldEscalate: boolean;
+  }>;
+  
+  // Generate response suggestion
+  generateResponseSuggestion(ticket: SupportTicket): Promise<{
+    suggestion: string;
+    confidence: number;
+    sources: string[];
+  }>;
+  
+  // Answer question from knowledge base
+  answerFromKnowledgeBase(associationId: number, question: string): Promise<{
+    answer: string;
+    sources: HelpArticle[];
+    confidence: number;
+    suggestTicket: boolean;
+  }>;
+}
+```
+
+**API Endpoints for AI Features:**
+```
+POST /api/help/ai/suggest-articles     # Get AI-suggested articles for query
+POST /api/help/ai/answer               # AI answers from knowledge base
+POST /api/support/ai/categorize        # Auto-categorize ticket
+POST /api/support/ai/sentiment         # Analyze ticket sentiment
+POST /api/support/ai/suggest-response  # Generate response suggestion
+```
+
+#### Files to Create
+
+```
+apps/api/src/modules/help/
+├── help.controller.ts
+├── help.service.ts
+├── help.routes.ts
+├── help.types.ts
+├── help.validation.ts
+├── quick-actions.service.ts
+├── ai-help.service.ts          # AI-powered help features
+└── ai-help.controller.ts       # AI help endpoints
+
+apps/api/src/modules/support/
+├── support.controller.ts
+├── support.service.ts
+├── support.routes.ts
+├── support.types.ts
+├── support.validation.ts
+├── attachments.service.ts
+└── ai-support.service.ts       # AI ticket categorization & responses
+
+apps/web/src/app/dashboard/help/
+├── page.tsx                    # Main help center with AI chatbot
+├── articles/
+│   ├── page.tsx               # Article list
+│   └── [slug]/page.tsx        # Article detail
+├── faqs/
+│   └── page.tsx               # FAQ page
+└── tickets/
+    ├── page.tsx               # Ticket list
+    ├── new/page.tsx           # Create ticket with AI suggestions
+    └── [id]/page.tsx          # Ticket detail with AI response suggestions
+
+apps/web/src/components/help/
+├── AIChatbot.tsx              # AI chatbot component
+├── ArticleSuggestions.tsx     # AI-suggested articles component
+└── SentimentBadge.tsx         # Sentiment indicator for tickets
+
+apps/web/src/lib/api/
+├── help.ts                    # Help API client
+└── support.ts                 # Support API client
+
+docs/help-support/
+├── README.md
+├── AI_FEATURES.md             # AI integration documentation
+└── TESTING_GUIDE.md
+```
+
+#### Success Criteria
+
+- ✅ Help page replaces placeholder with functional help center
+- ✅ Role-based content filtering works correctly
+- ✅ Users can create and track support tickets
+- ✅ Admins can manage all association tickets
+- ✅ Multi-tenant isolation enforced (no cross-tenant data)
+- ✅ All actions logged to audit system
+- ✅ No breaking changes to existing functionality
+- ✅ Mobile-responsive UI
+- ✅ Search functionality works across articles and FAQs
+- ✅ AI chatbot answers questions from knowledge base
+- ✅ AI suggests relevant articles before ticket creation
+- ✅ AI auto-categorizes tickets with confidence scores
+- ✅ AI generates response suggestions for staff
+
+#### Testing Checklist
+
+- [ ] Verify role-based article visibility
+- [ ] Verify role-based FAQ visibility
+- [ ] Test ticket creation for all roles
+- [ ] Test ticket visibility (own vs all)
+- [ ] Test ticket status workflow
+- [ ] Test file attachment upload/download
+- [ ] Verify tenant isolation
+- [ ] Test search functionality
+- [ ] Verify audit logging
+- [ ] Test email notifications
+- [ ] Mobile responsiveness check
+- [ ] Test AI chatbot responses
+- [ ] Test AI article suggestions
+- [ ] Test AI ticket categorization
+- [ ] Test AI response suggestions
+- [ ] Verify AI rate limiting per association
+- [ ] Test graceful degradation when AI unavailable
 

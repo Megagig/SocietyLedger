@@ -62,6 +62,15 @@ export const PERMISSIONS = {
   AUDIT_VIEW: 'audit.view',
   AUDIT_EXPORT: 'audit.export',
   
+  // Help & Support (Phase 21)
+  HELP_VIEW: 'help.view',
+  HELP_MANAGE: 'help.manage',
+  SUPPORT_CREATE: 'support.create',
+  SUPPORT_VIEW_OWN: 'support.view_own',
+  SUPPORT_VIEW_ALL: 'support.view_all',
+  SUPPORT_MANAGE: 'support.manage',
+  SUPPORT_RESPOND: 'support.respond',
+  
   // ============================================
   // LEGACY PERMISSION KEYS (for backward compatibility)
   // ============================================

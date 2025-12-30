@@ -173,6 +173,15 @@ export const PERMISSIONS = {
   POLL_VIEW: 'members.view',
   POLL_MANAGE: 'members.create',
   POLL_VOTE: 'members.view',
+  
+  // Help & Support (Phase 21)
+  HELP_VIEW: 'help.view',
+  HELP_MANAGE: 'help.manage',
+  SUPPORT_CREATE: 'support.create',
+  SUPPORT_VIEW_OWN: 'support.view_own',
+  SUPPORT_VIEW_ALL: 'support.view_all',
+  SUPPORT_MANAGE: 'support.manage',
+  SUPPORT_RESPOND: 'support.respond',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
