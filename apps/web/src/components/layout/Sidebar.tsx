@@ -603,7 +603,6 @@ export function Sidebar() {
       label: 'Help & Support',
       icon: <IconHelp size={20} />,
       href: '/dashboard/help',
-      comingSoon: true,
     },
     {
       label: 'Setup Wizard',

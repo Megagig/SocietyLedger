@@ -84,15 +84,20 @@ model Association {
   // Phase 4.5: Voting & Elections
   elections                  Election[]
   polls                      Poll[]
-  
+
   // RBAC System Relations
-  roles                      Role[]
-  userRoles                  UserRole[]
-  
+  roles     Role[]
+  userRoles UserRole[]
+
   // Phase 19: Platform Admin - Module & Feature Overrides
-  tenantModules              TenantModule[]
-  tenantFeatures             TenantFeature[]
-  billingOverrides           BillingOverride[]
+  tenantModules    TenantModule[]
+  tenantFeatures   TenantFeature[]
+  billingOverrides BillingOverride[]
+
+  // Phase 21: Help & Support
+  helpArticles   HelpArticle[]
+  faqItems       FAQItem[]
+  supportTickets SupportTicket[]
 
   @@index([deletedAt])
   @@map("associations")
@@ -153,16 +158,22 @@ model User {
   // Phase 17: AI Integration
   aiAuditLogs                   AIAuditLog[]
   // Phase 4.5: Voting & Elections
-  createdElections              Election[]         @relation("ElectionCreatedBy")
-  publishedElections            Election[]         @relation("ElectionPublishedBy")
-  cancelledElections            Election[]         @relation("ElectionCancelledBy")
-  nominatedCandidates           Candidate[]        @relation("CandidateNominatedBy")
-  approvedCandidates            Candidate[]        @relation("CandidateApprovedBy")
-  createdPolls                  Poll[]             @relation("PollCreatedBy")
-  
+  createdElections              Election[]             @relation("ElectionCreatedBy")
+  publishedElections            Election[]             @relation("ElectionPublishedBy")
+  cancelledElections            Election[]             @relation("ElectionCancelledBy")
+  nominatedCandidates           Candidate[]            @relation("CandidateNominatedBy")
+  approvedCandidates            Candidate[]            @relation("CandidateApprovedBy")
+  createdPolls                  Poll[]                 @relation("PollCreatedBy")
+
   // RBAC System Relations
-  userRoles                     UserRole[]
-  assignedUserRoles             UserRole[]         @relation("UserRoleAssigner")
+  userRoles         UserRole[]
+  assignedUserRoles UserRole[] @relation("UserRoleAssigner")
+
+  // Phase 21: Help & Support
+  createdTickets    SupportTicket[]    @relation("TicketCreator")
+  assignedTickets   SupportTicket[]    @relation("TicketAssignee")
+  ticketResponses   TicketResponse[]
+  ticketAttachments TicketAttachment[]
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -1976,38 +1987,38 @@ model DocumentEmbedding {
 
 // Election Model
 model Election {
-  id                   Int                @id @default(autoincrement())
-  associationId        Int                @map("association_id")
-  title                String
-  description          String?            @db.Text
-  electionType         ElectionType       @default(GENERAL) @map("election_type")
-  status               ElectionStatus     @default(DRAFT)
-  nominationStartDate  DateTime?          @map("nomination_start_date")
-  nominationEndDate    DateTime?          @map("nomination_end_date")
-  votingStartDate      DateTime           @map("voting_start_date")
-  votingEndDate        DateTime           @map("voting_end_date")
-  maxVotesPerMember    Int                @default(1) @map("max_votes_per_member")
-  allowAbstention      Boolean            @default(true) @map("allow_abstention")
-  isAnonymous          Boolean            @default(true) @map("is_anonymous")
-  requiresQuorum       Boolean            @default(false) @map("requires_quorum")
-  quorumPercentage     Int?               @map("quorum_percentage")
-  eligibleVoterCount   Int                @default(0) @map("eligible_voter_count")
-  totalVotesCast       Int                @default(0) @map("total_votes_cast")
-  createdBy            Int                @map("created_by")
-  publishedBy          Int?               @map("published_by")
-  publishedAt          DateTime?          @map("published_at")
-  cancelledBy          Int?               @map("cancelled_by")
-  cancelledAt          DateTime?          @map("cancelled_at")
-  cancellationReason   String?            @map("cancellation_reason")
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
-  association          Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  creator              User               @relation("ElectionCreatedBy", fields: [createdBy], references: [id])
-  publisher            User?              @relation("ElectionPublishedBy", fields: [publishedBy], references: [id])
-  canceller            User?              @relation("ElectionCancelledBy", fields: [cancelledBy], references: [id])
-  positions            ElectionPosition[]
-  candidates           Candidate[]
-  votes                Vote[]
+  id                  Int                @id @default(autoincrement())
+  associationId       Int                @map("association_id")
+  title               String
+  description         String?            @db.Text
+  electionType        ElectionType       @default(GENERAL) @map("election_type")
+  status              ElectionStatus     @default(DRAFT)
+  nominationStartDate DateTime?          @map("nomination_start_date")
+  nominationEndDate   DateTime?          @map("nomination_end_date")
+  votingStartDate     DateTime           @map("voting_start_date")
+  votingEndDate       DateTime           @map("voting_end_date")
+  maxVotesPerMember   Int                @default(1) @map("max_votes_per_member")
+  allowAbstention     Boolean            @default(true) @map("allow_abstention")
+  isAnonymous         Boolean            @default(true) @map("is_anonymous")
+  requiresQuorum      Boolean            @default(false) @map("requires_quorum")
+  quorumPercentage    Int?               @map("quorum_percentage")
+  eligibleVoterCount  Int                @default(0) @map("eligible_voter_count")
+  totalVotesCast      Int                @default(0) @map("total_votes_cast")
+  createdBy           Int                @map("created_by")
+  publishedBy         Int?               @map("published_by")
+  publishedAt         DateTime?          @map("published_at")
+  cancelledBy         Int?               @map("cancelled_by")
+  cancelledAt         DateTime?          @map("cancelled_at")
+  cancellationReason  String?            @map("cancellation_reason")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  association         Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  creator             User               @relation("ElectionCreatedBy", fields: [createdBy], references: [id])
+  publisher           User?              @relation("ElectionPublishedBy", fields: [publishedBy], references: [id])
+  canceller           User?              @relation("ElectionCancelledBy", fields: [cancelledBy], references: [id])
+  positions           ElectionPosition[]
+  candidates          Candidate[]
+  votes               Vote[]
 
   @@index([associationId, status])
   @@index([associationId, votingStartDate])
@@ -2069,18 +2080,18 @@ model Candidate {
 
 // Vote Model
 model Vote {
-  id          Int               @id @default(autoincrement())
-  electionId  Int               @map("election_id")
-  positionId  Int?              @map("position_id")
-  candidateId Int?              @map("candidate_id")
-  voterId     Int               @map("voter_id")
-  voteHash    String            @map("vote_hash") // For verification without revealing voter
-  isAbstention Boolean          @default(false) @map("is_abstention")
-  votedAt     DateTime          @default(now()) @map("voted_at")
-  election    Election          @relation(fields: [electionId], references: [id], onDelete: Cascade)
-  position    ElectionPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  candidate   Candidate?        @relation(fields: [candidateId], references: [id], onDelete: SetNull)
-  voter       Member            @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  id           Int               @id @default(autoincrement())
+  electionId   Int               @map("election_id")
+  positionId   Int?              @map("position_id")
+  candidateId  Int?              @map("candidate_id")
+  voterId      Int               @map("voter_id")
+  voteHash     String            @map("vote_hash") // For verification without revealing voter
+  isAbstention Boolean           @default(false) @map("is_abstention")
+  votedAt      DateTime          @default(now()) @map("voted_at")
+  election     Election          @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  position     ElectionPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  candidate    Candidate?        @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  voter        Member            @relation(fields: [voterId], references: [id], onDelete: Cascade)
 
   @@unique([electionId, positionId, voterId])
   @@index([electionId])
@@ -2197,14 +2208,14 @@ enum PollStatus {
 
 // Permission Model - Global permissions registry
 model Permission {
-  id            Int                @id @default(autoincrement())
-  key           String             @unique // e.g., "members.view", "ledger.create"
-  description   String
-  module        String             // e.g., "Members", "Finance/Ledger"
-  examples      String[]           @default([]) // Usage examples
-  isActive      Boolean            @default(true) @map("is_active")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  updatedAt     DateTime           @updatedAt @map("updated_at")
+  id              Int              @id @default(autoincrement())
+  key             String           @unique // e.g., "members.view", "ledger.create"
+  description     String
+  module          String // e.g., "Members", "Finance/Ledger"
+  examples        String[]         @default([]) // Usage examples
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
   rolePermissions RolePermission[]
 
   @@index([module])
@@ -2214,16 +2225,16 @@ model Permission {
 
 // Role Model - Association-scoped roles (except platform roles)
 model Role {
-  id            Int                @id @default(autoincrement())
-  associationId Int?               @map("association_id") // NULL for platform roles
+  id            Int              @id @default(autoincrement())
+  associationId Int?             @map("association_id") // NULL for platform roles
   name          String
-  displayName   String             @map("display_name")
+  displayName   String           @map("display_name")
   description   String?
-  isSystemRole  Boolean            @default(false) @map("is_system_role") // Cannot be deleted/modified
-  isActive      Boolean            @default(true) @map("is_active")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  updatedAt     DateTime           @updatedAt @map("updated_at")
-  association   Association?       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  isSystemRole  Boolean          @default(false) @map("is_system_role") // Cannot be deleted/modified
+  isActive      Boolean          @default(true) @map("is_active")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  association   Association?     @relation(fields: [associationId], references: [id], onDelete: Cascade)
   permissions   RolePermission[]
   userRoles     UserRole[]
 
@@ -2271,7 +2282,6 @@ model UserRole {
   @@map("user_roles")
 }
 
-
 // ============================================
 // PHASE 19: SAAS OWNER / SUPER ADMIN PLATFORM CONTROLS
 // Module & Feature Flags, Billing Overrides, Platform Action Logging
@@ -2279,14 +2289,14 @@ model UserRole {
 
 // Platform Module Definition - High-level modules
 model PlatformModule {
-  id            Int             @id @default(autoincrement())
-  code          String          @unique // e.g., "members", "ledger", "payments"
+  id            Int               @id @default(autoincrement())
+  code          String            @unique // e.g., "members", "ledger", "payments"
   name          String
   description   String?
-  isCore        Boolean         @default(false) @map("is_core") // Core modules can't be disabled
-  sortOrder     Int             @default(0) @map("sort_order")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  isCore        Boolean           @default(false) @map("is_core") // Core modules can't be disabled
+  sortOrder     Int               @default(0) @map("sort_order")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
   features      PlatformFeature[]
   planModules   PlanModule[]
   tenantModules TenantModule[]
@@ -2297,16 +2307,16 @@ model PlatformModule {
 
 // Platform Feature Definition - Fine-grained features within modules
 model PlatformFeature {
-  id             Int              @id @default(autoincrement())
-  moduleId       Int              @map("module_id")
-  code           String           @unique // e.g., "ledger.export", "audit.export"
+  id             Int             @id @default(autoincrement())
+  moduleId       Int             @map("module_id")
+  code           String          @unique // e.g., "ledger.export", "audit.export"
   name           String
   description    String?
-  isCore         Boolean          @default(false) @map("is_core")
-  sortOrder      Int              @default(0) @map("sort_order")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  module         PlatformModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  isCore         Boolean         @default(false) @map("is_core")
+  sortOrder      Int             @default(0) @map("sort_order")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  module         PlatformModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   planFeatures   PlanFeature[]
   tenantFeatures TenantFeature[]
 
@@ -2395,7 +2405,7 @@ model BillingOverride {
   id            Int                 @id @default(autoincrement())
   associationId Int                 @map("association_id")
   overrideType  BillingOverrideType @map("override_type")
-  value         String?             // JSON or simple value depending on type
+  value         String? // JSON or simple value depending on type
   reason        String
   startDate     DateTime            @default(now()) @map("start_date")
   endDate       DateTime?           @map("end_date")
@@ -2415,19 +2425,19 @@ model BillingOverride {
 
 // Platform Action Log - Comprehensive audit trail for platform admin actions
 model PlatformActionLog {
-  id            Int       @id @default(autoincrement())
-  actorId       Int       @map("actor_id")
-  actorRole     String    @map("actor_role")
-  actionType    String    @map("action_type")
-  targetType    String    @map("target_type") // association, user, module, feature, billing
-  targetId      Int?      @map("target_id")
-  associationId Int?      @map("association_id")
-  beforeState   Json?     @map("before_state")
-  afterState    Json?     @map("after_state")
+  id            Int      @id @default(autoincrement())
+  actorId       Int      @map("actor_id")
+  actorRole     String   @map("actor_role")
+  actionType    String   @map("action_type")
+  targetType    String   @map("target_type") // association, user, module, feature, billing
+  targetId      Int?     @map("target_id")
+  associationId Int?     @map("association_id")
+  beforeState   Json?    @map("before_state")
+  afterState    Json?    @map("after_state")
   reason        String?
-  ipAddress     String?   @map("ip_address")
-  userAgent     String?   @map("user_agent")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   @@index([actorId])
   @@index([actionType])
@@ -2439,20 +2449,186 @@ model PlatformActionLog {
 
 // Override Type Enum - Types of tenant overrides
 enum OverrideType {
-  MANUAL      // Admin manually set
-  TRIAL       // Trial period override
-  PROMOTION   // Promotional access
-  SUPPORT     // Support-granted access
-  COMPLIANCE  // Compliance requirement
+  MANUAL // Admin manually set
+  TRIAL // Trial period override
+  PROMOTION // Promotional access
+  SUPPORT // Support-granted access
+  COMPLIANCE // Compliance requirement
 }
 
 // Billing Override Type Enum - Types of billing exceptions
 enum BillingOverrideType {
-  BYPASS_BILLING      // Skip all billing
-  EXTEND_TRIAL        // Extend trial period
-  PAUSE_BILLING       // Pause billing temporarily
-  APPLY_CREDIT        // Apply credit to account
-  MARK_PAID_EXTERNAL  // Paid outside system
-  OVERRIDE_PLAN       // Force specific plan
-  GRACE_PERIOD        // Grace period for payment
+  BYPASS_BILLING // Skip all billing
+  EXTEND_TRIAL // Extend trial period
+  PAUSE_BILLING // Pause billing temporarily
+  APPLY_CREDIT // Apply credit to account
+  MARK_PAID_EXTERNAL // Paid outside system
+  OVERRIDE_PLAN // Force specific plan
+  GRACE_PERIOD // Grace period for payment
+}
+
+// ============================================
+// PHASE 21: HELP & SUPPORT MODULE
+// ============================================
+
+// Help Article - Knowledge base articles
+model HelpArticle {
+  id              Int          @id @default(autoincrement())
+  associationId   Int?         @map("association_id") // null = global article
+  slug            String       @unique
+  title           String
+  content         String       @db.Text
+  excerpt         String?
+  category        String // getting_started, members, finance, reports, settings, troubleshooting
+  tags            String[]     @default([])
+  roleVisibility  String[]     @default(["admin", "treasurer", "member"]) @map("role_visibility")
+  isPublished     Boolean      @default(true) @map("is_published")
+  isFeatured      Boolean      @default(false) @map("is_featured")
+  viewCount       Int          @default(0) @map("view_count")
+  helpfulCount    Int          @default(0) @map("helpful_count")
+  notHelpfulCount Int          @default(0) @map("not_helpful_count")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  association     Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([isPublished, isFeatured])
+  @@index([associationId])
+  @@map("help_articles")
+}
+
+// FAQ Item - Frequently asked questions
+model FAQItem {
+  id             Int          @id @default(autoincrement())
+  associationId  Int?         @map("association_id") // null = global FAQ
+  question       String
+  answer         String       @db.Text
+  category       String // general, payments, members, reports, technical
+  roleVisibility String[]     @default(["admin", "treasurer", "member"]) @map("role_visibility")
+  sortOrder      Int          @default(0) @map("sort_order")
+  isActive       Boolean      @default(true) @map("is_active")
+  viewCount      Int          @default(0) @map("view_count")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  association    Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@index([category, isActive])
+  @@index([associationId])
+  @@map("faq_items")
+}
+
+// Support Ticket - User support requests
+model SupportTicket {
+  id                      Int                @id @default(autoincrement())
+  associationId           Int                @map("association_id")
+  userId                  Int                @map("user_id")
+  ticketNumber            String             @unique @map("ticket_number") // TKT-YYYYMMDD-XXXX
+  subject                 String
+  description             String             @db.Text
+  category                TicketCategory
+  priority                TicketPriority     @default(MEDIUM)
+  status                  TicketStatus       @default(OPEN)
+  // AI-generated fields
+  aiCategory              String?            @map("ai_category")
+  aiCategoryConfidence    Float?             @map("ai_category_confidence")
+  aiSentiment             String?            @map("ai_sentiment") // positive, neutral, negative, urgent
+  aiSentimentScore        Float?             @map("ai_sentiment_score")
+  aiEscalationRecommended Boolean            @default(false) @map("ai_escalation_recommended")
+  // Assignment
+  assignedToId            Int?               @map("assigned_to_id")
+  // Timestamps
+  resolvedAt              DateTime?          @map("resolved_at")
+  closedAt                DateTime?          @map("closed_at")
+  firstResponseAt         DateTime?          @map("first_response_at")
+  createdAt               DateTime           @default(now()) @map("created_at")
+  updatedAt               DateTime           @updatedAt @map("updated_at")
+  // Relations
+  association             Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user                    User               @relation("TicketCreator", fields: [userId], references: [id])
+  assignedTo              User?              @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  responses               TicketResponse[]
+  attachments             TicketAttachment[]
+
+  @@index([associationId, status])
+  @@index([userId])
+  @@index([assignedToId])
+  @@index([category])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("support_tickets")
+}
+
+// Ticket Response - Replies to support tickets
+model TicketResponse {
+  id            Int                @id @default(autoincrement())
+  ticketId      Int                @map("ticket_id")
+  userId        Int                @map("user_id")
+  message       String             @db.Text
+  isStaff       Boolean            @default(false) @map("is_staff")
+  isInternal    Boolean            @default(false) @map("is_internal") // Internal notes not visible to user
+  // AI-generated response
+  isAiGenerated Boolean            @default(false) @map("is_ai_generated")
+  aiConfidence  Float?             @map("ai_confidence")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+  // Relations
+  ticket        SupportTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id])
+  attachments   TicketAttachment[]
+
+  @@index([ticketId])
+  @@index([userId])
+  @@map("ticket_responses")
+}
+
+// Ticket Attachment - Files attached to tickets/responses
+model TicketAttachment {
+  id           Int             @id @default(autoincrement())
+  ticketId     Int             @map("ticket_id")
+  responseId   Int?            @map("response_id")
+  userId       Int             @map("user_id")
+  filename     String
+  originalName String          @map("original_name")
+  mimeType     String          @map("mime_type")
+  fileSize     Int             @map("file_size") // bytes
+  filePath     String          @map("file_path")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  // Relations
+  ticket       SupportTicket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  response     TicketResponse? @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+  @@index([responseId])
+  @@map("ticket_attachments")
+}
+
+// Ticket Category Enum
+enum TicketCategory {
+  ACCESS // Login, permissions, account issues
+  PAYMENTS // Payment processing, reconciliation
+  REPORTS // Report generation, exports
+  MEMBERS // Member management issues
+  TECHNICAL // Technical issues, bugs
+  BUG // Bug reports
+  FEATURE_REQUEST // Feature requests
+  OTHER // Other inquiries
+}
+
+// Ticket Priority Enum
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Ticket Status Enum
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_USER
+  WAITING_ON_STAFF
+  RESOLVED
+  CLOSED
 }
