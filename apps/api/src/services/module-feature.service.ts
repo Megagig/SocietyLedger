@@ -206,38 +206,160 @@ export class ModuleFeatureService {
   }
 
   /**
-   * Get all enabled modules for an association
+   * Get all enabled modules for an association (optimized batch query)
    */
   static async getEnabledModules(associationId: number): Promise<ModuleStatus[]> {
-    const allModules = await prisma.platformModule.findMany({
-      orderBy: { sortOrder: 'asc' }
+    // Batch fetch all data in parallel
+    const [allModules, tenantOverrides, association] = await Promise.all([
+      prisma.platformModule.findMany({ orderBy: { sortOrder: 'asc' } }),
+      prisma.tenantModule.findMany({
+        where: {
+          associationId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+        },
+        include: { module: true }
+      }),
+      prisma.association.findUnique({
+        where: { id: associationId },
+        include: {
+          subscriptions: {
+            where: { status: { in: ['ACTIVE', 'TRIALING'] } },
+            include: {
+              plan: {
+                include: {
+                  planModules: { include: { module: true } }
+                }
+              }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
+        }
+      })
+    ]);
+
+    // Create lookup maps for O(1) access
+    const overrideMap = new Map(tenantOverrides.map(o => [o.module.code, o]));
+    const planModules = association?.subscriptions[0]?.plan?.planModules || [];
+    const planModuleMap = new Map(planModules.map(pm => [pm.module.code, pm]));
+
+    // Build status for each module
+    return allModules.map(module => {
+      const override = overrideMap.get(module.code);
+      if (override) {
+        return {
+          code: module.code,
+          name: module.name,
+          isCore: module.isCore,
+          isEnabled: override.isEnabled,
+          source: 'tenant_override' as const,
+          override: {
+            reason: override.reason || '',
+            expiresAt: override.expiresAt?.toISOString() || null,
+          }
+        };
+      }
+
+      const planModule = planModuleMap.get(module.code);
+      if (planModule) {
+        return {
+          code: module.code,
+          name: module.name,
+          isCore: module.isCore,
+          isEnabled: planModule.isEnabled,
+          source: 'plan' as const,
+        };
+      }
+
+      // Default: core modules enabled, others disabled
+      return {
+        code: module.code,
+        name: module.name,
+        isCore: module.isCore,
+        isEnabled: module.isCore,
+        source: 'default' as const,
+      };
     });
-
-    const statuses: ModuleStatus[] = [];
-    for (const module of allModules) {
-      const status = await this.getModuleStatus(associationId, module.code);
-      statuses.push(status);
-    }
-
-    return statuses;
   }
 
   /**
-   * Get all enabled features for an association
+   * Get all enabled features for an association (optimized batch query)
    */
   static async getEnabledFeatures(associationId: number): Promise<FeatureStatus[]> {
-    const allFeatures = await prisma.platformFeature.findMany({
-      include: { module: true },
-      orderBy: [{ module: { sortOrder: 'asc' } }, { sortOrder: 'asc' }]
+    // Batch fetch all data in parallel
+    const [allFeatures, tenantOverrides, association] = await Promise.all([
+      prisma.platformFeature.findMany({
+        include: { module: true },
+        orderBy: [{ module: { sortOrder: 'asc' } }, { sortOrder: 'asc' }]
+      }),
+      prisma.tenantFeature.findMany({
+        where: {
+          associationId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+        },
+        include: { feature: { include: { module: true } } }
+      }),
+      prisma.association.findUnique({
+        where: { id: associationId },
+        include: {
+          subscriptions: {
+            where: { status: { in: ['ACTIVE', 'TRIALING'] } },
+            include: {
+              plan: {
+                include: {
+                  planFeatures: { include: { feature: { include: { module: true } } } }
+                }
+              }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
+        }
+      })
+    ]);
+
+    // Create lookup maps
+    const overrideMap = new Map(tenantOverrides.map(o => [o.feature.code, o]));
+    const planFeatures = association?.subscriptions[0]?.plan?.planFeatures || [];
+    const planFeatureMap = new Map(planFeatures.map(pf => [pf.feature.code, pf]));
+
+    // Build status for each feature
+    return allFeatures.map(feature => {
+      const override = overrideMap.get(feature.code);
+      if (override) {
+        return {
+          code: feature.code,
+          name: feature.name,
+          moduleCode: feature.module.code,
+          isEnabled: override.isEnabled,
+          source: 'tenant_override' as const,
+          override: {
+            reason: override.reason || '',
+            expiresAt: override.expiresAt?.toISOString() || null,
+          }
+        };
+      }
+
+      const planFeature = planFeatureMap.get(feature.code);
+      if (planFeature) {
+        return {
+          code: feature.code,
+          name: feature.name,
+          moduleCode: feature.module.code,
+          isEnabled: planFeature.isEnabled,
+          source: 'plan' as const,
+        };
+      }
+
+      // Default: enabled
+      return {
+        code: feature.code,
+        name: feature.name,
+        moduleCode: feature.module.code,
+        isEnabled: true,
+        source: 'default' as const,
+      };
     });
-
-    const statuses: FeatureStatus[] = [];
-    for (const feature of allFeatures) {
-      const status = await this.getFeatureStatus(associationId, feature.code);
-      statuses.push(status);
-    }
-
-    return statuses;
   }
 
   /**

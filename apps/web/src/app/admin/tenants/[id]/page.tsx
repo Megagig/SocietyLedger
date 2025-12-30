@@ -104,39 +104,44 @@ export default function TenantDetailPage() {
     setLoading(true);
     setError(null);
     
+    const headers = { 
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+    
     try {
-      const [statusRes, modulesRes, billingRes] = await Promise.all([
-        fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_STATUS(tenantId), {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        }),
-        fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_MODULES(tenantId), {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        }),
-        fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_BILLING_HISTORY(tenantId), {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        }),
+      // Use Promise.allSettled to handle partial failures
+      const results = await Promise.allSettled([
+        fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_STATUS(tenantId), { headers }),
+        fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_MODULES(tenantId), { headers }),
+        fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_BILLING_HISTORY(tenantId), { headers }),
       ]);
 
-      const [statusData, modulesData, billingData] = await Promise.all([
-        statusRes.json(),
-        modulesRes.json(),
-        billingRes.json(),
-      ]);
+      // Process status response
+      if (results[0].status === 'fulfilled') {
+        const statusData = await results[0].value.json();
+        if (statusData.success && statusData.data) {
+          setTenantStatus(statusData.data);
+        } else {
+          setError(statusData.message || 'Tenant not found');
+        }
+      }
 
-      if (statusData.success && statusData.data) {
-        setTenantStatus(statusData.data);
-      } else {
-        setError(statusData.message || 'Tenant not found');
+      // Process modules response
+      if (results[1].status === 'fulfilled') {
+        const modulesData = await results[1].value.json();
+        if (modulesData.success) {
+          setModules(modulesData.data?.modules || []);
+          setFeatures(modulesData.data?.features || []);
+        }
       }
-      if (modulesData.success) {
-        setModules(modulesData.data?.modules || []);
-        setFeatures(modulesData.data?.features || []);
-      }
-      if (billingData.success) {
-        setBillingHistory(billingData.data?.overrides || []);
+
+      // Process billing response
+      if (results[2].status === 'fulfilled') {
+        const billingData = await results[2].value.json();
+        if (billingData.success) {
+          setBillingHistory(billingData.data?.overrides || []);
+        }
       }
     } catch (e) {
       console.error('Failed to fetch tenant data:', e);
