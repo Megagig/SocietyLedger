@@ -105,7 +105,8 @@ export function Sidebar() {
       permission: PERMISSIONS.MEMBER_VIEW,
     },
     // Member Self-Service Finance Section
-    {
+    // Note: Hidden for Super Admins as they don't have member records
+    ...(user?.platformRole !== 'SUPER_ADMIN' ? [{
       label: 'My Finances',
       icon: <IconCurrencyNaira size={20} />,
       permission: PERMISSIONS.MEMBER_FINANCE_VIEW,
@@ -151,7 +152,7 @@ export function Sidebar() {
           href: '/dashboard/my-finances/pay',
         },
       ],
-    },
+    }] : []),
     // Admin Finance Section
     {
       label: 'Finance',

@@ -1,14 +1,33 @@
 import { createFetchHeaders } from './tenant';
 
 /**
+ * Get auth token from cookie or localStorage
+ */
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  
+  // Try to get from cookie
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'token') return value;
+  }
+  
+  return null;
+}
+
+/**
  * Make an authenticated API request with tenant context
  * @param url - The API URL to fetch
  * @param options - Fetch options
  * @returns Fetch response
  */
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken();
+  
   const headers = createFetchHeaders({
     'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   });
 

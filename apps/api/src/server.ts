@@ -124,6 +124,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/associations', associationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+// IMPORTANT: /api/members/me must come BEFORE /api/members to avoid /:id matching 'me'
+app.use('/api/members/me', memberFinanceRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/payments', paymentRoutes);
@@ -137,7 +139,6 @@ app.use('/api/finance/advanced', advancedFinanceRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/payments/nigerian', nigerianPaymentsRoutes);
 app.use('/api/cooperatives', cooperativesRoutes);
-app.use('/api/members/me', memberFinanceRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);

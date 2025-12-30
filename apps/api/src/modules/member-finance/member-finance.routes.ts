@@ -1,15 +1,18 @@
 import { Router } from 'express';
 import { memberFinanceController } from './member-finance.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
 const router = Router();
 
-// Apply auth and tenant middleware to all routes
+// Apply auth middleware to all routes
+// Note: Tenant context comes from req.user.associationId (set by auth middleware)
+// No tenant middleware needed - these are user-specific routes
 router.use(authMiddleware);
-router.use(tenantMiddleware);
+
+// Debug: Log when routes are registered
+console.log('[Member Finance Routes] Registering member finance routes at /api/members/me');
 
 // All routes require MEMBER_FINANCE_VIEW permission
 // These are self-service endpoints for members to view their own financial data

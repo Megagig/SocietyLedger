@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { memberLedgerController, memberLedgerExportController } from './member-ledger.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
 const router = Router();
 
-// Apply auth and tenant middleware to all routes
+// Apply auth middleware to all routes
+// Note: Tenant context comes from req.user.associationId (set by auth middleware)
+// No tenant middleware needed - these are user-specific routes
 router.use(authMiddleware);
-router.use(tenantMiddleware);
 
 // ============================================
 // MEMBER SELF-SERVICE ENDPOINTS
