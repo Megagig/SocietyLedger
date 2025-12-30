@@ -67,7 +67,7 @@ export const supportService = {
         aiCategoryConfidence: data.aiCategoryConfidence,
         aiSentiment: data.aiSentiment,
         aiSentimentScore: data.aiSentimentScore,
-        aiEscalationRecommended: data.aiSentiment === 'urgent' || (data.aiSentimentScore && data.aiSentimentScore < -0.5),
+        aiEscalationRecommended: data.aiSentiment === 'urgent' || (data.aiSentimentScore !== undefined && data.aiSentimentScore < -0.5),
       },
       include: {
         user: {

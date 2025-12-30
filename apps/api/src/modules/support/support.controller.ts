@@ -110,7 +110,8 @@ export const supportController = {
       }
 
       // Check if user can view all tickets
-      const canViewAll = req.hasPermission?.('support.view_all') || req.hasPermission?.('support.manage');
+      const permissions = (req as any).permissions as Set<string> | undefined;
+      const canViewAll = permissions?.has('support.view_all') || permissions?.has('support.manage');
 
       const result = await supportService.listTickets(
         associationId,
@@ -156,7 +157,8 @@ export const supportController = {
         });
       }
 
-      const canViewAll = req.hasPermission?.('support.view_all') || req.hasPermission?.('support.manage');
+      const permissions = (req as any).permissions as Set<string> | undefined;
+      const canViewAll = permissions?.has('support.view_all') || permissions?.has('support.manage');
 
       const ticket = await supportService.getTicketById(
         associationId,
@@ -285,7 +287,8 @@ export const supportController = {
       }
 
       // Check if user is staff (can respond to any ticket)
-      const isStaff = req.hasPermission?.('support.respond') || req.hasPermission?.('support.manage');
+      const permissions = (req as any).permissions as Set<string> | undefined;
+      const isStaff = permissions?.has('support.respond') || permissions?.has('support.manage');
 
       // Verify user can access this ticket
       const ticket = await supportService.getTicketById(
@@ -507,7 +510,8 @@ export const supportController = {
         });
       }
 
-      const canViewAll = req.hasPermission?.('support.view_all') || req.hasPermission?.('support.manage');
+      const permissions = (req as any).permissions as Set<string> | undefined;
+      const canViewAll = permissions?.has('support.view_all') || permissions?.has('support.manage');
 
       const count = await supportService.getOpenTicketCount(
         associationId,

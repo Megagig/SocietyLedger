@@ -329,7 +329,7 @@ Choose tone based on the issue:
       OTHER: [],
     };
 
-    let bestCategory = TicketCategory.OTHER;
+    let bestCategory: TicketCategory = TicketCategory.OTHER;
     let bestScore = 0;
 
     for (const [category, keywords] of Object.entries(categoryKeywords)) {
@@ -338,7 +338,7 @@ Choose tone based on the issue:
       
       if (score > bestScore) {
         bestScore = score;
-        bestCategory = category as TicketCategory;
+        bestCategory = TicketCategory[category as keyof typeof TicketCategory];
       }
     }
 
