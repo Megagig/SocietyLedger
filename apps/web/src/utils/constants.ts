@@ -223,6 +223,10 @@ export const API_ROUTES = {
     CREATE: `${API_BASE_URL}/api/notifications`,
     ANNOUNCEMENT: `${API_BASE_URL}/api/notifications/announcement`,
   },
+  // Phase 20: Dashboard Real-Data Integration
+  DASHBOARD: {
+    OVERVIEW: `${API_BASE_URL}/api/dashboard/overview`,
+  },
 } as const;
 
 // App Settings

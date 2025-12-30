@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
+// Phase 12: Cache invalidation
+import { cacheInvalidationService } from '../../services/cache-invalidation.service';
 
 // Validation schemas
 const createMemberSchema = z.object({
@@ -287,6 +289,9 @@ export const memberController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onMemberChange(associationId);
+
       return res.status(201).json({
         success: true,
         message: 'Member created successfully',
@@ -380,6 +385,9 @@ export const memberController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onMemberChange(associationId);
+
       return res.status(200).json({
         success: true,
         message: 'Member updated successfully',
@@ -466,6 +474,9 @@ export const memberController = {
           oldValues: member,
         },
       });
+
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onMemberChange(associationId);
 
       return res.status(200).json({
         success: true,
@@ -616,6 +627,11 @@ export const memberController = {
           newValues: { imported: results.created, skipped: results.skipped },
         },
       });
+
+      // Phase 12: Invalidate cache
+      if (results.created > 0) {
+        await cacheInvalidationService.onMemberChange(associationId);
+      }
 
       return res.status(201).json({
         success: true,

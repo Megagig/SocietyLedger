@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { reportsService } from './reports.service';
+import { cachedReportsService } from './reports-cached.service';
 import {
   financialSummaryQuerySchema,
   memberBalancesQuerySchema,
@@ -11,12 +11,14 @@ import { z } from 'zod';
 
 // ============================================
 // REPORTS CONTROLLER
+// Phase 12: Uses cached service for improved performance
 // ============================================
 
 export const reportsController = {
   /**
    * TASK-REP-002: Financial Summary Report API
    * GET /api/reports/financial-summary
+   * Cached: 15 minutes
    */
   async getFinancialSummary(req: Request, res: Response) {
     try {
@@ -31,7 +33,7 @@ export const reportsController = {
       if (queryParams.startDate) filter.startDate = new Date(queryParams.startDate);
       if (queryParams.endDate) filter.endDate = new Date(queryParams.endDate);
 
-      const report = await reportsService.generateFinancialSummary(
+      const report = await cachedReportsService.generateFinancialSummary(
         associationId,
         filter,
         queryParams.includeComparison
@@ -53,6 +55,7 @@ export const reportsController = {
   /**
    * TASK-REP-003: Member Payment Status Report API
    * GET /api/reports/member-balances
+   * Cached: 10 minutes
    */
   async getMemberBalances(req: Request, res: Response) {
     try {
@@ -63,7 +66,7 @@ export const reportsController = {
 
       const queryParams = memberBalancesQuerySchema.parse(req.query);
 
-      const result = await reportsService.generateMemberBalances(associationId, {
+      const result = await cachedReportsService.generateMemberBalances(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
         status: queryParams.status,
@@ -88,6 +91,7 @@ export const reportsController = {
   /**
    * TASK-REP-004: Outstanding Balances with Aging Analysis API
    * GET /api/reports/aging-analysis
+   * Cached: 15 minutes
    */
   async getAgingAnalysis(req: Request, res: Response) {
     try {
@@ -99,7 +103,7 @@ export const reportsController = {
       const queryParams = agingAnalysisQuerySchema.parse(req.query);
 
       const asOfDate = queryParams.asOfDate ? new Date(queryParams.asOfDate) : undefined;
-      const report = await reportsService.generateAgingAnalysis(
+      const report = await cachedReportsService.generateAgingAnalysis(
         associationId,
         asOfDate,
         queryParams.includeDetails
@@ -121,6 +125,7 @@ export const reportsController = {
   /**
    * TASK-REP-005: Collection Rate Report API
    * GET /api/reports/collection-rate
+   * Cached: 15 minutes
    */
   async getCollectionRate(req: Request, res: Response) {
     try {
@@ -135,7 +140,7 @@ export const reportsController = {
       if (queryParams.startDate) filter.startDate = new Date(queryParams.startDate);
       if (queryParams.endDate) filter.endDate = new Date(queryParams.endDate);
 
-      const report = await reportsService.generateCollectionRate(
+      const report = await cachedReportsService.generateCollectionRate(
         associationId,
         filter,
         queryParams.groupBy
@@ -157,6 +162,7 @@ export const reportsController = {
   /**
    * TASK-REP-006: Category-wise Report API
    * GET /api/reports/by-category
+   * Cached: 15 minutes
    */
   async getCategoryReport(req: Request, res: Response) {
     try {
@@ -177,7 +183,7 @@ export const reportsController = {
       if (queryParams.startDate) options.startDate = new Date(queryParams.startDate);
       if (queryParams.endDate) options.endDate = new Date(queryParams.endDate);
 
-      const reports = await reportsService.generateCategoryReport(associationId, options);
+      const reports = await cachedReportsService.generateCategoryReport(associationId, options);
 
       return res.status(200).json({
         success: true,

@@ -922,14 +922,16 @@ export class PlatformAdminController {
       // Get user and member counts
       const [totalUsers, totalMembers, activeUsers30d] = await Promise.all([
         prisma.user.count(),
-        prisma.member.count({ where: { deletedAt: null } }),
-        prisma.user.count({ where: { lastLoginAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
+        prisma.member.count({ where: { status: 'active' } }),
+        prisma.user.count({ where: { updatedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
       ]);
 
-      // Calculate growth rates
+      // Calculate growth rates - convert Decimal to number for arithmetic
       const tenantGrowthRate = newLastMonth > 0 ? ((newThisMonth - newLastMonth) / newLastMonth * 100).toFixed(1) : '0';
-      const revenueGrowthRate = (revenueLastMonth._sum.amount || 0) > 0 
-        ? (((revenueThisMonth._sum.amount || 0) - (revenueLastMonth._sum.amount || 0)) / (revenueLastMonth._sum.amount || 1) * 100).toFixed(1)
+      const lastMonthAmount = Number(revenueLastMonth._sum.amount || 0);
+      const thisMonthAmount = Number(revenueThisMonth._sum.amount || 0);
+      const revenueGrowthRate = lastMonthAmount > 0 
+        ? (((thisMonthAmount - lastMonthAmount) / lastMonthAmount) * 100).toFixed(1)
         : '0';
 
       return res.json({
@@ -948,12 +950,12 @@ export class PlatformAdminController {
           subscriptions: subscriptionStats.reduce((acc, s) => ({ ...acc, [s.status]: s._count.status }), {}),
           tiers: tierStats.reduce((acc, t) => ({ ...acc, [t.tier]: t._count.tier }), {}),
           revenue: {
-            thisMonth: revenueThisMonth._sum.amount || 0,
-            lastMonth: revenueLastMonth._sum.amount || 0,
-            total: totalRevenue._sum.amount || 0,
+            thisMonth: thisMonthAmount,
+            lastMonth: lastMonthAmount,
+            total: Number(totalRevenue._sum.amount || 0),
             growthRate: parseFloat(revenueGrowthRate),
-            mrr: revenueThisMonth._sum.amount || 0,
-            arr: (revenueThisMonth._sum.amount || 0) * 12,
+            mrr: thisMonthAmount,
+            arr: thisMonthAmount * 12,
           },
           users: {
             total: totalUsers,
@@ -1099,17 +1101,18 @@ export class PlatformAdminController {
 
         revenueData.unshift({
           month: startOfMonth.toISOString().slice(0, 7),
-          revenue: revenue._sum.amount || 0,
+          revenue: Number(revenue._sum.amount || 0),
           transactions: revenue._count.id,
         });
       }
 
+      const totalRev = revenueData.reduce((sum, m) => sum + m.revenue, 0);
       return res.json({
         success: true,
         data: {
           months: revenueData,
-          totalRevenue: revenueData.reduce((sum, m) => sum + m.revenue, 0),
-          averageMonthlyRevenue: (revenueData.reduce((sum, m) => sum + m.revenue, 0) / revenueData.length).toFixed(2),
+          totalRevenue: totalRev,
+          averageMonthlyRevenue: (totalRev / revenueData.length).toFixed(2),
         },
       });
     } catch (error) {

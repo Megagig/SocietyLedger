@@ -236,8 +236,12 @@ model Member {
   pollResponses                PollResponse[]
 
   @@unique([associationId, memberId])
+  // Phase 12: Performance indexes
   @@index([associationId, status])
+  @@index([associationId, category])
+  @@index([associationId, createdAt])
   @@index([loginStatus])
+  @@index([email])
   @@map("members")
 }
 
@@ -314,7 +318,13 @@ model Transaction {
   reconciliations     PaymentReconciliation[]
   paymentProofs       PaymentProof[]
 
+  // Phase 12: Performance indexes
   @@index([associationId, status])
+  @@index([associationId, memberId])
+  @@index([associationId, categoryId])
+  @@index([associationId, createdAt])
+  @@index([associationId, dueDate])
+  @@index([memberId, status])
   @@map("transactions")
 }
 
@@ -333,7 +343,10 @@ model Payment {
   confirmer     User?       @relation("PaymentConfirmedBy", fields: [confirmedBy], references: [id])
   transaction   Transaction @relation(fields: [transactionId], references: [id])
 
+  // Phase 12: Performance indexes
   @@index([associationId, paymentDate])
+  @@index([transactionId])
+  @@index([associationId, createdAt])
   @@map("payments")
 }
 
