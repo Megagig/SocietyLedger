@@ -5,7 +5,7 @@
  * API client functions for fetching dashboard data
  */
 
-import axios from 'axios';
+import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
 // ============================================
@@ -93,9 +93,7 @@ export interface DashboardResponse {
  * GET /api/dashboard/overview
  */
 export async function getDashboardOverview(): Promise<DashboardOverview> {
-  const response = await axios.get<DashboardResponse>(API_ROUTES.DASHBOARD.OVERVIEW, {
-    withCredentials: true,
-  });
+  const response = await api.get<DashboardResponse>('/dashboard/overview');
 
   if (!response.data.success) {
     throw new Error(response.data.message || 'Failed to fetch dashboard data');

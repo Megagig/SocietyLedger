@@ -124,11 +124,16 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
 
     const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
     const subdomain = extractSubdomain(req.headers.host);
+    
+    // Check for Super Admin's selected association context
+    const superAdminAssociationId = req.headers['x-association-id'] as string | undefined;
 
     const association = await findAssociationByIdentifier({
       subdomain: headerTenant || subdomain || undefined,
       slug: headerTenant?.toLowerCase(),
-      id: headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined,
+      id: (superAdminAssociationId && !Number.isNaN(Number(superAdminAssociationId))) 
+        ? Number(superAdminAssociationId) 
+        : (headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined),
     });
 
     if (!association) {

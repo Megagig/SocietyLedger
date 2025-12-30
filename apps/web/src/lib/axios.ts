@@ -13,13 +13,25 @@ const api = axios.create({
 });
 
 // Add tenant headers to all requests
+// Headers are fetched fresh on each request to ensure Super Admin context is current
 api.interceptors.request.use((config) => {
+  // Get fresh tenant headers (includes X-Association-Id from localStorage)
   const tenantHeaders = getTenantHeaders();
+  
   Object.entries(tenantHeaders).forEach(([key, value]) => {
     if (value) {
       config.headers.set(key, value);
     }
   });
+  
+  // Debug logging in development
+  if (process.env.NODE_ENV === 'development') {
+    const associationId = tenantHeaders['X-Association-Id'];
+    if (associationId) {
+      console.log('[API] Request with X-Association-Id:', associationId, config.url);
+    }
+  }
+  
   return config;
 });
 
