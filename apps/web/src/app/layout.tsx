@@ -45,6 +45,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Favicon */}
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/icons/android-launchericon-96-96.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/android-launchericon-192-192.png" />
         {/* PWA Meta Tags */}
         <link rel="apple-touch-icon" href="/icons/android-launchericon-192-192.png" />
         <link rel="apple-touch-icon" sizes="144x144" href="/icons/android-launchericon-144-144.png" />
