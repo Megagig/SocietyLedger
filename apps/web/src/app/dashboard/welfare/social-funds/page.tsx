@@ -46,7 +46,7 @@ export default function SocialFundsPage() {
   const [editingFund, setEditingFund] = useState<WelfareFund | null>(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, totalCount: 0 });
 
-  const isAdmin = user?.role && hasPermission(user.role, PERMISSIONS.WELFARE_MANAGE);
+  const isAdmin = user?.permissions && hasPermission(user.permissions, PERMISSIONS.WELFARE_MANAGE);
 
   useEffect(() => {
     if (searchParams.get('action') === 'create' && isAdmin) {

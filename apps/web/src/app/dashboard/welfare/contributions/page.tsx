@@ -44,8 +44,8 @@ export default function ContributionsPage() {
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, totalCount: 0 });
 
-  const canManage = user?.role && hasPermission(user.role, PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE);
-  const canConfirm = user?.role && hasPermission(user.role, PERMISSIONS.WELFARE_CONTRIBUTION_CONFIRM);
+  const canManage = user?.permissions && hasPermission(user.permissions, PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE);
+  const canConfirm = user?.permissions && hasPermission(user.permissions, PERMISSIONS.WELFARE_CONTRIBUTION_CONFIRM);
 
   useEffect(() => {
     if (searchParams.get('action') === 'record' && canManage) {

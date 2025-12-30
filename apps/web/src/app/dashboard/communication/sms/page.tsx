@@ -35,9 +35,9 @@ export default function SMSDashboardPage() {
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const canSend = user?.role && hasPermission(user.role, PERMISSIONS.SMS_SEND);
-  const canManageCampaigns = user?.role && hasPermission(user.role, PERMISSIONS.SMS_CAMPAIGN_MANAGE);
-  const canManageTemplates = user?.role && hasPermission(user.role, PERMISSIONS.SMS_TEMPLATE_MANAGE);
+  const canSend = user?.permissions && hasPermission(user.permissions, PERMISSIONS.SMS_SEND);
+  const canManageCampaigns = user?.permissions && hasPermission(user.permissions, PERMISSIONS.SMS_CAMPAIGN_MANAGE);
+  const canManageTemplates = user?.permissions && hasPermission(user.permissions, PERMISSIONS.SMS_TEMPLATE_MANAGE);
 
   useEffect(() => {
     fetchData();

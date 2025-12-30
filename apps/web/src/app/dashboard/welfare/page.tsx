@@ -53,7 +53,7 @@ export default function WelfareDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const isAdmin = user?.role && hasPermission(user.role, PERMISSIONS.WELFARE_MANAGE);
+  const isAdmin = user?.permissions && hasPermission(user.permissions, PERMISSIONS.WELFARE_MANAGE);
 
   useEffect(() => {
     fetchData();

@@ -373,7 +373,9 @@ export default function RolesPage() {
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                     {selectedRole.displayName}
                     {selectedRole.isSystemRole && (
-                      <Lock className="w-4 h-4 text-amber-500" title="System Role" />
+                      <span title="System Role">
+                        <Lock className="w-4 h-4 text-amber-500" />
+                      </span>
                     )}
                   </h2>
                   <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -460,14 +462,16 @@ export default function RolesPage() {
 }
 
 // Role Form Component
+interface RoleFormData {
+  name: string;
+  displayName: string;
+  description: string;
+  permissions: string[];
+}
+
 interface RoleFormProps {
-  formData: {
-    name: string;
-    displayName: string;
-    description: string;
-    permissions: string[];
-  };
-  setFormData: React.Dispatch<React.SetStateAction<typeof formData>>;
+  formData: RoleFormData;
+  setFormData: React.Dispatch<React.SetStateAction<RoleFormData>>;
   groupedPermissions: Record<string, Permission[]>;
   search: string;
   setSearch: (search: string) => void;

@@ -48,7 +48,7 @@ export default function SMSTemplatesPage() {
     placeholders: '',
   });
 
-  const canManage = user?.role && hasPermission(user.role, PERMISSIONS.SMS_TEMPLATE_MANAGE);
+  const canManage = user?.permissions && hasPermission(user.permissions, PERMISSIONS.SMS_TEMPLATE_MANAGE);
 
   useEffect(() => {
     fetchTemplates();

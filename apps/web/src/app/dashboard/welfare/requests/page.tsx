@@ -59,9 +59,9 @@ export default function PayoutRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<WelfarePayoutRequest | null>(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, totalCount: 0 });
 
-  const canRequest = user?.role && hasPermission(user.role, PERMISSIONS.WELFARE_PAYOUT_REQUEST);
-  const canApprove = user?.role && hasPermission(user.role, PERMISSIONS.WELFARE_PAYOUT_APPROVE);
-  const canDisburse = user?.role && hasPermission(user.role, PERMISSIONS.WELFARE_PAYOUT_DISBURSE);
+  const canRequest = user?.permissions && hasPermission(user.permissions, PERMISSIONS.WELFARE_PAYOUT_REQUEST);
+  const canApprove = user?.permissions && hasPermission(user.permissions, PERMISSIONS.WELFARE_PAYOUT_APPROVE);
+  const canDisburse = user?.permissions && hasPermission(user.permissions, PERMISSIONS.WELFARE_PAYOUT_DISBURSE);
 
   useEffect(() => {
     if (searchParams.get('action') === 'create' && canRequest) {

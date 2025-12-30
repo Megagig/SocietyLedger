@@ -26,7 +26,7 @@ api.interceptors.request.use((config) => {
   
   // Debug logging in development
   if (process.env.NODE_ENV === 'development') {
-    const associationId = tenantHeaders['X-Association-Id'];
+    const associationId = (tenantHeaders as Record<string, string>)['X-Association-Id'];
     if (associationId) {
       console.log('[API] Request with X-Association-Id:', associationId, config.url);
     }

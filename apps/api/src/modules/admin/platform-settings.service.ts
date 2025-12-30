@@ -51,14 +51,13 @@ const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
 export class PlatformSettingsService {
   /**
    * Get platform settings
+   * Note: Platform settings are stored using raw SQL since associationId is required in schema
    */
   static async getSettings(): Promise<PlatformSettings> {
-    const settings = await prisma.settings.findMany({
-      where: {
-        associationId: null, // Platform-level settings have no association
-        key: { startsWith: 'platform.' }
-      }
-    });
+    const settings = await prisma.$queryRaw<Array<{ key: string; value: string | null }>>`
+      SELECT key, value FROM settings 
+      WHERE association_id IS NULL AND key LIKE 'platform.%'
+    `;
 
     const result: PlatformSettings = { ...DEFAULT_PLATFORM_SETTINGS };
 
@@ -87,13 +86,13 @@ export class PlatformSettingsService {
 
       // Platform settings use associationId = null, but Prisma unique constraint needs a workaround
       // We'll use a special "platform" record approach
-      const existing = await prisma.settings.findFirst({
-        where: { associationId: null, key: fullKey }
-      });
+      const existing = await prisma.$queryRaw<Array<{ id: number }>>`
+        SELECT id FROM settings WHERE association_id IS NULL AND key = ${fullKey} LIMIT 1
+      `;
 
-      if (existing) {
+      if (existing.length > 0) {
         await prisma.settings.update({
-          where: { id: existing.id },
+          where: { id: existing[0].id },
           data: { value: stringValue, updatedBy: userId }
         });
       } else {
@@ -113,7 +112,7 @@ export class PlatformSettingsService {
         userId,
         action: 'PLATFORM_SETTINGS_UPDATED',
         tableName: 'settings',
-        newValues: settings
+        newValues: JSON.parse(JSON.stringify(settings))
       }
     });
 
@@ -198,7 +197,7 @@ export class PlatformSettingsService {
         userId,
         action: 'ASSOCIATION_OVERRIDE_SET',
         tableName: 'settings',
-        newValues: override
+        newValues: JSON.parse(JSON.stringify(override))
       }
     });
   }

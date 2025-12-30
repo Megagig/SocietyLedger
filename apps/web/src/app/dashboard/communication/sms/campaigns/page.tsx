@@ -45,7 +45,7 @@ export default function SMSCampaignsPage() {
     scheduledAt: '',
   });
 
-  const canManage = user?.role && hasPermission(user.role, PERMISSIONS.SMS_CAMPAIGN_MANAGE);
+  const canManage = user?.permissions && hasPermission(user.permissions, PERMISSIONS.SMS_CAMPAIGN_MANAGE);
 
   useEffect(() => {
     fetchCampaigns();

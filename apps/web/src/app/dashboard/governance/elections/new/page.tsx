@@ -13,6 +13,7 @@ interface PositionInput {
   description: string;
   maxCandidates: number;
   minCandidates: number;
+  displayOrder?: number;
 }
 
 export default function NewElectionPage() {

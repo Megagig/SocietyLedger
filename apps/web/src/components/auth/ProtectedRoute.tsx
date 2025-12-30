@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { Permission, hasAnyPermission, canAccessRoute } from '@/lib/permissions';
+import { Permission, hasAnyPermission } from '@/lib/permissions';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -35,7 +35,7 @@ export default function ProtectedRoute({
 
     // Check permissions if specified
     if (requiredPermissions.length > 0 && user) {
-      const hasAccess = canAccessRoute(user.role, requiredPermissions);
+      const hasAccess = hasAnyPermission(user.permissions, requiredPermissions);
       if (!hasAccess) {
         router.push('/dashboard'); // Redirect to dashboard if no access
         return;
@@ -55,7 +55,7 @@ export default function ProtectedRoute({
 
   // Check permissions
   if (requiredPermissions.length > 0 && user) {
-    const hasAccess = canAccessRoute(user.role, requiredPermissions);
+    const hasAccess = hasAnyPermission(user.permissions, requiredPermissions);
     if (!hasAccess) {
       return (
         <div className="flex items-center justify-center min-h-screen">
