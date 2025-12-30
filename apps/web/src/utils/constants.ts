@@ -208,6 +208,11 @@ export const API_ROUTES = {
     ACTION_LOGS: `${API_BASE_URL}/api/admin/action-logs`,
     ACTION_LOGS_STATS: `${API_BASE_URL}/api/admin/action-logs/stats`,
     ACTION_LOGS_EXPORT: `${API_BASE_URL}/api/admin/action-logs/export`,
+    // Platform Analytics
+    ANALYTICS_OVERVIEW: `${API_BASE_URL}/api/admin/analytics/overview`,
+    ANALYTICS_MODULE_ADOPTION: `${API_BASE_URL}/api/admin/analytics/module-adoption`,
+    ANALYTICS_CHURN: `${API_BASE_URL}/api/admin/analytics/churn`,
+    ANALYTICS_REVENUE: `${API_BASE_URL}/api/admin/analytics/revenue`,
   },
   NOTIFICATIONS: {
     LIST: `${API_BASE_URL}/api/notifications`,

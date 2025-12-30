@@ -860,4 +860,261 @@ export class PlatformAdminController {
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
+
+  // ==================== PLATFORM ANALYTICS ====================
+
+  /**
+   * Get platform analytics overview
+   */
+  async getAnalyticsOverview(req: AuthRequest, res: Response) {
+    try {
+      const { prisma } = await import('../../lib/prisma');
+      
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      // Get tenant counts
+      const [totalTenants, activeTenants, suspendedTenants, deletedTenants, trialingTenants] = await Promise.all([
+        prisma.association.count(),
+        prisma.association.count({ where: { status: 'ACTIVE', deletedAt: null } }),
+        prisma.association.count({ where: { status: 'SUSPENDED' } }),
+        prisma.association.count({ where: { deletedAt: { not: null } } }),
+        prisma.subscription.count({ where: { status: 'TRIALING' } }),
+      ]);
+
+      // Get new tenants this month vs last month
+      const [newThisMonth, newLastMonth] = await Promise.all([
+        prisma.association.count({ where: { createdAt: { gte: startOfMonth } } }),
+        prisma.association.count({ where: { createdAt: { gte: startOfLastMonth, lt: startOfMonth } } }),
+      ]);
+
+      // Get subscription distribution
+      const subscriptionStats = await prisma.subscription.groupBy({
+        by: ['status'],
+        _count: { status: true },
+      });
+
+      // Get tier distribution
+      const tierStats = await prisma.association.groupBy({
+        by: ['tier'],
+        _count: { tier: true },
+        where: { deletedAt: null },
+      });
+
+      // Get revenue metrics (from payment history)
+      const [revenueThisMonth, revenueLastMonth, totalRevenue] = await Promise.all([
+        prisma.paymentHistory.aggregate({
+          _sum: { amount: true },
+          where: { status: 'SUCCESS', paidAt: { gte: startOfMonth } },
+        }),
+        prisma.paymentHistory.aggregate({
+          _sum: { amount: true },
+          where: { status: 'SUCCESS', paidAt: { gte: startOfLastMonth, lt: startOfMonth } },
+        }),
+        prisma.paymentHistory.aggregate({
+          _sum: { amount: true },
+          where: { status: 'SUCCESS' },
+        }),
+      ]);
+
+      // Get user and member counts
+      const [totalUsers, totalMembers, activeUsers30d] = await Promise.all([
+        prisma.user.count(),
+        prisma.member.count({ where: { deletedAt: null } }),
+        prisma.user.count({ where: { lastLoginAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
+      ]);
+
+      // Calculate growth rates
+      const tenantGrowthRate = newLastMonth > 0 ? ((newThisMonth - newLastMonth) / newLastMonth * 100).toFixed(1) : '0';
+      const revenueGrowthRate = (revenueLastMonth._sum.amount || 0) > 0 
+        ? (((revenueThisMonth._sum.amount || 0) - (revenueLastMonth._sum.amount || 0)) / (revenueLastMonth._sum.amount || 1) * 100).toFixed(1)
+        : '0';
+
+      return res.json({
+        success: true,
+        data: {
+          tenants: {
+            total: totalTenants,
+            active: activeTenants,
+            suspended: suspendedTenants,
+            deleted: deletedTenants,
+            trialing: trialingTenants,
+            newThisMonth,
+            newLastMonth,
+            growthRate: parseFloat(tenantGrowthRate),
+          },
+          subscriptions: subscriptionStats.reduce((acc, s) => ({ ...acc, [s.status]: s._count.status }), {}),
+          tiers: tierStats.reduce((acc, t) => ({ ...acc, [t.tier]: t._count.tier }), {}),
+          revenue: {
+            thisMonth: revenueThisMonth._sum.amount || 0,
+            lastMonth: revenueLastMonth._sum.amount || 0,
+            total: totalRevenue._sum.amount || 0,
+            growthRate: parseFloat(revenueGrowthRate),
+            mrr: revenueThisMonth._sum.amount || 0,
+            arr: (revenueThisMonth._sum.amount || 0) * 12,
+          },
+          users: {
+            total: totalUsers,
+            activeIn30Days: activeUsers30d,
+          },
+          members: {
+            total: totalMembers,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Get analytics overview error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Get module adoption analytics
+   */
+  async getModuleAdoption(req: AuthRequest, res: Response) {
+    try {
+      const { prisma } = await import('../../lib/prisma');
+
+      // Get all modules
+      const modules = await prisma.platformModule.findMany({
+        include: {
+          tenantModules: {
+            where: { isEnabled: true },
+          },
+          planModules: {
+            where: { isEnabled: true },
+            include: { plan: true },
+          },
+        },
+      });
+
+      // Get total active associations
+      const totalAssociations = await prisma.association.count({ where: { status: 'ACTIVE', deletedAt: null } });
+
+      // Calculate adoption for each module
+      const moduleAdoption = modules.map(module => {
+        const enabledCount = module.tenantModules.length;
+        const adoptionRate = totalAssociations > 0 ? (enabledCount / totalAssociations * 100).toFixed(1) : '0';
+        
+        return {
+          code: module.code,
+          name: module.name,
+          isCore: module.isCore,
+          enabledCount,
+          adoptionRate: parseFloat(adoptionRate),
+          plans: module.planModules.map(pm => pm.plan.name),
+        };
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          totalAssociations,
+          modules: moduleAdoption.sort((a, b) => b.adoptionRate - a.adoptionRate),
+        },
+      });
+    } catch (error) {
+      console.error('Get module adoption error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Get churn analytics
+   */
+  async getChurnAnalytics(req: AuthRequest, res: Response) {
+    try {
+      const { prisma } = await import('../../lib/prisma');
+      const months = Number(req.query.months) || 6;
+
+      const churnData = [];
+      const now = new Date();
+
+      for (let i = 0; i < months; i++) {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+
+        const [cancelled, suspended, newSignups, activeAtStart] = await Promise.all([
+          prisma.subscription.count({
+            where: { status: 'CANCELLED', updatedAt: { gte: startOfMonth, lte: endOfMonth } },
+          }),
+          prisma.association.count({
+            where: { status: 'SUSPENDED', updatedAt: { gte: startOfMonth, lte: endOfMonth } },
+          }),
+          prisma.association.count({
+            where: { createdAt: { gte: startOfMonth, lte: endOfMonth } },
+          }),
+          prisma.association.count({
+            where: { createdAt: { lt: startOfMonth }, status: 'ACTIVE' },
+          }),
+        ]);
+
+        const churnRate = activeAtStart > 0 ? ((cancelled + suspended) / activeAtStart * 100).toFixed(2) : '0';
+
+        churnData.unshift({
+          month: startOfMonth.toISOString().slice(0, 7),
+          cancelled,
+          suspended,
+          newSignups,
+          activeAtStart,
+          churnRate: parseFloat(churnRate),
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          months: churnData,
+          averageChurnRate: (churnData.reduce((sum, m) => sum + m.churnRate, 0) / churnData.length).toFixed(2),
+        },
+      });
+    } catch (error) {
+      console.error('Get churn analytics error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Get revenue trends
+   */
+  async getRevenueTrends(req: AuthRequest, res: Response) {
+    try {
+      const { prisma } = await import('../../lib/prisma');
+      const months = Number(req.query.months) || 12;
+
+      const revenueData = [];
+      const now = new Date();
+
+      for (let i = 0; i < months; i++) {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+
+        const revenue = await prisma.paymentHistory.aggregate({
+          _sum: { amount: true },
+          _count: { id: true },
+          where: { status: 'SUCCESS', paidAt: { gte: startOfMonth, lte: endOfMonth } },
+        });
+
+        revenueData.unshift({
+          month: startOfMonth.toISOString().slice(0, 7),
+          revenue: revenue._sum.amount || 0,
+          transactions: revenue._count.id,
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          months: revenueData,
+          totalRevenue: revenueData.reduce((sum, m) => sum + m.revenue, 0),
+          averageMonthlyRevenue: (revenueData.reduce((sum, m) => sum + m.revenue, 0) / revenueData.length).toFixed(2),
+        },
+      });
+    } catch (error) {
+      console.error('Get revenue trends error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
 }

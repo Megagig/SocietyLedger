@@ -619,14 +619,29 @@ export function Sidebar() {
       icon: <IconBadge size={20} />,
       children: [
         {
-          label: 'All Associations',
+          label: 'Dashboard',
+          icon: <IconLayoutDashboard size={18} />,
+          href: '/admin',
+        },
+        {
+          label: 'Associations',
           icon: <IconBuildingCommunity size={18} />,
           href: '/admin/associations',
         },
         {
+          label: 'Tenant Management',
+          icon: <IconUsers size={18} />,
+          href: '/admin/tenants',
+        },
+        {
           label: 'Platform Analytics',
-          icon: <IconFileAnalytics size={18} />,
+          icon: <IconChartBar size={18} />,
           href: '/admin/analytics',
+        },
+        {
+          label: 'Action Logs',
+          icon: <IconHistory size={18} />,
+          href: '/admin/action-logs',
         },
       ],
     });

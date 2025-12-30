@@ -73,4 +73,10 @@ router.get('/action-logs', (req, res) => platformCtrl.getActionLogs(req as any, 
 router.get('/action-logs/stats', (req, res) => platformCtrl.getActionLogStats(req as any, res));
 router.get('/action-logs/export', (req, res) => platformCtrl.exportActionLogs(req as any, res));
 
+// Platform Analytics (Phase 19.3 - TASK-PA-022)
+router.get('/analytics/overview', (req, res) => platformCtrl.getAnalyticsOverview(req as any, res));
+router.get('/analytics/module-adoption', (req, res) => platformCtrl.getModuleAdoption(req as any, res));
+router.get('/analytics/churn', (req, res) => platformCtrl.getChurnAnalytics(req as any, res));
+router.get('/analytics/revenue', (req, res) => platformCtrl.getRevenueTrends(req as any, res));
+
 export default router;
