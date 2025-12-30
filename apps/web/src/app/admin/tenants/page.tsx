@@ -13,10 +13,11 @@ type Tenant = {
   subdomain: string;
   tier: string;
   status: string;
-  deletedAt: string | null;
+  isDeleted: boolean;
   createdAt: string;
-  _count: { users: number; members: number };
-  subscriptions: { status: string; plan: { name: string } }[];
+  userCount: number;
+  memberCount: number;
+  plan: { name: string; code: string } | null;
 };
 
 type Pagination = {
@@ -228,12 +229,12 @@ export default function TenantsPage() {
               </thead>
               <tbody>
                 {tenants.map((tenant) => (
-                  <tr key={tenant.id} className={`border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${tenant.deletedAt ? 'opacity-60' : ''}`}>
+                  <tr key={tenant.id} className={`border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${tenant.isDeleted ? 'opacity-60' : ''}`}>
                     <td className="py-3 px-4">
                       <div className="font-medium text-gray-900 dark:text-white">{tenant.name}</div>
                       <div className="text-xs text-gray-500">{tenant.subdomain}.societyledger.com</div>
-                      {tenant.deletedAt && (
-                        <span className="text-xs text-red-500">Deleted {new Date(tenant.deletedAt).toLocaleDateString()}</span>
+                      {tenant.isDeleted && (
+                        <span className="text-xs text-red-500">Deleted</span>
                       )}
                     </td>
                     <td className="py-3 px-4">
@@ -254,19 +255,11 @@ export default function TenantsPage() {
                         {tenant.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant._count.users}</td>
-                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant._count.members}</td>
+                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant.userCount}</td>
+                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant.memberCount}</td>
                     <td className="py-3 px-4">
-                      {tenant.subscriptions?.[0] ? (
-                        <div>
-                          <div className="text-gray-900 dark:text-white text-xs">{tenant.subscriptions[0].plan?.name}</div>
-                          <span className={`text-xs ${
-                            tenant.subscriptions[0].status === 'ACTIVE' ? 'text-green-600' :
-                            tenant.subscriptions[0].status === 'TRIALING' ? 'text-blue-600' : 'text-yellow-600'
-                          }`}>
-                            {tenant.subscriptions[0].status}
-                          </span>
-                        </div>
+                      {tenant.plan ? (
+                        <div className="text-gray-900 dark:text-white text-xs">{tenant.plan.name}</div>
                       ) : (
                         <span className="text-gray-400 text-xs">No subscription</span>
                       )}
@@ -279,7 +272,7 @@ export default function TenantsPage() {
                         >
                           View
                         </Link>
-                        {tenant.deletedAt ? (
+                        {tenant.isDeleted ? (
                           <button
                             onClick={() => handleAction(tenant.id, 'restore')}
                             disabled={actionLoading === tenant.id}

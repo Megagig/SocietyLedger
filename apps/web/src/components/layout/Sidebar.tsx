@@ -643,6 +643,16 @@ export function Sidebar() {
           icon: <IconHistory size={18} />,
           href: '/admin/action-logs',
         },
+        {
+          label: 'Modules & Features',
+          icon: <IconChecklist size={18} />,
+          href: '/admin/modules',
+        },
+        {
+          label: 'Settings',
+          icon: <IconSettings size={18} />,
+          href: '/admin/settings',
+        },
       ],
     });
   }

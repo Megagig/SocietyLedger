@@ -23,10 +23,9 @@ type ActionLog = {
 };
 
 type LogStats = {
-  totalLogs: number;
-  logsByAction: Record<string, number>;
-  logsByTarget: Record<string, number>;
-  recentActors: { actorId: number; email: string; count: number }[];
+  totalActions: number;
+  actionsByType: { type: string; count: number }[];
+  actionsByTarget: { target: string; count: number }[];
 };
 
 export default function ActionLogsPage() {
@@ -145,22 +144,18 @@ export default function ActionLogsPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className="text-xs text-gray-500 dark:text-gray-400">Total Logs</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalLogs}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Total Actions</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalActions}</div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
             <div className="text-xs text-gray-500 dark:text-gray-400">Action Types</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{Object.keys(stats.logsByAction).length}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.actionsByType?.length || 0}</div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
             <div className="text-xs text-gray-500 dark:text-gray-400">Target Types</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{Object.keys(stats.logsByTarget).length}</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className="text-xs text-gray-500 dark:text-gray-400">Active Admins</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.recentActors?.length || 0}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.actionsByTarget?.length || 0}</div>
           </div>
         </div>
       )}
