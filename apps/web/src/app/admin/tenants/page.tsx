@@ -1,0 +1,361 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { API_ROUTES } from '@/utils/constants';
+import { toast } from '@/lib/toast';
+import Link from 'next/link';
+
+type Tenant = {
+  id: number;
+  name: string;
+  subdomain: string;
+  tier: string;
+  status: string;
+  deletedAt: string | null;
+  createdAt: string;
+  _count: { users: number; members: number };
+  subscriptions: { status: string; plan: { name: string } }[];
+};
+
+type Pagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export default function TenantsPage() {
+  const router = useRouter();
+  const { token, user } = useAuthStore();
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  
+  // Filters
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [tierFilter, setTierFilter] = useState('');
+  const [showDeleted, setShowDeleted] = useState(false);
+
+  useEffect(() => {
+    if (user?.platformRole !== 'SUPER_ADMIN') {
+      router.push('/dashboard');
+      return;
+    }
+    fetchTenants();
+  }, [token, user, pagination.page, search, statusFilter, tierFilter, showDeleted]);
+
+  const fetchTenants = async () => {
+    if (!token) return;
+    setLoading(true);
+
+    try {
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
+      if (search) params.append('search', search);
+      if (statusFilter) params.append('status', statusFilter);
+      if (tierFilter) params.append('tier', tierFilter);
+      if (showDeleted) params.append('includeDeleted', 'true');
+
+      const res = await fetch(`${API_ROUTES.PLATFORM_ADMIN.TENANTS}?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTenants(data.data.tenants || []);
+        setPagination(prev => ({ ...prev, ...data.data.pagination }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch tenants:', e);
+      toast.error('Failed to load tenants');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (tenantId: number, action: string, body?: object) => {
+    setActionLoading(tenantId);
+    try {
+      let url = '';
+      switch (action) {
+        case 'suspend':
+          url = API_ROUTES.PLATFORM_ADMIN.TENANT_SUSPEND(tenantId);
+          break;
+        case 'reactivate':
+          url = API_ROUTES.PLATFORM_ADMIN.TENANT_REACTIVATE(tenantId);
+          break;
+        case 'soft-delete':
+          url = API_ROUTES.PLATFORM_ADMIN.TENANT_SOFT_DELETE(tenantId);
+          break;
+        case 'restore':
+          url = API_ROUTES.PLATFORM_ADMIN.TENANT_RESTORE(tenantId);
+          break;
+        case 'force-logout':
+          url = API_ROUTES.PLATFORM_ADMIN.TENANT_FORCE_LOGOUT(tenantId);
+          break;
+        default:
+          return;
+      }
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || `Action completed successfully`);
+        fetchTenants();
+      } else {
+        toast.error(data.message || 'Action failed');
+      }
+    } catch (e) {
+      toast.error('Action failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSuspend = (tenantId: number) => {
+    const reason = prompt('Enter suspension reason:');
+    if (reason === null) return;
+    handleAction(tenantId, 'suspend', { reason });
+  };
+
+  const handleSoftDelete = (tenantId: number) => {
+    const reason = prompt('Enter deletion reason (this is a soft delete):');
+    if (reason === null) return;
+    if (!confirm('Are you sure you want to soft-delete this tenant? Users will lose access.')) return;
+    handleAction(tenantId, 'soft-delete', { reason });
+  };
+
+  const handleForceLogout = (tenantId: number) => {
+    if (!confirm('This will log out ALL users from this tenant. Continue?')) return;
+    const reason = prompt('Enter reason for force logout:');
+    handleAction(tenantId, 'force-logout', { reason });
+  };
+
+  if (user?.platformRole !== 'SUPER_ADMIN') return null;
+
+  return (
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
+            <Link href="/admin" className="hover:text-blue-600">Dashboard</Link>
+            <span>/</span>
+            <span>Tenant Management</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Manage tenant lifecycle, modules, billing, and security
+          </p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 items-center">
+        <input
+          type="text"
+          placeholder="Search by name or subdomain..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+          className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        >
+          <option value="">All Status</option>
+          <option value="ACTIVE">Active</option>
+          <option value="SUSPENDED">Suspended</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <select
+          value={tierFilter}
+          onChange={(e) => { setTierFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        >
+          <option value="">All Tiers</option>
+          <option value="STARTER">Starter</option>
+          <option value="PROFESSIONAL">Professional</option>
+          <option value="ENTERPRISE">Enterprise</option>
+        </select>
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <input
+            type="checkbox"
+            checked={showDeleted}
+            onChange={(e) => setShowDeleted(e.target.checked)}
+            className="rounded border-gray-300"
+          />
+          Show Deleted
+        </label>
+      </div>
+
+      {/* Tenants Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : tenants.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">No tenants found</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700/50">
+                <tr>
+                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tenant</th>
+                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tier</th>
+                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Status</th>
+                  <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Users</th>
+                  <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Members</th>
+                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Subscription</th>
+                  <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.map((tenant) => (
+                  <tr key={tenant.id} className={`border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${tenant.deletedAt ? 'opacity-60' : ''}`}>
+                    <td className="py-3 px-4">
+                      <div className="font-medium text-gray-900 dark:text-white">{tenant.name}</div>
+                      <div className="text-xs text-gray-500">{tenant.subdomain}.societyledger.com</div>
+                      {tenant.deletedAt && (
+                        <span className="text-xs text-red-500">Deleted {new Date(tenant.deletedAt).toLocaleDateString()}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        tenant.tier === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                        tenant.tier === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
+                        {tenant.tier}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                        tenant.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                      }`}>
+                        {tenant.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant._count.users}</td>
+                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant._count.members}</td>
+                    <td className="py-3 px-4">
+                      {tenant.subscriptions?.[0] ? (
+                        <div>
+                          <div className="text-gray-900 dark:text-white text-xs">{tenant.subscriptions[0].plan?.name}</div>
+                          <span className={`text-xs ${
+                            tenant.subscriptions[0].status === 'ACTIVE' ? 'text-green-600' :
+                            tenant.subscriptions[0].status === 'TRIALING' ? 'text-blue-600' : 'text-yellow-600'
+                          }`}>
+                            {tenant.subscriptions[0].status}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">No subscription</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex justify-center gap-1 flex-wrap">
+                        <Link
+                          href={`/admin/tenants/${tenant.id}`}
+                          className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30"
+                        >
+                          View
+                        </Link>
+                        {tenant.deletedAt ? (
+                          <button
+                            onClick={() => handleAction(tenant.id, 'restore')}
+                            disabled={actionLoading === tenant.id}
+                            className="px-2 py-1 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                          >
+                            {actionLoading === tenant.id ? '...' : 'Restore'}
+                          </button>
+                        ) : (
+                          <>
+                            {tenant.status === 'ACTIVE' ? (
+                              <button
+                                onClick={() => handleSuspend(tenant.id)}
+                                disabled={actionLoading === tenant.id}
+                                className="px-2 py-1 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
+                              >
+                                Suspend
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleAction(tenant.id, 'reactivate')}
+                                disabled={actionLoading === tenant.id}
+                                className="px-2 py-1 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                              >
+                                Reactivate
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleForceLogout(tenant.id)}
+                              disabled={actionLoading === tenant.id}
+                              className="px-2 py-1 text-xs text-orange-600 hover:text-orange-700 border border-orange-200 rounded hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/30 disabled:opacity-50"
+                            >
+                              Logout All
+                            </button>
+                            <button
+                              onClick={() => handleSoftDelete(tenant.id)}
+                              disabled={actionLoading === tenant.id}
+                              className="px-2 py-1 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
+                disabled={pagination.page === 1}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPagination(p => ({ ...p, page: Math.min(p.totalPages, p.page + 1) }))}
+                disabled={pagination.page === pagination.totalPages}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

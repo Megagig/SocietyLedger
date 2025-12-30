@@ -178,6 +178,37 @@ export const API_ROUTES = {
     SKIP: `${API_BASE_URL}/api/onboarding/skip`,
     RESET: `${API_BASE_URL}/api/onboarding/reset`,
   },
+  // Phase 19: Platform Admin Controls
+  PLATFORM_ADMIN: {
+    // Tenant Management
+    TENANTS: `${API_BASE_URL}/api/admin/tenants`,
+    TENANT_STATUS: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/status`,
+    TENANT_SUSPEND: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/suspend`,
+    TENANT_REACTIVATE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/reactivate`,
+    TENANT_SOFT_DELETE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/soft-delete`,
+    TENANT_RESTORE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/restore`,
+    TENANT_FORCE_LOGOUT: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/force-logout`,
+    TENANT_SECURITY: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/security`,
+    // Module & Feature Management
+    MODULES: `${API_BASE_URL}/api/admin/modules`,
+    FEATURES: `${API_BASE_URL}/api/admin/features`,
+    TENANT_MODULES: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/modules`,
+    TENANT_MODULE_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/modules/override`,
+    TENANT_MODULE_REMOVE: (id: number, code: string) => `${API_BASE_URL}/api/admin/tenants/${id}/modules/${code}/override`,
+    TENANT_FEATURE_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/features/override`,
+    TENANT_FEATURE_REMOVE: (id: number, code: string) => `${API_BASE_URL}/api/admin/tenants/${id}/features/${code}/override`,
+    // Billing Overrides
+    TENANT_BILLING: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing`,
+    TENANT_BILLING_HISTORY: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/history`,
+    TENANT_BILLING_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/override`,
+    TENANT_EXTEND_TRIAL: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/extend-trial`,
+    TENANT_APPLY_CREDIT: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/apply-credit`,
+    BILLING_OVERRIDE_REVOKE: (id: number) => `${API_BASE_URL}/api/admin/billing/overrides/${id}/revoke`,
+    // Platform Action Logs
+    ACTION_LOGS: `${API_BASE_URL}/api/admin/action-logs`,
+    ACTION_LOGS_STATS: `${API_BASE_URL}/api/admin/action-logs/stats`,
+    ACTION_LOGS_EXPORT: `${API_BASE_URL}/api/admin/action-logs/export`,
+  },
   NOTIFICATIONS: {
     LIST: `${API_BASE_URL}/api/notifications`,
     UNREAD_COUNT: `${API_BASE_URL}/api/notifications/unread-count`,

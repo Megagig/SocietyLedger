@@ -802,6 +802,97 @@ DEFAULT_SESSION_TIMEOUT=480
 
 ---
 
-**Document Status:** PENDING APPROVAL  
+**Document Status:** IN PROGRESS  
 **Prepared By:** Kiro AI Assistant  
 **Date:** December 30, 2025
+
+---
+
+## 🖥️ Frontend Implementation Plan (Phase 19.4)
+
+### Overview
+
+The frontend UI for Super Admin Platform Controls will be built using the existing patterns from `apps/web/src/app/admin/`. The implementation follows the established Tailwind CSS + dark mode support patterns.
+
+### New Pages to Create
+
+| Page | Path | Description |
+|------|------|-------------|
+| Tenant Management | `/admin/tenants` | Enhanced tenant list with advanced controls |
+| Tenant Detail | `/admin/tenants/[id]` | Comprehensive tenant view with tabs |
+| Module/Feature Toggles | `/admin/tenants/[id]/modules` | Module and feature management |
+| Billing Overrides | `/admin/tenants/[id]/billing` | Billing controls and history |
+| Security Settings | `/admin/tenants/[id]/security` | Security configuration |
+| Platform Action Logs | `/admin/action-logs` | Enhanced action log viewer |
+
+### API Routes to Add (Frontend Constants)
+
+```typescript
+// apps/web/src/utils/constants.ts - PLATFORM_ADMIN section
+PLATFORM_ADMIN: {
+  // Tenant Management
+  TENANTS: `${API_BASE_URL}/api/admin/tenants`,
+  TENANT_STATUS: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/status`,
+  TENANT_SUSPEND: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/suspend`,
+  TENANT_REACTIVATE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/reactivate`,
+  TENANT_SOFT_DELETE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/soft-delete`,
+  TENANT_RESTORE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/restore`,
+  TENANT_FORCE_LOGOUT: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/force-logout`,
+  TENANT_SECURITY: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/security`,
+  
+  // Module & Feature Management
+  MODULES: `${API_BASE_URL}/api/admin/modules`,
+  FEATURES: `${API_BASE_URL}/api/admin/features`,
+  TENANT_MODULES: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/modules`,
+  TENANT_MODULE_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/modules/override`,
+  TENANT_MODULE_REMOVE: (id: number, code: string) => `${API_BASE_URL}/api/admin/tenants/${id}/modules/${code}/override`,
+  TENANT_FEATURE_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/features/override`,
+  TENANT_FEATURE_REMOVE: (id: number, code: string) => `${API_BASE_URL}/api/admin/tenants/${id}/features/${code}/override`,
+  
+  // Billing Overrides
+  TENANT_BILLING: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing`,
+  TENANT_BILLING_HISTORY: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/history`,
+  TENANT_BILLING_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/override`,
+  TENANT_EXTEND_TRIAL: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/extend-trial`,
+  TENANT_APPLY_CREDIT: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/apply-credit`,
+  BILLING_OVERRIDE_REVOKE: (id: number) => `${API_BASE_URL}/api/admin/billing/overrides/${id}/revoke`,
+  
+  // Platform Action Logs
+  ACTION_LOGS: `${API_BASE_URL}/api/admin/action-logs`,
+  ACTION_LOGS_STATS: `${API_BASE_URL}/api/admin/action-logs/stats`,
+  ACTION_LOGS_EXPORT: `${API_BASE_URL}/api/admin/action-logs/export`,
+}
+```
+
+### Frontend Tasks
+
+| Task ID | Description | Priority | Est. Hours |
+|---------|-------------|----------|------------|
+| PA-FE-001 | Add API routes to constants.ts | 🔴 HIGH | 1 |
+| PA-FE-002 | Create Tenant Management page | 🔴 HIGH | 4 |
+| PA-FE-003 | Create Tenant Detail page with tabs | 🔴 HIGH | 6 |
+| PA-FE-004 | Create Module/Feature Toggles UI | 🔴 HIGH | 4 |
+| PA-FE-005 | Create Billing Overrides UI | 🔴 HIGH | 4 |
+| PA-FE-006 | Create Security Settings UI | 🟡 MEDIUM | 3 |
+| PA-FE-007 | Create Platform Action Logs page | 🟡 MEDIUM | 3 |
+| PA-FE-008 | Update admin dashboard with new links | 🟡 MEDIUM | 1 |
+
+**Total Estimated Time:** 26 hours (3-4 days)
+
+### UI Components
+
+1. **TenantCard** - Displays tenant summary with quick actions
+2. **ModuleToggle** - Toggle switch for module enable/disable
+3. **FeatureToggle** - Toggle switch for feature enable/disable
+4. **BillingOverrideForm** - Form for creating billing overrides
+5. **ActionLogTable** - Table for displaying action logs with filters
+6. **SecuritySettingsForm** - Form for security configuration
+
+### Design Patterns
+
+- Follow existing admin page patterns (dark mode, Tailwind CSS)
+- Use toast notifications for success/error feedback
+- Implement loading states with spinners
+- Use confirmation dialogs for destructive actions
+- Support pagination for lists
+- Include search and filter capabilities
