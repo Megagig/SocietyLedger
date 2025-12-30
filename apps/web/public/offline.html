@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#14b8a6">
+  <title>Offline - SocietyLedger</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f1f5f9;
+      padding: 1rem;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 400px;
+      padding: 2rem;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 1rem;
+      border: 1px solid rgba(71, 85, 105, 0.5);
+      backdrop-filter: blur(10px);
+    }
+    
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(135deg, #14b8a6, #22c55e);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .icon svg {
+      width: 40px;
+      height: 40px;
+      color: white;
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #14b8a6;
+      margin-bottom: 0.75rem;
+    }
+    
+    p {
+      color: #94a3b8;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 0.5rem;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .status.online {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      animation: pulse 2s infinite;
+    }
+    
+    .status.online .status-dot {
+      background: #22c55e;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .status-text {
+      font-size: 0.875rem;
+      color: #ef4444;
+    }
+    
+    .status.online .status-text {
+      color: #22c55e;
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #14b8a6, #0d9488);
+      color: white;
+      border: none;
+      padding: 0.875rem 1.5rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .cached-pages {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(71, 85, 105, 0.5);
+    }
+    
+    .cached-pages h2 {
+      font-size: 0.875rem;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .cached-links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .cached-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: rgba(51, 65, 85, 0.5);
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    
+    .cached-link:hover {
+      background: rgba(51, 65, 85, 0.8);
+      color: #14b8a6;
+    }
+    
+    .cached-link svg {
+      width: 18px;
+      height: 18px;
+      color: #64748b;
+    }
+    
+    .tips {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: rgba(51, 65, 85, 0.3);
+      border-radius: 0.5rem;
+      text-align: left;
+    }
+    
+    .tips h3 {
+      font-size: 0.875rem;
+      color: #e2e8f0;
+      margin-bottom: 0.5rem;
+    }
+    
+    .tips ul {
+      list-style: none;
+      font-size: 0.8125rem;
+      color: #94a3b8;
+    }
+    
+    .tips li {
+      padding: 0.25rem 0;
+      padding-left: 1rem;
+      position: relative;
+    }
+    
+    .tips li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #14b8a6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+      </svg>
+    </div>
+    
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Some features may be unavailable until you're back online.</p>
+    
+    <div class="status" id="status">
+      <div class="status-dot"></div>
+      <span class="status-text">No connection</span>
+    </div>
+    
+    <button class="btn" onclick="checkConnection()" id="retryBtn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      Try Again
+    </button>
+    
+    <div class="cached-pages" id="cachedPages" style="display: none;">
+      <h2>Available Offline</h2>
+      <div class="cached-links" id="cachedLinks">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+    
+    <div class="tips">
+      <h3>While you wait:</h3>
+      <ul>
+        <li>Check your Wi-Fi or mobile data connection</li>
+        <li>Try moving to an area with better signal</li>
+        <li>Restart your router if on Wi-Fi</li>
+        <li>Previously viewed pages may still be available</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // Check connection status
+    function checkConnection() {
+      const btn = document.getElementById('retryBtn');
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Checking...
+      `;
+      
+      fetch('/api/health', { method: 'HEAD', cache: 'no-store' })
+        .then(() => {
+          // Online - redirect to dashboard
+          window.location.href = '/dashboard';
+        })
+        .catch(() => {
+          // Still offline
+          btn.disabled = false;
+          btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Try Again
+          `;
+        });
+    }
+    
+    // Update status when online/offline
+    function updateStatus() {
+      const status = document.getElementById('status');
+      if (navigator.onLine) {
+        status.classList.add('online');
+        status.innerHTML = `
+          <div class="status-dot"></div>
+          <span class="status-text">Connection restored</span>
+        `;
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      } else {
+        status.classList.remove('online');
+        status.innerHTML = `
+          <div class="status-dot"></div>
+          <span class="status-text">No connection</span>
+        `;
+      }
+    }
+    
+    // List cached pages
+    async function listCachedPages() {
+      if ('caches' in window) {
+        try {
+          const cache = await caches.open('societyledger-dynamic-v1');
+          const keys = await cache.keys();
+          const pages = keys
+            .filter(req => req.url.includes('/dashboard'))
+            .map(req => new URL(req.url).pathname);
+          
+          if (pages.length > 0) {
+            const container = document.getElementById('cachedPages');
+            const links = document.getElementById('cachedLinks');
+            
+            container.style.display = 'block';
+            links.innerHTML = pages.slice(0, 5).map(page => `
+              <a href="${page}" class="cached-link">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                ${page.replace('/dashboard', 'Dashboard').replace(/\//g, ' / ').trim() || 'Dashboard'}
+              </a>
+            `).join('');
+          }
+        } catch (e) {
+          console.log('Could not list cached pages:', e);
+        }
+      }
+    }
+    
+    // Event listeners
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    
+    // Initial setup
+    updateStatus();
+    listCachedPages();
+  </script>
+</body>
+</html>

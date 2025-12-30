@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
 import { Loader } from '@mantine/core';
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -64,6 +66,10 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* PWA Status Indicators */}
+      <OfflineIndicator />
+      <UpdatePrompt />
+      
       <Sidebar />
       <main className="flex-1 lg:ml-72 min-h-screen">
         {/* Top Bar with Notification Bell */}
@@ -72,10 +78,19 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
             <NotificationBell />
           </div>
         </div>
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-4 sm:p-6 lg:p-8 mb-bottom-nav">
           {children}
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <BottomNav 
+        onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+        notificationCount={0}
+      />
+      
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }
