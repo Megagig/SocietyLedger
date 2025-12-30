@@ -9,7 +9,7 @@ import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
-import { standardRateLimit, authRateLimit } from './middleware/rate-limit.middleware';
+import { standardRateLimit, authRateLimit, sessionRateLimit } from './middleware/rate-limit.middleware';
 
 // Load environment variables
 dotenv.config();
@@ -77,7 +77,7 @@ const corsOptions = {
   },
   credentials: true, // CRITICAL: Enable credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id', 'X-Association-Id'],
   exposedHeaders: ['Set-Cookie'],
   maxAge: 86400, // 24 hours
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
@@ -109,7 +109,14 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Phase 12: Apply rate limiting to API routes
-app.use('/api/auth', authRateLimit);
+// Session check endpoints (high frequency) - 200 req/min
+app.use('/api/auth/me', sessionRateLimit);
+// Sensitive auth endpoints (login, register, password reset) - 10 req/min
+app.use('/api/auth/login', authRateLimit);
+app.use('/api/auth/register', authRateLimit);
+app.use('/api/auth/forgot-password', authRateLimit);
+app.use('/api/auth/reset-password', authRateLimit);
+// Standard rate limit for all other API routes - 100 req/min
 app.use('/api', standardRateLimit);
 
 // API Routes
@@ -117,6 +124,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/associations', associationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+// IMPORTANT: /api/members/me must come BEFORE /api/members to avoid /:id matching 'me'
+app.use('/api/members/me', memberFinanceRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/payments', paymentRoutes);
@@ -130,7 +139,6 @@ app.use('/api/finance/advanced', advancedFinanceRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/payments/nigerian', nigerianPaymentsRoutes);
 app.use('/api/cooperatives', cooperativesRoutes);
-app.use('/api/members/me', memberFinanceRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);

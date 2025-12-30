@@ -216,13 +216,25 @@ export const strictRateLimit = rateLimit({
 });
 
 /**
- * Auth rate limiter (10 requests/minute per IP)
+ * Auth rate limiter for login/register (10 requests/minute per IP)
+ * Use this for sensitive auth endpoints like login, register, password reset
  */
 export const authRateLimit = rateLimit({
   windowMs: 60000,
   max: 10,
   perTenant: false,
   message: 'Too many authentication attempts. Please wait before trying again.',
+});
+
+/**
+ * Session check rate limiter (200 requests/minute)
+ * Use this for /auth/me and other session validation endpoints
+ * Higher limit since these are called on every page load
+ */
+export const sessionRateLimit = rateLimit({
+  windowMs: 60000,
+  max: 200,
+  perTenant: false,
 });
 
 /**

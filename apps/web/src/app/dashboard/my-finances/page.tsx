@@ -6,7 +6,7 @@ import { Badge, Progress } from '@mantine/core';
 import { 
   IconCurrencyNaira, IconReceipt, IconWallet, IconHeart,
   IconBadge, IconAlertTriangle, IconCheck, IconClock,
-  IconArrowRight, IconTrendingUp
+  IconArrowRight
 } from '@tabler/icons-react';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
