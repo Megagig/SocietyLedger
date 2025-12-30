@@ -627,7 +627,6 @@ export function Sidebar() {
           label: 'Platform Analytics',
           icon: <IconFileAnalytics size={18} />,
           href: '/admin/analytics',
-          comingSoon: true,
         },
       ],
     });
