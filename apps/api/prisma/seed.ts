@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient, AssociationTier, AssociationStatus, BillingCycle, SubscriptionStatus, PlatformRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { seedPlatformModules } from './seeds/platform-modules.seed';
 
 const prisma = new PrismaClient();
 
@@ -119,6 +120,9 @@ async function main() {
   }
 
   console.log('✅ Seed completed: plans and demo association created');
+
+  // Seed platform modules and features (Phase 19)
+  await seedPlatformModules();
 }
 
 main()

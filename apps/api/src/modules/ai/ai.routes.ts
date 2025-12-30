@@ -9,12 +9,17 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
+import { requireModule } from '../../middleware/module-feature.middleware';
 
 const router = Router();
 
 // Apply auth and tenant middleware to all routes
 router.use(authMiddleware);
 router.use(tenantMiddleware);
+
+// Phase 19: Apply module check to all AI routes (Enterprise tier)
+// In shadow mode, this logs but doesn't block; in enforce mode, it blocks access
+router.use(requireModule('ai_assistant'));
 
 // ==========================================
 // AI STATUS & CONFIGURATION

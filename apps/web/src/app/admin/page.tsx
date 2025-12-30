@@ -321,10 +321,11 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <QuickLink href="/admin/associations" icon="🏢" label="Associations" />
-        <QuickLink href="/admin/analytics" icon="📊" label="Analytics" />
-        <QuickLink href="/admin/audit-logs" icon="📋" label="Audit Logs" />
+        <QuickLink href="/admin/tenants" icon="🏠" label="Tenant Management" />
+        <QuickLink href="/admin/modules" icon="🧩" label="Modules & Features" />
+        <QuickLink href="/admin/action-logs" icon="📋" label="Action Logs" />
         <QuickLink href="/admin/settings" icon="⚙️" label="Settings" />
       </div>
     </div>

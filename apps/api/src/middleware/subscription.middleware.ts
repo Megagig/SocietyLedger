@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
+import { BillingOverrideService } from '../services/billing-override.service';
 
 /**
  * Middleware to check if association has an active subscription
  * Should be applied to routes that require a paid subscription
+ * 
+ * Phase 19 Enhancement: Now checks billing overrides before subscription status
+ * Resolution order: BillingOverride → Subscription → Default behavior
  */
 export async function subscriptionMiddleware(
   req: Request,
@@ -18,6 +22,44 @@ export async function subscriptionMiddleware(
         success: false,
         message: 'Association context required',
       });
+    }
+
+    // Phase 19: Check billing overrides first
+    const billingStatus = await BillingOverrideService.getBillingStatus(associationId);
+    
+    // If billing is bypassed, paid externally, or has grace period, allow access
+    if (billingStatus.isBillingBypassed || billingStatus.isPaidExternally || billingStatus.hasGracePeriod) {
+      // Get association and plan info for request context
+      const association = await prisma.association.findUnique({
+        where: { id: associationId },
+        include: {
+          subscriptions: {
+            include: { plan: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
+
+      if (association?.subscriptions[0]) {
+        req.subscription = association.subscriptions[0];
+        req.plan = association.subscriptions[0].plan;
+      }
+
+      // Add billing override info to request
+      (req as any).billingOverride = {
+        bypassed: billingStatus.isBillingBypassed,
+        paidExternally: billingStatus.isPaidExternally,
+        hasGracePeriod: billingStatus.hasGracePeriod,
+        creditBalance: billingStatus.creditBalance,
+      };
+
+      return next();
+    }
+
+    // If billing is paused, still allow access but log it
+    if (billingStatus.isBillingPaused) {
+      console.log(`[Subscription] Billing paused for association ${associationId}, allowing access`);
     }
 
     // Get association with subscription details
@@ -55,6 +97,16 @@ export async function subscriptionMiddleware(
 
     // Check if subscription has expired
     const now = new Date();
+    
+    // Phase 19: Check if trial was extended
+    if (billingStatus.isTrialExtended && subscription.status === 'TRIALING') {
+      // Trial extended, allow access
+      req.subscription = subscription;
+      req.plan = subscription.plan;
+      (req as any).billingOverride = { trialExtended: true };
+      return next();
+    }
+
     if (subscription.currentPeriodEnd < now && subscription.status !== 'TRIALING') {
       // Update subscription status to expired
       await prisma.subscription.update({

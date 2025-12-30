@@ -3,12 +3,17 @@ import { accountingController } from './accounting.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
+import { requireModule } from '../../middleware/module-feature.middleware';
 
 const router = Router();
 
 // Apply auth middleware to all routes
 // Note: Tenant context comes from authenticated user's associationId (set by authMiddleware)
 router.use(authMiddleware);
+
+// Phase 19: Apply module check to all accounting routes
+// In shadow mode, this logs but doesn't block; in enforce mode, it blocks access
+router.use(requireModule('accounting'));
 
 // ==========================================
 // CHART OF ACCOUNTS ROUTES (TASK-ACC-001)
