@@ -76,8 +76,9 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **8.5** | Cooperatives & Loans | ✅ **COMPLETE** | 10/10 | - |
 | **11.7** | Member Financial Ledger | ✅ **COMPLETE** | 8/8 | - |
 | **17** | AI Integration | 🟡 **PARTIAL** | 14/16 | 🟡 MEDIUM |
+| **20** | Dashboard Real-Data Integration | ⚪ Not Started | 0/17 | 🔴 HIGH |
 
-#### ⚪ **REMAINING PHASES (3 phases - Low Priority)**
+#### ⚪ **REMAINING PHASES (4 phases)**
 
 | Phase | Name | Status | Progress | Priority |
 |-------|------|--------|----------|----------|
@@ -7436,3 +7437,348 @@ LOG_PLATFORM_ACTIONS=true
 - [ ] All platform actions are audited
 - [ ] Shadow mode validates no false positives
 - [ ] System is extensible for future modules/features
+
+
+---
+
+## Phase 20: Dashboard Real-Data Integration 🔴 HIGH PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** Financial Core ✅, Member Management ✅, Reports System ✅, Multi-Tenancy ✅  
+**Estimated Time:** 3-4 days  
+**Priority:** 🔴 HIGH - Core User Experience  
+**Location:** `apps/api/src/modules/dashboard/`, `apps/web/src/app/dashboard/page.tsx`
+
+### Overview
+
+Replace all hardcoded mock data in the main dashboard (`/dashboard`) with real, production-grade, tenant-isolated data. The dashboard is the first thing users see after login and must reflect accurate, real-time association data.
+
+### Current State Analysis
+
+**File:** `apps/web/src/app/dashboard/page.tsx`
+
+**Mock Data to Replace:**
+1. `revenueData` - 6 months of hardcoded revenue (Jan-Jun)
+2. `paymentMethodsData` - Static payment method distribution
+3. `activityData` - Hardcoded daily activity by hour
+4. `recentTransactions` - 4 static transactions with fake members
+5. `StatCard` values - Total Members (150), Total Revenue (₦45,230), Pending (23), Overdue (8)
+6. `QuickStat` values - Active Members (142), This Month (₦52,000), Collection Rate (94%)
+
+### Design Principles
+
+- **Single Aggregated Endpoint:** Avoid N+1 API calls - one `GET /api/dashboard/overview` returns all data
+- **Tenant Isolation:** All queries scoped by `associationId` from JWT
+- **RBAC Compliance:** Respect user permissions for financial data visibility
+- **Performance:** Use efficient aggregations, consider caching for heavy queries
+- **Graceful Degradation:** Handle empty states, loading states, and errors elegantly
+
+### Hard Constraints
+
+- ❌ Do NOT change existing route (`/dashboard`)
+- ❌ Do NOT remove existing components or layouts
+- ❌ Do NOT refactor unrelated features
+- ❌ Do NOT break tenant resolution (subdomain/headers)
+- ❌ Do NOT bypass RBAC or ownership rules
+- ✅ Replace mock data only
+- ✅ Add backend endpoint only if required
+- ✅ Use existing Prisma models and tenant middleware
+
+---
+
+### Phase 20.1: Backend - Dashboard Service & API (6 tasks)
+
+#### 20.1.1 Dashboard Service
+
+- [ ] **TASK-DASH-001:** Create Dashboard Service
+  - **Description:** Create `apps/api/src/modules/dashboard/dashboard.service.ts` with methods to aggregate all dashboard data
+  - **Dependencies:** None
+  - **Files to Create:** 
+    - `apps/api/src/modules/dashboard/dashboard.service.ts`
+    - `apps/api/src/modules/dashboard/dashboard.types.ts`
+  - **Methods to Implement:**
+    - `getDashboardOverview(associationId: number): Promise<DashboardOverview>`
+  - **Acceptance Criteria:** Service aggregates all dashboard metrics in a single call
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-002:** Implement Member Statistics Aggregation
+  - **Description:** Add method to get member counts (total, active, inactive, new this month)
+  - **Dependencies:** TASK-DASH-001
+  - **Data to Return:**
+    ```typescript
+    memberStats: {
+      total: number;
+      active: number;
+      inactive: number;
+      suspended: number;
+      newThisMonth: number;
+    }
+    ```
+  - **Query:** Aggregate from `Member` model with `associationId` filter
+  - **Acceptance Criteria:** Returns accurate member counts by status
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-003:** Implement Financial Summary Aggregation
+  - **Description:** Add method to get financial totals (inflow, outflow, balance, outstanding)
+  - **Dependencies:** TASK-DASH-001
+  - **Data to Return:**
+    ```typescript
+    financialSummary: {
+      totalInflow: Decimal;        // Sum of all payments received
+      totalOutflow: Decimal;       // Sum of all expenses (if tracked)
+      currentBalance: Decimal;     // Net balance
+      outstandingDues: Decimal;    // Total unpaid transactions
+      pendingPayments: number;     // Count of pending transactions
+      overduePayments: number;     // Count of overdue transactions
+      thisMonthInflow: Decimal;    // Payments received this month
+      collectionRate: number;      // Percentage collected vs expected
+    }
+    ```
+  - **Query:** Aggregate from `Transaction` and `Payment` models
+  - **Acceptance Criteria:** Returns accurate financial metrics
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-004:** Implement Revenue Trend Data
+  - **Description:** Add method to get monthly revenue for last 6-12 months
+  - **Dependencies:** TASK-DASH-001
+  - **Data to Return:**
+    ```typescript
+    revenueTrend: Array<{
+      month: string;      // "Jan", "Feb", etc.
+      year: number;
+      revenue: Decimal;   // Total payments received
+      expected: Decimal;  // Total transactions created
+    }>
+    ```
+  - **Query:** Group payments by month, last 6 months
+  - **Acceptance Criteria:** Returns monthly revenue data for charts
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-005:** Implement Payment Methods Distribution
+  - **Description:** Add method to get payment breakdown by method
+  - **Dependencies:** TASK-DASH-001
+  - **Data to Return:**
+    ```typescript
+    paymentMethods: Array<{
+      method: string;     // "bank_transfer", "cash", "mobile_money", etc.
+      count: number;      // Number of payments
+      amount: Decimal;    // Total amount
+      percentage: number; // Percentage of total
+    }>
+    ```
+  - **Query:** Group payments by `paymentMethod` field
+  - **Acceptance Criteria:** Returns payment method distribution for pie chart
+  - **Priority:** 🟡 MEDIUM
+
+- [ ] **TASK-DASH-006:** Implement Recent Transactions
+  - **Description:** Add method to get recent transactions with member info
+  - **Dependencies:** TASK-DASH-001
+  - **Data to Return:**
+    ```typescript
+    recentTransactions: Array<{
+      id: number;
+      memberName: string;
+      amount: Decimal;
+      status: string;
+      date: Date;
+      category: string;
+    }>
+    ```
+  - **Query:** Get last 10 transactions with member join, ordered by date desc
+  - **Acceptance Criteria:** Returns recent transactions for table display
+  - **Priority:** 🔴 HIGH
+
+#### 20.1.2 Dashboard Controller & Routes
+
+- [ ] **TASK-DASH-007:** Create Dashboard Controller
+  - **Description:** Create `apps/api/src/modules/dashboard/dashboard.controller.ts` with endpoint handlers
+  - **Dependencies:** TASK-DASH-001 through TASK-DASH-006
+  - **Files to Create:** `apps/api/src/modules/dashboard/dashboard.controller.ts`
+  - **Endpoints:**
+    - `GET /api/dashboard/overview` - Returns all dashboard data
+  - **Acceptance Criteria:** Controller calls service and returns formatted response
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-008:** Create Dashboard Routes
+  - **Description:** Create `apps/api/src/modules/dashboard/dashboard.routes.ts` and register in main router
+  - **Dependencies:** TASK-DASH-007
+  - **Files to Create:** `apps/api/src/modules/dashboard/dashboard.routes.ts`
+  - **Files to Update:** `apps/api/src/routes/index.ts` (register dashboard routes)
+  - **Middleware:** `authenticate`, `requireAssociation`
+  - **Acceptance Criteria:** Routes registered and accessible with auth
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-009:** Add Dashboard Types
+  - **Description:** Create TypeScript interfaces for dashboard data structures
+  - **Dependencies:** TASK-DASH-001
+  - **Files to Create:** `apps/api/src/modules/dashboard/dashboard.types.ts`
+  - **Types to Define:**
+    ```typescript
+    interface DashboardOverview {
+      memberStats: MemberStats;
+      financialSummary: FinancialSummary;
+      revenueTrend: RevenueTrendItem[];
+      paymentMethods: PaymentMethodItem[];
+      recentTransactions: RecentTransaction[];
+      quickStats: QuickStats;
+    }
+    ```
+  - **Acceptance Criteria:** All types properly defined and exported
+  - **Priority:** 🔴 HIGH
+
+---
+
+### Phase 20.2: Frontend - Dashboard Integration (5 tasks)
+
+#### 20.2.1 API Integration
+
+- [ ] **TASK-DASH-010:** Add Dashboard API Route to Constants
+  - **Description:** Add dashboard endpoint to `apps/web/src/utils/constants.ts`
+  - **Dependencies:** TASK-DASH-008
+  - **Files to Update:** `apps/web/src/utils/constants.ts`
+  - **Routes to Add:**
+    ```typescript
+    DASHBOARD: {
+      OVERVIEW: `${API_BASE_URL}/api/dashboard/overview`,
+    }
+    ```
+  - **Acceptance Criteria:** Dashboard route constant available
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-011:** Create Dashboard API Client
+  - **Description:** Create API client function to fetch dashboard data
+  - **Dependencies:** TASK-DASH-010
+  - **Files to Create:** `apps/web/src/lib/api/dashboard.ts`
+  - **Functions:**
+    ```typescript
+    export async function getDashboardOverview(): Promise<DashboardOverview>
+    ```
+  - **Acceptance Criteria:** API client properly handles auth headers and errors
+  - **Priority:** 🔴 HIGH
+
+#### 20.2.2 Dashboard Page Updates
+
+- [ ] **TASK-DASH-012:** Replace Mock Data with Real Data Fetching
+  - **Description:** Update `apps/web/src/app/dashboard/page.tsx` to fetch real data using TanStack Query
+  - **Dependencies:** TASK-DASH-011
+  - **Files to Update:** `apps/web/src/app/dashboard/page.tsx`
+  - **Changes:**
+    - Remove all hardcoded mock data arrays
+    - Add `useQuery` hook to fetch dashboard overview
+    - Map API response to chart data formats
+    - Update StatCard values from API response
+    - Update QuickStat values from API response
+  - **Acceptance Criteria:** Dashboard displays real data from API
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-013:** Add Loading States
+  - **Description:** Add skeleton loaders while dashboard data is loading
+  - **Dependencies:** TASK-DASH-012
+  - **Files to Update:** `apps/web/src/app/dashboard/page.tsx`
+  - **Components to Add:**
+    - Skeleton for StatCards (4 cards)
+    - Skeleton for charts (2 chart areas)
+    - Skeleton for transactions table
+  - **Acceptance Criteria:** Smooth loading experience with skeletons
+  - **Priority:** 🟡 MEDIUM
+
+- [ ] **TASK-DASH-014:** Add Empty States
+  - **Description:** Handle cases where association has no data yet
+  - **Dependencies:** TASK-DASH-012
+  - **Files to Update:** `apps/web/src/app/dashboard/page.tsx`
+  - **Empty States:**
+    - No members: "Add your first member to get started"
+    - No transactions: "No financial activity yet"
+    - No payments: "No payments recorded"
+  - **Acceptance Criteria:** Helpful empty states guide new users
+  - **Priority:** 🟡 MEDIUM
+
+- [ ] **TASK-DASH-015:** Add Error Handling
+  - **Description:** Handle API errors gracefully with retry option
+  - **Dependencies:** TASK-DASH-012
+  - **Files to Update:** `apps/web/src/app/dashboard/page.tsx`
+  - **Error Handling:**
+    - Display error message if API fails
+    - Add retry button
+    - Log errors for debugging
+  - **Acceptance Criteria:** Errors handled gracefully without crashing
+  - **Priority:** 🟡 MEDIUM
+
+---
+
+### Phase 20.3: Testing & Validation (2 tasks)
+
+- [ ] **TASK-DASH-016:** Test Tenant Isolation
+  - **Description:** Verify dashboard only shows data for current association
+  - **Dependencies:** TASK-DASH-012
+  - **Test Cases:**
+    - Login as user from Association A, verify only A's data shown
+    - Login as user from Association B, verify only B's data shown
+    - Verify no cross-tenant data leakage
+  - **Acceptance Criteria:** Complete tenant isolation verified
+  - **Priority:** 🔴 HIGH
+
+- [ ] **TASK-DASH-017:** Test RBAC Compliance
+  - **Description:** Verify financial data respects user permissions
+  - **Dependencies:** TASK-DASH-012
+  - **Test Cases:**
+    - Admin sees all financial data
+    - Treasurer sees all financial data
+    - Regular member sees limited data (if applicable)
+  - **Acceptance Criteria:** RBAC rules enforced on dashboard
+  - **Priority:** 🟡 MEDIUM
+
+---
+
+### Phase 20 Summary
+
+**Total Tasks:** 17
+**Backend Tasks:** 9 (TASK-DASH-001 to TASK-DASH-009)
+**Frontend Tasks:** 6 (TASK-DASH-010 to TASK-DASH-015)
+**Testing Tasks:** 2 (TASK-DASH-016 to TASK-DASH-017)
+
+**Files to Create:**
+```
+apps/api/src/modules/dashboard/dashboard.service.ts
+apps/api/src/modules/dashboard/dashboard.controller.ts
+apps/api/src/modules/dashboard/dashboard.routes.ts
+apps/api/src/modules/dashboard/dashboard.types.ts
+apps/web/src/lib/api/dashboard.ts
+```
+
+**Files to Update:**
+```
+apps/api/src/routes/index.ts (register dashboard routes)
+apps/web/src/utils/constants.ts (add DASHBOARD routes)
+apps/web/src/app/dashboard/page.tsx (replace mock data)
+```
+
+**API Endpoint:**
+```
+GET /api/dashboard/overview
+Authorization: Bearer <token>
+Response: {
+  memberStats: { total, active, inactive, suspended, newThisMonth },
+  financialSummary: { totalInflow, totalOutflow, currentBalance, outstandingDues, pendingPayments, overduePayments, thisMonthInflow, collectionRate },
+  revenueTrend: [{ month, year, revenue, expected }],
+  paymentMethods: [{ method, count, amount, percentage }],
+  recentTransactions: [{ id, memberName, amount, status, date, category }],
+  quickStats: { activeMembers, thisMonthRevenue, collectionRate }
+}
+```
+
+**Success Criteria:**
+- [ ] Dashboard loads real data from API
+- [ ] All mock data removed from frontend
+- [ ] Tenant isolation verified
+- [ ] Loading states provide good UX
+- [ ] Empty states guide new users
+- [ ] Error handling prevents crashes
+- [ ] Performance acceptable (<2s load time)
+
+**Risk Mitigation:**
+- Use existing reports service methods where possible
+- Single aggregated endpoint to avoid N+1 queries
+- Add indexes if query performance is slow
+- Consider Redis caching for heavy aggregations (future)
+

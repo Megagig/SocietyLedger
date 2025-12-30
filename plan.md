@@ -46,6 +46,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **17** | AI Integration | ✅ **COMPLETE** | 14/16 | 🟢 LOW |
 | **18** | Settings Page Architecture | ⚪ Not Started | 0/10 | 🔴 HIGH |
 | **19** | SaaS Owner / Super Admin Platform Controls | ⚪ Not Started | 0/24 | 🔴 HIGH |
+| **20** | Dashboard Real-Data Integration | ⚪ Not Started | 0/17 | 🔴 HIGH |
 
 
 **Legend:**
@@ -1866,3 +1867,155 @@ apps/api/src/modules/admin/platform-analytics.controller.ts
 apps/api/src/config/module-routes.ts
 apps/api/src/config/platform-permissions.ts
 ```
+
+
+---
+
+### Phase 20: Dashboard Real-Data Integration 🔴 HIGH PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** Financial Core ✅, Member Management ✅, Reports System ✅, Multi-Tenancy ✅  
+**Estimated Time:** 3-4 days  
+**Priority:** 🔴 HIGH - Core User Experience  
+**Location:** `apps/api/src/modules/dashboard/`, `apps/web/src/app/dashboard/page.tsx`
+
+#### Overview
+
+Replace all hardcoded mock data in the main dashboard (`/dashboard`) with real, production-grade, tenant-isolated data. The dashboard is the first screen users see after login and must reflect accurate, real-time association data.
+
+#### Current Problem
+
+The dashboard at `apps/web/src/app/dashboard/page.tsx` displays:
+- Hardcoded revenue chart data (Jan-Jun static values)
+- Static payment method distribution (45% Bank, 30% Cash, 25% Mobile)
+- Fake activity data by hour
+- 4 hardcoded recent transactions with fake member names
+- Static stat cards (150 members, ₦45,230 revenue, 23 pending, 8 overdue)
+
+#### Solution Architecture
+
+**Single Aggregated Endpoint:** `GET /api/dashboard/overview`
+
+Returns all dashboard data in one call to avoid N+1 API requests:
+
+```typescript
+interface DashboardOverview {
+  memberStats: {
+    total: number;
+    active: number;
+    inactive: number;
+    suspended: number;
+    newThisMonth: number;
+  };
+  financialSummary: {
+    totalInflow: Decimal;
+    totalOutflow: Decimal;
+    currentBalance: Decimal;
+    outstandingDues: Decimal;
+    pendingPayments: number;
+    overduePayments: number;
+    thisMonthInflow: Decimal;
+    collectionRate: number;
+  };
+  revenueTrend: Array<{
+    month: string;
+    year: number;
+    revenue: Decimal;
+    expected: Decimal;
+  }>;
+  paymentMethods: Array<{
+    method: string;
+    count: number;
+    amount: Decimal;
+    percentage: number;
+  }>;
+  recentTransactions: Array<{
+    id: number;
+    memberName: string;
+    amount: Decimal;
+    status: string;
+    date: Date;
+    category: string;
+  }>;
+  quickStats: {
+    activeMembers: number;
+    thisMonthRevenue: Decimal;
+    collectionRate: number;
+  };
+}
+```
+
+#### Implementation Tasks
+
+**Backend (9 tasks):**
+1. Create Dashboard Service with aggregation methods
+2. Implement member statistics aggregation
+3. Implement financial summary aggregation
+4. Implement revenue trend data (6-12 months)
+5. Implement payment methods distribution
+6. Implement recent transactions query
+7. Create Dashboard Controller
+8. Create Dashboard Routes
+9. Add TypeScript types
+
+**Frontend (6 tasks):**
+1. Add dashboard API route to constants
+2. Create dashboard API client
+3. Replace mock data with real data fetching (TanStack Query)
+4. Add loading states (skeletons)
+5. Add empty states for new associations
+6. Add error handling with retry
+
+**Testing (2 tasks):**
+1. Verify tenant isolation
+2. Verify RBAC compliance
+
+#### Files to Create
+
+```
+apps/api/src/modules/dashboard/
+├── dashboard.service.ts      # Data aggregation logic
+├── dashboard.controller.ts   # HTTP handlers
+├── dashboard.routes.ts       # Route definitions
+└── dashboard.types.ts        # TypeScript interfaces
+
+apps/web/src/lib/api/
+└── dashboard.ts              # API client
+```
+
+#### Files to Update
+
+```
+apps/api/src/routes/index.ts           # Register dashboard routes
+apps/web/src/utils/constants.ts        # Add DASHBOARD API routes
+apps/web/src/app/dashboard/page.tsx    # Replace mock data with real fetching
+```
+
+#### Design Constraints
+
+- ❌ Do NOT change existing route (`/dashboard`)
+- ❌ Do NOT remove existing components or layouts
+- ❌ Do NOT break tenant resolution
+- ❌ Do NOT bypass RBAC
+- ✅ Replace mock data only
+- ✅ Use existing Prisma models
+- ✅ Use existing tenant middleware
+
+#### Success Criteria
+
+- [ ] Dashboard loads real data from API
+- [ ] All mock data removed from frontend
+- [ ] Tenant isolation verified (no cross-tenant data)
+- [ ] Loading states provide smooth UX
+- [ ] Empty states guide new users
+- [ ] Error handling prevents crashes
+- [ ] Performance acceptable (<2s load time)
+
+#### Reuse Opportunities
+
+Leverage existing services:
+- `reportsService.generateFinancialSummary()` for financial metrics
+- `reportsService.generateCollectionRate()` for collection rate
+- Member model queries for member stats
+- Transaction/Payment models for recent activity
+
