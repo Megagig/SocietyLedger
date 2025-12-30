@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from './admin.controller';
+import { PlatformSettingsController } from './platform-settings.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePlatformRole } from '../../middleware/rbac';
 import { PlatformRole } from '@prisma/client';
@@ -26,5 +27,14 @@ router.post('/impersonate/:associationId', (req, res) => ctrl.impersonate(req as
 router.get('/approvals', (req, res) => ctrl.listPendingApprovals(req as any, res));
 router.patch('/approvals/:userId', (req, res) => ctrl.updateApproval(req as any, res));
 router.post('/approvals/bulk', (req, res) => ctrl.bulkUpdateApprovals(req as any, res));
+
+// Platform Settings (TASK-SET-025)
+router.get('/settings/platform', PlatformSettingsController.getSettings);
+router.patch('/settings/platform', PlatformSettingsController.updateSettings);
+router.get('/settings/platform/stats', PlatformSettingsController.getStats);
+
+// Association Overrides
+router.get('/associations/:id/override', PlatformSettingsController.getAssociationOverride);
+router.post('/associations/:id/override', PlatformSettingsController.setAssociationOverride);
 
 export default router;

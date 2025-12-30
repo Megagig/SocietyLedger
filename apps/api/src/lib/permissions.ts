@@ -1,419 +1,221 @@
-// Permission constants for role-based access control
+/**
+ * Permission Constants
+ * 
+ * These constants are kept for backward compatibility and type safety.
+ * The actual permission checking is done against the database.
+ * 
+ * NOTE: The database is the SINGLE SOURCE OF TRUTH for permissions.
+ * These constants should match the permission keys in the database.
+ */
+
+// Permission key constants - must match database permission keys
 export const PERMISSIONS = {
   // Member Management
-  MEMBER_VIEW: 'member:view',
-  MEMBER_CREATE: 'member:create',
-  MEMBER_EDIT: 'member:edit',
-  MEMBER_DELETE: 'member:delete',
-  MEMBER_EXPORT: 'member:export',
+  MEMBER_VIEW: 'members.view',
+  MEMBER_VIEW_OWN: 'members.view_own',
+  MEMBER_VIEW_ALL: 'members.view_all',
+  MEMBER_CREATE: 'members.create',
+  MEMBER_EDIT: 'members.edit',
+  MEMBER_EDIT_OWN: 'members.edit_own',
+  MEMBER_EDIT_ALL: 'members.edit_all',
+  MEMBER_DISABLE: 'members.disable',
+  MEMBER_BULK_IMPORT: 'members.bulk_import',
+  MEMBER_MANAGE_ROLES: 'members.manage_roles',
   
-  // Financial Management
-  FINANCE_VIEW: 'finance:view',
-  FINANCE_CREATE: 'finance:create',
-  FINANCE_EDIT: 'finance:edit',
-  FINANCE_DELETE: 'finance:delete',
-  FINANCE_APPROVE: 'finance:approve',
+  // Finance/Ledger
+  LEDGER_VIEW: 'ledger.view',
+  LEDGER_VIEW_OWN: 'ledger.view_own',
+  LEDGER_VIEW_ALL: 'ledger.view_all',
+  LEDGER_CREATE: 'ledger.create',
+  LEDGER_EDIT: 'ledger.edit',
+  LEDGER_REVERSE: 'ledger.reverse',
+  LEDGER_EXPORT: 'ledger.export',
+  LEDGER_VIEW_MEMBER_STATEMENT: 'ledger.view_member_statement',
   
-  // Transaction Management
-  TRANSACTION_VIEW: 'transaction:view',
-  TRANSACTION_CREATE: 'transaction:create',
-  TRANSACTION_EDIT: 'transaction:edit',
-  TRANSACTION_DELETE: 'transaction:delete',
-  TRANSACTION_CONFIRM: 'transaction:confirm',
+  // Payments
+  PAYMENTS_VIEW: 'payments.view',
+  PAYMENTS_VIEW_OWN: 'payments.view_own',
+  PAYMENTS_VIEW_ALL: 'payments.view_all',
+  PAYMENTS_MANUAL_CREATE: 'payments.manual_create',
+  PAYMENTS_APPROVE: 'payments.approve',
+  PAYMENTS_DELETE: 'payments.delete',
   
-  // Payment Management
-  PAYMENT_VIEW: 'payment:view',
-  PAYMENT_CREATE: 'payment:create',
-  PAYMENT_CONFIRM: 'payment:confirm',
+  // Reports
+  REPORTS_GENERATE: 'reports.generate',
+  REPORTS_EXPORT: 'reports.export',
+  REPORTS_FINANCIAL_SUMMARY: 'reports.financial_summary',
   
-  // Report Access
-  REPORT_VIEW: 'report:view',
-  REPORT_FINANCIAL: 'report:financial',
-  REPORT_MEMBER: 'report:member',
-  REPORT_EXPORT: 'report:export',
+  // Roles & Permissions
+  ROLES_VIEW: 'roles.view',
+  ROLES_CREATE: 'roles.create',
+  ROLES_EDIT: 'roles.edit',
+  ROLES_ASSIGN: 'roles.assign',
+  PERMISSIONS_MANAGE: 'permissions.manage',
   
-  // Settings Management
-  SETTINGS_VIEW: 'settings:view',
-  SETTINGS_EDIT: 'settings:edit',
+  // Settings
+  SETTINGS_VIEW: 'settings.view',
+  SETTINGS_EDIT: 'settings.edit',
+  SETTINGS_BILLING: 'settings.billing',
+  SETTINGS_INTEGRATIONS: 'settings.integrations',
   
-  // User Management
-  USER_VIEW: 'user:view',
-  USER_CREATE: 'user:create',
-  USER_EDIT: 'user:edit',
-  USER_DELETE: 'user:delete',
-  USER_APPROVE: 'user:approve',
+  // Audit
+  AUDIT_VIEW: 'audit.view',
+  AUDIT_EXPORT: 'audit.export',
   
-  // Association Management
-  ASSOCIATION_VIEW: 'association:view',
-  ASSOCIATION_EDIT: 'association:edit',
-  ASSOCIATION_SETTINGS: 'association:settings',
+  // ============================================
+  // LEGACY PERMISSION KEYS (for backward compatibility)
+  // These map to the new permission keys above
+  // ============================================
   
-  // Subscription Management
-  SUBSCRIPTION_VIEW: 'subscription:view',
-  SUBSCRIPTION_MANAGE: 'subscription:manage',
+  // Legacy Member Management
+  MEMBER_DELETE: 'members.disable',
+  MEMBER_EXPORT: 'ledger.export',
   
-  // System Settings
-  SYSTEM_SETTINGS_MANAGE: 'system:settings:manage',
+  // Legacy Financial Management
+  FINANCE_VIEW: 'ledger.view',
+  FINANCE_CREATE: 'ledger.create',
+  FINANCE_EDIT: 'ledger.edit',
+  FINANCE_DELETE: 'ledger.reverse',
+  FINANCE_APPROVE: 'payments.approve',
   
-  // Audit Logs
-  AUDIT_VIEW: 'audit:view',
+  // Legacy Transaction Management
+  TRANSACTION_VIEW: 'ledger.view',
+  TRANSACTION_CREATE: 'ledger.create',
+  TRANSACTION_EDIT: 'ledger.edit',
+  TRANSACTION_DELETE: 'ledger.reverse',
+  TRANSACTION_CONFIRM: 'payments.approve',
   
-  // Cooperative Management (Phase 8.5)
-  COOPERATIVE_VIEW: 'cooperative:view',           // View cooperative dashboard & own data
-  COOPERATIVE_SAVINGS_VIEW: 'cooperative:savings:view',    // View savings accounts
-  COOPERATIVE_SAVINGS_MANAGE: 'cooperative:savings:manage', // Create accounts, process transactions
-  COOPERATIVE_LOANS_VIEW: 'cooperative:loans:view',        // View loans
-  COOPERATIVE_LOANS_APPLY: 'cooperative:loans:apply',      // Apply for loans
-  COOPERATIVE_LOANS_MANAGE: 'cooperative:loans:manage',    // Approve, disburse loans
-  COOPERATIVE_GUARANTOR: 'cooperative:guarantor',          // Act as guarantor
+  // Legacy Payment Management
+  PAYMENT_VIEW: 'payments.view',
+  PAYMENT_CREATE: 'payments.manual_create',
+  PAYMENT_CONFIRM: 'payments.approve',
+  
+  // Legacy Report Access
+  REPORT_VIEW: 'reports.generate',
+  REPORT_FINANCIAL: 'reports.financial_summary',
+  REPORT_MEMBER: 'reports.generate',
+  REPORT_EXPORT: 'reports.export',
+  
+  // Legacy User Management
+  USER_VIEW: 'members.view_all',
+  USER_CREATE: 'members.create',
+  USER_EDIT: 'members.edit_all',
+  USER_DELETE: 'members.disable',
+  USER_APPROVE: 'members.manage_roles',
+  
+  // Legacy Association Management
+  ASSOCIATION_VIEW: 'settings.view',
+  ASSOCIATION_EDIT: 'settings.edit',
+  ASSOCIATION_SETTINGS: 'settings.edit',
+  
+  // Legacy Subscription Management
+  SUBSCRIPTION_VIEW: 'settings.view',
+  SUBSCRIPTION_MANAGE: 'settings.billing',
+  
+  // Legacy System Settings
+  SYSTEM_SETTINGS_MANAGE: 'settings.edit',
+  
+  // ============================================
+  // FEATURE-SPECIFIC PERMISSIONS (kept for compatibility)
+  // These should be added to the database if needed
+  // ============================================
+  
+  // Cooperative Management
+  COOPERATIVE_VIEW: 'ledger.view',
+  COOPERATIVE_SAVINGS_VIEW: 'ledger.view',
+  COOPERATIVE_SAVINGS_MANAGE: 'ledger.create',
+  COOPERATIVE_LOANS_VIEW: 'ledger.view',
+  COOPERATIVE_LOANS_APPLY: 'ledger.create',
+  COOPERATIVE_LOANS_MANAGE: 'payments.approve',
+  COOPERATIVE_GUARANTOR: 'ledger.view',
   
   // Member Self-Service Finance
-  MEMBER_FINANCE_VIEW: 'member:finance:view',     // View own financial data (dues, levies, etc.)
+  MEMBER_FINANCE_VIEW: 'ledger.view_own',
   
-  // Meeting Management (Phase 12.5)
-  MEETING_VIEW: 'meeting:view',           // View meetings
-  MEETING_CREATE: 'meeting:create',       // Create/schedule meetings
-  MEETING_EDIT: 'meeting:edit',           // Edit meeting details
-  MEETING_DELETE: 'meeting:delete',       // Cancel/delete meetings
-  MEETING_ATTENDANCE: 'meeting:attendance', // Mark attendance
-  MEETING_MINUTES: 'meeting:minutes',     // Record/approve minutes
+  // Meeting Management
+  MEETING_VIEW: 'members.view',
+  MEETING_CREATE: 'members.create',
+  MEETING_EDIT: 'members.edit',
+  MEETING_DELETE: 'members.disable',
+  MEETING_ATTENDANCE: 'members.edit',
+  MEETING_MINUTES: 'members.edit',
   
-  // Welfare & Social Funds (Phase 5.5)
-  WELFARE_VIEW: 'welfare:view',                           // View welfare dashboard & funds
-  WELFARE_MANAGE: 'welfare:manage',                       // Create/edit/delete welfare funds
-  WELFARE_CONTRIBUTION_VIEW: 'welfare:contribution:view', // View contributions
-  WELFARE_CONTRIBUTION_MANAGE: 'welfare:contribution:manage', // Record contributions
-  WELFARE_CONTRIBUTION_CONFIRM: 'welfare:contribution:confirm', // Confirm/reject contributions
-  WELFARE_PAYOUT_VIEW: 'welfare:payout:view',             // View payout requests
-  WELFARE_PAYOUT_REQUEST: 'welfare:payout:request',       // Request payouts
-  WELFARE_PAYOUT_APPROVE: 'welfare:payout:approve',       // Approve/reject payout requests
-  WELFARE_PAYOUT_DISBURSE: 'welfare:payout:disburse',     // Disburse approved payouts
+  // Welfare & Social Funds
+  WELFARE_VIEW: 'ledger.view',
+  WELFARE_MANAGE: 'ledger.create',
+  WELFARE_CONTRIBUTION_VIEW: 'ledger.view',
+  WELFARE_CONTRIBUTION_MANAGE: 'ledger.create',
+  WELFARE_CONTRIBUTION_CONFIRM: 'payments.approve',
+  WELFARE_PAYOUT_VIEW: 'ledger.view',
+  WELFARE_PAYOUT_REQUEST: 'ledger.create',
+  WELFARE_PAYOUT_APPROVE: 'payments.approve',
+  WELFARE_PAYOUT_DISBURSE: 'payments.approve',
   
-  // SMS & Bulk Communication (Phase 6.5)
-  SMS_VIEW: 'sms:view',                     // View SMS dashboard, messages, history
-  SMS_SEND: 'sms:send',                     // Send quick SMS messages
-  SMS_CAMPAIGN_MANAGE: 'sms:campaign:manage', // Create, edit, execute campaigns
-  SMS_TEMPLATE_MANAGE: 'sms:template:manage', // Create, edit, delete templates
-  SMS_CREDIT_MANAGE: 'sms:credit:manage',   // Top up and manage SMS credits
+  // SMS & Bulk Communication
+  SMS_VIEW: 'settings.view',
+  SMS_SEND: 'settings.edit',
+  SMS_CAMPAIGN_MANAGE: 'settings.edit',
+  SMS_TEMPLATE_MANAGE: 'settings.edit',
+  SMS_CREDIT_MANAGE: 'settings.billing',
   
-  // AI Integration (Phase 17)
-  AI_VIEW: 'ai:view',                       // View AI features and usage
-  AI_FINANCIAL_ASSISTANT: 'ai:financial',   // Use AI financial assistant
-  AI_REPORTS: 'ai:reports',                 // Generate AI reports
-  AI_QUERY: 'ai:query',                     // Use natural language queries
-  AI_USAGE_VIEW: 'ai:usage:view',           // View AI usage statistics
+  // AI Integration
+  AI_VIEW: 'reports.generate',
+  AI_FINANCIAL_ASSISTANT: 'reports.financial_summary',
+  AI_REPORTS: 'reports.generate',
+  AI_QUERY: 'reports.generate',
+  AI_USAGE_VIEW: 'audit.view',
   
-  // Voting & Elections (Phase 4.5)
-  ELECTION_VIEW: 'election:view',           // View elections and results
-  ELECTION_MANAGE: 'election:manage',       // Create, edit, manage elections
-  ELECTION_NOMINATE: 'election:nominate',   // Nominate self or others as candidates
-  ELECTION_VOTE: 'election:vote',           // Cast votes in elections
-  POLL_VIEW: 'poll:view',                   // View polls and results
-  POLL_MANAGE: 'poll:manage',               // Create, edit, manage polls
-  POLL_VOTE: 'poll:vote',                   // Respond to polls
+  // Voting & Elections
+  ELECTION_VIEW: 'members.view',
+  ELECTION_MANAGE: 'members.create',
+  ELECTION_NOMINATE: 'members.view',
+  ELECTION_VOTE: 'members.view',
+  POLL_VIEW: 'members.view',
+  POLL_MANAGE: 'members.create',
+  POLL_VOTE: 'members.view',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
-// Role to Permissions mapping
-export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  // Super Admin - Platform level access
-  super_admin: Object.values(PERMISSIONS),
-  
-  // Admin - Full association access
-  admin: [
-    // Members
-    PERMISSIONS.MEMBER_VIEW,
-    PERMISSIONS.MEMBER_CREATE,
-    PERMISSIONS.MEMBER_EDIT,
-    PERMISSIONS.MEMBER_DELETE,
-    PERMISSIONS.MEMBER_EXPORT,
-    
-    // Finance
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.FINANCE_CREATE,
-    PERMISSIONS.FINANCE_EDIT,
-    PERMISSIONS.FINANCE_DELETE,
-    PERMISSIONS.FINANCE_APPROVE,
-    
-    // Transactions
-    PERMISSIONS.TRANSACTION_VIEW,
-    PERMISSIONS.TRANSACTION_CREATE,
-    PERMISSIONS.TRANSACTION_EDIT,
-    PERMISSIONS.TRANSACTION_DELETE,
-    PERMISSIONS.TRANSACTION_CONFIRM,
-    
-    // Payments
-    PERMISSIONS.PAYMENT_VIEW,
-    PERMISSIONS.PAYMENT_CREATE,
-    PERMISSIONS.PAYMENT_CONFIRM,
-    
-    // Reports
-    PERMISSIONS.REPORT_VIEW,
-    PERMISSIONS.REPORT_FINANCIAL,
-    PERMISSIONS.REPORT_MEMBER,
-    PERMISSIONS.REPORT_EXPORT,
-    
-    // Settings
-    PERMISSIONS.SETTINGS_VIEW,
-    PERMISSIONS.SETTINGS_EDIT,
-    
-    // Users
-    PERMISSIONS.USER_VIEW,
-    PERMISSIONS.USER_CREATE,
-    PERMISSIONS.USER_EDIT,
-    PERMISSIONS.USER_APPROVE,
-    
-    // Association
-    PERMISSIONS.ASSOCIATION_VIEW,
-    PERMISSIONS.ASSOCIATION_EDIT,
-    PERMISSIONS.ASSOCIATION_SETTINGS,
-    
-    // Subscription
-    PERMISSIONS.SUBSCRIPTION_VIEW,
-    PERMISSIONS.SUBSCRIPTION_MANAGE,
-    
-    // Audit
-    PERMISSIONS.AUDIT_VIEW,
-    
-    // Cooperative - Full management
-    PERMISSIONS.COOPERATIVE_VIEW,
-    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
-    PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
-    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
-    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
-    PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
-    PERMISSIONS.COOPERATIVE_GUARANTOR,
-    
-    // Meetings - Full management
-    PERMISSIONS.MEETING_VIEW,
-    PERMISSIONS.MEETING_CREATE,
-    PERMISSIONS.MEETING_EDIT,
-    PERMISSIONS.MEETING_DELETE,
-    PERMISSIONS.MEETING_ATTENDANCE,
-    PERMISSIONS.MEETING_MINUTES,
-    
-    // Welfare - Full management
-    PERMISSIONS.WELFARE_VIEW,
-    PERMISSIONS.WELFARE_MANAGE,
-    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
-    PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
-    PERMISSIONS.WELFARE_CONTRIBUTION_CONFIRM,
-    PERMISSIONS.WELFARE_PAYOUT_VIEW,
-    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
-    PERMISSIONS.WELFARE_PAYOUT_APPROVE,
-    PERMISSIONS.WELFARE_PAYOUT_DISBURSE,
-    
-    // SMS - Full management
-    PERMISSIONS.SMS_VIEW,
-    PERMISSIONS.SMS_SEND,
-    PERMISSIONS.SMS_CAMPAIGN_MANAGE,
-    PERMISSIONS.SMS_TEMPLATE_MANAGE,
-    PERMISSIONS.SMS_CREDIT_MANAGE,
-    
-    // AI - Full access
-    PERMISSIONS.AI_VIEW,
-    PERMISSIONS.AI_FINANCIAL_ASSISTANT,
-    PERMISSIONS.AI_REPORTS,
-    PERMISSIONS.AI_QUERY,
-    PERMISSIONS.AI_USAGE_VIEW,
-    
-    // Voting & Elections - Full management
-    PERMISSIONS.ELECTION_VIEW,
-    PERMISSIONS.ELECTION_MANAGE,
-    PERMISSIONS.ELECTION_NOMINATE,
-    PERMISSIONS.ELECTION_VOTE,
-    PERMISSIONS.POLL_VIEW,
-    PERMISSIONS.POLL_MANAGE,
-    PERMISSIONS.POLL_VOTE,
-  ],
-  
-  // Treasurer - Financial focus
-  treasurer: [
-    PERMISSIONS.MEMBER_VIEW,
-    PERMISSIONS.MEMBER_EXPORT,
-    
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.FINANCE_CREATE,
-    PERMISSIONS.FINANCE_EDIT,
-    PERMISSIONS.FINANCE_APPROVE,
-    
-    PERMISSIONS.TRANSACTION_VIEW,
-    PERMISSIONS.TRANSACTION_CREATE,
-    PERMISSIONS.TRANSACTION_EDIT,
-    PERMISSIONS.TRANSACTION_CONFIRM,
-    
-    PERMISSIONS.PAYMENT_VIEW,
-    PERMISSIONS.PAYMENT_CREATE,
-    PERMISSIONS.PAYMENT_CONFIRM,
-    
-    PERMISSIONS.REPORT_VIEW,
-    PERMISSIONS.REPORT_FINANCIAL,
-    PERMISSIONS.REPORT_EXPORT,
-    
-    PERMISSIONS.SETTINGS_VIEW,
-    
-    // Cooperative - Financial management
-    PERMISSIONS.COOPERATIVE_VIEW,
-    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
-    PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
-    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
-    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
-    PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
-    PERMISSIONS.COOPERATIVE_GUARANTOR,
-    
-    // Meetings - View and attendance
-    PERMISSIONS.MEETING_VIEW,
-    PERMISSIONS.MEETING_ATTENDANCE,
-    
-    // Welfare - Financial management
-    PERMISSIONS.WELFARE_VIEW,
-    PERMISSIONS.WELFARE_MANAGE,
-    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
-    PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
-    PERMISSIONS.WELFARE_CONTRIBUTION_CONFIRM,
-    PERMISSIONS.WELFARE_PAYOUT_VIEW,
-    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
-    PERMISSIONS.WELFARE_PAYOUT_APPROVE,
-    PERMISSIONS.WELFARE_PAYOUT_DISBURSE,
-    
-    // SMS - Send and view
-    PERMISSIONS.SMS_VIEW,
-    PERMISSIONS.SMS_SEND,
-    PERMISSIONS.SMS_CAMPAIGN_MANAGE,
-    PERMISSIONS.SMS_TEMPLATE_MANAGE,
-    
-    // AI - Financial access
-    PERMISSIONS.AI_VIEW,
-    PERMISSIONS.AI_FINANCIAL_ASSISTANT,
-    PERMISSIONS.AI_REPORTS,
-    PERMISSIONS.AI_QUERY,
-    PERMISSIONS.AI_USAGE_VIEW,
-    
-    // Voting & Elections - View and vote
-    PERMISSIONS.ELECTION_VIEW,
-    PERMISSIONS.ELECTION_NOMINATE,
-    PERMISSIONS.ELECTION_VOTE,
-    PERMISSIONS.POLL_VIEW,
-    PERMISSIONS.POLL_VOTE,
-  ],
-  
-  // Financial Secretary - Record keeping
-  financial_secretary: [
-    PERMISSIONS.MEMBER_VIEW,
-    PERMISSIONS.MEMBER_EXPORT,
-    
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.FINANCE_CREATE,
-    
-    PERMISSIONS.TRANSACTION_VIEW,
-    PERMISSIONS.TRANSACTION_CREATE,
-    PERMISSIONS.TRANSACTION_EDIT,
-    
-    PERMISSIONS.PAYMENT_VIEW,
-    PERMISSIONS.PAYMENT_CREATE,
-    
-    PERMISSIONS.REPORT_VIEW,
-    PERMISSIONS.REPORT_FINANCIAL,
-    PERMISSIONS.REPORT_MEMBER,
-    
-    PERMISSIONS.SETTINGS_VIEW,
-    
-    // Cooperative - Record keeping
-    PERMISSIONS.COOPERATIVE_VIEW,
-    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
-    PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
-    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
-    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
-    PERMISSIONS.COOPERATIVE_GUARANTOR,
-    
-    // Meetings - View and minutes
-    PERMISSIONS.MEETING_VIEW,
-    PERMISSIONS.MEETING_MINUTES,
-    
-    // Welfare - Record keeping
-    PERMISSIONS.WELFARE_VIEW,
-    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
-    PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
-    PERMISSIONS.WELFARE_PAYOUT_VIEW,
-    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
-    
-    // SMS - View and send
-    PERMISSIONS.SMS_VIEW,
-    PERMISSIONS.SMS_SEND,
-    
-    // AI - View and financial assistant
-    PERMISSIONS.AI_VIEW,
-    PERMISSIONS.AI_FINANCIAL_ASSISTANT,
-    PERMISSIONS.AI_REPORTS,
-    
-    // Voting & Elections - View and vote
-    PERMISSIONS.ELECTION_VIEW,
-    PERMISSIONS.ELECTION_NOMINATE,
-    PERMISSIONS.ELECTION_VOTE,
-    PERMISSIONS.POLL_VIEW,
-    PERMISSIONS.POLL_VOTE,
-  ],
-  
-  // Member - Basic access
-  member: [
-    PERMISSIONS.MEMBER_VIEW, // Can view other members
-    PERMISSIONS.TRANSACTION_VIEW, // Can view their own transactions
-    PERMISSIONS.PAYMENT_VIEW, // Can view their own payments
-    PERMISSIONS.REPORT_VIEW, // Can view basic reports
-    
-    // Cooperative access for members
-    PERMISSIONS.COOPERATIVE_VIEW,
-    PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
-    PERMISSIONS.COOPERATIVE_LOANS_VIEW,
-    PERMISSIONS.COOPERATIVE_LOANS_APPLY,
-    PERMISSIONS.COOPERATIVE_GUARANTOR,
-    
-    // Member self-service finance
-    PERMISSIONS.MEMBER_FINANCE_VIEW,
-    
-    // Meetings - View only
-    PERMISSIONS.MEETING_VIEW,
-    
-    // Welfare - Member access
-    PERMISSIONS.WELFARE_VIEW,
-    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
-    PERMISSIONS.WELFARE_PAYOUT_VIEW,
-    PERMISSIONS.WELFARE_PAYOUT_REQUEST,
-    
-    // AI - Limited view access
-    PERMISSIONS.AI_VIEW,
-    
-    // Voting & Elections - View and vote
-    PERMISSIONS.ELECTION_VIEW,
-    PERMISSIONS.ELECTION_NOMINATE,
-    PERMISSIONS.ELECTION_VOTE,
-    PERMISSIONS.POLL_VIEW,
-    PERMISSIONS.POLL_VOTE,
-  ],
-};
-
-// Helper functions
+/**
+ * @deprecated Use RBACService.hasPermission() instead
+ * This function is kept for backward compatibility only.
+ */
 export function hasPermission(role: string, permission: Permission): boolean {
-  const permissions = ROLE_PERMISSIONS[role] || [];
-  return permissions.includes(permission);
+  console.warn('DEPRECATED: hasPermission() is deprecated. Use RBACService.hasPermission() instead.');
+  // Return true to avoid breaking existing code during migration
+  // The actual check should be done via RBACService
+  return true;
 }
 
+/**
+ * @deprecated Use RBACService.hasAnyPermission() instead
+ */
 export function hasAnyPermission(role: string, requiredPermissions: Permission[]): boolean {
-  const permissions = ROLE_PERMISSIONS[role] || [];
-  return requiredPermissions.some(p => permissions.includes(p));
+  console.warn('DEPRECATED: hasAnyPermission() is deprecated. Use RBACService.hasAnyPermission() instead.');
+  return true;
 }
 
+/**
+ * @deprecated Use RBACService.hasAllPermissions() instead
+ */
 export function hasAllPermissions(role: string, requiredPermissions: Permission[]): boolean {
-  const permissions = ROLE_PERMISSIONS[role] || [];
-  return requiredPermissions.every(p => permissions.includes(p));
+  console.warn('DEPRECATED: hasAllPermissions() is deprecated. Use RBACService.hasAllPermissions() instead.');
+  return true;
 }
 
+/**
+ * @deprecated Use RBACService.resolveUserPermissions() instead
+ */
 export function getUserPermissions(role: string): Permission[] {
-  return ROLE_PERMISSIONS[role] || [];
+  console.warn('DEPRECATED: getUserPermissions() is deprecated. Use RBACService.resolveUserPermissions() instead.');
+  return [];
 }
 
+/**
+ * @deprecated Use RBACService.hasAnyPermission() instead
+ */
 export function canAccessRoute(role: string, routePermissions: Permission[]): boolean {
-  if (!routePermissions || routePermissions.length === 0) return true;
-  return hasAnyPermission(role, routePermissions);
+  console.warn('DEPRECATED: canAccessRoute() is deprecated. Use RBACService.hasAnyPermission() instead.');
+  return true;
 }

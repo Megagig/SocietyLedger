@@ -72,16 +72,24 @@ export function Sidebar() {
 
   const checkPermission = (permission: string | string[] | undefined): boolean => {
     if (!permission) return true;
-    if (!user?.role) return false;
     
     // Super admin has access to everything
-    if (user.platformRole === 'SUPER_ADMIN') return true;
+    if (user?.platformRole === 'SUPER_ADMIN') return true;
     
-    if (Array.isArray(permission)) {
-      return permission.some(p => hasPermission(user.role, p as any));
+    // Get permissions array from user (fetched from API/database)
+    const userPermissions = user?.permissions || [];
+    
+    // If no permissions loaded yet, fall back to showing items for admin role
+    // This handles the case where permissions haven't been fetched yet
+    if (userPermissions.length === 0 && user?.role === 'admin') {
+      return true;
     }
     
-    return hasPermission(user.role, permission as any);
+    if (Array.isArray(permission)) {
+      return permission.some(p => hasPermission(userPermissions, p as any));
+    }
+    
+    return hasPermission(userPermissions, permission as any);
   };
 
   const navItems: NavItem[] = [
@@ -521,9 +529,74 @@ export function Sidebar() {
     {
       label: 'Settings',
       icon: <IconSettings size={20} />,
-      href: '/dashboard/settings',
       permission: PERMISSIONS.SETTINGS_VIEW,
-      comingSoon: true,
+      children: [
+        {
+          label: 'Overview',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/settings',
+        },
+        {
+          label: 'Association Profile',
+          icon: <IconBuildingCommunity size={18} />,
+          href: '/dashboard/settings/association',
+          permission: PERMISSIONS.SETTINGS_VIEW,
+        },
+        {
+          label: 'Roles & Permissions',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/settings/roles',
+          permission: PERMISSIONS.SETTINGS_VIEW,
+        },
+        {
+          label: 'User Management',
+          icon: <IconUserPlus size={18} />,
+          href: '/dashboard/settings/users',
+          permission: PERMISSIONS.USER_VIEW,
+        },
+        {
+          label: 'Members Access',
+          icon: <IconUsers size={18} />,
+          href: '/dashboard/settings/members-access',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Financial Settings',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/settings/financial',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Payments & Billing',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/settings/payments',
+          permission: PERMISSIONS.SETTINGS_BILLING,
+        },
+        {
+          label: 'Notifications',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/settings/notifications',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Integrations',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/settings/integrations',
+          permission: PERMISSIONS.SETTINGS_INTEGRATIONS,
+        },
+        {
+          label: 'Data & Privacy',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/settings/data-privacy',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Audit Logs',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/settings/audit-logs',
+          permission: PERMISSIONS.AUDIT_VIEW,
+        },
+      ],
     },
     {
       label: 'Help & Support',
@@ -554,7 +627,6 @@ export function Sidebar() {
           label: 'Platform Analytics',
           icon: <IconFileAnalytics size={18} />,
           href: '/admin/analytics',
-          comingSoon: true,
         },
       ],
     });

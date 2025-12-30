@@ -14,7 +14,10 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "migrate:rbac": "tsx scripts/migrate-rbac.ts",
+    "migrate:rbac:dry": "tsx scripts/migrate-rbac.ts --dry-run",
+    "seed:rbac": "tsx prisma/seeds/rbac-seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
