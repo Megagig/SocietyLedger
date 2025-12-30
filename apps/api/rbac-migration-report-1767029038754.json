@@ -1,0 +1,85 @@
+{
+  "timestamp": "2025-12-29T17:23:55.170Z",
+  "permissions": 38,
+  "roles": 9,
+  "systemRoles": 9,
+  "userRoles": 3,
+  "associations": 2,
+  "users": 4,
+  "roleBreakdown": [
+    {
+      "_count": {
+        "id": 2
+      },
+      "name": "member"
+    },
+    {
+      "_count": {
+        "id": 2
+      },
+      "name": "admin"
+    },
+    {
+      "_count": {
+        "id": 2
+      },
+      "name": "financial_secretary"
+    },
+    {
+      "_count": {
+        "id": 2
+      },
+      "name": "treasurer"
+    },
+    {
+      "_count": {
+        "id": 1
+      },
+      "name": "super_admin"
+    }
+  ],
+  "permissionModules": [
+    {
+      "_count": {
+        "id": 10
+      },
+      "module": "Members"
+    },
+    {
+      "_count": {
+        "id": 8
+      },
+      "module": "Finance/Ledger"
+    },
+    {
+      "_count": {
+        "id": 6
+      },
+      "module": "Payments"
+    },
+    {
+      "_count": {
+        "id": 5
+      },
+      "module": "Roles & Permissions"
+    },
+    {
+      "_count": {
+        "id": 4
+      },
+      "module": "Settings"
+    },
+    {
+      "_count": {
+        "id": 3
+      },
+      "module": "Reports"
+    },
+    {
+      "_count": {
+        "id": 2
+      },
+      "module": "Audit & Compliance"
+    }
+  ]
+}

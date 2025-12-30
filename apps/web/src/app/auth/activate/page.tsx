@@ -110,10 +110,10 @@ export default function ActivateAccountPage() {
   // Loading state
   if (isVerifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying invitation...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Verifying invitation...</p>
         </div>
       </div>
     );
@@ -122,19 +122,19 @@ export default function ActivateAccountPage() {
   // Invalid token state
   if (verifyError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 dark:text-red-400 mb-4">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Invitation</h1>
-            <p className="text-gray-600 mb-6">{verifyError}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Invalid Invitation</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">{verifyError}</p>
             <Link
               href="/auth/login"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              className="inline-block bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 dark:bg-blue-500 text-white font-medium py-3 px-6 rounded-lg transition-colors"
             >
               Go to Login
             </Link>
@@ -147,21 +147,21 @@ export default function ActivateAccountPage() {
   // Success state
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 dark:text-green-400 mb-4">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Account Activated!</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Account Activated!</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Your account has been successfully activated. You can now log in with your email and password.
             </p>
             <Link
               href="/auth/login"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              className="inline-block bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 dark:bg-blue-500 text-white font-medium py-3 px-6 rounded-lg transition-colors"
             >
               Sign In
             </Link>
@@ -173,50 +173,50 @@ export default function ActivateAccountPage() {
 
   // Activation form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 text-white mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 dark:bg-blue-500 text-white mb-4">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {inviteData?.association.name || tenant?.name || 'SocietyLedger'}
           </h1>
-          <p className="text-gray-600 mt-2">Activate your member account</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Activate your member account</p>
         </div>
 
         {/* Activation Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
           {/* Member Info */}
-          <div className="mb-6 p-4 rounded-lg bg-blue-50 border border-blue-200">
+          <div className="mb-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800">
               Welcome, <span className="font-semibold">{inviteData?.member.firstName} {inviteData?.member.lastName}</span>!
             </p>
-            <p className="text-sm text-blue-700 mt-1">
+            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
               Member ID: {inviteData?.member.memberId}
             </p>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
               Email: {inviteData?.email}
             </p>
           </div>
 
           {submitError && (
-            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
+            <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
               <div className="flex items-start">
-                <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm text-red-700">{submitError}</p>
+                <p className="text-sm text-red-700 dark:text-red-300">{submitError}</p>
               </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Create Password
               </label>
               <div className="relative">
@@ -226,14 +226,14 @@ export default function ActivateAccountPage() {
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
                   placeholder="At least 6 characters"
                   disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 transition-colors"
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,7 +250,7 @@ export default function ActivateAccountPage() {
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Confirm Password
               </label>
               <div className="relative">
@@ -260,14 +260,14 @@ export default function ActivateAccountPage() {
                   required
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
                   placeholder="Re-enter your password"
                   disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 transition-colors"
                 >
                   {showConfirmPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -286,7 +286,7 @@ export default function ActivateAccountPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 dark:bg-blue-500 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isSubmitting ? (
                 <>
@@ -303,9 +303,9 @@ export default function ActivateAccountPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?{' '}
-              <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
+              <Link href="/auth/login" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-300 font-medium">
                 Sign in
               </Link>
             </p>
@@ -313,7 +313,7 @@ export default function ActivateAccountPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-sm text-gray-600">
+        <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>© 2025 {inviteData?.association.name || tenant?.name || 'SocietyLedger'}. All rights reserved.</p>
         </div>
       </div>

@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { Member } from '@/types';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { Search, Plus, Edit, Trash2, Eye, UserPlus } from 'lucide-react';
 
 export default function MembersPage() {
@@ -59,24 +62,34 @@ export default function MembersPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this member?')) return;
+    modals.openConfirmModal({
+      title: 'Delete Member',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this member? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const response = await apiDelete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/members/${id}`
+          );
 
-    try {
-      const response = await apiDelete(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${id}`
-      );
+          const data = await response.json();
 
-      const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.message || 'Failed to delete member');
+          }
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to delete member');
-      }
-
-      alert('Member deleted successfully');
-      fetchMembers();
-    } catch (error: any) {
-      alert(error.message);
-    }
+          toast.success('Member deleted successfully');
+          fetchMembers();
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to delete member');
+        }
+      },
+    });
   };
 
   const getStatusBadge = (status: string) => {

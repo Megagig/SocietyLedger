@@ -38,6 +38,47 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow export routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/exports')) {
+      return next();
+    }
+
+    // Allow report routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/reports')) {
+      return next();
+    }
+
+    // Allow accounting routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/accounting')) {
+      return next();
+    }
+
+    // Allow dashboard routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/dashboard')) {
+      return next();
+    }
+
+    // Allow help routes - tenant context comes from authenticated user's associationId
+    // Help content is global or association-specific, handled by the service
+    if (req.path.startsWith('/api/help')) {
+      return next();
+    }
+
+    // Allow support routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/support')) {
+      return next();
+    }
+
+    // Allow member self-service routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/members/me')) {
+      return next();
+    }
+
+    // Allow member-ledger routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/member-ledger')) {
+      return next();
+    }
+
     // Allow subscription plans endpoint without strict tenant requirement
     if (req.path === '/api/subscriptions/plans') {
       // Try to resolve tenant but don't fail if not found
@@ -104,11 +145,16 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
 
     const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
     const subdomain = extractSubdomain(req.headers.host);
+    
+    // Check for Super Admin's selected association context
+    const superAdminAssociationId = req.headers['x-association-id'] as string | undefined;
 
     const association = await findAssociationByIdentifier({
       subdomain: headerTenant || subdomain || undefined,
       slug: headerTenant?.toLowerCase(),
-      id: headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined,
+      id: (superAdminAssociationId && !Number.isNaN(Number(superAdminAssociationId))) 
+        ? Number(superAdminAssociationId) 
+        : (headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined),
     });
 
     if (!association) {

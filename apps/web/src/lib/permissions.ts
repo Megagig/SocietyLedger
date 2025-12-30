@@ -1,180 +1,190 @@
-// Permission constants for frontend (matches backend)
+/**
+ * Permission Constants for Frontend
+ * 
+ * These constants are used for type safety and as permission keys.
+ * The actual permission checking is done against user permissions
+ * fetched from the API (which reads from the database).
+ * 
+ * NOTE: The database is the SINGLE SOURCE OF TRUTH for permissions.
+ */
+
+// Permission key constants - must match database permission keys
 export const PERMISSIONS = {
   // Member Management
-  MEMBER_VIEW: 'member:view',
-  MEMBER_CREATE: 'member:create',
-  MEMBER_EDIT: 'member:edit',
-  MEMBER_DELETE: 'member:delete',
-  MEMBER_EXPORT: 'member:export',
+  MEMBER_VIEW: 'members.view',
+  MEMBER_VIEW_OWN: 'members.view_own',
+  MEMBER_VIEW_ALL: 'members.view_all',
+  MEMBER_CREATE: 'members.create',
+  MEMBER_EDIT: 'members.edit',
+  MEMBER_EDIT_OWN: 'members.edit_own',
+  MEMBER_EDIT_ALL: 'members.edit_all',
+  MEMBER_DISABLE: 'members.disable',
+  MEMBER_BULK_IMPORT: 'members.bulk_import',
+  MEMBER_MANAGE_ROLES: 'members.manage_roles',
   
-  // Financial Management
-  FINANCE_VIEW: 'finance:view',
-  FINANCE_CREATE: 'finance:create',
-  FINANCE_EDIT: 'finance:edit',
-  FINANCE_DELETE: 'finance:delete',
-  FINANCE_APPROVE: 'finance:approve',
+  // Finance/Ledger
+  LEDGER_VIEW: 'ledger.view',
+  LEDGER_VIEW_OWN: 'ledger.view_own',
+  LEDGER_VIEW_ALL: 'ledger.view_all',
+  LEDGER_CREATE: 'ledger.create',
+  LEDGER_EDIT: 'ledger.edit',
+  LEDGER_REVERSE: 'ledger.reverse',
+  LEDGER_EXPORT: 'ledger.export',
+  LEDGER_VIEW_MEMBER_STATEMENT: 'ledger.view_member_statement',
   
-  // Transaction Management
-  TRANSACTION_VIEW: 'transaction:view',
-  TRANSACTION_CREATE: 'transaction:create',
-  TRANSACTION_EDIT: 'transaction:edit',
-  TRANSACTION_DELETE: 'transaction:delete',
-  TRANSACTION_CONFIRM: 'transaction:confirm',
+  // Payments
+  PAYMENTS_VIEW: 'payments.view',
+  PAYMENTS_VIEW_OWN: 'payments.view_own',
+  PAYMENTS_VIEW_ALL: 'payments.view_all',
+  PAYMENTS_MANUAL_CREATE: 'payments.manual_create',
+  PAYMENTS_APPROVE: 'payments.approve',
+  PAYMENTS_DELETE: 'payments.delete',
   
-  // Payment Management
-  PAYMENT_VIEW: 'payment:view',
-  PAYMENT_CREATE: 'payment:create',
-  PAYMENT_CONFIRM: 'payment:confirm',
+  // Reports
+  REPORTS_GENERATE: 'reports.generate',
+  REPORTS_EXPORT: 'reports.export',
+  REPORTS_FINANCIAL_SUMMARY: 'reports.financial_summary',
   
-  // Report Access
-  REPORT_VIEW: 'report:view',
-  REPORT_FINANCIAL: 'report:financial',
-  REPORT_MEMBER: 'report:member',
-  REPORT_EXPORT: 'report:export',
+  // Roles & Permissions
+  ROLES_VIEW: 'roles.view',
+  ROLES_CREATE: 'roles.create',
+  ROLES_EDIT: 'roles.edit',
+  ROLES_ASSIGN: 'roles.assign',
+  PERMISSIONS_MANAGE: 'permissions.manage',
   
-  // Settings Management
-  SETTINGS_VIEW: 'settings:view',
-  SETTINGS_EDIT: 'settings:edit',
+  // Settings
+  SETTINGS_VIEW: 'settings.view',
+  SETTINGS_EDIT: 'settings.edit',
+  SETTINGS_BILLING: 'settings.billing',
+  SETTINGS_INTEGRATIONS: 'settings.integrations',
   
-  // User Management
-  USER_VIEW: 'user:view',
-  USER_CREATE: 'user:create',
-  USER_EDIT: 'user:edit',
-  USER_DELETE: 'user:delete',
-  USER_APPROVE: 'user:approve',
+  // Audit
+  AUDIT_VIEW: 'audit.view',
+  AUDIT_EXPORT: 'audit.export',
   
-  // Association Management
-  ASSOCIATION_VIEW: 'association:view',
-  ASSOCIATION_EDIT: 'association:edit',
-  ASSOCIATION_SETTINGS: 'association:settings',
+  // Help & Support (Phase 21)
+  HELP_VIEW: 'help.view',
+  HELP_MANAGE: 'help.manage',
+  SUPPORT_CREATE: 'support.create',
+  SUPPORT_VIEW_OWN: 'support.view_own',
+  SUPPORT_VIEW_ALL: 'support.view_all',
+  SUPPORT_MANAGE: 'support.manage',
+  SUPPORT_RESPOND: 'support.respond',
   
-  // Subscription Management
-  SUBSCRIPTION_VIEW: 'subscription:view',
-  SUBSCRIPTION_MANAGE: 'subscription:manage',
+  // ============================================
+  // LEGACY PERMISSION KEYS (for backward compatibility)
+  // ============================================
   
-  // Audit Logs
-  AUDIT_VIEW: 'audit:view',
+  MEMBER_DELETE: 'members.disable',
+  MEMBER_EXPORT: 'ledger.export',
+  FINANCE_VIEW: 'ledger.view',
+  FINANCE_CREATE: 'ledger.create',
+  FINANCE_EDIT: 'ledger.edit',
+  FINANCE_DELETE: 'ledger.reverse',
+  FINANCE_APPROVE: 'payments.approve',
+  TRANSACTION_VIEW: 'ledger.view',
+  TRANSACTION_CREATE: 'ledger.create',
+  TRANSACTION_EDIT: 'ledger.edit',
+  TRANSACTION_DELETE: 'ledger.reverse',
+  TRANSACTION_CONFIRM: 'payments.approve',
+  PAYMENT_VIEW: 'payments.view',
+  PAYMENT_CREATE: 'payments.manual_create',
+  PAYMENT_CONFIRM: 'payments.approve',
+  REPORT_VIEW: 'reports.generate',
+  REPORT_FINANCIAL: 'reports.financial_summary',
+  REPORT_MEMBER: 'reports.generate',
+  REPORT_EXPORT: 'reports.export',
+  USER_VIEW: 'members.view_all',
+  USER_CREATE: 'members.create',
+  USER_EDIT: 'members.edit_all',
+  USER_DELETE: 'members.disable',
+  USER_APPROVE: 'members.manage_roles',
+  ASSOCIATION_VIEW: 'settings.view',
+  ASSOCIATION_EDIT: 'settings.edit',
+  ASSOCIATION_SETTINGS: 'settings.edit',
+  SUBSCRIPTION_VIEW: 'settings.view',
+  SUBSCRIPTION_MANAGE: 'settings.billing',
+  
+  // Feature-specific (mapped to core permissions)
+  COOPERATIVE_VIEW: 'ledger.view',
+  COOPERATIVE_SAVINGS_VIEW: 'ledger.view',
+  COOPERATIVE_SAVINGS_MANAGE: 'ledger.create',
+  COOPERATIVE_LOANS_VIEW: 'ledger.view',
+  COOPERATIVE_LOANS_APPLY: 'ledger.create',
+  COOPERATIVE_LOANS_MANAGE: 'payments.approve',
+  COOPERATIVE_GUARANTOR: 'ledger.view',
+  MEMBER_FINANCE_VIEW: 'ledger.view_own',
+  MEETING_VIEW: 'members.view',
+  MEETING_CREATE: 'members.create',
+  MEETING_EDIT: 'members.edit',
+  MEETING_DELETE: 'members.disable',
+  MEETING_ATTENDANCE: 'members.edit',
+  MEETING_MINUTES: 'members.edit',
+  WELFARE_VIEW: 'ledger.view',
+  WELFARE_MANAGE: 'ledger.create',
+  WELFARE_CONTRIBUTION_VIEW: 'ledger.view',
+  WELFARE_CONTRIBUTION_MANAGE: 'ledger.create',
+  WELFARE_CONTRIBUTION_CONFIRM: 'payments.approve',
+  WELFARE_PAYOUT_VIEW: 'ledger.view',
+  WELFARE_PAYOUT_REQUEST: 'ledger.create',
+  WELFARE_PAYOUT_APPROVE: 'payments.approve',
+  WELFARE_PAYOUT_DISBURSE: 'payments.approve',
+  SMS_VIEW: 'settings.view',
+  SMS_SEND: 'settings.edit',
+  SMS_CAMPAIGN_MANAGE: 'settings.edit',
+  SMS_TEMPLATE_MANAGE: 'settings.edit',
+  SMS_CREDIT_MANAGE: 'settings.billing',
+  AI_VIEW: 'reports.generate',
+  AI_FINANCIAL_ASSISTANT: 'reports.financial_summary',
+  AI_REPORTS: 'reports.generate',
+  AI_QUERY: 'reports.generate',
+  AI_USAGE_VIEW: 'audit.view',
+  ELECTION_VIEW: 'members.view',
+  ELECTION_MANAGE: 'members.create',
+  ELECTION_NOMINATE: 'members.view',
+  ELECTION_VOTE: 'members.view',
+  POLL_VIEW: 'members.view',
+  POLL_MANAGE: 'members.create',
+  POLL_VOTE: 'members.view',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
-// Role to Permissions mapping
-export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  super_admin: Object.values(PERMISSIONS),
-  
-  admin: [
-    PERMISSIONS.MEMBER_VIEW,
-    PERMISSIONS.MEMBER_CREATE,
-    PERMISSIONS.MEMBER_EDIT,
-    PERMISSIONS.MEMBER_DELETE,
-    PERMISSIONS.MEMBER_EXPORT,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.FINANCE_CREATE,
-    PERMISSIONS.FINANCE_EDIT,
-    PERMISSIONS.FINANCE_DELETE,
-    PERMISSIONS.FINANCE_APPROVE,
-    PERMISSIONS.TRANSACTION_VIEW,
-    PERMISSIONS.TRANSACTION_CREATE,
-    PERMISSIONS.TRANSACTION_EDIT,
-    PERMISSIONS.TRANSACTION_DELETE,
-    PERMISSIONS.TRANSACTION_CONFIRM,
-    PERMISSIONS.PAYMENT_VIEW,
-    PERMISSIONS.PAYMENT_CREATE,
-    PERMISSIONS.PAYMENT_CONFIRM,
-    PERMISSIONS.REPORT_VIEW,
-    PERMISSIONS.REPORT_FINANCIAL,
-    PERMISSIONS.REPORT_MEMBER,
-    PERMISSIONS.REPORT_EXPORT,
-    PERMISSIONS.SETTINGS_VIEW,
-    PERMISSIONS.SETTINGS_EDIT,
-    PERMISSIONS.USER_VIEW,
-    PERMISSIONS.USER_CREATE,
-    PERMISSIONS.USER_EDIT,
-    PERMISSIONS.USER_APPROVE,
-    PERMISSIONS.ASSOCIATION_VIEW,
-    PERMISSIONS.ASSOCIATION_EDIT,
-    PERMISSIONS.ASSOCIATION_SETTINGS,
-    PERMISSIONS.SUBSCRIPTION_VIEW,
-    PERMISSIONS.SUBSCRIPTION_MANAGE,
-    PERMISSIONS.AUDIT_VIEW,
-  ],
-  
-  treasurer: [
-    PERMISSIONS.MEMBER_VIEW,
-    PERMISSIONS.MEMBER_EXPORT,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.FINANCE_CREATE,
-    PERMISSIONS.FINANCE_EDIT,
-    PERMISSIONS.FINANCE_APPROVE,
-    PERMISSIONS.TRANSACTION_VIEW,
-    PERMISSIONS.TRANSACTION_CREATE,
-    PERMISSIONS.TRANSACTION_EDIT,
-    PERMISSIONS.TRANSACTION_CONFIRM,
-    PERMISSIONS.PAYMENT_VIEW,
-    PERMISSIONS.PAYMENT_CREATE,
-    PERMISSIONS.PAYMENT_CONFIRM,
-    PERMISSIONS.REPORT_VIEW,
-    PERMISSIONS.REPORT_FINANCIAL,
-    PERMISSIONS.REPORT_EXPORT,
-    PERMISSIONS.SETTINGS_VIEW,
-  ],
-  
-  financial_secretary: [
-    PERMISSIONS.MEMBER_VIEW,
-    PERMISSIONS.MEMBER_EXPORT,
-    PERMISSIONS.FINANCE_VIEW,
-    PERMISSIONS.FINANCE_CREATE,
-    PERMISSIONS.TRANSACTION_VIEW,
-    PERMISSIONS.TRANSACTION_CREATE,
-    PERMISSIONS.TRANSACTION_EDIT,
-    PERMISSIONS.PAYMENT_VIEW,
-    PERMISSIONS.PAYMENT_CREATE,
-    PERMISSIONS.REPORT_VIEW,
-    PERMISSIONS.REPORT_FINANCIAL,
-    PERMISSIONS.REPORT_MEMBER,
-    PERMISSIONS.SETTINGS_VIEW,
-  ],
-  
-  member: [
-    PERMISSIONS.MEMBER_VIEW,
-    PERMISSIONS.TRANSACTION_VIEW,
-    PERMISSIONS.PAYMENT_VIEW,
-    PERMISSIONS.REPORT_VIEW,
-  ],
-};
-
-// Helper functions
-export function hasPermission(role: string, permission: Permission): boolean {
-  const permissions = ROLE_PERMISSIONS[role] || [];
-  return permissions.includes(permission);
+/**
+ * Check if user has a specific permission
+ * Uses the permissions array from the auth store (fetched from API)
+ */
+export function hasPermission(userPermissions: string[] | undefined, permission: Permission | string): boolean {
+  if (!userPermissions || userPermissions.length === 0) return false;
+  return userPermissions.includes(permission);
 }
 
-export function hasAnyPermission(role: string, requiredPermissions: Permission[]): boolean {
-  const permissions = ROLE_PERMISSIONS[role] || [];
-  return requiredPermissions.some(p => permissions.includes(p));
+/**
+ * Check if user has any of the specified permissions
+ */
+export function hasAnyPermission(userPermissions: string[] | undefined, requiredPermissions: (Permission | string)[]): boolean {
+  if (!userPermissions || userPermissions.length === 0) return false;
+  return requiredPermissions.some(p => userPermissions.includes(p));
 }
 
-export function hasAllPermissions(role: string, requiredPermissions: Permission[]): boolean {
-  const permissions = ROLE_PERMISSIONS[role] || [];
-  return requiredPermissions.every(p => permissions.includes(p));
+/**
+ * Check if user has all of the specified permissions
+ */
+export function hasAllPermissions(userPermissions: string[] | undefined, requiredPermissions: (Permission | string)[]): boolean {
+  if (!userPermissions || userPermissions.length === 0) return false;
+  return requiredPermissions.every(p => userPermissions.includes(p));
 }
 
-export function getUserPermissions(role: string): Permission[] {
-  return ROLE_PERMISSIONS[role] || [];
-}
-
-export function canAccessRoute(role: string, routePermissions: Permission[]): boolean {
-  if (!routePermissions || routePermissions.length === 0) return true;
-  return hasAnyPermission(role, routePermissions);
-}
-
-// Role checking helpers
+/**
+ * Role checking helpers (for backward compatibility)
+ * These check the role name, not permissions
+ */
 export function isAdmin(role: string): boolean {
   return role === 'admin' || role === 'super_admin';
 }
 
-export function isSuperAdmin(role: string): boolean {
-  return role === 'super_admin';
+export function isSuperAdmin(platformRole: string | null | undefined): boolean {
+  return platformRole === 'SUPER_ADMIN';
 }
 
 export function isTreasurer(role: string): boolean {

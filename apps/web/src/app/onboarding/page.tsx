@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
@@ -33,31 +33,37 @@ const steps = [
   { id: 5, name: 'Complete', path: '/onboarding/complete', description: 'Finish setup' },
 ];
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [skipping, setSkipping] = useState(false);
+  
+  // Allow access even after completion if ?rerun=true is in URL
+  const forceAccess = searchParams.get('rerun') === 'true';
 
   useEffect(() => {
-    fetchStatus();
-  }, []);
-
-  const fetchStatus = async () => {
-    try {
-      const response = await api.get(API_ROUTES.ONBOARDING.STATUS);
-      setStatus(response.data.data);
-      
-      // If onboarding is complete, redirect to dashboard
-      if (response.data.data.onboarding.onboardingComplete) {
-        router.push('/dashboard');
+    const fetchStatus = async () => {
+      try {
+        const response = await api.get(API_ROUTES.ONBOARDING.STATUS);
+        setStatus(response.data.data);
+        
+        // If onboarding is complete and not forcing access, redirect to dashboard
+        // Check forceAccess directly from searchParams to ensure it's current
+        const isForceAccess = searchParams.get('rerun') === 'true';
+        if (response.data.data.onboarding.onboardingComplete && !isForceAccess) {
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Failed to fetch onboarding status:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch onboarding status:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    fetchStatus();
+  }, [searchParams, router]);
 
   const handleSkip = async () => {
     setSkipping(true);
@@ -84,17 +90,34 @@ export default function OnboardingPage() {
 
   const currentStep = status?.onboarding.currentStep || 1;
   const completedSteps = status?.onboarding.completedSteps || [];
+  const isRerunMode = forceAccess && status?.onboarding.onboardingComplete;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
+          {isRerunMode && (
+            <div className="mb-4">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Dashboard
+              </button>
+            </div>
+          )}
           <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-4">
-            Welcome to SocietyLedger
+            {isRerunMode ? 'Setup Wizard' : 'Welcome to SocietyLedger'}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Let's get your association set up in just a few steps
+            {isRerunMode 
+              ? 'Re-run any setup step to update your configuration'
+              : "Let's get your association set up in just a few steps"
+            }
           </p>
         </div>
 
@@ -137,7 +160,8 @@ export default function OnboardingPage() {
           {steps.map((step) => {
             const isCompleted = completedSteps.includes(step.id);
             const isCurrent = currentStep === step.id;
-            const isLocked = step.id > currentStep && !isCompleted;
+            // In rerun mode, all steps are accessible
+            const isLocked = !isRerunMode && step.id > currentStep && !isCompleted;
 
             return (
               <button
@@ -162,7 +186,7 @@ export default function OnboardingPage() {
                   </span>
                   {isCompleted && (
                     <span className="bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400 text-xs px-2 py-1 rounded-full">
-                      Complete
+                      {isRerunMode ? 'Re-run' : 'Complete'}
                     </span>
                   )}
                   {isCurrent && !isCompleted && (
@@ -184,18 +208,27 @@ export default function OnboardingPage() {
 
         {/* Actions */}
         <div className="flex items-center justify-between">
+          {isRerunMode ? (
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            >
+              Return to Dashboard
+            </button>
+          ) : (
+            <button
+              onClick={handleSkip}
+              disabled={skipping}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            >
+              {skipping ? 'Skipping...' : 'Skip for now'}
+            </button>
+          )}
           <button
-            onClick={handleSkip}
-            disabled={skipping}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-          >
-            {skipping ? 'Skipping...' : 'Skip for now'}
-          </button>
-          <button
-            onClick={() => handleStepClick(steps[currentStep - 1])}
+            onClick={() => handleStepClick(steps[isRerunMode ? 2 : currentStep - 1])}
             className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-green-600 transition-all shadow-lg hover:shadow-xl"
           >
-            {currentStep === 1 ? 'Get Started' : 'Continue Setup'}
+            {isRerunMode ? 'Import Members' : currentStep === 1 ? 'Get Started' : 'Continue Setup'}
           </button>
         </div>
       </div>
@@ -208,5 +241,18 @@ function CheckIcon() {
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
     </svg>
+  );
+}
+
+// Wrap with Suspense for useSearchParams
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 }

@@ -54,6 +54,18 @@ export async function authMiddleware(
 
     // Attach user to request
     req.user = decoded;
+
+    // For Super Admins, allow association context from X-Association-Id header
+    // This enables Super Admins to view association data without impersonation
+    if (decoded.platformRole === PlatformRole.SUPER_ADMIN && !decoded.associationId) {
+      const headerAssociationId = req.headers['x-association-id'] as string;
+      console.log('[Auth] Super Admin detected, X-Association-Id header:', headerAssociationId);
+      if (headerAssociationId && !isNaN(Number(headerAssociationId))) {
+        req.user = { ...decoded, associationId: Number(headerAssociationId) };
+        console.log('[Auth] Injected associationId:', Number(headerAssociationId));
+      }
+    }
+
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);

@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   AlertTriangle, Clock, DollarSign, Users, 
   CheckCircle, XCircle, Eye, RefreshCw
@@ -136,48 +139,69 @@ export default function OverduePage() {
 
   const handleBulkMarkPaid = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Mark ${selectedIds.length} transaction(s) as paid?`)) return;
+    
+    modals.openConfirmModal({
+      title: 'Mark Transactions as Paid',
+      children: (
+        <Text size="sm">
+          Are you sure you want to mark {selectedIds.length} transaction(s) as paid?
+        </Text>
+      ),
+      labels: { confirm: 'Mark as Paid', cancel: 'Cancel' },
+      confirmProps: { color: 'green' },
+      onConfirm: async () => {
+        setIsProcessing(true);
+        try {
+          const response = await apiPost(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/payments/bulk`,
+            {
+              transactionIds: selectedIds,
+              paymentMethod: 'cash',
+            }
+          );
 
-    setIsProcessing(true);
-    try {
-      const response = await apiPost(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/payments/bulk`,
-        {
-          transactionIds: selectedIds,
-          paymentMethod: 'cash',
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
+
+          toast.success(data.message || 'Transactions marked as paid');
+          setSelectedIds([]);
+          fetchOverdue();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to mark transactions as paid');
+        } finally {
+          setIsProcessing(false);
         }
-      );
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      alert(data.message);
-      setSelectedIds([]);
-      fetchOverdue();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsProcessing(false);
-    }
+      },
+    });
   };
 
   const handleWaive = async (id: number) => {
-    if (!confirm('Are you sure you want to waive this transaction?')) return;
+    modals.openConfirmModal({
+      title: 'Waive Transaction',
+      children: (
+        <Text size="sm">
+          Are you sure you want to waive this transaction? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Waive', cancel: 'Cancel' },
+      confirmProps: { color: 'orange' },
+      onConfirm: async () => {
+        try {
+          const response = await apiPatch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/${id}`,
+            { status: 'waived' }
+          );
 
-    try {
-      const response = await apiPatch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/${id}`,
-        { status: 'waived' }
-      );
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      alert('Transaction waived successfully');
-      fetchOverdue();
-    } catch (err: any) {
-      alert(err.message);
-    }
+          toast.success('Transaction waived successfully');
+          fetchOverdue();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to waive transaction');
+        }
+      },
+    });
   };
 
   const getDaysOverdue = (dueDate: string | null) => {

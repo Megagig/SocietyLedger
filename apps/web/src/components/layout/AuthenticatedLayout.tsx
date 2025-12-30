@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
+import { SuperAdminContextBanner } from '@/components/admin';
 import { Loader } from '@mantine/core';
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +14,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -34,11 +37,8 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       // Skip if already on onboarding pages
       if (pathname.startsWith('/onboarding')) return;
       
-      // Super admin should use /admin routes, not /dashboard
-      if (user.platformRole === 'SUPER_ADMIN' && pathname.startsWith('/dashboard')) {
-        router.push('/admin');
-        return;
-      }
+      // Note: Super Admins can now access /dashboard routes with selected association context
+      // The SuperAdminDashboardGuard component handles showing the tenant selector
       
       // Redirect admins who haven't completed onboarding (exclude super admins)
       if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
@@ -64,18 +64,34 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* PWA Status Indicators */}
+      <OfflineIndicator />
+      <UpdatePrompt />
+      
       <Sidebar />
       <main className="flex-1 lg:ml-72 min-h-screen">
+        {/* Super Admin Context Banner */}
+        <SuperAdminContextBanner />
+        
         {/* Top Bar with Notification Bell */}
         <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-end">
             <NotificationBell />
           </div>
         </div>
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-4 sm:p-6 lg:p-8 mb-bottom-nav">
           {children}
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <BottomNav 
+        onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+        notificationCount={0}
+      />
+      
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }

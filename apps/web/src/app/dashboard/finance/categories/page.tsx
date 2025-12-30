@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { FinancialCategory } from '@/types';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   Search, Plus, Edit, Trash2, DollarSign, 
   Calendar, AlertCircle, Gift, Gavel 
@@ -93,13 +96,13 @@ export default function CategoriesPage() {
 
       if (!response.ok) throw new Error(data.message || 'Failed to save category');
 
-      alert(editingCategory ? 'Category updated successfully' : 'Category created successfully');
+      toast.success(editingCategory ? 'Category updated successfully' : 'Category created successfully');
       setShowModal(false);
       setEditingCategory(null);
       setFormData(initialFormData);
       fetchCategories();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to save category');
     } finally {
       setIsSubmitting(false);
     }
@@ -119,21 +122,31 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+    modals.openConfirmModal({
+      title: 'Delete Category',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this category? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const response = await apiDelete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
+          );
 
-    try {
-      const response = await apiDelete(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
-      );
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      alert('Category deleted successfully');
-      fetchCategories();
-    } catch (err: any) {
-      alert(err.message);
-    }
+          toast.success('Category deleted successfully');
+          fetchCategories();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete category');
+        }
+      },
+    });
   };
 
   const getTypeIcon = (type: string) => {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Text } from '@mantine/core';
 import {
   IconLayoutDashboard,
   IconUsers,
@@ -21,11 +22,32 @@ import {
   IconCreditCard,
   IconChevronDown,
   IconBuildingCommunity,
-  IconBadge
+  IconBadge,
+  IconBuildingBank,
+  IconCalendarEvent,
+  IconClipboardCheck,
+  IconMessage,
+  IconMail,
+  IconBrandWhatsapp,
+  IconHistory,
+  IconTemplate,
+  IconSpeakerphone,
+  IconRobot,
+  IconMessageChatbot,
+  IconBrain,
+  IconSparkles,
+  IconChecklist,
+  IconChartPie,
+  IconUserPlus,
+  IconQuestionMark,
+  IconTicket,
+  IconPlus,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { toast } from '@/lib/toast';
+import { modals } from '@mantine/modals';
 
 interface NavItem {
   label: string;
@@ -53,16 +75,24 @@ export function Sidebar() {
 
   const checkPermission = (permission: string | string[] | undefined): boolean => {
     if (!permission) return true;
-    if (!user?.role) return false;
     
     // Super admin has access to everything
-    if (user.platformRole === 'SUPER_ADMIN') return true;
+    if (user?.platformRole === 'SUPER_ADMIN') return true;
     
-    if (Array.isArray(permission)) {
-      return permission.some(p => hasPermission(user.role, p as any));
+    // Get permissions array from user (fetched from API/database)
+    const userPermissions = user?.permissions || [];
+    
+    // If no permissions loaded yet, fall back to showing items for admin role
+    // This handles the case where permissions haven't been fetched yet
+    if (userPermissions.length === 0 && user?.role === 'admin') {
+      return true;
     }
     
-    return hasPermission(user.role, permission as any);
+    if (Array.isArray(permission)) {
+      return permission.some(p => hasPermission(userPermissions, p as any));
+    }
+    
+    return hasPermission(userPermissions, permission as any);
   };
 
   const navItems: NavItem[] = [
@@ -77,6 +107,56 @@ export function Sidebar() {
       href: '/dashboard/members',
       permission: PERMISSIONS.MEMBER_VIEW,
     },
+    // Member Self-Service Finance Section
+    // Note: Hidden for Super Admins as they don't have member records
+    ...(user?.platformRole !== 'SUPER_ADMIN' ? [{
+      label: 'My Finances',
+      icon: <IconCurrencyNaira size={20} />,
+      permission: PERMISSIONS.MEMBER_FINANCE_VIEW,
+      children: [
+        {
+          label: 'Overview',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/my-finances',
+        },
+        {
+          label: 'My Ledger',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/my-finances/ledger',
+        },
+        {
+          label: 'My Dues',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/my-finances/dues',
+        },
+        {
+          label: 'My Levies',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/my-finances/levies',
+        },
+        {
+          label: 'My Donations',
+          icon: <IconHeart size={18} />,
+          href: '/dashboard/my-finances/donations',
+        },
+        {
+          label: 'Penalties',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/my-finances/penalties',
+        },
+        {
+          label: 'Payment History',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/my-finances/payments',
+        },
+        {
+          label: 'Make Payment',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/my-finances/pay',
+        },
+      ],
+    }] : []),
+    // Admin Finance Section
     {
       label: 'Finance',
       icon: <IconCurrencyNaira size={20} />,
@@ -86,6 +166,11 @@ export function Sidebar() {
           label: 'Overview',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/finance/overview',
+        },
+        {
+          label: 'Member Ledgers',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/finance/member-ledger',
         },
         {
           label: 'Categories',
@@ -127,6 +212,11 @@ export function Sidebar() {
           icon: <IconBell size={18} />,
           href: '/dashboard/finance/reminders',
         },
+        {
+          label: 'Bank Payments',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/finance/payments/nigerian',
+        },
       ],
     },
     {
@@ -135,89 +225,149 @@ export function Sidebar() {
       permission: PERMISSIONS.FINANCE_VIEW,
       children: [
         {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/accounting',
+        },
+        {
           label: 'Chart of Accounts',
           icon: <IconReceipt size={18} />,
           href: '/dashboard/accounting/chart-of-accounts',
-          comingSoon: true,
         },
         {
           label: 'Journal Entries',
           icon: <IconFileAnalytics size={18} />,
           href: '/dashboard/accounting/journal-entries',
-          comingSoon: true,
         },
         {
           label: 'Income Statement',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/accounting/income-statement',
-          comingSoon: true,
         },
         {
           label: 'Balance Sheet',
           icon: <IconWallet size={18} />,
           href: '/dashboard/accounting/balance-sheet',
-          comingSoon: true,
         },
         {
           label: 'Cash Flow',
           icon: <IconCreditCard size={18} />,
           href: '/dashboard/accounting/cash-flow',
-          comingSoon: true,
+        },
+        {
+          label: 'Budgets',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/accounting/budgets',
         },
       ],
     },
     {
       label: 'Reports',
       icon: <IconChartBar size={20} />,
-      href: '/dashboard/reports',
       permission: PERMISSIONS.REPORT_VIEW,
-      comingSoon: true,
+      children: [
+        {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/reports',
+        },
+        {
+          label: 'Financial Summary',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/reports/financial-summary',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'Member Balances',
+          icon: <IconUsers size={18} />,
+          href: '/dashboard/reports/member-balances',
+          permission: PERMISSIONS.REPORT_MEMBER,
+        },
+        {
+          label: 'Aging Analysis',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/reports/aging-analysis',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'Collection Rate',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/reports/collection-rate',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'By Category',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/reports/by-category',
+          permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+      ],
     },
     {
       label: 'Governance',
       icon: <IconBadge size={20} />,
+      permission: [PERMISSIONS.MEETING_VIEW, PERMISSIONS.ELECTION_VIEW],
       children: [
         {
-          label: 'Voting & Elections',
-          icon: <IconBadge size={18} />,
-          href: '/dashboard/governance/voting',
-          comingSoon: true,
-        },
-        {
           label: 'Meetings',
-          icon: <IconUsers size={18} />,
+          icon: <IconCalendarEvent size={18} />,
           href: '/dashboard/governance/meetings',
-          comingSoon: true,
+          permission: PERMISSIONS.MEETING_VIEW,
         },
         {
-          label: 'Attendance',
-          icon: <IconBuildingCommunity size={18} />,
+          label: 'Attendance History',
+          icon: <IconClipboardCheck size={18} />,
           href: '/dashboard/governance/attendance',
-          comingSoon: true,
+          permission: PERMISSIONS.MEETING_VIEW,
+        },
+        {
+          label: 'Voting Dashboard',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/governance/voting',
+          permission: PERMISSIONS.ELECTION_VIEW,
+        },
+        {
+          label: 'Elections',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/governance/elections',
+          permission: PERMISSIONS.ELECTION_VIEW,
+        },
+        {
+          label: 'Polls',
+          icon: <IconChartPie size={18} />,
+          href: '/dashboard/governance/polls',
+          permission: PERMISSIONS.POLL_VIEW,
         },
       ],
     },
     {
       label: 'Welfare',
       icon: <IconHeart size={20} />,
+      permission: PERMISSIONS.WELFARE_VIEW,
       children: [
+        {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/welfare',
+          permission: PERMISSIONS.WELFARE_VIEW,
+        },
         {
           label: 'Social Funds',
           icon: <IconWallet size={18} />,
           href: '/dashboard/welfare/social-funds',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_VIEW,
         },
         {
           label: 'Contributions',
           icon: <IconCurrencyNaira size={18} />,
           href: '/dashboard/welfare/contributions',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
         },
         {
           label: 'Requests & Payouts',
           icon: <IconHeart size={18} />,
           href: '/dashboard/welfare/requests',
-          comingSoon: true,
+          permission: PERMISSIONS.WELFARE_PAYOUT_VIEW,
         },
       ],
     },
@@ -225,30 +375,67 @@ export function Sidebar() {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
       badge: 'Enterprise',
+      permission: PERMISSIONS.COOPERATIVE_VIEW,
       children: [
         {
-          label: 'Loans',
-          icon: <IconWallet size={18} />,
-          href: '/dashboard/cooperatives/loans',
-          comingSoon: true,
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/cooperatives',
+          permission: PERMISSIONS.COOPERATIVE_VIEW,
         },
         {
-          label: 'Savings',
+          label: 'My Savings',
           icon: <IconCurrencyNaira size={18} />,
-          href: '/dashboard/cooperatives/savings',
-          comingSoon: true,
+          href: '/dashboard/cooperatives/my-savings',
+          permission: PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
         },
         {
-          label: 'Guarantors',
+          label: 'My Loans',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/cooperatives/my-loans',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_VIEW,
+        },
+        {
+          label: 'Apply for Loan',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/cooperatives/apply',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_APPLY,
+        },
+        {
+          label: 'Guarantor Requests',
           icon: <IconUsers size={18} />,
           href: '/dashboard/cooperatives/guarantors',
-          comingSoon: true,
+          permission: PERMISSIONS.COOPERATIVE_GUARANTOR,
+        },
+        {
+          label: 'All Savings',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/cooperatives/savings',
+          permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+        },
+        {
+          label: 'All Loans',
+          icon: <IconWallet size={18} />,
+          href: '/dashboard/cooperatives/loans',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
+        },
+        {
+          label: 'Loan Products',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/cooperatives/loan-products',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
+        },
+        {
+          label: 'Applications',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/cooperatives/applications',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
         },
       ],
     },
     {
       label: 'Communication',
-      icon: <IconBell size={20} />,
+      icon: <IconSpeakerphone size={20} />,
       children: [
         {
           label: 'Notifications',
@@ -261,48 +448,79 @@ export function Sidebar() {
           href: '/dashboard/communication/announcements',
         },
         {
-          label: 'Bulk SMS',
-          icon: <IconBell size={18} />,
+          label: 'SMS Dashboard',
+          icon: <IconMessage size={18} />,
           href: '/dashboard/communication/sms',
-          comingSoon: true,
+          permission: PERMISSIONS.SMS_VIEW,
+        },
+        {
+          label: 'SMS Campaigns',
+          icon: <IconSpeakerphone size={18} />,
+          href: '/dashboard/communication/sms/campaigns',
+          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
+        },
+        {
+          label: 'SMS Templates',
+          icon: <IconTemplate size={18} />,
+          href: '/dashboard/communication/sms/templates',
+          permission: PERMISSIONS.SMS_TEMPLATE_MANAGE,
+        },
+        {
+          label: 'SMS History',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/communication/sms/history',
+          permission: PERMISSIONS.SMS_VIEW,
         },
         {
           label: 'Email Campaigns',
-          icon: <IconBell size={18} />,
+          icon: <IconMail size={18} />,
           href: '/dashboard/communication/email',
-          comingSoon: true,
+          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
         },
         {
           label: 'WhatsApp',
-          icon: <IconBell size={18} />,
+          icon: <IconBrandWhatsapp size={18} />,
           href: '/dashboard/communication/whatsapp',
-          comingSoon: true,
           badge: 'Pro',
+          permission: PERMISSIONS.SMS_VIEW,
         },
       ],
     },
     {
       label: 'AI Assistant',
-      icon: <IconBadge size={20} />,
+      icon: <IconRobot size={20} />,
       badge: 'Beta',
+      permission: PERMISSIONS.AI_VIEW,
       children: [
         {
-          label: 'Ask AI',
-          icon: <IconBadge size={18} />,
+          label: 'Financial Assistant',
+          icon: <IconMessageChatbot size={18} />,
           href: '/dashboard/ai/assistant',
-          comingSoon: true,
-        },
-        {
-          label: 'Document Q&A',
-          icon: <IconFileAnalytics size={18} />,
-          href: '/dashboard/ai/documents',
-          comingSoon: true,
+          permission: PERMISSIONS.AI_FINANCIAL_ASSISTANT,
         },
         {
           label: 'Smart Reports',
-          icon: <IconChartBar size={18} />,
+          icon: <IconSparkles size={18} />,
           href: '/dashboard/ai/reports',
-          comingSoon: true,
+          permission: PERMISSIONS.AI_REPORTS,
+        },
+        {
+          label: 'Smart Reminders',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/ai/reminders',
+          permission: PERMISSIONS.AI_FINANCIAL_ASSISTANT,
+        },
+        {
+          label: 'Data Query',
+          icon: <IconBrain size={18} />,
+          href: '/dashboard/ai/query',
+          permission: PERMISSIONS.AI_QUERY,
+        },
+        {
+          label: 'Usage & Stats',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/ai/usage',
+          permission: PERMISSIONS.AI_USAGE_VIEW,
         },
       ],
     },
@@ -315,40 +533,171 @@ export function Sidebar() {
     {
       label: 'Settings',
       icon: <IconSettings size={20} />,
-      href: '/dashboard/settings',
       permission: PERMISSIONS.SETTINGS_VIEW,
-      comingSoon: true,
+      children: [
+        {
+          label: 'Overview',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/settings',
+        },
+        {
+          label: 'Association Profile',
+          icon: <IconBuildingCommunity size={18} />,
+          href: '/dashboard/settings/association',
+          permission: PERMISSIONS.SETTINGS_VIEW,
+        },
+        {
+          label: 'Roles & Permissions',
+          icon: <IconBadge size={18} />,
+          href: '/dashboard/settings/roles',
+          permission: PERMISSIONS.SETTINGS_VIEW,
+        },
+        {
+          label: 'User Management',
+          icon: <IconUserPlus size={18} />,
+          href: '/dashboard/settings/users',
+          permission: PERMISSIONS.USER_VIEW,
+        },
+        {
+          label: 'Members Access',
+          icon: <IconUsers size={18} />,
+          href: '/dashboard/settings/members-access',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Financial Settings',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/settings/financial',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Payments & Billing',
+          icon: <IconCreditCard size={18} />,
+          href: '/dashboard/settings/payments',
+          permission: PERMISSIONS.SETTINGS_BILLING,
+        },
+        {
+          label: 'Notifications',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/settings/notifications',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Integrations',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/settings/integrations',
+          permission: PERMISSIONS.SETTINGS_INTEGRATIONS,
+        },
+        {
+          label: 'Data & Privacy',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/settings/data-privacy',
+          permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          label: 'Audit Logs',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/settings/audit-logs',
+          permission: PERMISSIONS.AUDIT_VIEW,
+        },
+      ],
     },
     {
       label: 'Help & Support',
       icon: <IconHelp size={20} />,
-      href: '/dashboard/help',
-      comingSoon: true,
+      children: [
+        {
+          label: 'Help Center',
+          icon: <IconHelp size={18} />,
+          href: '/dashboard/help',
+        },
+        {
+          label: 'Articles',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/help/articles',
+        },
+        {
+          label: 'FAQs',
+          icon: <IconQuestionMark size={18} />,
+          href: '/dashboard/help/faqs',
+        },
+        {
+          label: 'My Tickets',
+          icon: <IconTicket size={18} />,
+          href: '/dashboard/help/tickets',
+        },
+        {
+          label: 'Create Ticket',
+          icon: <IconPlus size={18} />,
+          href: '/dashboard/help/tickets/new',
+        },
+      ],
     },
     {
       label: 'Setup Wizard',
       icon: <IconBadge size={20} />,
-      href: '/onboarding',
+      href: '/onboarding?rerun=true',
       permission: PERMISSIONS.SETTINGS_VIEW,
     },
   ];
 
   // Add super admin specific items
   if (user?.platformRole === 'SUPER_ADMIN') {
+    // Find Help & Support menu and add admin items
+    const helpMenu = navItems.find(item => item.label === 'Help & Support');
+    if (helpMenu && helpMenu.children) {
+      helpMenu.children.push(
+        {
+          label: 'Manage Content',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/settings/help-content',
+        },
+        {
+          label: 'Manage Tickets',
+          icon: <IconClipboardCheck size={18} />,
+          href: '/dashboard/settings/support',
+        }
+      );
+    }
+
     navItems.unshift({
       label: 'Super Admin',
       icon: <IconBadge size={20} />,
       children: [
         {
-          label: 'All Associations',
+          label: 'Dashboard',
+          icon: <IconLayoutDashboard size={18} />,
+          href: '/admin',
+        },
+        {
+          label: 'Associations',
           icon: <IconBuildingCommunity size={18} />,
           href: '/admin/associations',
         },
         {
+          label: 'Tenant Management',
+          icon: <IconUsers size={18} />,
+          href: '/admin/tenants',
+        },
+        {
           label: 'Platform Analytics',
-          icon: <IconFileAnalytics size={18} />,
+          icon: <IconChartBar size={18} />,
           href: '/admin/analytics',
-          comingSoon: true,
+        },
+        {
+          label: 'Action Logs',
+          icon: <IconHistory size={18} />,
+          href: '/admin/action-logs',
+        },
+        {
+          label: 'Modules & Features',
+          icon: <IconChecklist size={18} />,
+          href: '/admin/modules',
+        },
+        {
+          label: 'Settings',
+          icon: <IconSettings size={18} />,
+          href: '/admin/settings',
         },
       ],
     });
@@ -360,10 +709,26 @@ export function Sidebar() {
   };
 
   const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to log out?')) {
-      await logout();
-      window.location.href = '/auth/login';
-    }
+    modals.openConfirmModal({
+      title: 'Confirm Logout',
+      children: (
+        <Text size="sm">
+          Are you sure you want to log out? You will need to sign in again to access your account.
+        </Text>
+      ),
+      labels: { confirm: 'Logout', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        const loadingId = toast.loading('Logging out...');
+        try {
+          await logout();
+          toast.updateSuccess(loadingId, 'Logged out successfully');
+          window.location.href = '/auth/login';
+        } catch (error) {
+          toast.updateError(loadingId, 'Failed to logout. Please try again.');
+        }
+      },
+    });
   };
 
   return (

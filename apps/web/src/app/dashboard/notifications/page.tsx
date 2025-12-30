@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { apiGet, apiPut, apiPatch, apiDelete as apiDeleteRequest } from '@/utils/api';
 import { API_ROUTES } from '@/utils/constants';
 import { IconBell, IconCheck, IconTrash, IconFilter } from '@tabler/icons-react';
 
@@ -29,17 +29,16 @@ export default function NotificationsPage() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(API_ROUTES.NOTIFICATIONS.LIST, {
-        params: { 
-          page, 
-          limit: 20,
-          unread: filter === 'unread' ? 'true' : undefined,
-        },
-        withCredentials: true,
-      });
-      setNotifications(response.data.data.notifications);
-      setTotalPages(response.data.data.totalPages);
-      setUnreadCount(response.data.data.unreadCount);
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (filter === 'unread') params.append('unread', 'true');
+      
+      const response = await apiGet(`${API_ROUTES.NOTIFICATIONS.LIST}?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.data.notifications);
+        setTotalPages(data.data.totalPages);
+        setUnreadCount(data.data.unreadCount);
+      }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -49,11 +48,13 @@ export default function NotificationsPage() {
 
   const markAsRead = async (id: number) => {
     try {
-      await axios.put(API_ROUTES.NOTIFICATIONS.MARK_READ(id), {}, { withCredentials: true });
-      setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, isRead: true } : n
-      ));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      const response = await apiPatch(API_ROUTES.NOTIFICATIONS.MARK_READ(id), {});
+      if (response.ok) {
+        setNotifications(notifications.map(n => 
+          n.id === id ? { ...n, isRead: true } : n
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
     } catch (error) {
       console.error('Failed to mark as read:', error);
     }
@@ -61,9 +62,11 @@ export default function NotificationsPage() {
 
   const markAllAsRead = async () => {
     try {
-      await axios.put(API_ROUTES.NOTIFICATIONS.MARK_ALL_READ, {}, { withCredentials: true });
-      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
+      const response = await apiPatch(API_ROUTES.NOTIFICATIONS.MARK_ALL_READ, {});
+      if (response.ok) {
+        setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+      }
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
@@ -71,11 +74,13 @@ export default function NotificationsPage() {
 
   const deleteNotification = async (id: number) => {
     try {
-      await axios.delete(API_ROUTES.NOTIFICATIONS.DELETE(id), { withCredentials: true });
-      const notification = notifications.find(n => n.id === id);
-      setNotifications(notifications.filter(n => n.id !== id));
-      if (notification && !notification.isRead) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
+      const response = await apiDeleteRequest(API_ROUTES.NOTIFICATIONS.DELETE(id));
+      if (response.ok) {
+        const notification = notifications.find(n => n.id === id);
+        setNotifications(notifications.filter(n => n.id !== id));
+        if (notification && !notification.isRead) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
       }
     } catch (error) {
       console.error('Failed to delete notification:', error);

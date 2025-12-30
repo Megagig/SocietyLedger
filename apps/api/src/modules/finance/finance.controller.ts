@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
+// Phase 12: Cache invalidation
+import { cacheInvalidationService } from '../../services/cache-invalidation.service';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -268,6 +270,9 @@ export const financeController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onCategoryChange(associationId);
+
       return res.status(201).json({
         success: true,
         message: 'Category created successfully',
@@ -345,6 +350,9 @@ export const financeController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onCategoryChange(associationId);
+
       return res.status(200).json({
         success: true,
         message: 'Category updated successfully',
@@ -409,6 +417,9 @@ export const financeController = {
           oldValues: category,
         },
       });
+
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onCategoryChange(associationId);
 
       return res.status(200).json({
         success: true,
@@ -675,6 +686,9 @@ export const financeController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
+
       return res.status(201).json({
         success: true,
         message: 'Transaction created successfully',
@@ -754,6 +768,9 @@ export const financeController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
+
       return res.status(201).json({
         success: true,
         message: `${transactions.length} transactions created successfully`,
@@ -822,6 +839,9 @@ export const financeController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
+
       return res.status(200).json({
         success: true,
         message: 'Transaction updated successfully',
@@ -875,6 +895,9 @@ export const financeController = {
           oldValues: transaction,
         },
       });
+
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
 
       return res.status(200).json({
         success: true,
@@ -1032,6 +1055,9 @@ export const financeController = {
         },
       });
 
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onPaymentChange(associationId);
+
       return res.status(201).json({
         success: true,
         message: 'Payment recorded successfully',
@@ -1117,6 +1143,9 @@ export const financeController = {
           newValues: { transactionIds: validatedData.transactionIds, count: results.length / 2 },
         },
       });
+
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onPaymentChange(associationId);
 
       return res.status(200).json({
         success: true,

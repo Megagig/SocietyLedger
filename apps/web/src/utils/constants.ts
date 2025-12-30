@@ -178,6 +178,42 @@ export const API_ROUTES = {
     SKIP: `${API_BASE_URL}/api/onboarding/skip`,
     RESET: `${API_BASE_URL}/api/onboarding/reset`,
   },
+  // Phase 19: Platform Admin Controls
+  PLATFORM_ADMIN: {
+    // Tenant Management
+    TENANTS: `${API_BASE_URL}/api/admin/tenants`,
+    TENANT_STATUS: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/status`,
+    TENANT_SUSPEND: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/suspend`,
+    TENANT_REACTIVATE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/reactivate`,
+    TENANT_SOFT_DELETE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/soft-delete`,
+    TENANT_RESTORE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/restore`,
+    TENANT_FORCE_LOGOUT: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/force-logout`,
+    TENANT_SECURITY: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/security`,
+    // Module & Feature Management
+    MODULES: `${API_BASE_URL}/api/admin/modules`,
+    FEATURES: `${API_BASE_URL}/api/admin/features`,
+    TENANT_MODULES: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/modules`,
+    TENANT_MODULE_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/modules/override`,
+    TENANT_MODULE_REMOVE: (id: number, code: string) => `${API_BASE_URL}/api/admin/tenants/${id}/modules/${code}/override`,
+    TENANT_FEATURE_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/features/override`,
+    TENANT_FEATURE_REMOVE: (id: number, code: string) => `${API_BASE_URL}/api/admin/tenants/${id}/features/${code}/override`,
+    // Billing Overrides
+    TENANT_BILLING: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing`,
+    TENANT_BILLING_HISTORY: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/history`,
+    TENANT_BILLING_OVERRIDE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/override`,
+    TENANT_EXTEND_TRIAL: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/extend-trial`,
+    TENANT_APPLY_CREDIT: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/billing/apply-credit`,
+    BILLING_OVERRIDE_REVOKE: (id: number) => `${API_BASE_URL}/api/admin/billing/overrides/${id}/revoke`,
+    // Platform Action Logs
+    ACTION_LOGS: `${API_BASE_URL}/api/admin/action-logs`,
+    ACTION_LOGS_STATS: `${API_BASE_URL}/api/admin/action-logs/stats`,
+    ACTION_LOGS_EXPORT: `${API_BASE_URL}/api/admin/action-logs/export`,
+    // Platform Analytics
+    ANALYTICS_OVERVIEW: `${API_BASE_URL}/api/admin/analytics/overview`,
+    ANALYTICS_MODULE_ADOPTION: `${API_BASE_URL}/api/admin/analytics/module-adoption`,
+    ANALYTICS_CHURN: `${API_BASE_URL}/api/admin/analytics/churn`,
+    ANALYTICS_REVENUE: `${API_BASE_URL}/api/admin/analytics/revenue`,
+  },
   NOTIFICATIONS: {
     LIST: `${API_BASE_URL}/api/notifications`,
     UNREAD_COUNT: `${API_BASE_URL}/api/notifications/unread-count`,
@@ -186,6 +222,41 @@ export const API_ROUTES = {
     DELETE: (id: number) => `${API_BASE_URL}/api/notifications/${id}`,
     CREATE: `${API_BASE_URL}/api/notifications`,
     ANNOUNCEMENT: `${API_BASE_URL}/api/notifications/announcement`,
+  },
+  // Phase 20: Dashboard Real-Data Integration
+  DASHBOARD: {
+    OVERVIEW: `${API_BASE_URL}/api/dashboard/overview`,
+  },
+  // Phase 21: Help & Support Module
+  HELP: {
+    CENTER: `${API_BASE_URL}/api/help`,
+    ARTICLES: `${API_BASE_URL}/api/help/articles`,
+    ARTICLE_BY_SLUG: (slug: string) => `${API_BASE_URL}/api/help/articles/${slug}`,
+    ARTICLE_SEARCH: `${API_BASE_URL}/api/help/articles/search`,
+    ARTICLE_HELPFUL: (id: number) => `${API_BASE_URL}/api/help/articles/${id}/helpful`,
+    FAQS: `${API_BASE_URL}/api/help/faqs`,
+    FAQS_BY_CATEGORY: `${API_BASE_URL}/api/help/faqs/by-category`,
+    QUICK_ACTIONS: `${API_BASE_URL}/api/help/quick-actions`,
+    CATEGORIES_ARTICLES: `${API_BASE_URL}/api/help/categories/articles`,
+    CATEGORIES_FAQS: `${API_BASE_URL}/api/help/categories/faqs`,
+    ARTICLE_CATEGORIES: `${API_BASE_URL}/api/help/categories/articles`,
+    FAQ_CATEGORIES: `${API_BASE_URL}/api/help/categories/faqs`,
+    // AI Endpoints
+    AI_STATUS: `${API_BASE_URL}/api/help/ai/status`,
+    AI_SUGGEST_ARTICLES: `${API_BASE_URL}/api/help/ai/suggest-articles`,
+    AI_ANSWER: `${API_BASE_URL}/api/help/ai/answer`,
+    AI_CATEGORIZE: `${API_BASE_URL}/api/help/ai/categorize`,
+    AI_SENTIMENT: `${API_BASE_URL}/api/help/ai/sentiment`,
+    AI_SUGGEST_RESPONSE: `${API_BASE_URL}/api/help/ai/suggest-response`,
+  },
+  SUPPORT: {
+    TICKETS: `${API_BASE_URL}/api/support/tickets`,
+    TICKET_BY_ID: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}`,
+    TICKET_RESPOND: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/respond`,
+    TICKET_CLOSE: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/close`,
+    TICKET_REOPEN: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/reopen`,
+    TICKET_STATS: `${API_BASE_URL}/api/support/tickets/stats`,
+    TICKET_COUNT: `${API_BASE_URL}/api/support/tickets/count`,
   },
 } as const;
 

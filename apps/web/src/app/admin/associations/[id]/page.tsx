@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
+import { toast } from '@/lib/toast';
 import Link from 'next/link';
 
 type AssociationDetail = {
@@ -108,11 +109,12 @@ export default function AssociationDetailPage() {
       const data = await res.json();
       if (data.success) {
         fetchData();
+        toast.success('Association suspended successfully');
       } else {
-        alert(data.message || 'Failed to suspend');
+        toast.error(data.message || 'Failed to suspend');
       }
     } catch (e) {
-      alert('Failed to suspend association');
+      toast.error('Failed to suspend association');
     } finally {
       setActionLoading(false);
     }
@@ -131,11 +133,12 @@ export default function AssociationDetailPage() {
       const data = await res.json();
       if (data.success) {
         fetchData();
+        toast.success('Association reactivated successfully');
       } else {
-        alert(data.message || 'Failed to reactivate');
+        toast.error(data.message || 'Failed to reactivate');
       }
     } catch (e) {
-      alert('Failed to reactivate association');
+      toast.error('Failed to reactivate association');
     } finally {
       setActionLoading(false);
     }
@@ -156,11 +159,12 @@ export default function AssociationDetailPage() {
         // Open in new tab with impersonation token
         const url = `http://${data.data.association.subdomain}.localhost:3000/dashboard?token=${data.data.token}`;
         window.open(url, '_blank');
+        toast.success('Impersonation session opened in new tab');
       } else {
-        alert(data.message || 'Failed to impersonate');
+        toast.error(data.message || 'Failed to impersonate');
       }
     } catch (e) {
-      alert('Failed to impersonate');
+      toast.error('Failed to impersonate');
     } finally {
       setActionLoading(false);
     }

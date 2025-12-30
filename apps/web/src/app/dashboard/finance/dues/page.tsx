@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   Calendar, Users, DollarSign, Clock, AlertTriangle,
   Plus, Play, CheckCircle, Search, Filter
@@ -110,7 +111,7 @@ export default function DuesPage() {
 
   const handleGenerateDues = async () => {
     if (!selectedCategory || selectedMembers.length === 0) {
-      alert('Please select a due category and at least one member');
+      toast.warning('Please select a due category and at least one member');
       return;
     }
 
@@ -118,7 +119,7 @@ export default function DuesPage() {
     const amount = customAmount ? parseFloat(customAmount) : category?.amount;
 
     if (!amount || amount <= 0) {
-      alert('Please enter a valid amount');
+      toast.warning('Please enter a valid amount');
       return;
     }
 
@@ -129,8 +130,8 @@ export default function DuesPage() {
         {
           categoryId: selectedCategory,
           memberIds: selectedMembers,
-          amount,
-          dueDate: dueDate || null,
+          amount: parseFloat(amount.toString()),
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
           notes: notes || null,
         }
       );
@@ -138,7 +139,7 @@ export default function DuesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to generate dues');
 
-      alert(`Successfully generated ${data.data.count} due transactions!`);
+      toast.success(`Successfully generated ${data.data.count} due transactions!`);
       
       // Reset form
       setSelectedMembers([]);
@@ -150,7 +151,7 @@ export default function DuesPage() {
       // Navigate to transactions
       router.push('/dashboard/finance/transactions');
     } catch (err: any) {
-      alert(err.message);
+      toast.apiError(err, 'Failed to generate dues');
     } finally {
       setIsGenerating(false);
     }

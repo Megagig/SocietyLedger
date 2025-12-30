@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   Mail, Users, DollarSign, AlertTriangle, Send, 
   CheckCircle, Clock, RefreshCw, Search
@@ -94,10 +95,10 @@ export default function RemindersPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message);
 
-      alert(data.message);
+      toast.success(data.message || 'Overdue status updated successfully');
       fetchMembers();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to update overdue status');
     }
   };
 
@@ -125,7 +126,7 @@ export default function RemindersPage() {
 
   const handleSendReminders = async () => {
     if (selectedTransactions.length === 0) {
-      alert('Please select at least one member');
+      toast.warning('Please select at least one member');
       return;
     }
 
@@ -143,8 +144,9 @@ export default function RemindersPage() {
       if (!response.ok) throw new Error(data.message);
 
       setSendResult(data.data);
+      toast.success('Reminders sent successfully');
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to send reminders');
     } finally {
       setIsSending(false);
     }

@@ -26,16 +26,51 @@ export function extractSubdomain(hostname: string): string | null {
 }
 
 /**
+ * Get Super Admin's selected association ID from localStorage
+ * This allows Super Admins to view data for a specific association
+ */
+function getSuperAdminAssociationId(): number | null {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const stored = localStorage.getItem('super-admin-context');
+    console.log('[Tenant] localStorage super-admin-context:', stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      console.log('[Tenant] Parsed:', parsed);
+      const id = parsed?.state?.selectedAssociation?.id || null;
+      console.log('[Tenant] Association ID:', id);
+      return id;
+    }
+  } catch (e) {
+    console.error('[Tenant] Error reading localStorage:', e);
+  }
+  return null;
+}
+
+/**
  * Get tenant headers for API requests
  * Automatically extracts subdomain and creates x-tenant header
- * @returns Headers object with x-tenant if subdomain exists
+ * Also includes X-Association-Id for Super Admin context
+ * @returns Headers object with tenant context
  */
 export function getTenantHeaders(): HeadersInit {
   if (typeof window === 'undefined') return {};
   
   const subdomain = extractSubdomain(window.location.hostname);
+  const headers: Record<string, string> = {};
   
-  return subdomain ? { 'x-tenant': subdomain } : {};
+  if (subdomain) {
+    headers['x-tenant'] = subdomain;
+  }
+  
+  // Add Super Admin's selected association context
+  const superAdminAssociationId = getSuperAdminAssociationId();
+  if (superAdminAssociationId) {
+    headers['X-Association-Id'] = superAdminAssociationId.toString();
+  }
+  
+  return headers;
 }
 
 /**

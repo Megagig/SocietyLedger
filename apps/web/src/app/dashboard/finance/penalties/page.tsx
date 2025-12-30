@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Text, Tabs } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
   Gavel, Plus, Edit, Trash2, AlertTriangle,
-  Clock, CheckCircle, Search
+  Clock, CheckCircle, Search, Settings, History, XCircle, TrendingUp
 } from 'lucide-react';
 
 interface PenaltyCategory {
@@ -17,6 +20,41 @@ interface PenaltyCategory {
   amount: number | null;
   description: string | null;
   isActive: boolean;
+}
+
+interface PenaltyRule {
+  id: number;
+  name: string;
+  description: string | null;
+  triggerType: string;
+  gracePeriodDays: number;
+  feeType: string;
+  feeAmount: number;
+  maxFeeAmount: number | null;
+  isCompounding: boolean;
+  compoundingDays: number | null;
+  isActive: boolean;
+  category?: { id: number; name: string };
+  _count?: { appliedPenalties: number };
+}
+
+interface PenaltyWaiver {
+  id: number;
+  waivedAmount: number;
+  reason: string;
+  waivedAt: string;
+  transaction: {
+    id: number;
+    amount: number;
+    member: { firstName: string; lastName: string; memberId: string };
+    category: { name: string };
+  };
+}
+
+interface PenaltyStats {
+  rules: { total: number; active: number };
+  penalties: { totalApplied: number; totalAmount: number; totalCollected: number; totalOutstanding: number };
+  waivers: { count: number; totalWaived: number };
 }
 
 interface Member {
@@ -29,7 +67,11 @@ interface Member {
 
 export default function PenaltiesPage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<string | null>('categories');
   const [penalties, setPenalties] = useState<PenaltyCategory[]>([]);
+  const [rules, setRules] = useState<PenaltyRule[]>([]);
+  const [waivers, setWaivers] = useState<PenaltyWaiver[]>([]);
+  const [stats, setStats] = useState<PenaltyStats | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,8 +79,11 @@ export default function PenaltiesPage() {
   // Modal states
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showRuleModal, setShowRuleModal] = useState(false);
+  const [showWaiverModal, setShowWaiverModal] = useState(false);
   const [editingPenalty, setEditingPenalty] = useState<PenaltyCategory | null>(null);
   const [selectedPenalty, setSelectedPenalty] = useState<PenaltyCategory | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   
   // Category form
   const [categoryForm, setCategoryForm] = useState({
@@ -48,6 +93,20 @@ export default function PenaltiesPage() {
     isActive: true,
   });
   
+  // Rule form
+  const [ruleForm, setRuleForm] = useState({
+    name: '',
+    description: '',
+    categoryId: '',
+    triggerType: 'late_payment',
+    gracePeriodDays: '7',
+    feeType: 'fixed',
+    feeAmount: '',
+    maxFeeAmount: '',
+    isCompounding: false,
+    compoundingDays: '30',
+  });
+  
   // Assignment form
   const [assignForm, setAssignForm] = useState({
     memberId: '',
@@ -55,11 +114,20 @@ export default function PenaltiesPage() {
     notes: '',
   });
   
+  // Waiver form
+  const [waiverForm, setWaiverForm] = useState({
+    waivedAmount: '',
+    reason: '',
+  });
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
 
   useEffect(() => {
     fetchPenalties();
+    fetchRules();
+    fetchWaivers();
+    fetchStats();
     fetchMembers();
   }, []);
 
@@ -76,6 +144,48 @@ export default function PenaltiesPage() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchRules = async () => {
+    try {
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/rules`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setRules(data.data.rules || []);
+      }
+    } catch (err: any) {
+      console.error('Error fetching rules:', err);
+    }
+  };
+
+  const fetchWaivers = async () => {
+    try {
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/waivers`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setWaivers(data.data.waivers || []);
+      }
+    } catch (err: any) {
+      console.error('Error fetching waivers:', err);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/stats`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching stats:', err);
     }
   };
 
@@ -114,13 +224,13 @@ export default function PenaltiesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to save penalty');
 
-      alert(editingPenalty ? 'Penalty updated successfully' : 'Penalty created successfully');
+      toast.success(editingPenalty ? 'Penalty updated successfully' : 'Penalty created successfully');
       setShowCategoryModal(false);
       setEditingPenalty(null);
       setCategoryForm({ name: '', amount: '', description: '', isActive: true });
       fetchPenalties();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to save penalty');
     } finally {
       setIsSubmitting(false);
     }
@@ -150,13 +260,104 @@ export default function PenaltiesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to assign penalty');
 
-      alert('Penalty assigned successfully');
+      toast.success('Penalty assigned successfully');
       setShowAssignModal(false);
       setSelectedPenalty(null);
       setAssignForm({ memberId: '', amount: '', notes: '' });
-      router.push('/dashboard/finance/transactions');
+      fetchStats();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to assign penalty');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const response = await apiPost(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/rules`,
+        {
+          name: ruleForm.name,
+          description: ruleForm.description || undefined,
+          categoryId: ruleForm.categoryId ? parseInt(ruleForm.categoryId) : undefined,
+          triggerType: ruleForm.triggerType,
+          gracePeriodDays: parseInt(ruleForm.gracePeriodDays),
+          feeType: ruleForm.feeType,
+          feeAmount: parseFloat(ruleForm.feeAmount),
+          maxFeeAmount: ruleForm.maxFeeAmount ? parseFloat(ruleForm.maxFeeAmount) : undefined,
+          isCompounding: ruleForm.isCompounding,
+          compoundingDays: ruleForm.isCompounding ? parseInt(ruleForm.compoundingDays) : undefined,
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to create rule');
+
+      toast.success('Penalty rule created successfully');
+      setShowRuleModal(false);
+      fetchRules();
+      setRuleForm({
+        name: '', description: '', categoryId: '', triggerType: 'late_payment',
+        gracePeriodDays: '7', feeType: 'fixed', feeAmount: '', maxFeeAmount: '',
+        isCompounding: false, compoundingDays: '30',
+      });
+      fetchRules();
+      fetchStats();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create rule');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleWaivePenalty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTransaction) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await apiPost(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/${selectedTransaction.id}/waive`,
+        {
+          waivedAmount: parseFloat(waiverForm.waivedAmount),
+          reason: waiverForm.reason,
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to waive penalty');
+
+      toast.success('Penalty waived successfully');
+      setShowWaiverModal(false);
+      setSelectedTransaction(null);
+      setWaiverForm({ waivedAmount: '', reason: '' });
+      fetchWaivers();
+      fetchStats();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to waive penalty');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleApplyLateFees = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await apiPost(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/apply-late-fees`,
+        {}
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to apply late fees');
+
+      toast.success(`Applied ${data.data.applied} late fee(s), total: ₦${data.data.totalAmount.toLocaleString()}`);
+      fetchStats();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to apply late fees');
     } finally {
       setIsSubmitting(false);
     }
@@ -174,20 +375,48 @@ export default function PenaltiesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this penalty type?')) return;
+    modals.openConfirmModal({
+      title: 'Delete Penalty Type',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this penalty type? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const response = await apiDelete(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
+          );
 
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
+
+          toast.success('Penalty deleted successfully');
+          fetchPenalties();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to delete penalty');
+        }
+      },
+    });
+  };
+
+  const handleToggleRule = async (rule: PenaltyRule) => {
     try {
-      const response = await apiDelete(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories/${id}`
+      const response = await apiPatch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/rules/${rule.id}`,
+        { isActive: !rule.isActive }
       );
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
+      if (!response.ok) throw new Error(data.message || 'Failed to update rule');
 
-      alert('Penalty deleted successfully');
-      fetchPenalties();
+      toast.success(`Rule ${rule.isActive ? 'deactivated' : 'activated'} successfully`);
+      fetchRules();
+      fetchStats();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to update rule status');
     }
   };
 
@@ -224,23 +453,44 @@ export default function PenaltiesPage() {
             Penalties & Fines
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Configure and assign penalties to members
+            Configure penalty rules, manage waivers, and track late fees
           </p>
         </div>
         
-        <Can permission={PERMISSIONS.FINANCE_CREATE}>
-          <button
-            onClick={() => {
-              setEditingPenalty(null);
-              setCategoryForm({ name: '', amount: '', description: '', isActive: true });
-              setShowCategoryModal(true);
-            }}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Create Penalty Type
-          </button>
-        </Can>
+        <div className="flex gap-2">
+          <Can permission={PERMISSIONS.FINANCE_APPROVE}>
+            <button
+              onClick={handleApplyLateFees}
+              disabled={isSubmitting}
+              className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <Clock className="w-4 h-4" />
+              Apply Late Fees
+            </button>
+          </Can>
+          <Can permission={PERMISSIONS.FINANCE_CREATE}>
+            <button
+              onClick={() => setShowRuleModal(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              New Rule
+            </button>
+          </Can>
+          <Can permission={PERMISSIONS.FINANCE_CREATE}>
+            <button
+              onClick={() => {
+                setEditingPenalty(null);
+                setCategoryForm({ name: '', amount: '', description: '', isActive: true });
+                setShowCategoryModal(true);
+              }}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Penalty Type
+            </button>
+          </Can>
+        </div>
       </div>
 
       {error && (
@@ -250,17 +500,17 @@ export default function PenaltiesPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Penalty Types</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {penalties.length}
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total Penalties</p>
+              <p className="text-2xl font-bold text-red-600 mt-1">
+                ₦{Number(stats?.penalties.totalAmount || 0).toLocaleString()}
               </p>
             </div>
             <div className="p-3 bg-red-100 dark:bg-red-900 rounded-full">
-              <Gavel className="w-6 h-6 text-red-600 dark:text-red-400" />
+              <TrendingUp className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
         </div>
@@ -268,9 +518,9 @@ export default function PenaltiesPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Active</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Collected</p>
               <p className="text-2xl font-bold text-green-600 mt-1">
-                {penalties.filter(p => p.isActive).length}
+                ₦{Number(stats?.penalties.totalCollected || 0).toLocaleString()}
               </p>
             </div>
             <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
@@ -282,19 +532,41 @@ export default function PenaltiesPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Inactive</p>
-              <p className="text-2xl font-bold text-gray-600 mt-1">
-                {penalties.filter(p => !p.isActive).length}
+              <p className="text-sm text-gray-500 dark:text-gray-400">Active Rules</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">
+                {stats?.rules.active || rules.filter(r => r.isActive).length}
               </p>
             </div>
-            <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
-              <Clock className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <Settings className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total Waived</p>
+              <p className="text-2xl font-bold text-purple-600 mt-1">
+                ₦{Number(stats?.waivers.totalWaived || 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+              <XCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Penalties List */}
+      {/* Tabs */}
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab value="categories">Penalty Types ({penalties.length})</Tabs.Tab>
+          <Tabs.Tab value="rules">Late Fee Rules ({rules.length})</Tabs.Tab>
+          <Tabs.Tab value="waivers">Waivers ({waivers.length})</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="categories" pt="md">
       {penalties.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
           <Gavel className="w-12 h-12 mx-auto text-gray-400 mb-4" />
@@ -393,6 +665,152 @@ export default function PenaltiesPage() {
           ))}
         </div>
       )}
+        </Tabs.Panel>
+
+        <Tabs.Panel value="rules" pt="md">
+          {/* Late Fee Rules */}
+          {rules.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+              <Settings className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No Late Fee Rules
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Create rules to automatically apply late fees to overdue transactions
+              </p>
+              <Can permission={PERMISSIONS.FINANCE_CREATE}>
+                <button
+                  onClick={() => setShowRuleModal(true)}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                >
+                  <Settings className="w-4 h-4" />
+                  Create Rule
+                </button>
+              </Can>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {rules.map(rule => (
+                <div key={rule.id} className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 ${!rule.isActive ? 'opacity-60' : ''}`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                      <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{rule.name}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${rule.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {rule.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                  {rule.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{rule.description}</p>
+                  )}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Trigger:</span>
+                      <span className="capitalize">{rule.triggerType.replace('_', ' ')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Grace Period:</span>
+                      <span>{rule.gracePeriodDays} days</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Fee:</span>
+                      <span className="font-semibold text-red-600">
+                        {rule.feeType === 'percentage' ? `${rule.feeAmount}%` : `₦${Number(rule.feeAmount).toLocaleString()}`}
+                      </span>
+                    </div>
+                    {rule.isCompounding && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Compounds:</span>
+                        <span>Every {rule.compoundingDays} days</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Applied:</span>
+                      <span>{rule._count?.appliedPenalties || 0} times</span>
+                    </div>
+                  </div>
+                  <Can permission={PERMISSIONS.FINANCE_EDIT}>
+                    <button
+                      onClick={() => handleToggleRule(rule)}
+                      className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        rule.isActive
+                          ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40'
+                          : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40'
+                      }`}
+                    >
+                      {rule.isActive ? (
+                        <>
+                          <XCircle className="w-4 h-4" />
+                          Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          Activate
+                        </>
+                      )}
+                    </button>
+                  </Can>
+                </div>
+              ))}
+            </div>
+          )}
+        </Tabs.Panel>
+
+        <Tabs.Panel value="waivers" pt="md">
+          {/* Waivers History */}
+          {waivers.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+              <History className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No Waivers Yet
+              </h3>
+              <p className="text-gray-500">
+                Penalty waivers will appear here once granted
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Original Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waived</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {waivers.map(waiver => (
+                    <tr key={waiver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium">{waiver.transaction.member.firstName} {waiver.transaction.member.lastName}</p>
+                          <p className="text-sm text-gray-500">{waiver.transaction.member.memberId}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-red-600">
+                        ₦{Number(waiver.transaction.amount).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-purple-600">
+                        ₦{Number(waiver.waivedAmount).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm max-w-xs truncate">{waiver.reason}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {new Date(waiver.waivedAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Tabs.Panel>
+      </Tabs>
 
       {/* Category Modal */}
       {showCategoryModal && (
@@ -564,6 +982,167 @@ export default function PenaltiesPage() {
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
                 >
                   {isSubmitting ? 'Assigning...' : 'Assign Penalty'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Rule Modal */}
+      {showRuleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Create Late Fee Rule
+            </h2>
+
+            <form onSubmit={handleCreateRule} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Rule Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={ruleForm.name}
+                  onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })}
+                  placeholder="e.g., Standard Late Fee"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Apply to Category (Optional)
+                </label>
+                <select
+                  value={ruleForm.categoryId}
+                  onChange={(e) => setRuleForm({ ...ruleForm, categoryId: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">All Categories</option>
+                  {penalties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Grace Period (Days) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={ruleForm.gracePeriodDays}
+                    onChange={(e) => setRuleForm({ ...ruleForm, gracePeriodDays: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Fee Type *
+                  </label>
+                  <select
+                    required
+                    value={ruleForm.feeType}
+                    onChange={(e) => setRuleForm({ ...ruleForm, feeType: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="fixed">Fixed Amount</option>
+                    <option value="percentage">Percentage</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Fee Amount *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={ruleForm.feeAmount}
+                    onChange={(e) => setRuleForm({ ...ruleForm, feeAmount: e.target.value })}
+                    placeholder={ruleForm.feeType === 'percentage' ? 'e.g., 5' : 'e.g., 500'}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Max Fee (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={ruleForm.maxFeeAmount}
+                    onChange={(e) => setRuleForm({ ...ruleForm, maxFeeAmount: e.target.value })}
+                    placeholder="Cap for percentage"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isCompounding"
+                  checked={ruleForm.isCompounding}
+                  onChange={(e) => setRuleForm({ ...ruleForm, isCompounding: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="isCompounding" className="text-sm text-gray-700 dark:text-gray-300">
+                  Compounding (apply repeatedly)
+                </label>
+              </div>
+
+              {ruleForm.isCompounding && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Compound Every (Days)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={ruleForm.compoundingDays}
+                    onChange={(e) => setRuleForm({ ...ruleForm, compoundingDays: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={ruleForm.description}
+                  onChange={(e) => setRuleForm({ ...ruleForm, description: e.target.value })}
+                  rows={2}
+                  placeholder="Describe when this rule applies"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowRuleModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Rule'}
                 </button>
               </div>
             </form>
