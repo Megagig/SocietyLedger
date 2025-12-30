@@ -1,12 +1,13 @@
 /**
  * Dashboard Controller
  * Phase 20: Dashboard Real-Data Integration
+ * Phase 12: Caching & Performance - Uses cached service
  * 
  * HTTP handlers for dashboard endpoints
  */
 
 import { Request, Response } from 'express';
-import { dashboardService } from './dashboard.service';
+import { cachedDashboardService } from './dashboard-cached.service';
 
 // ============================================
 // DASHBOARD CONTROLLER
@@ -18,6 +19,7 @@ export const dashboardController = {
    * GET /api/dashboard/overview
    * 
    * Returns all dashboard data in a single aggregated response
+   * Uses cached service for improved performance (5 min TTL)
    */
   async getOverview(req: Request, res: Response) {
     try {
@@ -30,7 +32,7 @@ export const dashboardController = {
         });
       }
 
-      const overview = await dashboardService.getDashboardOverview(associationId);
+      const overview = await cachedDashboardService.getDashboardOverview(associationId);
 
       return res.status(200).json({
         success: true,

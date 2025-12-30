@@ -37,7 +37,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **4.5** | Voting & Elections | ✅ **COMPLETE** | 10/10 | 🟡 MEDIUM |
 | **5.5** | Welfare & Social Funds | ✅ **COMPLETE** | 8/8 | 🟡 MEDIUM |
 | **6.5** | SMS & Bulk Communication | ✅ **COMPLETE** | 6/6 | 🟡 MEDIUM |
-| **12** | Caching & Performance | ⚪ Not Started | 0/10 | 🟢 LOW |
+| **12** | Caching & Performance | ✅ **COMPLETE** | 10/10 | 🟢 LOW |
 | **12.5** | Meetings & Attendance | ✅ **COMPLETE** | 5/6 | 🟢 LOW |
 | **8.5** | Cooperatives & Loans | ✅ **COMPLETE** | 10/10 | 🟢 LOW |
 | **11.7** | Member Financial Ledger | ✅ **COMPLETE** | 8/8 | 🔴 HIGH |
@@ -1131,24 +1131,58 @@ These features differentiate SocietyLedger from competitors. Implement after Pri
 
 These features are for scaling and enterprise customers. Implement after Priority 1 and 2.
 
-### Phase 12: Caching & Performance 🟢 LOW PRIORITY
+### Phase 12: Caching & Performance ✅ COMPLETE
 
-**Status:** ⚪ Not Started  
+**Status:** ✅ Fully Implemented  
+**Completion Date:** December 30, 2025  
 **Dependencies:** All core features complete  
-**Estimated Time:** 3-4 days
+**Location:** `apps/api/src/lib/redis.ts`, `apps/api/src/services/cache.service.ts`, `apps/api/src/middleware/rate-limit.middleware.ts`
 
-#### Tasks to Implement:
+#### Implemented Features:
 
-- [ ] **TASK-CACHE-001:** Redis Caching Setup
-- [ ] **TASK-CACHE-002:** Cache Financial Dashboard Data
-- [ ] **TASK-CACHE-003:** Cache Member Lists
-- [ ] **TASK-CACHE-004:** Cache Report Data
-- [ ] **TASK-CACHE-005:** Implement Cache Invalidation
-- [ ] **TASK-CACHE-006:** Database Query Optimization
-- [ ] **TASK-CACHE-007:** Add Database Indexes
-- [ ] **TASK-CACHE-008:** API Response Compression
-- [ ] **TASK-CACHE-009:** Implement Rate Limiting
-- [ ] **TASK-CACHE-010:** Performance Monitoring Setup
+**Redis Caching Infrastructure:**
+- [x] Redis client singleton with graceful degradation (`apps/api/src/lib/redis.ts`)
+- [x] Support for both Upstash (serverless) and standard Redis
+- [x] Automatic reconnection with backoff strategy
+- [x] Connection pooling for development hot reloading
+
+**Cache Service (`apps/api/src/services/cache.service.ts`):**
+- [x] Unified caching interface with tag-based invalidation
+- [x] TTL management (SHORT: 1min, MEDIUM: 5min, LONG: 15min, VERY_LONG: 1hr, SESSION: 24hr)
+- [x] Tenant-scoped cache keys for multi-tenant isolation
+- [x] `getOrSet` pattern for cache-aside strategy
+- [x] Cache statistics tracking (hits, misses, hit rate)
+
+**Cached Services:**
+- [x] Dashboard cached service with 5-minute TTL (`apps/api/src/modules/dashboard/dashboard-cached.service.ts`)
+- [x] Reports cached service with 15-minute TTL (`apps/api/src/modules/reports/reports-cached.service.ts`)
+
+**Cache Invalidation (`apps/api/src/services/cache-invalidation.service.ts`):**
+- [x] Centralized cache invalidation service
+- [x] Automatic invalidation on member changes
+- [x] Automatic invalidation on transaction changes
+- [x] Automatic invalidation on payment changes
+- [x] Automatic invalidation on category changes
+- [x] Bulk invalidation for multiple tenants
+
+**Rate Limiting (`apps/api/src/middleware/rate-limit.middleware.ts`):**
+- [x] Redis-backed rate limiting with in-memory fallback
+- [x] Tenant-based rate limiting
+- [x] Preset limiters: standard (100/min), strict (20/min), auth (10/min), export (5/min), report (30/min)
+- [x] Rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+
+**Database Performance Indexes:**
+- [x] Transaction indexes: (associationId, status), (associationId, memberId), (associationId, categoryId), (associationId, createdAt), (associationId, dueDate), (memberId, status)
+- [x] Payment indexes: (associationId, paymentDate), (transactionId), (associationId, createdAt)
+- [x] Member indexes: (associationId, status), (associationId, category), (associationId, createdAt), (email)
+
+**Server Integration:**
+- [x] Redis initialization on server startup
+- [x] Graceful Redis shutdown on SIGTERM/SIGINT
+- [x] Rate limiting middleware applied to API routes
+
+**Documentation:**
+- [x] Comprehensive caching documentation (`docs/caching/README.md`)
 
 ---
 

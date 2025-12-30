@@ -7,6 +7,9 @@ import dotenv from 'dotenv';
 import { tenantMiddleware } from './middleware/tenant.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
+// Phase 12: Caching & Performance
+import { initializeRedis, closeRedisConnection } from './lib/redis';
+import { standardRateLimit, authRateLimit } from './middleware/rate-limit.middleware';
 
 // Load environment variables
 dotenv.config();
@@ -105,6 +108,10 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+// Phase 12: Apply rate limiting to API routes
+app.use('/api/auth', authRateLimit);
+app.use('/api', standardRateLimit);
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/associations', associationRoutes);
@@ -155,28 +162,41 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start server unless running under test
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`🚀 SocietyLedger API Server running on http://localhost:${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-    
-    // Start cron jobs
-    startSubscriptionJobs();
-    startMeetingJobs();
-  });
+  // Phase 12: Initialize Redis before starting server
+  initializeRedis()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`🚀 SocietyLedger API Server running on http://localhost:${PORT}`);
+        console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+        
+        // Start cron jobs
+        startSubscriptionJobs();
+        startMeetingJobs();
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to initialize Redis:', err);
+      // Start server anyway - Redis is optional
+      app.listen(PORT, () => {
+        console.log(`🚀 SocietyLedger API Server running on http://localhost:${PORT} (without Redis)`);
+      });
+    });
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', async () => {
     console.log('SIGTERM received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    await closeRedisConnection();
     process.exit(0);
   });
 
-  process.on('SIGINT', () => {
+  process.on('SIGINT', async () => {
     console.log('SIGINT received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    await closeRedisConnection();
     process.exit(0);
   });
 }
