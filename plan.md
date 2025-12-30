@@ -44,6 +44,8 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **13.5** | Mobile/PWA | ⚪ Not Started | 0/6 | 🟢 LOW |
 | **16** | Enterprise Features | ⚪ Not Started | 0/8 | 🟢 LOW |
 | **17** | AI Integration | ✅ **COMPLETE** | 14/16 | 🟢 LOW |
+| **18** | Settings Page Architecture | ⚪ Not Started | 0/10 | 🔴 HIGH |
+| **19** | SaaS Owner / Super Admin Platform Controls | ⚪ Not Started | 0/24 | 🔴 HIGH |
 
 
 **Legend:**
@@ -1701,3 +1703,164 @@ The Settings module is a comprehensive control center for association administra
 - ✅ Enterprise-ready (audit trails, compliance)
 - ✅ Easily extensible (add new sections without refactoring)
 
+
+---
+
+### Phase 19: SaaS Owner / Super Admin Platform Controls 🔴 HIGH PRIORITY
+
+**Status:** ⚪ Not Started (PENDING APPROVAL)  
+**Dependencies:** Multi-tenancy ✅, RBAC ✅, Super Admin Dashboard ✅  
+**Estimated Time:** 15 days  
+**Priority:** 🔴 HIGH - Platform Management Critical  
+**Documentation:** `docs/platform-admin/SUPER_ADMIN_PLATFORM_CONTROLS_PLAN.md`
+
+#### Overview
+
+Comprehensive SaaS Owner / Super Admin system enabling platform-level controls for managing associations (tenants), modules, features, billing, and compliance. Implementation follows a **non-breaking, incremental, backward-compatible** approach with shadow mode validation.
+
+#### Key Objectives
+
+1. **Tenant Management** - Full lifecycle control of associations (suspend, soft-delete, restore, force-logout)
+2. **Module & Feature Flags** - Dynamic enable/disable per tenant with plan inheritance
+3. **Plans & Tiers** - Subscription management with feature inheritance and overrides
+4. **Billing Overrides** - Manual billing controls (bypass, extend trial, apply credits)
+5. **Platform Roles** - Internal RBAC for platform staff (SUPER_ADMIN, SUPPORT, FINANCE, COMPLIANCE)
+6. **Security Controls** - 2FA enforcement, session management, IP restrictions
+7. **Analytics & Metrics** - Platform health monitoring (MRR, churn, adoption)
+8. **Audit Logging** - Complete action trail for all platform operations
+
+#### Architecture Principles
+
+- ❌ **DO NOT** remove existing role checks or rewrite business logic
+- ❌ **DO NOT** break existing routes or change behavior for current users
+- ✅ **DO** introduce new middleware (non-breaking)
+- ✅ **DO** use feature flags defensively with default permissive behavior
+- ✅ **DO** gate new logic behind environment flags
+
+#### Implementation Phases
+
+**Phase 19.1: Foundation (Days 1-3)**
+- Database schema for modules, features, tenant overrides, billing overrides
+- Seed defaults matching current behavior
+- Platform action log model
+
+**Phase 19.2: Services & Middleware - Shadow Mode (Days 4-7)**
+- ModuleFeatureService with resolution order: TenantOverride → PlanModule → Default
+- requireModule() and requireFeature() middleware
+- Shadow mode logging (log mismatches without blocking)
+
+**Phase 19.3: API Endpoints (Days 8-12)**
+- Tenant management APIs (soft-delete, restore, force-logout, security settings)
+- Module/feature toggle APIs
+- Billing override APIs (bypass, extend trial, apply credit)
+- Platform analytics APIs (MRR, churn, module adoption)
+
+**Phase 19.4: Enforcement - Active Mode (Days 13-15)**
+- Enable blocking mode after shadow validation
+- Add module checks to existing routes
+- Update subscription middleware with billing override checks
+
+#### New Database Models
+
+```
+PlatformModule        - Module definitions (members, ledger, payments, etc.)
+PlatformFeature       - Feature definitions (ledger.export, audit.export, etc.)
+PlanModule            - Plan-to-module assignments
+PlanFeature           - Plan-to-feature assignments
+TenantModule          - Per-tenant module overrides
+TenantFeature         - Per-tenant feature overrides
+BillingOverride       - Billing exceptions (bypass, extend trial, credits)
+PlatformActionLog     - Audit trail for all platform actions
+```
+
+#### Module Definitions
+
+| Module Code | Name | Core | Starter | Professional | Enterprise |
+|-------------|------|------|---------|--------------|------------|
+| members | Member Management | ✅ | ✅ | ✅ | ✅ |
+| ledger | Financial Ledger | ✅ | ✅ | ✅ | ✅ |
+| payments | Payment Processing | ✅ | ✅ | ✅ | ✅ |
+| notifications | Notifications | ❌ | ✅ | ✅ | ✅ |
+| reports | Reports & Analytics | ❌ | ❌ | ✅ | ✅ |
+| audit | Audit & Compliance | ❌ | ❌ | ✅ | ✅ |
+| welfare | Welfare & Social Funds | ❌ | ❌ | ✅ | ✅ |
+| voting | Voting & Elections | ❌ | ❌ | ✅ | ✅ |
+| meetings | Meetings & Attendance | ❌ | ❌ | ✅ | ✅ |
+| sms | SMS & Bulk Communication | ❌ | ❌ | ✅ | ✅ |
+| accounting | Accounting System | ❌ | ❌ | ❌ | ✅ |
+| cooperatives | Cooperatives & Loans | ❌ | ❌ | ❌ | ✅ |
+| integrations | Integrations & API | ❌ | ❌ | ❌ | ✅ |
+| ai | AI Integration | ❌ | ❌ | ❌ | ✅ |
+
+#### Platform Roles
+
+| Role | Permissions |
+|------|-------------|
+| SUPER_ADMIN | Full platform access |
+| SUPPORT_AGENT | View associations, impersonate, view audit |
+| FINANCE_ADMIN | Billing, subscriptions, revenue analytics |
+| COMPLIANCE_ADMIN | Audit, security, compliance analytics |
+
+#### Environment Flags
+
+```bash
+FEATURE_FLAG_MODE=shadow  # shadow | enforce
+RBAC_MODE=shadow          # shadow | enforce
+LOG_PLATFORM_ACTIONS=true
+```
+
+#### API Endpoints
+
+```
+# Tenant Management
+POST   /api/admin/associations/:id/soft-delete
+POST   /api/admin/associations/:id/restore
+POST   /api/admin/associations/:id/force-logout
+POST   /api/admin/associations/:id/security-settings
+
+# Module & Feature Management
+GET    /api/admin/modules
+GET    /api/admin/features
+GET    /api/admin/associations/:id/modules
+PUT    /api/admin/associations/:id/modules/:moduleId
+GET    /api/admin/associations/:id/features
+PUT    /api/admin/associations/:id/features/:featureId
+
+# Billing Overrides
+GET    /api/admin/associations/:id/billing-overrides
+POST   /api/admin/associations/:id/billing-overrides
+POST   /api/admin/associations/:id/extend-trial
+POST   /api/admin/associations/:id/bypass-billing
+POST   /api/admin/associations/:id/apply-credit
+
+# Platform Analytics
+GET    /api/admin/analytics/overview
+GET    /api/admin/analytics/churn
+GET    /api/admin/analytics/mrr
+GET    /api/admin/analytics/module-adoption
+```
+
+#### Success Criteria
+
+- [ ] Existing tenants behave exactly the same (backward compatible)
+- [ ] Platform owner can enable/disable modules per tenant
+- [ ] Platform owner can assign plans and override billing
+- [ ] All platform actions are audited with actor, timestamp, reason
+- [ ] Shadow mode validates no false positives before enforcement
+- [ ] System is extensible for future modules/features
+
+#### Files to Create
+
+```
+apps/api/prisma/schema.prisma (update)
+apps/api/prisma/seeds/platform-modules.seed.ts
+apps/api/src/services/module-feature.service.ts
+apps/api/src/services/billing-override.service.ts
+apps/api/src/services/platform-action-log.service.ts
+apps/api/src/middleware/module-feature.middleware.ts
+apps/api/src/modules/admin/platform-admin.controller.ts
+apps/api/src/modules/admin/platform-admin.routes.ts
+apps/api/src/modules/admin/platform-analytics.controller.ts
+apps/api/src/config/module-routes.ts
+apps/api/src/config/platform-permissions.ts
+```
