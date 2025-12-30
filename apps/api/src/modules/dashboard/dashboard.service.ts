@@ -272,25 +272,28 @@ export const dashboardService = {
     );
 
     // Map to response format
-    const result: PaymentMethodItem[] = payments.map(p => {
-      const config = PAYMENT_METHOD_CONFIG[p.paymentMethod] || { 
-        name: p.paymentMethod, 
-        color: '#6b7280' 
-      };
-      const amount = new Decimal(p._sum.amountPaid || 0);
-      const percentage = totalAmount.isZero() 
-        ? 0 
-        : amount.dividedBy(totalAmount).times(100).toNumber();
+    const result: PaymentMethodItem[] = payments
+      .filter(p => p.paymentMethod !== null)
+      .map(p => {
+        const method = p.paymentMethod as string;
+        const config = PAYMENT_METHOD_CONFIG[method] || { 
+          name: method, 
+          color: '#6b7280' 
+        };
+        const amount = new Decimal(p._sum.amountPaid || 0);
+        const percentage = totalAmount.isZero() 
+          ? 0 
+          : amount.dividedBy(totalAmount).times(100).toNumber();
 
-      return {
-        method: p.paymentMethod,
-        name: config.name,
-        count: p._count.id,
-        amount,
-        percentage: Math.round(percentage),
-        color: config.color,
-      };
-    });
+        return {
+          method,
+          name: config.name,
+          count: p._count.id,
+          amount,
+          percentage: Math.round(percentage),
+          color: config.color,
+        };
+      });
 
     // Sort by amount descending
     result.sort((a, b) => b.amount.comparedTo(a.amount));
