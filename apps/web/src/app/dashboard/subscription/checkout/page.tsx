@@ -179,7 +179,7 @@ function CheckoutContent() {
 
                     <div className="flex items-start space-x-4">
                       {/* Logo */}
-                      <div className="flex-shrink-0 w-28 h-12 relative bg-white rounded-lg overflow-hidden flex items-center justify-center p-2">
+                      <div className="flex-shrink-0 w-28 h-12 relative bg-white dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center p-2">
                         <Image
                           src={provider.logo}
                           alt={`${provider.name} logo`}
