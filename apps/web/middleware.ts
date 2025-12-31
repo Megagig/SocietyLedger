@@ -89,7 +89,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - api (API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // Temporarily disabled to debug
+    // '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
