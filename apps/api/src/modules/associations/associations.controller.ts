@@ -198,6 +198,39 @@ export class AssociationsController {
           },
         });
 
+        // Create default RBAC roles for the association
+        const adminRole = await tx.role.create({
+          data: {
+            name: 'Admin',
+            description: 'Full administrative access',
+            associationId: assoc.id,
+            isSystemRole: true,
+          },
+        });
+
+        await tx.role.createMany({
+          data: [
+            {
+              name: 'Treasurer',
+              description: 'Financial management',
+              associationId: assoc.id,
+              isSystemRole: true,
+            },
+            {
+              name: 'Secretary',
+              description: 'Record keeping and communications',
+              associationId: assoc.id,
+              isSystemRole: true,
+            },
+            {
+              name: 'Member',
+              description: 'Basic member access',
+              associationId: assoc.id,
+              isSystemRole: true,
+            },
+          ],
+        });
+
         const passwordHash = await (await import('bcryptjs')).default.hash(input.admin.password, 12);
         const user = await tx.user.create({
           data: {
@@ -205,11 +238,21 @@ export class AssociationsController {
             email: input.admin.email.toLowerCase(),
             passwordHash,
             role: 'admin',
-            isActive: false, // Not active until super admin approves
-            emailVerified: false, // Requires email verification
+            isActive: true, // Active immediately for association creator
+            emailVerified: true, // Email verified immediately for association creator
             verificationCode: hashedCode,
             verificationExpiresAt,
-            userApproval: { create: { approvalStatus: 'pending' } }, // Pending super admin approval
+            userApproval: { create: { approvalStatus: 'approved' } }, // Auto-approved for association creator
+          },
+        });
+
+        // Assign Admin role to the creator
+        await tx.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: adminRole.id,
+            associationId: assoc.id,
+            assignedBy: user.id, // Self-assigned
           },
         });
 
