@@ -24,7 +24,6 @@ function extractSubdomain(host?: string | null): string | null {
     if (sub === 'www') return null;
     return sub;
   } catch (error) {
-    console.error('Error extracting subdomain:', error);
     return null;
   }
 }
@@ -76,7 +75,6 @@ export function middleware(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Middleware error:', error);
     // On error, just pass through
     return NextResponse.next();
   }
@@ -89,9 +87,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - api (API routes)
      */
-    // Temporarily disabled to debug
-    // '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
