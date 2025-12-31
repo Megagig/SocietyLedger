@@ -202,6 +202,7 @@ export class AssociationsController {
         const adminRole = await tx.role.create({
           data: {
             name: 'Admin',
+            displayName: 'Administrator',
             description: 'Full administrative access',
             associationId: assoc.id,
             isSystemRole: true,
@@ -212,18 +213,21 @@ export class AssociationsController {
           data: [
             {
               name: 'Treasurer',
+              displayName: 'Treasurer',
               description: 'Financial management',
               associationId: assoc.id,
               isSystemRole: true,
             },
             {
               name: 'Secretary',
+              displayName: 'Secretary',
               description: 'Record keeping and communications',
               associationId: assoc.id,
               isSystemRole: true,
             },
             {
               name: 'Member',
+              displayName: 'Member',
               description: 'Basic member access',
               associationId: assoc.id,
               isSystemRole: true,
