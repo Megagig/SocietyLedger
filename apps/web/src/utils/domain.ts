@@ -24,7 +24,7 @@ export function getBaseDomain(): string {
   }
   
   // Server-side: use environment variable or default
-  return process.env.NEXT_PUBLIC_BASE_DOMAIN || 'societyledger.netlify.app';
+  return process.env.NEXT_PUBLIC_BASE_DOMAIN || 'societyledger.com.ng';
 }
 
 /**
