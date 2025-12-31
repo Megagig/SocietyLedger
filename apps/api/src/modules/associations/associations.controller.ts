@@ -201,7 +201,7 @@ export class AssociationsController {
         // Create default RBAC roles for the association
         const adminRole = await tx.role.create({
           data: {
-            name: 'Admin',
+            name: 'admin',
             displayName: 'Administrator',
             description: 'Full administrative access',
             associationId: assoc.id,
@@ -212,21 +212,21 @@ export class AssociationsController {
         await tx.role.createMany({
           data: [
             {
-              name: 'Treasurer',
+              name: 'treasurer',
               displayName: 'Treasurer',
               description: 'Financial management',
               associationId: assoc.id,
               isSystemRole: true,
             },
             {
-              name: 'Secretary',
+              name: 'secretary',
               displayName: 'Secretary',
               description: 'Record keeping and communications',
               associationId: assoc.id,
               isSystemRole: true,
             },
             {
-              name: 'Member',
+              name: 'member',
               displayName: 'Member',
               description: 'Basic member access',
               associationId: assoc.id,
