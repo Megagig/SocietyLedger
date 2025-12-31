@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_ROUTES } from '@/utils/constants';
+import { getDisplayDomain, getSubdomainUrl } from '@/utils/domain';
 
 interface SignupForm {
   // Association details
@@ -158,7 +159,7 @@ export default function AssociationSignupPage() {
               <div className="bg-blue-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Your association URL:</p>
                 <p className="font-mono text-blue-600 font-semibold break-all">
-                  {createdSubdomain}.localhost:3000
+                  {getSubdomainUrl(createdSubdomain)}
                 </p>
               </div>
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
@@ -258,7 +259,7 @@ export default function AssociationSignupPage() {
                       disabled={loading}
                     />
                     <span className="px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg text-gray-500 dark:text-gray-400 text-sm">
-                      .localhost
+                      .{getDisplayDomain()}
                     </span>
                   </div>
                   {checkingSubdomain && (

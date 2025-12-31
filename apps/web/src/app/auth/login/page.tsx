@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
+import { getDisplayDomain } from '@/utils/domain';
 
 interface LoginForm {
   email: string;
@@ -86,7 +87,7 @@ export default function LoginPage() {
           </p>
           {!tenant && (
             <p className="text-sm text-amber-600 dark:text-amber-400 dark:text-amber-400 mt-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 inline-block">
-              Access your association via its subdomain (e.g., myassociation.localhost:3000)
+              Access your association via its subdomain (e.g., myassociation.{getDisplayDomain()})
             </p>
           )}
         </div>

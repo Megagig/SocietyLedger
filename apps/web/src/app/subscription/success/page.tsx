@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { getSubdomainUrl } from '@/utils/domain';
 
 export default function SubscriptionSuccessPage() {
   const searchParams = useSearchParams();
@@ -13,7 +14,7 @@ export default function SubscriptionSuccessPage() {
   const getRedirectUrl = () => {
     if (subdomain) {
       // Redirect to subdomain login
-      return `http://${subdomain}.localhost:3000/auth/login?redirect=/dashboard/subscription`;
+      return `${getSubdomainUrl(subdomain)}/auth/login?redirect=/dashboard/subscription`;
     }
     // Fallback to generic login
     return '/auth/login?redirect=/dashboard/subscription';
