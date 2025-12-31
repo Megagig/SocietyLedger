@@ -7,11 +7,11 @@ async function seedPlans() {
 
   // Create Starter Plan
   const starterPlan = await prisma.plan.upsert({
-    where: { code: 'STARTER' },
+    where: { code: 'starter' },
     update: {},
     create: {
       name: 'Starter',
-      code: 'STARTER',
+      code: 'starter',
       description: 'Perfect for small associations getting started',
       priceMonthly: 5000,
       priceAnnual: 50000,
@@ -32,11 +32,11 @@ async function seedPlans() {
 
   // Create Professional Plan
   const professionalPlan = await prisma.plan.upsert({
-    where: { code: 'PROFESSIONAL' },
+    where: { code: 'professional' },
     update: {},
     create: {
       name: 'Professional',
-      code: 'PROFESSIONAL',
+      code: 'professional',
       description: 'Ideal for growing associations with advanced needs',
       priceMonthly: 15000,
       priceAnnual: 150000,
@@ -57,11 +57,11 @@ async function seedPlans() {
 
   // Create Enterprise Plan
   const enterprisePlan = await prisma.plan.upsert({
-    where: { code: 'ENTERPRISE' },
+    where: { code: 'enterprise' },
     update: {},
     create: {
       name: 'Enterprise',
-      code: 'ENTERPRISE',
+      code: 'enterprise',
       description: 'Complete solution for large associations',
       priceMonthly: 35000,
       priceAnnual: 350000,
