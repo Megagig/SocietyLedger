@@ -198,7 +198,44 @@ export class AssociationsController {
           },
         });
 
-        // Create default RBAC roles for the association
+        // Create default RBAC roles for the association with permissions
+        // Permission mappings from RBAC seed
+        const rolePermissionMap: Record<string, string[]> = {
+          admin: [
+            "members.view", "members.view_all", "members.create", "members.edit", "members.edit_all", 
+            "members.disable", "members.bulk_import", "members.manage_roles",
+            "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.reverse", 
+            "ledger.export", "ledger.view_member_statement",
+            "payments.view", "payments.view_all", "payments.manual_create", "payments.approve", "payments.delete",
+            "reports.generate", "reports.export", "reports.financial_summary",
+            "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
+            "settings.view", "settings.edit", "settings.billing", "settings.integrations",
+            "audit.view", "audit.export"
+          ],
+          treasurer: [
+            "members.view", "members.view_all",
+            "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export", 
+            "ledger.view_member_statement",
+            "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
+            "reports.generate", "reports.export", "reports.financial_summary",
+            "settings.view"
+          ],
+          secretary: [
+            "members.view", "members.view_all",
+            "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
+            "payments.view", "payments.view_all", "payments.manual_create",
+            "reports.generate", "reports.export", "reports.financial_summary",
+            "settings.view"
+          ],
+          member: [
+            "members.view", "members.view_own", "members.edit_own",
+            "ledger.view", "ledger.view_own",
+            "payments.view", "payments.view_own",
+            "reports.generate"
+          ]
+        };
+
+        // Create admin role
         const adminRole = await tx.role.create({
           data: {
             name: 'admin',
@@ -209,31 +246,50 @@ export class AssociationsController {
           },
         });
 
-        await tx.role.createMany({
-          data: [
-            {
-              name: 'treasurer',
-              displayName: 'Treasurer',
-              description: 'Financial management',
-              associationId: assoc.id,
-              isSystemRole: true,
-            },
-            {
-              name: 'secretary',
-              displayName: 'Secretary',
-              description: 'Record keeping and communications',
-              associationId: assoc.id,
-              isSystemRole: true,
-            },
-            {
-              name: 'member',
-              displayName: 'Member',
-              description: 'Basic member access',
-              associationId: assoc.id,
-              isSystemRole: true,
-            },
-          ],
+        // Assign permissions to admin role
+        const adminPermissions = await tx.permission.findMany({
+          where: { key: { in: rolePermissionMap.admin } }
         });
+        for (const permission of adminPermissions) {
+          await tx.rolePermission.create({
+            data: {
+              roleId: adminRole.id,
+              permissionId: permission.id,
+            },
+          });
+        }
+
+        // Create other roles with permissions
+        const otherRoles = [
+          { name: 'treasurer', displayName: 'Treasurer', description: 'Financial management' },
+          { name: 'secretary', displayName: 'Secretary', description: 'Record keeping and communications' },
+          { name: 'member', displayName: 'Member', description: 'Basic member access' },
+        ];
+
+        for (const roleData of otherRoles) {
+          const role = await tx.role.create({
+            data: {
+              name: roleData.name,
+              displayName: roleData.displayName,
+              description: roleData.description,
+              associationId: assoc.id,
+              isSystemRole: true,
+            },
+          });
+
+          // Assign permissions to role
+          const permissions = await tx.permission.findMany({
+            where: { key: { in: rolePermissionMap[roleData.name] } }
+          });
+          for (const permission of permissions) {
+            await tx.rolePermission.create({
+              data: {
+                roleId: role.id,
+                permissionId: permission.id,
+              },
+            });
+          }
+        }
 
         const passwordHash = await (await import('bcryptjs')).default.hash(input.admin.password, 12);
         const user = await tx.user.create({
