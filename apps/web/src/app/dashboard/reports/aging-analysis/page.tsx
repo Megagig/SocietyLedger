@@ -144,57 +144,51 @@ export default function AgingAnalysisPage() {
       </div>
 
       {/* Summary Stats */}
-      <Grid mb="xl">
-        <Grid.Col span={{ base: 12, sm: 6, lg: 4 }}>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Text size="sm" c="dimmed">
-                Total Outstanding
-              </Text>
-              <Text size="xl" fw={700} c="orange">
-                {formatCurrency(report.summary.totalOutstanding)}
-              </Text>
-            </Stack>
-          </Card>
-        </Grid.Col>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        <Card withBorder padding="md" className="p-3 sm:p-4">
+          <Stack gap="xs">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
+              Total Outstanding
+            </Text>
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
+              {formatCurrency(report.summary.totalOutstanding)}
+            </Text>
+          </Stack>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, lg: 4 }}>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Text size="sm" c="dimmed">
-                Members with Balance
-              </Text>
-              <Text size="xl" fw={700}>
-                {report.summary.totalMembers}
-              </Text>
-            </Stack>
-          </Card>
-        </Grid.Col>
+        <Card withBorder padding="md" className="p-3 sm:p-4">
+          <Stack gap="xs">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
+              Members with Balance
+            </Text>
+            <Text size="lg" className="text-base sm:text-xl" fw={700}>
+              {report.summary.totalMembers}
+            </Text>
+          </Stack>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, lg: 4 }}>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Text size="sm" c="dimmed">
-                Outstanding Transactions
-              </Text>
-              <Text size="xl" fw={700}>
-                {report.summary.totalTransactions}
-              </Text>
-            </Stack>
-          </Card>
-        </Grid.Col>
-      </Grid>
+        <Card withBorder padding="md" className="p-3 sm:p-4">
+          <Stack gap="xs">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
+              Outstanding Transactions
+            </Text>
+            <Text size="lg" className="text-base sm:text-xl" fw={700}>
+              {report.summary.totalTransactions}
+            </Text>
+          </Stack>
+        </Card>
+      </div>
 
       {/* Aging Buckets Chart */}
-      <Card withBorder padding="lg" mb="xl">
+      <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
         <Text size="lg" fw={600} mb="md">
           Outstanding by Age
         </Text>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
             <Tooltip
               formatter={(value: any, name: string) => {
                 if (name === 'amount') return formatCurrency(value);
@@ -212,7 +206,7 @@ export default function AgingAnalysisPage() {
       </Card>
 
       {/* Aging Buckets Details */}
-      <Grid mb="xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
         {Object.entries(report.buckets).map(([key, bucket]: [string, any]) => {
           const percentage = totalAmount > 0 ? (parseFloat(bucket.amount) / totalAmount) * 100 : 0;
           const colorMap: Record<string, string> = {
@@ -223,29 +217,27 @@ export default function AgingAnalysisPage() {
           };
 
           return (
-            <Grid.Col key={key} span={{ base: 12, sm: 6 }}>
-              <Card withBorder padding="lg">
-                <Group justify="space-between" mb="sm">
-                  <Text fw={600}>{bucket.range}</Text>
-                  <Badge color={colorMap[key]} size="lg">
-                    {bucket.count} transactions
-                  </Badge>
-                </Group>
+            <Card key={key} withBorder padding="md" className="p-3 sm:p-4">
+              <Group justify="space-between" mb="sm">
+                <Text fw={600} size="sm">{bucket.range}</Text>
+                <Badge color={colorMap[key]} size="sm">
+                  {bucket.count} txns
+                </Badge>
+              </Group>
 
-                <Text size="xl" fw={700} c={colorMap[key]} mb="xs">
-                  {formatCurrency(bucket.amount)}
-                </Text>
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c={colorMap[key]} mb="xs">
+                {formatCurrency(bucket.amount)}
+              </Text>
 
-                <Progress value={percentage} color={colorMap[key]} size="sm" mb="xs" />
+              <Progress value={percentage} color={colorMap[key]} size="sm" mb="xs" />
 
-                <Text size="sm" c="dimmed">
-                  {percentage.toFixed(1)}% of total outstanding
-                </Text>
-              </Card>
-            </Grid.Col>
+              <Text size="xs" c="dimmed">
+                {percentage.toFixed(1)}% of total outstanding
+              </Text>
+            </Card>
           );
         })}
-      </Grid>
+      </div>
 
       {/* Member Details by Bucket */}
       <Card withBorder padding="lg">

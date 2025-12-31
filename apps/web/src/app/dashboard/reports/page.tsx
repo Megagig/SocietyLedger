@@ -123,8 +123,8 @@ export default function ReportsPage() {
       </div>
 
       {/* Date Range Filter */}
-      <Paper p="md" mb="xl" withBorder>
-        <div style={{ maxWidth: 300 }}>
+      <Paper p="md" mb="xl" withBorder className="p-3 sm:p-4">
+        <div className="w-full sm:max-w-[300px]">
           <DateRangePicker value={dateRange} onChange={setDateRange} />
         </div>
       </Paper>
@@ -162,106 +162,97 @@ export default function ReportsPage() {
           )}
         </Alert>
       ) : summary ? (
-        <Grid mb="xl">
-          <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-            <Card withBorder padding="lg">
-              <Stack gap="xs">
-                <Text size="sm" c="dimmed">
-                  Total Expected
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatCurrency(summary.collections.expected)}
-                </Text>
-              </Stack>
-            </Card>
-          </Grid.Col>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Stack gap="xs">
+              <Text size="xs" className="sm:text-sm" c="dimmed">
+                Total Expected
+              </Text>
+              <Text size="lg" className="text-base sm:text-xl" fw={700}>
+                {formatCurrency(summary.collections.expected)}
+              </Text>
+            </Stack>
+          </Card>
 
-          <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-            <Card withBorder padding="lg">
-              <Stack gap="xs">
-                <Text size="sm" c="dimmed">
-                  Total Collected
-                </Text>
-                <Text size="xl" fw={700} c="teal">
-                  {formatCurrency(summary.collections.collected)}
-                </Text>
-              </Stack>
-            </Card>
-          </Grid.Col>
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Stack gap="xs">
+              <Text size="xs" className="sm:text-sm" c="dimmed">
+                Total Collected
+              </Text>
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="teal">
+                {formatCurrency(summary.collections.collected)}
+              </Text>
+            </Stack>
+          </Card>
 
-          <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-            <Card withBorder padding="lg">
-              <Stack gap="xs">
-                <Text size="sm" c="dimmed">
-                  Outstanding
-                </Text>
-                <Text size="xl" fw={700} c="orange">
-                  {formatCurrency(summary.collections.outstanding)}
-                </Text>
-              </Stack>
-            </Card>
-          </Grid.Col>
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Stack gap="xs">
+              <Text size="xs" className="sm:text-sm" c="dimmed">
+                Outstanding
+              </Text>
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
+                {formatCurrency(summary.collections.outstanding)}
+              </Text>
+            </Stack>
+          </Card>
 
-          <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-            <Card withBorder padding="lg">
-              <Stack gap="xs">
-                <Text size="sm" c="dimmed">
-                  Collection Rate
-                </Text>
-                <Text size="xl" fw={700} c="green">
-                  {summary.collections.collectionRate.toFixed(1)}%
-                </Text>
-              </Stack>
-            </Card>
-          </Grid.Col>
-        </Grid>
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Stack gap="xs">
+              <Text size="xs" className="sm:text-sm" c="dimmed">
+                Collection Rate
+              </Text>
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="green">
+                {summary.collections.collectionRate.toFixed(1)}%
+              </Text>
+            </Stack>
+          </Card>
+        </div>
       ) : null}
 
       {/* Report Cards */}
-      <Grid>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {reportCards.map((report) => (
-          <Grid.Col key={report.title} span={{ base: 12, sm: 6, lg: 6 }}>
-            <Card
-              withBorder
-              padding="lg"
-              component={Link}
-              href={report.href}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-            >
-              <Group justify="space-between" mb="md">
-                <div
-                  className={`p-3 rounded-lg bg-${report.color}-50 dark:bg-${report.color}-900/20`}
-                >
-                  <div className={`text-${report.color}-600 dark:text-${report.color}-400`}>
-                    {report.icon}
-                  </div>
+          <Card
+            key={report.title}
+            withBorder
+            padding="md"
+            component={Link}
+            href={report.href}
+            className="hover:shadow-lg transition-shadow cursor-pointer p-4 sm:p-6"
+          >
+            <Group justify="space-between" mb="md">
+              <div
+                className={`p-2 sm:p-3 rounded-lg bg-${report.color}-50 dark:bg-${report.color}-900/20`}
+              >
+                <div className={`text-${report.color}-600 dark:text-${report.color}-400`}>
+                  {report.icon}
                 </div>
-                <IconArrowRight size={20} className="text-gray-400" />
-              </Group>
+              </div>
+              <IconArrowRight size={20} className="text-gray-400" />
+            </Group>
 
-              <Stack gap="xs">
-                <Text size="lg" fw={600}>
-                  {report.title}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {report.description}
-                </Text>
+            <Stack gap="xs">
+              <Text size="md" className="sm:text-lg" fw={600}>
+                {report.title}
+              </Text>
+              <Text size="xs" className="sm:text-sm" c="dimmed">
+                {report.description}
+              </Text>
 
-                {report.stat && (
-                  <Group gap="xs" mt="sm">
-                    <Text size="xl" fw={700} c={report.color}>
-                      {report.stat}
-                    </Text>
-                    <Text size="sm" c="dimmed">
-                      {report.statLabel}
-                    </Text>
-                  </Group>
-                )}
-              </Stack>
-            </Card>
-          </Grid.Col>
+              {report.stat && (
+                <Group gap="xs" mt="sm">
+                  <Text size="lg" className="text-base sm:text-xl" fw={700} c={report.color}>
+                    {report.stat}
+                  </Text>
+                  <Text size="xs" className="sm:text-sm" c="dimmed">
+                    {report.statLabel}
+                  </Text>
+                </Group>
+              )}
+            </Stack>
+          </Card>
         ))}
-      </Grid>
+      </div>
 
       {/* Additional Reports Section */}
       <Card withBorder padding="lg" mt="xl">
