@@ -238,11 +238,11 @@ export class AssociationsController {
             email: input.admin.email.toLowerCase(),
             passwordHash,
             role: 'admin',
-            isActive: true, // Active immediately for association creator
-            emailVerified: true, // Email verified immediately for association creator
+            isActive: false, // Not active until email verified and super admin approves
+            emailVerified: false, // Requires email verification
             verificationCode: hashedCode,
             verificationExpiresAt,
-            userApproval: { create: { approvalStatus: 'approved' } }, // Auto-approved for association creator
+            userApproval: { create: { approvalStatus: 'pending' } }, // Pending super admin approval
           },
         });
 
