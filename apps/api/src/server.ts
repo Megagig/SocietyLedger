@@ -71,8 +71,11 @@ const corsOptions = {
     // Allow any subdomain of localhost:3000 (e.g., demo.localhost:3000)
     const localhostPattern = /^http:\/\/([a-z0-9-]+\.)?localhost:3000$/i;
     
+    // Allow any subdomain of production domain (e.g., opuogunstate.societyledger.com.ng)
+    const productionPattern = /^https:\/\/([a-z0-9-]+\.)?societyledger\.com\.ng$/i;
+    
     // Check if origin is in allowed list or matches subdomain pattern
-    if (allowedOrigins.includes(origin) || localhostPattern.test(origin)) {
+    if (allowedOrigins.includes(origin) || localhostPattern.test(origin) || productionPattern.test(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`Origin ${origin} not allowed by CORS`));
