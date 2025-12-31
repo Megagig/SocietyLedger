@@ -1,16 +1,35 @@
 import Paystack from 'paystack-node';
 
-if (!process.env.PAYSTACK_SECRET_KEY) {
-  throw new Error('PAYSTACK_SECRET_KEY is not defined in environment variables');
+// Lazy initialization to avoid errors during module load
+let paystackInstance: Paystack | null = null;
+
+function getPaystackInstance(): Paystack {
+  if (!paystackInstance) {
+    if (!process.env.PAYSTACK_SECRET_KEY) {
+      throw new Error('PAYSTACK_SECRET_KEY is not defined in environment variables');
+    }
+    paystackInstance = new Paystack(process.env.PAYSTACK_SECRET_KEY);
+  }
+  return paystackInstance;
 }
 
-// Initialize Paystack with secret key
-export const paystack = new Paystack(process.env.PAYSTACK_SECRET_KEY);
+// Export a getter instead of direct instance
+export const paystack = {
+  get instance() {
+    return getPaystackInstance();
+  }
+};
 
 export const PAYSTACK_CONFIG = {
-  secretKey: process.env.PAYSTACK_SECRET_KEY,
-  publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
-  webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET || '',
+  get secretKey() {
+    return process.env.PAYSTACK_SECRET_KEY || '';
+  },
+  get publicKey() {
+    return process.env.PAYSTACK_PUBLIC_KEY || '';
+  },
+  get webhookSecret() {
+    return process.env.PAYSTACK_WEBHOOK_SECRET || '';
+  },
 };
 
 // Helper function to verify Paystack webhook signature

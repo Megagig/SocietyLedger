@@ -239,14 +239,14 @@ export default function LeviesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Levies & Special Contributions
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Manage one-time levies, campaigns, and special project contributions
           </p>
         </div>
@@ -255,10 +255,11 @@ export default function LeviesPage() {
           <Can permission={PERMISSIONS.FINANCE_CREATE}>
             <button
               onClick={() => setShowCampaignModal(true)}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm"
             >
               <Rocket className="w-4 h-4" />
-              New Campaign
+              <span className="hidden sm:inline">New Campaign</span>
+              <span className="sm:hidden">Campaign</span>
             </button>
           </Can>
           <Can permission={PERMISSIONS.FINANCE_CREATE}>
@@ -268,10 +269,11 @@ export default function LeviesPage() {
                 setFormData({ name: '', amount: '', description: '', isActive: true });
                 setShowModal(true);
               }}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm"
             >
               <Plus className="w-4 h-4" />
-              Create Levy
+              <span className="hidden sm:inline">Create Levy</span>
+              <span className="sm:hidden">Levy</span>
             </button>
           </Can>
         </div>
@@ -284,59 +286,59 @@ export default function LeviesPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Levies</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Levies</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {levies.length}
               </p>
             </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-              <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Active Campaigns</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Active Campaigns</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">
                 {campaigns.filter(c => c.status === 'ACTIVE').length}
               </p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-              <Rocket className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-full">
+              <Rocket className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Billed</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Billed</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">
                 ₦{Number(stats?.totalAmount || 0).toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-              <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Completed</p>
-              <p className="text-2xl font-bold text-gray-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Completed</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-600 mt-1">
                 {campaigns.filter(c => c.status === 'COMPLETED').length}
               </p>
             </div>
-            <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
-              <CheckCircle className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+            <div className="p-2 sm:p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-400" />
             </div>
           </div>
         </div>

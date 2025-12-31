@@ -8,6 +8,7 @@ type ThemeContextValue = {
   theme: Theme;
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
+  mounted: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -17,7 +18,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const savedTheme = localStorage.getItem('theme') as Theme | null;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
@@ -27,7 +27,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else if (prefersDark) {
       setThemeState('dark');
       document.documentElement.classList.add('dark');
+    } else {
+      // Default to dark if no preference
+      document.documentElement.classList.add('dark');
     }
+    
+    // Set mounted after theme is determined to prevent hydration mismatch
+    setMounted(true);
   }, []);
 
   const setTheme = (newTheme: Theme) => {
@@ -40,11 +46,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  // Always provide context, even before mounting (for SSR compatibility)
   const value = {
     theme,
     toggleTheme,
     setTheme,
+    mounted,
   };
 
   return (

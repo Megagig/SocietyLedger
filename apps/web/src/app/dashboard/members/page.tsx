@@ -108,14 +108,14 @@ export default function MembersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Members
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Manage your association members ({totalCount} total)
           </p>
         </div>
@@ -124,20 +124,22 @@ export default function MembersPage() {
           <Can permission={PERMISSIONS.MEMBER_CREATE}>
             <button
               onClick={() => router.push('/dashboard/members/invite')}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
             >
               <UserPlus className="w-4 h-4" />
-              Invite Members
+              <span className="hidden sm:inline">Invite Members</span>
+              <span className="sm:hidden">Invite</span>
             </button>
           </Can>
           
           <Can permission={PERMISSIONS.MEMBER_CREATE}>
             <button
               onClick={() => router.push('/dashboard/members/create')}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
             >
               <Plus className="w-4 h-4" />
-              Add Member
+              <span className="hidden sm:inline">Add Member</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </Can>
         </div>
@@ -216,7 +218,62 @@ export default function MembersPage() {
       ) : (
         <>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {members.map((member) => (
+                <div key={member.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white">
+                        {member.firstName} {member.lastName}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        ID: {member.memberId}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end">
+                      {getStatusBadge(member.status)}
+                      <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{member.category}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                    {member.email && <p className="truncate">{member.email}</p>}
+                    {member.phone && <p>{member.phone}</p>}
+                  </div>
+                  
+                  <div className="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      onClick={() => router.push(`/dashboard/members/${member.id}`)}
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 text-sm"
+                    >
+                      <Eye className="w-4 h-4" /> View
+                    </button>
+                    
+                    <Can permission={PERMISSIONS.MEMBER_EDIT}>
+                      <button
+                        onClick={() => router.push(`/dashboard/members/${member.id}/edit`)}
+                        className="flex items-center gap-1 text-green-600 hover:text-green-900 dark:text-green-400 text-sm"
+                      >
+                        <Edit className="w-4 h-4" /> Edit
+                      </button>
+                    </Can>
+                    
+                    <Can permission={PERMISSIONS.MEMBER_DELETE}>
+                      <button
+                        onClick={() => handleDelete(member.id)}
+                        className="flex items-center gap-1 text-red-600 hover:text-red-900 dark:text-red-400 text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" /> Delete
+                      </button>
+                    </Can>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -301,19 +358,19 @@ export default function MembersPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow px-6 py-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-gray-800 rounded-lg shadow px-4 sm:px-6 py-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
               Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalCount)} of {totalCount} members
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2">
               <select
                 value={limit}
                 onChange={(e) => {
                   setLimit(parseInt(e.target.value));
                   setPage(1);
                 }}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
               >
                 <option value="10">10 per page</option>
                 <option value="25">25 per page</option>
@@ -321,25 +378,27 @@ export default function MembersPage() {
                 <option value="100">100 per page</option>
               </select>
 
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
-              >
-                Previous
-              </button>
-              
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Page {page} of {totalPages}
-              </span>
-              
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
-              >
-                Next
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
+                >
+                  Previous
+                </button>
+                
+                <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  {page} / {totalPages}
+                </span>
+                
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         </>

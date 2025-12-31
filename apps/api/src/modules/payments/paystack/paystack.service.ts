@@ -70,9 +70,8 @@ export class PaystackService {
     this.apiKey = process.env.PAYSTACK_SECRET_KEY || '';
     this.baseUrl = 'https://api.paystack.co';
 
-    if (!this.apiKey) {
-      throw new Error('PAYSTACK_SECRET_KEY is not configured');
-    }
+    // Don't throw in constructor - check at runtime when making API calls
+    // This allows the module to load even if env vars aren't set yet
 
     this.client = axios.create({
       baseURL: this.baseUrl,
@@ -84,10 +83,17 @@ export class PaystackService {
     });
   }
 
+  private ensureApiKey(): void {
+    if (!this.apiKey) {
+      throw new Error('PAYSTACK_SECRET_KEY is not configured');
+    }
+  }
+
   /**
    * Initialize a payment transaction
    */
   async initializePayment(data: PaystackInitializeData): Promise<PaystackInitializeResponse> {
+    this.ensureApiKey();
     try {
       const response = await this.client.post<PaystackInitializeResponse>(
         '/transaction/initialize',
@@ -115,6 +121,7 @@ export class PaystackService {
    * Verify a payment transaction
    */
   async verifyPayment(reference: string): Promise<PaystackVerifyResponse> {
+    this.ensureApiKey();
     try {
       const response = await this.client.get<PaystackVerifyResponse>(
         `/transaction/verify/${reference}`
@@ -133,6 +140,7 @@ export class PaystackService {
    * Verify webhook signature
    */
   verifyWebhookSignature(payload: string, signature: string): boolean {
+    this.ensureApiKey();
     const hash = crypto
       .createHmac('sha512', this.apiKey)
       .update(payload)

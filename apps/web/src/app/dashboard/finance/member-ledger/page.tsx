@@ -104,21 +104,21 @@ export default function MemberLedgerPage() {
     : 'No activity';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Member Ledgers
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             View and manage all member financial ledgers
           </p>
         </div>
         <button
           onClick={handleBulkSync}
           disabled={isSyncing}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
         >
           <IconRefresh size={18} className={isSyncing ? 'animate-spin' : ''} />
           {isSyncing ? 'Syncing...' : 'Sync All Ledgers'}
@@ -126,48 +126,48 @@ export default function MemberLedgerPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <IconUsers className="text-blue-600" size={20} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <IconUsers className="text-blue-600" size={18} />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Members</p>
-              <p className="text-xl font-bold text-blue-600">{stats.totalMembers}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Total Members</p>
+              <p className="text-lg sm:text-xl font-bold text-blue-600">{stats.totalMembers}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <IconArrowUpRight className="text-red-600" size={20} />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+              <IconArrowUpRight className="text-red-600" size={18} />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Outstanding</p>
-              <p className="text-xl font-bold text-red-600">{formatCurrency(stats.totalOutstanding)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Outstanding</p>
+              <p className="text-lg sm:text-xl font-bold text-red-600">{formatCurrency(stats.totalOutstanding)}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <IconArrowDownRight className="text-green-600" size={20} />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <IconArrowDownRight className="text-green-600" size={18} />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Credit</p>
-              <p className="text-xl font-bold text-green-600">{formatCurrency(stats.totalCredit)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Total Credit</p>
+              <p className="text-lg sm:text-xl font-bold text-green-600">{formatCurrency(stats.totalCredit)}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <IconFileAnalytics className="text-purple-600" size={20} />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <IconFileAnalytics className="text-purple-600" size={18} />
             </div>
             <div>
-              <p className="text-sm text-gray-500">With Balance</p>
-              <p className="text-xl font-bold text-purple-600">{stats.membersWithBalance}</p>
+              <p className="text-xs sm:text-sm text-gray-500">With Balance</p>
+              <p className="text-lg sm:text-xl font-bold text-purple-600">{stats.membersWithBalance}</p>
             </div>
           </div>
         </div>
@@ -176,38 +176,40 @@ export default function MemberLedgerPage() {
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
             <TextInput
               placeholder="Search by name or member ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               leftSection={<IconSearch size={16} />}
-              className="w-64"
+              className="w-full sm:w-64"
             />
-            <Select
-              placeholder="Sort by"
-              data={[
-                { value: 'balance', label: 'Balance' },
-                { value: 'memberName', label: 'Name' },
-                { value: 'lastActivity', label: 'Last Activity' },
-              ]}
-              value={sortBy}
-              onChange={(v) => setSortBy(v || 'balance')}
-              className="w-40"
-            />
-            <Select
-              placeholder="Order"
-              data={[
-                { value: 'desc', label: 'Descending' },
-                { value: 'asc', label: 'Ascending' },
-              ]}
-              value={sortOrder}
-              onChange={(v) => setSortOrder((v as 'asc' | 'desc') || 'desc')}
-              className="w-36"
-            />
+            <div className="flex gap-3 sm:gap-4">
+              <Select
+                placeholder="Sort by"
+                data={[
+                  { value: 'balance', label: 'Balance' },
+                  { value: 'memberName', label: 'Name' },
+                  { value: 'lastActivity', label: 'Last Activity' },
+                ]}
+                value={sortBy}
+                onChange={(v) => setSortBy(v || 'balance')}
+                className="flex-1 sm:w-40"
+              />
+              <Select
+                placeholder="Order"
+                data={[
+                  { value: 'desc', label: 'Desc' },
+                  { value: 'asc', label: 'Asc' },
+                ]}
+                value={sortOrder}
+                onChange={(v) => setSortOrder((v as 'asc' | 'desc') || 'desc')}
+                className="flex-1 sm:w-36"
+              />
+            </div>
             <button
               onClick={fetchMembers}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 w-full sm:w-auto"
             >
               <IconRefresh size={16} />
               Refresh
@@ -215,8 +217,55 @@ export default function MemberLedgerPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-500">Loading members...</div>
+          ) : members.length > 0 ? members.map((member) => (
+            <div 
+              key={member.memberId} 
+              className="p-4 space-y-3 active:bg-gray-50 dark:active:bg-gray-700/50"
+              onClick={() => router.push(`/dashboard/finance/member-ledger/${member.memberId}`)}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-medium text-gray-900 dark:text-white">{member.memberName}</h3>
+                  <p className="text-xs text-gray-500 font-mono mt-0.5">{member.memberNumber}</p>
+                </div>
+                <Badge 
+                  color={member.balance > 0 ? 'red' : member.balance < 0 ? 'green' : 'gray'}
+                  size="sm"
+                >
+                  {member.balance > 0 ? 'Outstanding' : member.balance < 0 ? 'Credit' : 'Balanced'}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className={`text-lg font-bold ${member.balance > 0 ? 'text-red-600' : member.balance < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                  {member.balance > 0 ? formatCurrency(member.balance) : member.balance < 0 ? `-${formatCurrency(member.balance)}` : '₦0'}
+                </span>
+                <span className="text-xs text-gray-500">{formatDate(member.lastActivity)}</span>
+              </div>
+              
+              <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/dashboard/finance/member-ledger/${member.memberId}`);
+                  }}
+                  className="flex items-center gap-1 text-teal-600 text-sm"
+                >
+                  <IconEye size={16} /> View Ledger
+                </button>
+              </div>
+            </div>
+          )) : (
+            <div className="text-center py-8 text-gray-500">No members found</div>
+          )}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
