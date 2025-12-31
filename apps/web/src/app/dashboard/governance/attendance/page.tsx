@@ -88,7 +88,7 @@ export default function AttendanceHistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button
           onClick={() => router.push('/dashboard/governance/meetings')}
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -96,69 +96,69 @@ export default function AttendanceHistoryPage() {
           <IconArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             Attendance History
           </h1>
-          <p className="text-gray-500">Track member attendance across all meetings</p>
+          <p className="text-sm sm:text-base text-gray-500">Track member attendance across all meetings</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Members</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Members</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {overallStats.totalMembers}
               </p>
             </div>
-            <div className="p-3 bg-teal-100 dark:bg-teal-900/30 rounded-full">
-              <IconUsers className="text-teal-600 dark:text-teal-400" size={24} />
+            <div className="p-2 sm:p-3 bg-teal-100 dark:bg-teal-900/30 rounded-full">
+              <IconUsers className="text-teal-600 dark:text-teal-400" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Avg Attendance</p>
-              <p className={`text-2xl font-bold mt-1 ${getAttendanceColor(overallStats.avgAttendanceRate)}`}>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Avg Attendance</p>
+              <p className={`text-xl sm:text-2xl font-bold mt-1 ${getAttendanceColor(overallStats.avgAttendanceRate)}`}>
                 {overallStats.avgAttendanceRate}%
               </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-              <IconTrendingUp className="text-blue-600 dark:text-blue-400" size={24} />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+              <IconTrendingUp className="text-blue-600 dark:text-blue-400" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">High Attendance</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">High Attendance</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">
                 {overallStats.highAttendance}
               </p>
-              <p className="text-xs text-gray-500">≥80% rate</p>
+              <p className="text-xs text-gray-500 hidden sm:block">≥80% rate</p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
-              <IconTrendingUp className="text-green-600 dark:text-green-400" size={24} />
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+              <IconTrendingUp className="text-green-600 dark:text-green-400" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Low Attendance</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Low Attendance</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-600 mt-1">
                 {overallStats.lowAttendance}
               </p>
-              <p className="text-xs text-gray-500">&lt;60% rate</p>
+              <p className="text-xs text-gray-500 hidden sm:block">&lt;60% rate</p>
             </div>
-            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
-              <IconTrendingDown className="text-red-600 dark:text-red-400" size={24} />
+            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+              <IconTrendingDown className="text-red-600 dark:text-red-400" size={20} />
             </div>
           </div>
         </div>
@@ -166,20 +166,62 @@ export default function AttendanceHistoryPage() {
 
       {/* Search & Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative max-w-md">
+        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="relative w-full sm:max-w-md">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="Search members..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 text-sm"
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {filteredHistory.length > 0 ? (
+            filteredHistory.map((member) => (
+              <div key={member.memberId} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {member.memberName}
+                  </p>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getAttendanceBadge(member.attendanceRate)}`}>
+                    {member.attendanceRate}%
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-4 gap-2 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Total</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{member.totalMeetings}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Present</p>
+                    <p className="font-semibold text-green-600 text-sm">{member.attended}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Absent</p>
+                    <p className="font-semibold text-red-600 text-sm">{member.absent}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Late</p>
+                    <p className="font-semibold text-orange-600 text-sm">{member.late}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              {searchQuery ? 'No members found matching your search' : 'No attendance records yet'}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>

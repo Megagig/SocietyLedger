@@ -138,18 +138,18 @@ export default function MeetingsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Meetings Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Schedule meetings, track attendance, and manage minutes
           </p>
         </div>
         <button
           onClick={() => router.push('/dashboard/governance/meetings/create')}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors w-full sm:w-auto"
         >
           <IconPlus size={20} />
           Schedule Meeting
@@ -157,63 +157,63 @@ export default function MeetingsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Meetings</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Meetings</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {stats?.totalMeetings || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-1">All time</p>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">All time</p>
             </div>
-            <div className="p-3 bg-teal-100 dark:bg-teal-900/30 rounded-full">
-              <IconCalendarEvent className="text-teal-600 dark:text-teal-400" size={24} />
+            <div className="p-2 sm:p-3 bg-teal-100 dark:bg-teal-900/30 rounded-full">
+              <IconCalendarEvent className="text-teal-600 dark:text-teal-400" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Scheduled</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Scheduled</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">
                 {stats?.scheduledMeetings || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Upcoming</p>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Upcoming</p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-              <IconClock className="text-blue-600 dark:text-blue-400" size={24} />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+              <IconClock className="text-blue-600 dark:text-blue-400" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Completed</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Completed</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">
                 {stats?.completedMeetings || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-1">This year: {stats?.meetingsThisYear || 0}</p>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">This year: {stats?.meetingsThisYear || 0}</p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
-              <IconClipboardCheck className="text-green-600 dark:text-green-400" size={24} />
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+              <IconClipboardCheck className="text-green-600 dark:text-green-400" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">This Month</p>
-              <p className="text-2xl font-bold text-purple-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">This Month</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-600 mt-1">
                 {stats?.meetingsThisMonth || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Meetings held</p>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Meetings held</p>
             </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-              <IconCalendar className="text-purple-600 dark:text-purple-400" size={24} />
+            <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+              <IconCalendar className="text-purple-600 dark:text-purple-400" size={20} />
             </div>
           </div>
         </div>
@@ -221,21 +221,21 @@ export default function MeetingsPage() {
 
       {/* Upcoming Meetings Alert */}
       {upcomingMeetings.length > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <IconCalendarEvent className="text-blue-600" size={24} />
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <IconCalendarEvent className="text-blue-600 hidden sm:block" size={24} />
             <div className="flex-1">
-              <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200 text-sm sm:text-base">
                 Next Meeting: {upcomingMeetings[0].title}
               </h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
                 {formatDate(upcomingMeetings[0].startTime)} at {formatTime(upcomingMeetings[0].startTime)}
                 {upcomingMeetings[0].location && ` • ${upcomingMeetings[0].location}`}
               </p>
             </div>
             <button
               onClick={() => router.push(`/dashboard/governance/meetings/${upcomingMeetings[0].id}`)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm w-full sm:w-auto"
             >
               View Details
             </button>
@@ -344,8 +344,8 @@ export default function MeetingsPage() {
           </h2>
           
           {/* Filters */}
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0 sm:min-w-[200px]">
               <div className="relative">
                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
@@ -353,42 +353,99 @@ export default function MeetingsPage() {
                   placeholder="Search meetings..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 text-sm"
                 />
               </div>
             </div>
             
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as MeetingStatus | '')}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="">All Status</option>
-              <option value="SCHEDULED">Scheduled</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="POSTPONED">Postponed</option>
-            </select>
+            <div className="grid grid-cols-2 sm:flex gap-3 sm:gap-4">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as MeetingStatus | '')}
+                className="px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              >
+                <option value="">All Status</option>
+                <option value="SCHEDULED">Scheduled</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+                <option value="POSTPONED">Postponed</option>
+              </select>
 
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as MeetingType | '')}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="">All Types</option>
-              <option value="REGULAR">Regular</option>
-              <option value="EMERGENCY">Emergency</option>
-              <option value="AGM">AGM</option>
-              <option value="EGM">EGM</option>
-              <option value="COMMITTEE">Committee</option>
-              <option value="SPECIAL">Special</option>
-            </select>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as MeetingType | '')}
+                className="px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              >
+                <option value="">All Types</option>
+                <option value="REGULAR">Regular</option>
+                <option value="EMERGENCY">Emergency</option>
+                <option value="AGM">AGM</option>
+                <option value="EGM">EGM</option>
+                <option value="COMMITTEE">Committee</option>
+                <option value="SPECIAL">Special</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Meetings Table */}
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {allMeetings.length > 0 ? (
+            allMeetings.map((meeting) => (
+              <div
+                key={meeting.id}
+                className="p-4 space-y-3 cursor-pointer"
+                onClick={() => router.push(`/dashboard/governance/meetings/${meeting.id}`)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white truncate">{meeting.title}</p>
+                    {meeting.description && (
+                      <p className="text-xs text-gray-500 truncate mt-0.5">{meeting.description}</p>
+                    )}
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ${MEETING_STATUS_COLORS[meeting.status]}`}>
+                    {meeting.status.replace('_', ' ')}
+                  </span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <IconClock size={14} />
+                    {formatDate(meeting.startTime)} • {formatTime(meeting.startTime)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    {meeting.virtualLink ? (
+                      <>
+                        <IconVideo size={14} />
+                        Virtual
+                      </>
+                    ) : meeting.location ? (
+                      <>
+                        <IconMapPin size={14} />
+                        <span className="truncate max-w-[100px]">{meeting.location}</span>
+                      </>
+                    ) : (
+                      'TBD'
+                    )}
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="text-xs text-gray-500">
+                    {MEETING_TYPE_LABELS[meeting.meetingType]} • {meeting._count?.attendances || 0} attendees
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-500">No meetings found</div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -477,24 +534,26 @@ export default function MeetingsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <span className="text-sm text-gray-600 dark:text-gray-400 order-2 sm:order-1">
               Page {page} of {totalPages}
             </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50"
-            >
-              Next
-            </button>
+            <div className="flex gap-2 order-1 sm:order-2 w-full sm:w-auto">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex-1 sm:flex-none px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50 border border-gray-300 dark:border-gray-600 rounded-lg"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="flex-1 sm:flex-none px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50 border border-gray-300 dark:border-gray-600 rounded-lg"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
