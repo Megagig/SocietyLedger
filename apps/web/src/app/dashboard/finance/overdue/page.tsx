@@ -227,15 +227,15 @@ export default function OverduePage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <AlertTriangle className="w-8 h-8 text-red-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+            <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
             Overdue Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Track and manage overdue payments
           </p>
         </div>
@@ -256,59 +256,59 @@ export default function OverduePage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Overdue Transactions</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Overdue Txns</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">
                 {stats?.totalOverdue || 0}
               </p>
             </div>
-            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-full">
-              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-full">
+              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Outstanding</p>
-              <p className="text-2xl font-bold text-orange-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
+              <p className="text-lg sm:text-2xl font-bold text-orange-600 mt-1">
                 ₦{(stats?.totalAmount || 0).toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
-              <DollarSign className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
+              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Members Affected</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Members</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-600 mt-1">
                 {stats?.membersAffected || 0}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Oldest Overdue</p>
-              <p className="text-2xl font-bold text-purple-600 mt-1">
-                {stats?.oldestOverdue || 0} days
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Oldest</p>
+              <p className="text-lg sm:text-2xl font-bold text-purple-600 mt-1">
+                {stats?.oldestOverdue || 0} <span className="text-sm font-normal">days</span>
               </p>
             </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-              <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
         </div>
@@ -316,12 +316,12 @@ export default function OverduePage() {
 
       {/* Filters & Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
             >
               <option value="">All Categories</option>
               {categories.map(cat => (
@@ -332,7 +332,7 @@ export default function OverduePage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
             >
               <option value="dueDate">Sort by Due Date</option>
               <option value="amount">Sort by Amount</option>
@@ -349,7 +349,7 @@ export default function OverduePage() {
                 <button
                   onClick={handleBulkMarkPaid}
                   disabled={isProcessing}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg disabled:opacity-50 text-sm"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Mark as Paid
@@ -373,7 +373,71 @@ export default function OverduePage() {
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Select All Mobile */}
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/50">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.length === transactions.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Select All ({transactions.length})
+                </span>
+              </label>
+            </div>
+            {transactions.map(txn => (
+              <div key={txn.id} className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(txn.id)}
+                    onChange={() => handleToggleSelect(txn.id)}
+                    className="mt-1 rounded border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {txn.member.firstName} {txn.member.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">{txn.member.memberId}</p>
+                      </div>
+                      <span className={`text-sm font-medium ${getUrgencyColor(txn.dueDate)}`}>
+                        {getDaysOverdue(txn.dueDate)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{txn.category.name}</span>
+                      <span className="font-semibold text-red-600">₦{Number(txn.balance).toLocaleString()}</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <button
+                        onClick={() => router.push(`/dashboard/finance/transactions/${txn.id}`)}
+                        className="flex items-center gap-1 text-blue-600 text-sm"
+                      >
+                        <Eye className="w-4 h-4" /> View
+                      </button>
+                      <Can permission={PERMISSIONS.TRANSACTION_EDIT}>
+                        <button
+                          onClick={() => handleWaive(txn.id)}
+                          className="flex items-center gap-1 text-orange-600 text-sm"
+                        >
+                          <XCircle className="w-4 h-4" /> Waive
+                        </button>
+                      </Can>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
