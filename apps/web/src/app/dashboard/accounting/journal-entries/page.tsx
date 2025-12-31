@@ -252,27 +252,27 @@ export default function JournalEntriesPage() {
       </div>
 
       {/* Actions Bar */}
-      <Card withBorder padding="md" mb="xl">
-        <Group justify="space-between">
-          <Group>
+      <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Select
               placeholder="Filter by status"
               data={STATUS_OPTIONS}
               value={filterStatus}
               onChange={(value) => setFilterStatus(value || '')}
-              w={200}
+              className="w-full sm:w-[200px]"
             />
             <TextInput
               placeholder="Search entries..."
               value={search}
               onChange={(e) => setSearch(e.currentTarget.value)}
-              w={250}
+              className="w-full sm:w-[250px]"
             />
-          </Group>
-          <Button leftSection={<IconPlus size={16} />} onClick={open}>
+          </div>
+          <Button leftSection={<IconPlus size={16} />} onClick={open} className="w-full sm:w-auto">
             New Entry
           </Button>
-        </Group>
+        </div>
       </Card>
 
       {/* Entries Table */}
@@ -283,96 +283,173 @@ export default function JournalEntriesPage() {
           </Text>
         </Alert>
       ) : (
-        <Card withBorder padding={0}>
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Entry #</Table.Th>
-                <Table.Th>Date</Table.Th>
-                <Table.Th>Description</Table.Th>
-                <Table.Th>Debit</Table.Th>
-                <Table.Th>Credit</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th w={80}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {entries.map((entry) => (
-                <Table.Tr key={entry.id}>
-                  <Table.Td>
-                    <Text fw={500}>{entry.entryNumber}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">
+        <>
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {entries.map((entry) => (
+              <Card key={entry.id} withBorder padding="sm" className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <Text fw={600}>{entry.entryNumber}</Text>
+                    <Text size="xs" c="dimmed">
                       {new Date(entry.entryDate).toLocaleDateString()}
                     </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text lineClamp={1}>{entry.description}</Text>
-                    {entry.reference && (
-                      <Text size="xs" c="dimmed">Ref: {entry.reference}</Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fw={500}>{formatCurrency(entry.totalDebit)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fw={500}>{formatCurrency(entry.totalCredit)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={getStatusColor(entry.status)} variant="light">
-                      {entry.status.replace(/_/g, ' ')}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Menu position="bottom-end" withArrow>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle">
-                          <IconDotsVertical size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconEye size={14} />}
-                          onClick={() => handleView(entry)}
-                        >
-                          View Details
-                        </Menu.Item>
-                        {entry.status === 'DRAFT' && (
-                          <>
-                            <Menu.Item
-                              leftSection={<IconSend size={14} />}
-                              onClick={() => submitMutation.mutate(entry.id)}
-                            >
-                              Submit for Approval
-                            </Menu.Item>
-                          </>
-                        )}
-                        {entry.status === 'PENDING_APPROVAL' && (
-                          <Menu.Item
-                            leftSection={<IconCheck size={14} />}
-                            onClick={() => handleApprovalAction(entry)}
-                          >
-                            Review
-                          </Menu.Item>
-                        )}
-                        {entry.status === 'APPROVED' && (
-                          <Menu.Item
-                            leftSection={<IconCheck size={14} />}
-                            color="green"
-                            onClick={() => postMutation.mutate(entry.id)}
-                          >
-                            Post Entry
-                          </Menu.Item>
-                        )}
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Table.Td>
+                  </div>
+                  <Badge color={getStatusColor(entry.status)} variant="light" size="sm">
+                    {entry.status.replace(/_/g, ' ')}
+                  </Badge>
+                </div>
+                <Text size="sm" lineClamp={2} mb={2}>{entry.description}</Text>
+                {entry.reference && (
+                  <Text size="xs" c="dimmed" mb={2}>Ref: {entry.reference}</Text>
+                )}
+                <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-800/50 rounded p-2 mt-2">
+                  <div className="text-center">
+                    <Text size="xs" c="dimmed">Debit</Text>
+                    <Text size="sm" fw={500}>{formatCurrency(entry.totalDebit)}</Text>
+                  </div>
+                  <div className="text-center">
+                    <Text size="xs" c="dimmed">Credit</Text>
+                    <Text size="sm" fw={500}>{formatCurrency(entry.totalCredit)}</Text>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    leftSection={<IconEye size={14} />}
+                    onClick={() => handleView(entry)}
+                  >
+                    View
+                  </Button>
+                  {entry.status === 'DRAFT' && (
+                    <Button
+                      variant="light"
+                      size="xs"
+                      leftSection={<IconSend size={14} />}
+                      onClick={() => submitMutation.mutate(entry.id)}
+                    >
+                      Submit
+                    </Button>
+                  )}
+                  {entry.status === 'PENDING_APPROVAL' && (
+                    <Button
+                      variant="light"
+                      size="xs"
+                      leftSection={<IconCheck size={14} />}
+                      onClick={() => handleApprovalAction(entry)}
+                    >
+                      Review
+                    </Button>
+                  )}
+                  {entry.status === 'APPROVED' && (
+                    <Button
+                      variant="light"
+                      color="green"
+                      size="xs"
+                      leftSection={<IconCheck size={14} />}
+                      onClick={() => postMutation.mutate(entry.id)}
+                    >
+                      Post
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <Card withBorder padding={0} className="hidden md:block">
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Entry #</Table.Th>
+                  <Table.Th>Date</Table.Th>
+                  <Table.Th>Description</Table.Th>
+                  <Table.Th>Debit</Table.Th>
+                  <Table.Th>Credit</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th w={80}></Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Card>
+              </Table.Thead>
+              <Table.Tbody>
+                {entries.map((entry) => (
+                  <Table.Tr key={entry.id}>
+                    <Table.Td>
+                      <Text fw={500}>{entry.entryNumber}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {new Date(entry.entryDate).toLocaleDateString()}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text lineClamp={1}>{entry.description}</Text>
+                      {entry.reference && (
+                        <Text size="xs" c="dimmed">Ref: {entry.reference}</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fw={500}>{formatCurrency(entry.totalDebit)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fw={500}>{formatCurrency(entry.totalCredit)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={getStatusColor(entry.status)} variant="light">
+                        {entry.status.replace(/_/g, ' ')}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Menu position="bottom-end" withArrow>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle">
+                            <IconDotsVertical size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconEye size={14} />}
+                            onClick={() => handleView(entry)}
+                          >
+                            View Details
+                          </Menu.Item>
+                          {entry.status === 'DRAFT' && (
+                            <>
+                              <Menu.Item
+                                leftSection={<IconSend size={14} />}
+                                onClick={() => submitMutation.mutate(entry.id)}
+                              >
+                                Submit for Approval
+                              </Menu.Item>
+                            </>
+                          )}
+                          {entry.status === 'PENDING_APPROVAL' && (
+                            <Menu.Item
+                              leftSection={<IconCheck size={14} />}
+                              onClick={() => handleApprovalAction(entry)}
+                            >
+                              Review
+                            </Menu.Item>
+                          )}
+                          {entry.status === 'APPROVED' && (
+                            <Menu.Item
+                              leftSection={<IconCheck size={14} />}
+                              color="green"
+                              onClick={() => postMutation.mutate(entry.id)}
+                            >
+                              Post Entry
+                            </Menu.Item>
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Card>
+        </>
       )}
 
       {/* Create Entry Modal */}

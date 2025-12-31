@@ -221,28 +221,28 @@ export default function BudgetsPage() {
       </div>
 
       {/* Actions Bar */}
-      <Card withBorder padding="md" mb="xl">
-        <Group justify="space-between">
-          <Group>
+      <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Select
               placeholder="Filter by status"
               data={STATUS_OPTIONS}
               value={filterStatus}
               onChange={(value) => setFilterStatus(value || '')}
-              w={180}
+              className="w-full sm:w-[180px]"
             />
             <Select
               placeholder="Filter by year"
               data={[{ value: '', label: 'All Years' }, ...yearOptions]}
               value={filterYear}
               onChange={(value) => setFilterYear(value || '')}
-              w={150}
+              className="w-full sm:w-[150px]"
             />
-          </Group>
-          <Button leftSection={<IconPlus size={16} />} onClick={open}>
+          </div>
+          <Button leftSection={<IconPlus size={16} />} onClick={open} className="w-full sm:w-auto">
             New Budget
           </Button>
-        </Group>
+        </div>
       </Card>
 
       {/* Budgets Table */}
@@ -253,82 +253,151 @@ export default function BudgetsPage() {
           </Text>
         </Alert>
       ) : (
-        <Card withBorder padding={0}>
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Fiscal Year</Table.Th>
-                <Table.Th>Period</Table.Th>
-                <Table.Th>Total Budget</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th w={80}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {budgets.map((budget) => (
-                <Table.Tr key={budget.id}>
-                  <Table.Td>
-                    <Text fw={500}>{budget.name}</Text>
+        <>
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {budgets.map((budget) => (
+              <Card key={budget.id} withBorder padding="sm" className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <Text fw={600}>{budget.name}</Text>
                     {budget.description && (
-                      <Text size="xs" c="dimmed">{budget.description}</Text>
+                      <Text size="xs" c="dimmed" mt={2}>{budget.description}</Text>
                     )}
-                  </Table.Td>
-                  <Table.Td>
-                    <Text>{budget.fiscalYear}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm">
+                  </div>
+                  <Menu position="bottom-end" withArrow>
+                    <Menu.Target>
+                      <ActionIcon variant="subtle">
+                        <IconDotsVertical size={16} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        leftSection={<IconChartBar size={14} />}
+                        onClick={() => handleViewVariance(budget)}
+                      >
+                        View Variance
+                      </Menu.Item>
+                      {budget.status === 'DRAFT' && (
+                        <Menu.Item
+                          leftSection={<IconCheck size={14} />}
+                          onClick={() => approveMutation.mutate(budget.id)}
+                        >
+                          Approve
+                        </Menu.Item>
+                      )}
+                      {budget.status === 'APPROVED' && (
+                        <Menu.Item
+                          leftSection={<IconCheck size={14} />}
+                          color="green"
+                          onClick={() => activateMutation.mutate(budget.id)}
+                        >
+                          Activate
+                        </Menu.Item>
+                      )}
+                    </Menu.Dropdown>
+                  </Menu>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <Badge color={getStatusColor(budget.status)} variant="light" size="sm">
+                    {budget.status}
+                  </Badge>
+                  <Badge variant="outline" size="sm">{budget.fiscalYear}</Badge>
+                </div>
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <Text size="xs" c="dimmed">Period</Text>
+                    <Text size="xs">
                       {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
                     </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fw={500}>{formatCurrency(budget.totalBudget)}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={getStatusColor(budget.status)} variant="light">
-                      {budget.status}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Menu position="bottom-end" withArrow>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle">
-                          <IconDotsVertical size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconChartBar size={14} />}
-                          onClick={() => handleViewVariance(budget)}
-                        >
-                          View Variance
-                        </Menu.Item>
-                        {budget.status === 'DRAFT' && (
-                          <Menu.Item
-                            leftSection={<IconCheck size={14} />}
-                            onClick={() => approveMutation.mutate(budget.id)}
-                          >
-                            Approve
-                          </Menu.Item>
-                        )}
-                        {budget.status === 'APPROVED' && (
-                          <Menu.Item
-                            leftSection={<IconCheck size={14} />}
-                            color="green"
-                            onClick={() => activateMutation.mutate(budget.id)}
-                          >
-                            Activate
-                          </Menu.Item>
-                        )}
-                      </Menu.Dropdown>
-                    </Menu>
-                  </Table.Td>
+                  </div>
+                  <div className="flex justify-between">
+                    <Text size="xs" c="dimmed">Total Budget</Text>
+                    <Text size="sm" fw={500}>{formatCurrency(budget.totalBudget)}</Text>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <Card withBorder padding={0} className="hidden md:block">
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Name</Table.Th>
+                  <Table.Th>Fiscal Year</Table.Th>
+                  <Table.Th>Period</Table.Th>
+                  <Table.Th>Total Budget</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th w={80}></Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Card>
+              </Table.Thead>
+              <Table.Tbody>
+                {budgets.map((budget) => (
+                  <Table.Tr key={budget.id}>
+                    <Table.Td>
+                      <Text fw={500}>{budget.name}</Text>
+                      {budget.description && (
+                        <Text size="xs" c="dimmed">{budget.description}</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Text>{budget.fiscalYear}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fw={500}>{formatCurrency(budget.totalBudget)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={getStatusColor(budget.status)} variant="light">
+                        {budget.status}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Menu position="bottom-end" withArrow>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle">
+                            <IconDotsVertical size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconChartBar size={14} />}
+                            onClick={() => handleViewVariance(budget)}
+                          >
+                            View Variance
+                          </Menu.Item>
+                          {budget.status === 'DRAFT' && (
+                            <Menu.Item
+                              leftSection={<IconCheck size={14} />}
+                              onClick={() => approveMutation.mutate(budget.id)}
+                            >
+                              Approve
+                            </Menu.Item>
+                          )}
+                          {budget.status === 'APPROVED' && (
+                            <Menu.Item
+                              leftSection={<IconCheck size={14} />}
+                              color="green"
+                              onClick={() => activateMutation.mutate(budget.id)}
+                            >
+                              Activate
+                            </Menu.Item>
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Card>
+        </>
       )}
 
       {/* Create Budget Modal */}

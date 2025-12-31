@@ -136,10 +136,10 @@ export default function IncomeStatementPage() {
       </div>
 
       {/* Date Range Filter */}
-      <Paper p="md" mb="xl" withBorder>
-        <Group justify="space-between" align="flex-end">
-          <Group align="flex-end">
-            <div style={{ maxWidth: 300 }}>
+      <Paper p="md" mb="xl" withBorder className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="w-full sm:max-w-[300px]">
               <DateRangePicker value={dateRange} onChange={setDateRange} />
             </div>
             <Switch
@@ -148,15 +148,16 @@ export default function IncomeStatementPage() {
               checked={includeComparison}
               onChange={(event) => setIncludeComparison(event.currentTarget.checked)}
             />
-          </Group>
+          </div>
           <Button
             leftSection={<IconRefresh size={16} />}
             onClick={handleGenerateReport}
             loading={isFetching}
+            className="w-full sm:w-auto"
           >
             Generate Report
           </Button>
-        </Group>
+        </div>
       </Paper>
 
       {!report && !isLoading && !error && (
@@ -187,13 +188,13 @@ export default function IncomeStatementPage() {
           </Card>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card withBorder padding="lg">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group justify="space-between" mb="xs">
-                <Text size="sm" c="dimmed">Total Revenue</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Total Revenue</Text>
                 <IconTrendingUp size={20} className="text-green-500" />
               </Group>
-              <Text size="xl" fw={700} c="green">
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="green">
                 {formatCurrency(report.revenue.total)}
               </Text>
               {report.comparison && (
@@ -204,18 +205,18 @@ export default function IncomeStatementPage() {
                     <IconArrowDown size={14} className="text-red-500" />
                   )}
                   <Text size="xs" c={report.comparison.changes.revenue.percentage >= 0 ? 'green' : 'red'}>
-                    {formatPercentage(report.comparison.changes.revenue.percentage)} vs previous period
+                    {formatPercentage(report.comparison.changes.revenue.percentage)} vs previous
                   </Text>
                 </Group>
               )}
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group justify="space-between" mb="xs">
-                <Text size="sm" c="dimmed">Total Expenses</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Total Expenses</Text>
                 <IconTrendingDown size={20} className="text-red-500" />
               </Group>
-              <Text size="xl" fw={700} c="red">
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="red">
                 {formatCurrency(report.expenses.total)}
               </Text>
               {report.comparison && (
@@ -226,18 +227,18 @@ export default function IncomeStatementPage() {
                     <IconArrowUp size={14} className="text-red-500" />
                   )}
                   <Text size="xs" c={report.comparison.changes.expenses.percentage <= 0 ? 'green' : 'red'}>
-                    {formatPercentage(report.comparison.changes.expenses.percentage)} vs previous period
+                    {formatPercentage(report.comparison.changes.expenses.percentage)} vs previous
                   </Text>
                 </Group>
               )}
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group justify="space-between" mb="xs">
-                <Text size="sm" c="dimmed">Net Income</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Net Income</Text>
                 <IconChartBar size={20} className={parseFloat(String(report.netIncome)) >= 0 ? 'text-green-500' : 'text-red-500'} />
               </Group>
-              <Text size="xl" fw={700} c={parseFloat(String(report.netIncome)) >= 0 ? 'green' : 'red'}>
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c={parseFloat(String(report.netIncome)) >= 0 ? 'green' : 'red'}>
                 {formatCurrency(report.netIncome)}
               </Text>
               {report.comparison && (
@@ -248,7 +249,7 @@ export default function IncomeStatementPage() {
                     <IconArrowDown size={14} className="text-red-500" />
                   )}
                   <Text size="xs" c={report.comparison.changes.netIncome.percentage >= 0 ? 'green' : 'red'}>
-                    {formatPercentage(report.comparison.changes.netIncome.percentage)} vs previous period
+                    {formatPercentage(report.comparison.changes.netIncome.percentage)} vs previous
                   </Text>
                 </Group>
               )}
@@ -256,18 +257,18 @@ export default function IncomeStatementPage() {
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <Card withBorder padding="lg">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Text size="lg" fw={600} mb="md">Revenue Breakdown</Text>
               {revenueChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={200} className="sm:h-[250px]">
                   <PieChart>
                     <Pie
                       data={revenueChartData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={50}
+                      outerRadius={70}
                       paddingAngle={5}
                       dataKey="value"
                     >
@@ -280,23 +281,23 @@ export default function IncomeStatementPage() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-gray-500">
+                <div className="flex items-center justify-center h-[200px] sm:h-[250px] text-gray-500">
                   No revenue data
                 </div>
               )}
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Text size="lg" fw={600} mb="md">Expense Breakdown</Text>
               {expenseChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={200} className="sm:h-[250px]">
                   <PieChart>
                     <Pie
                       data={expenseChartData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={50}
+                      outerRadius={70}
                       paddingAngle={5}
                       dataKey="value"
                     >
@@ -309,7 +310,7 @@ export default function IncomeStatementPage() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-gray-500">
+                <div className="flex items-center justify-center h-[200px] sm:h-[250px] text-gray-500">
                   No expense data
                 </div>
               )}

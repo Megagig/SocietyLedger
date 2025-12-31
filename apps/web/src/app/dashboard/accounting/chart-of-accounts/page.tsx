@@ -236,9 +236,9 @@ export default function ChartOfAccountsPage() {
       </div>
 
       {/* Actions Bar */}
-      <Card withBorder padding="md" mb="xl">
-        <Group justify="space-between">
-          <Group>
+      <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Select
               placeholder="Filter by type"
               data={[{ value: '', label: 'All Types' }, ...ACCOUNT_TYPES]}
@@ -246,30 +246,31 @@ export default function ChartOfAccountsPage() {
               onChange={setFilterType}
               clearable
               leftSection={<IconFilter size={16} />}
-              w={200}
+              className="w-full sm:w-[200px]"
             />
             <Switch
               label="Show inactive"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.currentTarget.checked)}
             />
-          </Group>
-          <Group>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
             {accounts.length === 0 && (
               <Button
                 variant="light"
                 leftSection={<IconRefresh size={16} />}
                 onClick={() => initializeMutation.mutate()}
                 loading={initializeMutation.isPending}
+                className="w-full sm:w-auto"
               >
                 Initialize Standard Accounts
               </Button>
             )}
-            <Button leftSection={<IconPlus size={16} />} onClick={open}>
+            <Button leftSection={<IconPlus size={16} />} onClick={open} className="w-full sm:w-auto">
               Add Account
             </Button>
-          </Group>
-        </Group>
+          </div>
+        </div>
       </Card>
 
       {/* Accounts Table */}
@@ -280,82 +281,142 @@ export default function ChartOfAccountsPage() {
           </Text>
         </Alert>
       ) : (
-        <Card withBorder padding={0}>
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Code</Table.Th>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Type</Table.Th>
-                <Table.Th>Sub-Type</Table.Th>
-                <Table.Th>Balance</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th w={60}></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {accounts.map((account) => (
-                <Table.Tr key={account.id}>
-                  <Table.Td>
-                    <Text fw={500}>{account.code}</Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text>{account.name}</Text>
+        <>
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {accounts.map((account) => (
+              <Card key={account.id} withBorder padding="sm" className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <Text fw={600}>{account.code}</Text>
+                    <Text size="sm">{account.name}</Text>
                     {account.description && (
-                      <Text size="xs" c="dimmed">{account.description}</Text>
+                      <Text size="xs" c="dimmed" mt={2}>{account.description}</Text>
                     )}
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={getTypeColor(account.type)} variant="light">
-                      {account.type}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="sm" c="dimmed">
-                      {account.subType?.replace(/_/g, ' ') || '-'}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text fw={500}>
-                      {account.balance !== undefined ? formatCurrency(account.balance) : '-'}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge color={account.isActive ? 'green' : 'gray'} variant="dot">
-                      {account.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    {!account.isSystemAccount && (
-                      <Menu position="bottom-end" withArrow>
-                        <Menu.Target>
-                          <ActionIcon variant="subtle">
-                            <IconDotsVertical size={16} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item
-                            leftSection={<IconEdit size={14} />}
-                            onClick={() => handleEdit(account)}
-                          >
-                            Edit
-                          </Menu.Item>
-                          <Menu.Item
-                            leftSection={<IconTrash size={14} />}
-                            color="red"
-                            onClick={() => deleteMutation.mutate(account.id)}
-                          >
-                            Delete
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    )}
-                  </Table.Td>
+                  </div>
+                  {!account.isSystemAccount && (
+                    <Menu position="bottom-end" withArrow>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle">
+                          <IconDotsVertical size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          leftSection={<IconEdit size={14} />}
+                          onClick={() => handleEdit(account)}
+                        >
+                          Edit
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconTrash size={14} />}
+                          color="red"
+                          onClick={() => deleteMutation.mutate(account.id)}
+                        >
+                          Delete
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <Badge color={getTypeColor(account.type)} variant="light" size="sm">
+                    {account.type}
+                  </Badge>
+                  <Badge color={account.isActive ? 'green' : 'gray'} variant="dot" size="sm">
+                    {account.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <Text size="xs" c="dimmed">
+                    {account.subType?.replace(/_/g, ' ') || '-'}
+                  </Text>
+                  <Text fw={500}>
+                    {account.balance !== undefined ? formatCurrency(account.balance) : '-'}
+                  </Text>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <Card withBorder padding={0} className="hidden md:block">
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Code</Table.Th>
+                  <Table.Th>Name</Table.Th>
+                  <Table.Th>Type</Table.Th>
+                  <Table.Th>Sub-Type</Table.Th>
+                  <Table.Th>Balance</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th w={60}></Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Card>
+              </Table.Thead>
+              <Table.Tbody>
+                {accounts.map((account) => (
+                  <Table.Tr key={account.id}>
+                    <Table.Td>
+                      <Text fw={500}>{account.code}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text>{account.name}</Text>
+                      {account.description && (
+                        <Text size="xs" c="dimmed">{account.description}</Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={getTypeColor(account.type)} variant="light">
+                        {account.type}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">
+                        {account.subType?.replace(/_/g, ' ') || '-'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text fw={500}>
+                        {account.balance !== undefined ? formatCurrency(account.balance) : '-'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={account.isActive ? 'green' : 'gray'} variant="dot">
+                        {account.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      {!account.isSystemAccount && (
+                        <Menu position="bottom-end" withArrow>
+                          <Menu.Target>
+                            <ActionIcon variant="subtle">
+                              <IconDotsVertical size={16} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item
+                              leftSection={<IconEdit size={14} />}
+                              onClick={() => handleEdit(account)}
+                            >
+                              Edit
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconTrash size={14} />}
+                              color="red"
+                              onClick={() => deleteMutation.mutate(account.id)}
+                            >
+                              Delete
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Card>
+        </>
       )}
 
       {/* Add/Edit Modal */}

@@ -168,32 +168,31 @@ export default function AccountingPage() {
         </Alert>
 
         {/* Still show navigation cards */}
-        <Grid>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {reportCards.map((card) => (
-            <Grid.Col key={card.title} span={{ base: 12, sm: 6, lg: 4 }}>
-              <Card
-                withBorder
-                padding="lg"
-                component={Link}
-                href={card.href}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-              >
-                <Group justify="space-between" mb="md">
-                  <ThemeIcon size="xl" radius="md" variant="light" color={card.color}>
-                    {card.icon}
-                  </ThemeIcon>
-                  <IconArrowRight size={20} className="text-gray-400" />
-                </Group>
-                <Text size="lg" fw={600}>
-                  {card.title}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {card.description}
-                </Text>
-              </Card>
-            </Grid.Col>
+            <Card
+              key={card.title}
+              withBorder
+              padding="lg"
+              component={Link}
+              href={card.href}
+              className="hover:shadow-lg transition-shadow cursor-pointer p-4 sm:p-6"
+            >
+              <Group justify="space-between" mb="md">
+                <ThemeIcon size="xl" radius="md" variant="light" color={card.color}>
+                  {card.icon}
+                </ThemeIcon>
+                <IconArrowRight size={20} className="text-gray-400" />
+              </Group>
+              <Text size="lg" fw={600}>
+                {card.title}
+              </Text>
+              <Text size="sm" c="dimmed">
+                {card.description}
+              </Text>
+            </Card>
           ))}
-        </Grid>
+        </div>
       </div>
     );
   }
@@ -211,77 +210,67 @@ export default function AccountingPage() {
 
       {/* Quick Stats */}
       {dashboard && (
-        <Grid mb="xl">
-          <Grid.Col span={{ base: 12, sm: 6, lg: 2.4 }}>
-            <Card withBorder padding="lg">
-              <Group gap="xs" mb="xs">
-                <ThemeIcon size="sm" variant="light" color="blue">
-                  <IconWallet size={14} />
-                </ThemeIcon>
-                <Text size="sm" c="dimmed">Total Assets</Text>
-              </Group>
-              <Text size="xl" fw={700}>
-                {formatCurrency(dashboard.quickStats.totalAssets)}
-              </Text>
-            </Card>
-          </Grid.Col>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Group gap="xs" mb="xs">
+              <ThemeIcon size="sm" variant="light" color="blue">
+                <IconWallet size={14} />
+              </ThemeIcon>
+              <Text size="xs" sm="sm" c="dimmed">Total Assets</Text>
+            </Group>
+            <Text size="lg" className="text-base sm:text-xl" fw={700}>
+              {formatCurrency(dashboard.quickStats.totalAssets)}
+            </Text>
+          </Card>
 
-          <Grid.Col span={{ base: 12, sm: 6, lg: 2.4 }}>
-            <Card withBorder padding="lg">
-              <Group gap="xs" mb="xs">
-                <ThemeIcon size="sm" variant="light" color="red">
-                  <IconCreditCard size={14} />
-                </ThemeIcon>
-                <Text size="sm" c="dimmed">Total Liabilities</Text>
-              </Group>
-              <Text size="xl" fw={700}>
-                {formatCurrency(dashboard.quickStats.totalLiabilities)}
-              </Text>
-            </Card>
-          </Grid.Col>
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Group gap="xs" mb="xs">
+              <ThemeIcon size="sm" variant="light" color="red">
+                <IconCreditCard size={14} />
+              </ThemeIcon>
+              <Text size="xs" sm="sm" c="dimmed">Total Liabilities</Text>
+            </Group>
+            <Text size="lg" className="text-base sm:text-xl" fw={700}>
+              {formatCurrency(dashboard.quickStats.totalLiabilities)}
+            </Text>
+          </Card>
 
-          <Grid.Col span={{ base: 12, sm: 6, lg: 2.4 }}>
-            <Card withBorder padding="lg">
-              <Group gap="xs" mb="xs">
-                <ThemeIcon size="sm" variant="light" color="purple">
-                  <IconChartBar size={14} />
-                </ThemeIcon>
-                <Text size="sm" c="dimmed">Total Equity</Text>
-              </Group>
-              <Text size="xl" fw={700}>
-                {formatCurrency(dashboard.quickStats.totalEquity)}
-              </Text>
-            </Card>
-          </Grid.Col>
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Group gap="xs" mb="xs">
+              <ThemeIcon size="sm" variant="light" color="purple">
+                <IconChartBar size={14} />
+              </ThemeIcon>
+              <Text size="xs" sm="sm" c="dimmed">Total Equity</Text>
+            </Group>
+            <Text size="lg" className="text-base sm:text-xl" fw={700}>
+              {formatCurrency(dashboard.quickStats.totalEquity)}
+            </Text>
+          </Card>
 
-          <Grid.Col span={{ base: 12, sm: 6, lg: 2.4 }}>
-            <Card withBorder padding="lg">
-              <Group gap="xs" mb="xs">
-                <ThemeIcon size="sm" variant="light" color="green">
-                  <IconTrendingUp size={14} />
-                </ThemeIcon>
-                <Text size="sm" c="dimmed">Net Income (YTD)</Text>
-              </Group>
-              <Text size="xl" fw={700} c={parseFloat(String(dashboard.quickStats.netIncome)) >= 0 ? 'green' : 'red'}>
-                {formatCurrency(dashboard.quickStats.netIncome)}
-              </Text>
-            </Card>
-          </Grid.Col>
+          <Card withBorder padding="md" className="p-3 sm:p-4">
+            <Group gap="xs" mb="xs">
+              <ThemeIcon size="sm" variant="light" color="green">
+                <IconTrendingUp size={14} />
+              </ThemeIcon>
+              <Text size="xs" sm="sm" c="dimmed">Net Income (YTD)</Text>
+            </Group>
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c={parseFloat(String(dashboard.quickStats.netIncome)) >= 0 ? 'green' : 'red'}>
+              {formatCurrency(dashboard.quickStats.netIncome)}
+            </Text>
+          </Card>
 
-          <Grid.Col span={{ base: 12, sm: 6, lg: 2.4 }}>
-            <Card withBorder padding="lg">
-              <Group gap="xs" mb="xs">
-                <ThemeIcon size="sm" variant="light" color="teal">
-                  <IconCash size={14} />
-                </ThemeIcon>
-                <Text size="sm" c="dimmed">Cash Balance</Text>
-              </Group>
-              <Text size="xl" fw={700} c="teal">
-                {formatCurrency(dashboard.quickStats.cashBalance)}
-              </Text>
-            </Card>
-          </Grid.Col>
-        </Grid>
+          <Card withBorder padding="md" className="col-span-2 md:col-span-1 p-3 sm:p-4">
+            <Group gap="xs" mb="xs">
+              <ThemeIcon size="sm" variant="light" color="teal">
+                <IconCash size={14} />
+              </ThemeIcon>
+              <Text size="xs" sm="sm" c="dimmed">Cash Balance</Text>
+            </Group>
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="teal">
+              {formatCurrency(dashboard.quickStats.cashBalance)}
+            </Text>
+          </Card>
+        </div>
       )}
 
       {/* Pending Approvals Alert */}
@@ -310,8 +299,8 @@ export default function AccountingPage() {
 
       {/* Budget Status */}
       {dashboard?.budgetStatus && (
-        <Card withBorder padding="lg" mb="xl">
-          <Group justify="space-between" mb="md">
+        <Card withBorder padding="md" className="p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
             <div>
               <Text size="lg" fw={600}>Budget Status</Text>
               <Text size="sm" c="dimmed">Current fiscal year budget utilization</Text>
@@ -321,140 +310,134 @@ export default function AccountingPage() {
               href="/dashboard/accounting/budgets"
               variant="light"
               size="sm"
+              className="w-full sm:w-auto"
             >
               View Details
             </Button>
-          </Group>
+          </div>
           
-          <Grid>
-            <Grid.Col span={{ base: 12, md: 8 }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
               <Progress
                 value={dashboard.budgetStatus.percentUsed}
                 size="xl"
                 color={dashboard.budgetStatus.percentUsed > 90 ? 'red' : dashboard.budgetStatus.percentUsed > 75 ? 'yellow' : 'green'}
                 mb="sm"
               />
-              <Group justify="space-between">
+              <div className="flex justify-between text-sm">
                 <Text size="sm" c="dimmed">
                   {formatCurrency(dashboard.budgetStatus.totalSpent)} spent of {formatCurrency(dashboard.budgetStatus.totalBudget)}
                 </Text>
                 <Text size="sm" fw={500}>
                   {dashboard.budgetStatus.percentUsed.toFixed(1)}% used
                 </Text>
-              </Group>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 4 }}>
-              <Card withBorder padding="sm">
-                <Text size="sm" c="dimmed">Remaining Budget</Text>
-                <Text size="lg" fw={700} c="green">
-                  {formatCurrency(dashboard.budgetStatus.remainingBudget)}
-                </Text>
-              </Card>
-            </Grid.Col>
-          </Grid>
+              </div>
+            </div>
+            <Card withBorder padding="sm">
+              <Text size="sm" c="dimmed">Remaining Budget</Text>
+              <Text size="lg" fw={700} c="green">
+                {formatCurrency(dashboard.budgetStatus.remainingBudget)}
+              </Text>
+            </Card>
+          </div>
         </Card>
       )}
 
-      <Grid mb="xl">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
         {/* Monthly Trend Chart */}
-        <Grid.Col span={{ base: 12, lg: 8 }}>
-          <Card withBorder padding="lg" h="100%">
-            <Text size="lg" fw={600} mb="md">Income vs Expenses (Last 6 Months)</Text>
-            {dashboard?.monthlyTrend && dashboard.monthlyTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={dashboard.monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip
-                    formatter={(value: any) => formatCurrency(value)}
-                    labelStyle={{ color: '#333' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="income" name="Income" fill="#12b886" />
-                  <Bar dataKey="expenses" name="Expenses" fill="#fa5252" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-500">
-                No data available yet
-              </div>
-            )}
-          </Card>
-        </Grid.Col>
+        <Card withBorder padding="md" className="lg:col-span-2 p-4 sm:p-6">
+          <Text size="lg" fw={600} mb="md">Income vs Expenses (Last 6 Months)</Text>
+          {dashboard?.monthlyTrend && dashboard.monthlyTrend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
+              <BarChart data={dashboard.monthlyTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(value: any) => formatCurrency(value)}
+                  labelStyle={{ color: '#333' }}
+                />
+                <Legend />
+                <Bar dataKey="income" name="Income" fill="#12b886" />
+                <Bar dataKey="expenses" name="Expenses" fill="#fa5252" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] sm:h-[300px] text-gray-500">
+              No data available yet
+            </div>
+          )}
+        </Card>
 
         {/* Recent Journal Entries */}
-        <Grid.Col span={{ base: 12, lg: 4 }}>
-          <Card withBorder padding="lg" h="100%">
-            <Group justify="space-between" mb="md">
-              <Text size="lg" fw={600}>Recent Entries</Text>
-              <Button
-                component={Link}
-                href="/dashboard/accounting/journal-entries"
-                variant="subtle"
-                size="xs"
-                rightSection={<IconArrowRight size={14} />}
-              >
-                View All
-              </Button>
-            </Group>
-            
-            {dashboard?.recentEntries && dashboard.recentEntries.length > 0 ? (
-              <Stack gap="sm">
-                {dashboard.recentEntries.slice(0, 5).map((entry: JournalEntry) => (
-                  <Paper key={entry.id} withBorder p="sm">
-                    <Group justify="space-between" mb={4}>
-                      <Text size="sm" fw={500}>{entry.entryNumber}</Text>
-                      <Badge size="xs" color={getStatusColor(entry.status)}>
-                        {entry.status}
-                      </Badge>
-                    </Group>
-                    <Text size="xs" c="dimmed" lineClamp={1}>
-                      {entry.description}
-                    </Text>
-                    <Text size="xs" c="dimmed" mt={4}>
-                      {formatCurrency(entry.totalDebit)}
-                    </Text>
-                  </Paper>
-                ))}
-              </Stack>
-            ) : (
-              <div className="flex items-center justify-center h-[200px] text-gray-500">
-                No entries yet
-              </div>
-            )}
-          </Card>
-        </Grid.Col>
-      </Grid>
+        <Card withBorder padding="md" className="p-4 sm:p-6">
+          <div className="flex justify-between items-center mb-4">
+            <Text size="lg" fw={600}>Recent Entries</Text>
+            <Button
+              component={Link}
+              href="/dashboard/accounting/journal-entries"
+              variant="subtle"
+              size="xs"
+              rightSection={<IconArrowRight size={14} />}
+            >
+              View All
+            </Button>
+          </div>
+          
+          {dashboard?.recentEntries && dashboard.recentEntries.length > 0 ? (
+            <Stack gap="sm">
+              {dashboard.recentEntries.slice(0, 5).map((entry: JournalEntry) => (
+                <Paper key={entry.id} withBorder p="sm">
+                  <Group justify="space-between" mb={4}>
+                    <Text size="sm" fw={500}>{entry.entryNumber}</Text>
+                    <Badge size="xs" color={getStatusColor(entry.status)}>
+                      {entry.status}
+                    </Badge>
+                  </Group>
+                  <Text size="xs" c="dimmed" lineClamp={1}>
+                    {entry.description}
+                  </Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    {formatCurrency(entry.totalDebit)}
+                  </Text>
+                </Paper>
+              ))}
+            </Stack>
+          ) : (
+            <div className="flex items-center justify-center h-[200px] text-gray-500">
+              No entries yet
+            </div>
+          )}
+        </Card>
+      </div>
 
       {/* Navigation Cards */}
       <Text size="lg" fw={600} mb="md">Accounting Modules</Text>
-      <Grid>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {reportCards.map((card) => (
-          <Grid.Col key={card.title} span={{ base: 12, sm: 6, lg: 4 }}>
-            <Card
-              withBorder
-              padding="lg"
-              component={Link}
-              href={card.href}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-            >
-              <Group justify="space-between" mb="md">
-                <ThemeIcon size="xl" radius="md" variant="light" color={card.color}>
-                  {card.icon}
-                </ThemeIcon>
-                <IconArrowRight size={20} className="text-gray-400" />
-              </Group>
-              <Text size="lg" fw={600}>
-                {card.title}
-              </Text>
-              <Text size="sm" c="dimmed">
-                {card.description}
-              </Text>
-            </Card>
-          </Grid.Col>
+          <Card
+            key={card.title}
+            withBorder
+            padding="lg"
+            component={Link}
+            href={card.href}
+            className="hover:shadow-lg transition-shadow cursor-pointer p-4 sm:p-6"
+          >
+            <Group justify="space-between" mb="md">
+              <ThemeIcon size="xl" radius="md" variant="light" color={card.color}>
+                {card.icon}
+              </ThemeIcon>
+              <IconArrowRight size={20} className="text-gray-400" />
+            </Group>
+            <Text size="lg" fw={600}>
+              {card.title}
+            </Text>
+            <Text size="sm" c="dimmed">
+              {card.description}
+            </Text>
+          </Card>
         ))}
-      </Grid>
+      </div>
     </div>
   );
 }
