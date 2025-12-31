@@ -1,0 +1,20 @@
+# Netlify Configuration for Multi-Tenant Subdomains
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Handle all subdomain requests
+[[redirects]]
+  from = "/*"
+  to = "/:splat"
+  status = 200
+  force = false
+  
+# Ensure Next.js handles all routes
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
