@@ -185,23 +185,23 @@ export default function ApplyForLoanPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
           <IconArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
             Apply for Loan
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Complete the form to submit your loan application</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Complete the form to submit your loan application</p>
         </div>
       </div>
 
       {/* Eligibility Info */}
       {eligibility && eligibility.reasons.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-          <p className="font-medium text-amber-800 dark:text-amber-200 mb-2">Eligibility Notes:</p>
-          <ul className="list-disc list-inside text-sm text-amber-700 dark:text-amber-300">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4">
+          <p className="font-medium text-amber-800 dark:text-amber-200 mb-2 text-sm sm:text-base">Eligibility Notes:</p>
+          <ul className="list-disc list-inside text-xs sm:text-sm text-amber-700 dark:text-amber-300">
             {eligibility.reasons.map((reason, i) => <li key={i}>{reason}</li>)}
           </ul>
         </div>
@@ -210,28 +210,28 @@ export default function ApplyForLoanPage() {
       {/* Stepper */}
       <Stepper active={activeStep} onStepClick={setActiveStep}>
         <Stepper.Step label="Select Product" description="Choose loan type" icon={<IconWallet size={18} />}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-4">
-            <h3 className="text-lg font-semibold mb-4">Select a Loan Product</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mt-4">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Select a Loan Product</h3>
             {loanProducts.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
                 {loanProducts.map((product) => (
                   <div
                     key={product.id}
                     onClick={() => handleProductChange(product.id.toString())}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    className={`p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       formData.loanProductId === product.id.toString()
                         ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
                         : 'border-gray-200 dark:border-gray-700 hover:border-teal-300'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold">{product.name}</h4>
+                      <h4 className="font-semibold text-sm sm:text-base">{product.name}</h4>
                       {formData.loanProductId === product.id.toString() && (
                         <IconCheck className="text-teal-500" size={20} />
                       )}
                     </div>
-                    {product.description && <p className="text-sm text-gray-500 mb-3">{product.description}</p>}
-                    <div className="space-y-1 text-sm">
+                    {product.description && <p className="text-xs sm:text-sm text-gray-500 mb-3">{product.description}</p>}
+                    <div className="space-y-1 text-xs sm:text-sm">
                       <p><span className="text-gray-500">Amount:</span> {formatCurrency(product.minAmount)} - {formatCurrency(product.maxAmount)}</p>
                       <p><span className="text-gray-500">Interest:</span> {product.interestRate}% ({product.interestType.replace(/_/g, ' ')})</p>
                       <p><span className="text-gray-500">Tenure:</span> {product.minTenureMonths} - {product.maxTenureMonths} months</p>
@@ -243,13 +243,14 @@ export default function ApplyForLoanPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <IconWallet size={48} className="mx-auto text-gray-400 mb-4" />
-                <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No Loan Products Available</h4>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
+              <div className="text-center py-8 sm:py-12">
+                <IconWallet size={40} className="mx-auto text-gray-400 mb-4 sm:hidden" />
+                <IconWallet size={48} className="mx-auto text-gray-400 mb-4 hidden sm:block" />
+                <h4 className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No Loan Products Available</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   There are no active loan products configured for your association yet.
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-400">
                   Please contact your administrator or treasurer to set up loan products.
                 </p>
               </div>
@@ -258,20 +259,20 @@ export default function ApplyForLoanPage() {
         </Stepper.Step>
 
         <Stepper.Step label="Loan Details" description="Amount & tenure" icon={<IconCalculator size={18} />}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-4">
-            <h3 className="text-lg font-semibold mb-4">Enter Loan Details</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mt-4">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Enter Loan Details</h3>
             
             {selectedProduct && (
-              <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <p className="font-medium">{selectedProduct.name}</p>
-                <p className="text-sm text-gray-500">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <p className="font-medium text-sm sm:text-base">{selectedProduct.name}</p>
+                <p className="text-xs sm:text-sm text-gray-500">
                   {formatCurrency(selectedProduct.minAmount)} - {formatCurrency(selectedProduct.maxAmount)} | 
                   {selectedProduct.minTenureMonths} - {selectedProduct.maxTenureMonths} months
                 </p>
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               <NumberInput
                 label="Loan Amount"
                 placeholder="Enter amount"
@@ -295,26 +296,26 @@ export default function ApplyForLoanPage() {
             </div>
 
             {calculations && (
-              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center gap-2">
+              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center gap-2 text-sm sm:text-base">
                   <IconCalculator size={18} /> Loan Calculator
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Monthly Payment</p>
-                    <p className="text-lg font-bold text-blue-600">{formatCurrency(calculations.monthlyRepayment.toFixed(2))}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">Monthly Payment</p>
+                    <p className="text-base sm:text-lg font-bold text-blue-600">{formatCurrency(calculations.monthlyRepayment.toFixed(2))}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Interest</p>
-                    <p className="text-lg font-bold text-amber-600">{formatCurrency(calculations.totalInterest.toFixed(2))}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">Total Interest</p>
+                    <p className="text-base sm:text-lg font-bold text-amber-600">{formatCurrency(calculations.totalInterest.toFixed(2))}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Processing Fee</p>
-                    <p className="text-lg font-bold text-gray-600">{formatCurrency(calculations.processingFee.toFixed(2))}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">Processing Fee</p>
+                    <p className="text-base sm:text-lg font-bold text-gray-600">{formatCurrency(calculations.processingFee.toFixed(2))}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Repayment</p>
-                    <p className="text-lg font-bold text-green-600">{formatCurrency(calculations.totalRepayment.toFixed(2))}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">Total Repayment</p>
+                    <p className="text-base sm:text-lg font-bold text-green-600">{formatCurrency(calculations.totalRepayment.toFixed(2))}</p>
                   </div>
                 </div>
               </div>
@@ -323,8 +324,8 @@ export default function ApplyForLoanPage() {
         </Stepper.Step>
 
         <Stepper.Step label="Purpose & Guarantors" description="Additional info" icon={<IconUsers size={18} />}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-4">
-            <h3 className="text-lg font-semibold mb-4">Purpose & Guarantors</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mt-4">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Purpose & Guarantors</h3>
             
             <div className="space-y-4">
               <Textarea
@@ -366,47 +367,47 @@ export default function ApplyForLoanPage() {
         </Stepper.Step>
 
         <Stepper.Step label="Review & Submit" description="Confirm details" icon={<IconFileAnalytics size={18} />}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-4">
-            <h3 className="text-lg font-semibold mb-4">Review Your Application</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mt-4">
+            <h3 className="text-base sm:text-lg font-semibold mb-4">Review Your Application</h3>
             
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <h4 className="font-medium mb-2">Loan Product</h4>
-                <p className="text-lg">{selectedProduct?.name}</p>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <h4 className="font-medium mb-2 text-sm sm:text-base">Loan Product</h4>
+                <p className="text-base sm:text-lg">{selectedProduct?.name}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <p className="text-sm text-gray-500">Loan Amount</p>
-                  <p className="text-xl font-bold text-blue-600">{formatCurrency(formData.amount || 0)}</p>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs sm:text-sm text-gray-500">Loan Amount</p>
+                  <p className="text-lg sm:text-xl font-bold text-blue-600">{formatCurrency(formData.amount || 0)}</p>
                 </div>
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <p className="text-sm text-gray-500">Tenure</p>
-                  <p className="text-xl font-bold">{formData.tenureMonths} months</p>
+                <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs sm:text-sm text-gray-500">Tenure</p>
+                  <p className="text-lg sm:text-xl font-bold">{formData.tenureMonths} months</p>
                 </div>
               </div>
 
               {calculations && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <p className="text-sm text-gray-500">Monthly Payment</p>
-                    <p className="text-xl font-bold text-green-600">{formatCurrency(calculations.monthlyRepayment.toFixed(2))}</p>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <p className="text-xs sm:text-sm text-gray-500">Monthly Payment</p>
+                    <p className="text-lg sm:text-xl font-bold text-green-600">{formatCurrency(calculations.monthlyRepayment.toFixed(2))}</p>
                   </div>
-                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                    <p className="text-sm text-gray-500">Total Repayment</p>
-                    <p className="text-xl font-bold text-amber-600">{formatCurrency(calculations.totalRepayment.toFixed(2))}</p>
+                  <div className="p-3 sm:p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                    <p className="text-xs sm:text-sm text-gray-500">Total Repayment</p>
+                    <p className="text-lg sm:text-xl font-bold text-amber-600">{formatCurrency(calculations.totalRepayment.toFixed(2))}</p>
                   </div>
                 </div>
               )}
 
-              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <h4 className="font-medium mb-2">Purpose</h4>
-                <p>{formData.purpose || 'Not specified'}</p>
+              <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <h4 className="font-medium mb-2 text-sm sm:text-base">Purpose</h4>
+                <p className="text-sm sm:text-base">{formData.purpose || 'Not specified'}</p>
               </div>
 
               {formData.guarantorIds.length > 0 && (
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <h4 className="font-medium mb-2">Guarantors ({formData.guarantorIds.length})</h4>
+                <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <h4 className="font-medium mb-2 text-sm sm:text-base">Guarantors ({formData.guarantorIds.length})</h4>
                   <div className="flex flex-wrap gap-2">
                     {formData.guarantorIds.map(id => {
                       const member = members.find(m => m.id.toString() === id);

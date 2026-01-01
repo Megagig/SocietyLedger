@@ -102,52 +102,53 @@ export default function LoanProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Loan Products
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Configure loan types and terms</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Configure loan types and terms</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all">
+        <button onClick={openCreate} className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto">
           <IconPlus size={20} />
           Add Product
         </button>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
             <TextInput placeholder="Search products..." leftSection={<IconSearch size={16} />} value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
           </div>
-          <Button onClick={handleSearch}>Search</Button>
+          <Button onClick={handleSearch} className="w-full sm:w-auto">Search</Button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
         {products.length === 0 ? (
-          <div className="col-span-full bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-            <IconReceipt size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Loan Products</h3>
-            <p className="text-gray-500 mb-4">Create your first loan product to start accepting loan applications.</p>
+          <div className="col-span-full bg-white dark:bg-gray-800 rounded-lg shadow p-8 sm:p-12 text-center">
+            <IconReceipt size={40} className="mx-auto text-gray-400 mb-4 sm:hidden" />
+            <IconReceipt size={48} className="mx-auto text-gray-400 mb-4 hidden sm:block" />
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No Loan Products</h3>
+            <p className="text-sm sm:text-base text-gray-500 mb-4">Create your first loan product to start accepting loan applications.</p>
             <Button onClick={openCreate} leftSection={<IconPlus size={16} />}>Add Product</Button>
           </div>
         ) : (
           products.map((product) => (
-            <div key={product.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
+            <div key={product.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <IconReceipt className="text-blue-600" size={20} />
+                    <IconReceipt className="text-blue-600" size={18} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{product.name}</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">{product.name}</h3>
                     <Badge color={product.isActive ? 'green' : 'gray'} size="sm">{product.isActive ? 'Active' : 'Inactive'}</Badge>
                   </div>
                 </div>
               </div>
-              {product.description && <p className="text-sm text-gray-500 mb-4">{product.description}</p>}
-              <div className="space-y-2 text-sm">
+              {product.description && <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 line-clamp-2">{product.description}</p>}
+              <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Amount Range:</span><span className="font-medium">{formatCurrency(product.minAmount)} - {formatCurrency(product.maxAmount)}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Interest Rate:</span><span className="font-medium">{product.interestRate}% ({product.interestType})</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Tenure:</span><span className="font-medium">{product.minTenureMonths} - {product.maxTenureMonths} months</span></div>

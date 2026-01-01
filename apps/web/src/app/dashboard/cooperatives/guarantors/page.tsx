@@ -87,48 +87,49 @@ export default function GuarantorsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           Guarantor Requests
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">Review and respond to loan guarantor requests</p>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Review and respond to loan guarantor requests</p>
       </div>
 
       {requests.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-          <IconUsers size={48} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Pending Requests</h3>
-          <p className="text-gray-500">You don't have any pending guarantor requests at this time.</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 sm:p-12 text-center">
+          <IconUsers size={40} className="mx-auto text-gray-400 mb-4 sm:hidden" />
+          <IconUsers size={48} className="mx-auto text-gray-400 mb-4 hidden sm:block" />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No Pending Requests</h3>
+          <p className="text-sm sm:text-base text-gray-500">You don't have any pending guarantor requests at this time.</p>
         </div>
       ) : (
         <div className="grid gap-4">
           {requests.map((request) => (
-            <div key={request.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                    <IconUsers className="text-purple-600" size={24} />
+            <div key={request.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex-shrink-0">
+                    <IconUsers className="text-purple-600" size={20} />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
                       {request.loanApplication.member.firstName} {request.loanApplication.member.lastName}
                     </h3>
-                    <p className="text-sm text-gray-500">{request.loanApplication.member.membershipId}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">{request.loanApplication.member.membershipId}</p>
                     <div className="mt-2 space-y-1">
-                      <p className="text-sm"><span className="text-gray-500">Loan Product:</span> {request.loanApplication.loanProduct.name}</p>
-                      <p className="text-sm"><span className="text-gray-500">Loan Amount:</span> <span className="font-semibold">{formatCurrency(request.loanApplication.amount)}</span></p>
-                      <p className="text-sm"><span className="text-gray-500">Your Guarantee:</span> <span className="font-semibold text-purple-600">{formatCurrency(request.guaranteedAmount)}</span></p>
-                      <p className="text-sm"><span className="text-gray-500">Purpose:</span> {request.loanApplication.purpose}</p>
-                      <p className="text-sm text-gray-500">Requested on {formatDate(request.createdAt)}</p>
+                      <p className="text-xs sm:text-sm"><span className="text-gray-500">Loan Product:</span> {request.loanApplication.loanProduct.name}</p>
+                      <p className="text-xs sm:text-sm"><span className="text-gray-500">Loan Amount:</span> <span className="font-semibold">{formatCurrency(request.loanApplication.amount)}</span></p>
+                      <p className="text-xs sm:text-sm"><span className="text-gray-500">Your Guarantee:</span> <span className="font-semibold text-purple-600">{formatCurrency(request.guaranteedAmount)}</span></p>
+                      <p className="text-xs sm:text-sm line-clamp-2"><span className="text-gray-500">Purpose:</span> {request.loanApplication.purpose}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Requested on {formatDate(request.createdAt)}</p>
                     </div>
                   </div>
                 </div>
-                <Badge color="yellow">Pending</Badge>
+                <Badge color="yellow" className="self-start sm:self-auto">Pending</Badge>
               </div>
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Button variant="outline" color="red" leftSection={<IconX size={16} />} onClick={() => openResponseModal(request, 'decline')}>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button variant="outline" color="red" leftSection={<IconX size={16} />} onClick={() => openResponseModal(request, 'decline')} className="w-full sm:w-auto">
                   Decline
                 </Button>
-                <Button color="green" leftSection={<IconCheck size={16} />} onClick={() => openResponseModal(request, 'accept')}>
+                <Button color="green" leftSection={<IconCheck size={16} />} onClick={() => openResponseModal(request, 'accept')} className="w-full sm:w-auto">
                   Accept
                 </Button>
               </div>

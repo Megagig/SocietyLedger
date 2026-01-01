@@ -112,29 +112,30 @@ export default function MyLoansPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             My Loans
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">View your loans and make repayments</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">View your loans and make repayments</p>
         </div>
-        <Button onClick={() => router.push('/dashboard/cooperatives/apply')} leftSection={<IconWallet size={16} />}>
+        <Button onClick={() => router.push('/dashboard/cooperatives/apply')} leftSection={<IconWallet size={16} />} className="w-full sm:w-auto">
           Apply for Loan
         </Button>
       </div>
 
       {/* Outstanding Balance Card */}
       {profile?.totalOutstandingLoans && Number(profile.totalOutstandingLoans) > 0 && (
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg shadow-lg p-4 sm:p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100">Total Outstanding Balance</p>
-              <p className="text-4xl font-bold mt-2">{formatCurrency(profile.totalOutstandingLoans)}</p>
-              <p className="text-blue-100 mt-1">{profile.activeLoans?.length || 0} active loan(s)</p>
+              <p className="text-sm sm:text-base text-blue-100">Total Outstanding Balance</p>
+              <p className="text-2xl sm:text-4xl font-bold mt-2">{formatCurrency(profile.totalOutstandingLoans)}</p>
+              <p className="text-sm sm:text-base text-blue-100 mt-1">{profile.activeLoans?.length || 0} active loan(s)</p>
             </div>
-            <div className="p-4 bg-white/20 rounded-full">
-              <IconWallet size={40} />
+            <div className="p-3 sm:p-4 bg-white/20 rounded-full">
+              <IconWallet size={32} className="sm:hidden" />
+              <IconWallet size={40} className="hidden sm:block" />
             </div>
           </div>
         </div>
@@ -151,19 +152,19 @@ export default function MyLoansPage() {
       ) : (
         <div className="space-y-4">
           {profile.activeLoans.map((loan) => (
-            <div key={loan.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="flex items-start justify-between mb-4">
+            <div key={loan.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                 <div>
-                  <div className="flex items-center gap-3">
-                    <p className="font-mono text-lg font-semibold text-gray-900 dark:text-white">{loan.loanNumber}</p>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <p className="font-mono text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{loan.loanNumber}</p>
                     <Badge color={getStatusColor(loan.status)}>{loan.status.replace(/_/g, ' ')}</Badge>
                   </div>
-                  <p className="text-gray-500">{loan.loanProduct.name}</p>
+                  <p className="text-sm sm:text-base text-gray-500">{loan.loanProduct.name}</p>
                 </div>
                 {loan.status === 'OVERDUE' && (
                   <div className="flex items-center gap-2 text-red-600">
-                    <IconAlertTriangle size={20} />
-                    <span className="font-medium">Payment Overdue</span>
+                    <IconAlertTriangle size={18} />
+                    <span className="text-sm sm:text-base font-medium">Payment Overdue</span>
                   </div>
                 )}
               </div>
@@ -181,50 +182,50 @@ export default function MyLoansPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y border-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 py-4 border-y border-gray-200 dark:border-gray-700">
                 <div>
-                  <p className="text-sm text-gray-500">Principal</p>
-                  <p className="font-semibold">{formatCurrency(loan.principalAmount)}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Principal</p>
+                  <p className="text-sm sm:text-base font-semibold">{formatCurrency(loan.principalAmount)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Outstanding</p>
-                  <p className="font-semibold text-red-600">{formatCurrency(loan.outstandingBalance)}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Outstanding</p>
+                  <p className="text-sm sm:text-base font-semibold text-red-600">{formatCurrency(loan.outstandingBalance)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Monthly Payment</p>
-                  <p className="font-semibold">{formatCurrency(loan.monthlyRepayment)}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Monthly Payment</p>
+                  <p className="text-sm sm:text-base font-semibold">{formatCurrency(loan.monthlyRepayment)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Maturity Date</p>
-                  <p className="font-semibold">{formatDate(loan.maturityDate)}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Maturity Date</p>
+                  <p className="text-sm sm:text-base font-semibold">{formatDate(loan.maturityDate)}</p>
                 </div>
               </div>
 
               {loan.nextPaymentDate && loan.status === 'ACTIVE' && (
-                <div className="flex items-center justify-between mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <IconCalendar className="text-blue-600" size={20} />
+                    <IconCalendar className="text-blue-600 flex-shrink-0" size={20} />
                     <div>
-                      <p className="text-sm text-gray-500">Next Payment Due</p>
-                      <p className="font-medium">{formatDate(loan.nextPaymentDate)} - {formatCurrency(loan.nextPaymentAmount)}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Next Payment Due</p>
+                      <p className="text-sm sm:text-base font-medium">{formatDate(loan.nextPaymentDate)} - {formatCurrency(loan.nextPaymentAmount)}</p>
                     </div>
                   </div>
-                  <Button color="green" onClick={() => { setSelectedLoan(loan); setRepaymentData({ ...repaymentData, amount: loan.nextPaymentAmount }); openRepayment(); }}>
+                  <Button color="green" onClick={() => { setSelectedLoan(loan); setRepaymentData({ ...repaymentData, amount: loan.nextPaymentAmount }); openRepayment(); }} className="w-full sm:w-auto">
                     Pay Now
                   </Button>
                 </div>
               )}
 
               {loan.status === 'OVERDUE' && (
-                <div className="flex items-center justify-between mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <IconAlertTriangle className="text-red-600" size={20} />
+                    <IconAlertTriangle className="text-red-600 flex-shrink-0" size={20} />
                     <div>
-                      <p className="text-sm text-red-600 font-medium">Payment Overdue!</p>
-                      <p className="text-sm text-gray-500">Please make a payment as soon as possible</p>
+                      <p className="text-xs sm:text-sm text-red-600 font-medium">Payment Overdue!</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Please make a payment as soon as possible</p>
                     </div>
                   </div>
-                  <Button color="red" onClick={() => { setSelectedLoan(loan); openRepayment(); }}>
+                  <Button color="red" onClick={() => { setSelectedLoan(loan); openRepayment(); }} className="w-full sm:w-auto">
                     Make Payment
                   </Button>
                 </div>
