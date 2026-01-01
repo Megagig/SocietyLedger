@@ -162,17 +162,86 @@ export class AssociationsController {
       }
 
       const plan = await prisma.plan.findUnique({ where: { code: input.planCode } });
-      if (!plan) return res.status(400).json({ success: false, message: 'Invalid plan' });
+      if (!plan) {
+        console.error('❌ Plan not found:', input.planCode, '- Database may need seeding. Run: npx prisma db seed');
+        return res.status(500).json({ 
+          success: false, 
+          message: 'System configuration error. Please contact support.',
+          error: 'PLAN_NOT_FOUND'
+        });
+      }
 
       // Import auth service for verification
       const { generateVerificationCode, hashToken, sendVerificationEmail } = await import('../auth/auth.service');
+      
+      // Pre-fetch all permissions needed (outside transaction for speed)
+      const rolePermissionMap: Record<string, string[]> = {
+        admin: [
+          "members.view", "members.view_all", "members.create", "members.edit", "members.edit_all", 
+          "members.disable", "members.bulk_import", "members.manage_roles",
+          "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.reverse", 
+          "ledger.export", "ledger.view_member_statement",
+          "payments.view", "payments.view_all", "payments.manual_create", "payments.approve", "payments.delete",
+          "reports.generate", "reports.export", "reports.financial_summary",
+          "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
+          "settings.view", "settings.edit", "settings.billing", "settings.integrations",
+          "audit.view", "audit.export"
+        ],
+        treasurer: [
+          "members.view", "members.view_all",
+          "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export", 
+          "ledger.view_member_statement",
+          "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
+          "reports.generate", "reports.export", "reports.financial_summary",
+          "settings.view"
+        ],
+        secretary: [
+          "members.view", "members.view_all",
+          "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
+          "payments.view", "payments.view_all", "payments.manual_create",
+          "reports.generate", "reports.export", "reports.financial_summary",
+          "settings.view"
+        ],
+        member: [
+          "members.view", "members.view_own", "members.edit_own",
+          "ledger.view", "ledger.view_own",
+          "payments.view", "payments.view_own",
+          "reports.generate"
+        ]
+      };
+
+      // Get all unique permission keys
+      const allPermissionKeys = [...new Set(Object.values(rolePermissionMap).flat())];
+      
+      // Fetch all permissions at once (outside transaction)
+      const allPermissions = await prisma.permission.findMany({
+        where: { key: { in: allPermissionKeys } }
+      });
+      
+      if (allPermissions.length === 0) {
+        console.error('❌ No permissions found in database - Database may need seeding. Run: npx prisma db seed');
+        return res.status(500).json({ 
+          success: false, 
+          message: 'System configuration error. Please contact support.',
+          error: 'PERMISSIONS_NOT_SEEDED'
+        });
+      }
+
+      // Create permission lookup map
+      const permissionMap = new Map(allPermissions.map(p => [p.key, p.id]));
+      
+      // Hash password outside transaction
+      const bcrypt = (await import('bcryptjs')).default;
+      const passwordHash = await bcrypt.hash(input.admin.password, 12);
       
       // Generate verification code
       const verificationCode = generateVerificationCode();
       const hashedCode = hashToken(verificationCode);
       const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
+      // Run transaction with extended timeout (30 seconds)
       const result = await prisma.$transaction(async (tx) => {
+        // 1. Create association
         const assoc = await tx.association.create({
           data: {
             name: input.association.name,
@@ -185,6 +254,7 @@ export class AssociationsController {
           },
         });
 
+        // 2. Create subscription
         await tx.subscription.create({
           data: {
             associationId: assoc.id,
@@ -198,75 +268,16 @@ export class AssociationsController {
           },
         });
 
-        // Create default RBAC roles for the association with permissions
-        // Permission mappings from RBAC seed
-        const rolePermissionMap: Record<string, string[]> = {
-          admin: [
-            "members.view", "members.view_all", "members.create", "members.edit", "members.edit_all", 
-            "members.disable", "members.bulk_import", "members.manage_roles",
-            "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.reverse", 
-            "ledger.export", "ledger.view_member_statement",
-            "payments.view", "payments.view_all", "payments.manual_create", "payments.approve", "payments.delete",
-            "reports.generate", "reports.export", "reports.financial_summary",
-            "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
-            "settings.view", "settings.edit", "settings.billing", "settings.integrations",
-            "audit.view", "audit.export"
-          ],
-          treasurer: [
-            "members.view", "members.view_all",
-            "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export", 
-            "ledger.view_member_statement",
-            "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
-            "reports.generate", "reports.export", "reports.financial_summary",
-            "settings.view"
-          ],
-          secretary: [
-            "members.view", "members.view_all",
-            "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
-            "payments.view", "payments.view_all", "payments.manual_create",
-            "reports.generate", "reports.export", "reports.financial_summary",
-            "settings.view"
-          ],
-          member: [
-            "members.view", "members.view_own", "members.edit_own",
-            "ledger.view", "ledger.view_own",
-            "payments.view", "payments.view_own",
-            "reports.generate"
-          ]
-        };
-
-        // Create admin role
-        const adminRole = await tx.role.create({
-          data: {
-            name: 'admin',
-            displayName: 'Administrator',
-            description: 'Full administrative access',
-            associationId: assoc.id,
-            isSystemRole: true,
-          },
-        });
-
-        // Assign permissions to admin role
-        const adminPermissions = await tx.permission.findMany({
-          where: { key: { in: rolePermissionMap.admin } }
-        });
-        for (const permission of adminPermissions) {
-          await tx.rolePermission.create({
-            data: {
-              roleId: adminRole.id,
-              permissionId: permission.id,
-            },
-          });
-        }
-
-        // Create other roles with permissions
-        const otherRoles = [
+        // 3. Create all roles at once
+        const rolesToCreate = [
+          { name: 'admin', displayName: 'Administrator', description: 'Full administrative access' },
           { name: 'treasurer', displayName: 'Treasurer', description: 'Financial management' },
           { name: 'secretary', displayName: 'Secretary', description: 'Record keeping and communications' },
           { name: 'member', displayName: 'Member', description: 'Basic member access' },
         ];
 
-        for (const roleData of otherRoles) {
+        const createdRoles: { id: number; name: string }[] = [];
+        for (const roleData of rolesToCreate) {
           const role = await tx.role.create({
             data: {
               name: roleData.name,
@@ -276,53 +287,65 @@ export class AssociationsController {
               isSystemRole: true,
             },
           });
+          createdRoles.push({ id: role.id, name: role.name });
+        }
 
-          // Assign permissions to role
-          const permissions = await tx.permission.findMany({
-            where: { key: { in: rolePermissionMap[roleData.name] } }
-          });
-          for (const permission of permissions) {
-            await tx.rolePermission.create({
-              data: {
-                roleId: role.id,
-                permissionId: permission.id,
-              },
-            });
+        // 4. Batch create all role permissions using createMany
+        const rolePermissionsToCreate: { roleId: number; permissionId: number }[] = [];
+        for (const role of createdRoles) {
+          const permissionKeys = rolePermissionMap[role.name] || [];
+          for (const key of permissionKeys) {
+            const permissionId = permissionMap.get(key);
+            if (permissionId) {
+              rolePermissionsToCreate.push({ roleId: role.id, permissionId });
+            }
           }
         }
 
-        const passwordHash = await (await import('bcryptjs')).default.hash(input.admin.password, 12);
+        if (rolePermissionsToCreate.length > 0) {
+          await tx.rolePermission.createMany({
+            data: rolePermissionsToCreate,
+            skipDuplicates: true,
+          });
+        }
+
+        // 5. Create user
         const user = await tx.user.create({
           data: {
             associationId: assoc.id,
             email: input.admin.email.toLowerCase(),
             passwordHash,
             role: 'admin',
-            isActive: false, // Not active until email verified and super admin approves
-            emailVerified: false, // Requires email verification
+            isActive: false,
+            emailVerified: false,
             verificationCode: hashedCode,
             verificationExpiresAt,
-            userApproval: { create: { approvalStatus: 'pending' } }, // Pending super admin approval
+            userApproval: { create: { approvalStatus: 'pending' } },
           },
         });
 
-        // Assign Admin role to the creator
-        await tx.userRole.create({
-          data: {
-            userId: user.id,
-            roleId: adminRole.id,
-            associationId: assoc.id,
-            assignedBy: user.id, // Self-assigned
-          },
-        });
+        // 6. Assign Admin role to the creator
+        const adminRole = createdRoles.find(r => r.name === 'admin');
+        if (adminRole) {
+          await tx.userRole.create({
+            data: {
+              userId: user.id,
+              roleId: adminRole.id,
+              associationId: assoc.id,
+              assignedBy: user.id,
+            },
+          });
+        }
 
         return { assoc, user };
+      }, {
+        maxWait: 10000, // 10 seconds max wait to acquire connection
+        timeout: 30000, // 30 seconds transaction timeout
       });
 
-      // Send verification email
+      // Send verification email (outside transaction)
       try {
         console.log('📧 Attempting to send verification email to:', input.admin.email);
-        console.log('📧 Verification code:', verificationCode);
         await sendVerificationEmail(
           input.admin.email,
           verificationCode,
@@ -351,11 +374,22 @@ export class AssociationsController {
         },
         message: 'Association created. Please check your email for a verification code.',
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
       }
-      console.error('Association signup error:', error);
+      console.error('❌ Association signup error:', error?.message || error);
+      console.error('Full error stack:', error?.stack);
+      
+      // Provide more specific error messages for common issues
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('Unique constraint') || errorMessage.includes('unique')) {
+        return res.status(409).json({ success: false, message: 'An association with this subdomain or slug already exists' });
+      }
+      if (errorMessage.includes('Foreign key constraint')) {
+        return res.status(500).json({ success: false, message: 'System configuration error. Please contact support.' });
+      }
+      
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
