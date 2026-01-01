@@ -87,22 +87,22 @@ export default function MembersAccessPage() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl p-4 sm:p-0">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <Users className="w-6 h-6 text-teal-600" />
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Users className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" />
           Members Access Settings
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
           Configure how members can join and access your association
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Self-Registration */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Self-Registration
           </h2>
           
@@ -170,8 +170,8 @@ export default function MembersAccessPage() {
         </div>
 
         {/* Role Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Role Settings
           </h2>
           
@@ -217,8 +217,8 @@ export default function MembersAccessPage() {
         </div>
 
         {/* Invite Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Invite Settings
           </h2>
           
@@ -243,8 +243,8 @@ export default function MembersAccessPage() {
         </div>
 
         {/* Member ID Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Member ID Settings
           </h2>
           
@@ -299,16 +299,16 @@ export default function MembersAccessPage() {
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
           {hasChanges && (
-            <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
+            <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1">
               Unsaved changes
             </span>
           )}
           <button
             type="submit"
             disabled={!hasChanges || updateMutation.isPending}
-            className="px-6 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+            className="w-full sm:w-auto px-6 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
           >
             {updateMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />

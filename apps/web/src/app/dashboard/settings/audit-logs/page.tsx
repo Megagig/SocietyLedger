@@ -95,35 +95,35 @@ export default function AuditLogsPage() {
   }
 
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-6xl p-4 sm:p-0">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <FileText className="w-6 h-6 text-teal-600" />
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" />
           Audit Logs
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
           View all activity and changes in your association
         </p>
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-row gap-3 sm:gap-4">
+          <div className="sm:col-span-2 md:flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by user or action..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
             />
           </div>
           <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
           >
             <option value="">All Actions</option>
             <option value="CREATE">Create</option>
@@ -136,7 +136,7 @@ export default function AuditLogsPage() {
           <select
             value={tableFilter}
             onChange={(e) => setTableFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
           >
             <option value="">All Tables</option>
             <option value="users">Users</option>
@@ -146,7 +146,7 @@ export default function AuditLogsPage() {
             <option value="settings">Settings</option>
             <option value="roles">Roles</option>
           </select>
-          <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2">
+          <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2 text-sm">
             <Download className="w-4 h-4" />
             Export
           </button>
@@ -155,7 +155,42 @@ export default function AuditLogsPage() {
 
       {/* Logs Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {data?.logs.map((log) => (
+            <div key={log.id} className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getActionColor(log.action)}`}>
+                  {formatAction(log.action)}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {format(new Date(log.createdAt), 'MMM d, HH:mm')}
+                </span>
+              </div>
+              <div className="text-sm text-gray-900 dark:text-white font-medium">
+                {getUserName(log)}
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Table: {log.tableName}</span>
+                <span className="text-gray-500">ID: {log.recordId || '-'}</span>
+              </div>
+              <button
+                onClick={() => setSelectedLog(log)}
+                className="w-full mt-2 px-3 py-1.5 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <Eye className="w-3 h-3" /> View Details
+              </button>
+            </div>
+          ))}
+          {(!data?.logs || data.logs.length === 0) && (
+            <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+              No audit logs found
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -222,11 +257,11 @@ export default function AuditLogsPage() {
 
         {/* Pagination */}
         {data?.pagination && data.pagination.totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, data.pagination.total)} of {data.pagination.total} entries
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
+              Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, data.pagination.total)} of {data.pagination.total}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
@@ -234,8 +269,8 @@ export default function AuditLogsPage() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Page {page} of {data.pagination.totalPages}
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                {page} / {data.pagination.totalPages}
               </span>
               <button
                 onClick={() => setPage(p => Math.min(data.pagination.totalPages, p + 1))}
