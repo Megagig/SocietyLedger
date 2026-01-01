@@ -19,16 +19,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
     if (savedTheme) {
       setThemeState(savedTheme);
       document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    } else if (prefersDark) {
-      setThemeState('dark');
-      document.documentElement.classList.add('dark');
     } else {
-      // Default to dark if no preference
+      // Default to dark mode for new users (no saved preference)
+      setThemeState('dark');
       document.documentElement.classList.add('dark');
     }
     
