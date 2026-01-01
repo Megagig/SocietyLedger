@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from '@/lib/toast';
 import { ArrowLeft, Save } from 'lucide-react';
+import { apiGet, apiPatch } from '@/utils/api';
 
 export default function EditMemberPage() {
   const router = useRouter();
@@ -42,11 +43,8 @@ export default function EditMemberPage() {
   const fetchMember = async () => {
     setIsFetching(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`,
-        {
-          credentials: 'include',
-        }
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`
       );
 
       if (!response.ok) {
@@ -104,16 +102,9 @@ export default function EditMemberPage() {
     setError('');
 
     try {
-      const response = await fetch(
+      const response = await apiPatch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(formData),
-        }
+        formData
       );
 
       const data = await response.json();
