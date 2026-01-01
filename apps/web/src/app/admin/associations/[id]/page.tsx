@@ -53,7 +53,7 @@ type AuditLog = {
 export default function AssociationDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { token, user } = useAuthStore();
+  const { token, user, setToken, setImpersonation } = useAuthStore();
   const [association, setAssociation] = useState<AssociationDetail | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditLog[]>([]);
@@ -146,7 +146,6 @@ export default function AssociationDetailPage() {
   };
 
   const handleImpersonate = async () => {
-    toast.info('You will be logged in as an admin of this association. Opening in new tab...');
     setActionLoading(true);
 
     try {
@@ -157,10 +156,18 @@ export default function AssociationDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Open in new tab with impersonation token using proper subdomain URL
-        const url = `${getSubdomainUrl(data.data.association.subdomain)}/dashboard?token=${data.data.token}`;
-        window.open(url, '_blank');
-        toast.success('Impersonation session opened in new tab');
+        // Phase 22: Update auth store with impersonation state
+        setToken(data.data.token);
+        setImpersonation({
+          id: data.data.association.id,
+          name: data.data.association.name,
+          subdomain: data.data.association.subdomain,
+        });
+        
+        toast.success(`Now impersonating ${data.data.association.name}`);
+        
+        // Redirect to dashboard in same tab (context indicator will show)
+        router.push('/dashboard');
       } else {
         toast.error(data.message || 'Failed to impersonate');
       }

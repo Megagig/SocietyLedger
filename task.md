@@ -8663,3 +8663,470 @@ Sidebar component                       # Add navigation link
 - [ ] Verify AI audit logging
 - [ ] Test AI graceful degradation (when AI unavailable)
 
+
+---
+
+## Phase 22: Hybrid Super Admin Architecture 🔴 HIGH PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** Multi-tenancy ✅, RBAC ✅, Super Admin Dashboard ✅, Impersonation ✅  
+**Estimated Time:** 4-5 days  
+**Priority:** 🔴 HIGH - Architecture Enhancement  
+**Total Tasks:** 23  
+**Documentation:** `docs/hybrid-super-admin/PLAN.md`, `docs/hybrid-super-admin/TASKS.md`
+
+---
+
+### Overview
+
+Refactor the Super Admin architecture to follow a **Hybrid SaaS Model** where Super Admins are normal users who belong to an association AND also have system-level (platform) privileges, with explicit impersonation when acting on other associations.
+
+### Core Principles
+
+1. **Every Super Admin MUST belong to an association** - Either a real association or a special "Platform/System Association"
+2. **Super Admin has system-level privileges** - Controlled via `platformRole = SUPER_ADMIN`, separate from tenant privileges
+3. **Impersonation remains the ONLY way to act on other associations** - Explicit, logged, reversible
+4. **Zero regressions** - All changes are additive and backward-compatible
+
+### Hard Constraints (MUST NOT VIOLATE)
+
+- ❌ DO NOT remove or rewrite existing impersonation logic
+- ❌ DO NOT change existing tenant admin or member behavior
+- ❌ DO NOT auto-grant cross-association access
+- ❌ DO NOT refactor unrelated modules
+- ❌ DO NOT change existing API contracts unless strictly additive
+
+### Allowed Changes (Safe Enhancements)
+
+- ✅ Add new fields (nullable/optional)
+- ✅ Add middleware (non-blocking, layered)
+- ✅ Add context checks (additive)
+- ✅ Add UI indicators
+- ✅ Add audit metadata
+- ✅ Create new endpoints (additive)
+
+---
+
+### Phase 22.1: Platform Association Setup (4 tasks)
+
+#### TASK-HSA-001: Create Platform Association Model Enhancement
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 2 hours
+
+**Description:** Add `isPlatformAssociation` boolean field to Association model.
+
+**Files to Modify:**
+- `apps/api/prisma/schema.prisma` (ADD field only)
+
+**Schema Change:**
+```prisma
+model Association {
+  // ... existing fields ...
+  isPlatformAssociation Boolean @default(false) @map("is_platform_association")
+}
+```
+
+**Acceptance Criteria:**
+- [ ] New field added to schema
+- [ ] Migration generated and applied
+- [ ] Existing associations unaffected (default = false)
+
+---
+
+#### TASK-HSA-002: Create Platform Association Seed Script
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Create seed script for "Platform" association.
+
+**Files to Create:**
+- `apps/api/prisma/seeds/platform-association.seed.ts`
+
+**Acceptance Criteria:**
+- [ ] Seed creates Platform Association with `isPlatformAssociation = true`
+- [ ] Idempotent (can run multiple times safely)
+- [ ] Platform Association has `subdomain = 'platform'`
+
+---
+
+#### TASK-HSA-003: Migrate Existing Super Admins to Platform Association
+
+**Priority:** 🔴 High | **Risk:** 🟡 Medium | **Est. Time:** 2 hours
+
+**Description:** Attach existing Super Admin users (with `associationId = NULL`) to Platform Association.
+
+**Files to Create:**
+- `apps/api/prisma/migrations/YYYYMMDD_attach_super_admins_to_platform/migration.sql`
+
+**⚠️ REQUIRES MANUAL REVIEW:** Verify count of affected users before running.
+
+**Acceptance Criteria:**
+- [ ] All Super Admins with `associationId = NULL` are updated
+- [ ] Existing Super Admins can still login
+- [ ] Existing Super Admins can still impersonate
+
+---
+
+#### TASK-HSA-004: Update Auth Controller for Platform Association Login
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Enhance login flow for Super Admins via Platform subdomain.
+
+**Files to Modify:**
+- `apps/api/src/modules/auth/auth.controller.ts` (ENHANCE only)
+
+**Acceptance Criteria:**
+- [ ] Super Admins can login via `platform.societyledger.com`
+- [ ] Regular users unaffected
+- [ ] Token includes correct `associationId`
+
+---
+
+### Phase 22.2: Context Awareness Enhancement (6 tasks)
+
+#### TASK-HSA-005: Create Context Types Definition
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Define TypeScript types for context modes.
+
+**Files to Create:**
+- `apps/api/src/types/context.types.ts`
+
+**Types:**
+```typescript
+enum ContextMode { TENANT, SYSTEM, IMPERSONATION }
+interface ExecutionContext { mode, userId, homeAssociationId, currentAssociationId, isImpersonating, ... }
+interface EnhancedTokenPayload { ...existing, isImpersonating?, originalAssociationId?, impersonationTimestamp? }
+```
+
+---
+
+#### TASK-HSA-006: Create Context Service
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 2 hours
+
+**Description:** Service to determine execution context from request.
+
+**Files to Create:**
+- `apps/api/src/services/context.service.ts`
+
+**Methods:**
+- `determineContext(req)` - Returns ExecutionContext
+- `isSystemContext(req)` - Boolean check
+- `isImpersonating(req)` - Boolean check
+- `getHomeAssociationId(req)` - Get original association
+
+---
+
+#### TASK-HSA-007: Extend Token Payload for Context Tracking
+
+**Priority:** 🔴 High | **Risk:** 🟡 Medium | **Est. Time:** 1 hour
+
+**Description:** Add impersonation tracking fields to JWT token payload.
+
+**Files to Modify:**
+- `apps/api/src/lib/auth.ts` (EXTEND TokenPayload interface)
+
+**New Fields (optional for backward compatibility):**
+- `isImpersonating?: boolean`
+- `originalAssociationId?: number`
+- `impersonationTimestamp?: number`
+
+---
+
+#### TASK-HSA-008: Create Context Detection Middleware
+
+**Priority:** 🔴 High | **Risk:** 🟡 Medium | **Est. Time:** 2 hours
+
+**Description:** Middleware to detect and attach execution context (layered, non-blocking).
+
+**Files to Create:**
+- `apps/api/src/middleware/context.middleware.ts`
+
+**Acceptance Criteria:**
+- [ ] Middleware attaches context to request
+- [ ] Non-blocking (errors don't stop request)
+- [ ] Works with existing auth middleware
+
+---
+
+#### TASK-HSA-009: Integrate Context Middleware into Server
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 30 minutes
+
+**Description:** Add context middleware to Express server (after auth middleware).
+
+**Files to Modify:**
+- `apps/api/src/server.ts` or `apps/api/src/app.ts`
+
+---
+
+#### TASK-HSA-010: Add Context Logging to Audit Service
+
+**Priority:** 🟡 Medium | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Enhance audit logging to include execution context.
+
+**Implementation:** Store context in `newValues` JSON field.
+
+---
+
+### Phase 22.3: Impersonation Hardening (4 tasks)
+
+#### TASK-HSA-011: Enhance Impersonation Token Generation
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Add tracking fields to impersonation token.
+
+**Files to Modify:**
+- `apps/api/src/modules/admin/admin.controller.ts` (ENHANCE impersonate method)
+
+**New Token Fields:**
+- `isImpersonating: true`
+- `originalAssociationId: superAdmin.associationId`
+- `impersonationTimestamp: Date.now()`
+
+---
+
+#### TASK-HSA-012: Create End Impersonation Endpoint
+
+**Priority:** 🟡 Medium | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Endpoint to explicitly end impersonation.
+
+**Files to Modify:**
+- `apps/api/src/modules/admin/admin.controller.ts` (ADD endImpersonation method)
+- `apps/api/src/modules/admin/admin.routes.ts` (ADD route)
+
+**Endpoint:** `POST /api/admin/end-impersonation`
+
+**Acceptance Criteria:**
+- [ ] Returns token for home association
+- [ ] Impersonation end is logged
+- [ ] Duration tracked
+
+---
+
+#### TASK-HSA-013: Enhance Impersonation Audit Logging
+
+**Priority:** 🟡 Medium | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Create audit helpers for impersonation context.
+
+**Files to Create:**
+- `apps/api/src/utils/audit-helpers.ts`
+
+**Functions:**
+- `getAuditContext(req)` - Extract audit context
+- `createAuditLogWithContext(req, data)` - Create log with context
+
+---
+
+#### TASK-HSA-014: Add Impersonation Duration Limit (Optional)
+
+**Priority:** 🟢 Low | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Configurable expiry for impersonation tokens.
+
+**Implementation:** Use `IMPERSONATION_EXPIRY` env var (default: 4h).
+
+---
+
+### Phase 22.4: Frontend UX Enhancement (5 tasks)
+
+#### TASK-HSA-015: Create Context Indicator Component
+
+**Priority:** 🟡 Medium | **Risk:** 🟢 Low | **Est. Time:** 2 hours
+
+**Description:** Visual indicator showing current context mode.
+
+**Files to Create:**
+- `apps/web/src/components/layout/ContextIndicator.tsx`
+
+**Features:**
+- Amber banner during impersonation with "End Impersonation" button
+- Blue indicator for Platform Admin mode
+- Only visible to Super Admins
+
+---
+
+#### TASK-HSA-016: Extend Auth Store for Context State
+
+**Priority:** 🔴 High | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Add impersonation tracking to Zustand auth store.
+
+**Files to Modify:**
+- `apps/web/src/store/authStore.ts` (EXTEND only)
+
+**New State:**
+- `isImpersonating: boolean`
+- `impersonatedAssociation: { id, name, subdomain } | null`
+- `originalAssociationId: number | null`
+
+**New Actions:**
+- `setImpersonation(association)`
+- `endImpersonation()`
+
+---
+
+#### TASK-HSA-017: Add API Route Constant for End Impersonation
+
+**Priority:** 🟢 Low | **Risk:** 🟢 Low | **Est. Time:** 15 minutes
+
+**Files to Modify:**
+- `apps/web/src/utils/constants.ts`
+
+**Add:** `ADMIN.END_IMPERSONATION`
+
+---
+
+#### TASK-HSA-018: Integrate Context Indicator into Layout
+
+**Priority:** 🟡 Medium | **Risk:** 🟢 Low | **Est. Time:** 30 minutes
+
+**Files to Modify:**
+- `apps/web/src/components/layout/AuthenticatedLayout.tsx`
+
+---
+
+#### TASK-HSA-019: Update Impersonation Flow in Admin UI
+
+**Priority:** 🟡 Medium | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Description:** Update admin associations page to use new auth store tracking.
+
+**Files to Modify:**
+- `apps/web/src/app/admin/associations/page.tsx` (ENHANCE impersonate handler)
+
+---
+
+### Phase 22.5: Testing & Validation (4 tasks)
+
+#### TASK-HSA-020: Create Regression Test Suite
+
+**Priority:** 🔴 Critical | **Risk:** 🔴 High | **Est. Time:** 3 hours
+
+**Description:** Verify existing functionality unchanged.
+
+**Files to Create:**
+- `apps/api/src/__tests__/hybrid-super-admin/regression.test.ts`
+
+**Test Cases:**
+- Regular member login and access
+- Association admin management
+- Tenant isolation
+- RBAC enforcement
+- Existing impersonation flow
+
+---
+
+#### TASK-HSA-021: Create New Feature Test Suite
+
+**Priority:** 🔴 Critical | **Risk:** 🟡 Medium | **Est. Time:** 2 hours
+
+**Description:** Test new hybrid super admin features.
+
+**Files to Create:**
+- `apps/api/src/__tests__/hybrid-super-admin/new-features.test.ts`
+
+**Test Cases:**
+- Platform Association exists
+- Super Admins have associationId
+- Context detection
+- Enhanced impersonation tokens
+- End impersonation flow
+
+---
+
+#### TASK-HSA-022: Manual Testing Checklist
+
+**Priority:** 🔴 Critical | **Risk:** 🟢 Low | **Est. Time:** 2 hours
+
+**Files to Create:**
+- `docs/hybrid-super-admin/TESTING_CHECKLIST.md`
+
+---
+
+#### TASK-HSA-023: Documentation Update
+
+**Priority:** 🟡 Medium | **Risk:** 🟢 Low | **Est. Time:** 1 hour
+
+**Files to Create:**
+- `docs/hybrid-super-admin/ARCHITECTURE.md`
+
+---
+
+### Task Summary
+
+| Task ID | Name | Phase | Priority | Risk | Est. Time |
+|---------|------|-------|----------|------|-----------|
+| HSA-001 | Platform Association Model | 22.1 | 🔴 High | 🟢 Low | 2h |
+| HSA-002 | Platform Association Seed | 22.1 | 🔴 High | 🟢 Low | 1h |
+| HSA-003 | Migrate Super Admins | 22.1 | 🔴 High | 🟡 Med | 2h |
+| HSA-004 | Auth Controller Update | 22.1 | 🔴 High | 🟢 Low | 1h |
+| HSA-005 | Context Types | 22.2 | 🔴 High | 🟢 Low | 1h |
+| HSA-006 | Context Service | 22.2 | 🔴 High | 🟢 Low | 2h |
+| HSA-007 | Token Payload Extension | 22.2 | 🔴 High | 🟡 Med | 1h |
+| HSA-008 | Context Middleware | 22.2 | 🔴 High | 🟡 Med | 2h |
+| HSA-009 | Middleware Integration | 22.2 | 🔴 High | 🟢 Low | 0.5h |
+| HSA-010 | Audit Context Logging | 22.2 | 🟡 Med | 🟢 Low | 1h |
+| HSA-011 | Enhanced Impersonation Token | 22.3 | 🔴 High | 🟢 Low | 1h |
+| HSA-012 | End Impersonation Endpoint | 22.3 | 🟡 Med | 🟢 Low | 1h |
+| HSA-013 | Impersonation Audit Helpers | 22.3 | 🟡 Med | 🟢 Low | 1h |
+| HSA-014 | Impersonation Duration Limit | 22.3 | 🟢 Low | 🟢 Low | 1h |
+| HSA-015 | Context Indicator Component | 22.4 | 🟡 Med | 🟢 Low | 2h |
+| HSA-016 | Auth Store Extension | 22.4 | 🔴 High | 🟢 Low | 1h |
+| HSA-017 | API Route Constant | 22.4 | 🟢 Low | 🟢 Low | 0.25h |
+| HSA-018 | Layout Integration | 22.4 | 🟡 Med | 🟢 Low | 0.5h |
+| HSA-019 | Admin UI Update | 22.4 | 🟡 Med | 🟢 Low | 1h |
+| HSA-020 | Regression Tests | 22.5 | 🔴 Crit | 🔴 High | 3h |
+| HSA-021 | New Feature Tests | 22.5 | 🔴 Crit | 🟡 Med | 2h |
+| HSA-022 | Manual Testing | 22.5 | 🔴 Crit | 🟢 Low | 2h |
+| HSA-023 | Documentation | 22.5 | 🟡 Med | 🟢 Low | 1h |
+
+**Total Estimated Time: ~29 hours (~4-5 days)**
+
+---
+
+### Success Criteria
+
+- [ ] Existing users behave exactly the same
+- [ ] Existing impersonation works exactly as before
+- [ ] Super Admin can operate inside own association normally
+- [ ] Super Admin can access system modules without selecting an association
+- [ ] Super Admin can impersonate other associations safely
+- [ ] No regression in RBAC or tenant isolation
+- [ ] All changes are backward-compatible
+- [ ] All changes are additive (no removals)
+
+### Files to Create
+
+```
+apps/api/prisma/seeds/platform-association.seed.ts
+apps/api/src/services/context.service.ts
+apps/api/src/middleware/context.middleware.ts
+apps/api/src/types/context.types.ts
+apps/api/src/utils/audit-helpers.ts
+apps/web/src/components/layout/ContextIndicator.tsx
+docs/hybrid-super-admin/ARCHITECTURE.md
+docs/hybrid-super-admin/TESTING_CHECKLIST.md
+```
+
+### Files to Modify (Additive Only)
+
+```
+apps/api/prisma/schema.prisma (add isPlatformAssociation field)
+apps/api/src/lib/auth.ts (extend TokenPayload)
+apps/api/src/modules/admin/admin.controller.ts (enhance impersonate, add endImpersonation)
+apps/api/src/modules/admin/admin.routes.ts (add end-impersonation route)
+apps/api/src/middleware/auth.middleware.ts (add context detection)
+apps/api/src/server.ts (add context middleware)
+apps/web/src/components/layout/AuthenticatedLayout.tsx (add ContextIndicator)
+apps/web/src/store/authStore.ts (add impersonation state)
+apps/web/src/utils/constants.ts (add END_IMPERSONATION route)
+```
+

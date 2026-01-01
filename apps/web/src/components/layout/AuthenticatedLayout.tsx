@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { ContextIndicator } from '@/components/layout/ContextIndicator';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
 import { SuperAdminContextBanner } from '@/components/admin';
@@ -70,6 +71,9 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       
       <Sidebar />
       <main className="flex-1 lg:ml-72 min-h-screen">
+        {/* Phase 22: Context Indicator for impersonation */}
+        <ContextIndicator />
+        
         {/* Super Admin Context Banner */}
         <SuperAdminContextBanner />
         

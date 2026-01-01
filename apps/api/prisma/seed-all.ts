@@ -36,6 +36,7 @@ async function main() {
     { file: 'seed-plans.ts', name: 'Subscription Plans' },
     { file: 'seeds/rbac-seed.ts', name: 'RBAC Roles & Permissions' },
     { file: 'seeds/platform-modules.seed.ts', name: 'Platform Modules' },
+    { file: 'seeds/platform-association.seed.ts', name: 'Platform Association (Hybrid Super Admin)' },
     { file: 'seeds/help-permissions.seed.ts', name: 'Help Permissions' },
     { file: 'seeds/help-content.seed.ts', name: 'Help Content' },
   ];

@@ -123,6 +123,7 @@ export const API_ROUTES = {
     SUSPEND_ASSOCIATION: (id: number) => `${API_BASE_URL}/api/admin/associations/${id}/suspend`,
     REACTIVATE_ASSOCIATION: (id: number) => `${API_BASE_URL}/api/admin/associations/${id}/reactivate`,
     IMPERSONATE: (associationId: string) => `${API_BASE_URL}/api/admin/impersonate/${associationId}`,
+    END_IMPERSONATION: `${API_BASE_URL}/api/admin/end-impersonation`,
     APPROVALS: `${API_BASE_URL}/api/admin/approvals`,
     APPROVAL_BY_ID: (userId: number) => `${API_BASE_URL}/api/admin/approvals/${userId}`,
     BULK_APPROVALS: `${API_BASE_URL}/api/admin/approvals/bulk`,

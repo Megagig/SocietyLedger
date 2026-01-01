@@ -11,6 +11,11 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   
+  // Phase 22: Impersonation tracking
+  isImpersonating: boolean;
+  impersonatedAssociation: { id: number; name: string; subdomain: string } | null;
+  originalAssociationId: number | null;
+  
   // Actions
   login: (credentials: { email: string; password: string }) => Promise<boolean>;
   register: (data: {
@@ -24,6 +29,11 @@ interface AuthState {
   checkAuth: () => Promise<void>;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
+  
+  // Phase 22: Impersonation actions
+  setToken: (token: string) => void;
+  setImpersonation: (association: { id: number; name: string; subdomain: string }) => void;
+  endImpersonation: () => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -34,6 +44,11 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      
+      // Phase 22: Impersonation state
+      isImpersonating: false,
+      impersonatedAssociation: null,
+      originalAssociationId: null,
 
       login: async (credentials) => {
         set({ isLoading: true, error: null });
@@ -166,6 +181,49 @@ export const useAuthStore = create<AuthState>()(
 
       clearError: () => set({ error: null }),
       setLoading: (loading) => set({ isLoading: loading }),
+      
+      // Phase 22: Impersonation actions
+      setToken: (token) => set({ token }),
+      
+      setImpersonation: (association) => {
+        const currentUser = get().user;
+        set({
+          isImpersonating: true,
+          impersonatedAssociation: association,
+          originalAssociationId: currentUser?.associationId || null,
+        });
+      },
+      
+      endImpersonation: async () => {
+        const token = get().token;
+        if (!token) return false;
+        
+        try {
+          const response = await fetch(API_ROUTES.ADMIN.END_IMPERSONATION, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          });
+          
+          const data = await response.json();
+          if (data.success) {
+            set({
+              token: data.data.token,
+              isImpersonating: false,
+              impersonatedAssociation: null,
+              originalAssociationId: null,
+            });
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error('Failed to end impersonation:', error);
+          return false;
+        }
+      },
     }),
     {
       name: 'auth-storage',
@@ -173,6 +231,10 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        // Phase 22: Persist impersonation state
+        isImpersonating: state.isImpersonating,
+        impersonatedAssociation: state.impersonatedAssociation,
+        originalAssociationId: state.originalAssociationId,
       }),
     }
   )

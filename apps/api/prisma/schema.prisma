@@ -99,7 +99,11 @@ model Association {
   faqItems       FAQItem[]
   supportTickets SupportTicket[]
 
+  // Phase 22: Hybrid Super Admin Architecture
+  isPlatformAssociation Boolean @default(false) @map("is_platform_association")
+
   @@index([deletedAt])
+  @@index([isPlatformAssociation])
   @@map("associations")
 }
 

@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { tenantMiddleware } from './middleware/tenant.middleware';
+import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 // Phase 12: Caching & Performance
@@ -101,6 +102,10 @@ app.use('/api/webhooks', webhookRoutes);
 
 // Tenant middleware for all other routes
 app.use(tenantMiddleware);
+
+// Phase 22: Context middleware for Hybrid Super Admin Architecture
+// Must be after tenant middleware, attaches execution context to requests
+app.use(contextMiddleware);
 
 // Logging middleware
 app.use(morgan('dev'));
