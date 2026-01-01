@@ -42,9 +42,20 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Inline script to set theme before React hydration to prevent flash
+  const themeScript = `
+    (function() {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+  `;
+
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         {/* Favicon */}
         <link rel="icon" type="image/png" sizes="48x48" href="/favicon.png" />
         <link rel="icon" type="image/png" sizes="96x96" href="/icons/android-launchericon-96-96.png" />
