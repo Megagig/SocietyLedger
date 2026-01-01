@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
+import { getSubdomainUrl } from '@/utils/domain';
 import Link from 'next/link';
 
 type Association = {
@@ -299,7 +300,7 @@ export default function AssociationsPage() {
                         <div>
                           <h3 className="font-medium text-gray-900 dark:text-white">{assoc.name}</h3>
                           <a
-                            href={`http://${assoc.subdomain}.localhost:3000`}
+                            href={getSubdomainUrl(assoc.subdomain)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm text-blue-600 hover:underline"
@@ -387,7 +388,7 @@ export default function AssociationsPage() {
                           </td>
                           <td className="py-3 px-4">
                             <a
-                              href={`http://${assoc.subdomain}.localhost:3000`}
+                              href={getSubdomainUrl(assoc.subdomain)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:underline"
