@@ -753,7 +753,7 @@ export function Sidebar() {
       <aside
         className={`
           fixed top-0 left-0 h-screen w-72 glass-strong border-r border-gray-200/50 dark:border-gray-700/50 
-          z-40 transition-transform duration-300 flex flex-col
+          z-40 transition-transform duration-300 flex flex-col pb-16 lg:pb-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
@@ -901,14 +901,15 @@ export function Sidebar() {
         </nav>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 space-y-2">
-          <div className="flex items-center justify-center">
+        <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 space-y-2 bg-white/50 dark:bg-gray-900/50">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>
             <ThemeToggle />
           </div>
           
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 font-medium"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 font-medium"
           >
             <IconLogout size={20} />
             <span>Logout</span>
