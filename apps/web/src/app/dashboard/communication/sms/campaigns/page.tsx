@@ -162,8 +162,8 @@ export default function SMSCampaignsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => router.push('/dashboard/communication/sms')}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -171,10 +171,10 @@ export default function SMSCampaignsPage() {
             <IconArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               SMS Campaigns
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Create and manage bulk SMS campaigns
             </p>
           </div>
@@ -182,7 +182,7 @@ export default function SMSCampaignsPage() {
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 w-full sm:w-auto"
           >
             <IconPlus size={18} />
             New Campaign
@@ -191,11 +191,11 @@ export default function SMSCampaignsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex gap-3 sm:gap-4">
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+          className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm"
         >
           <option value="">All Statuses</option>
           <option value="DRAFT">Draft</option>
@@ -212,10 +212,10 @@ export default function SMSCampaignsPage() {
       ) : error ? (
         <div className="text-center py-8 text-red-500">{error}</div>
       ) : campaigns.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-          <IconUsers className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No campaigns yet</h3>
-          <p className="text-gray-500 mb-4">Create your first SMS campaign to reach your members</p>
+        <div className="text-center py-8 sm:py-12 bg-white dark:bg-gray-800 rounded-lg">
+          <IconUsers className="mx-auto text-gray-400 mb-4" size={40} />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No campaigns yet</h3>
+          <p className="text-sm sm:text-base text-gray-500 mb-4">Create your first SMS campaign to reach your members</p>
           {canManage && (
             <button
               onClick={() => setShowCreate(true)}
@@ -227,89 +227,153 @@ export default function SMSCampaignsPage() {
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Campaign</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recipients</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {campaigns.map((campaign) => (
-                <tr key={campaign.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{campaign.name}</p>
-                      <p className="text-sm text-gray-500">{getRecipientTypeLabel(campaign.recipientType)}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                    {campaign.totalRecipients}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-green-600">{campaign.sentCount} sent</span>
-                      <span className="text-gray-400">|</span>
-                      <span className="text-blue-600">{campaign.deliveredCount} delivered</span>
-                      {campaign.failedCount > 0 && (
-                        <>
-                          <span className="text-gray-400">|</span>
-                          <span className="text-red-600">{campaign.failedCount} failed</span>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(campaign.status)}`}>
-                      {campaign.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      {campaign.status === 'DRAFT' && canManage && (
-                        <>
-                          <button
-                            onClick={() => handleStart(campaign.id)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                            title="Start Campaign"
-                          >
-                            <IconPlayerPlay size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(campaign.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Delete"
-                          >
-                            <IconTrash size={18} />
-                          </button>
-                        </>
-                      )}
-                      {(campaign.status === 'SCHEDULED' || campaign.status === 'IN_PROGRESS') && canManage && (
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {campaigns.map((campaign) => (
+              <div key={campaign.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white text-sm">{campaign.name}</p>
+                    <p className="text-xs text-gray-500">{getRecipientTypeLabel(campaign.recipientType)}</p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(campaign.status)}`}>
+                    {campaign.status}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Recipients</p>
+                    <p className="font-semibold text-sm">{campaign.totalRecipients}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Sent</p>
+                    <p className="font-semibold text-green-600 text-sm">{campaign.sentCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Delivered</p>
+                    <p className="font-semibold text-blue-600 text-sm">{campaign.deliveredCount}</p>
+                  </div>
+                </div>
+                
+                {canManage && (
+                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                    {campaign.status === 'DRAFT' && (
+                      <>
                         <button
-                          onClick={() => handleCancel(campaign.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                          title="Cancel"
+                          onClick={() => handleStart(campaign.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-green-600 bg-green-50 dark:bg-green-900/20 rounded-lg"
                         >
-                          <IconPlayerStop size={18} />
+                          <IconPlayerPlay size={14} /> Start
                         </button>
-                      )}
-                    </div>
-                  </td>
+                        <button
+                          onClick={() => handleDelete(campaign.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                        >
+                          <IconTrash size={14} /> Delete
+                        </button>
+                      </>
+                    )}
+                    {(campaign.status === 'SCHEDULED' || campaign.status === 'IN_PROGRESS') && (
+                      <button
+                        onClick={() => handleCancel(campaign.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                      >
+                        <IconPlayerStop size={14} /> Cancel
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Campaign</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Recipients</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {campaigns.map((campaign) => (
+                  <tr key={campaign.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{campaign.name}</p>
+                        <p className="text-sm text-gray-500">{getRecipientTypeLabel(campaign.recipientType)}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                      {campaign.totalRecipients}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-green-600">{campaign.sentCount} sent</span>
+                        <span className="text-gray-400">|</span>
+                        <span className="text-blue-600">{campaign.deliveredCount} delivered</span>
+                        {campaign.failedCount > 0 && (
+                          <>
+                            <span className="text-gray-400">|</span>
+                            <span className="text-red-600">{campaign.failedCount} failed</span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(campaign.status)}`}>
+                        {campaign.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        {campaign.status === 'DRAFT' && canManage && (
+                          <>
+                            <button
+                              onClick={() => handleStart(campaign.id)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                              title="Start Campaign"
+                            >
+                              <IconPlayerPlay size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(campaign.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              title="Delete"
+                            >
+                              <IconTrash size={18} />
+                            </button>
+                          </>
+                        )}
+                        {(campaign.status === 'SCHEDULED' || campaign.status === 'IN_PROGRESS') && canManage && (
+                          <button
+                            onClick={() => handleCancel(campaign.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Cancel"
+                          >
+                            <IconPlayerStop size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-6 py-4 border-t dark:border-gray-700 flex justify-between items-center">
+            <div className="px-4 sm:px-6 py-4 border-t dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center gap-3">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="w-full sm:w-auto px-3 py-1 border rounded disabled:opacity-50"
               >
                 Previous
               </button>
@@ -317,7 +381,7 @@ export default function SMSCampaignsPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="w-full sm:w-auto px-3 py-1 border rounded disabled:opacity-50"
               >
                 Next
               </button>

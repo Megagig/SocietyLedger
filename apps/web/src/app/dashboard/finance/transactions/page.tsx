@@ -151,14 +151,14 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Transactions
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Track all financial transactions ({totalCount} total)
           </p>
         </div>
@@ -166,7 +166,7 @@ export default function TransactionsPage() {
         <Can permission={PERMISSIONS.TRANSACTION_CREATE}>
           <button
             onClick={() => router.push('/dashboard/finance/transactions/create')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
             Record Transaction
@@ -176,29 +176,29 @@ export default function TransactionsPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
               {formatCurrency(stats.totalAmount || 0)}
             </p>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
-            <p className="text-2xl font-bold text-green-600">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Paid</p>
+            <p className="text-lg sm:text-2xl font-bold text-green-600">
               {formatCurrency(stats.totalPaid || 0)}
             </p>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
-            <p className="text-2xl font-bold text-red-600">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
+            <p className="text-lg sm:text-2xl font-bold text-red-600">
               {formatCurrency(stats.totalOutstanding || 0)}
             </p>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Overdue</p>
-            <p className="text-2xl font-bold text-orange-600">
-              {stats.byStatus?.overdue?.count || 0} transactions
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Overdue</p>
+            <p className="text-lg sm:text-2xl font-bold text-orange-600">
+              {stats.byStatus?.overdue?.count || 0} <span className="text-xs font-normal">txns</span>
             </p>
           </div>
         </div>
@@ -206,8 +206,8 @@ export default function TransactionsPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+          <div className="sm:col-span-2 md:col-span-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -215,7 +215,7 @@ export default function TransactionsPage() {
                 placeholder="Search by reference or member..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
               />
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function TransactionsPage() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           >
             <option value="">All Status</option>
             <option value="pending">Pending</option>
@@ -236,7 +236,7 @@ export default function TransactionsPage() {
           <select
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           >
             <option value="">All Types</option>
             <option value="due">Dues</option>
@@ -248,7 +248,7 @@ export default function TransactionsPage() {
           <select
             value={categoryFilter}
             onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -270,7 +270,64 @@ export default function TransactionsPage() {
       ) : (
         <>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {transactions.map((txn) => (
+                <div 
+                  key={txn.id} 
+                  className="p-4 space-y-3"
+                  onClick={() => router.push(`/dashboard/finance/transactions/${txn.id}`)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {txn.member ? `${txn.member.firstName} ${txn.member.lastName}` : '-'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">{txn.member?.memberId}</p>
+                    </div>
+                    {getStatusBadge(txn.status)}
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">{txn.category?.name}</span>
+                    <span className="text-xs text-gray-400 font-mono">{txn.referenceNumber}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Amount</p>
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatCurrency(txn.amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Paid</p>
+                      <p className="font-semibold text-green-600 text-sm">{formatCurrency(txn.totalPaid || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Balance</p>
+                      <p className="font-semibold text-red-600 text-sm">{formatCurrency(txn.balance || 0)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <span className="text-xs text-gray-500">
+                      Due: {txn.dueDate ? formatDate(txn.dueDate) : '-'}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/dashboard/finance/transactions/${txn.id}`);
+                      }}
+                      className="flex items-center gap-1 text-blue-600 text-sm"
+                    >
+                      <Eye className="w-4 h-4" /> View
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -351,39 +408,41 @@ export default function TransactionsPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow px-6 py-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-gray-800 rounded-lg shadow px-4 sm:px-6 py-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
               Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalCount)} of {totalCount}
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-2">
               <select
                 value={limit}
                 onChange={(e) => { setLimit(parseInt(e.target.value)); setPage(1); }}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
               >
                 <option value="20">20 per page</option>
                 <option value="50">50 per page</option>
                 <option value="100">100 per page</option>
               </select>
 
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg disabled:opacity-50"
-              >
-                Previous
-              </button>
-              
-              <span className="text-sm">Page {page} of {totalPages}</span>
-              
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg disabled:opacity-50 text-sm"
+                >
+                  Previous
+                </button>
+                
+                <span className="text-sm whitespace-nowrap">{page} / {totalPages}</span>
+                
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg disabled:opacity-50 text-sm"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         </>

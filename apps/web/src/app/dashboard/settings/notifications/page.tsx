@@ -101,32 +101,32 @@ export default function NotificationsSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl p-4 sm:p-0">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <Bell className="w-6 h-6 text-teal-600" />
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" />
           Notification Settings
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
           Configure how and when notifications are sent to members
         </p>
       </div>
 
       {/* Quick Links */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Message Templates</h3>
-        <div className="flex flex-wrap gap-3">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3">Message Templates</h3>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Link
             href="/dashboard/communication/sms/templates"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-sm font-medium"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-sm font-medium"
           >
             SMS Templates
             <ExternalLink className="w-4 h-4" />
           </Link>
           <Link
             href="/dashboard/communication/sms"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
           >
             SMS Dashboard
             <ExternalLink className="w-4 h-4" />
@@ -134,10 +134,10 @@ export default function NotificationsSettingsPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Notification Channels */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Notification Channels
           </h2>
           
@@ -185,8 +185,8 @@ export default function NotificationsSettingsPage() {
         </div>
 
         {/* Sender Identity */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Sender Identity
           </h2>
           
@@ -219,8 +219,8 @@ export default function NotificationsSettingsPage() {
         </div>
 
         {/* Payment Reminders */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Payment Reminders
           </h2>
           
@@ -291,11 +291,11 @@ export default function NotificationsSettingsPage() {
         </div>
 
         {/* Quiet Hours */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Quiet Hours
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
             Notifications will not be sent during these hours
           </p>
           
@@ -326,16 +326,16 @@ export default function NotificationsSettingsPage() {
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
           {hasChanges && (
-            <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
+            <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1">
               Unsaved changes
             </span>
           )}
           <button
             type="submit"
             disabled={!hasChanges || updateMutation.isPending}
-            className="px-6 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+            className="w-full sm:w-auto px-6 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
           >
             {updateMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />

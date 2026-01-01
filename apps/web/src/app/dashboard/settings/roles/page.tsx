@@ -252,15 +252,15 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <Shield className="w-8 h-8 text-teal-500" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+            <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-teal-500" />
             Roles & Permissions
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Manage user roles and their permissions
           </p>
         </div>
@@ -268,7 +268,7 @@ export default function RolesPage() {
         <Can permission={PERMISSIONS.SETTINGS_EDIT}>
           <button
             onClick={startCreating}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
             Create Role
@@ -276,13 +276,13 @@ export default function RolesPage() {
         </Can>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Roles List */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="font-semibold text-gray-900 dark:text-white">Roles</h2>
+          <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">Roles</h2>
           </div>
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[300px] lg:max-h-none overflow-y-auto">
             {roles.map(role => (
               <div
                 key={role.id}
@@ -291,28 +291,28 @@ export default function RolesPage() {
                   setIsEditing(false);
                   setIsCreating(false);
                 }}
-                className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                className={`p-3 sm:p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                   selectedRole?.id === role.id ? 'bg-teal-50 dark:bg-teal-900/20 border-l-4 border-teal-500' : ''
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     {role.isSystemRole ? (
-                      <Lock className="w-4 h-4 text-amber-500" />
+                      <Lock className="w-4 h-4 text-amber-500 flex-shrink-0" />
                     ) : (
-                      <Settings className="w-4 h-4 text-gray-400" />
+                      <Settings className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     )}
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
                         {role.displayName}
                       </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                      <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
                         <Users className="w-3 h-3" />
                         {role.userCount} users
                       </div>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 </div>
               </div>
             ))}
@@ -322,8 +322,8 @@ export default function RolesPage() {
         {/* Role Details / Edit Form */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow">
           {isCreating ? (
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+            <div className="p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
                 Create New Role
               </h2>
               <RoleForm
@@ -343,11 +343,11 @@ export default function RolesPage() {
               />
             </div>
           ) : isEditing && selectedRole ? (
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+            <div className="p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-4 sm:mb-6">
                 Edit Role: {selectedRole.displayName}
                 {selectedRole.isSystemRole && (
-                  <span className="ml-2 text-sm text-amber-500">(System Role - Limited Editing)</span>
+                  <span className="block sm:inline sm:ml-2 text-xs sm:text-sm text-amber-500">(System Role - Limited Editing)</span>
                 )}
               </h2>
               <RoleForm
@@ -367,10 +367,10 @@ export default function RolesPage() {
               />
             </div>
           ) : selectedRole ? (
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                     {selectedRole.displayName}
                     {selectedRole.isSystemRole && (
                       <span title="System Role">
@@ -378,7 +378,7 @@ export default function RolesPage() {
                       </span>
                     )}
                   </h2>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
                     {selectedRole.description || 'No description'}
                   </p>
                 </div>
@@ -386,7 +386,7 @@ export default function RolesPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => startEditing(selectedRole)}
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
                     >
                       <Edit className="w-4 h-4" />
                       Edit
@@ -394,7 +394,7 @@ export default function RolesPage() {
                     {!selectedRole.isSystemRole && (
                       <button
                         onClick={() => handleDeleteRole(selectedRole)}
-                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete
@@ -405,39 +405,39 @@ export default function RolesPage() {
               </div>
 
               {/* Role Stats */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-teal-600 dark:text-teal-400">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4">
+                  <div className="text-xl sm:text-2xl font-bold text-teal-600 dark:text-teal-400">
                     {selectedRole.userCount}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Users Assigned</div>
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Users Assigned</div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4">
+                  <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {selectedRole.permissions.length}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Permissions</div>
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Permissions</div>
                 </div>
               </div>
 
               {/* Permissions List */}
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">
                   Assigned Permissions
                 </h3>
-                <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                <div className="space-y-3 sm:space-y-4 max-h-[300px] sm:max-h-[400px] overflow-y-auto">
                   {Object.entries(groupedPermissions).map(([module, perms]) => {
                     const modulePerms = perms.filter(p => selectedRole.permissions.includes(p.key));
                     if (modulePerms.length === 0) return null;
                     
                     return (
-                      <div key={module} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">{module}</h4>
-                        <div className="flex flex-wrap gap-2">
+                      <div key={module} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2 text-sm sm:text-base">{module}</h4>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
                           {modulePerms.map(perm => (
                             <span
                               key={perm.key}
-                              className="px-2 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded text-sm"
+                              className="px-2 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded text-xs sm:text-sm"
                               title={perm.description}
                             >
                               {perm.key}
@@ -451,7 +451,7 @@ export default function RolesPage() {
               </div>
             </div>
           ) : (
-            <div className="p-6 flex items-center justify-center min-h-[400px] text-gray-500 dark:text-gray-400">
+            <div className="p-6 flex items-center justify-center min-h-[200px] sm:min-h-[400px] text-gray-500 dark:text-gray-400 text-sm sm:text-base text-center">
               Select a role to view details or create a new one
             </div>
           )}

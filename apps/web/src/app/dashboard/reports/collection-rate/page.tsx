@@ -116,98 +116,86 @@ export default function CollectionRatePage() {
       </div>
 
       {/* Filters */}
-      <Grid mb="xl">
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Paper p="md" withBorder>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-          </Paper>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Paper p="md" withBorder>
-            <Select
-              label="Group By"
-              data={[
-                { value: 'month', label: 'Monthly' },
-                { value: 'quarter', label: 'Quarterly' },
-                { value: 'year', label: 'Yearly' },
-              ]}
-              value={groupBy}
-              onChange={(value) => setGroupBy(value as any)}
-            />
-          </Paper>
-        </Grid.Col>
-      </Grid>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Paper p="md" withBorder className="p-3 sm:p-4">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+        </Paper>
+        <Paper p="md" withBorder className="p-3 sm:p-4">
+          <Select
+            label="Group By"
+            data={[
+              { value: 'month', label: 'Monthly' },
+              { value: 'quarter', label: 'Quarterly' },
+              { value: 'year', label: 'Yearly' },
+            ]}
+            value={groupBy}
+            onChange={(value) => setGroupBy(value as any)}
+          />
+        </Paper>
+      </div>
 
       {/* Overall Stats */}
-      <Grid mb="xl">
-        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Text size="sm" c="dimmed">
-                Total Expected
-              </Text>
-              <Text size="xl" fw={700}>
-                {formatCurrency(report.overall.expected)}
-              </Text>
-            </Stack>
-          </Card>
-        </Grid.Col>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <Card withBorder padding="md" className="p-3 sm:p-4">
+          <Stack gap="xs">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
+              Total Expected
+            </Text>
+            <Text size="lg" className="text-base sm:text-xl" fw={700}>
+              {formatCurrency(report.overall.expected)}
+            </Text>
+          </Stack>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Text size="sm" c="dimmed">
-                Total Collected
-              </Text>
-              <Text size="xl" fw={700} c="green">
-                {formatCurrency(report.overall.collected)}
-              </Text>
-            </Stack>
-          </Card>
-        </Grid.Col>
+        <Card withBorder padding="md" className="p-3 sm:p-4">
+          <Stack gap="xs">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
+              Total Collected
+            </Text>
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="green">
+              {formatCurrency(report.overall.collected)}
+            </Text>
+          </Stack>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Text size="sm" c="dimmed">
-                Outstanding
-              </Text>
-              <Text size="xl" fw={700} c="orange">
-                {formatCurrency(report.overall.outstanding)}
-              </Text>
-            </Stack>
-          </Card>
-        </Grid.Col>
+        <Card withBorder padding="md" className="p-3 sm:p-4">
+          <Stack gap="xs">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
+              Outstanding
+            </Text>
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
+              {formatCurrency(report.overall.outstanding)}
+            </Text>
+          </Stack>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Group gap="xs">
-                <Text size="sm" c="dimmed">
-                  Collection Rate
-                </Text>
-                <IconTrendingUp size={16} className="text-green-600" />
-              </Group>
-              <Text size="xl" fw={700} c="blue">
-                {report.overall.collectionRate.toFixed(1)}%
+        <Card withBorder padding="md" className="p-3 sm:p-4">
+          <Stack gap="xs">
+            <Group gap="xs">
+              <Text size="xs" className="sm:text-sm" c="dimmed">
+                Collection Rate
               </Text>
-            </Stack>
-          </Card>
-        </Grid.Col>
-      </Grid>
+              <IconTrendingUp size={16} className="text-green-600" />
+            </Group>
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="blue">
+              {report.overall.collectionRate.toFixed(1)}%
+            </Text>
+          </Stack>
+        </Card>
+      </div>
 
       {/* Collection Trend Chart */}
-      <Card withBorder padding="lg" mb="xl">
+      <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
         <Text size="lg" fw={600} mb="md">
           Collection Trend Over Time
         </Text>
         {monthlyChartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
             <LineChart data={monthlyChartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
               <Tooltip
                 formatter={(value: any, name: string) => {
                   if (name === 'rate') return `${value.toFixed(1)}%`;
@@ -236,7 +224,7 @@ export default function CollectionRatePage() {
                 type="monotone"
                 dataKey="rate"
                 stroke="#ff7300"
-                name="Collection Rate (%)"
+                name="Rate (%)"
                 strokeWidth={2}
               />
             </LineChart>
@@ -249,95 +237,174 @@ export default function CollectionRatePage() {
       </Card>
 
       {/* Monthly Breakdown Table */}
-      <Card withBorder padding="lg" mb="xl">
+      <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
         <Text size="lg" fw={600} mb="md">
           Period Breakdown
         </Text>
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Period</Table.Th>
-              <Table.Th ta="right">Expected</Table.Th>
-              <Table.Th ta="right">Collected</Table.Th>
-              <Table.Th ta="right">Collection Rate</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {report.byMonth.map((item: any, index: number) => (
-              <Table.Tr key={index}>
-                <Table.Td>
-                  {item.month} {item.year}
-                </Table.Td>
-                <Table.Td ta="right">{formatCurrency(item.expected)}</Table.Td>
-                <Table.Td ta="right" c="green" fw={600}>
-                  {formatCurrency(item.collected)}
-                </Table.Td>
-                <Table.Td ta="right">
-                  <Badge
-                    color={
-                      item.collectionRate >= 80
-                        ? 'green'
-                        : item.collectionRate >= 60
-                        ? 'yellow'
-                        : 'red'
-                    }
-                    size="lg"
-                  >
-                    {item.collectionRate.toFixed(1)}%
-                  </Badge>
-                </Table.Td>
+        
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {report.byMonth.map((item: any, index: number) => (
+            <div key={index} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <Text fw={500}>{item.month} {item.year}</Text>
+                <Badge
+                  color={
+                    item.collectionRate >= 80
+                      ? 'green'
+                      : item.collectionRate >= 60
+                      ? 'yellow'
+                      : 'red'
+                  }
+                  size="sm"
+                >
+                  {item.collectionRate.toFixed(1)}%
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <Text size="xs" c="dimmed">Expected</Text>
+                  <Text size="sm">{formatCurrency(item.expected)}</Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">Collected</Text>
+                  <Text size="sm" c="green" fw={600}>{formatCurrency(item.collected)}</Text>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Period</Table.Th>
+                <Table.Th ta="right">Expected</Table.Th>
+                <Table.Th ta="right">Collected</Table.Th>
+                <Table.Th ta="right">Collection Rate</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {report.byMonth.map((item: any, index: number) => (
+                <Table.Tr key={index}>
+                  <Table.Td>
+                    {item.month} {item.year}
+                  </Table.Td>
+                  <Table.Td ta="right">{formatCurrency(item.expected)}</Table.Td>
+                  <Table.Td ta="right" c="green" fw={600}>
+                    {formatCurrency(item.collected)}
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Badge
+                      color={
+                        item.collectionRate >= 80
+                          ? 'green'
+                          : item.collectionRate >= 60
+                          ? 'yellow'
+                          : 'red'
+                      }
+                      size="lg"
+                    >
+                      {item.collectionRate.toFixed(1)}%
+                    </Badge>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </div>
       </Card>
 
       {/* Category Breakdown */}
-      <Card withBorder padding="lg">
+      <Card withBorder padding="md" className="p-3 sm:p-4">
         <Text size="lg" fw={600} mb="md">
           Collection Rate by Category
         </Text>
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Category</Table.Th>
-              <Table.Th>Type</Table.Th>
-              <Table.Th ta="right">Expected</Table.Th>
-              <Table.Th ta="right">Collected</Table.Th>
-              <Table.Th ta="right">Collection Rate</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {report.byCategory.map((cat: any) => (
-              <Table.Tr key={cat.categoryId}>
-                <Table.Td>{cat.categoryName}</Table.Td>
-                <Table.Td>
-                  <Badge size="sm" variant="light">
+        
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {report.byCategory.map((cat: any) => (
+            <div key={cat.categoryId} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <Text fw={500}>{cat.categoryName}</Text>
+                  <Badge size="xs" variant="light" mt={2}>
                     {cat.categoryType}
                   </Badge>
-                </Table.Td>
-                <Table.Td ta="right">{formatCurrency(cat.expected)}</Table.Td>
-                <Table.Td ta="right" c="green" fw={600}>
-                  {formatCurrency(cat.collected)}
-                </Table.Td>
-                <Table.Td ta="right">
-                  <Badge
-                    color={
-                      cat.collectionRate >= 80
-                        ? 'green'
-                        : cat.collectionRate >= 60
-                        ? 'yellow'
-                        : 'red'
-                    }
-                    size="lg"
-                  >
-                    {cat.collectionRate.toFixed(1)}%
-                  </Badge>
-                </Table.Td>
+                </div>
+                <Badge
+                  color={
+                    cat.collectionRate >= 80
+                      ? 'green'
+                      : cat.collectionRate >= 60
+                      ? 'yellow'
+                      : 'red'
+                  }
+                  size="sm"
+                >
+                  {cat.collectionRate.toFixed(1)}%
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <Text size="xs" c="dimmed">Expected</Text>
+                  <Text size="sm">{formatCurrency(cat.expected)}</Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">Collected</Text>
+                  <Text size="sm" c="green" fw={600}>{formatCurrency(cat.collected)}</Text>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Category</Table.Th>
+                <Table.Th>Type</Table.Th>
+                <Table.Th ta="right">Expected</Table.Th>
+                <Table.Th ta="right">Collected</Table.Th>
+                <Table.Th ta="right">Collection Rate</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {report.byCategory.map((cat: any) => (
+                <Table.Tr key={cat.categoryId}>
+                  <Table.Td>{cat.categoryName}</Table.Td>
+                  <Table.Td>
+                    <Badge size="sm" variant="light">
+                      {cat.categoryType}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td ta="right">{formatCurrency(cat.expected)}</Table.Td>
+                  <Table.Td ta="right" c="green" fw={600}>
+                    {formatCurrency(cat.collected)}
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Badge
+                      color={
+                        cat.collectionRate >= 80
+                          ? 'green'
+                          : cat.collectionRate >= 60
+                          ? 'yellow'
+                          : 'red'
+                      }
+                      size="lg"
+                    >
+                      {cat.collectionRate.toFixed(1)}%
+                    </Badge>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </div>
       </Card>
     </div>
   );

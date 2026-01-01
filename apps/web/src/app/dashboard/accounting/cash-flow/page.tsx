@@ -219,19 +219,20 @@ export default function CashFlowPage() {
       </div>
 
       {/* Date Range Filter */}
-      <Paper p="md" mb="xl" withBorder>
-        <Group justify="space-between" align="flex-end">
-          <div style={{ maxWidth: 300 }}>
+      <Paper p="md" mb="xl" withBorder className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
+          <div className="w-full sm:max-w-[300px]">
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
           <Button
             leftSection={<IconRefresh size={16} />}
             onClick={handleGenerateReport}
             loading={isFetching}
+            className="w-full sm:w-auto"
           >
             Generate Report
           </Button>
-        </Group>
+        </div>
       </Paper>
 
       {!report && !isLoading && !error && (
@@ -262,20 +263,20 @@ export default function CashFlowPage() {
           </Card>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card withBorder padding="lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color="blue">
                   <IconCash size={14} />
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Beginning Cash</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Beginning Cash</Text>
               </Group>
-              <Text size="xl" fw={700}>
+              <Text size="lg" className="text-base sm:text-xl" fw={700}>
                 {formatCurrency(report.beginningCash)}
               </Text>
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color={parseFloat(String(report.netCashChange)) >= 0 ? 'green' : 'red'}>
                   {parseFloat(String(report.netCashChange)) >= 0 ? (
@@ -284,33 +285,33 @@ export default function CashFlowPage() {
                     <IconArrowDownRight size={14} />
                   )}
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Net Cash Change</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Net Change</Text>
               </Group>
-              <Text size="xl" fw={700} c={parseFloat(String(report.netCashChange)) >= 0 ? 'green' : 'red'}>
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c={parseFloat(String(report.netCashChange)) >= 0 ? 'green' : 'red'}>
                 {formatCurrency(report.netCashChange)}
               </Text>
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color="teal">
                   <IconCash size={14} />
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Ending Cash</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Ending Cash</Text>
               </Group>
-              <Text size="xl" fw={700} c="teal">
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="teal">
                 {formatCurrency(report.endingCash)}
               </Text>
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color="grape">
                   <IconCreditCard size={14} />
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Cash Change %</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Change %</Text>
               </Group>
-              <Text size="xl" fw={700}>
+              <Text size="lg" className="text-base sm:text-xl" fw={700}>
                 {parseFloat(String(report.beginningCash)) !== 0
                   ? `${((parseFloat(String(report.netCashChange)) / parseFloat(String(report.beginningCash))) * 100).toFixed(1)}%`
                   : 'N/A'}
@@ -319,13 +320,13 @@ export default function CashFlowPage() {
           </div>
 
           {/* Cash Flow Chart */}
-          <Card withBorder padding="lg" mb="xl">
+          <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
             <Text size="lg" fw={600} mb="md">Cash Flow by Activity</Text>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={200} className="sm:h-[250px]">
               <BarChart data={chartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
-                <YAxis type="category" dataKey="name" width={100} />
+                <XAxis type="number" tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(value: any) => formatCurrency(value)} />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                   {chartData.map((entry, index) => (
@@ -340,7 +341,7 @@ export default function CashFlowPage() {
           </Card>
 
           {/* Detailed Cash Flow Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {renderCashFlowSection(
               'Operating Activities',
               report.operating.inflows,

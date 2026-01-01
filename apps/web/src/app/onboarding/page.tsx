@@ -93,10 +93,10 @@ function OnboardingContent() {
   const isRerunMode = forceAccess && status?.onboarding.onboardingComplete;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-8 sm:py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-12">
           {isRerunMode && (
             <div className="mb-4">
               <button
@@ -110,10 +110,10 @@ function OnboardingContent() {
               </button>
             </div>
           )}
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-3 sm:mb-4">
             {isRerunMode ? 'Setup Wizard' : 'Welcome to SocietyLedger'}
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 px-4">
             {isRerunMode 
               ? 'Re-run any setup step to update your configuration'
               : "Let's get your association set up in just a few steps"
@@ -122,12 +122,12 @@ function OnboardingContent() {
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-8 sm:mb-12 overflow-x-auto pb-4">
+          <div className="flex items-center justify-between mb-4 min-w-max px-2">
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold transition-all text-sm sm:text-base ${
                     completedSteps.includes(step.id)
                       ? 'bg-teal-500 text-white'
                       : currentStep === step.id
@@ -143,7 +143,7 @@ function OnboardingContent() {
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-16 md:w-24 h-1 mx-2 ${
+                    className={`w-12 sm:w-16 md:w-24 h-1 mx-1 sm:mx-2 ${
                       completedSteps.includes(step.id)
                         ? 'bg-teal-500'
                         : 'bg-gray-200 dark:bg-gray-700'
@@ -156,7 +156,7 @@ function OnboardingContent() {
         </div>
 
         {/* Steps Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8">
           {steps.map((step) => {
             const isCompleted = completedSteps.includes(step.id);
             const isCurrent = currentStep === step.id;
@@ -168,7 +168,7 @@ function OnboardingContent() {
                 key={step.id}
                 onClick={() => !isLocked && handleStepClick(step)}
                 disabled={isLocked}
-                className={`p-6 rounded-2xl text-left transition-all ${
+                className={`p-5 sm:p-6 rounded-2xl text-left transition-all ${
                   isCompleted
                     ? 'bg-teal-50 dark:bg-teal-900/20 border-2 border-teal-200 dark:border-teal-800 hover:shadow-lg'
                     : isCurrent
@@ -179,7 +179,7 @@ function OnboardingContent() {
                 }`}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <span className={`text-sm font-medium ${
+                  <span className={`text-xs sm:text-sm font-medium ${
                     isCompleted ? 'text-teal-600 dark:text-teal-400' : 'text-gray-500 dark:text-gray-400'
                   }`}>
                     Step {step.id}
@@ -195,10 +195,10 @@ function OnboardingContent() {
                     </span>
                   )}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
                   {step.name}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                   {step.description}
                 </p>
               </button>
@@ -207,11 +207,11 @@ function OnboardingContent() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
           {isRerunMode ? (
             <button
               onClick={() => router.push('/dashboard')}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              className="text-center sm:text-left text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors py-2 sm:py-0"
             >
               Return to Dashboard
             </button>
@@ -219,7 +219,7 @@ function OnboardingContent() {
             <button
               onClick={handleSkip}
               disabled={skipping}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              className="text-center sm:text-left text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors py-2 sm:py-0"
             >
               {skipping ? 'Skipping...' : 'Skip for now'}
             </button>

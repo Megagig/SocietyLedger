@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
+import { getSubdomainUrl } from '@/utils/domain';
 import Link from 'next/link';
 
 type AssociationDetail = {
@@ -145,7 +146,7 @@ export default function AssociationDetailPage() {
   };
 
   const handleImpersonate = async () => {
-    if (!confirm('You will be logged in as an admin of this association. Continue?')) return;
+    toast.info('You will be logged in as an admin of this association. Opening in new tab...');
     setActionLoading(true);
 
     try {
@@ -156,8 +157,8 @@ export default function AssociationDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Open in new tab with impersonation token
-        const url = `http://${data.data.association.subdomain}.localhost:3000/dashboard?token=${data.data.token}`;
+        // Open in new tab with impersonation token using proper subdomain URL
+        const url = `${getSubdomainUrl(data.data.association.subdomain)}/dashboard?token=${data.data.token}`;
         window.open(url, '_blank');
         toast.success('Impersonation session opened in new tab');
       } else {
@@ -216,12 +217,12 @@ export default function AssociationDetailPage() {
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
             <a
-              href={`http://${association.subdomain}.localhost:3000`}
+              href={getSubdomainUrl(association.subdomain)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
-              {association.subdomain}.societyledger.com
+              {association.subdomain}.societyledger.com.ng
             </a>
           </p>
         </div>

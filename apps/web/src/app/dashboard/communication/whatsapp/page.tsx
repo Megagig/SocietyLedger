@@ -38,18 +38,18 @@ export default function WhatsAppPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent mb-2">
             WhatsApp Messaging
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Send WhatsApp messages to your members
           </p>
         </div>
         <button
           onClick={() => setShowCompose(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all w-full sm:w-auto"
         >
           <IconSend size={18} />
           Send Message
@@ -57,12 +57,12 @@ export default function WhatsAppPage() {
       </div>
 
       {/* Setup Required Banner */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 sm:p-4">
         <div className="flex items-start gap-3">
-          <IconAlertTriangle className="text-amber-600 mt-0.5" size={24} />
+          <IconAlertTriangle className="text-amber-600 mt-0.5 flex-shrink-0" size={20} />
           <div className="flex-1">
-            <h3 className="font-semibold text-amber-800 dark:text-amber-200">WhatsApp Business API Setup Required</h3>
-            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+            <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-sm sm:text-base">WhatsApp Business API Setup Required</h3>
+            <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300 mt-1">
               To send WhatsApp messages, you need to set up the WhatsApp Business API through Meta Business Suite. 
               This requires business verification and approved message templates.
             </p>
@@ -70,7 +70,7 @@ export default function WhatsAppPage() {
               href="https://business.whatsapp.com/products/business-platform" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="inline-block mt-2 text-sm text-amber-800 dark:text-amber-200 underline hover:no-underline"
+              className="inline-block mt-2 text-xs sm:text-sm text-amber-800 dark:text-amber-200 underline hover:no-underline"
             >
               Learn more about WhatsApp Business API →
             </a>
@@ -79,112 +79,112 @@ export default function WhatsAppPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Messages Sent</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">0</p>
+              <p className="text-xs sm:text-sm text-gray-500">Messages Sent</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">0</p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
-              <IconBrandWhatsapp className="text-green-600" size={24} />
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+              <IconBrandWhatsapp className="text-green-600" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Delivered</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">0</p>
+              <p className="text-xs sm:text-sm text-gray-500">Delivered</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">0</p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-              <IconCheck className="text-blue-600" size={24} />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+              <IconCheck className="text-blue-600" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Read</p>
-              <p className="text-2xl font-bold text-purple-600 mt-1">0</p>
+              <p className="text-xs sm:text-sm text-gray-500">Read</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-600 mt-1">0</p>
             </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-              <IconCheck className="text-purple-600" size={24} />
+            <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+              <IconCheck className="text-purple-600" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Templates</p>
-              <p className="text-2xl font-bold text-teal-600 mt-1">{templates.length}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Templates</p>
+              <p className="text-xl sm:text-2xl font-bold text-teal-600 mt-1">{templates.length}</p>
             </div>
-            <div className="p-3 bg-teal-100 dark:bg-teal-900/30 rounded-full">
-              <IconTemplate className="text-teal-600" size={24} />
+            <div className="p-2 sm:p-3 bg-teal-100 dark:bg-teal-900/30 rounded-full">
+              <IconTemplate className="text-teal-600" size={20} />
             </div>
           </div>
         </div>
       </div>
 
       {/* Quick Actions & Templates */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Quick Actions
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <button
               onClick={() => setShowCompose(true)}
-              className="w-full flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+              className="w-full flex items-center justify-between p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <IconSend className="text-green-600" size={20} />
-                <span className="font-medium text-gray-900 dark:text-white">Send WhatsApp Message</span>
+                <IconSend className="text-green-600" size={18} />
+                <span className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">Send WhatsApp Message</span>
               </div>
               <IconArrowRight className="text-gray-400" size={16} />
             </button>
 
             <button
-              className="w-full flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+              className="w-full flex items-center justify-between p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <IconTemplate className="text-blue-600" size={20} />
-                <span className="font-medium text-gray-900 dark:text-white">Manage Templates</span>
+                <IconTemplate className="text-blue-600" size={18} />
+                <span className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">Manage Templates</span>
               </div>
               <IconArrowRight className="text-gray-400" size={16} />
             </button>
 
             <button
-              className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              className="w-full flex items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <IconSettings className="text-gray-600" size={20} />
-                <span className="font-medium text-gray-900 dark:text-white">API Settings</span>
+                <IconSettings className="text-gray-600" size={18} />
+                <span className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">API Settings</span>
               </div>
               <IconArrowRight className="text-gray-400" size={16} />
             </button>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Message Templates
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {templates.map((template) => (
               <div
                 key={template.id}
-                className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
               >
                 <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{template.name}</p>
-                    <p className="text-sm text-gray-500 mt-1">{template.content}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{template.name}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1 line-clamp-2">{template.content}</p>
                   </div>
-                  <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
+                  <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full ml-2 flex-shrink-0">
                     Approved
                   </span>
                 </div>

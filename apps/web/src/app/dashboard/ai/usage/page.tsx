@@ -76,32 +76,32 @@ export default function AIUsagePage() {
   }
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           AI Usage & Statistics
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Monitor your AI usage, costs, and rate limits
         </p>
       </div>
 
       {/* Rate Limit Status */}
       {rateLimitStatus && (
-        <Paper className="p-4 mb-6 glass-card" withBorder>
-          <div className="flex items-center justify-between mb-3">
+        <Paper className="p-3 sm:p-4 mb-4 sm:mb-6 glass-card" withBorder>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <IconRobot size={20} className="text-teal-500" />
-              <Text fw={600}>Daily Rate Limit</Text>
+              <Text fw={600} size="sm" className="sm:text-base">Daily Rate Limit</Text>
             </div>
-            <Badge color={rateLimitStatus.isLimited ? 'red' : 'green'}>
+            <Badge color={rateLimitStatus.isLimited ? 'red' : 'green'} size="sm">
               {rateLimitStatus.isLimited ? 'Limit Reached' : 'Active'}
             </Badge>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
-              <Text size="sm" c="dimmed" mb="xs">Requests</Text>
+              <Text size="xs" className="sm:text-sm" c="dimmed" mb="xs">Requests</Text>
               <Progress 
                 value={(rateLimitStatus.requestsUsed / (rateLimitStatus.requestsUsed + rateLimitStatus.requestsRemaining)) * 100}
                 color={rateLimitStatus.isLimited ? 'red' : 'teal'}
@@ -112,7 +112,7 @@ export default function AIUsagePage() {
               </Text>
             </div>
             <div>
-              <Text size="sm" c="dimmed" mb="xs">Tokens</Text>
+              <Text size="xs" className="sm:text-sm" c="dimmed" mb="xs">Tokens</Text>
               <Progress 
                 value={(rateLimitStatus.tokensUsed / (rateLimitStatus.tokensUsed + rateLimitStatus.tokensRemaining)) * 100}
                 color="blue"
@@ -130,19 +130,21 @@ export default function AIUsagePage() {
       )}
 
       {/* Filters */}
-      <Paper className="p-4 mb-6 glass-card" withBorder>
-        <div className="flex flex-wrap items-end gap-4">
+      <Paper className="p-3 sm:p-4 mb-4 sm:mb-6 glass-card" withBorder>
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 sm:gap-4">
           <DatePickerInput
             label="Start Date"
             value={startDate}
             onChange={setStartDate}
-            w={150}
+            className="col-span-1"
+            size="sm"
           />
           <DatePickerInput
             label="End Date"
             value={endDate}
             onChange={setEndDate}
-            w={150}
+            className="col-span-1"
+            size="sm"
           />
           <Select
             label="Group By"
@@ -153,59 +155,60 @@ export default function AIUsagePage() {
               { value: 'week', label: 'Week' },
               { value: 'month', label: 'Month' },
             ]}
-            w={120}
+            className="col-span-2 sm:col-span-1"
+            size="sm"
           />
         </div>
       </Paper>
 
       {/* Summary Stats */}
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md" mb="lg">
-        <Paper className="p-4 glass-card" withBorder>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900/30">
-              <IconMessage size={24} className="text-teal-600" />
+      <SimpleGrid cols={{ base: 2, lg: 4 }} spacing={{ base: 'sm', sm: 'md' }} mb="lg">
+        <Paper className="p-3 sm:p-4 glass-card" withBorder>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-teal-100 dark:bg-teal-900/30">
+              <IconMessage size={20} className="sm:w-6 sm:h-6 text-teal-600" />
             </div>
             <div>
-              <Text size="sm" c="dimmed">Total Requests</Text>
-              <Text size="xl" fw={700}>{stats?.totalRequests || 0}</Text>
+              <Text size="xs" className="sm:text-sm" c="dimmed">Total Requests</Text>
+              <Text size="lg" className="sm:text-xl" fw={700}>{stats?.totalRequests || 0}</Text>
             </div>
           </div>
         </Paper>
 
-        <Paper className="p-4 glass-card" withBorder>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <IconSparkles size={24} className="text-blue-600" />
+        <Paper className="p-3 sm:p-4 glass-card" withBorder>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <IconSparkles size={20} className="sm:w-6 sm:h-6 text-blue-600" />
             </div>
             <div>
-              <Text size="sm" c="dimmed">Total Tokens</Text>
-              <Text size="xl" fw={700}>
+              <Text size="xs" className="sm:text-sm" c="dimmed">Total Tokens</Text>
+              <Text size="lg" className="sm:text-xl" fw={700}>
                 {((stats?.totalTokensInput || 0) + (stats?.totalTokensOutput || 0)).toLocaleString()}
               </Text>
             </div>
           </div>
         </Paper>
 
-        <Paper className="p-4 glass-card" withBorder>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-              <IconCoin size={24} className="text-green-600" />
+        <Paper className="p-3 sm:p-4 glass-card" withBorder>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+              <IconCoin size={20} className="sm:w-6 sm:h-6 text-green-600" />
             </div>
             <div>
-              <Text size="sm" c="dimmed">Estimated Cost</Text>
-              <Text size="xl" fw={700}>{formatCurrency(stats?.totalCostUsd || 0)}</Text>
+              <Text size="xs" className="sm:text-sm" c="dimmed">Est. Cost</Text>
+              <Text size="lg" className="sm:text-xl" fw={700}>${formatCurrency(stats?.totalCostUsd || 0)}</Text>
             </div>
           </div>
         </Paper>
 
-        <Paper className="p-4 glass-card" withBorder>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-              <IconClock size={24} className="text-purple-600" />
+        <Paper className="p-3 sm:p-4 glass-card" withBorder>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+              <IconClock size={20} className="sm:w-6 sm:h-6 text-purple-600" />
             </div>
             <div>
-              <Text size="sm" c="dimmed">Avg Tokens/Request</Text>
-              <Text size="xl" fw={700}>
+              <Text size="xs" className="sm:text-sm" c="dimmed">Avg Tokens</Text>
+              <Text size="lg" className="sm:text-xl" fw={700}>
                 {stats?.totalRequests 
                   ? Math.round(((stats.totalTokensInput || 0) + (stats.totalTokensOutput || 0)) / stats.totalRequests)
                   : 0}
@@ -216,11 +219,11 @@ export default function AIUsagePage() {
       </SimpleGrid>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 mb-4 sm:mb-6">
         {/* Daily Usage Chart */}
-        <Paper className="p-4 glass-card" withBorder>
-          <Text fw={600} mb="md">Usage Over Time</Text>
-          <div className="h-64">
+        <Paper className="p-3 sm:p-4 glass-card" withBorder>
+          <Text fw={600} size="sm" className="sm:text-base" mb="md">Usage Over Time</Text>
+          <div className="h-48 sm:h-64">
             {stats?.dailyUsage && stats.dailyUsage.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stats.dailyUsage}>
@@ -228,9 +231,10 @@ export default function AIUsagePage() {
                   <XAxis 
                     dataKey="date" 
                     tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    tick={{ fontSize: 10 }}
                   />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
+                  <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
                   <Tooltip 
                     labelFormatter={(val) => new Date(val).toLocaleDateString()}
                   />
@@ -240,16 +244,16 @@ export default function AIUsagePage() {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center">
-                <Text c="dimmed">No usage data available</Text>
+                <Text c="dimmed" size="sm">No usage data available</Text>
               </div>
             )}
           </div>
         </Paper>
 
         {/* Requests by Type */}
-        <Paper className="p-4 glass-card" withBorder>
-          <Text fw={600} mb="md">Requests by Feature</Text>
-          <div className="h-64">
+        <Paper className="p-3 sm:p-4 glass-card" withBorder>
+          <Text fw={600} size="sm" className="sm:text-base" mb="md">Requests by Feature</Text>
+          <div className="h-48 sm:h-64">
             {getRequestTypeData().length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -258,8 +262,8 @@ export default function AIUsagePage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
+                    label={({ name, percent }) => `${name.length > 10 ? name.substring(0, 10) + '...' : name} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={60}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -272,7 +276,7 @@ export default function AIUsagePage() {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center">
-                <Text c="dimmed">No request data available</Text>
+                <Text c="dimmed" size="sm">No request data available</Text>
               </div>
             )}
           </div>
@@ -280,22 +284,22 @@ export default function AIUsagePage() {
       </div>
 
       {/* Model Usage */}
-      <Paper className="p-4 glass-card" withBorder>
-        <Text fw={600} mb="md">Requests by Model</Text>
-        <div className="h-64">
+      <Paper className="p-3 sm:p-4 glass-card" withBorder>
+        <Text fw={600} size="sm" className="sm:text-base" mb="md">Requests by Model</Text>
+        <div className="h-48 sm:h-64">
           {getModelData().length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={getModelData()}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Bar dataKey="value" fill="#14b8a6" name="Requests" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center">
-              <Text c="dimmed">No model data available</Text>
+              <Text c="dimmed" size="sm">No model data available</Text>
             </div>
           )}
         </div>
@@ -303,20 +307,20 @@ export default function AIUsagePage() {
 
       {/* Token Breakdown */}
       {stats && (
-        <Paper className="p-4 mt-6 glass-card" withBorder>
-          <Text fw={600} mb="md">Token Breakdown</Text>
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+        <Paper className="p-3 sm:p-4 mt-4 sm:mt-6 glass-card" withBorder>
+          <Text fw={600} size="sm" className="sm:text-base" mb="md">Token Breakdown</Text>
+          <SimpleGrid cols={{ base: 3 }} spacing={{ base: 'sm', sm: 'md' }}>
             <div>
-              <Text size="sm" c="dimmed">Input Tokens</Text>
-              <Text size="lg" fw={600}>{(stats.totalTokensInput || 0).toLocaleString()}</Text>
+              <Text size="xs" className="sm:text-sm" c="dimmed">Input Tokens</Text>
+              <Text size="md" className="sm:text-lg" fw={600}>{(stats.totalTokensInput || 0).toLocaleString()}</Text>
             </div>
             <div>
-              <Text size="sm" c="dimmed">Output Tokens</Text>
-              <Text size="lg" fw={600}>{(stats.totalTokensOutput || 0).toLocaleString()}</Text>
+              <Text size="xs" className="sm:text-sm" c="dimmed">Output Tokens</Text>
+              <Text size="md" className="sm:text-lg" fw={600}>{(stats.totalTokensOutput || 0).toLocaleString()}</Text>
             </div>
             <div>
-              <Text size="sm" c="dimmed">Total Tokens</Text>
-              <Text size="lg" fw={600}>
+              <Text size="xs" className="sm:text-sm" c="dimmed">Total Tokens</Text>
+              <Text size="md" className="sm:text-lg" fw={600}>
                 {((stats.totalTokensInput || 0) + (stats.totalTokensOutput || 0)).toLocaleString()}
               </Text>
             </div>

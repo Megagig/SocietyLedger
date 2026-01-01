@@ -83,70 +83,99 @@ export default function AIQueryPage() {
       !key.startsWith('_') && key !== 'member' && key !== 'category'
     );
 
+    const formatColumnName = (col: string) => 
+      col.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+
+    const renderCellValue = (col: string, value: any) => {
+      if (col === 'amount' || col === 'totalExpected' || col === 'totalCollected' || col === 'outstanding') {
+        return <Text fw={500}>₦{formatValue(value)}</Text>;
+      }
+      if (col === 'status') {
+        return (
+          <Badge size="sm" color={
+            value === 'active' || value === 'paid' ? 'green' :
+            value === 'overdue' ? 'red' :
+            value === 'pending' ? 'yellow' : 'gray'
+          }>
+            {value}
+          </Badge>
+        );
+      }
+      if (col === 'collectionRate') {
+        return <Text>{formatValue(value)}%</Text>;
+      }
+      return formatValue(value);
+    };
+
     return (
-      <div className="overflow-x-auto">
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              {columns.map((col) => (
-                <Table.Th key={col}>
-                  {col.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                </Table.Th>
+      <>
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {results.slice(0, 50).map((row, index) => (
+            <div key={index} className="p-4 space-y-2">
+              {columns.slice(0, 6).map((col) => (
+                <div key={col} className="flex justify-between items-center">
+                  <Text size="xs" c="dimmed">{formatColumnName(col)}</Text>
+                  <div className="text-sm">{renderCellValue(col, row[col])}</div>
+                </div>
               ))}
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {results.slice(0, 50).map((row, index) => (
-              <Table.Tr key={index}>
+              {columns.length > 6 && (
+                <Text size="xs" c="dimmed" ta="center" pt="xs">
+                  +{columns.length - 6} more fields
+                </Text>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
                 {columns.map((col) => (
-                  <Table.Td key={col}>
-                    {col === 'amount' || col === 'totalExpected' || col === 'totalCollected' || col === 'outstanding' ? (
-                      <Text fw={500}>₦{formatValue(row[col])}</Text>
-                    ) : col === 'status' ? (
-                      <Badge size="sm" color={
-                        row[col] === 'active' || row[col] === 'paid' ? 'green' :
-                        row[col] === 'overdue' ? 'red' :
-                        row[col] === 'pending' ? 'yellow' : 'gray'
-                      }>
-                        {row[col]}
-                      </Badge>
-                    ) : col === 'collectionRate' ? (
-                      <Text>{formatValue(row[col])}%</Text>
-                    ) : (
-                      formatValue(row[col])
-                    )}
-                  </Table.Td>
+                  <Table.Th key={col}>{formatColumnName(col)}</Table.Th>
                 ))}
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {results.slice(0, 50).map((row, index) => (
+                <Table.Tr key={index}>
+                  {columns.map((col) => (
+                    <Table.Td key={col}>{renderCellValue(col, row[col])}</Table.Td>
+                  ))}
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </div>
+
         {results.length > 50 && (
           <Text size="sm" c="dimmed" ta="center" py="sm">
             Showing 50 of {results.length} results
           </Text>
         )}
-      </div>
+      </>
     );
   };
 
   return (
-    <div>
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           Natural Language Data Query
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Query your association data using plain English
         </p>
       </div>
 
       {/* Query Input */}
-      <Paper className="p-6 mb-6 glass-card" withBorder>
-        <div className="flex gap-2">
+      <Paper className="p-4 sm:p-6 mb-4 sm:mb-6 glass-card" withBorder>
+        <div className="flex flex-col sm:flex-row gap-2">
           <TextInput
-            placeholder="Ask a question like 'Show me all active members' or 'List overdue transactions'"
+            placeholder="Ask a question like 'Show me all active members'..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -159,7 +188,7 @@ export default function AIQueryPage() {
             loading={isLoading}
             size="md"
             leftSection={<IconSearch size={18} />}
-            className="bg-gradient-to-r from-teal-500 to-green-500"
+            className="bg-gradient-to-r from-teal-500 to-green-500 w-full sm:w-auto"
           >
             Query
           </Button>
@@ -176,8 +205,10 @@ export default function AIQueryPage() {
                 size="xs"
                 leftSection={example.icon}
                 onClick={() => setQuery(example.query)}
+                className="text-xs"
               >
-                {example.query}
+                <span className="hidden sm:inline">{example.query}</span>
+                <span className="sm:hidden">{example.query.length > 25 ? example.query.substring(0, 25) + '...' : example.query}</span>
               </Button>
             ))}
           </div>
@@ -186,46 +217,46 @@ export default function AIQueryPage() {
 
       {/* Results */}
       {isLoading ? (
-        <Paper className="p-12 glass-card text-center" withBorder>
+        <Paper className="p-8 sm:p-12 glass-card text-center" withBorder>
           <Loader size="lg" className="mx-auto mb-4" />
           <Text>Processing your query...</Text>
           <Text size="sm" c="dimmed">AI is interpreting your request and fetching data</Text>
         </Paper>
       ) : result ? (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Query Interpretation */}
-          <Paper className="p-4 glass-card" withBorder>
-            <div className="flex items-center justify-between mb-2">
+          <Paper className="p-3 sm:p-4 glass-card" withBorder>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
                 <IconSparkles size={18} className="text-teal-500" />
-                <Text fw={600}>Query Interpretation</Text>
+                <Text fw={600} size="sm" className="sm:text-base">Query Interpretation</Text>
               </div>
               {getQueryTypeBadge(result.queryType)}
             </div>
-            <Text size="sm" c="dimmed">{result.interpretation}</Text>
+            <Text size="xs" className="sm:text-sm" c="dimmed">{result.interpretation}</Text>
             <Badge size="xs" mt="xs">
               {result.tokensUsed.input + result.tokensUsed.output} tokens used
             </Badge>
           </Paper>
 
           {/* AI Explanation */}
-          <Paper className="p-4 bg-teal-50 dark:bg-teal-900/20" withBorder>
+          <Paper className="p-3 sm:p-4 bg-teal-50 dark:bg-teal-900/20" withBorder>
             <div className="flex items-center gap-2 mb-2">
               <IconBrain size={18} className="text-teal-600" />
-              <Text fw={600}>AI Explanation</Text>
+              <Text fw={600} size="sm" className="sm:text-base">AI Explanation</Text>
             </div>
-            <Text size="sm">{result.explanation}</Text>
+            <Text size="xs" className="sm:text-sm">{result.explanation}</Text>
           </Paper>
 
           {/* Results Table */}
           <Paper className="glass-card overflow-hidden" withBorder>
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <IconDatabase size={18} />
-                  <Text fw={600}>Results</Text>
+                  <Text fw={600} size="sm" className="sm:text-base">Results</Text>
                 </div>
-                <Badge>{result.results.length} records</Badge>
+                <Badge size="sm">{result.results.length} records</Badge>
               </div>
             </div>
             {renderResultsTable(result.results)}
@@ -246,10 +277,10 @@ export default function AIQueryPage() {
           </Accordion>
         </div>
       ) : (
-        <Paper className="p-12 glass-card text-center" withBorder>
-          <IconDatabase size={64} className="mx-auto mb-4 text-gray-400" />
-          <Text size="lg" fw={500} mb="xs">Query Your Data</Text>
-          <Text size="sm" c="dimmed" mb="lg">
+        <Paper className="p-8 sm:p-12 glass-card text-center" withBorder>
+          <IconDatabase size={48} className="sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
+          <Text size="md" className="sm:text-lg" fw={500} mb="xs">Query Your Data</Text>
+          <Text size="xs" className="sm:text-sm" c="dimmed" mb="lg">
             Enter a natural language query above to search your association data.
             The AI will interpret your request and return relevant results.
           </Text>

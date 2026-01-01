@@ -197,18 +197,18 @@ export default function SavingsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Member Savings
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Manage savings accounts, deposits, and withdrawals
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto"
         >
           <IconPlus size={20} />
           Open Account
@@ -217,8 +217,8 @@ export default function SavingsPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1">
             <TextInput
               placeholder="Search by name or account number..."
               leftSection={<IconSearch size={16} />}
@@ -227,40 +227,102 @@ export default function SavingsPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <Select
-            placeholder="Status"
-            data={[
-              { value: '', label: 'All Status' },
-              { value: 'ACTIVE', label: 'Active' },
-              { value: 'DORMANT', label: 'Dormant' },
-              { value: 'FROZEN', label: 'Frozen' },
-              { value: 'CLOSED', label: 'Closed' }
-            ]}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            clearable
-            className="w-40"
-          />
-          <Select
-            placeholder="Type"
-            data={[
-              { value: '', label: 'All Types' },
-              { value: 'REGULAR', label: 'Regular' },
-              { value: 'TARGET', label: 'Target' },
-              { value: 'FIXED', label: 'Fixed' }
-            ]}
-            value={typeFilter}
-            onChange={setTypeFilter}
-            clearable
-            className="w-40"
-          />
-          <Button onClick={handleSearch}>Search</Button>
+          <div className="grid grid-cols-2 sm:flex gap-3 sm:gap-4">
+            <Select
+              placeholder="Status"
+              data={[
+                { value: '', label: 'All Status' },
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'DORMANT', label: 'Dormant' },
+                { value: 'FROZEN', label: 'Frozen' },
+                { value: 'CLOSED', label: 'Closed' }
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              clearable
+              className="w-full sm:w-40"
+            />
+            <Select
+              placeholder="Type"
+              data={[
+                { value: '', label: 'All Types' },
+                { value: 'REGULAR', label: 'Regular' },
+                { value: 'TARGET', label: 'Target' },
+                { value: 'FIXED', label: 'Fixed' }
+              ]}
+              value={typeFilter}
+              onChange={setTypeFilter}
+              clearable
+              className="w-full sm:w-40"
+            />
+          </div>
+          <Button onClick={handleSearch} className="w-full sm:w-auto">Search</Button>
         </div>
       </div>
 
       {/* Accounts Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {accounts.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">No savings accounts found</div>
+          ) : (
+            accounts.map((account) => (
+              <div key={account.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <IconWallet className="text-green-600" size={18} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">
+                        {account.member.firstName} {account.member.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{account.member.membershipId}</p>
+                    </div>
+                  </div>
+                  <Badge color={getStatusColor(account.status)} size="sm">{account.status}</Badge>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{getTypeLabel(account.accountType)}</span>
+                  <span className="font-mono text-xs text-gray-400">{account.accountNumber}</span>
+                </div>
+                
+                <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3 text-center">
+                  <p className="text-xs text-gray-500">Balance</p>
+                  <p className="text-lg font-bold text-green-600">{formatCurrency(account.balance)}</p>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openTransactionModal(account, 'DEPOSIT')}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs text-green-600 bg-green-50 dark:bg-green-900/20 rounded-lg"
+                    >
+                      <IconArrowDownRight size={14} /> Deposit
+                    </button>
+                    <button
+                      onClick={() => openTransactionModal(account, 'WITHDRAWAL')}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg"
+                    >
+                      <IconArrowUpRight size={14} /> Withdraw
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/dashboard/cooperatives/savings/${account.id}`)}
+                    className="flex items-center gap-1 text-blue-600 text-sm"
+                  >
+                    <IconEye size={16} /> View
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -339,7 +401,7 @@ export default function SavingsPage() {
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700">
             <Pagination total={totalPages} value={page} onChange={setPage} />
           </div>
         )}

@@ -149,7 +149,7 @@ export default function TenantsPage() {
   if (user?.platformRole !== 'SUPER_ADMIN') return null;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -158,26 +158,26 @@ export default function TenantsPage() {
             <span>/</span>
             <span>Tenant Management</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
             Manage tenant lifecycle, modules, billing, and security
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-center">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
         <input
           type="text"
           placeholder="Search by name or subdomain..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-          className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         />
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="">All Status</option>
           <option value="ACTIVE">Active</option>
@@ -187,14 +187,14 @@ export default function TenantsPage() {
         <select
           value={tierFilter}
           onChange={(e) => { setTierFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="">All Tiers</option>
           <option value="STARTER">Starter</option>
           <option value="PROFESSIONAL">Professional</option>
           <option value="ENTERPRISE">Enterprise</option>
         </select>
-        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 px-2">
           <input
             type="checkbox"
             checked={showDeleted}
@@ -205,7 +205,7 @@ export default function TenantsPage() {
         </label>
       </div>
 
-      {/* Tenants Table */}
+      {/* Tenants List */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -214,119 +214,216 @@ export default function TenantsPage() {
         ) : tenants.length === 0 ? (
           <div className="text-center py-20 text-gray-500">No tenants found</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tenant</th>
-                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tier</th>
-                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Status</th>
-                  <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Users</th>
-                  <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Members</th>
-                  <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Subscription</th>
-                  <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenants.map((tenant) => (
-                  <tr key={tenant.id} className={`border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${tenant.isDeleted ? 'opacity-60' : ''}`}>
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900 dark:text-white">{tenant.name}</div>
-                      <div className="text-xs text-gray-500">{tenant.subdomain}.societyledger.com</div>
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {tenants.map((tenant) => (
+                <div key={tenant.id} className={`p-4 space-y-3 ${tenant.isDeleted ? 'opacity-60' : ''}`}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white">{tenant.name}</h3>
+                      <p className="text-xs text-gray-500">{tenant.subdomain}.societyledger.com</p>
                       {tenant.isDeleted && (
                         <span className="text-xs text-red-500">Deleted</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        tenant.tier === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
-                        tenant.tier === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
-                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                      }`}>
-                        {tenant.tier}
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                      tenant.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                      'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                    }`}>
+                      {tenant.status}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className={`px-2 py-1 rounded font-medium ${
+                      tenant.tier === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                      tenant.tier === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                      'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {tenant.tier}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {tenant.userCount} users • {tenant.memberCount} members
+                    </span>
+                    {tenant.plan && (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        • {tenant.plan.name}
                       </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                        tenant.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                      }`}>
-                        {tenant.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant.userCount}</td>
-                    <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant.memberCount}</td>
-                    <td className="py-3 px-4">
-                      {tenant.plan ? (
-                        <div className="text-gray-900 dark:text-white text-xs">{tenant.plan.name}</div>
-                      ) : (
-                        <span className="text-gray-400 text-xs">No subscription</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex justify-center gap-1 flex-wrap">
-                        <Link
-                          href={`/admin/tenants/${tenant.id}`}
-                          className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30"
-                        >
-                          View
-                        </Link>
-                        {tenant.isDeleted ? (
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Link
+                      href={`/admin/tenants/${tenant.id}`}
+                      className="px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30"
+                    >
+                      View
+                    </Link>
+                    {tenant.isDeleted ? (
+                      <button
+                        onClick={() => handleAction(tenant.id, 'restore')}
+                        disabled={actionLoading === tenant.id}
+                        className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                      >
+                        {actionLoading === tenant.id ? '...' : 'Restore'}
+                      </button>
+                    ) : (
+                      <>
+                        {tenant.status === 'ACTIVE' ? (
                           <button
-                            onClick={() => handleAction(tenant.id, 'restore')}
+                            onClick={() => handleSuspend(tenant.id)}
                             disabled={actionLoading === tenant.id}
-                            className="px-2 py-1 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                            className="px-3 py-1.5 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
                           >
-                            {actionLoading === tenant.id ? '...' : 'Restore'}
+                            Suspend
                           </button>
                         ) : (
-                          <>
-                            {tenant.status === 'ACTIVE' ? (
-                              <button
-                                onClick={() => handleSuspend(tenant.id)}
-                                disabled={actionLoading === tenant.id}
-                                className="px-2 py-1 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
-                              >
-                                Suspend
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleAction(tenant.id, 'reactivate')}
-                                disabled={actionLoading === tenant.id}
-                                className="px-2 py-1 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
-                              >
-                                Reactivate
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleForceLogout(tenant.id)}
-                              disabled={actionLoading === tenant.id}
-                              className="px-2 py-1 text-xs text-orange-600 hover:text-orange-700 border border-orange-200 rounded hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/30 disabled:opacity-50"
-                            >
-                              Logout All
-                            </button>
-                            <button
-                              onClick={() => handleSoftDelete(tenant.id)}
-                              disabled={actionLoading === tenant.id}
-                              className="px-2 py-1 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
-                            >
-                              Delete
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleAction(tenant.id, 'reactivate')}
+                            disabled={actionLoading === tenant.id}
+                            className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                          >
+                            Reactivate
+                          </button>
                         )}
-                      </div>
-                    </td>
+                        <button
+                          onClick={() => handleForceLogout(tenant.id)}
+                          disabled={actionLoading === tenant.id}
+                          className="px-3 py-1.5 text-xs text-orange-600 hover:text-orange-700 border border-orange-200 rounded hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/30 disabled:opacity-50"
+                        >
+                          Logout All
+                        </button>
+                        <button
+                          onClick={() => handleSoftDelete(tenant.id)}
+                          disabled={actionLoading === tenant.id}
+                          className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tenant</th>
+                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tier</th>
+                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Status</th>
+                    <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Users</th>
+                    <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Members</th>
+                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Subscription</th>
+                    <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {tenants.map((tenant) => (
+                    <tr key={tenant.id} className={`border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${tenant.isDeleted ? 'opacity-60' : ''}`}>
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-900 dark:text-white">{tenant.name}</div>
+                        <div className="text-xs text-gray-500">{tenant.subdomain}.societyledger.com</div>
+                        {tenant.isDeleted && (
+                          <span className="text-xs text-red-500">Deleted</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          tenant.tier === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                          tenant.tier === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                          {tenant.tier}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                          tenant.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {tenant.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant.userCount}</td>
+                      <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{tenant.memberCount}</td>
+                      <td className="py-3 px-4">
+                        {tenant.plan ? (
+                          <div className="text-gray-900 dark:text-white text-xs">{tenant.plan.name}</div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No subscription</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex justify-center gap-1 flex-wrap">
+                          <Link
+                            href={`/admin/tenants/${tenant.id}`}
+                            className="px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30"
+                          >
+                            View
+                          </Link>
+                          {tenant.isDeleted ? (
+                            <button
+                              onClick={() => handleAction(tenant.id, 'restore')}
+                              disabled={actionLoading === tenant.id}
+                              className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                            >
+                              {actionLoading === tenant.id ? '...' : 'Restore'}
+                            </button>
+                          ) : (
+                            <>
+                              {tenant.status === 'ACTIVE' ? (
+                                <button
+                                  onClick={() => handleSuspend(tenant.id)}
+                                  disabled={actionLoading === tenant.id}
+                                  className="px-3 py-1.5 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
+                                >
+                                  Suspend
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleAction(tenant.id, 'reactivate')}
+                                  disabled={actionLoading === tenant.id}
+                                  className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                                >
+                                  Reactivate
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleForceLogout(tenant.id)}
+                                disabled={actionLoading === tenant.id}
+                                className="px-3 py-1.5 text-xs text-orange-600 hover:text-orange-700 border border-orange-200 rounded hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/30 disabled:opacity-50"
+                              >
+                                Logout All
+                              </button>
+                              <button
+                                onClick={() => handleSoftDelete(tenant.id)}
+                                disabled={actionLoading === tenant.id}
+                                className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
             </p>
@@ -334,14 +431,14 @@ export default function TenantsPage() {
               <button
                 onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
                 disabled={pagination.page === 1}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPagination(p => ({ ...p, page: Math.min(p.totalPages, p.page + 1) }))}
                 disabled={pagination.page === pagination.totalPages}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Next
               </button>

@@ -445,36 +445,38 @@ export default function PenaltiesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Penalties & Fines
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Configure penalty rules, manage waivers, and track late fees
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Can permission={PERMISSIONS.FINANCE_APPROVE}>
             <button
               onClick={handleApplyLateFees}
               disabled={isSubmitting}
-              className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-50 text-sm"
             >
               <Clock className="w-4 h-4" />
-              Apply Late Fees
+              <span className="hidden sm:inline">Apply Late Fees</span>
+              <span className="sm:hidden">Late Fees</span>
             </button>
           </Can>
           <Can permission={PERMISSIONS.FINANCE_CREATE}>
             <button
               onClick={() => setShowRuleModal(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm"
             >
               <Settings className="w-4 h-4" />
-              New Rule
+              <span className="hidden sm:inline">New Rule</span>
+              <span className="sm:hidden">Rule</span>
             </button>
           </Can>
           <Can permission={PERMISSIONS.FINANCE_CREATE}>
@@ -484,10 +486,11 @@ export default function PenaltiesPage() {
                 setCategoryForm({ name: '', amount: '', description: '', isActive: true });
                 setShowCategoryModal(true);
               }}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm"
             >
               <Plus className="w-4 h-4" />
-              Create Penalty Type
+              <span className="hidden sm:inline">Create Penalty Type</span>
+              <span className="sm:hidden">Penalty</span>
             </button>
           </Can>
         </div>
@@ -500,59 +503,59 @@ export default function PenaltiesPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Penalties</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Penalties</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">
                 ₦{Number(stats?.penalties.totalAmount || 0).toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-full">
-              <TrendingUp className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-full">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Collected</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Collected</p>
+              <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">
                 ₦{Number(stats?.penalties.totalCollected || 0).toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-full">
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Active Rules</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Active Rules</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-600 mt-1">
                 {stats?.rules.active || rules.filter(r => r.isActive).length}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-              <Settings className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Waived</p>
-              <p className="text-2xl font-bold text-purple-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Waived</p>
+              <p className="text-lg sm:text-2xl font-bold text-purple-600 mt-1">
                 ₦{Number(stats?.waivers.totalWaived || 0).toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-              <XCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
         </div>

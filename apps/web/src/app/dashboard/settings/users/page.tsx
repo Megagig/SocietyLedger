@@ -173,23 +173,23 @@ export default function UsersRolesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <UserCog className="w-8 h-8 text-teal-500" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+            <UserCog className="w-6 h-6 sm:w-8 sm:h-8 text-teal-500" />
             User Role Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Assign and manage roles for association members ({totalCount} users)
           </p>
         </div>
       </div>
 
       {/* Search */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="relative max-w-md">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
@@ -199,7 +199,7 @@ export default function UsersRolesPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 text-sm"
           />
         </div>
       </div>
@@ -217,7 +217,90 @@ export default function UsersRolesPage() {
       ) : (
         <>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {users.map(user => (
+                <div key={user.id} className="p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-white font-medium flex-shrink-0">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-gray-900 dark:text-white truncate">
+                        {user.name}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
+                        <Mail className="w-3 h-3 flex-shrink-0" />
+                        {user.email}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Member ID</span>
+                    <span className="text-gray-900 dark:text-white">{user.memberId || '-'}</span>
+                  </div>
+                  
+                  <div>
+                    <span className="text-xs text-gray-500 block mb-2">Roles</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {user.platformRole && (
+                        <span className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded text-xs font-medium">
+                          {user.platformRole}
+                        </span>
+                      )}
+                      {user.roles.map(role => (
+                        <span
+                          key={role.id}
+                          className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 ${getRoleBadgeColor(role)}`}
+                        >
+                          {role.displayName}
+                          <Can permission={PERMISSIONS.USER_EDIT}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveRole(user, role);
+                              }}
+                              className="ml-1 hover:text-red-600"
+                              title="Remove role"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Can>
+                        </span>
+                      ))}
+                      {user.roles.length === 0 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 italic">
+                          No roles assigned
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Joined {formatDate(user.createdAt)}
+                    </span>
+                    <Can permission={PERMISSIONS.USER_EDIT}>
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsAssigning(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-lg text-xs font-medium"
+                      >
+                        <Shield className="w-3 h-3" />
+                        Assign Role
+                      </button>
+                    </Can>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -325,22 +408,22 @@ export default function UsersRolesPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow px-6 py-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-800 rounded-lg shadow px-4 sm:px-6 py-3 sm:py-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
               Page {page} of {totalPages}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-center">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="flex-1 sm:flex-none px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="flex-1 sm:flex-none px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
               >
                 Next
               </button>

@@ -174,9 +174,9 @@ export default function MemberBalancesPage() {
           Back to Reports
         </Button>
 
-        <Group justify="space-between" align="flex-start" mb="xs">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-2">
           <div>
-            <Title order={2} mb="xs">
+            <Title order={2} mb="xs" className="text-xl sm:text-2xl">
               Member Balances Report
             </Title>
             <Text c="dimmed">Outstanding balances by member</Text>
@@ -188,56 +188,58 @@ export default function MemberBalancesPage() {
             color="green"
             onClick={handleExportExcel}
             loading={isExporting}
+            className="w-full sm:w-auto"
           >
             Export Excel
           </Button>
-        </Group>
+        </div>
       </div>
 
       {/* Summary Stats */}
-      <Group mb="xl" grow>
-        <Card withBorder padding="lg">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        <Card withBorder padding="md" className="p-3 sm:p-4">
           <Stack gap="xs">
-            <Text size="sm" c="dimmed">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
               Total Members
             </Text>
-            <Text size="xl" fw={700}>
+            <Text size="lg" className="text-base sm:text-xl" fw={700}>
               {report.pagination.totalCount}
             </Text>
           </Stack>
         </Card>
 
-        <Card withBorder padding="lg">
+        <Card withBorder padding="md" className="p-3 sm:p-4">
           <Stack gap="xs">
-            <Text size="sm" c="dimmed">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
               Total Outstanding
             </Text>
-            <Text size="xl" fw={700} c="orange">
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
               {formatCurrency(totalOutstanding)}
             </Text>
           </Stack>
         </Card>
 
-        <Card withBorder padding="lg">
+        <Card withBorder padding="md" className="p-3 sm:p-4">
           <Stack gap="xs">
-            <Text size="sm" c="dimmed">
+            <Text size="xs" className="sm:text-sm" c="dimmed">
               Members with Overdue
             </Text>
-            <Text size="xl" fw={700} c="red">
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="red">
               {report.members.filter((m: any) => m.overdueTransactions > 0).length}
             </Text>
           </Stack>
         </Card>
-      </Group>
+      </div>
 
       {/* Filters */}
-      <Paper p="md" mb="xl" withBorder>
-        <Group grow>
+      <Paper p="md" mb="xl" withBorder className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <TextInput
             placeholder="Search by name, email, or member ID"
             leftSection={<IconSearch size={16} />}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
+            className="flex-1"
           />
 
           <Select
@@ -249,121 +251,174 @@ export default function MemberBalancesPage() {
             ]}
             value={status}
             onChange={(value) => setStatus(value as any)}
+            className="w-full sm:w-[180px]"
           />
-        </Group>
+        </div>
       </Paper>
 
       {/* Members Table */}
-      <Card withBorder padding="lg">
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th
-                style={{ cursor: 'pointer' }}
-                onClick={() => toggleSort('name')}
-              >
-                <Group gap="xs">
-                  Member
-                  <SortIcon field="name" />
-                </Group>
-              </Table.Th>
-              <Table.Th>Contact</Table.Th>
-              <Table.Th ta="right">Total Dues</Table.Th>
-              <Table.Th ta="right">Paid</Table.Th>
-              <Table.Th
-                ta="right"
-                style={{ cursor: 'pointer' }}
-                onClick={() => toggleSort('balance')}
-              >
-                <Group gap="xs" justify="flex-end">
-                  Balance
-                  <SortIcon field="balance" />
-                </Group>
-              </Table.Th>
-              <Table.Th ta="center">Status</Table.Th>
-              <Table.Th
-                ta="right"
-                style={{ cursor: 'pointer' }}
-                onClick={() => toggleSort('lastPayment')}
-              >
-                <Group gap="xs" justify="flex-end">
-                  Last Payment
-                  <SortIcon field="lastPayment" />
-                </Group>
-              </Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {report.members.length === 0 ? (
+      <Card withBorder padding="md" className="p-3 sm:p-4">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {report.members.length === 0 ? (
+            <Text ta="center" c="dimmed" py="xl">
+              No members found
+            </Text>
+          ) : (
+            report.members.map((member: any) => (
+              <div key={member.memberId} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <Text fw={600}>{member.firstName} {member.lastName}</Text>
+                    <Text size="xs" c="dimmed">{member.memberNumber}</Text>
+                  </div>
+                  <div className="flex gap-1">
+                    {member.pendingTransactions > 0 && (
+                      <Badge size="xs" color="blue">{member.pendingTransactions}</Badge>
+                    )}
+                    {member.overdueTransactions > 0 && (
+                      <Badge size="xs" color="red">{member.overdueTransactions}</Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2 text-center bg-white dark:bg-gray-800 rounded p-2 mt-2">
+                  <div>
+                    <Text size="xs" c="dimmed">Dues</Text>
+                    <Text size="sm" fw={500}>{formatCurrency(member.totalDues)}</Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">Paid</Text>
+                    <Text size="sm" fw={500} c="green">{formatCurrency(member.totalPaid)}</Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">Balance</Text>
+                    <Text size="sm" fw={600} c={parseFloat(member.balance) > 0 ? 'orange' : 'gray'}>
+                      {formatCurrency(member.balance)}
+                    </Text>
+                  </div>
+                </div>
+                
+                <Text size="xs" c="dimmed" mt={2}>
+                  Last payment: {formatDate(member.lastPaymentDate)}
+                </Text>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <Table striped highlightOnHover>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={7}>
-                  <Text ta="center" c="dimmed" py="xl">
-                    No members found
-                  </Text>
-                </Table.Td>
+                <Table.Th
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleSort('name')}
+                >
+                  <Group gap="xs">
+                    Member
+                    <SortIcon field="name" />
+                  </Group>
+                </Table.Th>
+                <Table.Th>Contact</Table.Th>
+                <Table.Th ta="right">Total Dues</Table.Th>
+                <Table.Th ta="right">Paid</Table.Th>
+                <Table.Th
+                  ta="right"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleSort('balance')}
+                >
+                  <Group gap="xs" justify="flex-end">
+                    Balance
+                    <SortIcon field="balance" />
+                  </Group>
+                </Table.Th>
+                <Table.Th ta="center">Status</Table.Th>
+                <Table.Th
+                  ta="right"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleSort('lastPayment')}
+                >
+                  <Group gap="xs" justify="flex-end">
+                    Last Payment
+                    <SortIcon field="lastPayment" />
+                  </Group>
+                </Table.Th>
               </Table.Tr>
-            ) : (
-              report.members.map((member: any) => (
-                <Table.Tr key={member.memberId}>
-                  <Table.Td>
-                    <div>
-                      <Text fw={600}>
-                        {member.firstName} {member.lastName}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {member.memberNumber}
-                      </Text>
-                    </div>
-                  </Table.Td>
-                  <Table.Td>
-                    <Stack gap={4}>
-                      {member.email && (
-                        <Group gap="xs">
-                          <IconMail size={14} className="text-gray-400" />
-                          <Text size="xs">{member.email}</Text>
-                        </Group>
-                      )}
-                      {member.phone && (
-                        <Group gap="xs">
-                          <IconPhone size={14} className="text-gray-400" />
-                          <Text size="xs">{member.phone}</Text>
-                        </Group>
-                      )}
-                    </Stack>
-                  </Table.Td>
-                  <Table.Td ta="right">{formatCurrency(member.totalDues)}</Table.Td>
-                  <Table.Td ta="right" c="green">
-                    {formatCurrency(member.totalPaid)}
-                  </Table.Td>
-                  <Table.Td ta="right" fw={600} c={parseFloat(member.balance) > 0 ? 'orange' : 'gray'}>
-                    {formatCurrency(member.balance)}
-                  </Table.Td>
-                  <Table.Td ta="center">
-                    <Group gap="xs" justify="center">
-                      {member.pendingTransactions > 0 && (
-                        <Tooltip label={`${member.pendingTransactions} pending`}>
-                          <Badge size="sm" color="blue">
-                            {member.pendingTransactions}
-                          </Badge>
-                        </Tooltip>
-                      )}
-                      {member.overdueTransactions > 0 && (
-                        <Tooltip label={`${member.overdueTransactions} overdue`}>
-                          <Badge size="sm" color="red">
-                            {member.overdueTransactions}
-                          </Badge>
-                        </Tooltip>
-                      )}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td ta="right">
-                    <Text size="sm">{formatDate(member.lastPaymentDate)}</Text>
+            </Table.Thead>
+            <Table.Tbody>
+              {report.members.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={7}>
+                    <Text ta="center" c="dimmed" py="xl">
+                      No members found
+                    </Text>
                   </Table.Td>
                 </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
+              ) : (
+                report.members.map((member: any) => (
+                  <Table.Tr key={member.memberId}>
+                    <Table.Td>
+                      <div>
+                        <Text fw={600}>
+                          {member.firstName} {member.lastName}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {member.memberNumber}
+                        </Text>
+                      </div>
+                    </Table.Td>
+                    <Table.Td>
+                      <Stack gap={4}>
+                        {member.email && (
+                          <Group gap="xs">
+                            <IconMail size={14} className="text-gray-400" />
+                            <Text size="xs">{member.email}</Text>
+                          </Group>
+                        )}
+                        {member.phone && (
+                          <Group gap="xs">
+                            <IconPhone size={14} className="text-gray-400" />
+                            <Text size="xs">{member.phone}</Text>
+                          </Group>
+                        )}
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td ta="right">{formatCurrency(member.totalDues)}</Table.Td>
+                    <Table.Td ta="right" c="green">
+                      {formatCurrency(member.totalPaid)}
+                    </Table.Td>
+                    <Table.Td ta="right" fw={600} c={parseFloat(member.balance) > 0 ? 'orange' : 'gray'}>
+                      {formatCurrency(member.balance)}
+                    </Table.Td>
+                    <Table.Td ta="center">
+                      <Group gap="xs" justify="center">
+                        {member.pendingTransactions > 0 && (
+                          <Tooltip label={`${member.pendingTransactions} pending`}>
+                            <Badge size="sm" color="blue">
+                              {member.pendingTransactions}
+                            </Badge>
+                          </Tooltip>
+                        )}
+                        {member.overdueTransactions > 0 && (
+                          <Tooltip label={`${member.overdueTransactions} overdue`}>
+                            <Badge size="sm" color="red">
+                              {member.overdueTransactions}
+                            </Badge>
+                          </Tooltip>
+                        )}
+                      </Group>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Text size="sm">{formatDate(member.lastPaymentDate)}</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
+        </div>
 
         {/* Pagination */}
         {report.pagination.totalPages > 1 && (

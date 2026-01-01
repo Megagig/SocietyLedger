@@ -101,32 +101,32 @@ export default function SettingsPage() {
   const router = useRouter();
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           Association Settings
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Configure your association's preferences and settings
         </p>
       </div>
 
       {/* Settings Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {settingsCards.map((card, index) => {
           const CardContent = (
             <div
               key={index}
               onClick={() => !card.comingSoon && router.push(card.href)}
-              className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-all ${
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 transition-all ${
                 card.comingSoon 
                   ? 'opacity-60 cursor-not-allowed' 
                   : 'hover:shadow-lg hover:border-teal-500 cursor-pointer'
               } border border-gray-200 dark:border-gray-700`}
             >
               <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-teal-500/20 to-green-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-teal-500/20 to-green-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
                   {card.icon}
                 </div>
                 {card.comingSoon ? (
@@ -137,10 +137,10 @@ export default function SettingsPage() {
                   <ChevronRight className="w-5 h-5 text-gray-400" />
                 )}
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="mt-3 sm:mt-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                 {card.title}
               </h3>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 {card.description}
               </p>
             </div>

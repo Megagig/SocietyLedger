@@ -186,27 +186,28 @@ export default function RemindersPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <Mail className="w-8 h-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+            <Mail className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
             Payment Reminders
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Send payment reminders to members with outstanding balances
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Can permission={PERMISSIONS.FINANCE_EDIT}>
             <button
               onClick={handleUpdateOverdue}
-              className="flex items-center gap-2 text-orange-600 hover:text-orange-800 px-4 py-2 border border-orange-300 rounded-lg"
+              className="flex items-center gap-2 text-orange-600 hover:text-orange-800 px-3 py-2 border border-orange-300 rounded-lg text-sm"
             >
               <RefreshCw className="w-4 h-4" />
-              Update Overdue
+              <span className="hidden sm:inline">Update Overdue</span>
+              <span className="sm:hidden">Update</span>
             </button>
           </Can>
           <button
@@ -214,7 +215,7 @@ export default function RemindersPage() {
             className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
           >
             <RefreshCw className="w-4 h-4" />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
@@ -226,59 +227,59 @@ export default function RemindersPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Members with Balance</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">With Balance</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
                 {summary?.totalMembers || 0}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Outstanding</p>
-              <p className="text-2xl font-bold text-orange-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
+              <p className="text-lg sm:text-2xl font-bold text-orange-600 mt-1">
                 ₦{(summary?.totalOutstanding || 0).toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
-              <DollarSign className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
+              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Pending Transactions</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pending</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-600 mt-1">
                 {summary?.totalTransactions || 0}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-              <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Overdue</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Overdue</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">
                 {summary?.overdueTransactions || 0}
               </p>
             </div>
-            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-full">
-              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-full">
+              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
         </div>
@@ -286,8 +287,8 @@ export default function RemindersPage() {
 
       {/* Filters & Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -295,14 +296,14 @@ export default function RemindersPage() {
                 placeholder="Search members..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full sm:w-auto pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
               />
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
             >
               <option value="all">All Pending</option>
               <option value="overdue">Overdue Only</option>
@@ -310,10 +311,10 @@ export default function RemindersPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             {selectedMembers.length > 0 && (
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {selectedMembers.length} member(s) selected • ₦{selectedTotal.toLocaleString()}
+              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                {selectedMembers.length} selected • ₦{selectedTotal.toLocaleString()}
               </div>
             )}
             
@@ -321,10 +322,11 @@ export default function RemindersPage() {
               <button
                 onClick={() => setShowSendModal(true)}
                 disabled={selectedMembers.length === 0}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm"
               >
                 <Send className="w-4 h-4" />
-                Send Reminders
+                <span className="hidden sm:inline">Send Reminders</span>
+                <span className="sm:hidden">Send</span>
               </button>
             </Can>
           </div>

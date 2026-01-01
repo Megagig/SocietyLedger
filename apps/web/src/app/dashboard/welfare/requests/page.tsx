@@ -178,19 +178,19 @@ export default function PayoutRequestsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Payout Requests
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Request and manage welfare support payouts
           </p>
         </div>
         {canRequest && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto"
           >
             <IconPlus size={18} />
             Request Support
@@ -251,129 +251,215 @@ export default function PayoutRequestsPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Request
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Member
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Fund
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {requests.map((request) => (
-                  <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {request.requestNumber}
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {requests.map((request) => (
+                <div key={request.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {request.requestNumber}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {request.payoutType} • {formatDate(request.requestedAt)}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(request.status)}`}>
+                      {request.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <p className="text-gray-900 dark:text-white">
+                        {request.member.firstName} {request.member.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{request.fund.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {formatCurrency(request.amount)}
+                      </p>
+                      {request.approvedAmount && request.approvedAmount !== request.amount && (
+                        <p className="text-xs text-green-600">
+                          Approved: {formatCurrency(request.approvedAmount)}
                         </p>
-                        <p className="text-sm text-gray-500">
-                          {request.payoutType} • {formatDate(request.requestedAt)}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="text-gray-900 dark:text-white">
-                          {request.member.firstName} {request.member.lastName}
-                        </p>
-                        <p className="text-sm text-gray-500">{request.member.memberId}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-gray-900 dark:text-white">{request.fund.name}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(request.amount)}
-                        </p>
-                        {request.approvedAmount && request.approvedAmount !== request.amount && (
-                          <p className="text-sm text-green-600">
-                            Approved: {formatCurrency(request.approvedAmount)}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(request.status)}`}>
-                        {request.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex justify-end gap-2">
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      onClick={() => setSelectedRequest(request)}
+                      className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                      title="View Details"
+                    >
+                      <IconEye size={18} />
+                    </button>
+                    {canApprove && ['PENDING', 'UNDER_REVIEW'].includes(request.status) && (
+                      <>
                         <button
-                          onClick={() => setSelectedRequest(request)}
-                          className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                          title="View Details"
+                          onClick={() => handleReview(request.id, 'APPROVED', Number(request.amount))}
+                          className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                          title="Approve"
                         >
-                          <IconEye size={18} />
+                          <IconCheck size={18} />
                         </button>
-                        {canApprove && ['PENDING', 'UNDER_REVIEW'].includes(request.status) && (
-                          <>
-                            <button
-                              onClick={() => handleReview(request.id, 'APPROVED', Number(request.amount))}
-                              className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                              title="Approve"
-                            >
-                              <IconCheck size={18} />
-                            </button>
+                        <button
+                          onClick={() => {
+                            const reason = prompt('Enter rejection reason:');
+                            if (reason) handleReview(request.id, 'REJECTED', undefined, reason);
+                          }}
+                          className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          title="Reject"
+                        >
+                          <IconX size={18} />
+                        </button>
+                      </>
+                    )}
+                    {canDisburse && request.status === 'APPROVED' && (
+                      <button
+                        onClick={() => {
+                          const method = prompt('Enter disbursement method (cash, bank_transfer, etc.):');
+                          if (method) handleDisburse(request.id, method);
+                        }}
+                        className="p-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
+                        title="Disburse"
+                      >
+                        <IconCash size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Request
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Member
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Fund
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {requests.map((request) => (
+                    <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {request.requestNumber}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {request.payoutType} • {formatDate(request.requestedAt)}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <p className="text-gray-900 dark:text-white">
+                            {request.member.firstName} {request.member.lastName}
+                          </p>
+                          <p className="text-sm text-gray-500">{request.member.memberId}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-gray-900 dark:text-white">{request.fund.name}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {formatCurrency(request.amount)}
+                          </p>
+                          {request.approvedAmount && request.approvedAmount !== request.amount && (
+                            <p className="text-sm text-green-600">
+                              Approved: {formatCurrency(request.approvedAmount)}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(request.status)}`}>
+                          {request.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedRequest(request)}
+                            className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                            title="View Details"
+                          >
+                            <IconEye size={18} />
+                          </button>
+                          {canApprove && ['PENDING', 'UNDER_REVIEW'].includes(request.status) && (
+                            <>
+                              <button
+                                onClick={() => handleReview(request.id, 'APPROVED', Number(request.amount))}
+                                className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                                title="Approve"
+                              >
+                                <IconCheck size={18} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Enter rejection reason:');
+                                  if (reason) handleReview(request.id, 'REJECTED', undefined, reason);
+                                }}
+                                className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                title="Reject"
+                              >
+                                <IconX size={18} />
+                              </button>
+                            </>
+                          )}
+                          {canDisburse && request.status === 'APPROVED' && (
                             <button
                               onClick={() => {
-                                const reason = prompt('Enter rejection reason:');
-                                if (reason) handleReview(request.id, 'REJECTED', undefined, reason);
+                                const method = prompt('Enter disbursement method (cash, bank_transfer, etc.):');
+                                if (method) handleDisburse(request.id, method);
                               }}
-                              className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                              title="Reject"
+                              className="p-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
+                              title="Disburse"
+                            >
+                              <IconCash size={18} />
+                            </button>
+                          )}
+                          {canRequest && ['PENDING', 'UNDER_REVIEW'].includes(request.status) && (
+                            <button
+                              onClick={() => handleCancel(request)}
+                              className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                              title="Cancel"
                             >
                               <IconX size={18} />
                             </button>
-                          </>
-                        )}
-                        {canDisburse && request.status === 'APPROVED' && (
-                          <button
-                            onClick={() => {
-                              const method = prompt('Enter disbursement method (cash, bank_transfer, etc.):');
-                              if (method) handleDisburse(request.id, method);
-                            }}
-                            className="p-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
-                            title="Disburse"
-                          >
-                            <IconCash size={18} />
-                          </button>
-                        )}
-                        {canRequest && ['PENDING', 'UNDER_REVIEW'].includes(request.status) && (
-                          <button
-                            onClick={() => handleCancel(request)}
-                            className="p-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                            title="Cancel"
-                          >
-                            <IconX size={18} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

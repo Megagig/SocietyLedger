@@ -15,12 +15,22 @@ const mantineTheme = createTheme({
 });
 
 function MantineThemeWrapper({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
+  const { theme, mounted } = useTheme();
+  
+  // Prevent Mantine portals from rendering until client is mounted
+  // This fixes hydration mismatch with Portal components
+  if (!mounted) {
+    return (
+      <MantineProvider theme={mantineTheme} forceColorScheme="dark">
+        {children}
+      </MantineProvider>
+    );
+  }
   
   return (
     <MantineProvider theme={mantineTheme} forceColorScheme={theme}>
       <ModalsProvider>
-        <Notifications />
+        <Notifications position="top-right" />
         {children}
       </ModalsProvider>
     </MantineProvider>

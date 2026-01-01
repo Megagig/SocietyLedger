@@ -122,19 +122,19 @@ export default function ContributionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Welfare Contributions
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Track and manage member contributions to welfare funds
           </p>
         </div>
         {canManage && (
           <button
             onClick={() => setShowRecordModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto"
           >
             <IconPlus size={18} />
             Record Contribution
@@ -144,11 +144,11 @@ export default function ContributionsPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-4">
           <select
             value={filterFund}
             onChange={(e) => setFilterFund(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           >
             <option value="">All Funds</option>
             {funds.map(fund => (
@@ -158,7 +158,7 @@ export default function ContributionsPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           >
             <option value="">All Statuses</option>
             {CONTRIBUTION_STATUSES.map(status => (
@@ -185,104 +185,153 @@ export default function ContributionsPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Member
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Fund
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  {canConfirm && (
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {contributions.map((contribution) => (
-                  <tr key={contribution.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {contribution.member.firstName} {contribution.member.lastName}
-                        </p>
-                        <p className="text-sm text-gray-500">{contribution.member.memberId}</p>
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {contributions.map((contribution) => (
+                <div key={contribution.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {contribution.member.firstName} {contribution.member.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{contribution.member.memberId}</p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(contribution.status)}`}>
+                      {contribution.status}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">{contribution.fund.name}</span>
+                    <span className="font-semibold text-green-600">{formatCurrency(contribution.amount)}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <span className="text-xs text-gray-500">{formatDate(contribution.contributionDate)}</span>
+                    {canConfirm && contribution.status === 'PENDING' && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleConfirm(contribution.id, 'CONFIRMED')}
+                          className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                          title="Confirm"
+                        >
+                          <IconCheck size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleConfirm(contribution.id, 'REJECTED')}
+                          className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          title="Reject"
+                        >
+                          <IconX size={18} />
+                        </button>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-gray-900 dark:text-white">{contribution.fund.name}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-semibold text-green-600">{formatCurrency(contribution.amount)}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                      {formatDate(contribution.contributionDate)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(contribution.status)}`}>
-                        {contribution.status}
-                      </span>
-                    </td>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Member
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Fund
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
                     {canConfirm && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {contribution.status === 'PENDING' && (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => handleConfirm(contribution.id, 'CONFIRMED')}
-                              className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                              title="Confirm"
-                            >
-                              <IconCheck size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleConfirm(contribution.id, 'REJECTED')}
-                              className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                              title="Reject"
-                            >
-                              <IconX size={18} />
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Actions
+                      </th>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {contributions.map((contribution) => (
+                    <tr key={contribution.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {contribution.member.firstName} {contribution.member.lastName}
+                          </p>
+                          <p className="text-sm text-gray-500">{contribution.member.memberId}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-gray-900 dark:text-white">{contribution.fund.name}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-semibold text-green-600">{formatCurrency(contribution.amount)}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                        {formatDate(contribution.contributionDate)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(contribution.status)}`}>
+                          {contribution.status}
+                        </span>
+                      </td>
+                      {canConfirm && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          {contribution.status === 'PENDING' && (
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => handleConfirm(contribution.id, 'CONFIRMED')}
+                                className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                                title="Confirm"
+                              >
+                                <IconCheck size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleConfirm(contribution.id, 'REJECTED')}
+                                className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                title="Reject"
+                              >
+                                <IconX size={18} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex justify-center gap-2">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-2">
           <button
             onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
             disabled={pagination.page === 1}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-sm"
           >
             Previous
           </button>
-          <span className="px-4 py-2 text-gray-600 dark:text-gray-400">
+          <span className="px-4 py-2 text-gray-600 dark:text-gray-400 text-sm">
             Page {pagination.page} of {pagination.totalPages}
           </span>
           <button
             onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
             disabled={pagination.page === pagination.totalPages}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-sm"
           >
             Next
           </button>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
+import { getSubdomainUrl } from '@/utils/domain';
 import Link from 'next/link';
 
 type Association = {
@@ -190,7 +191,7 @@ export default function AssociationsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -199,7 +200,7 @@ export default function AssociationsPage() {
             <span>/</span>
             <span>Associations</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             Association Management
           </h1>
         </div>
@@ -207,10 +208,10 @@ export default function AssociationsPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
           <button
             onClick={() => setActiveTab('associations')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm transition ${
+            className={`py-3 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap ${
               activeTab === 'associations'
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -220,7 +221,7 @@ export default function AssociationsPage() {
           </button>
           <button
             onClick={() => setActiveTab('approvals')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm transition flex items-center gap-2 ${
+            className={`py-3 px-1 border-b-2 font-medium text-sm transition flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'approvals'
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -240,7 +241,7 @@ export default function AssociationsPage() {
       {activeTab === 'associations' && (
         <>
           {/* Filters */}
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <input
               type="text"
               placeholder="Search by name or subdomain..."
@@ -249,7 +250,7 @@ export default function AssociationsPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="flex-1 min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
             <select
               value={statusFilter}
@@ -257,7 +258,7 @@ export default function AssociationsPage() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="">All Status</option>
               <option value="ACTIVE">Active</option>
@@ -270,7 +271,7 @@ export default function AssociationsPage() {
                 setTierFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="">All Tiers</option>
               <option value="STARTER">Starter</option>
@@ -279,7 +280,7 @@ export default function AssociationsPage() {
             </select>
           </div>
 
-          {/* Associations Table */}
+          {/* Associations List */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-20">
@@ -290,97 +291,172 @@ export default function AssociationsPage() {
                 No associations found
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-700/50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Association</th>
-                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Subdomain</th>
-                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tier</th>
-                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Status</th>
-                      <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Users</th>
-                      <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Members</th>
-                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Created</th>
-                      <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {associations.map((assoc) => (
-                      <tr key={assoc.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-gray-900 dark:text-white">{assoc.name}</div>
-                          <div className="text-xs text-gray-500">ID: {assoc.id}</div>
-                        </td>
-                        <td className="py-3 px-4">
+              <>
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                  {associations.map((assoc) => (
+                    <div key={assoc.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-medium text-gray-900 dark:text-white">{assoc.name}</h3>
                           <a
-                            href={`http://${assoc.subdomain}.localhost:3000`}
+                            href={getSubdomainUrl(assoc.subdomain)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
+                            className="text-sm text-blue-600 hover:underline"
                           >
                             {assoc.subdomain}
                           </a>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            assoc.tier === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
-                            assoc.tier === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
-                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
-                            {assoc.tier}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            assoc.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                            assoc.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                          }`}>
-                            {assoc.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{assoc._count.users}</td>
-                        <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{assoc._count.members}</td>
-                        <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-xs">
-                          {new Date(assoc.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex justify-center gap-2">
-                            <Link
-                              href={`/admin/associations/${assoc.id}`}
-                              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30"
+                        </div>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          assoc.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                          assoc.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {assoc.status}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className={`px-2 py-1 rounded font-medium ${
+                          assoc.tier === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                          assoc.tier === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                          {assoc.tier}
+                        </span>
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {assoc._count.users} users • {assoc._count.members} members
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Created {new Date(assoc.createdAt).toLocaleDateString()}
+                        </span>
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/admin/associations/${assoc.id}`}
+                            className="px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30"
+                          >
+                            View
+                          </Link>
+                          {assoc.status === 'ACTIVE' ? (
+                            <button
+                              onClick={() => handleSuspend(assoc.id)}
+                              disabled={actionLoading === assoc.id}
+                              className="px-3 py-1.5 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
                             >
-                              View
-                            </Link>
-                            {assoc.status === 'ACTIVE' ? (
-                              <button
-                                onClick={() => handleSuspend(assoc.id)}
-                                disabled={actionLoading === assoc.id}
-                                className="px-2 py-1 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
-                              >
-                                {actionLoading === assoc.id ? '...' : 'Suspend'}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleReactivate(assoc.id)}
-                                disabled={actionLoading === assoc.id}
-                                className="px-2 py-1 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
-                              >
-                                {actionLoading === assoc.id ? '...' : 'Reactivate'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                              {actionLoading === assoc.id ? '...' : 'Suspend'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleReactivate(assoc.id)}
+                              disabled={actionLoading === assoc.id}
+                              className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                            >
+                              {actionLoading === assoc.id ? '...' : 'Reactivate'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-700/50">
+                      <tr>
+                        <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Association</th>
+                        <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Subdomain</th>
+                        <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Tier</th>
+                        <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Status</th>
+                        <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Users</th>
+                        <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Members</th>
+                        <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Created</th>
+                        <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {associations.map((assoc) => (
+                        <tr key={assoc.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-gray-900 dark:text-white">{assoc.name}</div>
+                            <div className="text-xs text-gray-500">ID: {assoc.id}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <a
+                              href={getSubdomainUrl(assoc.subdomain)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {assoc.subdomain}
+                            </a>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              assoc.tier === 'ENTERPRISE' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                              assoc.tier === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }`}>
+                              {assoc.tier}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              assoc.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                              assoc.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {assoc.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{assoc._count.users}</td>
+                          <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{assoc._count.members}</td>
+                          <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-xs">
+                            {new Date(assoc.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex justify-center gap-2">
+                              <Link
+                                href={`/admin/associations/${assoc.id}`}
+                                className="px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30"
+                              >
+                                View
+                              </Link>
+                              {assoc.status === 'ACTIVE' ? (
+                                <button
+                                  onClick={() => handleSuspend(assoc.id)}
+                                  disabled={actionLoading === assoc.id}
+                                  className="px-3 py-1.5 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
+                                >
+                                  {actionLoading === assoc.id ? '...' : 'Suspend'}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleReactivate(assoc.id)}
+                                  disabled={actionLoading === assoc.id}
+                                  className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                                >
+                                  {actionLoading === assoc.id ? '...' : 'Reactivate'}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Page {page} of {totalPages}
                 </p>
@@ -388,14 +464,14 @@ export default function AssociationsPage() {
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
                     Next
                   </button>
@@ -419,75 +495,130 @@ export default function AssociationsPage() {
               <p className="text-sm mt-2">No pending approvals</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-700/50">
-                  <tr>
-                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Email</th>
-                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Association</th>
-                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Role</th>
-                    <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Email Verified</th>
-                    <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Registered</th>
-                    <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingApprovals.map((approval) => (
-                    <tr key={approval.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                      <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">{approval.user.email}</td>
-                      <td className="py-3 px-4 text-gray-600 dark:text-gray-300">
-                        {approval.user.association ? (
-                          <span>
+            <>
+              {/* Mobile Card View */}
+              <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                {pendingApprovals.map((approval) => (
+                  <div key={approval.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white text-sm break-all">
+                          {approval.user.email}
+                        </p>
+                        {approval.user.association && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {approval.user.association.name}
-                            <span className="text-gray-400 text-xs ml-1">
-                              ({approval.user.association.subdomain})
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
+                          </p>
                         )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          approval.user.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
-                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                        }`}>
-                          {approval.user.role}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {approval.user.emailVerified ? (
-                          <span className="text-green-600">✓ Yes</span>
-                        ) : (
-                          <span className="text-red-600">✗ No</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-xs">
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        approval.user.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
+                        {approval.user.role}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className={approval.user.emailVerified ? 'text-green-600' : 'text-red-600'}>
+                        {approval.user.emailVerified ? '✓ Email verified' : '✗ Email not verified'}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400">
                         {new Date(approval.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => handleApproval(approval.user.id, 'approved')}
-                            disabled={actionLoading === approval.user.id}
-                            className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
-                          >
-                            {actionLoading === approval.user.id ? '...' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={() => handleReject(approval.user.id)}
-                            disabled={actionLoading === approval.user.id}
-                            className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </td>
+                      </span>
+                    </div>
+                    
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => handleApproval(approval.user.id, 'approved')}
+                        disabled={actionLoading === approval.user.id}
+                        className="flex-1 px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {actionLoading === approval.user.id ? '...' : 'Approve'}
+                      </button>
+                      <button
+                        onClick={() => handleReject(approval.user.id)}
+                        disabled={actionLoading === approval.user.id}
+                        className="flex-1 px-3 py-2 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Email</th>
+                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Association</th>
+                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Role</th>
+                      <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Email Verified</th>
+                      <th className="text-left py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Registered</th>
+                      <th className="text-center py-3 px-4 text-gray-500 dark:text-gray-400 font-medium">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {pendingApprovals.map((approval) => (
+                      <tr key={approval.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                        <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">{approval.user.email}</td>
+                        <td className="py-3 px-4 text-gray-600 dark:text-gray-300">
+                          {approval.user.association ? (
+                            <span>
+                              {approval.user.association.name}
+                              <span className="text-gray-400 text-xs ml-1">
+                                ({approval.user.association.subdomain})
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            approval.user.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {approval.user.role}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {approval.user.emailVerified ? (
+                            <span className="text-green-600">✓ Yes</span>
+                          ) : (
+                            <span className="text-red-600">✗ No</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-xs">
+                          {new Date(approval.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => handleApproval(approval.user.id, 'approved')}
+                              disabled={actionLoading === approval.user.id}
+                              className="px-3 py-1.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50 min-w-[70px]"
+                            >
+                              {actionLoading === approval.user.id ? '...' : 'Approve'}
+                            </button>
+                            <button
+                              onClick={() => handleReject(approval.user.id)}
+                              disabled={actionLoading === approval.user.id}
+                              className="px-3 py-1.5 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50 min-w-[70px]"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}

@@ -116,46 +116,41 @@ export default function CategoryReportPage() {
       </div>
 
       {/* Filters */}
-      <Grid mb="xl">
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Paper p="md" withBorder>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-          </Paper>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Paper p="md" withBorder>
-            <Select
-              label="Filter by Type"
-              placeholder="All categories"
-              data={[
-                { value: 'due', label: 'Dues' },
-                { value: 'levy', label: 'Levies' },
-                { value: 'donation', label: 'Donations' },
-                { value: 'penalty', label: 'Penalties' },
-              ]}
-              value={categoryType}
-              onChange={setCategoryType}
-              clearable
-            />
-          </Paper>
-        </Grid.Col>
-      </Grid>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Paper p="md" withBorder className="p-3 sm:p-4">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+        </Paper>
+        <Paper p="md" withBorder className="p-3 sm:p-4">
+          <Select
+            label="Filter by Type"
+            placeholder="All categories"
+            data={[
+              { value: 'due', label: 'Dues' },
+              { value: 'levy', label: 'Levies' },
+              { value: 'donation', label: 'Donations' },
+              { value: 'penalty', label: 'Penalties' },
+            ]}
+            value={categoryType}
+            onChange={setCategoryType}
+            clearable
+          />
+        </Paper>
+      </div>
 
       {/* Overview Chart */}
       {pieChartData.length > 0 && (
-        <Card withBorder padding="lg" mb="xl">
+        <Card withBorder padding="md" mb="xl" className="p-3 sm:p-4">
           <Text size="lg" fw={600} mb="md">
             Expected Amount by Category
           </Text>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
             <PieChart>
               <Pie
                 data={pieChartData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
-                outerRadius={100}
+                outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -164,6 +159,7 @@ export default function CategoryReportPage() {
                 ))}
               </Pie>
               <Tooltip formatter={(value: any) => formatCurrency(value)} />
+              <Legend />
             </PieChart>
           </ResponsiveContainer>
         </Card>
@@ -235,48 +231,40 @@ export default function CategoryReportPage() {
               <Accordion.Panel>
                 <Stack gap="lg">
                   {/* Statistics */}
-                  <Grid>
-                    <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                      <Paper p="md" withBorder>
-                        <Text size="xs" c="dimmed" mb={4}>
-                          Total Expected
-                        </Text>
-                        <Text size="lg" fw={700}>
-                          {formatCurrency(category.statistics.totalExpected)}
-                        </Text>
-                      </Paper>
-                    </Grid.Col>
-                    <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                      <Paper p="md" withBorder>
-                        <Text size="xs" c="dimmed" mb={4}>
-                          Total Collected
-                        </Text>
-                        <Text size="lg" fw={700} c="green">
-                          {formatCurrency(category.statistics.totalCollected)}
-                        </Text>
-                      </Paper>
-                    </Grid.Col>
-                    <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                      <Paper p="md" withBorder>
-                        <Text size="xs" c="dimmed" mb={4}>
-                          Outstanding
-                        </Text>
-                        <Text size="lg" fw={700} c="orange">
-                          {formatCurrency(category.statistics.totalOutstanding)}
-                        </Text>
-                      </Paper>
-                    </Grid.Col>
-                    <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                      <Paper p="md" withBorder>
-                        <Text size="xs" c="dimmed" mb={4}>
-                          Transactions
-                        </Text>
-                        <Text size="lg" fw={700}>
-                          {category.statistics.transactionCount}
-                        </Text>
-                      </Paper>
-                    </Grid.Col>
-                  </Grid>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <Paper p="sm" withBorder className="p-2 sm:p-3">
+                      <Text size="xs" c="dimmed" mb={4}>
+                        Total Expected
+                      </Text>
+                      <Text size="md" className="text-sm sm:text-lg" fw={700}>
+                        {formatCurrency(category.statistics.totalExpected)}
+                      </Text>
+                    </Paper>
+                    <Paper p="sm" withBorder className="p-2 sm:p-3">
+                      <Text size="xs" c="dimmed" mb={4}>
+                        Total Collected
+                      </Text>
+                      <Text size="md" className="text-sm sm:text-lg" fw={700} c="green">
+                        {formatCurrency(category.statistics.totalCollected)}
+                      </Text>
+                    </Paper>
+                    <Paper p="sm" withBorder className="p-2 sm:p-3">
+                      <Text size="xs" c="dimmed" mb={4}>
+                        Outstanding
+                      </Text>
+                      <Text size="md" className="text-sm sm:text-lg" fw={700} c="orange">
+                        {formatCurrency(category.statistics.totalOutstanding)}
+                      </Text>
+                    </Paper>
+                    <Paper p="sm" withBorder className="p-2 sm:p-3">
+                      <Text size="xs" c="dimmed" mb={4}>
+                        Transactions
+                      </Text>
+                      <Text size="md" className="text-sm sm:text-lg" fw={700}>
+                        {category.statistics.transactionCount}
+                      </Text>
+                    </Paper>
+                  </div>
 
                   {/* Collection Progress */}
                   <div>
@@ -306,23 +294,21 @@ export default function CategoryReportPage() {
                     <Text size="sm" fw={600} mb="sm">
                       Transaction Status
                     </Text>
-                    <Grid>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                       {Object.entries(category.byStatus).map(([status, data]: [string, any]) => (
-                        <Grid.Col key={status} span={{ base: 6, sm: 4, md: 2.4 }}>
-                          <Paper p="sm" withBorder>
-                            <Text size="xs" c="dimmed" tt="capitalize" mb={4}>
-                              {status}
-                            </Text>
-                            <Text size="sm" fw={600}>
-                              {data.count}
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                              {formatCurrency(data.amount)}
-                            </Text>
-                          </Paper>
-                        </Grid.Col>
+                        <Paper key={status} p="sm" withBorder className="p-2">
+                          <Text size="xs" c="dimmed" tt="capitalize" mb={4}>
+                            {status}
+                          </Text>
+                          <Text size="sm" fw={600}>
+                            {data.count}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {formatCurrency(data.amount)}
+                          </Text>
+                        </Paper>
                       ))}
-                    </Grid>
+                    </div>
                   </div>
 
                   {/* Recent Transactions */}
@@ -331,55 +317,99 @@ export default function CategoryReportPage() {
                       <Text size="sm" fw={600} mb="sm">
                         Recent Transactions
                       </Text>
-                      <Table striped>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>Reference</Table.Th>
-                            <Table.Th>Member</Table.Th>
-                            <Table.Th ta="right">Amount</Table.Th>
-                            <Table.Th ta="right">Paid</Table.Th>
-                            <Table.Th ta="right">Balance</Table.Th>
-                            <Table.Th>Status</Table.Th>
-                            <Table.Th ta="right">Date</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {category.recentTransactions.map((txn: any) => (
-                            <Table.Tr key={txn.id}>
-                              <Table.Td>
-                                <Text size="sm" fw={500}>
-                                  {txn.referenceNumber}
-                                </Text>
-                              </Table.Td>
-                              <Table.Td>{txn.memberName}</Table.Td>
-                              <Table.Td ta="right">{formatCurrency(txn.amount)}</Table.Td>
-                              <Table.Td ta="right" c="green">
-                                {formatCurrency(txn.paidAmount)}
-                              </Table.Td>
-                              <Table.Td ta="right" c="orange">
-                                {formatCurrency(txn.balance)}
-                              </Table.Td>
-                              <Table.Td>
-                                <Badge
-                                  size="sm"
-                                  color={
-                                    txn.status === 'paid'
-                                      ? 'green'
-                                      : txn.status === 'overdue'
-                                      ? 'red'
-                                      : 'blue'
-                                  }
-                                >
-                                  {txn.status}
-                                </Badge>
-                              </Table.Td>
-                              <Table.Td ta="right">
-                                <Text size="sm">{formatDate(txn.createdAt)}</Text>
-                              </Table.Td>
+                      
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-2">
+                        {category.recentTransactions.map((txn: any) => (
+                          <div key={txn.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <Text size="sm" fw={500}>{txn.memberName}</Text>
+                                <Text size="xs" c="dimmed">{txn.referenceNumber}</Text>
+                              </div>
+                              <Badge
+                                size="xs"
+                                color={
+                                  txn.status === 'paid'
+                                    ? 'green'
+                                    : txn.status === 'overdue'
+                                    ? 'red'
+                                    : 'blue'
+                                }
+                              >
+                                {txn.status}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                              <div>
+                                <Text size="xs" c="dimmed">Amount</Text>
+                                <Text size="xs" fw={500}>{formatCurrency(txn.amount)}</Text>
+                              </div>
+                              <div>
+                                <Text size="xs" c="dimmed">Paid</Text>
+                                <Text size="xs" c="green">{formatCurrency(txn.paidAmount)}</Text>
+                              </div>
+                              <div>
+                                <Text size="xs" c="dimmed">Balance</Text>
+                                <Text size="xs" c="orange">{formatCurrency(txn.balance)}</Text>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table View */}
+                      <div className="hidden md:block">
+                        <Table striped>
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th>Reference</Table.Th>
+                              <Table.Th>Member</Table.Th>
+                              <Table.Th ta="right">Amount</Table.Th>
+                              <Table.Th ta="right">Paid</Table.Th>
+                              <Table.Th ta="right">Balance</Table.Th>
+                              <Table.Th>Status</Table.Th>
+                              <Table.Th ta="right">Date</Table.Th>
                             </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {category.recentTransactions.map((txn: any) => (
+                              <Table.Tr key={txn.id}>
+                                <Table.Td>
+                                  <Text size="sm" fw={500}>
+                                    {txn.referenceNumber}
+                                  </Text>
+                                </Table.Td>
+                                <Table.Td>{txn.memberName}</Table.Td>
+                                <Table.Td ta="right">{formatCurrency(txn.amount)}</Table.Td>
+                                <Table.Td ta="right" c="green">
+                                  {formatCurrency(txn.paidAmount)}
+                                </Table.Td>
+                                <Table.Td ta="right" c="orange">
+                                  {formatCurrency(txn.balance)}
+                                </Table.Td>
+                                <Table.Td>
+                                  <Badge
+                                    size="sm"
+                                    color={
+                                      txn.status === 'paid'
+                                        ? 'green'
+                                        : txn.status === 'overdue'
+                                        ? 'red'
+                                        : 'blue'
+                                    }
+                                  >
+                                    {txn.status}
+                                  </Badge>
+                                </Table.Td>
+                                <Table.Td ta="right">
+                                  <Text size="sm">{formatDate(txn.createdAt)}</Text>
+                                </Table.Td>
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      </div>
                     </div>
                   )}
                 </Stack>

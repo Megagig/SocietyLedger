@@ -52,14 +52,14 @@ function StatCard({ title, value, icon: Icon, color, href }: {
   href?: string;
 }) {
   const content = (
-    <div className={`bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 ${href ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 ${href ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{title}</p>
+          <p className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
         </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon size={24} className="text-white" />
+        <div className={`p-2 sm:p-3 rounded-lg ${color}`}>
+          <Icon size={20} className="text-white sm:w-6 sm:h-6" />
         </div>
       </div>
     </div>
@@ -169,35 +169,35 @@ export default function VotingDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Voting & Elections
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Conduct digital voting, manage elections, and run polls
           </p>
         </div>
         <div className="flex gap-3">
           <Link
             href="/dashboard/governance/polls/new"
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
           >
             <IconPlus size={18} />
-            New Poll
+            <span className="hidden sm:inline">New</span> Poll
           </Link>
           <Link
             href="/dashboard/governance/elections/new"
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm"
           >
             <IconPlus size={18} />
-            New Election
+            <span className="hidden sm:inline">New</span> Election
           </Link>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Elections"
           value={dashboard?.totalElections || 0}
@@ -227,9 +227,9 @@ export default function VotingDashboardPage() {
       </div>
 
       {/* Active Elections */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Active Elections</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Active Elections</h2>
           <Link
             href="/dashboard/governance/elections"
             className="text-sm text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
@@ -238,7 +238,7 @@ export default function VotingDashboardPage() {
           </Link>
         </div>
         {activeItems?.elections && activeItems.elections.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {activeItems.elections.slice(0, 4).map((election) => (
               <ElectionCard key={election.id} election={election} />
             ))}
@@ -258,9 +258,9 @@ export default function VotingDashboardPage() {
       </div>
 
       {/* Active Polls */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Active Polls</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Active Polls</h2>
           <Link
             href="/dashboard/governance/polls"
             className="text-sm text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
@@ -269,7 +269,7 @@ export default function VotingDashboardPage() {
           </Link>
         </div>
         {activeItems?.polls && activeItems.polls.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {activeItems.polls.slice(0, 4).map((poll) => (
               <PollCard key={poll.id} poll={poll} />
             ))}
@@ -289,26 +289,26 @@ export default function VotingDashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <Link href="/dashboard/governance/elections">
-          <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-6 text-white hover:shadow-lg transition-shadow">
-            <IconChecklist size={32} className="mb-3" />
-            <h3 className="font-semibold text-lg mb-1">Manage Elections</h3>
-            <p className="text-teal-100 text-sm">Create and manage elections with positions and candidates</p>
+          <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 sm:p-6 text-white hover:shadow-lg transition-shadow">
+            <IconChecklist size={28} className="mb-2 sm:mb-3" />
+            <h3 className="font-semibold text-base sm:text-lg mb-1">Manage Elections</h3>
+            <p className="text-teal-100 text-xs sm:text-sm">Create and manage elections with positions and candidates</p>
           </div>
         </Link>
         <Link href="/dashboard/governance/polls">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white hover:shadow-lg transition-shadow">
-            <IconChartBar size={32} className="mb-3" />
-            <h3 className="font-semibold text-lg mb-1">Manage Polls</h3>
-            <p className="text-blue-100 text-sm">Create quick polls to gather member opinions</p>
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 sm:p-6 text-white hover:shadow-lg transition-shadow">
+            <IconChartBar size={28} className="mb-2 sm:mb-3" />
+            <h3 className="font-semibold text-base sm:text-lg mb-1">Manage Polls</h3>
+            <p className="text-blue-100 text-xs sm:text-sm">Create quick polls to gather member opinions</p>
           </div>
         </Link>
         <Link href="/dashboard/governance/elections?status=RESULTS_PUBLISHED">
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white hover:shadow-lg transition-shadow">
-            <IconChartPie size={32} className="mb-3" />
-            <h3 className="font-semibold text-lg mb-1">View Results</h3>
-            <p className="text-purple-100 text-sm">See election results and poll analytics</p>
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 sm:p-6 text-white hover:shadow-lg transition-shadow">
+            <IconChartPie size={28} className="mb-2 sm:mb-3" />
+            <h3 className="font-semibold text-base sm:text-lg mb-1">View Results</h3>
+            <p className="text-purple-100 text-xs sm:text-sm">See election results and poll analytics</p>
           </div>
         </Link>
       </div>

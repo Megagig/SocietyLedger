@@ -124,19 +124,19 @@ export default function SocialFundsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Social & Welfare Funds
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Manage welfare funds for member support
           </p>
         </div>
         {isAdmin && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto"
           >
             <IconPlus size={18} />
             Create Fund
@@ -146,39 +146,39 @@ export default function SocialFundsPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search funds..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="relative">
+            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search funds..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            />
           </div>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">All Types</option>
-            {FUND_TYPES.map(type => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">All Statuses</option>
-            {FUND_STATUSES.map(status => (
-              <option key={status.value} value={status.value}>{status.label}</option>
-            ))}
-          </select>
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            >
+              <option value="">All Types</option>
+              {FUND_TYPES.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            >
+              <option value="">All Statuses</option>
+              {FUND_STATUSES.map(status => (
+                <option key={status.value} value={status.value}>{status.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -206,7 +206,7 @@ export default function SocialFundsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {funds.map((fund) => {
             const typeInfo = getFundTypeInfo(fund.fundType);
             const TypeIcon = typeInfo.icon;
@@ -216,48 +216,48 @@ export default function SocialFundsPage() {
                 key={fund.id}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow"
               >
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`p-3 rounded-lg bg-${typeInfo.color}-100 dark:bg-${typeInfo.color}-900/30`}>
-                      <TypeIcon className={`text-${typeInfo.color}-600 dark:text-${typeInfo.color}-400`} size={24} />
+                <div className="p-4 sm:p-6">
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className={`p-2 sm:p-3 rounded-lg bg-${typeInfo.color}-100 dark:bg-${typeInfo.color}-900/30`}>
+                      <TypeIcon className={`text-${typeInfo.color}-600 dark:text-${typeInfo.color}-400`} size={20} />
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(fund.status)}`}>
                       {fund.status}
                     </span>
                   </div>
                   
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1">
                     {fund.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+                  <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 line-clamp-2">
                     {fund.description || 'No description'}
                   </p>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-sm">
+                  <div className="space-y-2 mb-3 sm:mb-4">
+                    <div className="flex justify-between text-xs sm:text-sm">
                       <span className="text-gray-500">Balance</span>
                       <span className="font-semibold text-green-600">{formatCurrency(fund.currentBalance)}</span>
                     </div>
                     {fund.targetBalance && (
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-xs sm:text-sm">
                         <span className="text-gray-500">Target</span>
                         <span className="text-gray-700 dark:text-gray-300">{formatCurrency(fund.targetBalance)}</span>
                       </div>
                     )}
                     {fund.monthlyContribution && (
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-xs sm:text-sm">
                         <span className="text-gray-500">Monthly</span>
                         <span className="text-gray-700 dark:text-gray-300">{formatCurrency(fund.monthlyContribution)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-xs sm:text-sm">
                       <span className="text-gray-500">Contributors</span>
                       <span className="text-gray-700 dark:text-gray-300">{fund._count?.contributions || 0}</span>
                     </div>
                   </div>
 
                   {fund.isContributionMandatory && (
-                    <div className="mb-4">
+                    <div className="mb-3 sm:mb-4">
                       <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full">
                         Mandatory
                       </span>
@@ -265,17 +265,17 @@ export default function SocialFundsPage() {
                   )}
 
                   {isAdmin && (
-                    <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex gap-2 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
                       <button
                         onClick={() => setEditingFund(fund)}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs sm:text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                       >
                         <IconEdit size={16} />
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(fund)}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs sm:text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                       >
                         <IconTrash size={16} />
                         Delete
@@ -291,21 +291,21 @@ export default function SocialFundsPage() {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex justify-center gap-2">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-2">
           <button
             onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
             disabled={pagination.page === 1}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-sm"
           >
             Previous
           </button>
-          <span className="px-4 py-2 text-gray-600 dark:text-gray-400">
+          <span className="px-4 py-2 text-gray-600 dark:text-gray-400 text-sm">
             Page {pagination.page} of {pagination.totalPages}
           </span>
           <button
             onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
             disabled={pagination.page === pagination.totalPages}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-sm"
           >
             Next
           </button>

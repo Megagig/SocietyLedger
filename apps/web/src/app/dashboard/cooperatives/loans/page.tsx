@@ -115,18 +115,18 @@ export default function LoansPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Active Loans
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage member loans and repayments</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Manage member loans and repayments</p>
         </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1">
             <TextInput
               placeholder="Search by name or loan number..."
               leftSection={<IconSearch size={16} />}
@@ -135,26 +135,93 @@ export default function LoansPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <Select
-            placeholder="Status"
-            data={[
-              { value: '', label: 'All Status' },
-              { value: 'ACTIVE', label: 'Active' },
-              { value: 'OVERDUE', label: 'Overdue' },
-              { value: 'FULLY_PAID', label: 'Fully Paid' },
-              { value: 'DEFAULTED', label: 'Defaulted' }
-            ]}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            clearable
-            className="w-40"
-          />
-          <Button onClick={handleSearch}>Search</Button>
+          <div className="flex gap-3 sm:gap-4">
+            <Select
+              placeholder="Status"
+              data={[
+                { value: '', label: 'All Status' },
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'OVERDUE', label: 'Overdue' },
+                { value: 'FULLY_PAID', label: 'Fully Paid' },
+                { value: 'DEFAULTED', label: 'Defaulted' }
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              clearable
+              className="flex-1 sm:flex-none sm:w-40"
+            />
+            <Button onClick={handleSearch} className="w-auto">Search</Button>
+          </div>
         </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {loans.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">No loans found</div>
+          ) : (
+            loans.map((loan) => (
+              <div key={loan.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <IconWallet className="text-blue-600" size={18} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">
+                        {loan.member.firstName} {loan.member.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{loan.member.membershipId}</p>
+                    </div>
+                  </div>
+                  <Badge color={getStatusColor(loan.status)} size="sm">{loan.status.replace(/_/g, ' ')}</Badge>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{loan.loanProduct.name}</span>
+                  <span className="font-mono text-xs text-gray-400">{loan.loanNumber}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">Principal</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatCurrency(loan.principalAmount)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">Outstanding</p>
+                    <p className="font-semibold text-red-600 text-sm">{formatCurrency(loan.outstandingBalance)}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="text-xs text-gray-500">
+                    Disbursed: {formatDate(loan.disbursementDate)}
+                  </span>
+                  <div className="flex gap-2">
+                    {loan.status === 'ACTIVE' && (
+                      <button
+                        onClick={() => openRepaymentModal(loan)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-green-600 bg-green-50 dark:bg-green-900/20 rounded-lg"
+                      >
+                        <IconCurrencyNaira size={14} /> Pay
+                      </button>
+                    )}
+                    <button
+                      onClick={() => router.push(`/dashboard/cooperatives/loans/${loan.id}`)}
+                      className="flex items-center gap-1 text-blue-600 text-sm"
+                    >
+                      <IconEye size={16} /> View
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -211,7 +278,7 @@ export default function LoansPage() {
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700">
             <Pagination total={totalPages} value={page} onChange={setPage} />
           </div>
         )}

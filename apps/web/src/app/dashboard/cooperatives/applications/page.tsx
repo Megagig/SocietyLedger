@@ -124,28 +124,92 @@ export default function ApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">Loan Applications</h1>
-          <p className="text-gray-600 dark:text-gray-400">Review and process loan applications</p>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">Loan Applications</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Review and process loan applications</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all">
+        <button onClick={openCreate} className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto">
           <IconPlus size={20} />New Application
         </button>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1">
             <TextInput placeholder="Search by name or application number..." leftSection={<IconSearch size={16} />} value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
           </div>
-          <Select placeholder="Status" data={[{ value: '', label: 'All Status' }, { value: 'PENDING_REVIEW', label: 'Pending Review' }, { value: 'UNDER_REVIEW', label: 'Under Review' }, { value: 'APPROVED', label: 'Approved' }, { value: 'REJECTED', label: 'Rejected' }, { value: 'DISBURSED', label: 'Disbursed' }]} value={statusFilter} onChange={setStatusFilter} clearable className="w-44" />
-          <Button onClick={handleSearch}>Search</Button>
+          <div className="flex gap-3 sm:gap-4">
+            <Select placeholder="Status" data={[{ value: '', label: 'All Status' }, { value: 'PENDING_REVIEW', label: 'Pending Review' }, { value: 'UNDER_REVIEW', label: 'Under Review' }, { value: 'APPROVED', label: 'Approved' }, { value: 'REJECTED', label: 'Rejected' }, { value: 'DISBURSED', label: 'Disbursed' }]} value={statusFilter} onChange={setStatusFilter} clearable className="flex-1 sm:flex-none sm:w-44" />
+            <Button onClick={handleSearch} className="w-auto">Search</Button>
+          </div>
         </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {applications.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">No applications found</div>
+          ) : (
+            applications.map((app) => (
+              <div 
+                key={app.id} 
+                className="p-4 space-y-3"
+                onClick={() => router.push(`/dashboard/cooperatives/applications/${app.id}`)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <IconFileAnalytics className="text-blue-600" size={18} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">
+                        {app.member.firstName} {app.member.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{app.member.membershipId}</p>
+                    </div>
+                  </div>
+                  <Badge color={getStatusColor(app.status)} size="sm">{app.status.replace(/_/g, ' ')}</Badge>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">{app.loanProduct.name}</span>
+                  <span className="font-mono text-xs text-gray-400">{app.applicationNumber}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">Amount</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatCurrency(app.amount)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">Tenure</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">{app.tenureMonths} months</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="text-xs text-gray-500">
+                    Applied: {formatDate(app.createdAt)}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/dashboard/cooperatives/applications/${app.id}`);
+                    }}
+                    className="flex items-center gap-1 text-blue-600 text-sm"
+                  >
+                    <IconEye size={16} /> View
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -182,7 +246,7 @@ export default function ApplicationsPage() {
             </tbody>
           </table>
         </div>
-        {totalPages > 1 && (<div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700"><Pagination total={totalPages} value={page} onChange={setPage} /></div>)}
+        {totalPages > 1 && (<div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700"><Pagination total={totalPages} value={page} onChange={setPage} /></div>)}
       </div>
 
       {/* Create Modal */}

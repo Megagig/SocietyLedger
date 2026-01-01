@@ -165,8 +165,8 @@ export default function SMSTemplatesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => router.push('/dashboard/communication/sms')}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -174,10 +174,10 @@ export default function SMSTemplatesPage() {
             <IconArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               SMS Templates
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Create reusable message templates
             </p>
           </div>
@@ -185,7 +185,7 @@ export default function SMSTemplatesPage() {
         {canManage && (
           <button
             onClick={openCreateModal}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 w-full sm:w-auto"
           >
             <IconPlus size={18} />
             New Template
@@ -194,11 +194,11 @@ export default function SMSTemplatesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex gap-3 sm:gap-4">
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+          className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm"
         >
           <option value="">All Categories</option>
           {CATEGORIES.map((cat) => (
@@ -213,10 +213,10 @@ export default function SMSTemplatesPage() {
       ) : error ? (
         <div className="text-center py-8 text-red-500">{error}</div>
       ) : templates.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-          <IconTemplate className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No templates yet</h3>
-          <p className="text-gray-500 mb-4">Create templates to speed up your messaging</p>
+        <div className="text-center py-8 sm:py-12 bg-white dark:bg-gray-800 rounded-lg">
+          <IconTemplate className="mx-auto text-gray-400 mb-4" size={40} />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No templates yet</h3>
+          <p className="text-sm sm:text-base text-gray-500 mb-4">Create templates to speed up your messaging</p>
           {canManage && (
             <button
               onClick={openCreateModal}
@@ -227,17 +227,17 @@ export default function SMSTemplatesPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {templates.map((template) => (
             <div
               key={template.id}
-              className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 ${
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4 ${
                 !template.isActive ? 'opacity-60' : ''
               }`}
             >
-              <div className="flex justify-between items-start mb-3">
+              <div className="flex justify-between items-start mb-2 sm:mb-3">
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
                     {template.name}
                   </h3>
                   <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${getCategoryColor(template.category)}`}>
@@ -275,7 +275,7 @@ export default function SMSTemplatesPage() {
                 )}
               </div>
 
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-3">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-3 line-clamp-3">
                 {template.content}
               </p>
 

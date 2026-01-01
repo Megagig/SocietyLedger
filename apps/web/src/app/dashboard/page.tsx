@@ -59,16 +59,16 @@ export default function DashboardPage() {
   return (
     <>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           Dashboard
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">Welcome back! Here's your overview</p>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here's your overview</p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
           <StatCard
             title="Total Members"
             value={data.memberStats.total.toString()}
@@ -100,12 +100,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Revenue Chart */}
-          <div className="glass rounded-2xl p-6 shadow-xl">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Revenue Analytics</h2>
+          <div className="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl">
+            <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Revenue Analytics</h2>
             {revenueData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={revenueData}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -114,10 +114,10 @@ export default function DashboardPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
-                  <XAxis dataKey="month" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`} />
+                  <XAxis dataKey="month" stroke="#9ca3af" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#9ca3af" tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', fontSize: '12px' }}
                     labelStyle={{ color: '#f3f4f6' }}
                     formatter={(value: number) => [formatCurrency(value), 'Revenue']}
                   />
@@ -130,17 +130,17 @@ export default function DashboardPage() {
           </div>
 
           {/* Payment Methods */}
-          <div className="glass rounded-2xl p-6 shadow-xl">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Payment Methods</h2>
+          <div className="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl">
+            <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Payment Methods</h2>
             {paymentMethodsData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
                     data={paymentMethodsData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
+                    innerRadius={40}
+                    outerRadius={70}
                     paddingAngle={5}
                     dataKey="value"
                   >
@@ -149,10 +149,10 @@ export default function DashboardPage() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', fontSize: '12px' }}
                     formatter={(value: number) => [`${value}%`, 'Share']}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -163,11 +163,11 @@ export default function DashboardPage() {
 
 
         {/* Quick Stats & Recent Transactions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Quick Stats */}
-          <div className="glass rounded-2xl p-6 shadow-xl">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Quick Stats</h2>
-            <div className="space-y-4">
+          <div className="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl">
+            <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Quick Stats</h2>
+            <div className="space-y-3 sm:space-y-4">
               <QuickStat 
                 label="Active Members" 
                 value={data.quickStats.activeMembers.toString()} 
@@ -190,37 +190,60 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent Transactions */}
-          <div className="lg:col-span-2 glass rounded-2xl p-6 shadow-xl">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Recent Transactions</h2>
+          <div className="lg:col-span-2 glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl">
+            <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Recent Transactions</h2>
             {data.recentTransactions.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Member</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Amount</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Status</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentTransactions.slice(0, 5).map((transaction) => (
-                      <tr key={transaction.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">{transaction.memberName}</td>
-                        <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">{formatCurrency(transaction.amount)}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(transaction.status)}`}>
-                            {transaction.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+              <>
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {data.recentTransactions.slice(0, 5).map((transaction) => (
+                    <div key={transaction.id} className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{transaction.memberName}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(transaction.status)}`}>
+                          {transaction.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(transaction.amount)}</span>
+                        <span className="text-gray-600 dark:text-gray-400">
                           {new Date(transaction.date).toLocaleDateString()}
-                        </td>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Member</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Amount</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Status</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {data.recentTransactions.slice(0, 5).map((transaction) => (
+                        <tr key={transaction.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">{transaction.memberName}</td>
+                          <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">{formatCurrency(transaction.amount)}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(transaction.status)}`}>
+                              {transaction.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                            {new Date(transaction.date).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             ) : (
               <EmptyTableState message="No transactions yet" />
             )}
@@ -378,13 +401,13 @@ function StatCard({ title, value, icon, color, bgColor }: {
   bgColor: string;
 }) {
   return (
-    <div className="glass rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-shadow">
+    <div className="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{title}</p>
-          <p className={`text-3xl font-bold ${color}`}>{value}</p>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1 sm:mb-2">{title}</p>
+          <p className={`text-lg sm:text-3xl font-bold ${color}`}>{value}</p>
         </div>
-        <div className={`p-3 rounded-xl ${bgColor}`}>
+        <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${bgColor}`}>
           {icon}
         </div>
       </div>

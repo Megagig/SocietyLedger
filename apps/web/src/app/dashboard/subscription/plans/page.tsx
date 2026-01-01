@@ -42,13 +42,13 @@ export default function PlansPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
             Choose Your Plan
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+          <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 mb-6 sm:mb-8">
             Select the perfect plan for your association
           </p>
 
@@ -56,7 +56,7 @@ export default function PlansPage() {
           <div className="inline-flex items-center bg-gray-200 dark:bg-gray-800 rounded-lg p-1">
             <button
               onClick={() => setBillingCycle('MONTHLY')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 sm:px-6 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
                 billingCycle === 'MONTHLY'
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-400'
@@ -66,22 +66,22 @@ export default function PlansPage() {
             </button>
             <button
               onClick={() => setBillingCycle('ANNUAL')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 sm:px-6 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
                 billingCycle === 'ANNUAL'
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
               Annual
-              <span className="ml-2 text-xs text-green-600 dark:text-green-400">
-                Save up to 20%
+              <span className="ml-1 sm:ml-2 text-xs text-green-600 dark:text-green-400">
+                Save 20%
               </span>
             </button>
           </div>
         </div>
 
         {error && (
-          <div className="mb-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg text-center">
+          <div className="mb-6 sm:mb-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg text-center text-sm sm:text-base">
             {error}
           </div>
         )}
@@ -91,7 +91,7 @@ export default function PlansPage() {
             Loading plans...
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {plans.map((plan) => (
               <PricingCard
                 key={plan.id}
@@ -104,8 +104,8 @@ export default function PlansPage() {
           </div>
         )}
 
-        <div className="mt-12 text-center">
-          <p className="text-gray-600 dark:text-gray-400">
+        <div className="mt-8 sm:mt-12 text-center">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             All plans include a 14-day free trial. No credit card required.
           </p>
         </div>

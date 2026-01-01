@@ -124,23 +124,24 @@ export default function BalanceSheetPage() {
       </div>
 
       {/* Date Filter */}
-      <Paper p="md" mb="xl" withBorder>
-        <Group justify="space-between" align="flex-end">
+      <Paper p="md" mb="xl" withBorder className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
           <DateInput
             label="As of Date"
             value={asOfDate}
             onChange={setAsOfDate}
             maxDate={new Date()}
-            w={200}
+            className="w-full sm:w-[200px]"
           />
           <Button
             leftSection={<IconRefresh size={16} />}
             onClick={handleGenerateReport}
             loading={isFetching}
+            className="w-full sm:w-auto"
           >
             Generate Report
           </Button>
-        </Group>
+        </div>
       </Paper>
 
       {!report && !isLoading && !error && (
@@ -181,58 +182,58 @@ export default function BalanceSheetPage() {
           </Card>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card withBorder padding="lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color="blue">
                   <IconWallet size={14} />
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Total Assets</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Total Assets</Text>
               </Group>
-              <Text size="xl" fw={700} c="blue">
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="blue">
                 {formatCurrency(report.assets.total)}
               </Text>
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color="red">
                   <IconWallet size={14} />
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Total Liabilities</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Total Liabilities</Text>
               </Group>
-              <Text size="xl" fw={700} c="red">
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="red">
                 {formatCurrency(report.liabilities.total)}
               </Text>
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color="purple">
                   <IconWallet size={14} />
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Total Equity</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Total Equity</Text>
               </Group>
-              <Text size="xl" fw={700} c="purple">
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="purple">
                 {formatCurrency(report.equity.total)}
               </Text>
             </Card>
 
-            <Card withBorder padding="lg">
+            <Card withBorder padding="md" className="p-3 sm:p-4">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" variant="light" color="green">
                   <IconScale size={14} />
                 </ThemeIcon>
-                <Text size="sm" c="dimmed">Liabilities + Equity</Text>
+                <Text size="xs" className="sm:text-sm" c="dimmed">Liab + Equity</Text>
               </Group>
-              <Text size="xl" fw={700} c="green">
+              <Text size="lg" className="text-base sm:text-xl" fw={700} c="green">
                 {formatCurrency(report.totalLiabilitiesAndEquity)}
               </Text>
             </Card>
           </div>
 
           {/* Detailed Balance Sheet */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Assets */}
             <Card withBorder padding="lg">
               <Text size="lg" fw={700} c="blue" mb="md">ASSETS</Text>

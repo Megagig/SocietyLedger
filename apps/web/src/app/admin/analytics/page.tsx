@@ -132,7 +132,7 @@ export default function PlatformAnalyticsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
@@ -140,16 +140,30 @@ export default function PlatformAnalyticsPage() {
           <span>/</span>
           <span>Platform Analytics</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Platform Analytics</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Monitor platform health, growth, and revenue metrics</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Platform Analytics</h1>
+        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">Monitor platform health, growth, and revenue metrics</p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
+      {/* Mobile Dropdown */}
+      <div className="md:hidden">
+        <select
+          value={activeTab}
+          onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-medium"
+        >
+          <option value="overview">Overview</option>
+          <option value="modules">Module Adoption</option>
+          <option value="churn">Churn</option>
+          <option value="revenue">Revenue</option>
+        </select>
+      </div>
+
+      {/* Desktop Tabs */}
+      <div className="hidden md:block border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
           {(['overview', 'modules', 'churn', 'revenue'] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`py-3 px-1 border-b-2 font-medium text-sm capitalize transition ${
+              className={`py-3 px-1 border-b-2 font-medium text-sm capitalize transition whitespace-nowrap ${
                 activeTab === tab ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}>
               {tab === 'modules' ? 'Module Adoption' : tab}
@@ -162,7 +176,7 @@ export default function PlatformAnalyticsPage() {
       {activeTab === 'overview' && overview && (
         <div className="space-y-6">
           {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
             <MetricCard label="Total Tenants" value={overview.tenants.total} icon="🏢" />
             <MetricCard label="Active" value={overview.tenants.active} icon="✅" color="green" />
             <MetricCard label="Trialing" value={overview.tenants.trialing} icon="⏳" color="blue" />
@@ -172,30 +186,30 @@ export default function PlatformAnalyticsPage() {
           </div>
 
           {/* Growth & Revenue Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
-              <p className="text-blue-100 text-sm">New This Month</p>
-              <p className="text-3xl font-bold mt-1">{overview.tenants.newThisMonth}</p>
-              <p className={`text-sm mt-2 ${overview.tenants.growthRate >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 sm:p-5 text-white">
+              <p className="text-blue-100 text-xs sm:text-sm">New This Month</p>
+              <p className="text-2xl sm:text-3xl font-bold mt-1">{overview.tenants.newThisMonth}</p>
+              <p className={`text-xs sm:text-sm mt-2 ${overview.tenants.growthRate >= 0 ? 'text-green-200' : 'text-red-200'}`}>
                 {overview.tenants.growthRate >= 0 ? '↑' : '↓'} {Math.abs(overview.tenants.growthRate)}% vs last month
               </p>
             </div>
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-5 text-white">
-              <p className="text-green-100 text-sm">MRR</p>
-              <p className="text-3xl font-bold mt-1">₦{overview.revenue.mrr.toLocaleString()}</p>
-              <p className={`text-sm mt-2 ${overview.revenue.growthRate >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 sm:p-5 text-white">
+              <p className="text-green-100 text-xs sm:text-sm">MRR</p>
+              <p className="text-2xl sm:text-3xl font-bold mt-1">₦{overview.revenue.mrr.toLocaleString()}</p>
+              <p className={`text-xs sm:text-sm mt-2 ${overview.revenue.growthRate >= 0 ? 'text-green-200' : 'text-red-200'}`}>
                 {overview.revenue.growthRate >= 0 ? '↑' : '↓'} {Math.abs(overview.revenue.growthRate)}% growth
               </p>
             </div>
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-5 text-white">
-              <p className="text-purple-100 text-sm">ARR</p>
-              <p className="text-3xl font-bold mt-1">₦{overview.revenue.arr.toLocaleString()}</p>
-              <p className="text-purple-200 text-sm mt-2">Projected annual</p>
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 sm:p-5 text-white">
+              <p className="text-purple-100 text-xs sm:text-sm">ARR</p>
+              <p className="text-2xl sm:text-3xl font-bold mt-1">₦{overview.revenue.arr.toLocaleString()}</p>
+              <p className="text-purple-200 text-xs sm:text-sm mt-2">Projected annual</p>
             </div>
-            <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-5 text-white">
-              <p className="text-teal-100 text-sm">Active Users (30d)</p>
-              <p className="text-3xl font-bold mt-1">{overview.users.activeIn30Days}</p>
-              <p className="text-teal-200 text-sm mt-2">
+            <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 sm:p-5 text-white">
+              <p className="text-teal-100 text-xs sm:text-sm">Active Users (30d)</p>
+              <p className="text-2xl sm:text-3xl font-bold mt-1">{overview.users.activeIn30Days}</p>
+              <p className="text-teal-200 text-xs sm:text-sm mt-2">
                 {overview.users.total > 0 ? ((overview.users.activeIn30Days / overview.users.total) * 100).toFixed(1) : 0}% of total
               </p>
             </div>
@@ -283,14 +297,47 @@ export default function PlatformAnalyticsPage() {
       {/* Churn Tab */}
       {activeTab === 'churn' && churnData && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-center mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
               <h3 className="font-semibold text-gray-900 dark:text-white">Churn Analysis (Last 6 Months)</h3>
-              <span className="text-sm px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+              <span className="text-sm px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full w-fit">
                 Avg Churn: {churnData.averageChurnRate}%
               </span>
             </div>
-            <div className="overflow-x-auto">
+            
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {churnData.months.map((month) => (
+                <div key={month.month} className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-medium text-gray-900 dark:text-white">{month.month}</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      month.churnRate < 2 ? 'bg-green-100 text-green-800' :
+                      month.churnRate < 5 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {month.churnRate}% churn
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                    <div>
+                      <p className="text-green-600 font-semibold">+{month.newSignups}</p>
+                      <p className="text-xs text-gray-500">New</p>
+                    </div>
+                    <div>
+                      <p className="text-red-600 font-semibold">{month.cancelled}</p>
+                      <p className="text-xs text-gray-500">Cancelled</p>
+                    </div>
+                    <div>
+                      <p className="text-yellow-600 font-semibold">{month.suspended}</p>
+                      <p className="text-xs text-gray-500">Suspended</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -328,24 +375,50 @@ export default function PlatformAnalyticsPage() {
       {/* Revenue Tab */}
       {activeTab === 'revenue' && revenueData && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-5 text-white">
-              <p className="text-green-100 text-sm">Total Revenue</p>
-              <p className="text-3xl font-bold mt-1">₦{revenueData.totalRevenue.toLocaleString()}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 sm:p-5 text-white">
+              <p className="text-green-100 text-xs sm:text-sm">Total Revenue</p>
+              <p className="text-2xl sm:text-3xl font-bold mt-1">₦{revenueData.totalRevenue.toLocaleString()}</p>
             </div>
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
-              <p className="text-blue-100 text-sm">Avg Monthly Revenue</p>
-              <p className="text-3xl font-bold mt-1">₦{Number(revenueData.averageMonthlyRevenue).toLocaleString()}</p>
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 sm:p-5 text-white">
+              <p className="text-blue-100 text-xs sm:text-sm">Avg Monthly Revenue</p>
+              <p className="text-2xl sm:text-3xl font-bold mt-1">₦{Number(revenueData.averageMonthlyRevenue).toLocaleString()}</p>
             </div>
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-5 text-white">
-              <p className="text-purple-100 text-sm">Total Transactions</p>
-              <p className="text-3xl font-bold mt-1">{revenueData.months.reduce((sum, m) => sum + m.transactions, 0)}</p>
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 sm:p-5 text-white">
+              <p className="text-purple-100 text-xs sm:text-sm">Total Transactions</p>
+              <p className="text-2xl sm:text-3xl font-bold mt-1">{revenueData.months.reduce((sum, m) => sum + m.transactions, 0)}</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Revenue Trends (Last 12 Months)</h3>
-            <div className="overflow-x-auto">
+            
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {revenueData.months.map((month, idx) => {
+                const prevRevenue = idx > 0 ? revenueData.months[idx - 1].revenue : month.revenue;
+                const change = prevRevenue > 0 ? ((month.revenue - prevRevenue) / prevRevenue * 100).toFixed(1) : '0';
+                return (
+                  <div key={month.month} className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900 dark:text-white">{month.month}</span>
+                      {idx > 0 && (
+                        <span className={`text-xs font-medium ${Number(change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {Number(change) >= 0 ? '↑' : '↓'} {Math.abs(Number(change))}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold text-gray-900 dark:text-white">₦{month.revenue.toLocaleString()}</span>
+                      <span className="text-sm text-gray-500">{month.transactions} txns</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -393,12 +466,12 @@ function MetricCard({ label, value, icon, color }: { label: string; value: numbe
   };
 
   return (
-    <div className={`rounded-xl p-4 border ${color ? colorClasses[color] : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+    <div className={`rounded-xl p-3 sm:p-4 border ${color ? colorClasses[color] : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xl">{icon}</span>
+        <span className="text-lg sm:text-xl">{icon}</span>
         <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
       </div>
-      <p className={`text-2xl font-bold ${
+      <p className={`text-xl sm:text-2xl font-bold ${
         color === 'green' ? 'text-green-600' : color === 'blue' ? 'text-blue-600' :
         color === 'yellow' ? 'text-yellow-600' : color === 'red' ? 'text-red-600' : 'text-gray-900 dark:text-white'
       }`}>
