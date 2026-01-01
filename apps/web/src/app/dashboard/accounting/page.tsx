@@ -216,7 +216,7 @@ export default function AccountingPage() {
               <ThemeIcon size="sm" variant="light" color="blue">
                 <IconWallet size={14} />
               </ThemeIcon>
-              <Text size="xs" sm="sm" c="dimmed">Total Assets</Text>
+              <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Total Assets</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
               {formatCurrency(dashboard.quickStats.totalAssets)}
@@ -228,7 +228,7 @@ export default function AccountingPage() {
               <ThemeIcon size="sm" variant="light" color="red">
                 <IconCreditCard size={14} />
               </ThemeIcon>
-              <Text size="xs" sm="sm" c="dimmed">Total Liabilities</Text>
+              <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Total Liabilities</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
               {formatCurrency(dashboard.quickStats.totalLiabilities)}
@@ -240,7 +240,7 @@ export default function AccountingPage() {
               <ThemeIcon size="sm" variant="light" color="purple">
                 <IconChartBar size={14} />
               </ThemeIcon>
-              <Text size="xs" sm="sm" c="dimmed">Total Equity</Text>
+              <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Total Equity</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
               {formatCurrency(dashboard.quickStats.totalEquity)}
@@ -252,7 +252,7 @@ export default function AccountingPage() {
               <ThemeIcon size="sm" variant="light" color="green">
                 <IconTrendingUp size={14} />
               </ThemeIcon>
-              <Text size="xs" sm="sm" c="dimmed">Net Income (YTD)</Text>
+              <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Net Income (YTD)</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c={parseFloat(String(dashboard.quickStats.netIncome)) >= 0 ? 'green' : 'red'}>
               {formatCurrency(dashboard.quickStats.netIncome)}
@@ -264,7 +264,7 @@ export default function AccountingPage() {
               <ThemeIcon size="sm" variant="light" color="teal">
                 <IconCash size={14} />
               </ThemeIcon>
-              <Text size="xs" sm="sm" c="dimmed">Cash Balance</Text>
+              <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Cash Balance</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="teal">
               {formatCurrency(dashboard.quickStats.cashBalance)}

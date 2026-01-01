@@ -110,7 +110,7 @@ export default function AIRemindersPage() {
           </Paper>
           <Paper className="p-3 sm:p-4 glass-card" withBorder>
             <Text size="xs" className="sm:text-sm" c="dimmed">Total Outstanding</Text>
-            <Text size="lg" className="sm:text-xl" fw={700} className="text-red-500">
+            <Text size="lg" className="sm:text-xl text-red-500" fw={700}>
               {formatCurrency(suggestions.totalOutstanding)}
             </Text>
           </Paper>
