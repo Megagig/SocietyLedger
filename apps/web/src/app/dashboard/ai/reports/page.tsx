@@ -88,18 +88,18 @@ export default function AIReportsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           AI Smart Reports
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Generate AI-powered financial reports and summaries
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Configuration Panel */}
-        <Paper className="p-6 glass-card" withBorder>
+        <Paper className="p-4 sm:p-6 glass-card" withBorder>
           <Text size="lg" fw={600} mb="md">Report Configuration</Text>
 
           <div className="space-y-4">
@@ -151,13 +151,13 @@ export default function AIReportsPage() {
             </Button>
           </div>
 
-          {/* Report Type Cards */}
-          <div className="mt-6 space-y-2">
+          {/* Report Type Cards - Hidden on mobile when report is shown */}
+          <div className={`mt-6 space-y-2 ${report ? 'hidden lg:block' : ''}`}>
             <Text size="sm" fw={500} c="dimmed">Available Report Types</Text>
             {REPORT_TYPES.map((type) => (
               <Paper
                 key={type.value}
-                className={`p-3 cursor-pointer transition-all ${
+                className={`p-2 sm:p-3 cursor-pointer transition-all ${
                   reportType === type.value 
                     ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' 
                     : 'hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -175,18 +175,18 @@ export default function AIReportsPage() {
         {/* Report Display */}
         <div className="lg:col-span-2">
           {isLoading ? (
-            <Paper className="p-12 glass-card text-center" withBorder>
+            <Paper className="p-8 sm:p-12 glass-card text-center" withBorder>
               <Loader size="lg" className="mx-auto mb-4" />
               <Text size="lg" fw={500}>Generating your report...</Text>
               <Text size="sm" c="dimmed">This may take a few seconds</Text>
             </Paper>
           ) : report ? (
-            <Paper className="p-6 glass-card" withBorder>
+            <Paper className="p-4 sm:p-6 glass-card" withBorder>
               {/* Report Header */}
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
                 <div>
-                  <Text size="xl" fw={700}>{report.title}</Text>
-                  <Text size="sm" c="dimmed">
+                  <Text size="lg" className="sm:text-xl" fw={700}>{report.title}</Text>
+                  <Text size="xs" className="sm:text-sm" c="dimmed">
                     Generated on {new Date(report.generatedAt).toLocaleString()}
                   </Text>
                   <Badge size="sm" mt="xs">
@@ -197,13 +197,14 @@ export default function AIReportsPage() {
                   variant="light"
                   leftSection={<IconDownload size={16} />}
                   onClick={handleExport}
+                  className="w-full sm:w-auto"
                 >
                   Export
                 </Button>
               </div>
 
               {/* Summary */}
-              <Paper className="p-4 mb-6 bg-teal-50 dark:bg-teal-900/20" withBorder>
+              <Paper className="p-3 sm:p-4 mb-4 sm:mb-6 bg-teal-50 dark:bg-teal-900/20" withBorder>
                 <Text size="sm" fw={600} mb="xs">Executive Summary</Text>
                 <Text size="sm">{report.summary}</Text>
               </Paper>
@@ -225,7 +226,7 @@ export default function AIReportsPage() {
               </Accordion>
 
               {/* Highlights */}
-              <Paper className="p-4 mb-6" withBorder>
+              <Paper className="p-3 sm:p-4 mb-4 sm:mb-6" withBorder>
                 <Text size="sm" fw={600} mb="sm">Key Highlights</Text>
                 <List
                   spacing="xs"
@@ -244,7 +245,7 @@ export default function AIReportsPage() {
 
               {/* Recommendations */}
               {report.recommendations && report.recommendations.length > 0 && (
-                <Paper className="p-4 bg-yellow-50 dark:bg-yellow-900/20" withBorder>
+                <Paper className="p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/20" withBorder>
                   <Text size="sm" fw={600} mb="sm">AI Recommendations</Text>
                   <List
                     spacing="xs"
@@ -263,8 +264,9 @@ export default function AIReportsPage() {
               )}
             </Paper>
           ) : (
-            <Paper className="p-12 glass-card text-center" withBorder>
-              <IconFileAnalytics size={64} className="mx-auto mb-4 text-gray-400" />
+            <Paper className="p-8 sm:p-12 glass-card text-center" withBorder>
+              <IconFileAnalytics size={48} className="mx-auto mb-4 text-gray-400 sm:hidden" />
+              <IconFileAnalytics size={64} className="mx-auto mb-4 text-gray-400 hidden sm:block" />
               <Text size="lg" fw={500} mb="xs">No Report Generated</Text>
               <Text size="sm" c="dimmed">
                 Select a report type and click "Generate Report" to create an AI-powered financial report.

@@ -121,12 +121,12 @@ export default function AIAssistantPage() {
     <div className="h-[calc(100vh-120px)] flex flex-col">
       {/* Header */}
       <div className="mb-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
               AI Financial Assistant
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Ask questions about your association's finances in plain English
             </p>
           </div>
@@ -135,6 +135,7 @@ export default function AIAssistantPage() {
               size="lg" 
               color={aiAvailable ? 'green' : 'red'}
               leftSection={aiAvailable ? <IconSparkles size={14} /> : <IconAlertCircle size={14} />}
+              className="self-start sm:self-auto"
             >
               {aiAvailable ? 'AI Online' : 'AI Offline'}
             </Badge>
@@ -144,7 +145,7 @@ export default function AIAssistantPage() {
         {/* Rate Limit Status */}
         {rateLimitStatus && (
           <Paper className="mt-4 p-3 glass-card" withBorder>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
               <Text size="sm" c="dimmed">Daily Usage</Text>
               <Text size="sm" fw={500}>
                 {rateLimitStatus.requestsUsed} / {rateLimitStatus.requestsUsed + rateLimitStatus.requestsRemaining} requests
@@ -167,8 +168,9 @@ export default function AIAssistantPage() {
       {/* Chat Messages */}
       <Paper className="flex-1 overflow-y-auto p-4 glass-card mb-4" withBorder>
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center">
-            <IconRobot size={64} className="text-teal-500 mb-4" />
+          <div className="h-full flex flex-col items-center justify-center text-center px-4">
+            <IconRobot size={48} className="text-teal-500 mb-4 sm:hidden" />
+            <IconRobot size={64} className="text-teal-500 mb-4 hidden sm:block" />
             <Text size="lg" fw={500} mb="xs">How can I help you today?</Text>
             <Text size="sm" c="dimmed" mb="lg">
               Ask me anything about your association's finances. I can explain data, summarize reports, and answer questions.
@@ -192,7 +194,7 @@ export default function AIAssistantPage() {
             {/* Safety Notice */}
             <Paper className="mt-6 p-3 max-w-md" withBorder>
               <div className="flex items-start gap-2">
-                <IconInfoCircle size={18} className="text-blue-500 mt-0.5" />
+                <IconInfoCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <Text size="xs" fw={500}>AI Safety Notice</Text>
                   <Text size="xs" c="dimmed">
@@ -211,13 +213,13 @@ export default function AIAssistantPage() {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`max-w-[90%] sm:max-w-[80%] rounded-lg p-3 ${
                     message.role === 'user'
                       ? 'bg-teal-500 text-white'
                       : 'bg-gray-100 dark:bg-gray-800'
                   }`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     {message.role === 'user' ? (
                       <IconUser size={16} />
                     ) : (
