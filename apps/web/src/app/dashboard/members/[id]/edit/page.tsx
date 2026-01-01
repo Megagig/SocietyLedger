@@ -102,9 +102,16 @@ export default function EditMemberPage() {
     setError('');
 
     try {
+      // Convert date fields to ISO format for API
+      const submitData = {
+        ...formData,
+        dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
+        joinDate: formData.joinDate ? new Date(formData.joinDate).toISOString() : null,
+      };
+
       const response = await apiPatch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`,
-        formData
+        submitData
       );
 
       const data = await response.json();
