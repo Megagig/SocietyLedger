@@ -21,13 +21,6 @@ export function ContextIndicator() {
     endImpersonation 
   } = useAuthStore();
 
-  // Debug logging
-  console.log('🎯 ContextIndicator state:', { 
-    hasSuperAdmin: user?.platformRole === 'SUPER_ADMIN',
-    isImpersonating,
-    impersonatedAssociation 
-  });
-
   // Only show for Super Admins
   if (user?.platformRole !== 'SUPER_ADMIN') {
     return null;
@@ -43,7 +36,6 @@ export function ContextIndicator() {
 
   // Impersonation mode - prominent amber banner
   if (isImpersonating && impersonatedAssociation) {
-    console.log('✅ Rendering impersonation banner');
     return (
       <div className="sticky top-0 z-50 bg-amber-500 text-white px-4 py-2 text-sm flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2">

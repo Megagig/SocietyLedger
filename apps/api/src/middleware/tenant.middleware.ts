@@ -158,19 +158,6 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
     // Check for Super Admin's selected association context
     const superAdminAssociationId = req.headers['x-association-id'] as string | undefined;
 
-    // Debug logging for tenant resolution
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Tenant] Resolving tenant:', {
-        headerTenant,
-        subdomain,
-        originSubdomain,
-        superAdminAssociationId,
-        host: req.headers.host,
-        origin: req.headers.origin,
-        referer: req.headers.referer,
-      });
-    }
-
     const association = await findAssociationByIdentifier({
       subdomain: headerTenant || subdomain || originSubdomain || undefined,
       slug: headerTenant?.toLowerCase(),

@@ -151,7 +151,6 @@ export default function AssociationDetailPage() {
 
     try {
       const apiUrl = API_ROUTES.ADMIN.IMPERSONATE(associationId.toString());
-      console.log('🔍 Starting impersonation request:', { apiUrl, associationId, hasToken: !!token });
       
       const res = await fetch(apiUrl, {
         method: 'POST',
@@ -162,14 +161,9 @@ export default function AssociationDetailPage() {
         credentials: 'include',
       });
       
-      console.log('📡 Response status:', res.status, res.statusText);
-      
       const data = await res.json();
-      console.log('📦 Response data:', data);
       
       if (data.success) {
-        console.log('✅ Impersonation successful, updating stores...');
-        
         const associationData = {
           id: data.data.association.id,
           name: data.data.association.name,
@@ -179,13 +173,11 @@ export default function AssociationDetailPage() {
         // 1. Update Super Admin context for X-Association-Id header
         const superAdminStore = useSuperAdminContext.getState();
         superAdminStore.setSelectedAssociation(associationData);
-        console.log('🏢 Super admin context updated');
         
         // 2. Update auth store with new token and impersonation state (all at once)
         const authStore = useAuthStore.getState();
         if (authStore.startImpersonation) {
           authStore.startImpersonation(data.data.token, associationData);
-          console.log('👤 Auth store updated with impersonation');
         }
         
         toast.success(`Now impersonating ${data.data.association.name}`);
@@ -194,14 +186,12 @@ export default function AssociationDetailPage() {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Redirect to dashboard
-        console.log('🚀 Redirecting to dashboard...');
         router.push('/dashboard');
       } else {
-        console.error('❌ Impersonation failed:', data.message);
         toast.error(data.message || 'Failed to impersonate');
       }
     } catch (e) {
-      console.error('💥 Impersonation error:', e);
+      console.error('Impersonation error:', e);
       toast.error('Failed to impersonate');
     } finally {
       setActionLoading(false);
