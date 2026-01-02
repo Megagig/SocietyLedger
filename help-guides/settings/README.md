@@ -123,3 +123,16 @@ The Settings module lets you configure how your association operates. You can up
 
 ### Getting Help
 If you're unsure about a setting, hover over the help icons (ℹ️) next to options for more details. When in doubt, contact your system administrator before making changes that affect the whole association.
+
+### Quick Reference
+**Most Important Settings to Configure First:**
+1. Association Profile (name, logo, timezone, currency)
+2. Member Access Control (how people join)
+3. Payment Methods (how members can pay)
+4. Notification preferences (when to send reminders)
+
+**Settings That Affect Everyone:**
+- Financial settings (late fees, grace periods)
+- Payment methods and requirements
+- Notification timing and frequency
+- Data retention policies
