@@ -64,7 +64,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout, _hasHydrated } = useAuthStore();
 
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
@@ -75,6 +75,9 @@ export function Sidebar() {
   };
 
   const checkPermission = (permission: string | string[] | undefined, roleRequired?: string): boolean => {
+    // Don't show permission-gated items until Zustand store is hydrated from localStorage
+    if (!_hasHydrated) return false;
+    
     if (!permission && !roleRequired) return true;
     
     // Super admin has access to everything

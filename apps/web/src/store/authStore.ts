@@ -28,6 +28,10 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   
+  // Hydration tracking for SSR
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
+  
   // Phase 22: Impersonation tracking
   isImpersonating: boolean;
   impersonatedAssociation: { id: number; name: string; subdomain: string } | null;
@@ -62,6 +66,10 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      
+      // Hydration tracking
+      _hasHydrated: false,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
       
       // Phase 22: Impersonation state
       isImpersonating: false,
@@ -276,7 +284,7 @@ export const useAuthStore = create<AuthState>()(
               // Restore user's original associationId
               user: currentUser ? {
                 ...currentUser,
-                associationId: originalAssociationId || null,
+                associationId: originalAssociationId || undefined,
               } : null,
             });
             return true;
@@ -299,6 +307,9 @@ export const useAuthStore = create<AuthState>()(
         impersonatedAssociation: state.impersonatedAssociation,
         originalAssociationId: state.originalAssociationId,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

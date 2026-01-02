@@ -132,13 +132,13 @@ export const PERMISSIONS = {
   // Member Self-Service Finance
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
   
-  // Meeting Management
-  MEETING_VIEW: 'members.view',
+  // Meeting Management - Members can view their own meetings
+  MEETING_VIEW: 'members.view_own',
   MEETING_CREATE: 'members.create',
   MEETING_EDIT: 'members.edit',
   MEETING_DELETE: 'members.disable',
-  MEETING_ATTENDANCE: 'members.edit',
-  MEETING_MINUTES: 'members.edit',
+  MEETING_ATTENDANCE: 'members.view_own',
+  MEETING_MINUTES: 'members.view_own',
   
   // Welfare & Social Funds
   WELFARE_VIEW: 'ledger.view',
