@@ -8,9 +8,15 @@ import { cacheInvalidationService } from '../../services/cache-invalidation.serv
 const createMemberSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  email: z.string().email('Invalid email address').optional().nullable(),
+  email: z.preprocess(
+    (val) => (val === '' || val === null ? null : val),
+    z.string().email('Invalid email address').nullable().optional()
+  ),
   phone: z.string().optional().nullable(),
-  dateOfBirth: z.string().datetime().optional().nullable(),
+  dateOfBirth: z.preprocess(
+    (val) => (val === '' || val === null ? null : val),
+    z.string().datetime().nullable().optional()
+  ),
   gender: z.enum(['male', 'female', 'other']).default('male'),
   address: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
@@ -19,7 +25,7 @@ const createMemberSchema = z.object({
   occupation: z.string().optional().nullable(),
   category: z.enum(['regular', 'executive', 'honorary', 'student']).default('regular'),
   status: z.enum(['active', 'inactive', 'suspended', 'terminated']).default('active'),
-  joinDate: z.string().datetime().optional().nullable(),
+  joinDate: z.string().datetime('Join date is required'),
   emergencyContactName: z.string().optional().nullable(),
   emergencyContactPhone: z.string().optional().nullable(),
   emergencyContactRelationship: z.string().optional().nullable(),

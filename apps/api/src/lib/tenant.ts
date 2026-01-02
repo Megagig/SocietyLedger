@@ -45,6 +45,20 @@ export function extractSubdomain(host?: string | null): string | null {
   return sub;
 }
 
+/**
+ * Extract subdomain from Origin or Referer header (for cross-origin requests)
+ */
+export function extractSubdomainFromOrigin(originOrReferer?: string | null): string | null {
+  if (!originOrReferer) return null;
+  
+  try {
+    const url = new URL(originOrReferer);
+    return extractSubdomain(url.hostname);
+  } catch {
+    return null;
+  }
+}
+
 export async function findAssociationByIdentifier({
   id,
   slug,
