@@ -11,6 +11,10 @@ declare global {
         role: string;
         platformRole?: PlatformRole;
         memberId?: number;
+        // Impersonation tracking fields
+        isImpersonating?: boolean;
+        originalAssociationId?: number;
+        impersonationTimestamp?: number;
       };
       tenantId?: number;
       tenant?: any;

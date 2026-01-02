@@ -11,6 +11,13 @@ export interface User {
   roles?: string[];
   createdAt: Date;
   updatedAt: Date;
+  // Association details (optional, populated when needed)
+  association?: {
+    id: number;
+    name: string;
+    logo?: string | null;
+    subdomain?: string;
+  };
 }
 
 export interface UserApproval {

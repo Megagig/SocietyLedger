@@ -1,14 +1,15 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { PlatformRole } from '@prisma/client';
+import type { StringValue } from 'ms';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Default token expiry
-const DEFAULT_TOKEN_EXPIRY = '7d';
+const DEFAULT_TOKEN_EXPIRY: StringValue = '7d';
 
 // Impersonation token expiry (configurable via env)
-const IMPERSONATION_TOKEN_EXPIRY = process.env.IMPERSONATION_EXPIRY || '4h';
+const IMPERSONATION_TOKEN_EXPIRY: StringValue = (process.env.IMPERSONATION_EXPIRY || '4h') as StringValue;
 
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
@@ -61,11 +62,12 @@ export function generateToken(
   options?: { isImpersonation?: boolean }
 ): string {
   // Use shorter expiry for impersonation tokens
-  const expiresIn = options?.isImpersonation 
+  const expiresIn: StringValue = options?.isImpersonation 
     ? IMPERSONATION_TOKEN_EXPIRY 
     : DEFAULT_TOKEN_EXPIRY;
     
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  const signOptions: SignOptions = { expiresIn };
+  return jwt.sign(payload, JWT_SECRET, signOptions);
 }
 
 export function verifyToken(token: string): TokenPayload | null {

@@ -71,7 +71,7 @@ export async function createAuditLogWithContext(
     await prisma.auditLog.create({
       data: {
         associationId: data.associationId,
-        userId: req.user?.id,
+        userId: req.user?.id || 0,
         action: data.action,
         tableName: data.tableName,
         recordId: data.recordId,
