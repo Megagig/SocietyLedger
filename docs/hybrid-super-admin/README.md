@@ -250,6 +250,36 @@ const impersonationToken = await impersonate(targetAssociationId);
 - ✅ **Existing RBAC rules** are preserved
 - ✅ **Existing audit logs** are unaffected
 
+### Super Admin Login Options
+Super Admins can login from **multiple locations**:
+
+#### 1. Primary Platform Login (Recommended)
+```
+Development: http://platform.localhost:3000/auth/login
+Production:  https://platform.societyledger.com/auth/login
+```
+- **Intended method** for hybrid architecture
+- Direct login to Platform Association
+- Clean platform admin experience
+
+#### 2. Root Domain Login (Legacy Compatibility)
+```
+Development: http://localhost:3000/auth/login
+Production:  https://societyledger.com/auth/login
+```
+- **Backward compatible** with existing workflows
+- Auth controller automatically detects Super Admin
+- Maintains transition compatibility
+
+#### 3. Any Association Subdomain (Legacy Compatibility)
+```
+Development: http://anyassoc.localhost:3000/auth/login
+Production:  https://anyassoc.societyledger.com/auth/login
+```
+- **Full backward compatibility** maintained
+- Super Admin can login via any association's subdomain
+- Auth controller fallback logic handles detection
+
 ---
 
 ## 🧪 Testing

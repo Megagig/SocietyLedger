@@ -39,6 +39,7 @@ export class AdminController {
       }
 
       const association = await prisma.association.findUnique({ where: { id: targetAssociationId } });
+      
       if (!association) {
         return res.status(404).json({ success: false, message: 'Association not found' });
       }

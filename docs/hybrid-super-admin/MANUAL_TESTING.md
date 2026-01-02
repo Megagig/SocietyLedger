@@ -102,11 +102,11 @@ FROM users WHERE role = 'admin' AND platform_role IS NULL;
 
 ## 2. Authentication & Login Tests
 
-### TEST-HSA-003: Super Admin Login via Platform Subdomain
+### TEST-HSA-003: Super Admin Login via Platform Subdomain (Primary Method)
 **Objective:** Verify Super Admin can login via platform.societyledger.com
 
 **Steps:**
-1. Navigate to `https://platform.societyledger.com/auth/login`
+1. Navigate to `http://platform.localhost:3000/auth/login` (dev) or `https://platform.societyledger.com/auth/login` (prod)
 2. Enter Super Admin credentials
 3. Click "Login"
 4. Check browser network tab for login request
@@ -117,14 +117,32 @@ FROM users WHERE role = 'admin' AND platform_role IS NULL;
 - ✅ Token received in response
 - ✅ Redirected to `/dashboard`
 - ✅ No error messages displayed
+- ✅ Platform Association context established
 
 ---
 
-### TEST-HSA-004: Super Admin Login via Regular Subdomain
-**Objective:** Verify backward compatibility - Super Admin can login via any subdomain
+### TEST-HSA-004: Super Admin Login via Root Domain (Legacy Compatibility)
+**Objective:** Verify backward compatibility - Super Admin can login via root domain
 
 **Steps:**
-1. Navigate to `https://testassoc.societyledger.com/auth/login`
+1. Navigate to `http://localhost:3000/auth/login` (dev) or `https://societyledger.com/auth/login` (prod)
+2. Enter Super Admin credentials
+3. Click "Login"
+4. Verify successful login
+
+**Expected Results:**
+- ✅ Login successful
+- ✅ Token received
+- ✅ Access granted (backward compatibility maintained)
+- ✅ Auth controller fallback logic works
+
+---
+
+### TEST-HSA-004b: Super Admin Login via Regular Association Subdomain
+**Objective:** Verify Super Admin can still login via any association subdomain
+
+**Steps:**
+1. Navigate to `http://testassoc.localhost:3000/auth/login` (dev) or `https://testassoc.societyledger.com/auth/login` (prod)
 2. Enter Super Admin credentials
 3. Click "Login"
 4. Verify successful login

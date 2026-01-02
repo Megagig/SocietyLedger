@@ -4,6 +4,23 @@ import { User } from '@/types';
 import { API_ROUTES } from '@/utils/constants';
 import { createFetchHeaders } from '@/utils/tenant';
 
+// Import super admin context for clearing during end impersonation
+// Using dynamic import to avoid circular dependencies
+const clearSuperAdminContext = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('super-admin-context');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.state.selectedAssociation = null;
+        localStorage.setItem('super-admin-context', JSON.stringify(parsed));
+      }
+    } catch (e) {
+      console.error('Failed to clear super admin context:', e);
+    }
+  }
+};
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -33,6 +50,7 @@ interface AuthState {
   // Phase 22: Impersonation actions
   setToken: (token: string) => void;
   setImpersonation: (association: { id: number; name: string; subdomain: string }) => void;
+  startImpersonation: (token: string, association: { id: number; name: string; subdomain: string }) => void;
   endImpersonation: () => Promise<boolean>;
 }
 
@@ -183,7 +201,15 @@ export const useAuthStore = create<AuthState>()(
       setLoading: (loading) => set({ isLoading: loading }),
       
       // Phase 22: Impersonation actions
-      setToken: (token) => set({ token }),
+      setToken: (token) => {
+        // Update Zustand store
+        set({ token });
+        
+        // CRITICAL: Also update the cookie so API calls use the new token
+        if (typeof document !== 'undefined') {
+          document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
+        }
+      },
       
       setImpersonation: (association) => {
         const currentUser = get().user;
@@ -194,8 +220,32 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       
+      startImpersonation: (token, association) => {
+        const currentUser = get().user;
+        
+        // Update cookie
+        if (typeof document !== 'undefined') {
+          document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`;
+        }
+        
+        // Update all state at once
+        set({
+          token,
+          isImpersonating: true,
+          impersonatedAssociation: association,
+          originalAssociationId: currentUser?.associationId || null,
+          // Update user's associationId to match impersonated association
+          user: currentUser ? {
+            ...currentUser,
+            associationId: association.id,
+          } : null,
+        });
+      },
+      
       endImpersonation: async () => {
         const token = get().token;
+        const originalAssociationId = get().originalAssociationId;
+        const currentUser = get().user;
         if (!token) return false;
         
         try {
@@ -210,11 +260,24 @@ export const useAuthStore = create<AuthState>()(
           
           const data = await response.json();
           if (data.success) {
+            // Clear the super admin context so API calls don't include old association
+            clearSuperAdminContext();
+            
+            // Update the cookie with the new token
+            if (typeof document !== 'undefined') {
+              document.cookie = `token=${data.data.token}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
+            }
+            
             set({
               token: data.data.token,
               isImpersonating: false,
               impersonatedAssociation: null,
               originalAssociationId: null,
+              // Restore user's original associationId
+              user: currentUser ? {
+                ...currentUser,
+                associationId: originalAssociationId || null,
+              } : null,
             });
             return true;
           }

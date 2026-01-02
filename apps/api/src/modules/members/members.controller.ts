@@ -54,7 +54,29 @@ export const memberController = {
   // Get all members with pagination, search, and filters
   async list(req: Request, res: Response) {
     try {
-      const associationId = req.user?.associationId;
+      let associationId = req.user?.associationId;
+      
+      // For Super Admins, prefer X-Association-Id header if present
+      // This supports impersonation and context switching
+      if (req.user?.platformRole === 'SUPER_ADMIN') {
+        const headerAssociationId = req.headers['x-association-id'] as string;
+        if (headerAssociationId && !isNaN(Number(headerAssociationId))) {
+          associationId = Number(headerAssociationId);
+          console.log('[Members] Super Admin using X-Association-Id header:', associationId);
+        }
+      }
+      
+      // Debug logging for impersonation
+      console.log('[Members] List request - User:', {
+        id: req.user?.id,
+        email: req.user?.email,
+        associationId: req.user?.associationId,
+        platformRole: req.user?.platformRole,
+        isImpersonating: req.user?.isImpersonating,
+        originalAssociationId: req.user?.originalAssociationId,
+      });
+      console.log('[Members] X-Association-Id header:', req.headers['x-association-id']);
+      console.log('[Members] Final associationId for query:', associationId);
 
       if (!associationId) {
         return res.status(400).json({
@@ -62,6 +84,8 @@ export const memberController = {
           message: 'Association ID is required',
         });
       }
+      
+      console.log('[Members] Querying members for associationId:', associationId);
 
       // Validate and parse query params
       const queryParams = memberQuerySchema.parse(req.query);

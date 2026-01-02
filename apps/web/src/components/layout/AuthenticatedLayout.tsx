@@ -78,7 +78,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
         <SuperAdminContextBanner />
         
         {/* Top Bar with Notification Bell */}
-        <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 px-4 sm:px-6 lg:px-8 py-3">
+        <div className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-end">
             <NotificationBell />
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useSuperAdminContext } from '@/hooks/useSuperAdminContext';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
 import { getSubdomainUrl } from '@/utils/domain';
@@ -53,7 +54,7 @@ type AuditLog = {
 export default function AssociationDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { token, user, setToken, setImpersonation } = useAuthStore();
+  const { token, user } = useAuthStore();
   const [association, setAssociation] = useState<AssociationDetail | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditLog[]>([]);
@@ -149,29 +150,58 @@ export default function AssociationDetailPage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch(API_ROUTES.ADMIN.IMPERSONATE(associationId.toString()), {
+      const apiUrl = API_ROUTES.ADMIN.IMPERSONATE(associationId.toString());
+      console.log('🔍 Starting impersonation request:', { apiUrl, associationId, hasToken: !!token });
+      
+      const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
       });
+      
+      console.log('📡 Response status:', res.status, res.statusText);
+      
       const data = await res.json();
+      console.log('📦 Response data:', data);
+      
       if (data.success) {
-        // Phase 22: Update auth store with impersonation state
-        setToken(data.data.token);
-        setImpersonation({
+        console.log('✅ Impersonation successful, updating stores...');
+        
+        const associationData = {
           id: data.data.association.id,
           name: data.data.association.name,
           subdomain: data.data.association.subdomain,
-        });
+        };
+        
+        // 1. Update Super Admin context for X-Association-Id header
+        const superAdminStore = useSuperAdminContext.getState();
+        superAdminStore.setSelectedAssociation(associationData);
+        console.log('🏢 Super admin context updated');
+        
+        // 2. Update auth store with new token and impersonation state (all at once)
+        const authStore = useAuthStore.getState();
+        if (authStore.startImpersonation) {
+          authStore.startImpersonation(data.data.token, associationData);
+          console.log('👤 Auth store updated with impersonation');
+        }
         
         toast.success(`Now impersonating ${data.data.association.name}`);
         
-        // Redirect to dashboard in same tab (context indicator will show)
+        // Small delay to ensure state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Redirect to dashboard
+        console.log('🚀 Redirecting to dashboard...');
         router.push('/dashboard');
       } else {
+        console.error('❌ Impersonation failed:', data.message);
         toast.error(data.message || 'Failed to impersonate');
       }
     } catch (e) {
+      console.error('💥 Impersonation error:', e);
       toast.error('Failed to impersonate');
     } finally {
       setActionLoading(false);
