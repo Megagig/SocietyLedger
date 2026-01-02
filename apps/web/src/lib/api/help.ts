@@ -3,7 +3,14 @@
 // Frontend API functions for help center
 // ============================================
 
+import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
+
+// Get base path for help routes (strip the base URL since axios already has it)
+const getHelpPath = (fullUrl: string) => {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  return fullUrl.replace(`${apiBase}/api`, '');
+};
 
 // ============================================
 // TYPES
@@ -99,16 +106,8 @@ export interface AIStatus {
  * Get help center homepage data
  */
 export async function getHelpCenter(): Promise<HelpCenterData> {
-  const response = await fetch(API_ROUTES.HELP.CENTER, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to load help center');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.CENTER));
+  return response.data.data;
 }
 
 /**
@@ -120,62 +119,26 @@ export async function listArticles(params?: {
   limit?: number;
   offset?: number;
 }): Promise<ArticleSearchResult> {
-  const searchParams = new URLSearchParams();
-  if (params?.query) searchParams.set('query', params.query);
-  if (params?.category) searchParams.set('category', params.category);
-  if (params?.limit) searchParams.set('limit', params.limit.toString());
-  if (params?.offset) searchParams.set('offset', params.offset.toString());
-  
-  const url = `${API_ROUTES.HELP.ARTICLES}?${searchParams.toString()}`;
-  const response = await fetch(url, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to list articles');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.ARTICLES), { params });
+  return response.data.data;
 }
 
 /**
  * Search articles
  */
 export async function searchArticles(query: string, limit?: number): Promise<HelpArticle[]> {
-  const searchParams = new URLSearchParams({ q: query });
-  if (limit) searchParams.set('limit', limit.toString());
-  
-  const url = `${API_ROUTES.HELP.ARTICLE_SEARCH}?${searchParams.toString()}`;
-  const response = await fetch(url, {
-    credentials: 'include',
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.ARTICLE_SEARCH), {
+    params: { q: query, limit },
   });
-  
-  if (!response.ok) {
-    throw new Error('Failed to search articles');
-  }
-  
-  const data = await response.json();
-  return data.data.articles;
+  return response.data.data.articles;
 }
 
 /**
  * Get article by slug
  */
 export async function getArticle(slug: string): Promise<HelpArticle> {
-  const response = await fetch(API_ROUTES.HELP.ARTICLE_BY_SLUG(slug), {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error('Article not found');
-    }
-    throw new Error('Failed to get article');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.ARTICLE_BY_SLUG(slug)));
+  return response.data.data;
 }
 
 /**
@@ -193,32 +156,16 @@ export async function getArticleBySlug(slug: string): Promise<HelpArticle | null
  * Get article categories
  */
 export async function getArticleCategories(): Promise<{ name: string; label: string }[]> {
-  const response = await fetch(API_ROUTES.HELP.ARTICLE_CATEGORIES, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to get categories');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.ARTICLE_CATEGORIES));
+  return response.data.data;
 }
 
 /**
  * Get FAQ categories
  */
 export async function getFAQCategories(): Promise<{ name: string; label: string }[]> {
-  const response = await fetch(API_ROUTES.HELP.FAQ_CATEGORIES, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to get FAQ categories');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.FAQ_CATEGORIES));
+  return response.data.data;
 }
 
 /**
@@ -228,71 +175,34 @@ export async function markArticleHelpful(
   articleId: number,
   helpful: boolean
 ): Promise<{ helpfulCount: number; notHelpfulCount: number }> {
-  const response = await fetch(API_ROUTES.HELP.ARTICLE_HELPFUL(articleId), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ helpful }),
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to submit feedback');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.post(getHelpPath(API_ROUTES.HELP.ARTICLE_HELPFUL(articleId)), { helpful });
+  return response.data.data;
 }
 
 /**
  * List FAQs
  */
 export async function listFAQs(category?: string): Promise<FAQItem[]> {
-  const url = category 
-    ? `${API_ROUTES.HELP.FAQS}?category=${category}`
-    : API_ROUTES.HELP.FAQS;
-    
-  const response = await fetch(url, {
-    credentials: 'include',
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.FAQS), {
+    params: category ? { category } : undefined,
   });
-  
-  if (!response.ok) {
-    throw new Error('Failed to list FAQs');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  return response.data.data;
 }
 
 /**
  * Get FAQs grouped by category
  */
 export async function getFAQsByCategory(): Promise<FAQByCategory[]> {
-  const response = await fetch(API_ROUTES.HELP.FAQS_BY_CATEGORY, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to get FAQs');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.FAQS_BY_CATEGORY));
+  return response.data.data;
 }
 
 /**
  * Get quick actions for current user
  */
 export async function getQuickActions(): Promise<QuickAction[]> {
-  const response = await fetch(API_ROUTES.HELP.QUICK_ACTIONS, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to get quick actions');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.get(getHelpPath(API_ROUTES.HELP.QUICK_ACTIONS));
+  return response.data.data;
 }
 
 // ============================================
@@ -303,11 +213,10 @@ export async function getQuickActions(): Promise<QuickAction[]> {
  * Check AI availability
  */
 export async function getAIStatus(): Promise<AIStatus> {
-  const response = await fetch(API_ROUTES.HELP.AI_STATUS, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
+  try {
+    const response = await api.get(getHelpPath(API_ROUTES.HELP.AI_STATUS));
+    return response.data.data;
+  } catch {
     return {
       available: false,
       features: {
@@ -319,9 +228,6 @@ export async function getAIStatus(): Promise<AIStatus> {
       },
     };
   }
-  
-  const data = await response.json();
-  return data.data;
 }
 
 /**
@@ -331,50 +237,16 @@ export async function suggestArticles(
   query: string,
   limit?: number
 ): Promise<ArticleSuggestion[]> {
-  const response = await fetch(API_ROUTES.HELP.AI_SUGGEST_ARTICLES, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ query, limit }),
-  });
-  
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again later.');
-    }
-    if (response.status === 503) {
-      throw new Error('AI service unavailable');
-    }
-    throw new Error('Failed to get suggestions');
-  }
-  
-  const data = await response.json();
-  return data.data.suggestions;
+  const response = await api.post(getHelpPath(API_ROUTES.HELP.AI_SUGGEST_ARTICLES), { query, limit });
+  return response.data.data.suggestions;
 }
 
 /**
  * Ask AI a question from knowledge base
  */
 export async function askQuestion(question: string): Promise<KnowledgeBaseAnswer> {
-  const response = await fetch(API_ROUTES.HELP.AI_ANSWER, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ question }),
-  });
-  
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again later.');
-    }
-    if (response.status === 503) {
-      throw new Error('AI service unavailable');
-    }
-    throw new Error('Failed to get answer');
-  }
-  
-  const data = await response.json();
-  return data.data;
+  const response = await api.post(getHelpPath(API_ROUTES.HELP.AI_ANSWER), { question });
+  return response.data.data;
 }
 
 /**

@@ -237,11 +237,11 @@ const PERMISSION_REGISTRY = [
 // Map existing hardcoded roles to new permission keys
 const ROLE_PERMISSION_MAPPING = {
   admin: [
-    "members.view", "members.view_all", "members.create", "members.edit", "members.edit_all", 
+    "members.view", "members.view_all", "members.view_own", "members.create", "members.edit", "members.edit_all", "members.edit_own",
     "members.disable", "members.bulk_import", "members.manage_roles",
-    "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.reverse", 
+    "ledger.view", "ledger.view_all", "ledger.view_own", "ledger.create", "ledger.edit", "ledger.reverse", 
     "ledger.export", "ledger.view_member_statement",
-    "payments.view", "payments.view_all", "payments.manual_create", "payments.approve", "payments.delete",
+    "payments.view", "payments.view_all", "payments.view_own", "payments.manual_create", "payments.approve", "payments.delete",
     "reports.generate", "reports.export", "reports.financial_summary",
     "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
     "settings.view", "settings.edit", "settings.billing", "settings.integrations",
@@ -263,9 +263,9 @@ const ROLE_PERMISSION_MAPPING = {
     "settings.view"
   ],
   member: [
-    "members.view", "members.view_own", "members.edit_own",
-    "ledger.view", "ledger.view_own",
-    "payments.view", "payments.view_own",
+    "members.view_own", "members.edit_own",
+    "ledger.view_own",
+    "payments.view_own",
     "reports.generate"
   ]
 };

@@ -8,9 +8,15 @@ import { cacheInvalidationService } from '../../services/cache-invalidation.serv
 const createMemberSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  email: z.string().email('Invalid email address').optional().nullable(),
+  email: z.preprocess(
+    (val) => (val === '' || val === null ? null : val),
+    z.string().email('Invalid email address').nullable().optional()
+  ),
   phone: z.string().optional().nullable(),
-  dateOfBirth: z.string().datetime().optional().nullable(),
+  dateOfBirth: z.preprocess(
+    (val) => (val === '' || val === null ? null : val),
+    z.string().datetime().nullable().optional()
+  ),
   gender: z.enum(['male', 'female', 'other']).default('male'),
   address: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
@@ -19,7 +25,7 @@ const createMemberSchema = z.object({
   occupation: z.string().optional().nullable(),
   category: z.enum(['regular', 'executive', 'honorary', 'student']).default('regular'),
   status: z.enum(['active', 'inactive', 'suspended', 'terminated']).default('active'),
-  joinDate: z.string().datetime().optional().nullable(),
+  joinDate: z.string().datetime('Join date is required'),
   emergencyContactName: z.string().optional().nullable(),
   emergencyContactPhone: z.string().optional().nullable(),
   emergencyContactRelationship: z.string().optional().nullable(),
@@ -54,7 +60,29 @@ export const memberController = {
   // Get all members with pagination, search, and filters
   async list(req: Request, res: Response) {
     try {
-      const associationId = req.user?.associationId;
+      let associationId = req.user?.associationId;
+      
+      // For Super Admins, prefer X-Association-Id header if present
+      // This supports impersonation and context switching
+      if (req.user?.platformRole === 'SUPER_ADMIN') {
+        const headerAssociationId = req.headers['x-association-id'] as string;
+        if (headerAssociationId && !isNaN(Number(headerAssociationId))) {
+          associationId = Number(headerAssociationId);
+          console.log('[Members] Super Admin using X-Association-Id header:', associationId);
+        }
+      }
+      
+      // Debug logging for impersonation
+      console.log('[Members] List request - User:', {
+        id: req.user?.id,
+        email: req.user?.email,
+        associationId: req.user?.associationId,
+        platformRole: req.user?.platformRole,
+        isImpersonating: req.user?.isImpersonating,
+        originalAssociationId: req.user?.originalAssociationId,
+      });
+      console.log('[Members] X-Association-Id header:', req.headers['x-association-id']);
+      console.log('[Members] Final associationId for query:', associationId);
 
       if (!associationId) {
         return res.status(400).json({
@@ -62,6 +90,8 @@ export const memberController = {
           message: 'Association ID is required',
         });
       }
+      
+      console.log('[Members] Querying members for associationId:', associationId);
 
       // Validate and parse query params
       const queryParams = memberQuerySchema.parse(req.query);

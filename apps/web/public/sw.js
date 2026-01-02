@@ -88,6 +88,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip cross-origin requests (e.g., API server on different port)
+  // This includes uploads and static files served from the API server
+  if (url.origin !== location.origin) {
+    console.log('[SW] Skipping cross-origin request:', url.href);
+    return;
+  }
+
   // API requests - Network first, fallback to cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstStrategy(request, API_CACHE_NAME));

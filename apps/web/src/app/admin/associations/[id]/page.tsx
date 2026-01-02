@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useSuperAdminContext } from '@/hooks/useSuperAdminContext';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
 import { getSubdomainUrl } from '@/utils/domain';
@@ -146,25 +147,51 @@ export default function AssociationDetailPage() {
   };
 
   const handleImpersonate = async () => {
-    toast.info('You will be logged in as an admin of this association. Opening in new tab...');
     setActionLoading(true);
 
     try {
-      const res = await fetch(API_ROUTES.ADMIN.IMPERSONATE(associationId.toString()), {
+      const apiUrl = API_ROUTES.ADMIN.IMPERSONATE(associationId.toString());
+      
+      const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
       });
+      
       const data = await res.json();
+      
       if (data.success) {
-        // Open in new tab with impersonation token using proper subdomain URL
-        const url = `${getSubdomainUrl(data.data.association.subdomain)}/dashboard?token=${data.data.token}`;
-        window.open(url, '_blank');
-        toast.success('Impersonation session opened in new tab');
+        const associationData = {
+          id: data.data.association.id,
+          name: data.data.association.name,
+          subdomain: data.data.association.subdomain,
+        };
+        
+        // 1. Update Super Admin context for X-Association-Id header
+        const superAdminStore = useSuperAdminContext.getState();
+        superAdminStore.setSelectedAssociation(associationData);
+        
+        // 2. Update auth store with new token and impersonation state (all at once)
+        const authStore = useAuthStore.getState();
+        if (authStore.startImpersonation) {
+          authStore.startImpersonation(data.data.token, associationData);
+        }
+        
+        toast.success(`Now impersonating ${data.data.association.name}`);
+        
+        // Small delay to ensure state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Redirect to dashboard
+        router.push('/dashboard');
       } else {
         toast.error(data.message || 'Failed to impersonate');
       }
     } catch (e) {
+      console.error('Impersonation error:', e);
       toast.error('Failed to impersonate');
     } finally {
       setActionLoading(false);

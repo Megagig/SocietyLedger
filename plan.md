@@ -48,6 +48,7 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **19** | SaaS Owner / Super Admin Platform Controls | ⚪ Not Started | 0/24 | 🔴 HIGH |
 | **20** | Dashboard Real-Data Integration | ✅ **COMPLETE** | 17/17 | 🔴 HIGH |
 | **21** | Help & Support Module | ⚪ Not Started | 0/28 | 🟡 MEDIUM |
+| **22** | Hybrid Super Admin Architecture | ⚪ Not Started | 0/23 | 🔴 HIGH |
 
 
 **Legend:**
@@ -2708,4 +2709,159 @@ docs/help-support/
 - [ ] Test AI response suggestions
 - [ ] Verify AI rate limiting per association
 - [ ] Test graceful degradation when AI unavailable
+
+
+
+---
+
+### Phase 22: Hybrid Super Admin Architecture 🔴 HIGH PRIORITY
+
+**Status:** ⚪ Not Started  
+**Dependencies:** Multi-tenancy ✅, RBAC ✅, Super Admin Dashboard ✅, Impersonation ✅  
+**Estimated Time:** 4-5 days  
+**Priority:** 🔴 HIGH - Architecture Enhancement  
+**Documentation:** `docs/hybrid-super-admin/PLAN.md`, `docs/hybrid-super-admin/TASKS.md`
+
+#### Overview
+
+Refactor the Super Admin architecture to follow a **Hybrid SaaS Model** where Super Admins are normal users who belong to an association AND also have system-level (platform) privileges, with explicit impersonation when acting on other associations.
+
+#### Core Principles
+
+1. **Every Super Admin MUST belong to an association** - Either a real association or a special "Platform/System Association"
+2. **Super Admin has system-level privileges** - Controlled via `platformRole = SUPER_ADMIN`, separate from tenant privileges
+3. **Impersonation remains the ONLY way to act on other associations** - Explicit, logged, reversible
+4. **Zero regressions** - All changes are additive and backward-compatible
+
+#### Target Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           HYBRID SUPER ADMIN MODEL                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  SUPER ADMIN USER                                                           │
+│  ├── TENANT IDENTITY (associationId → Platform Association)                 │
+│  │   └── Normal tenant roles/permissions                                    │
+│  └── PLATFORM IDENTITY (platformRole = SUPER_ADMIN)                         │
+│      └── System-level privileges, cross-tenant visibility                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  CONTEXT MODES                                                              │
+│  ├── TENANT MODE: Normal operations in own association                      │
+│  ├── SYSTEM MODE: Platform dashboard, all tenants visibility                │
+│  └── IMPERSONATION MODE: Acting as another tenant (fully logged)            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Hard Constraints (MUST NOT VIOLATE)
+
+- ❌ DO NOT remove or rewrite existing impersonation logic
+- ❌ DO NOT change existing tenant admin or member behavior
+- ❌ DO NOT auto-grant cross-association access
+- ❌ DO NOT refactor unrelated modules
+- ❌ DO NOT change existing API contracts unless strictly additive
+
+#### Allowed Changes (Safe Enhancements)
+
+- ✅ Add new fields (nullable/optional)
+- ✅ Add middleware (non-blocking, layered)
+- ✅ Add context checks (additive)
+- ✅ Add UI indicators
+- ✅ Add audit metadata
+- ✅ Create new endpoints (additive)
+
+#### Implementation Phases
+
+| Phase | Name | Tasks | Risk |
+|-------|------|-------|------|
+| 1 | Platform Association Setup | 4 | 🟢 Low |
+| 2 | Context Awareness Enhancement | 6 | 🟡 Medium |
+| 3 | Impersonation Hardening | 4 | 🟢 Low |
+| 4 | Frontend UX Enhancement | 5 | 🟢 Low |
+| 5 | Testing & Validation | 4 | 🔴 Critical |
+
+#### Key Deliverables
+
+**Database Changes:**
+- Add `isPlatformAssociation` field to Association model
+- Create "Platform" association for Super Admins
+- Migrate existing Super Admins to have `associationId`
+
+**Backend Changes:**
+- Context types and service (`ContextMode`, `ExecutionContext`)
+- Context detection middleware (layered, non-blocking)
+- Enhanced token payload with impersonation tracking
+- End impersonation endpoint
+- Audit context helpers
+
+**Frontend Changes:**
+- Context indicator component (shows impersonation state)
+- Auth store extension for impersonation tracking
+- "End Impersonation" button
+- Platform Admin mode indicator
+
+#### API Endpoints (New)
+
+```
+POST /api/admin/end-impersonation    # End impersonation, return to home association
+```
+
+#### Token Payload Enhancement
+
+```typescript
+interface EnhancedTokenPayload {
+  // Existing fields (unchanged)
+  id: number;
+  email: string;
+  role: string;
+  associationId: number;           // Now always set (Platform Association for Super Admins)
+  platformRole?: PlatformRole;
+  memberId?: number;
+  
+  // NEW: Impersonation tracking
+  isImpersonating?: boolean;
+  originalAssociationId?: number;  // Home association during impersonation
+  impersonationTimestamp?: number; // When impersonation started
+}
+```
+
+#### Success Criteria
+
+- ✅ Existing users behave exactly the same
+- ✅ Existing impersonation works exactly as before
+- ✅ Super Admin can operate inside own association normally
+- ✅ Super Admin can access system modules without selecting an association
+- ✅ Super Admin can impersonate other associations safely
+- ✅ No regression in RBAC or tenant isolation
+- ✅ All changes are backward-compatible
+
+#### Files to Create
+
+```
+apps/api/prisma/seeds/platform-association.seed.ts
+apps/api/src/services/context.service.ts
+apps/api/src/middleware/context.middleware.ts
+apps/api/src/types/context.types.ts
+apps/api/src/utils/audit-helpers.ts
+apps/web/src/components/layout/ContextIndicator.tsx
+docs/hybrid-super-admin/ARCHITECTURE.md
+docs/hybrid-super-admin/TESTING_CHECKLIST.md
+```
+
+#### Files to Modify (Additive Only)
+
+```
+apps/api/prisma/schema.prisma (add isPlatformAssociation field)
+apps/api/src/lib/auth.ts (extend TokenPayload)
+apps/api/src/modules/admin/admin.controller.ts (enhance impersonate, add endImpersonation)
+apps/api/src/modules/admin/admin.routes.ts (add end-impersonation route)
+apps/api/src/middleware/auth.middleware.ts (add context detection)
+apps/api/src/server.ts (add context middleware)
+apps/web/src/components/layout/AuthenticatedLayout.tsx (add ContextIndicator)
+apps/web/src/store/authStore.ts (add impersonation state)
+apps/web/src/utils/constants.ts (add END_IMPERSONATION route)
+```
+
+#### Implementation Tasks
+
+See `docs/hybrid-super-admin/TASKS.md` for detailed task breakdown (23 tasks total).
 

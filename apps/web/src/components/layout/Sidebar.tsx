@@ -54,6 +54,7 @@ interface NavItem {
   icon: React.ReactNode;
   href?: string;
   permission?: string | string[];
+  roleRequired?: 'admin' | 'treasurer' | 'financial_secretary'; // Admin-only sections
   comingSoon?: boolean;
   badge?: string;
   children?: NavItem[];
@@ -63,7 +64,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout, _hasHydrated } = useAuthStore();
 
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
@@ -73,11 +74,22 @@ export function Sidebar() {
     );
   };
 
-  const checkPermission = (permission: string | string[] | undefined): boolean => {
-    if (!permission) return true;
+  const checkPermission = (permission: string | string[] | undefined, roleRequired?: string): boolean => {
+    // Don't show permission-gated items until Zustand store is hydrated from localStorage
+    if (!_hasHydrated) return false;
+    
+    if (!permission && !roleRequired) return true;
     
     // Super admin has access to everything
     if (user?.platformRole === 'SUPER_ADMIN') return true;
+    
+    // Check role requirement first (more restrictive)
+    if (roleRequired && user?.role !== roleRequired) {
+      return false;
+    }
+    
+    // If no permission check needed, role check passed
+    if (!permission) return true;
     
     // Get permissions array from user (fetched from API/database)
     const userPermissions = user?.permissions || [];
@@ -107,12 +119,12 @@ export function Sidebar() {
       href: '/dashboard/members',
       permission: PERMISSIONS.MEMBER_VIEW,
     },
-    // Member Self-Service Finance Section
+    // Member Self-Service Finance Section (visible to both members and admins)
     // Note: Hidden for Super Admins as they don't have member records
     ...(user?.platformRole !== 'SUPER_ADMIN' ? [{
       label: 'My Finances',
       icon: <IconCurrencyNaira size={20} />,
-      permission: PERMISSIONS.MEMBER_FINANCE_VIEW,
+      permission: [PERMISSIONS.MEMBER_FINANCE_VIEW, PERMISSIONS.FINANCE_VIEW], // Accept either member or admin permission
       children: [
         {
           label: 'Overview',
@@ -156,7 +168,7 @@ export function Sidebar() {
         },
       ],
     }] : []),
-    // Admin Finance Section
+    // Admin Finance Section (visible to roles with FINANCE_VIEW permission)
     {
       label: 'Finance',
       icon: <IconCurrencyNaira size={20} />,
@@ -306,7 +318,7 @@ export function Sidebar() {
     {
       label: 'Governance',
       icon: <IconBadge size={20} />,
-      permission: [PERMISSIONS.MEETING_VIEW, PERMISSIONS.ELECTION_VIEW],
+      permission: [PERMISSIONS.MEETING_VIEW, PERMISSIONS.ELECTION_VIEW, PERMISSIONS.POLL_VIEW],
       children: [
         {
           label: 'Meetings',
@@ -760,12 +772,22 @@ export function Sidebar() {
         {/* Logo/Brand */}
         <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <IconUsers className="text-white" size={24} />
-            </div>
+            {user?.association?.logo ? (
+              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                <img 
+                  src={user.association.logo.startsWith('http') ? user.association.logo : `${process.env.NEXT_PUBLIC_API_URL}${user.association.logo}`}
+                  alt={user.association.name || 'Logo'} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <IconUsers className="text-white" size={24} />
+              </div>
+            )}
             <div>
               <span className="text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
-                SocietyLedger
+                {user?.association?.name || 'SocietyLedger'}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user?.platformRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Association Portal'}
@@ -796,7 +818,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {navItems.map((item) => {
-            if (!checkPermission(item.permission)) return null;
+            if (!checkPermission(item.permission, item.roleRequired)) return null;
 
             const hasChildren = item.children && item.children.length > 0;
             const isExpanded = expandedItems.includes(item.label);
@@ -830,7 +852,7 @@ export function Sidebar() {
                     {isExpanded && item.children && (
                       <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
                         {item.children.map((child) => {
-                          if (!checkPermission(child.permission)) return null;
+                          if (!checkPermission(child.permission, child.roleRequired)) return null;
 
                           return (
                             <Link

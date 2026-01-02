@@ -857,7 +857,9 @@ export const meetingsController = {
     try {
       const associationId = req.user?.associationId;
       const limit = parseInt(req.query.limit as string) || 5;
-
+      console.log('🔍 [Meetings] getUpcoming - req.user:', req.user);
+      console.log('🔍 [Meetings] getUpcoming - associationId:', associationId);
+      console.log('🔍 [Meetings] getUpcoming - tenantId:', (req as any).tenantId);
       if (!associationId) {
         return res.status(400).json({
           success: false,

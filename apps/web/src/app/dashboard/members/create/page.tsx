@@ -45,6 +45,24 @@ export default function CreateMemberPage() {
     setError('');
 
     try {
+      // Convert empty strings to null for optional fields
+      const payload = {
+        ...formData,
+        email: formData.email.trim() || null,
+        phone: formData.phone.trim() || null,
+        dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
+        joinDate: formData.joinDate ? new Date(formData.joinDate).toISOString() : null,
+        address: formData.address.trim() || null,
+        city: formData.city.trim() || null,
+        state: formData.state.trim() || null,
+        country: formData.country.trim() || null,
+        occupation: formData.occupation.trim() || null,
+        emergencyContactName: formData.emergencyContactName.trim() || null,
+        emergencyContactPhone: formData.emergencyContactPhone.trim() || null,
+        emergencyContactRelationship: formData.emergencyContactRelationship.trim() || null,
+        notes: formData.notes.trim() || null,
+      };
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/members`,
         {
@@ -53,7 +71,7 @@ export default function CreateMemberPage() {
             'Content-Type': 'application/json',
           },
           credentials: 'include',
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -145,6 +163,7 @@ export default function CreateMemberPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                placeholder="member@example.com (optional)"
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -171,6 +190,7 @@ export default function CreateMemberPage() {
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleChange}
+                max={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -311,13 +331,15 @@ export default function CreateMemberPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Join Date
+                Join Date <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 name="joinDate"
                 value={formData.joinDate}
                 onChange={handleChange}
+                required
+                max={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />
             </div>

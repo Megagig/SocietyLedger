@@ -102,23 +102,23 @@ export const PERMISSIONS = {
   ASSOCIATION_VIEW: 'settings.view',
   ASSOCIATION_EDIT: 'settings.edit',
   ASSOCIATION_SETTINGS: 'settings.edit',
-  SUBSCRIPTION_VIEW: 'settings.view',
+  SUBSCRIPTION_VIEW: 'members.view_own', // Members can view their subscription
   SUBSCRIPTION_MANAGE: 'settings.billing',
   
   // Feature-specific (mapped to core permissions)
-  COOPERATIVE_VIEW: 'ledger.view',
-  COOPERATIVE_SAVINGS_VIEW: 'ledger.view',
-  COOPERATIVE_SAVINGS_MANAGE: 'ledger.create',
-  COOPERATIVE_LOANS_VIEW: 'ledger.view',
-  COOPERATIVE_LOANS_APPLY: 'ledger.create',
-  COOPERATIVE_LOANS_MANAGE: 'payments.approve',
-  COOPERATIVE_GUARANTOR: 'ledger.view',
+  COOPERATIVE_VIEW: 'ledger.view_own', // Members view their own cooperative data
+  COOPERATIVE_SAVINGS_VIEW: 'ledger.view_own', // Members view their own savings
+  COOPERATIVE_SAVINGS_MANAGE: 'payments.approve', // Admin manages all savings
+  COOPERATIVE_LOANS_VIEW: 'ledger.view_own', // Members view their own loans
+  COOPERATIVE_LOANS_APPLY: 'members.view_own', // Members can apply for loans
+  COOPERATIVE_LOANS_MANAGE: 'payments.approve', // Admin manages loan applications
+  COOPERATIVE_GUARANTOR: 'members.view_own', // Members can see guarantor requests
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
-  MEETING_VIEW: 'members.view',
+  MEETING_VIEW: 'members.view_own', // Members can view meetings
   MEETING_CREATE: 'members.create',
   MEETING_EDIT: 'members.edit',
   MEETING_DELETE: 'members.disable',
-  MEETING_ATTENDANCE: 'members.edit',
+  MEETING_ATTENDANCE: 'members.view_own', // Members can mark attendance
   MEETING_MINUTES: 'members.edit',
   WELFARE_VIEW: 'ledger.view',
   WELFARE_MANAGE: 'ledger.create',
@@ -139,13 +139,13 @@ export const PERMISSIONS = {
   AI_REPORTS: 'reports.generate',
   AI_QUERY: 'reports.generate',
   AI_USAGE_VIEW: 'audit.view',
-  ELECTION_VIEW: 'members.view',
+  ELECTION_VIEW: 'members.view_own', // Members can view and participate in elections
   ELECTION_MANAGE: 'members.create',
-  ELECTION_NOMINATE: 'members.view',
-  ELECTION_VOTE: 'members.view',
-  POLL_VIEW: 'members.view',
+  ELECTION_NOMINATE: 'members.view_own', // Members can nominate
+  ELECTION_VOTE: 'members.view_own', // Members can vote
+  POLL_VIEW: 'members.view_own', // Members can view and participate in polls
   POLL_MANAGE: 'members.create',
-  POLL_VOTE: 'members.view',
+  POLL_VOTE: 'members.view_own', // Members can vote in polls
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];

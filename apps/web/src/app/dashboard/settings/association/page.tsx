@@ -356,7 +356,7 @@ export default function AssociationProfilePage() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                 {formData.logo ? (
                   <img 
-                    src={formData.logo} 
+                    src={formData.logo.startsWith('http') ? formData.logo : `${process.env.NEXT_PUBLIC_API_URL}${formData.logo}`}
                     alt="Logo" 
                     className="w-16 h-16 rounded-lg object-cover border border-gray-200 dark:border-gray-600"
                   />

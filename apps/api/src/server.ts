@@ -4,7 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import path from 'path';
 import { tenantMiddleware } from './middleware/tenant.middleware';
+import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 // Phase 12: Caching & Performance
@@ -96,11 +98,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Serve static files from uploads directory with CORS headers
+const uploadsPath = path.join(process.cwd(), 'uploads');
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(uploadsPath));
+
 // Webhook routes (must be before tenantMiddleware for raw body access)
 app.use('/api/webhooks', webhookRoutes);
 
 // Tenant middleware for all other routes
 app.use(tenantMiddleware);
+
+// Phase 22: Context middleware for Hybrid Super Admin Architecture
+// Must be after tenant middleware, attaches execution context to requests
+app.use(contextMiddleware);
 
 // Logging middleware
 app.use(morgan('dev'));

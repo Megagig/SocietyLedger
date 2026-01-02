@@ -21,10 +21,10 @@ router.use(authMiddleware);
 /**
  * Get help center homepage data
  * GET /api/help
+ * Note: No permission required - help is accessible to all authenticated users
  */
 router.get(
   '/',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.getHelpCenter
 );
 
@@ -38,7 +38,6 @@ router.get(
  */
 router.get(
   '/quick-actions',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.getQuickActions
 );
 
@@ -52,7 +51,6 @@ router.get(
  */
 router.get(
   '/categories/articles',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.getArticleCategories
 );
 
@@ -62,7 +60,6 @@ router.get(
  */
 router.get(
   '/categories/faqs',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.getFAQCategories
 );
 
@@ -76,7 +73,6 @@ router.get(
  */
 router.get(
   '/articles',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.listArticles
 );
 
@@ -86,7 +82,6 @@ router.get(
  */
 router.get(
   '/articles/search',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.searchArticles
 );
 
@@ -106,7 +101,6 @@ router.post(
  */
 router.get(
   '/articles/:slug',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.getArticle
 );
 
@@ -136,7 +130,6 @@ router.delete(
  */
 router.post(
   '/articles/:id/helpful',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.markArticleHelpful
 );
 
@@ -150,7 +143,6 @@ router.post(
  */
 router.get(
   '/faqs',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.listFAQs
 );
 
@@ -160,7 +152,6 @@ router.get(
  */
 router.get(
   '/faqs/by-category',
-  requirePermission(PERMISSIONS.HELP_VIEW),
   helpController.getFAQsByCategory
 );
 

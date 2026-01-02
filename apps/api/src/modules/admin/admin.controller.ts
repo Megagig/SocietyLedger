@@ -4,6 +4,7 @@ import prisma from '../../lib/prisma';
 import { generateToken, TokenPayload } from '../../lib/auth';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.service';
+import { logImpersonationAction, getImpersonationDuration, formatImpersonationDuration } from '../../utils/audit-helpers';
 
 const approvalSchema = z.object({
   status: z.enum(['approved', 'rejected']),
@@ -25,6 +26,8 @@ const searchSchema = z.object({
 export class AdminController {
   /**
    * Impersonate an association admin (super admin only).
+   * 
+   * Phase 22: Enhanced with impersonation tracking fields in token.
    */
   async impersonate(req: AuthRequest, res: Response) {
     try {
@@ -36,41 +39,122 @@ export class AdminController {
       }
 
       const association = await prisma.association.findUnique({ where: { id: targetAssociationId } });
+      
       if (!association) {
         return res.status(404).json({ success: false, message: 'Association not found' });
       }
 
-      await prisma.auditLog.create({
-        data: {
-          associationId: targetAssociationId,
-          userId: superAdmin.id,
-          action: 'IMPERSONATE',
-          tableName: 'associations',
-          recordId: targetAssociationId,
-          newValues: { impersonatedBy: superAdmin.email },
-        },
+      // Log impersonation action with enhanced context
+      await logImpersonationAction(req, 'IMPERSONATE', targetAssociationId, {
+        targetAssociationName: association.name,
+        targetSubdomain: association.subdomain,
       });
 
+      // Phase 22: Enhanced token payload with impersonation tracking
       const payload: TokenPayload = {
         id: superAdmin.id,
         email: superAdmin.email,
         role: 'admin',
         associationId: targetAssociationId,
         platformRole: superAdmin.platformRole,
+        // NEW: Impersonation tracking fields
+        isImpersonating: true,
+        originalAssociationId: superAdmin.associationId ?? undefined,
+        impersonationTimestamp: Date.now(),
       };
 
-      const token = generateToken(payload);
+      // Generate token with impersonation-specific expiry
+      const token = generateToken(payload, { isImpersonation: true });
 
       return res.json({
         success: true,
         data: {
           token,
-          association: { id: association.id, name: association.name, subdomain: association.subdomain },
+          association: { 
+            id: association.id, 
+            name: association.name, 
+            subdomain: association.subdomain,
+          },
+          impersonation: {
+            isImpersonating: true,
+            originalAssociationId: superAdmin.associationId,
+            startedAt: new Date().toISOString(),
+          },
         },
         message: 'Impersonation token generated.',
       });
     } catch (error) {
       console.error('Impersonate error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * End impersonation and return to home association.
+   * 
+   * Phase 22: New endpoint for explicitly ending impersonation.
+   */
+  async endImpersonation(req: AuthRequest, res: Response) {
+    try {
+      const user = req.user;
+
+      if (!user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      if (!user.isImpersonating) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Not currently impersonating any association',
+        });
+      }
+
+      // Calculate impersonation duration
+      const duration = getImpersonationDuration(user.impersonationTimestamp);
+      const durationFormatted = formatImpersonationDuration(duration);
+
+      // Log end of impersonation
+      await logImpersonationAction(req, 'END_IMPERSONATION', user.associationId!, {
+        duration,
+        durationFormatted,
+        originalAssociationId: user.originalAssociationId,
+      });
+
+      // Generate new token for home association (no impersonation flags)
+      const payload: TokenPayload = {
+        id: user.id,
+        email: user.email,
+        role: 'admin',
+        associationId: user.originalAssociationId,
+        platformRole: user.platformRole,
+        // No impersonation flags - back to normal
+      };
+
+      const token = generateToken(payload);
+
+      // Get home association details
+      const homeAssociation = user.originalAssociationId 
+        ? await prisma.association.findUnique({
+            where: { id: user.originalAssociationId },
+            select: { id: true, name: true, subdomain: true },
+          })
+        : null;
+
+      return res.json({
+        success: true,
+        data: {
+          token,
+          association: homeAssociation,
+          impersonationEnded: {
+            previousAssociationId: user.associationId,
+            duration,
+            durationFormatted,
+          },
+        },
+        message: `Impersonation ended. Session lasted ${durationFormatted}. Returned to home association.`,
+      });
+    } catch (error) {
+      console.error('End impersonation error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

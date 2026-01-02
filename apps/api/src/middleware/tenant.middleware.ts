@@ -1,6 +1,6 @@
 import { AssociationStatus } from '@prisma/client';
 import { NextFunction, Request, Response } from 'express';
-import { extractSubdomain, findAssociationByIdentifier } from '../lib/tenant';
+import { extractSubdomain, extractSubdomainFromOrigin, findAssociationByIdentifier } from '../lib/tenant';
 
 export interface TenantRequest extends Request {
   tenantId?: number;
@@ -10,6 +10,7 @@ export interface TenantRequest extends Request {
     subdomain: string;
     status: AssociationStatus;
     name: string;
+    logo?: string | null;
   } | null;
 }
 
@@ -84,9 +85,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       // Try to resolve tenant but don't fail if not found
       const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
       const subdomain = extractSubdomain(req.headers.host);
+      const originSubdomain = extractSubdomainFromOrigin(req.headers.origin as string) || 
+                             extractSubdomainFromOrigin(req.headers.referer as string);
 
       const association = await findAssociationByIdentifier({
-        subdomain: headerTenant || subdomain || undefined,
+        subdomain: headerTenant || subdomain || originSubdomain || undefined,
         slug: headerTenant?.toLowerCase(),
         id: headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined,
       });
@@ -98,6 +101,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           subdomain: association.subdomain,
           status: association.status,
           name: association.name,
+          logo: association.logo,
         };
         req.tenantId = association.id;
       }
@@ -122,9 +126,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       // Try to resolve tenant but don't fail if not found
       const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
       const subdomain = extractSubdomain(req.headers.host);
+      const originSubdomain = extractSubdomainFromOrigin(req.headers.origin as string) || 
+                             extractSubdomainFromOrigin(req.headers.referer as string);
 
       const association = await findAssociationByIdentifier({
-        subdomain: headerTenant || subdomain || undefined,
+        subdomain: headerTenant || subdomain || originSubdomain || undefined,
         slug: headerTenant?.toLowerCase(),
         id: headerTenant && !Number.isNaN(Number(headerTenant)) ? Number(headerTenant) : undefined,
       });
@@ -136,6 +142,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           subdomain: association.subdomain,
           status: association.status,
           name: association.name,
+          logo: association.logo,
         };
         req.tenantId = association.id;
       }
@@ -146,11 +153,16 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
     const headerTenant = (req.headers['x-tenant'] ?? req.headers['x-tenant-id']) as string | undefined;
     const subdomain = extractSubdomain(req.headers.host);
     
+    // For cross-origin requests (e.g., demo.localhost:3000 -> localhost:4000),
+    // extract subdomain from Origin or Referer header
+    const originSubdomain = extractSubdomainFromOrigin(req.headers.origin as string) || 
+                           extractSubdomainFromOrigin(req.headers.referer as string);
+    
     // Check for Super Admin's selected association context
     const superAdminAssociationId = req.headers['x-association-id'] as string | undefined;
 
     const association = await findAssociationByIdentifier({
-      subdomain: headerTenant || subdomain || undefined,
+      subdomain: headerTenant || subdomain || originSubdomain || undefined,
       slug: headerTenant?.toLowerCase(),
       id: (superAdminAssociationId && !Number.isNaN(Number(superAdminAssociationId))) 
         ? Number(superAdminAssociationId) 
@@ -187,15 +199,12 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       subdomain: association.subdomain,
       status: association.status,
       name: association.name,
+      logo: association.logo,
     };
     req.tenantId = association.id;
 
     next();
   } catch (error) {
-    console.error('Tenant middleware error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to resolve tenant context',
-    });
+    next(error);
   }
 }

@@ -52,6 +52,7 @@ export class AuthController {
 
       // Find user by email - check both tenant-scoped and platform admins
       let user;
+      let isPlatformLogin = false;
       
       if (tenantId) {
         user = await prisma.user.findFirst({
@@ -66,17 +67,32 @@ export class AuthController {
                 memberId: true,
               },
             },
+            association: {
+              select: {
+                id: true,
+                isPlatformAssociation: true,
+              },
+            },
           },
         });
+        
+        // Check if this is a Platform Association login
+        if (user?.association?.isPlatformAssociation) {
+          isPlatformLogin = true;
+        }
       }
       
       // If no user found in tenant, check for platform admin (SUPER_ADMIN)
+      // This handles both legacy (associationId = null) and new (Platform Association) cases
       if (!user) {
         user = await prisma.user.findFirst({
           where: { 
             email: email.toLowerCase(), 
             platformRole: 'SUPER_ADMIN',
-            associationId: null,
+            OR: [
+              { associationId: null },
+              { association: { isPlatformAssociation: true } },
+            ],
           },
           include: {
             userApproval: true,
@@ -88,8 +104,18 @@ export class AuthController {
                 memberId: true,
               },
             },
+            association: {
+              select: {
+                id: true,
+                isPlatformAssociation: true,
+              },
+            },
           },
         });
+        
+        if (user) {
+          isPlatformLogin = true;
+        }
       }
 
       if (!user) {
@@ -162,19 +188,23 @@ export class AuthController {
       }
 
       // Generate JWT token
+      // For platform logins, use the user's actual associationId (Platform Association)
+      // For regular tenant logins, use the tenantId from the request
+      const tokenAssociationId = isPlatformLogin ? user.associationId : tenantId;
+      
       const token = generateToken({
         id: user.id,
         email: user.email,
         role: user.role,
         memberId: user.member?.id,
-        associationId: tenantId,
+        associationId: tokenAssociationId ?? undefined,
         platformRole: user.platformRole ?? undefined,
       });
 
       // Resolve user permissions from database
       const rbacContext: RBACContext = {
         userId: user.id,
-        associationId: tenantId ?? null,
+        associationId: tokenAssociationId ?? null,
         platformRole: user.platformRole,
       };
       const userPermissions = await RBACService.resolveUserPermissions(rbacContext);
@@ -198,11 +228,17 @@ export class AuthController {
             email: user.email,
             role: user.role,
             member: user.member,
-            association: tenant,
+            association: isPlatformLogin ? {
+              id: user.associationId,
+              name: 'SocietyLedger Platform',
+              subdomain: 'platform',
+              isPlatformAssociation: true,
+            } : tenant,
             platformRole: user.platformRole,
             requiresOnboarding,
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
+            isPlatformLogin, // NEW: Indicates if this is a platform admin login
           },
           token,
         },
@@ -517,6 +553,7 @@ export class AuthController {
       const authReq = req as TenantRequest & { user?: { id?: number } };
       const userId = authReq.user?.id;
       const tenantId = authReq.tenantId;
+      const tenant = authReq.tenant;
 
       if (!userId) {
         res.status(401).json({
@@ -579,11 +616,20 @@ export class AuthController {
       };
       const userPermissions = await RBACService.resolveUserPermissions(rbacContext);
 
+      // Determine if this is a platform login
+      const isPlatformLogin = user.platformRole === 'SUPER_ADMIN';
+
       res.status(200).json({
         success: true,
         data: { 
           user: {
             ...user,
+            association: isPlatformLogin ? {
+              id: user.associationId,
+              name: 'SocietyLedger Platform',
+              subdomain: 'platform',
+              isPlatformAssociation: true,
+            } : tenant,
             requiresOnboarding,
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
