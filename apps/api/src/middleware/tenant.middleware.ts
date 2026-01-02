@@ -10,6 +10,7 @@ export interface TenantRequest extends Request {
     subdomain: string;
     status: AssociationStatus;
     name: string;
+    logo?: string | null;
   } | null;
 }
 
@@ -100,6 +101,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           subdomain: association.subdomain,
           status: association.status,
           name: association.name,
+          logo: association.logo,
         };
         req.tenantId = association.id;
       }
@@ -140,6 +142,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           subdomain: association.subdomain,
           status: association.status,
           name: association.name,
+          logo: association.logo,
         };
         req.tenantId = association.id;
       }
@@ -196,15 +199,12 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       subdomain: association.subdomain,
       status: association.status,
       name: association.name,
+      logo: association.logo,
     };
     req.tenantId = association.id;
 
     next();
   } catch (error) {
-    console.error('Tenant middleware error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to resolve tenant context',
-    });
+    next(error);
   }
 }

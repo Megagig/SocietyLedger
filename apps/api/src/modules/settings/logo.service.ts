@@ -71,14 +71,6 @@ export class LogoService {
     const filename = `logo-${associationId}-${Date.now()}${ext}`;
     const filepath = path.join(UPLOAD_DIR, filename);
 
-    console.log('📁 Upload details:', {
-      filename,
-      filepath,
-      absolutePath: path.resolve(filepath),
-      fileSize: file.size,
-      mimeType: file.mimetype
-    });
-
     try {
       // Get old logo for cleanup
       const association = await prisma.association.findUnique({
@@ -88,15 +80,9 @@ export class LogoService {
 
       // Save new file
       await fs.writeFile(filepath, file.buffer);
-      console.log('✅ File written successfully to:', filepath);
-
-      // Verify file was written
-      const stats = await fs.stat(filepath);
-      console.log('📊 File stats:', { size: stats.size, exists: true });
 
       // Generate URL (relative path for serving)
       const logoUrl = `/uploads/logos/${filename}`;
-      console.log('🔗 Logo URL:', logoUrl);
 
       // Update association
       await prisma.association.update({

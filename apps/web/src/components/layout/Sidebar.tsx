@@ -769,12 +769,22 @@ export function Sidebar() {
         {/* Logo/Brand */}
         <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <IconUsers className="text-white" size={24} />
-            </div>
+            {user?.association?.logo ? (
+              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                <img 
+                  src={user.association.logo.startsWith('http') ? user.association.logo : `${process.env.NEXT_PUBLIC_API_URL}${user.association.logo}`}
+                  alt={user.association.name || 'Logo'} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <IconUsers className="text-white" size={24} />
+              </div>
+            )}
             <div>
               <span className="text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
-                SocietyLedger
+                {user?.association?.name || 'SocietyLedger'}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user?.platformRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Association Portal'}

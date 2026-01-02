@@ -553,6 +553,7 @@ export class AuthController {
       const authReq = req as TenantRequest & { user?: { id?: number } };
       const userId = authReq.user?.id;
       const tenantId = authReq.tenantId;
+      const tenant = authReq.tenant;
 
       if (!userId) {
         res.status(401).json({
@@ -615,11 +616,20 @@ export class AuthController {
       };
       const userPermissions = await RBACService.resolveUserPermissions(rbacContext);
 
+      // Determine if this is a platform login
+      const isPlatformLogin = user.platformRole === 'SUPER_ADMIN';
+
       res.status(200).json({
         success: true,
         data: { 
           user: {
             ...user,
+            association: isPlatformLogin ? {
+              id: user.associationId,
+              name: 'SocietyLedger Platform',
+              subdomain: 'platform',
+              isPlatformAssociation: true,
+            } : tenant,
             requiresOnboarding,
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
