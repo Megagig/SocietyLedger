@@ -59,21 +59,28 @@ export default function PaymentSettlementsPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `${API_ROUTES.ADMIN.STATS.replace('/stats', '')}/payment-settlements/daily?date=${selectedDate}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        }
-      );
+      const url = `${API_ROUTES.ADMIN.STATS.replace('/stats', '')}/payment-settlements/daily?date=${selectedDate}`;
+      console.log('[Settlements] Fetching from:', url);
+      
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
 
+      console.log('[Settlements] Response status:', res.status);
       const data = await res.json();
+      console.log('[Settlements] Response data:', data);
+      
       if (data.success) {
         setSettlements(data.data.settlements || []);
         setTotals(data.data.totals);
+        console.log('[Settlements] Loaded settlements:', data.data.settlements?.length || 0);
+      } else {
+        console.error('[Settlements] API returned error:', data.message);
+        toast.error(data.message || 'Failed to load settlements');
       }
     } catch (e) {
-      console.error('Failed to fetch settlements:', e);
+      console.error('[Settlements] Failed to fetch settlements:', e);
       toast.error('Failed to load settlements');
     } finally {
       setLoading(false);

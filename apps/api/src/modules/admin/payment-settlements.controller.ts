@@ -63,6 +63,8 @@ export class PaymentSettlementsController {
         },
       });
 
+      console.log('[Settlements API] Found payments:', payments.length);
+
       // Group by association
       const settlementsByAssociation = payments.reduce((acc, payment) => {
         const assocId = payment.associationId;
