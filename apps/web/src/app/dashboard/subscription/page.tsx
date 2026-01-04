@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { SubscriptionWithPlan } from '@/types/subscription';
 import { CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { getTenantHeaders } from '@/utils/tenant';
+import { toast } from '@/lib/toast';
 
 export default function SubscriptionPage() {
   const router = useRouter();
@@ -64,13 +65,13 @@ export default function SubscriptionPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        alert('Subscription cancelled successfully');
+        toast.success('Subscription cancelled successfully');
         fetchSubscription();
       } else {
         throw new Error(data.message || 'Failed to cancel subscription');
       }
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message || 'Failed to cancel subscription');
     } finally {
       setActionLoading(false);
     }
@@ -91,13 +92,13 @@ export default function SubscriptionPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        alert('Subscription reactivated successfully');
+        toast.success('Subscription reactivated successfully');
         fetchSubscription();
       } else {
         throw new Error(data.message || 'Failed to reactivate subscription');
       }
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message || 'Failed to reactivate subscription');
     } finally {
       setActionLoading(false);
     }

@@ -11,6 +11,7 @@ import {
 } from '@/lib/api/communication';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { toast } from '@/lib/toast';
 import {
   IconPlus, IconEdit, IconTrash, IconArrowLeft, IconTemplate,
   IconCheck, IconX
@@ -129,22 +130,22 @@ export default function SMSTemplatesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
-
     try {
       await deleteSMSTemplate(id);
+      toast.success('Template deleted successfully');
       fetchTemplates();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to delete template');
     }
   };
 
   const handleToggleActive = async (template: SMSTemplate) => {
     try {
       await updateSMSTemplate(template.id, { isActive: !template.isActive });
+      toast.success(`Template ${!template.isActive ? 'activated' : 'deactivated'} successfully`);
       fetchTemplates();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to update template');
     }
   };
 

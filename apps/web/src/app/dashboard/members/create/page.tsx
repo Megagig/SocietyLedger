@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
+import { getTenantHeaders } from '@/utils/tenant';
 import { ArrowLeft, Save } from 'lucide-react';
 
 export default function CreateMemberPage() {
@@ -69,6 +70,7 @@ export default function CreateMemberPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...getTenantHeaders(),
           },
           credentials: 'include',
           body: JSON.stringify(payload),

@@ -14,6 +14,7 @@ import {
 } from '@/lib/api/communication';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { toast } from '@/lib/toast';
 import {
   IconPlus, IconPlayerPlay, IconPlayerStop, IconTrash,
   IconArrowLeft, IconUsers, IconCheck, IconX, IconClock,
@@ -103,35 +104,32 @@ export default function SMSCampaignsPage() {
   };
 
   const handleStart = async (id: number) => {
-    if (!confirm('Are you sure you want to start this campaign? This will send SMS to all recipients.')) return;
-    
     try {
       await startSMSCampaign(id);
+      toast.success('Campaign started successfully');
       fetchCampaigns();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to start campaign');
     }
   };
 
   const handleCancel = async (id: number) => {
-    if (!confirm('Are you sure you want to cancel this campaign?')) return;
-    
     try {
       await cancelSMSCampaign(id);
+      toast.success('Campaign cancelled successfully');
       fetchCampaigns();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to cancel campaign');
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this campaign?')) return;
-    
     try {
       await deleteSMSCampaign(id);
+      toast.success('Campaign deleted successfully');
       fetchCampaigns();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message || 'Failed to delete campaign');
     }
   };
 
