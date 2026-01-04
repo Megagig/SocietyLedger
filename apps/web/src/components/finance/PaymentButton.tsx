@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Select } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCreditCard, IconLoader2 } from '@tabler/icons-react';
+import { getTenantHeaders } from '@/utils/tenant';
 
 interface PaymentButtonProps {
   transactionId: number;
@@ -38,7 +39,10 @@ export function PaymentButton({
         `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getTenantHeaders(),
+          },
           credentials: 'include',
           body: JSON.stringify({
             transactionId,

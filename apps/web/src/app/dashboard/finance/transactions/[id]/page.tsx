@@ -137,6 +137,23 @@ export default function TransactionDetailPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Payment Settlement Warning Banner */}
+      {transaction.status !== 'paid' && transaction.status !== 'waived' && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-sm">
+                Payment Processing Notice
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                Online payments are currently processed through the platform account. Your association will receive automatic settlements within 24 hours with a 2% processing fee deducted. Full split payment integration coming soon.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>

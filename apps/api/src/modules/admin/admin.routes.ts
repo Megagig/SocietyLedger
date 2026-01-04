@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { AdminController } from './admin.controller';
 import { PlatformSettingsController } from './platform-settings.controller';
 import { PlatformAdminController } from './platform-admin.controller';
+import { PaymentSettlementsController } from './payment-settlements.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePlatformRole } from '../../middleware/rbac';
 import { PlatformRole } from '@prisma/client';
@@ -9,6 +10,7 @@ import { PlatformRole } from '@prisma/client';
 const router = Router();
 const ctrl = new AdminController();
 const platformCtrl = new PlatformAdminController();
+const settlementsCtrl = new PaymentSettlementsController();
 
 // All routes require SUPER_ADMIN
 router.use(authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]));
@@ -79,5 +81,10 @@ router.get('/analytics/overview', (req, res) => platformCtrl.getAnalyticsOvervie
 router.get('/analytics/module-adoption', (req, res) => platformCtrl.getModuleAdoption(req as any, res));
 router.get('/analytics/churn', (req, res) => platformCtrl.getChurnAnalytics(req as any, res));
 router.get('/analytics/revenue', (req, res) => platformCtrl.getRevenueTrends(req as any, res));
+
+// Payment Settlements (Phase 19.4)
+router.get('/payment-settlements/daily', (req, res) => settlementsCtrl.getDailySettlements(req as any, res));
+router.get('/payment-settlements/pending', (req, res) => settlementsCtrl.getPendingSettlements(req as any, res));
+router.get('/payment-settlements/monthly', (req, res) => settlementsCtrl.getMonthlySettlements(req as any, res));
 
 export default router;
