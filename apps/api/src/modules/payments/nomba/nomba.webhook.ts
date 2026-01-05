@@ -122,7 +122,8 @@ export class NombaWebhookHandler {
         const receiptCount = await tx.payment.count({
           where: { associationId: gatewayTxn.associationId },
         });
-        const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}`;
+        const timestamp = Date.now().toString().slice(-6);
+        const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}-${timestamp}`;
 
         // Fetch transaction to get createdBy
         const txn = await tx.transaction.findUnique({

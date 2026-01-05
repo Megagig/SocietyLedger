@@ -383,7 +383,8 @@ export class NombaController {
       const receiptCount = await tx.payment.count({
         where: { associationId },
       });
-      const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}`;
+      const timestamp = Date.now().toString().slice(-6);
+      const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}-${timestamp}`;
 
       // Create payment record
       await tx.payment.create({
