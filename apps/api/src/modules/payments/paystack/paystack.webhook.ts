@@ -125,7 +125,8 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
   const paymentCount = await prisma.payment.count({
     where: { associationId: gatewayTransaction.associationId },
   });
-  const receiptNumber = `RCP${String(paymentCount + 1).padStart(6, '0')}`;
+  const timestamp = Date.now().toString().slice(-6);
+  const receiptNumber = `RCP${String(paymentCount + 1).padStart(6, '0')}-${timestamp}`;
 
   try {
     // Atomic transaction: update gateway, create payment, update transaction

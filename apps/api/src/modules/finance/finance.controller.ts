@@ -1013,9 +1013,10 @@ export const financeController = {
         });
       }
 
-      // Generate receipt number
+      // Generate unique receipt number with timestamp to avoid collisions
+      const timestamp = Date.now().toString().slice(-6);
       const paymentCount = await prisma.payment.count({ where: { associationId } });
-      const receiptNumber = `RCP${String(paymentCount + 1).padStart(6, '0')}`;
+      const receiptNumber = `RCP${String(paymentCount + 1).padStart(6, '0')}-${timestamp}`;
 
       // Create payment and update transaction status
       const newPaidTotal = currentPaid.plus(validatedData.amountPaid);
