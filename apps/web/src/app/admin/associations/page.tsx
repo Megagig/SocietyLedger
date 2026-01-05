@@ -101,9 +101,9 @@ export default function AssociationsPage() {
   };
 
   const handleSuspend = async (associationId: number) => {
-    if (!confirm('Are you sure you want to suspend this association?')) return;
-    
     const reason = prompt('Enter suspension reason (optional):');
+    if (reason === null) return; // User cancelled
+    
     setActionLoading(associationId);
 
     try {
@@ -131,7 +131,6 @@ export default function AssociationsPage() {
   };
 
   const handleReactivate = async (associationId: number) => {
-    if (!confirm('Are you sure you want to reactivate this association?')) return;
     setActionLoading(associationId);
 
     try {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/lib/toast';
 import {
   IconMail, IconSend, IconTemplate, IconUsers, IconChartBar,
   IconPlus, IconArrowRight, IconClock, IconCheck, IconAlertTriangle
@@ -22,14 +23,14 @@ export default function EmailCampaignsPage() {
 
   const handleSend = async () => {
     if (!emailData.subject || !emailData.message) {
-      alert('Please enter subject and message');
+      toast.error('Please enter subject and message');
       return;
     }
     
     setIsSending(true);
     // TODO: Implement email sending via backend
     setTimeout(() => {
-      alert('Email campaign feature coming soon! For now, use the Announcements feature.');
+      toast.info('Email campaign feature coming soon! For now, use the Announcements feature.');
       setIsSending(false);
       setShowCompose(false);
     }, 1000);

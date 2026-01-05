@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/lib/toast';
 import {
   IconBrandWhatsapp, IconSend, IconTemplate, IconUsers,
   IconPlus, IconArrowRight, IconClock, IconAlertTriangle,
@@ -29,7 +30,7 @@ export default function WhatsAppPage() {
     setIsSending(true);
     // TODO: Implement WhatsApp Business API integration
     setTimeout(() => {
-      alert('WhatsApp Business API integration coming soon! This requires Meta Business verification.');
+      toast.info('WhatsApp Business API integration coming soon! This requires Meta Business verification.');
       setIsSending(false);
       setShowCompose(false);
     }, 1000);
