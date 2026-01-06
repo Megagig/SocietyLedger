@@ -67,6 +67,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
+      'https://www.societyledger.com.ng', // Main production frontend
+      'https://societyledger.com.ng', // Production frontend without www
       process.env.FRONTEND_URL,
     ].filter(Boolean);
 
@@ -74,7 +76,8 @@ const corsOptions = {
     const localhostPattern = /^http:\/\/([a-z0-9-]+\.)?localhost:3000$/i;
     
     // Allow any subdomain of production domain (e.g., opuogunstate.societyledger.com.ng)
-    const productionPattern = /^https:\/\/([a-z0-9-]+\.)?societyledger\.com\.ng$/i;
+    // This pattern now also matches www.societyledger.com.ng
+    const productionPattern = /^https:\/\/(www\.)?([a-z0-9-]+\.)?societyledger\.com\.ng$/i;
     
     // Check if origin is in allowed list or matches subdomain pattern
     if (allowedOrigins.includes(origin) || localhostPattern.test(origin) || productionPattern.test(origin)) {
