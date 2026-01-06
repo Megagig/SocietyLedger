@@ -119,7 +119,7 @@ export class PlatformAdminController {
         data: { association: result },
       });
     } catch (error) {
-      console.error('Suspend tenant error:', error);
+      console.error('Suspend tenant error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -152,7 +152,7 @@ export class PlatformAdminController {
         data: { association: result },
       });
     } catch (error) {
-      console.error('Reactivate tenant error:', error);
+      console.error('Reactivate tenant error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -188,7 +188,7 @@ export class PlatformAdminController {
         data: { association: result },
       });
     } catch (error) {
-      console.error('Soft delete tenant error:', error);
+      console.error('Soft delete tenant error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -221,7 +221,7 @@ export class PlatformAdminController {
         data: { association: result },
       });
     } catch (error) {
-      console.error('Restore tenant error:', error);
+      console.error('Restore tenant error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -254,7 +254,7 @@ export class PlatformAdminController {
         data: result,
       });
     } catch (error) {
-      console.error('Force logout error:', error);
+      console.error('Force logout error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -292,7 +292,7 @@ export class PlatformAdminController {
         data: { association: result },
       });
     } catch (error) {
-      console.error('Update security settings error:', error);
+      console.error('Update security settings error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -317,7 +317,7 @@ export class PlatformAdminController {
         data: status,
       });
     } catch (error) {
-      console.error('Get tenant status error:', error);
+      console.error('Get tenant status error:', error instanceof Error ? error.message : String(error));
       if (error instanceof Error) {
         return res.status(400).json({ success: false, message: error.message });
       }
@@ -420,7 +420,7 @@ export class PlatformAdminController {
         message: `Module '${moduleCode}' ${isEnabled ? 'enabled' : 'disabled'} for association`,
       });
     } catch (error) {
-      console.error('Set module override error:', error);
+      console.error('Set module override error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -461,7 +461,7 @@ export class PlatformAdminController {
         message: `Module override for '${moduleCode}' removed`,
       });
     } catch (error) {
-      console.error('Remove module override error:', error);
+      console.error('Remove module override error:', error instanceof Error ? error.message : String(error));
       if (error instanceof Error) {
         return res.status(400).json({ success: false, message: error.message });
       }
@@ -511,7 +511,7 @@ export class PlatformAdminController {
         message: `Feature '${featureCode}' ${isEnabled ? 'enabled' : 'disabled'} for association`,
       });
     } catch (error) {
-      console.error('Set feature override error:', error);
+      console.error('Set feature override error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -552,7 +552,7 @@ export class PlatformAdminController {
         message: `Feature override for '${featureCode}' removed`,
       });
     } catch (error) {
-      console.error('Remove feature override error:', error);
+      console.error('Remove feature override error:', error instanceof Error ? error.message : String(error));
       if (error instanceof Error) {
         return res.status(400).json({ success: false, message: error.message });
       }
@@ -572,7 +572,7 @@ export class PlatformAdminController {
         data: modules,
       });
     } catch (error) {
-      console.error('Get all modules error:', error);
+      console.error('Get all modules error:', error instanceof Error ? error.message : String(error));
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
@@ -589,7 +589,7 @@ export class PlatformAdminController {
         data: features,
       });
     } catch (error) {
-      console.error('Get all features error:', error);
+      console.error('Get all features error:', error instanceof Error ? error.message : String(error));
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
@@ -644,7 +644,7 @@ export class PlatformAdminController {
         data: override,
       });
     } catch (error) {
-      console.error('Create billing override error:', error);
+      console.error('Create billing override error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -676,7 +676,7 @@ export class PlatformAdminController {
         data: override,
       });
     } catch (error) {
-      console.error('Revoke billing override error:', error);
+      console.error('Revoke billing override error:', error instanceof Error ? error.message : String(error));
       if (error instanceof Error) {
         return res.status(400).json({ success: false, message: error.message });
       }
@@ -706,7 +706,7 @@ export class PlatformAdminController {
         data: override,
       });
     } catch (error) {
-      console.error('Extend trial error:', error);
+      console.error('Extend trial error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
@@ -739,7 +739,7 @@ export class PlatformAdminController {
         data: override,
       });
     } catch (error) {
-      console.error('Apply credit error:', error);
+      console.error('Apply credit error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
