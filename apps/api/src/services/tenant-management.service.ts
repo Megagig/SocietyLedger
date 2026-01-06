@@ -330,7 +330,7 @@ export class TenantManagementService {
       actionType: 'TENANT_PERMANENT_DELETE' as any, // Will need to add this to ActionTypes enum
       targetType: 'association',
       targetId: associationId,
-      associationId: null, // Association will be gone
+      associationId: undefined, // Association will be gone
       beforeState,
       afterState: { deleted: true, timestamp: new Date().toISOString() },
       reason,

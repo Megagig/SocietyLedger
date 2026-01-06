@@ -41,6 +41,11 @@ export default function TenantsPage() {
   const [tierFilter, setTierFilter] = useState('');
   const [showDeleted, setShowDeleted] = useState(false);
 
+  // Modal states
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [selectedAction, setSelectedAction] = useState<'suspend' | 'reactivate' | 'restore' | 'soft-delete' | 'force-logout' | null>(null);
+
   useEffect(() => {
     if (user?.platformRole !== 'SUPER_ADMIN') {
       router.push('/dashboard');
@@ -127,35 +132,18 @@ export default function TenantsPage() {
     }
   };
 
-  const handleSuspend = (tenantId: number) => {
-    const reason = prompt('Enter suspension reason:');
-    if (reason === null) return;
-    handleAction(tenantId, 'suspend', { reason });
+  const openActionModal = (tenantId: number, action: 'suspend' | 'reactivate' | 'restore' | 'soft-delete' | 'force-logout') => {
+    setSelectedTenantId(tenantId);
+    setSelectedAction(action);
+    setShowActionModal(true);
   };
 
-  const handleSoftDelete = (tenantId: number) => {
-    const reason = prompt('Enter deletion reason (this is a soft delete):');
-    if (reason === null) return;
-    if (!confirm('Are you sure you want to soft-delete this tenant? Users will lose access.')) return;
-    handleAction(tenantId, 'soft-delete', { reason });
-  };
-
-  const handleForceLogout = (tenantId: number) => {
-    if (!confirm('This will log out ALL users from this tenant. Continue?')) return;
-    const reason = prompt('Enter reason for force logout:');
-    handleAction(tenantId, 'force-logout', { reason });
-  };
-
-  const handleRestore = (tenantId: number) => {
-    const reason = prompt('Enter reason for restoration:');
-    if (reason === null) return;
-    handleAction(tenantId, 'restore', { reason });
-  };
-
-  const handleReactivate = (tenantId: number) => {
-    const reason = prompt('Enter reason for reactivation:');
-    if (reason === null) return;
-    handleAction(tenantId, 'reactivate', { reason });
+  const handleActionSubmit = (reason: string) => {
+    if (!selectedTenantId || !selectedAction) return;
+    handleAction(selectedTenantId, selectedAction, { reason });
+    setShowActionModal(false);
+    setSelectedTenantId(null);
+    setSelectedAction(null);
   };
 
   if (user?.platformRole !== 'SUPER_ADMIN') return null;
@@ -275,7 +263,7 @@ export default function TenantsPage() {
                     </Link>
                     {tenant.isDeleted ? (
                       <button
-                        onClick={() => handleRestore(tenant.id)}
+                        onClick={() => openActionModal(tenant.id, 'restore')}
                         disabled={actionLoading === tenant.id}
                         className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                       >
@@ -285,7 +273,7 @@ export default function TenantsPage() {
                       <>
                         {tenant.status === 'ACTIVE' ? (
                           <button
-                            onClick={() => handleSuspend(tenant.id)}
+                            onClick={() => openActionModal(tenant.id, 'suspend')}
                             disabled={actionLoading === tenant.id}
                             className="px-3 py-1.5 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
                           >
@@ -293,7 +281,7 @@ export default function TenantsPage() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleReactivate(tenant.id)}
+                            onClick={() => openActionModal(tenant.id, 'reactivate')}
                             disabled={actionLoading === tenant.id}
                             className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                           >
@@ -301,14 +289,14 @@ export default function TenantsPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => handleForceLogout(tenant.id)}
+                          onClick={() => openActionModal(tenant.id, 'force-logout')}
                           disabled={actionLoading === tenant.id}
                           className="px-3 py-1.5 text-xs text-orange-600 hover:text-orange-700 border border-orange-200 rounded hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/30 disabled:opacity-50"
                         >
                           Logout All
                         </button>
                         <button
-                          onClick={() => handleSoftDelete(tenant.id)}
+                          onClick={() => openActionModal(tenant.id, 'soft-delete')}
                           disabled={actionLoading === tenant.id}
                           className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
                         >
@@ -382,7 +370,7 @@ export default function TenantsPage() {
                           </Link>
                           {tenant.isDeleted ? (
                             <button
-                              onClick={() => handleRestore(tenant.id)}
+                              onClick={() => openActionModal(tenant.id, 'restore')}
                               disabled={actionLoading === tenant.id}
                               className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                             >
@@ -392,7 +380,7 @@ export default function TenantsPage() {
                             <>
                               {tenant.status === 'ACTIVE' ? (
                                 <button
-                                  onClick={() => handleSuspend(tenant.id)}
+                                  onClick={() => openActionModal(tenant.id, 'suspend')}
                                   disabled={actionLoading === tenant.id}
                                   className="px-3 py-1.5 text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-50 dark:border-yellow-800 dark:hover:bg-yellow-900/30 disabled:opacity-50"
                                 >
@@ -400,7 +388,7 @@ export default function TenantsPage() {
                                 </button>
                               ) : (
                                 <button
-                                    onClick={() => handleReactivate(tenant.id)}
+                                    onClick={() => openActionModal(tenant.id, 'reactivate')}
                                   disabled={actionLoading === tenant.id}
                                   className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                                 >
@@ -408,14 +396,14 @@ export default function TenantsPage() {
                                 </button>
                               )}
                               <button
-                                onClick={() => handleForceLogout(tenant.id)}
+                                onClick={() => openActionModal(tenant.id, 'force-logout')}
                                 disabled={actionLoading === tenant.id}
                                 className="px-3 py-1.5 text-xs text-orange-600 hover:text-orange-700 border border-orange-200 rounded hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/30 disabled:opacity-50"
                               >
                                 Logout All
                               </button>
                               <button
-                                onClick={() => handleSoftDelete(tenant.id)}
+                                onClick={() => openActionModal(tenant.id, 'soft-delete')}
                                 disabled={actionLoading === tenant.id}
                                 className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
                               >
@@ -457,6 +445,99 @@ export default function TenantsPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Action Modal */}
+      {showActionModal && selectedAction && (
+        <TenantActionModal
+          action={selectedAction}
+          onClose={() => {
+            setShowActionModal(false);
+            setSelectedTenantId(null);
+            setSelectedAction(null);
+          }}
+          onSubmit={handleActionSubmit}
+        />
+      )}
+    </div>
+  );
+}
+
+// Tenant Action Modal Component
+function TenantActionModal({ action, onClose, onSubmit }: {
+  action: 'suspend' | 'reactivate' | 'restore' | 'soft-delete' | 'force-logout';
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState('');
+
+  const titles: Record<string, string> = {
+    'suspend': 'Suspend Tenant',
+    'reactivate': 'Reactivate Tenant',
+    'restore': 'Restore Tenant',
+    'soft-delete': 'Delete Tenant',
+    'force-logout': 'Force Logout All Users',
+  };
+
+  const descriptions: Record<string, string> = {
+    'suspend': 'Suspend this tenant and block access for all users.',
+    'reactivate': 'Reactivate this suspended tenant.',
+    'restore': 'Restore this deleted tenant.',
+    'soft-delete': 'Soft delete this tenant. This can be reversed later.',
+    'force-logout': 'Force logout all users from this tenant.',
+  };
+
+  const colors: Record<string, string> = {
+    'suspend': 'yellow',
+    'reactivate': 'green',
+    'restore': 'green',
+    'soft-delete': 'red',
+    'force-logout': 'orange',
+  };
+
+  const color = colors[action];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-xl">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{titles[action]}</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{descriptions[action]}</p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Reason *
+            </label>
+            <textarea 
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder={`Enter reason for ${action.replace('-', ' ')}...`}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => {
+              if (reason.trim()) {
+                onSubmit(reason.trim());
+              }
+            }}
+            disabled={!reason.trim()}
+            className={`px-4 py-2 bg-${color}-600 text-white rounded-lg hover:bg-${color}-700 disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            Confirm
+          </button>
+        </div>
       </div>
     </div>
   );

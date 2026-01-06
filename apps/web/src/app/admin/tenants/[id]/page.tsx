@@ -81,6 +81,8 @@ export default function TenantDetailPage() {
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [showPermanentDeleteModal, setShowPermanentDeleteModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<'suspend' | 'reactivate' | 'restore' | 'force-logout' | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [billingAction, setBillingAction] = useState<'extend-trial' | 'apply-credit' | 'bypass' | 'discount' | 'grace-period' | null>(null);
@@ -481,7 +483,7 @@ export default function TenantDetailPage() {
         <div className="flex gap-2">
           {tenantStatus.isDeleted ? (
             <>
-              <button onClick={() => { const r = prompt('Restoration reason:'); if (r) handleAction('restore', { reason: r }); }}
+              <button onClick={() => { setSelectedAction('restore'); setShowActionModal(true); }}
                 disabled={actionLoading}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
                 Restore
@@ -496,18 +498,18 @@ export default function TenantDetailPage() {
           ) : (
             <>
               {tenantStatus.status === 'ACTIVE' ? (
-                <button onClick={() => { const r = prompt('Suspension reason:'); if (r) handleAction('suspend', { reason: r }); }}
+                <button onClick={() => { setSelectedAction('suspend'); setShowActionModal(true); }}
                   disabled={actionLoading} className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50">
                   Suspend
                 </button>
               ) : (
-                <button onClick={() => { const r = prompt('Reactivation reason:'); if (r) handleAction('reactivate', { reason: r }); }}
+                <button onClick={() => { setSelectedAction('reactivate'); setShowActionModal(true); }}
                   disabled={actionLoading}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
                   Reactivate
                 </button>
               )}
-              <button onClick={() => { const r = prompt('Reason:'); if (r) handleAction('force-logout', { reason: r }); }}
+              <button onClick={() => { setSelectedAction('force-logout'); setShowActionModal(true); }}
                 disabled={actionLoading} className="px-4 py-2 border border-orange-300 text-orange-600 rounded-lg hover:bg-orange-50 disabled:opacity-50">
                 Force Logout
               </button>
@@ -883,6 +885,22 @@ export default function TenantDetailPage() {
           onConfirm={handlePermanentDelete}
         />
       )}
+
+      {/* Action Modal */}
+      {showActionModal && selectedAction && (
+        <TenantActionModal
+          action={selectedAction}
+          onClose={() => {
+            setShowActionModal(false);
+            setSelectedAction(null);
+          }}
+          onSubmit={(reason) => {
+            handleAction(selectedAction, { reason });
+            setShowActionModal(false);
+            setSelectedAction(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1169,6 +1187,83 @@ function DetailRow({ label, value }: { label: string; value: string | number | n
     <div className="flex justify-between">
       <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
       <dd className="text-gray-900 dark:text-white font-medium">{value ?? '-'}</dd>
+    </div>
+  );
+}
+
+// Tenant Action Modal Component (reused from list page)
+function TenantActionModal({ action, onClose, onSubmit }: {
+  action: 'suspend' | 'reactivate' | 'restore' | 'force-logout';
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState('');
+
+  const titles: Record<string, string> = {
+    'suspend': 'Suspend Tenant',
+    'reactivate': 'Reactivate Tenant',
+    'restore': 'Restore Tenant',
+    'force-logout': 'Force Logout All Users',
+  };
+
+  const descriptions: Record<string, string> = {
+    'suspend': 'Suspend this tenant and block access for all users.',
+    'reactivate': 'Reactivate this suspended tenant.',
+    'restore': 'Restore this deleted tenant.',
+    'force-logout': 'Force logout all users from this tenant.',
+  };
+
+  const colors: Record<string, string> = {
+    'suspend': 'yellow',
+    'reactivate': 'green',
+    'restore': 'green',
+    'force-logout': 'orange',
+  };
+
+  const color = colors[action];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-xl">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{titles[action]}</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{descriptions[action]}</p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Reason *
+            </label>
+            <textarea 
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder={`Enter reason for ${action.replace('-', ' ')}...`}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => {
+              if (reason.trim()) {
+                onSubmit(reason.trim());
+              }
+            }}
+            disabled={!reason.trim()}
+            className={`px-4 py-2 bg-${color}-600 text-white rounded-lg hover:bg-${color}-700 disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
