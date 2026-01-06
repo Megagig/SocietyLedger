@@ -146,6 +146,18 @@ export default function TenantsPage() {
     handleAction(tenantId, 'force-logout', { reason });
   };
 
+  const handleRestore = (tenantId: number) => {
+    const reason = prompt('Enter reason for restoration:');
+    if (reason === null) return;
+    handleAction(tenantId, 'restore', { reason });
+  };
+
+  const handleReactivate = (tenantId: number) => {
+    const reason = prompt('Enter reason for reactivation:');
+    if (reason === null) return;
+    handleAction(tenantId, 'reactivate', { reason });
+  };
+
   if (user?.platformRole !== 'SUPER_ADMIN') return null;
 
   return (
@@ -263,7 +275,7 @@ export default function TenantsPage() {
                     </Link>
                     {tenant.isDeleted ? (
                       <button
-                        onClick={() => handleAction(tenant.id, 'restore')}
+                        onClick={() => handleRestore(tenant.id)}
                         disabled={actionLoading === tenant.id}
                         className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                       >
@@ -281,7 +293,7 @@ export default function TenantsPage() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleAction(tenant.id, 'reactivate')}
+                            onClick={() => handleReactivate(tenant.id)}
                             disabled={actionLoading === tenant.id}
                             className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                           >
@@ -370,7 +382,7 @@ export default function TenantsPage() {
                           </Link>
                           {tenant.isDeleted ? (
                             <button
-                              onClick={() => handleAction(tenant.id, 'restore')}
+                              onClick={() => handleRestore(tenant.id)}
                               disabled={actionLoading === tenant.id}
                               className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                             >
@@ -388,7 +400,7 @@ export default function TenantsPage() {
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() => handleAction(tenant.id, 'reactivate')}
+                                    onClick={() => handleReactivate(tenant.id)}
                                   disabled={actionLoading === tenant.id}
                                   className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
                                 >

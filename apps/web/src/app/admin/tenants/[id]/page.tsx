@@ -455,7 +455,8 @@ export default function TenantDetailPage() {
         </div>
         <div className="flex gap-2">
           {tenantStatus.isDeleted ? (
-            <button onClick={() => handleAction('restore')} disabled={actionLoading}
+            <button onClick={() => { const r = prompt('Restoration reason:'); if (r) handleAction('restore', { reason: r }); }}
+              disabled={actionLoading}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
               Restore
             </button>
@@ -467,7 +468,8 @@ export default function TenantDetailPage() {
                   Suspend
                 </button>
               ) : (
-                <button onClick={() => handleAction('reactivate')} disabled={actionLoading}
+                <button onClick={() => { const r = prompt('Reactivation reason:'); if (r) handleAction('reactivate', { reason: r }); }}
+                  disabled={actionLoading}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
                   Reactivate
                 </button>
