@@ -43,7 +43,9 @@ export default function TenantsPage() {
 
   // Modal states
   const [showActionModal, setShowActionModal] = useState(false);
+  const [showPermanentDeleteModal, setShowPermanentDeleteModal] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [selectedAction, setSelectedAction] = useState<'suspend' | 'reactivate' | 'restore' | 'soft-delete' | 'force-logout' | null>(null);
 
   useEffect(() => {
@@ -144,6 +146,40 @@ export default function TenantsPage() {
     setShowActionModal(false);
     setSelectedTenantId(null);
     setSelectedAction(null);
+  };
+
+  const openPermanentDeleteModal = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setShowPermanentDeleteModal(true);
+  };
+
+  const handlePermanentDelete = async (confirmationToken: string, reason: string) => {
+    if (!selectedTenant) return;
+    setActionLoading(selectedTenant.id);
+    try {
+      const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_PERMANENT_DELETE(selectedTenant.id), {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ confirmationToken, reason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Tenant permanently deleted');
+        fetchTenants();
+      } else {
+        toast.error(data.message || 'Failed to delete tenant');
+      }
+    } catch (e) {
+      toast.error('Failed to delete tenant');
+    } finally {
+      setActionLoading(null);
+      setShowPermanentDeleteModal(false);
+      setSelectedTenant(null);
+    }
   };
 
   if (user?.platformRole !== 'SUPER_ADMIN') return null;
@@ -262,13 +298,22 @@ export default function TenantsPage() {
                       View
                     </Link>
                     {tenant.isDeleted ? (
-                      <button
-                        onClick={() => openActionModal(tenant.id, 'restore')}
-                        disabled={actionLoading === tenant.id}
-                        className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
-                      >
-                        {actionLoading === tenant.id ? '...' : 'Restore'}
-                      </button>
+                      <>
+                        <button
+                          onClick={() => openActionModal(tenant.id, 'restore')}
+                          disabled={actionLoading === tenant.id}
+                          className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                        >
+                          {actionLoading === tenant.id ? '...' : 'Restore'}
+                        </button>
+                        <button
+                          onClick={() => openPermanentDeleteModal(tenant)}
+                          disabled={actionLoading === tenant.id}
+                          className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
+                        >
+                          ⚠️ Delete Forever
+                        </button>
+                      </>
                     ) : (
                       <>
                         {tenant.status === 'ACTIVE' ? (
@@ -369,13 +414,22 @@ export default function TenantsPage() {
                             View
                           </Link>
                           {tenant.isDeleted ? (
-                            <button
-                              onClick={() => openActionModal(tenant.id, 'restore')}
-                              disabled={actionLoading === tenant.id}
-                              className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
-                            >
-                              {actionLoading === tenant.id ? '...' : 'Restore'}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => openActionModal(tenant.id, 'restore')}
+                                disabled={actionLoading === tenant.id}
+                                className="px-3 py-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-900/30 disabled:opacity-50"
+                              >
+                                {actionLoading === tenant.id ? '...' : 'Restore'}
+                              </button>
+                              <button
+                                onClick={() => openPermanentDeleteModal(tenant)}
+                                disabled={actionLoading === tenant.id}
+                                className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 rounded hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 disabled:opacity-50"
+                              >
+                                ⚠️ Delete Forever
+                              </button>
+                            </>
                           ) : (
                             <>
                               {tenant.status === 'ACTIVE' ? (
@@ -459,6 +513,19 @@ export default function TenantsPage() {
           onSubmit={handleActionSubmit}
         />
       )}
+
+      {/* Permanent Delete Modal */}
+      {showPermanentDeleteModal && selectedTenant && (
+        <PermanentDeleteModal
+          tenantName={selectedTenant.name}
+          subdomain={selectedTenant.subdomain}
+          onClose={() => {
+            setShowPermanentDeleteModal(false);
+            setSelectedTenant(null);
+          }}
+          onConfirm={handlePermanentDelete}
+        />
+      )}
     </div>
   );
 }
@@ -536,6 +603,103 @@ function TenantActionModal({ action, onClose, onSubmit }: {
             className={`px-4 py-2 bg-${color}-600 text-white rounded-lg hover:bg-${color}-700 disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Permanent Delete Confirmation Modal
+function PermanentDeleteModal({ tenantName, subdomain, onClose, onConfirm }: {
+  tenantName: string;
+  subdomain: string;
+  onClose: () => void;
+  onConfirm: (confirmationToken: string, reason: string) => void;
+}) {
+  const [confirmationToken, setConfirmationToken] = useState('');
+  const [reason, setReason] = useState('');
+  const [understood, setUnderstood] = useState(false);
+
+  const isValid = confirmationToken === subdomain && reason.trim().length > 0 && understood;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-lg shadow-xl">
+        <div className="flex items-start gap-3 mb-4">
+          <span className="text-3xl">⚠️</span>
+          <div>
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400">PERMANENT DELETE - IRREVERSIBLE ACTION</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">This action CANNOT be undone</p>
+          </div>
+        </div>
+        
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+          <p className="text-sm text-red-800 dark:text-red-200 font-semibold mb-2">This will permanently delete:</p>
+          <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-4">
+            <li>• Association "{tenantName}"</li>
+            <li>• ALL user accounts</li>
+            <li>• ALL member records</li>
+            <li>• ALL financial transactions and payments</li>
+            <li>• ALL meetings, documents, and files</li>
+            <li>• ALL related data (cannot be recovered)</li>
+          </ul>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-start gap-2">
+            <input 
+              type="checkbox" 
+              id="understood" 
+              checked={understood}
+              onChange={(e) => setUnderstood(e.target.checked)}
+              className="mt-1"
+            />
+            <label htmlFor="understood" className="text-sm text-gray-700 dark:text-gray-300">
+              I understand that this action is permanent and cannot be reversed
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Type the subdomain "<span className="font-mono font-bold text-red-600">{subdomain}</span>" to confirm:
+            </label>
+            <input 
+              type="text" 
+              value={confirmationToken}
+              onChange={(e) => setConfirmationToken(e.target.value)}
+              placeholder={subdomain}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Reason for permanent deletion *
+            </label>
+            <textarea 
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="Enter the reason for this permanent deletion..."
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => onConfirm(confirmationToken, reason)}
+            disabled={!isValid}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Permanently Delete
           </button>
         </div>
       </div>

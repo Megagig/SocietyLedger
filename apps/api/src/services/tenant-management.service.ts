@@ -336,9 +336,114 @@ export class TenantManagementService {
       reason,
     });
 
-    // PERMANENT DELETE - This will cascade delete all related records
-    await prisma.association.delete({
-      where: { id: associationId }
+    // PERMANENT DELETE - Manually delete all related records in correct order
+    // This is necessary because not all foreign keys have CASCADE delete
+    await prisma.$transaction(async (tx) => {
+      // Delete in order of dependencies (children first, then parents)
+      
+      // 1. Delete user-related data
+      await tx.userApproval.deleteMany({ where: { user: { associationId } } });
+      await tx.memberInvite.deleteMany({ where: { associationId } });
+      
+      // 2. Delete financial data
+      await tx.paymentReconciliation.deleteMany({ where: { associationId } });
+      await tx.paymentProof.deleteMany({ where: { associationId } });
+      await tx.bankStatementImport.deleteMany({ where: { associationId } });
+      await tx.bankTransfer.deleteMany({ where: { associationId } });
+      await tx.associationBankAccount.deleteMany({ where: { associationId } });
+      await tx.payment.deleteMany({ where: { associationId } });
+      await tx.paymentGatewayTransaction.deleteMany({ where: { associationId } });
+      await tx.transaction.deleteMany({ where: { associationId } });
+      await tx.financialCategory.deleteMany({ where: { associationId } });
+      
+      // 3. Delete accounting data
+      await tx.budgetItem.deleteMany({ where: { budget: { associationId } } });
+      await tx.budget.deleteMany({ where: { associationId } });
+      await tx.journalEntryLine.deleteMany({ where: { journalEntry: { associationId } } });
+      await tx.journalEntry.deleteMany({ where: { associationId } });
+      await tx.accountingPeriod.deleteMany({ where: { associationId } });
+      await tx.chartOfAccount.deleteMany({ where: { associationId } });
+      await tx.accountingEntry.deleteMany({ where: { associationId } });
+      
+      // 4. Delete cooperative/loan data
+      await tx.loanRepayment.deleteMany({ where: { loan: { associationId } } });
+      await tx.loan.deleteMany({ where: { associationId } });
+      await tx.loanGuarantor.deleteMany({ where: { associationId } });
+      await tx.loanApplication.deleteMany({ where: { associationId } });
+      await tx.loanProduct.deleteMany({ where: { associationId } });
+      await tx.savingsTransaction.deleteMany({ where: { associationId } });
+      await tx.savingsAccount.deleteMany({ where: { associationId } });
+      
+      // 5. Delete levy/penalty data
+      await tx.penaltyWaiver.deleteMany({ where: { associationId } });
+      await tx.penaltyRule.deleteMany({ where: { associationId } });
+      await tx.levyCampaignAssignment.deleteMany({ where: { campaign: { associationId } } });
+      await tx.levyCampaign.deleteMany({ where: { associationId } });
+      await tx.donationAllocation.deleteMany({ where: { associationId } });
+      
+      // 6. Delete welfare data
+      await tx.welfarePayoutRequest.deleteMany({ where: { associationId } });
+      await tx.welfareContribution.deleteMany({ where: { associationId } });
+      await tx.welfareFund.deleteMany({ where: { associationId } });
+      
+      // 7. Delete communication data
+      await tx.sMSCreditBalance.deleteMany({ where: { associationId } });
+      await tx.sMSTemplate.deleteMany({ where: { associationId } });
+      await tx.sMSCampaign.deleteMany({ where: { associationId } });
+      await tx.sMSMessage.deleteMany({ where: { associationId } });
+      
+      // 8. Delete meeting data
+      await tx.meetingAttendance.deleteMany({ where: { meeting: { associationId } } });
+      await tx.meetingAgenda.deleteMany({ where: { meeting: { associationId } } });
+      await tx.meeting.deleteMany({ where: { associationId } });
+      
+      // 9. Delete election/poll data
+      await tx.pollResponse.deleteMany({ where: { poll: { associationId } } });
+      await tx.pollOption.deleteMany({ where: { poll: { associationId } } });
+      await tx.poll.deleteMany({ where: { associationId } });
+      await tx.vote.deleteMany({ where: { election: { associationId } } });
+      await tx.candidate.deleteMany({ where: { election: { associationId } } });
+      await tx.election.deleteMany({ where: { associationId } });
+      
+      // 10. Delete AI/document data
+      await tx.documentEmbedding.deleteMany({ where: { associationId } });
+      await tx.aIAuditLog.deleteMany({ where: { associationId } });
+      
+      // 11. Delete help/support data
+      await tx.supportTicket.deleteMany({ where: { associationId } });
+      await tx.fAQItem.deleteMany({ where: { associationId } });
+      await tx.helpArticle.deleteMany({ where: { associationId } });
+      
+      // 12. Delete platform admin data
+      await tx.billingOverride.deleteMany({ where: { associationId } });
+      await tx.tenantFeature.deleteMany({ where: { associationId } });
+      await tx.tenantModule.deleteMany({ where: { associationId } });
+      
+      // 13. Delete RBAC data
+      await tx.userRole.deleteMany({ where: { associationId } });
+      await tx.rolePermission.deleteMany({ where: { role: { associationId } } });
+      await tx.role.deleteMany({ where: { associationId } });
+      
+      // 14. Delete member ledger
+      await tx.memberFinancialLedger.deleteMany({ where: { associationId } });
+      
+      // 15. Delete notifications and other data
+      await tx.notification.deleteMany({ where: { associationId } });
+      await tx.exportHistory.deleteMany({ where: { associationId } });
+      await tx.auditLog.deleteMany({ where: { associationId } });
+      await tx.settings.deleteMany({ where: { associationId } });
+      await tx.subscription.deleteMany({ where: { associationId } });
+      
+      // 16. Delete members (this should come after all member-related data)
+      await tx.member.deleteMany({ where: { associationId } });
+      
+      // 17. Delete users (after all user-related data)
+      await tx.user.deleteMany({ where: { associationId } });
+      
+      // 18. Finally, delete the association itself
+      await tx.association.delete({
+        where: { id: associationId }
+      });
     });
 
     return {
