@@ -338,6 +338,7 @@ export class TenantManagementService {
 
     // PERMANENT DELETE - Manually delete all related records in correct order
     // This is necessary because not all foreign keys have CASCADE delete
+    // Use extended timeout for large datasets
     await prisma.$transaction(async (tx) => {
       // Delete in order of dependencies (children first, then parents)
       
@@ -444,6 +445,9 @@ export class TenantManagementService {
       await tx.association.delete({
         where: { id: associationId }
       });
+    }, {
+      maxWait: 60000, // 60 seconds
+      timeout: 120000, // 2 minutes
     });
 
     return {
