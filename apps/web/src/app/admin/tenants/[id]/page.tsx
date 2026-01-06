@@ -80,6 +80,7 @@ export default function TenantDetailPage() {
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
+  const [showPermanentDeleteModal, setShowPermanentDeleteModal] = useState(false);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [billingAction, setBillingAction] = useState<'extend-trial' | 'apply-credit' | 'bypass' | 'discount' | 'grace-period' | null>(null);
@@ -380,6 +381,30 @@ export default function TenantDetailPage() {
     }
   };
 
+  const handlePermanentDelete = async (confirmationToken: string, reason: string) => {
+    if (!tenantStatus) return;
+
+    try {
+      const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_PERMANENT_DELETE(tenantId), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ confirmationToken, reason }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Tenant permanently deleted');
+        router.push('/admin/tenants');
+      } else {
+        toast.error(data.message || 'Failed to delete tenant');
+      }
+    } catch (e) {
+      toast.error('Failed to delete tenant');
+    } finally {
+      setShowPermanentDeleteModal(false);
+    }
+  };
+
   if (user?.platformRole !== 'SUPER_ADMIN') return null;
 
   if (loading) {
@@ -455,11 +480,19 @@ export default function TenantDetailPage() {
         </div>
         <div className="flex gap-2">
           {tenantStatus.isDeleted ? (
-            <button onClick={() => { const r = prompt('Restoration reason:'); if (r) handleAction('restore', { reason: r }); }}
-              disabled={actionLoading}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
-              Restore
-            </button>
+            <>
+              <button onClick={() => { const r = prompt('Restoration reason:'); if (r) handleAction('restore', { reason: r }); }}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                Restore
+              </button>
+              <button 
+                onClick={() => setShowPermanentDeleteModal(true)}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                ⚠️ Permanent Delete
+              </button>
+            </>
           ) : (
             <>
               {tenantStatus.status === 'ACTIVE' ? (
@@ -840,6 +873,16 @@ export default function TenantDetailPage() {
           onSave={(formData) => handleBillingAction(billingAction, formData)}
         />
       )}
+
+      {/* Permanent Delete Confirmation Modal */}
+      {showPermanentDeleteModal && tenantStatus && (
+        <PermanentDeleteModal
+          tenantName={tenantStatus.name}
+          subdomain={tenantStatus.subdomain}
+          onClose={() => setShowPermanentDeleteModal(false)}
+          onConfirm={handlePermanentDelete}
+        />
+      )}
     </div>
   );
 }
@@ -1006,6 +1049,103 @@ function BillingActionModal({ action, onClose, onSave }: {
           <button onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancel</button>
           <button onClick={() => onSave({ days, amount, reason, endDate: endDate || undefined, discountPercent })} disabled={!reason}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Apply</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Permanent Delete Confirmation Modal
+function PermanentDeleteModal({ tenantName, subdomain, onClose, onConfirm }: {
+  tenantName: string;
+  subdomain: string;
+  onClose: () => void;
+  onConfirm: (confirmationToken: string, reason: string) => void;
+}) {
+  const [confirmationToken, setConfirmationToken] = useState('');
+  const [reason, setReason] = useState('');
+  const [understood, setUnderstood] = useState(false);
+
+  const isValid = confirmationToken === subdomain && reason.trim().length > 0 && understood;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-lg shadow-xl">
+        <div className="flex items-start gap-3 mb-4">
+          <span className="text-3xl">⚠️</span>
+          <div>
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400">PERMANENT DELETE - IRREVERSIBLE ACTION</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">This action CANNOT be undone</p>
+          </div>
+        </div>
+        
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+          <p className="text-sm text-red-800 dark:text-red-200 font-semibold mb-2">This will permanently delete:</p>
+          <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 ml-4">
+            <li>• Association "{tenantName}"</li>
+            <li>• ALL user accounts</li>
+            <li>• ALL member records</li>
+            <li>• ALL financial transactions and payments</li>
+            <li>• ALL meetings, documents, and files</li>
+            <li>• ALL related data (cannot be recovered)</li>
+          </ul>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-start gap-2">
+            <input 
+              type="checkbox" 
+              id="understood" 
+              checked={understood}
+              onChange={(e) => setUnderstood(e.target.checked)}
+              className="mt-1"
+            />
+            <label htmlFor="understood" className="text-sm text-gray-700 dark:text-gray-300">
+              I understand that this action is permanent and cannot be reversed
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Type the subdomain "<span className="font-mono font-bold text-red-600">{subdomain}</span>" to confirm:
+            </label>
+            <input 
+              type="text" 
+              value={confirmationToken}
+              onChange={(e) => setConfirmationToken(e.target.value)}
+              placeholder={subdomain}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Reason for permanent deletion *
+            </label>
+            <textarea 
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="Enter the reason for this permanent deletion..."
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => onConfirm(confirmationToken, reason)}
+            disabled={!isValid}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Permanently Delete
+          </button>
         </div>
       </div>
     </div>

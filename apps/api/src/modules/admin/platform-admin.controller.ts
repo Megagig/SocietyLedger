@@ -32,6 +32,11 @@ const restoreSchema = z.object({
   reason: z.string().min(1, 'Reason is required'),
 });
 
+const permanentDeleteSchema = z.object({
+  confirmationToken: z.string().min(1, 'Confirmation token is required'),
+  reason: z.string().min(1, 'Reason is required'),
+});
+
 const forceLogoutSchema = z.object({
   reason: z.string().min(1, 'Reason is required'),
 });
@@ -222,6 +227,46 @@ export class PlatformAdminController {
       });
     } catch (error) {
       console.error('Restore tenant error:', error instanceof Error ? error.message : String(error));
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      if (error instanceof Error) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * PERMANENT DELETE an association - ⚠️ IRREVERSIBLE
+   * This will delete ALL association data including users, members, transactions, etc.
+   * Requires the association to be soft-deleted first and confirmation token to match subdomain
+   */
+  async permanentDeleteTenant(req: AuthRequest, res: Response) {
+    try {
+      const associationId = Number(req.params.associationId);
+      const actorId = req.user?.id;
+
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const { confirmationToken, reason } = permanentDeleteSchema.parse(req.body);
+
+      const result = await TenantManagementService.permanentDelete(
+        associationId, 
+        actorId, 
+        confirmationToken, 
+        reason
+      );
+
+      return res.json({
+        success: true,
+        message: result.message,
+        data: result.deletedData,
+      });
+    } catch (error) {
+      console.error('Permanent delete tenant error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }

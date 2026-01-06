@@ -51,6 +51,7 @@ router.post('/tenants/:associationId/suspend', (req, res) => platformCtrl.suspen
 router.post('/tenants/:associationId/reactivate', (req, res) => platformCtrl.reactivateTenant(req as any, res));
 router.post('/tenants/:associationId/soft-delete', (req, res) => platformCtrl.softDeleteTenant(req as any, res));
 router.post('/tenants/:associationId/restore', (req, res) => platformCtrl.restoreTenant(req as any, res));
+router.delete('/tenants/:associationId/permanent-delete', (req, res) => platformCtrl.permanentDeleteTenant(req as any, res));
 router.post('/tenants/:associationId/force-logout', (req, res) => platformCtrl.forceLogoutTenant(req as any, res));
 router.patch('/tenants/:associationId/security', (req, res) => platformCtrl.updateSecuritySettings(req as any, res));
 

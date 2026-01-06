@@ -188,6 +188,7 @@ export const API_ROUTES = {
     TENANT_REACTIVATE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/reactivate`,
     TENANT_SOFT_DELETE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/soft-delete`,
     TENANT_RESTORE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/restore`,
+    TENANT_PERMANENT_DELETE: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/permanent-delete`,
     TENANT_FORCE_LOGOUT: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/force-logout`,
     TENANT_SECURITY: (id: number) => `${API_BASE_URL}/api/admin/tenants/${id}/security`,
     // Module & Feature Management

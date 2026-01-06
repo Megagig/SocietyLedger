@@ -254,6 +254,101 @@ export class TenantManagementService {
   }
 
   /**
+   * PERMANENT DELETE an association and ALL its data
+   * ⚠️ WARNING: This is irreversible and will delete ALL data
+   * 
+   * This will delete:
+   * - Association record
+   * - All users
+   * - All members
+   * - All financial transactions
+   * - All payments
+   * - All meetings
+   * - All documents and files
+   * - ALL related data (cascading delete)
+   * 
+   * Requirements:
+   * - Association must be soft-deleted first
+   * - Must provide confirmation token matching association subdomain
+   */
+  static async permanentDelete(
+    associationId: number,
+    actorId: number,
+    confirmationToken: string,
+    reason: string
+  ) {
+    // Fetch association to verify
+    const association = await prisma.association.findUnique({
+      where: { id: associationId },
+      include: {
+        _count: {
+          select: {
+            users: true,
+            members: true,
+            transactions: true,
+            payments: true,
+            categories: true,
+          }
+        }
+      }
+    });
+
+    if (!association) {
+      throw new Error('Association not found');
+    }
+
+    // SAFETY CHECK: Must be soft-deleted first
+    if (!association.deletedAt) {
+      throw new Error('Association must be soft-deleted first before permanent deletion');
+    }
+
+    // SAFETY CHECK: Confirmation token must match subdomain
+    if (confirmationToken !== association.subdomain) {
+      throw new Error(`Confirmation failed. You must type the subdomain "${association.subdomain}" exactly to confirm`);
+    }
+
+    // Log BEFORE deletion (since association will be gone)
+    const beforeState = {
+      id: association.id,
+      name: association.name,
+      subdomain: association.subdomain,
+      status: association.status,
+      tier: association.tier,
+      userCount: association._count.users,
+      memberCount: association._count.members,
+      transactionCount: association._count.transactions,
+      paymentCount: association._count.payments,
+      categoryCount: association._count.categories,
+      deletedAt: association.deletedAt?.toISOString(),
+      deletionReason: association.deletionReason,
+    };
+
+    // Log the action BEFORE deletion
+    await PlatformActionLogService.log({
+      actorId,
+      actorRole: 'SUPER_ADMIN',
+      actionType: 'TENANT_PERMANENT_DELETE' as any, // Will need to add this to ActionTypes enum
+      targetType: 'association',
+      targetId: associationId,
+      associationId: null, // Association will be gone
+      beforeState,
+      afterState: { deleted: true, timestamp: new Date().toISOString() },
+      reason,
+    });
+
+    // PERMANENT DELETE - This will cascade delete all related records
+    await prisma.association.delete({
+      where: { id: associationId }
+    });
+
+    return {
+      success: true,
+      message: `Association "${association.name}" and all its data permanently deleted`,
+      deletedData: beforeState,
+    };
+  }
+
+  /**
    * Force logout all users of an association
    * This invalidates all active sessions
    */
