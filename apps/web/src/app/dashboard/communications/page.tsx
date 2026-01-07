@@ -28,6 +28,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getSMSDashboard,
   getSMSCreditBalance,
@@ -78,7 +79,7 @@ export default function CommunicationsPage() {
   };
 
   return (
-    <Can permission="SMS_SEND" fallback={<Alert color="red">You don't have permission to view SMS communications</Alert>}>
+    <Can permission={PERMISSIONS.SMS_SEND} fallback={<Alert color="red">You don't have permission to view SMS communications</Alert>}>
       <Stack gap="lg">
         <Group justify="space-between">
           <div>
@@ -107,6 +108,25 @@ export default function CommunicationsPage() {
         {error && (
           <Alert icon={<AlertCircle size={16} />} color="red" onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+
+        {/* Low SMS Credits Warning */}
+        {credits && credits.balance === 0 && (
+          <Alert icon={<AlertCircle size={16} />} color="orange" title="Low SMS Credits">
+            <Group justify="space-between" align="center">
+              <Text size="sm">
+                You have {credits.balance} credits remaining. Top up to continue sending SMS.
+              </Text>
+              <Button 
+                size="xs" 
+                variant="filled" 
+                color="orange"
+                onClick={() => router.push('/dashboard/communication/sms/credits')}
+              >
+                Top Up
+              </Button>
+            </Group>
           </Alert>
         )}
 
@@ -375,7 +395,12 @@ export default function CommunicationsPage() {
             <Text size="sm" mb="sm">
               You have only {credits.balance} SMS credits remaining. Top up now to continue sending messages.
             </Text>
-            <Button size="xs" variant="light" color="orange">
+            <Button 
+              size="xs" 
+              variant="light" 
+              color="orange"
+              onClick={() => router.push('/dashboard/communication/sms/credits')}
+            >
               Top Up Credits
             </Button>
           </Alert>

@@ -21,6 +21,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { Search, Download, FileText, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { exportsApi, type ExportHistoryItem } from '@/lib/api/exports';
 
 export default function ExportHistoryPage() {
@@ -88,7 +89,7 @@ export default function ExportHistoryPage() {
 
   return (
     <Can
-      permission="REPORT_VIEW"
+      permission={PERMISSIONS.EXPORT_VIEW_HISTORY}
       fallback={<Alert color="red">You don't have permission to view export history</Alert>}
     >
       <Stack gap="lg">

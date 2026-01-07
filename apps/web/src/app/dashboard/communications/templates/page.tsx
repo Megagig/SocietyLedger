@@ -31,6 +31,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getSMSTemplates,
   createSMSTemplate,
@@ -162,7 +163,7 @@ export default function TemplatesPage() {
 
   return (
     <Can
-      permission="SMS_SEND"
+      permission={PERMISSIONS.SMS_SEND}
       fallback={<Alert color="red">You don't have permission to manage templates</Alert>}
     >
       <Stack gap="lg">

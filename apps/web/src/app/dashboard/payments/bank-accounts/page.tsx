@@ -35,6 +35,7 @@ import {
   Star,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getBankAccounts,
   createBankAccount,
@@ -192,7 +193,7 @@ export default function BankAccountsPage() {
   }));
 
   return (
-    <Can permission="PAYMENT_RECORD" fallback={<Alert color="red">You don't have permission to manage bank accounts</Alert>}>
+    <Can permission={PERMISSIONS.PAYMENT_RECORD} fallback={<Alert color="red">You don't have permission to manage bank accounts</Alert>}>
       <Stack gap="lg">
         <Group justify="space-between">
           <div>

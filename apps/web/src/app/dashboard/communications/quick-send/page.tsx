@@ -24,6 +24,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { Send, AlertCircle, Users, Phone } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   sendQuickSMS,
   getSMSCreditBalance,
@@ -140,7 +141,7 @@ export default function QuickSendPage() {
 
   return (
     <Can
-      permission="SMS_SEND"
+      permission={PERMISSIONS.SMS_SEND}
       fallback={<Alert color="red">You don't have permission to send SMS</Alert>}
     >
       <Stack gap="lg">

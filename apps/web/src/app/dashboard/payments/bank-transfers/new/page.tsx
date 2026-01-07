@@ -21,6 +21,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { Upload, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   createBankTransfer,
   getBankAccounts,
@@ -143,7 +144,7 @@ export default function RecordTransferPage() {
   }));
 
   return (
-    <Can permission="PAYMENT_RECORD">
+    <Can permission={PERMISSIONS.PAYMENT_RECORD}>
       <Stack gap="lg">
         <Group>
           <Button

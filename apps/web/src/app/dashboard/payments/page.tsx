@@ -26,6 +26,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getUnmatchedDashboard,
   getBankAccounts,
@@ -93,7 +94,7 @@ export default function PaymentsDashboardPage() {
   };
 
   return (
-    <Can permission="PAYMENT_RECORD" fallback={<Alert color="red">You don't have permission to view payments</Alert>}>
+    <Can permission={PERMISSIONS.PAYMENT_RECORD} fallback={<Alert color="red">You don't have permission to view payments</Alert>}>
       <Stack gap="lg">
         <Group justify="space-between">
           <div>

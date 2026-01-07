@@ -26,6 +26,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { exportsApi, type ExportResult } from '@/lib/api/exports';
 
 export default function ExportsPage() {
@@ -98,7 +99,7 @@ export default function ExportsPage() {
 
   return (
     <Can
-      permission="REPORT_VIEW"
+      permission={PERMISSIONS.EXPORT_FINANCIAL}
       fallback={<Alert color="red">You don't have permission to generate exports</Alert>}
     >
       <Stack gap="lg">

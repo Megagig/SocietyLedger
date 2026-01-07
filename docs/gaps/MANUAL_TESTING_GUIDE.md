@@ -12,6 +12,28 @@ This guide provides step-by-step instructions for manually testing all features 
 
 ## 🎯 Test Preparation
 
+### ⚠️ CRITICAL: Add Permissions to Database First!
+
+**Before starting any tests**, you MUST run the SQL script to add new permissions:
+
+```bash
+cd apps/api
+psql -h localhost -U your_username -d your_database -f prisma/seeds/add-new-permissions.sql
+```
+
+**Then restart both servers**:
+```bash
+# Terminal 1: API
+cd apps/api && npm run dev
+
+# Terminal 2: Web  
+cd apps/web && npm run dev
+```
+
+**📖 Full Setup Guide**: [apps/api/prisma/seeds/README-NEW-PERMISSIONS.md](../../apps/api/prisma/seeds/README-NEW-PERMISSIONS.md)
+
+---
+
 ### Prerequisites
 1. **User Account**: Create test user with appropriate permissions
 2. **Test Data**: 

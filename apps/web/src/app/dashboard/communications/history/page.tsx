@@ -20,6 +20,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { Search, AlertCircle, Eye } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { getSMSMessages, type SMSMessage } from '@/lib/api/communication';
 
 export default function HistoryPage() {
@@ -81,7 +82,7 @@ export default function HistoryPage() {
 
   return (
     <Can
-      permission="SMS_SEND"
+      permission={PERMISSIONS.SMS_SEND}
       fallback={<Alert color="red">You don't have permission to view message history</Alert>}
     >
       <Stack gap="lg">

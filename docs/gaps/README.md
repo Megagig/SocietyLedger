@@ -463,6 +463,41 @@ See [MANUAL_TESTING_GUIDE.md](./MANUAL_TESTING_GUIDE.md) for comprehensive testi
 
 ---
 
+## ⚙️ Setup & Installation
+
+### IMPORTANT: Add New Permissions to Database
+
+**Before testing or using the new features**, you MUST add the new permissions to your database.
+
+#### Quick Setup (3 minutes):
+
+1. **Run the SQL script**:
+   ```bash
+   cd apps/api
+   psql -h localhost -U your_username -d your_database -f prisma/seeds/add-new-permissions.sql
+   ```
+
+2. **Restart your application**:
+   ```bash
+   # Restart API
+   cd apps/api && npm run dev
+   
+   # Restart Web (in another terminal)
+   cd apps/web && npm run dev
+   ```
+
+3. **Verify**: Log in as admin and check if navigation links appear:
+   - Finance → Payment Management ✓
+   - Communication → SMS Dashboard ✓
+   - Reports → Export Data ✓
+   - Settings → Cron Jobs ✓
+
+**📖 Detailed Instructions**: See [apps/api/prisma/seeds/README-NEW-PERMISSIONS.md](../../apps/api/prisma/seeds/README-NEW-PERMISSIONS.md)
+
+**⚠️ If links don't appear**: You're missing the required permissions in your database. Follow the setup guide above.
+
+---
+
 ## 🚀 Deployment Considerations
 
 ### Environment Variables

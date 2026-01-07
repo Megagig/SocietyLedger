@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { DatePickerInput } from '@mantine/dates';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getBankTransfers,
   verifyBankTransfer,
@@ -133,7 +134,7 @@ export default function BankTransfersPage() {
   const totalPages = Math.ceil(total / 20);
 
   return (
-    <Can permission="PAYMENT_RECORD">
+    <Can permission={PERMISSIONS.PAYMENT_RECORD}>
       <Stack gap="lg">
         <Group justify="space-between">
           <div>

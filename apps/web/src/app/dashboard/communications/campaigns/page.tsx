@@ -33,6 +33,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getSMSCampaigns,
   startSMSCampaign,
@@ -160,7 +161,7 @@ export default function CampaignsPage() {
 
   return (
     <Can
-      permission="SMS_SEND"
+      permission={PERMISSIONS.SMS_SEND}
       fallback={<Alert color="red">You don't have permission to view campaigns</Alert>}
     >
       <Stack gap="lg">

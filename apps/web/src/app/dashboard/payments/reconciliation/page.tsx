@@ -25,6 +25,7 @@ import {
   Link as LinkIcon,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getUnmatchedDashboard,
   getBankTransfers,
@@ -212,7 +213,7 @@ export default function ReconciliationPage() {
   }));
 
   return (
-    <Can permission="PAYMENT_RECORD">
+    <Can permission={PERMISSIONS.PAYMENT_RECORD}>
       <Stack gap="lg">
         <Group justify="space-between">
           <div>

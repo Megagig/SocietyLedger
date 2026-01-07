@@ -27,6 +27,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { cronApi, type CronJobStatus } from '@/lib/api/cron';
 
 interface CronJob {
@@ -138,7 +139,7 @@ export default function CronJobsPage() {
 
   return (
     <Can
-      permission="SYSTEM_SETTINGS_MANAGE"
+      permission={PERMISSIONS.CRON_VIEW}
       fallback={
         <Alert color="red">You don't have permission to manage cron jobs</Alert>
       }

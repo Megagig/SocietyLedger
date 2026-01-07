@@ -25,6 +25,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { Plus, AlertCircle, Send } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   createSMSCampaign,
   startSMSCampaign,
@@ -166,7 +167,7 @@ export default function NewCampaignPage() {
 
   return (
     <Can
-      permission="SMS_SEND"
+      permission={PERMISSIONS.SMS_SEND}
       fallback={<Alert color="red">You don't have permission to create campaigns</Alert>}
     >
       <Stack gap="lg">

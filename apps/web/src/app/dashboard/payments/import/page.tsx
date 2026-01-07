@@ -27,6 +27,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   getBankAccounts,
   importBankStatement,
@@ -232,7 +233,7 @@ export default function StatementImportPage() {
   }));
 
   return (
-    <Can permission="PAYMENT_RECORD">
+    <Can permission={PERMISSIONS.PAYMENT_RECORD}>
       <Stack gap="lg">
         <Group>
           <Button
