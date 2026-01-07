@@ -40,16 +40,16 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 
 ### Overall Metrics
 
-- **Total Tasks:** 280+ (Updated for SaaS)
-- **Completed:** 202+ tasks (72%)
-- **In Progress:** 2 tasks (AI Integration remaining)
-- **Not Started:** 24 tasks (9%) - Low priority optimizations
-- **Current Phase:** Feature Complete - Optimization Phase
-- **Next Milestone:** Performance optimization and mobile PWA
+- **Total Tasks:** 362+ (Updated with API-UI Gap phases)
+- **Completed:** 202+ tasks (56%)
+- **In Progress:** 8 phases with 82 tasks (23%)
+- **Not Started:** 78 tasks (21%)
+- **Current Phase:** API-UI Gap Implementation
+- **Next Milestone:** SMS/Communications & Nigerian Payments UI
 
 ### Phase Completion Summary
 
-#### ✅ **COMPLETED PHASES (23 phases - 72% overall completion)**
+#### ✅ **COMPLETED PHASES (23 phases - 56% overall completion)**
 
 | Phase | Name | Status | Progress | Priority |
 |-------|------|--------|----------|----------|
@@ -78,21 +78,45 @@ The SocietyLedger platform has completed its core infrastructure and is now read
 | **17** | AI Integration | 🟡 **PARTIAL** | 14/16 | 🟡 MEDIUM |
 | **20** | Dashboard Real-Data Integration | ✅ **COMPLETE** | 17/17 | 🔴 HIGH |
 
-#### ⚪ **REMAINING PHASES (5 phases)**
+#### 🔄 **API-UI GAP PHASES (6 phases - 23% overall tasks)**
+
+| Phase | Name | Status | Progress | Priority |
+|-------|------|--------|----------|----------|
+| **6.6** | SMS/Communications UI Module | ⚪ Not Started | 0/18 | 🔴 HIGH |
+| **3.6** | Nigerian Payments UI Module | ⚪ Not Started | 0/22 | 🔴 CRITICAL |
+| **10.5** | Exports Management UI | ⚪ Not Started | 0/12 | 🟡 MEDIUM |
+| **14** | Webhooks Management UI | ⚪ Not Started | 0/10 | 🟢 LOW |
+| **15** | Cron Jobs Management UI | ⚪ Not Started | 0/8 | 🟢 LOW |
+| **6.7** | Notifications Center UI | ⚪ Not Started | 0/10 | 🟡 MEDIUM |
+
+#### ⚪ **REMAINING PHASES (3 phases - 21% overall tasks)**
 
 | Phase | Name | Status | Progress | Priority |
 |-------|------|--------|----------|----------|
 | **12** | Caching & Performance | ✅ **COMPLETE** | 10/10 | 🟢 LOW |
 | **13.5** | Mobile/PWA | ⚪ Not Started | 0/6 | 🟢 LOW |
 | **16** | Enterprise Features | ⚪ Not Started | 0/8 | 🟢 LOW |
-| **21** | Help & Support Module | 🟡 **IN PROGRESS** | 14/28 | 🟡 MEDIUM |
 
 **Legend:** 
 ✅ **COMPLETE** = Fully implemented and tested
 🟡 **PARTIAL** = Mostly complete, minor tasks remaining
 ⚪ **Not Started** = No implementation exists
 
-**Total Phases:** 26 | **Total Tasks:** 280+ | **Completed:** 202+ (72%)
+**Total Phases:** 32 | **Total Tasks:** 362+ | **Completed:** 202+ (56%)
+
+### Implementation Priority (API-UI Gaps)
+
+**🔴 CRITICAL (Do First):**
+1. **Phase 3.6: Nigerian Payments UI** - Essential for African market, 24+ endpoints unused
+2. **Phase 6.6: SMS/Communications UI** - High-value feature, 10+ endpoints complete
+
+**🟡 HIGH VALUE:**
+3. **Phase 10.5: Exports Management UI** - Centralizes scattered export functionality
+4. **Phase 6.7: Notifications Center UI** - Enhances existing system
+
+**🟢 LOW PRIORITY (Do Later):**
+5. **Phase 14: Webhooks Management UI** - Admin/developer monitoring tool
+6. **Phase 15: Cron Jobs Management UI** - Admin monitoring tool
 
 ### Critical Blockers
 
@@ -595,6 +619,572 @@ All tasks completed:
 **Remaining Tasks (2/16):**
 - [ ] pgvector Setup (Document Q&A)
 - [ ] Document Q&A (RAG) implementation
+
+---
+
+### Phase 6.6: SMS/Communications UI Module ⚪ NOT STARTED
+
+**Status:** ⚪ Not Started  
+**Priority:** 🔴 HIGH (Backend 100% complete, zero frontend)  
+**Estimated Time:** 4-6 days  
+**Location:** `apps/web/src/app/dashboard/communications/` (to be created)  
+**Backend:** `apps/api/src/modules/sms/` ✅ COMPLETE (10+ endpoints ready)
+
+**Backend Assets Available:**
+- SMS service with Termii integration ✅
+- Campaign management (create, start, cancel, delete) ✅
+- Template management (create, update, delete, list) ✅
+- Credit management (balance, top-up, history) ✅
+- Bulk SMS sending with batching ✅
+- Phone number formatting (Nigerian 234xxx) ✅
+- Delivery status tracking ✅
+- SMS history with pagination ✅
+
+**API Endpoints Ready (10+):**
+- `POST /api/sms/send` - Send single SMS
+- `POST /api/sms/bulk` - Send bulk SMS
+- `GET /api/sms/balance` - Check SMS credits
+- `GET /api/sms/history` - Get message history
+- `POST /api/sms/campaigns` - Create campaign
+- `GET /api/sms/campaigns` - List campaigns
+- `GET /api/sms/campaigns/:id` - Get campaign details
+- `POST /api/sms/campaigns/:id/start` - Start campaign
+- `POST /api/sms/campaigns/:id/cancel` - Cancel campaign
+- `POST /api/sms/templates` - Create template
+- `GET /api/sms/templates` - List templates
+- `POST /api/sms/credits/topup` - Purchase SMS credits
+
+**Frontend UI Tasks (18 tasks):**
+
+#### 6.6.1: Communications Dashboard (4 tasks)
+- [ ] Create `/dashboard/communications` folder structure
+- [ ] Build communications dashboard page with stats
+  - SMS balance display
+  - Message count (sent today, this month, total)
+  - Campaign statistics
+  - Recent message history
+  - Quick action buttons (Quick Send, New Campaign, Buy Credits)
+- [ ] Add charts for SMS usage trends (Recharts)
+- [ ] Implement permission checks (SMS_SEND, SMS_MANAGE_CAMPAIGNS)
+
+#### 6.6.2: Quick Send SMS (3 tasks)
+- [ ] Create `/dashboard/communications/quick-send/page.tsx`
+- [ ] Build quick send form
+  - Recipient selection (all members, specific members, custom numbers)
+  - Message composer with character counter (160 chars = 1 SMS)
+  - Template selector dropdown
+  - Preview before send
+  - Cost calculator (credits needed)
+- [ ] Implement send logic with success/error handling
+
+#### 6.6.3: SMS Campaigns Management (5 tasks)
+- [ ] Create `/dashboard/communications/campaigns/page.tsx` (list)
+- [ ] Build campaigns list with filters (status, date range)
+- [ ] Create `/dashboard/communications/campaigns/new/page.tsx`
+- [ ] Build campaign creation form
+  - Campaign name & description
+  - Recipient selection (member groups, categories)
+  - Message content or template selection
+  - Schedule options (send now, schedule later)
+  - Cost estimation
+- [ ] Implement campaign actions (start, cancel, delete, view details)
+
+#### 6.6.4: SMS Templates (3 tasks)
+- [ ] Create `/dashboard/communications/templates/page.tsx`
+- [ ] Build templates management UI (CRUD)
+  - Template list with preview
+  - Create/edit template modal
+  - Variable placeholders ({{name}}, {{amount}}, {{dueDate}})
+  - Template categories (payment reminder, event, announcement)
+- [ ] Implement template testing (send test SMS)
+
+#### 6.6.5: SMS History & Reports (3 tasks)
+- [ ] Create `/dashboard/communications/history/page.tsx`
+- [ ] Build message history table
+  - Filters (date range, status, recipient)
+  - Delivery status indicators
+  - Search by phone number or content
+  - Export to Excel
+- [ ] Add SMS usage analytics dashboard
+
+**Integration Checklist:**
+- [ ] Add "Communications" navigation item to sidebar
+- [ ] Create API client functions in `apps/web/src/lib/api/sms.ts`
+- [ ] Add SMS-related permissions to Can component checks
+- [ ] Update onboarding wizard (add SMS setup step - optional)
+- [ ] Add SMS notification preferences to member profiles
+
+**Dependencies:**
+- Backend SMS module ✅ (100% complete)
+- Member management ✅
+- Permission system (RBAC) ✅
+- Notification system ✅
+
+**Success Criteria:**
+- [ ] Admin can send SMS to members from UI
+- [ ] Admin can create and manage SMS campaigns
+- [ ] Admin can manage SMS templates
+- [ ] Admin can view SMS history and delivery status
+- [ ] SMS credits balance displayed prominently
+- [ ] All 10+ backend endpoints integrated
+- [ ] No breaking changes to existing features
+
+---
+
+### Phase 3.6: Nigerian Payments UI Module ⚪ NOT STARTED
+
+**Status:** ⚪ Not Started  
+**Priority:** 🔴 CRITICAL (Essential for African market)  
+**Estimated Time:** 5-7 days  
+**Location:** `apps/web/src/app/dashboard/payments/` (to be created)  
+**Backend:** `apps/api/src/modules/nigerian-payments/` ✅ COMPLETE (24+ endpoints ready)
+
+**Backend Assets Available:**
+- Bank account management (multiple accounts) ✅
+- Bank transfer tracking ✅
+- Payment reconciliation system ✅
+- Auto-matching transactions ✅
+- Bank statement import (CSV) ✅
+- Payment proof upload ✅
+- Payment verification workflow ✅
+- Unmatched payments tracking ✅
+
+**API Endpoints Ready (24+):**
+- `GET/POST /api/nigerian-payments/bank-accounts` - Bank account CRUD
+- `GET/PUT/DELETE /api/nigerian-payments/bank-accounts/:id` - Manage accounts
+- `POST /api/nigerian-payments/bank-transfers` - Record bank transfer
+- `GET /api/nigerian-payments/bank-transfers` - List transfers
+- `GET /api/nigerian-payments/bank-transfers/:id` - Get transfer details
+- `POST /api/nigerian-payments/reconciliation/match` - Manual match
+- `POST /api/nigerian-payments/reconciliation/auto-match` - Auto match
+- `GET /api/nigerian-payments/reconciliation/unmatched` - Get unmatched
+- `POST /api/nigerian-payments/statement-import` - Import CSV
+- `POST /api/nigerian-payments/payment-proof` - Upload proof
+- `GET /api/nigerian-payments/payment-proof/:id` - View proof
+- `POST /api/nigerian-payments/verify/:id` - Verify payment
+- `GET /api/nigerian-payments/dashboard` - Payment dashboard stats
+
+**Frontend UI Tasks (22 tasks):**
+
+#### 3.6.1: Payments Dashboard (4 tasks)
+- [ ] Create `/dashboard/payments` folder structure
+- [ ] Build payments dashboard page
+  - Pending verification count
+  - Unmatched transfers count
+  - Today's payments summary
+  - Bank account balances
+  - Recent payment activity
+  - Quick actions (Record Payment, Upload Proof, Import Statement)
+- [ ] Add payment method distribution chart (Pie chart)
+- [ ] Implement permission checks (PAYMENT_RECORD, PAYMENT_VERIFY)
+
+#### 3.6.2: Bank Accounts Management (4 tasks)
+- [ ] Create `/dashboard/payments/bank-accounts/page.tsx`
+- [ ] Build bank accounts list with CRUD
+  - Add new bank account modal
+  - Edit account details
+  - Mark as primary/active
+  - Delete account (soft delete)
+- [ ] Display account details card with copy-to-clipboard
+- [ ] Add account statement import button
+
+#### 3.6.3: Bank Transfer Tracking (5 tasks)
+- [ ] Create `/dashboard/payments/bank-transfers/page.tsx`
+- [ ] Build bank transfers list
+  - Filters (date range, bank account, status)
+  - Search by reference number
+  - Status badges (matched, unmatched, verified, pending)
+- [ ] Create `/dashboard/payments/bank-transfers/new/page.tsx`
+- [ ] Build record transfer form
+  - Bank account selector
+  - Amount input
+  - Reference number
+  - Payer information
+  - Transaction date
+  - Upload proof (optional)
+- [ ] Implement transfer details modal with proof viewer
+
+#### 3.6.4: Payment Reconciliation (5 tasks)
+- [ ] Create `/dashboard/payments/reconciliation/page.tsx`
+- [ ] Build unmatched payments dashboard
+  - Unmatched bank transfers table
+  - Pending payments table
+  - Auto-match button with preview
+  - Manual match interface (drag-and-drop or select)
+- [ ] Implement auto-match functionality with confirmation
+- [ ] Build manual matching UI
+  - Select bank transfer
+  - Select pending transaction
+  - Confirm match
+  - Show matched pairs
+- [ ] Add reconciliation history log
+
+#### 3.6.5: Statement Import (2 tasks)
+- [ ] Create `/dashboard/payments/import/page.tsx`
+- [ ] Build CSV import interface
+  - File upload dropzone
+  - Bank account selector
+  - CSV template download link
+  - Preview imported entries before save
+  - Import summary with error handling
+
+#### 3.6.6: Payment Verification Workflow (2 tasks)
+- [ ] Create `/dashboard/payments/verification/page.tsx`
+- [ ] Build payment verification queue
+  - List of payments pending verification
+  - Payment proof viewer (images, PDFs)
+  - Approve/reject buttons with reason
+  - Bulk verification actions
+  - Verification history
+
+**Integration Checklist:**
+- [ ] Add "Payments" navigation item to sidebar
+- [ ] Create API client functions in `apps/web/src/lib/api/nigerian-payments.ts`
+- [ ] Add payment-related permissions to Can component checks
+- [ ] Link from Finance > Transactions (show payment method details)
+- [ ] Add reconciliation status to transaction details
+- [ ] Update onboarding wizard (add bank account setup step)
+
+**Dependencies:**
+- Backend Nigerian payments module ✅ (100% complete)
+- Finance module ✅
+- Member management ✅
+- Permission system (RBAC) ✅
+
+**Success Criteria:**
+- [ ] Admin can manage multiple bank accounts
+- [ ] Admin can record bank transfers from UI
+- [ ] Auto-matching transactions works from UI
+- [ ] Manual reconciliation interface functional
+- [ ] Bank statement CSV import working
+- [ ] Payment proof upload and viewing works
+- [ ] Verification workflow complete
+- [ ] All 24+ backend endpoints integrated
+- [ ] No breaking changes to existing features
+
+---
+
+### Phase 10.5: Exports Management UI ⚪ NOT STARTED
+
+**Status:** ⚪ Not Started  
+**Priority:** 🟡 MEDIUM (Backend complete, exports scattered)  
+**Estimated Time:** 2-3 days  
+**Location:** `apps/web/src/app/dashboard/exports/` (to be created)  
+**Backend:** `apps/api/src/modules/exports/` ✅ COMPLETE (6 endpoints ready)
+
+**Current State:**
+- Backend export service ✅ (PDF/Excel generation)
+- Export endpoints ✅ (financial, members, statements)
+- Export history tracking ✅ (7-day expiration)
+- Downloads scattered across multiple pages ❌
+- No centralized export management UI ❌
+
+**API Endpoints Ready (6):**
+- `POST /api/exports/financial-pdf` - Generate financial summary PDF
+- `POST /api/exports/financial-excel` - Generate financial summary Excel
+- `POST /api/exports/member-statement/:memberId` - Generate member statement
+- `POST /api/exports/members-excel` - Export all members with balances
+- `GET /api/exports/history` - Get export history with pagination
+- `GET /api/exports/download/:id` - Download export file
+
+**Frontend UI Tasks (12 tasks):**
+
+#### 10.5.1: Exports Center Dashboard (3 tasks)
+- [ ] Create `/dashboard/exports` folder structure
+- [ ] Build exports center dashboard
+  - Quick export actions (Financial Report, Members List, Custom)
+  - Recent exports list (last 10)
+  - Export statistics (total exports, most exported reports)
+  - Storage usage indicator
+  - Export templates
+- [ ] Add permission checks (EXPORT_FINANCIAL, EXPORT_MEMBERS)
+
+#### 10.5.2: Export History Management (4 tasks)
+- [ ] Create `/dashboard/exports/history/page.tsx`
+- [ ] Build export history table
+  - Filters (type, date range, status)
+  - Download button for each export
+  - Delete button (admin only)
+  - Expiration countdown (7 days)
+  - File size display
+  - Export status (generating, ready, expired, failed)
+- [ ] Implement bulk delete functionality
+- [ ] Add re-generate button for expired exports
+
+#### 10.5.3: Quick Export Actions (3 tasks)
+- [ ] Create export modal component (`ExportModal.tsx`)
+- [ ] Build quick export form
+  - Export type selector (Financial, Members, Custom)
+  - Date range picker
+  - Format selector (PDF, Excel)
+  - Include options (charts, details, summaries)
+  - Preview before generate
+- [ ] Implement export generation with progress indicator
+
+#### 10.5.4: Custom Export Builder (2 tasks)
+- [ ] Create `/dashboard/exports/custom/page.tsx`
+- [ ] Build custom export builder
+  - Data source selector (Transactions, Members, Payments, etc.)
+  - Column selector (checkboxes for fields)
+  - Filter builder (date range, categories, status)
+  - Sort options
+  - Generate preview
+  - Save as template
+
+**Integration Checklist:**
+- [ ] Add "Exports" navigation item to sidebar (under Reports section)
+- [ ] Create API client functions in `apps/web/src/lib/api/exports.ts`
+- [ ] Add export buttons to existing pages (Reports, Members, Finance)
+- [ ] Centralize all export functions to use new Export Center
+- [ ] Add export notifications (when ready to download)
+
+**Dependencies:**
+- Backend exports module ✅ (100% complete)
+- Reports module ✅
+- Member management ✅
+- Finance module ✅
+
+**Success Criteria:**
+- [ ] Centralized export management dashboard
+- [ ] Admin can view all export history
+- [ ] Download links work properly
+- [ ] Export expiration clearly indicated
+- [ ] Quick export actions from dashboard
+- [ ] All 6 backend endpoints integrated
+- [ ] No breaking changes to existing export functionality
+
+---
+
+### Phase 14: Webhooks Management UI ⚪ NOT STARTED
+
+**Status:** ⚪ Not Started  
+**Priority:** 🟢 LOW (Admin/Developer tool)  
+**Estimated Time:** 2-3 days  
+**Location:** `apps/web/src/app/dashboard/settings/webhooks/` (to be created)  
+**Backend:** `apps/api/src/modules/webhooks/` ✅ COMPLETE
+
+**Current State:**
+- Webhook handlers exist for Paystack, Nomba ✅
+- Webhook verification implemented ✅
+- Webhook logging in place ✅
+- No UI for webhook management ❌
+- No webhook testing interface ❌
+
+**Backend Assets Available:**
+- Paystack webhook handler ✅
+- Nomba webhook handler ✅
+- Webhook signature verification ✅
+- Webhook event logging ✅
+- Retry mechanism ✅
+
+**Frontend UI Tasks (10 tasks):**
+
+#### 14.1: Webhooks Dashboard (3 tasks)
+- [ ] Create `/dashboard/settings/webhooks` folder structure
+- [ ] Build webhooks dashboard
+  - Recent webhook events (last 50)
+  - Success/failure rate chart
+  - Webhook URLs display with copy button
+  - Event type statistics
+  - Test webhook button
+- [ ] Add permission checks (SUPER_ADMIN only)
+
+#### 14.2: Webhook Events Log (4 tasks)
+- [ ] Create `/dashboard/settings/webhooks/logs/page.tsx`
+- [ ] Build webhook events table
+  - Filters (provider, event type, status, date range)
+  - Search by transaction reference
+  - Event details modal (full payload viewer)
+  - Retry button for failed webhooks
+  - Status badges (success, failed, pending)
+- [ ] Implement event details JSON viewer
+- [ ] Add webhook event export (Excel/JSON)
+
+#### 14.3: Webhook Testing (3 tasks)
+- [ ] Create webhook testing interface
+- [ ] Build test webhook form
+  - Provider selector (Paystack, Nomba)
+  - Event type selector
+  - Sample payload generator
+  - Send test webhook button
+  - Response viewer
+- [ ] Add webhook simulation for development
+
+**Integration Checklist:**
+- [ ] Add "Webhooks" to Settings navigation (admin only)
+- [ ] Create API client functions in `apps/web/src/lib/api/webhooks.ts`
+- [ ] Add webhook documentation links
+- [ ] Link webhook logs to related transactions
+
+**Dependencies:**
+- Backend webhook module ✅ (100% complete)
+- Settings architecture ✅
+- Permission system (RBAC) ✅
+
+**Success Criteria:**
+- [ ] Admin can view webhook event logs
+- [ ] Webhook success/failure rates visible
+- [ ] Failed webhooks can be retried
+- [ ] Webhook testing interface functional
+- [ ] No breaking changes to webhook processing
+
+---
+
+### Phase 15: Cron Jobs Management UI ⚪ NOT STARTED
+
+**Status:** ⚪ Not Started  
+**Priority:** 🟢 LOW (Admin monitoring tool)  
+**Estimated Time:** 2-3 days  
+**Location:** `apps/web/src/app/dashboard/settings/cron-jobs/` (to be created)  
+**Backend:** `apps/api/src/modules/cron/` ✅ COMPLETE
+
+**Current State:**
+- Scheduled jobs running (reminders, late fees, subscriptions) ✅
+- Job execution logging ✅
+- No UI to monitor job status ❌
+- No UI to trigger manual runs ❌
+
+**Backend Assets Available:**
+- Payment reminders cron (daily) ✅
+- Late fee calculation cron (daily) ✅
+- Subscription renewal check (daily) ✅
+- Overdue detection (hourly) ✅
+- Job execution logging ✅
+
+**Frontend UI Tasks (8 tasks):**
+
+#### 15.1: Cron Jobs Dashboard (3 tasks)
+- [ ] Create `/dashboard/settings/cron-jobs` folder structure
+- [ ] Build cron jobs dashboard
+  - List of all scheduled jobs
+  - Next run time for each job
+  - Last run status and time
+  - Success/failure indicators
+  - Manual trigger buttons
+  - Job execution history chart
+- [ ] Add permission checks (SUPER_ADMIN only)
+
+#### 15.2: Job Execution Logs (3 tasks)
+- [ ] Create `/dashboard/settings/cron-jobs/logs/page.tsx`
+- [ ] Build job execution logs table
+  - Filters (job name, status, date range)
+  - Execution duration display
+  - Error messages for failed jobs
+  - Affected records count
+  - Retry button for failed jobs
+- [ ] Add job performance metrics (avg duration, success rate)
+
+#### 15.3: Job Configuration (2 tasks)
+- [ ] Create job configuration interface
+- [ ] Build job settings form
+  - Enable/disable job
+  - Schedule editor (cron expression)
+  - Notification settings (alert on failure)
+  - Timeout configuration
+  - Save configuration
+
+**Integration Checklist:**
+- [ ] Add "Cron Jobs" to Settings navigation (admin only)
+- [ ] Create API client functions in `apps/web/src/lib/api/cron.ts`
+- [ ] Add job execution notifications
+- [ ] Link job logs to affected records (e.g., late fees applied)
+
+**Dependencies:**
+- Backend cron module ✅ (100% complete)
+- Settings architecture ✅
+- Permission system (RBAC) ✅
+- Notification system ✅
+
+**Success Criteria:**
+- [ ] Admin can view all scheduled jobs
+- [ ] Admin can manually trigger jobs
+- [ ] Job execution logs visible
+- [ ] Failed jobs can be retried
+- [ ] Job performance metrics displayed
+- [ ] No breaking changes to job execution
+
+---
+
+### Phase 6.7: Notifications Center UI ⚪ NOT STARTED
+
+**Status:** ⚪ Not Started  
+**Priority:** 🟡 MEDIUM (Enhance existing system)  
+**Estimated Time:** 2-3 days  
+**Location:** `apps/web/src/app/dashboard/notifications/` (to be created)  
+**Backend:** `apps/api/src/modules/notifications/` ✅ COMPLETE
+
+**Current State:**
+- Notification bell component exists ✅
+- Notification dropdown works ✅
+- Mark as read/unread ✅
+- No dedicated notifications page ❌
+- No notification preferences UI ❌
+- No notification history/archive ❌
+
+**API Endpoints Ready (6):**
+- `GET /api/notifications` - List notifications
+- `POST /api/notifications` - Create notification
+- `PUT /api/notifications/:id/read` - Mark as read
+- `DELETE /api/notifications/:id` - Delete notification
+- `POST /api/notifications/mark-all-read` - Mark all read
+- `DELETE /api/notifications/delete-all` - Delete all
+
+**Frontend UI Tasks (10 tasks):**
+
+#### 6.7.1: Notifications Center Page (3 tasks)
+- [ ] Create `/dashboard/notifications` folder structure
+- [ ] Build notifications center page
+  - All notifications list (paginated)
+  - Filters (type, read/unread, date range)
+  - Search notifications
+  - Bulk actions (mark all read, delete selected)
+  - Notification grouping by date
+- [ ] Add notification type icons and colors
+
+#### 6.7.2: Notification Preferences (4 tasks)
+- [ ] Create `/dashboard/notifications/settings/page.tsx`
+- [ ] Build notification preferences form
+  - Email notifications toggle (by type)
+  - SMS notifications toggle (by type)
+  - In-app notifications toggle (by type)
+  - Notification frequency (instant, daily digest, weekly)
+  - Quiet hours settings
+- [ ] Add notification type categories
+  - Financial (payments, dues)
+  - Governance (meetings, elections, voting)
+  - Social (welfare, announcements)
+  - System (account, security)
+- [ ] Implement save preferences functionality
+
+#### 6.7.3: Notification History & Archive (3 tasks)
+- [ ] Create `/dashboard/notifications/history/page.tsx`
+- [ ] Build notification archive
+  - All past notifications (90 days)
+  - Advanced filters and search
+  - Export notification log
+  - Notification statistics
+- [ ] Add notification delivery status tracking
+
+**Integration Checklist:**
+- [ ] Add "View All Notifications" link in notification dropdown
+- [ ] Add "Notification Settings" link in user menu
+- [ ] Create API client functions in `apps/web/src/lib/api/notifications.ts`
+- [ ] Link notification items to related pages (transaction, meeting, etc.)
+- [ ] Add notification preferences to onboarding wizard
+
+**Dependencies:**
+- Backend notifications module ✅ (100% complete)
+- NotificationBell component ✅
+- Permission system (RBAC) ✅
+- Member management ✅
+
+**Success Criteria:**
+- [ ] Dedicated notifications page exists
+- [ ] Notification preferences can be configured
+- [ ] Notification history accessible
+- [ ] Bulk actions work properly
+- [ ] All backend endpoints integrated
+- [ ] No breaking changes to existing notification bell
 
 ---
 

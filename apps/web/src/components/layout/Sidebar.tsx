@@ -42,6 +42,7 @@ import {
   IconQuestionMark,
   IconTicket,
   IconPlus,
+  IconClock,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -225,9 +226,10 @@ export function Sidebar() {
           href: '/dashboard/finance/reminders',
         },
         {
-          label: 'Bank Payments',
+          label: 'Payment Management',
           icon: <IconBuildingBank size={18} />,
-          href: '/dashboard/finance/payments/nigerian',
+          href: '/dashboard/payments',
+          permission: PERMISSIONS.PAYMENT_RECORD,
         },
       ],
     },
@@ -312,6 +314,12 @@ export function Sidebar() {
           icon: <IconReceipt size={18} />,
           href: '/dashboard/reports/by-category',
           permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'Export Data',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/exports',
+          permission: PERMISSIONS.REPORT_VIEW,
         },
       ],
     },
@@ -462,26 +470,32 @@ export function Sidebar() {
         {
           label: 'SMS Dashboard',
           icon: <IconMessage size={18} />,
-          href: '/dashboard/communication/sms',
+          href: '/dashboard/communications',
           permission: PERMISSIONS.SMS_VIEW,
+        },
+        {
+          label: 'Quick Send SMS',
+          icon: <IconMessage size={18} />,
+          href: '/dashboard/communications/quick-send',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Campaigns',
           icon: <IconSpeakerphone size={18} />,
-          href: '/dashboard/communication/sms/campaigns',
-          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
+          href: '/dashboard/communications/campaigns',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Templates',
           icon: <IconTemplate size={18} />,
-          href: '/dashboard/communication/sms/templates',
-          permission: PERMISSIONS.SMS_TEMPLATE_MANAGE,
+          href: '/dashboard/communications/templates',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS History',
           icon: <IconHistory size={18} />,
-          href: '/dashboard/communication/sms/history',
-          permission: PERMISSIONS.SMS_VIEW,
+          href: '/dashboard/communications/history',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'Email Campaigns',
@@ -611,6 +625,12 @@ export function Sidebar() {
           icon: <IconHistory size={18} />,
           href: '/dashboard/settings/audit-logs',
           permission: PERMISSIONS.AUDIT_VIEW,
+        },
+        {
+          label: 'Cron Jobs',
+          icon: <IconClock size={18} />,
+          href: '/dashboard/system/cron-jobs',
+          permission: PERMISSIONS.SYSTEM_SETTINGS_MANAGE,
         },
       ],
     },

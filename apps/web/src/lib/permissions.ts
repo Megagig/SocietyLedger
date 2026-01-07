@@ -71,6 +71,34 @@ export const PERMISSIONS = {
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
   
+  // Nigerian Payments Management (Phase 3.6)
+  PAYMENT_RECORD: 'payments.nigerian.record',
+  PAYMENT_VERIFY: 'payments.nigerian.verify',
+  PAYMENT_RECONCILE: 'payments.nigerian.reconcile',
+  PAYMENT_IMPORT: 'payments.nigerian.import',
+  NIGERIAN_PAYMENTS_VIEW: 'payments.nigerian.view',
+  
+  // SMS & Communications (Phase 6.6)
+  SMS_VIEW: 'communication.sms.view',
+  SMS_SEND: 'communication.sms.send',
+  SMS_CAMPAIGN_MANAGE: 'communication.sms.campaign',
+  SMS_TEMPLATE_MANAGE: 'communication.sms.template',
+  SMS_CREDIT_MANAGE: 'settings.billing',
+  
+  // Notifications & Announcements (Phase 6.7)
+  NOTIFICATION_VIEW: 'notifications.view',
+  NOTIFICATION_SEND: 'notifications.send',
+  
+  // Exports Management (Phase 10.5)
+  EXPORT_FINANCIAL: 'exports.financial',
+  EXPORT_MEMBERS: 'exports.members',
+  EXPORT_VIEW_HISTORY: 'exports.view_history',
+  
+  // Cron Jobs & System (Phase 15)
+  CRON_VIEW: 'system.cron.view',
+  CRON_TRIGGER: 'system.cron.trigger',
+  SYSTEM_SETTINGS_MANAGE: 'settings.edit',
+  
   // ============================================
   // LEGACY PERMISSION KEYS (for backward compatibility)
   // ============================================

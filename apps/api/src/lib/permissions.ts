@@ -152,11 +152,32 @@ export const PERMISSIONS = {
   WELFARE_PAYOUT_DISBURSE: 'payments.approve',
   
   // SMS & Bulk Communication
-  SMS_VIEW: 'settings.view',
-  SMS_SEND: 'settings.edit',
-  SMS_CAMPAIGN_MANAGE: 'settings.edit',
-  SMS_TEMPLATE_MANAGE: 'settings.edit',
+  SMS_VIEW: 'communication.sms.view',
+  SMS_SEND: 'communication.sms.send',
+  SMS_CAMPAIGN_MANAGE: 'communication.sms.campaign',
+  SMS_TEMPLATE_MANAGE: 'communication.sms.template',
   SMS_CREDIT_MANAGE: 'settings.billing',
+  
+  // Nigerian Payments Management
+  PAYMENT_RECORD: 'payments.nigerian.record',
+  PAYMENT_VERIFY: 'payments.nigerian.verify',
+  PAYMENT_RECONCILE: 'payments.nigerian.reconcile',
+  PAYMENT_IMPORT: 'payments.nigerian.import',
+  NIGERIAN_PAYMENTS_VIEW: 'payments.nigerian.view',
+  
+  // Notifications & Announcements
+  NOTIFICATION_VIEW: 'notifications.view',
+  NOTIFICATION_SEND: 'notifications.send',
+  
+  // Exports Management
+  EXPORT_FINANCIAL: 'exports.financial',
+  EXPORT_MEMBERS: 'exports.members',
+  EXPORT_VIEW_HISTORY: 'exports.view_history',
+  
+  // Cron Jobs & System
+  CRON_VIEW: 'system.cron.view',
+  CRON_TRIGGER: 'system.cron.trigger',
+  SYSTEM_SETTINGS_MANAGE: 'settings.edit',
   
   // AI Integration
   AI_VIEW: 'reports.generate',
