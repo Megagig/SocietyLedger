@@ -204,6 +204,26 @@ router.get(
 );
 
 /**
+ * Purchase SMS credits via Paystack
+ * POST /api/sms/credits/purchase
+ */
+router.post(
+  '/credits/purchase',
+  requirePermission(PERMISSIONS.SMS_SEND),
+  smsController.purchaseCredits
+);
+
+/**
+ * Verify SMS credits purchase
+ * GET /api/sms/credits/verify/:reference
+ */
+router.get(
+  '/credits/verify/:reference',
+  requirePermission(PERMISSIONS.SMS_SEND),
+  smsController.verifyPurchase
+);
+
+/**
  * Top up SMS credits
  * POST /api/sms/credits/topup
  */

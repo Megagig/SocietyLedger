@@ -88,24 +88,76 @@ export default function SMSCreditsPage() {
   };
 
   const handlePurchase = async (packageId: string) => {
+    const selectedPkg = CREDIT_PACKAGES.find(p => p.id === packageId);
+    if (!selectedPkg) return;
+
     setLoading(true);
-    // TODO: Implement payment integration
-    console.log('Purchasing package:', packageId);
-    setTimeout(() => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/sms/credits/purchase`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            credits: selectedPkg.credits + selectedPkg.bonus,
+            packageId: selectedPkg.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initialize payment');
+      }
+
+      // Redirect to Paystack checkout
+      window.location.href = data.data.authorizationUrl;
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      alert(error.message || 'Failed to initialize payment');
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const handleCustomPurchase = async () => {
     if (!customAmount || customAmount < 50) {
       return;
     }
+    
     setLoading(true);
-    // TODO: Implement custom amount payment
-    console.log('Purchasing custom amount:', customAmount);
-    setTimeout(() => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/sms/credits/purchase`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            credits: customAmount,
+            packageId: 'custom',
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initialize payment');
+      }
+
+      // Redirect to Paystack checkout
+      window.location.href = data.data.authorizationUrl;
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      alert(error.message || 'Failed to initialize payment');
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
