@@ -6,6 +6,8 @@ import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import { modals } from '@mantine/modals';
+import { Text } from '@mantine/core';
 
 type TenantStatus = {
   id: number;
@@ -232,43 +234,57 @@ export default function TenantDetailPage() {
   };
 
   const handleRemoveFeatureOverride = async (featureCode: string) => {
-    if (!confirm('Remove override and revert to plan default?')) return;
-    try {
-      const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_FEATURE_REMOVE(tenantId, featureCode), {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('Feature override removed');
-        fetchData();
-      } else {
-        toast.error(data.message || 'Failed to remove override');
-      }
-    } catch (e) {
-      toast.error('Failed to remove override');
-    }
+    modals.openConfirmModal({
+      title: 'Remove Feature Override',
+      children: <Text size="sm">Remove override and revert to plan default?</Text>,
+      labels: { confirm: 'Remove', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_FEATURE_REMOVE(tenantId, featureCode), {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          });
+          const data = await res.json();
+          if (data.success) {
+            toast.success('Feature override removed');
+            fetchData();
+          } else {
+            toast.error(data.message || 'Failed to remove override');
+          }
+        } catch (e) {
+          toast.error('Failed to remove override');
+        }
+      },
+    });
   };
 
   const handleRemoveOverride = async (moduleCode: string) => {
-    if (!confirm('Remove override and revert to plan default?')) return;
-    try {
-      const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_MODULE_REMOVE(tenantId, moduleCode), {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('Override removed');
-        fetchData();
-      } else {
-        toast.error(data.message || 'Failed to remove override');
-      }
-    } catch (e) {
-      toast.error('Failed to remove override');
-    }
+    modals.openConfirmModal({
+      title: 'Remove Module Override',
+      children: <Text size="sm">Remove override and revert to plan default?</Text>,
+      labels: { confirm: 'Remove', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_MODULE_REMOVE(tenantId, moduleCode), {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          });
+          const data = await res.json();
+          if (data.success) {
+            toast.success('Module override removed');
+            fetchData();
+          } else {
+            toast.error(data.message || 'Failed to remove override');
+          }
+        } catch (e) {
+          toast.error('Failed to remove override');
+        }
+      },
+    });
   };
 
   const handleBillingAction = async (action: string, formData: { days?: number; amount?: number; reason: string; endDate?: string; discountPercent?: number }) => {
@@ -356,31 +372,61 @@ export default function TenantDetailPage() {
 
   const handleSecurityUpdate = async () => {
     if (!tenantStatus || !securitySettings) return;
-    const force2FA = confirm('Enforce 2FA for all users?');
+    
     const sessionTimeout = prompt('Session timeout (minutes):', String(securitySettings.sessionTimeoutMinutes || 60));
     if (!sessionTimeout) return;
 
-    try {
-      const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_SECURITY(tenantId), {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          force2FA,
-          sessionTimeoutMinutes: Number(sessionTimeout),
-          reason: 'Security settings update',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('Security settings updated');
-        fetchData();
-      } else {
-        toast.error(data.message || 'Failed to update security settings');
-      }
-    } catch (e) {
-      toast.error('Failed to update security settings');
-    }
+    modals.openConfirmModal({
+      title: 'Enforce 2FA',
+      children: <Text size="sm">Enforce 2FA for all users?</Text>,
+      labels: { confirm: 'Yes', cancel: 'No' },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_SECURITY(tenantId), {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              force2FA: true,
+              sessionTimeoutMinutes: Number(sessionTimeout),
+              reason: 'Security settings update',
+            }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            toast.success('Security settings updated');
+            fetchData();
+          } else {
+            toast.error(data.message || 'Failed to update security settings');
+          }
+        } catch (e) {
+          toast.error('Failed to update security settings');
+        }
+      },
+      onCancel: async () => {
+        try {
+          const res = await fetch(API_ROUTES.PLATFORM_ADMIN.TENANT_SECURITY(tenantId), {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              force2FA: false,
+              sessionTimeoutMinutes: Number(sessionTimeout),
+              reason: 'Security settings update',
+            }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            toast.success('Security settings updated');
+            fetchData();
+          } else {
+            toast.error(data.message || 'Failed to update security settings');
+          }
+        } catch (e) {
+          toast.error('Failed to update security settings');
+        }
+      },
+    });
   };
 
   const handlePermanentDelete = async (confirmationToken: string, reason: string) => {

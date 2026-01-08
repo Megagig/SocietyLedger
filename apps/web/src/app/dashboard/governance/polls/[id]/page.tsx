@@ -27,6 +27,8 @@ import {
   PollStatus
 } from '@/lib/api/voting';
 import { toast } from '@/lib/toast';
+import { modals } from '@mantine/modals';
+import { Text } from '@mantine/core';
 
 // Helper functions
 const formatDateTime = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -210,9 +212,15 @@ export default function PollDetailPage() {
           {!['CANCELLED', 'CLOSED'].includes(poll.status) && (
             <button
               onClick={() => {
-                if (confirm('Are you sure you want to cancel this poll?')) {
-                  cancelPollMutation.mutate();
-                }
+                modals.openConfirmModal({
+                  title: 'Cancel Poll',
+                  children: <Text size="sm">Are you sure you want to cancel this poll?</Text>,
+                  labels: { confirm: 'Cancel Poll', cancel: 'Go Back' },
+                  confirmProps: { color: 'red' },
+                  onConfirm: () => {
+                    cancelPollMutation.mutate();
+                  },
+                });
               }}
               disabled={cancelPollMutation.isPending}
               className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"

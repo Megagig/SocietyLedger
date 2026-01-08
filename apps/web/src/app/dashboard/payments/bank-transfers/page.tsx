@@ -39,6 +39,7 @@ import {
   type BankTransfer,
 } from '@/lib/api/nigerian-payments';
 import { notifications } from '@mantine/notifications';
+import { modals } from '@mantine/modals';
 
 export default function BankTransfersPage() {
   const router = useRouter();
@@ -90,23 +91,30 @@ export default function BankTransfersPage() {
 
   const handleVerify = async (id: number, status: 'VERIFIED' | 'REJECTED') => {
     const message = status === 'VERIFIED' ? 'verify' : 'reject';
-    if (!confirm(`Are you sure you want to ${message} this transfer?`)) return;
-
-    try {
-      await verifyBankTransfer(id, { status });
-      notifications.show({
-        title: 'Success',
-        message: `Transfer ${status.toLowerCase()} successfully`,
-        color: 'green',
-      });
-      loadTransfers();
-    } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.response?.data?.message || `Failed to ${message} transfer`,
-        color: 'red',
-      });
-    }
+    
+    modals.openConfirmModal({
+      title: `Confirm ${status === 'VERIFIED' ? 'Verification' : 'Rejection'}`,
+      children: <Text size="sm">Are you sure you want to {message} this transfer?</Text>,
+      labels: { confirm: 'Confirm', cancel: 'Cancel' },
+      confirmProps: { color: status === 'REJECTED' ? 'red' : 'green' },
+      onConfirm: async () => {
+        try {
+          await verifyBankTransfer(id, { status });
+          notifications.show({
+            title: 'Success',
+            message: `Transfer ${status.toLowerCase()} successfully`,
+            color: 'green',
+          });
+          loadTransfers();
+        } catch (error: any) {
+          notifications.show({
+            title: 'Error',
+            message: error.response?.data?.message || `Failed to ${message} transfer`,
+            color: 'red',
+          });
+        }
+      },
+    });
   };
 
   const formatCurrency = (amount: string | number) => {

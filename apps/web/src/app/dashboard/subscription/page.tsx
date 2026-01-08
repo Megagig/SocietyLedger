@@ -6,6 +6,8 @@ import { SubscriptionWithPlan } from '@/types/subscription';
 import { CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { getTenantHeaders } from '@/utils/tenant';
 import { toast } from '@/lib/toast';
+import { modals } from '@mantine/modals';
+import { Text } from '@mantine/core';
 
 export default function SubscriptionPage() {
   const router = useRouter();
@@ -47,34 +49,38 @@ export default function SubscriptionPage() {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription? It will remain active until the end of the current billing period.')) {
-      return;
-    }
+    modals.openConfirmModal({
+      title: 'Cancel Subscription',
+      children: <Text size="sm">Are you sure you want to cancel your subscription? It will remain active until the end of the current billing period.</Text>,
+      labels: { confirm: 'Cancel Subscription', cancel: 'Keep Subscription' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions/cancel`,
+            {
+              method: 'POST',
+              credentials: 'include',
+              headers: getTenantHeaders(),
+            }
+          );
 
-    setActionLoading(true);
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions/cancel`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: getTenantHeaders(),
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            toast.success('Subscription cancelled successfully');
+            fetchSubscription();
+          } else {
+            throw new Error(data.message || 'Failed to cancel subscription');
+          }
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to cancel subscription');
+        } finally {
+          setActionLoading(false);
         }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast.success('Subscription cancelled successfully');
-        fetchSubscription();
-      } else {
-        throw new Error(data.message || 'Failed to cancel subscription');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to cancel subscription');
-    } finally {
-      setActionLoading(false);
-    }
+      },
+    });
   };
 
   const handleReactivateSubscription = async () => {

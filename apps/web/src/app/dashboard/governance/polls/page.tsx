@@ -18,6 +18,8 @@ import {
 } from '@tabler/icons-react';
 import { getPolls, deletePoll, Poll, PollStatus, PollType } from '@/lib/api/voting';
 import { toast } from '@/lib/toast';
+import { modals } from '@mantine/modals';
+import { Text } from '@mantine/core';
 
 // Helper functions
 const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -87,9 +89,15 @@ export default function PollsListPage() {
   });
 
   const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this poll? This action cannot be undone.')) {
-      deleteMutation.mutate(id);
-    }
+    modals.openConfirmModal({
+      title: 'Delete Poll',
+      children: <Text size="sm">Are you sure you want to delete this poll? This action cannot be undone.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        deleteMutation.mutate(id);
+      },
+    });
     setOpenMenu(null);
   };
 

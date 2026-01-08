@@ -23,6 +23,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { modals } from '@mantine/modals';
 import {
   Plus,
   Edit,
@@ -150,23 +151,29 @@ export default function BankAccountsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this bank account?')) return;
-
-    try {
-      await deleteBankAccount(id);
-      notifications.show({
-        title: 'Success',
-        message: 'Bank account deleted successfully',
-        color: 'green',
-      });
-      loadData();
-    } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.response?.data?.message || 'Failed to delete bank account',
-        color: 'red',
-      });
-    }
+    modals.openConfirmModal({
+      title: 'Delete Bank Account',
+      children: <Text size="sm">Are you sure you want to delete this bank account? This action cannot be undone.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await deleteBankAccount(id);
+          notifications.show({
+            title: 'Success',
+            message: 'Bank account deleted successfully',
+            color: 'green',
+          });
+          loadData();
+        } catch (error: any) {
+          notifications.show({
+            title: 'Error',
+            message: error.response?.data?.message || 'Failed to delete bank account',
+            color: 'red',
+          });
+        }
+      },
+    });
   };
 
   const handleSetDefault = async (account: BankAccount) => {

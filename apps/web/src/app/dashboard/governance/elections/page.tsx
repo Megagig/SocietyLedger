@@ -21,6 +21,8 @@ import {
 } from '@tabler/icons-react';
 import { getElections, deleteElection, Election, ElectionStatus, ElectionType } from '@/lib/api/voting';
 import { toast } from '@/lib/toast';
+import { modals } from '@mantine/modals';
+import { Text } from '@mantine/core';
 
 // Helper functions
 const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -93,9 +95,15 @@ export default function ElectionsListPage() {
   });
 
   const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this election? This action cannot be undone.')) {
-      deleteMutation.mutate(id);
-    }
+    modals.openConfirmModal({
+      title: 'Delete Election',
+      children: <Text size="sm">Are you sure you want to delete this election? This action cannot be undone.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        deleteMutation.mutate(id);
+      },
+    });
     setOpenMenu(null);
   };
 

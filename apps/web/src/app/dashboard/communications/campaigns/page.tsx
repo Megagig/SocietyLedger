@@ -22,6 +22,7 @@ import {
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+import { modals } from '@mantine/modals';
 import {
   Plus,
   Search,
@@ -118,23 +119,29 @@ export default function CampaignsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this campaign?')) return;
-
-    try {
-      await deleteSMSCampaign(id);
-      notifications.show({
-        title: 'Campaign Deleted',
-        message: 'The campaign has been deleted',
-        color: 'green',
-      });
-      loadCampaigns();
-    } catch (err: any) {
-      notifications.show({
-        title: 'Error',
-        message: err.message || 'Failed to delete campaign',
-        color: 'red',
-      });
-    }
+    modals.openConfirmModal({
+      title: 'Delete Campaign',
+      children: <Text size="sm">Are you sure you want to delete this campaign?</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await deleteSMSCampaign(id);
+          notifications.show({
+            title: 'Campaign Deleted',
+            message: 'The campaign has been deleted',
+            color: 'green',
+          });
+          loadCampaigns();
+        } catch (err: any) {
+          notifications.show({
+            title: 'Error',
+            message: err.message || 'Failed to delete campaign',
+            color: 'red',
+          });
+        }
+      },
+    });
   };
 
   const getStatusColor = (status: string) => {

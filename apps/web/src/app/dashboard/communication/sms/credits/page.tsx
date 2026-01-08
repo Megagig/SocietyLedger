@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
+import { notifications } from '@mantine/notifications';
 
 interface CreditPackage {
   id: string;

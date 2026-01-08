@@ -28,7 +28,7 @@ import {
   uploadPaymentProof,
   type BankAccount,
 } from '@/lib/api/nigerian-payments';
-import { apiGet } from '@/lib/axios';
+import api from '@/lib/axios';
 import { notifications } from '@mantine/notifications';
 
 interface Member {
@@ -75,7 +75,7 @@ export default function RecordTransferPage() {
     try {
       const [accountsRes, membersRes] = await Promise.all([
         getBankAccounts(true),
-        apiGet('/members', { params: { limit: 1000 } }),
+        api.get('/members', { params: { limit: 1000 } }),
       ]);
       setBankAccounts(accountsRes.data?.bankAccounts || []);
       setMembers(membersRes.data?.members || []);

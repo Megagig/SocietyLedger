@@ -21,6 +21,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { modals } from '@mantine/modals';
 import {
   Plus,
   Search,
@@ -142,23 +143,29 @@ export default function TemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
-
-    try {
-      await deleteSMSTemplate(id);
-      notifications.show({
-        title: 'Template Deleted',
-        message: 'The template has been deleted',
-        color: 'green',
-      });
-      loadTemplates();
-    } catch (err: any) {
-      notifications.show({
-        title: 'Error',
-        message: err.message || 'Failed to delete template',
-        color: 'red',
-      });
-    }
+    modals.openConfirmModal({
+      title: 'Delete Template',
+      children: <Text size="sm">Are you sure you want to delete this template?</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await deleteSMSTemplate(id);
+          notifications.show({
+            title: 'Template Deleted',
+            message: 'The template has been deleted',
+            color: 'green',
+          });
+          loadTemplates();
+        } catch (err: any) {
+          notifications.show({
+            title: 'Error',
+            message: err.message || 'Failed to delete template',
+            color: 'red',
+          });
+        }
+      },
+    });
   };
 
   return (
