@@ -177,7 +177,6 @@ export const PERMISSIONS = {
   // Cron Jobs & System
   CRON_VIEW: 'system.cron.view',
   CRON_TRIGGER: 'system.cron.trigger',
-  SYSTEM_SETTINGS_MANAGE: 'settings.edit',
   
   // AI Integration
   AI_VIEW: 'reports.generate',

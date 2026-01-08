@@ -8,6 +8,7 @@ import {
   Stack,
   Table,
   Badge,
+  Button,
   Group,
   TextInput,
   Select,
@@ -46,7 +47,6 @@ export default function HistoryPage() {
       const res = await getSMSMessages({
         page,
         limit: 20,
-        search: debounced || undefined,
         status: status || undefined,
         startDate: startDate?.toISOString(),
         endDate: endDate?.toISOString(),
@@ -188,8 +188,8 @@ export default function HistoryPage() {
                         </Text>
                       </Table.Td>
                       <Table.Td>
-                        {message.campaignName ? (
-                          <Text size="sm">{message.campaignName}</Text>
+                        {message.campaign?.name ? (
+                          <Text size="sm">{message.campaign.name}</Text>
                         ) : (
                           <Text size="sm" c="dimmed">
                             Quick Send
@@ -275,12 +275,12 @@ export default function HistoryPage() {
                 </Text>
               </div>
 
-              {selectedMessage.campaignName && (
+              {selectedMessage.campaign?.name && (
                 <div>
                   <Text size="sm" c="dimmed">
                     Campaign
                   </Text>
-                  <Text size="sm">{selectedMessage.campaignName}</Text>
+                  <Text size="sm">{selectedMessage.campaign.name}</Text>
                 </div>
               )}
 
@@ -320,22 +320,22 @@ export default function HistoryPage() {
                 </div>
               )}
 
-              {selectedMessage.failureReason && (
+              {selectedMessage.errorMessage && (
                 <Alert icon={<AlertCircle size={16} />} color="red">
                   <Text size="sm" fw={500}>
                     Failure Reason
                   </Text>
-                  <Text size="sm">{selectedMessage.failureReason}</Text>
+                  <Text size="sm">{selectedMessage.errorMessage}</Text>
                 </Alert>
               )}
 
-              {selectedMessage.externalId && (
+              {selectedMessage.termiiMessageId && (
                 <div>
                   <Text size="sm" c="dimmed">
                     External ID
                   </Text>
                   <Text size="xs" style={{ fontFamily: 'monospace' }}>
-                    {selectedMessage.externalId}
+                    {selectedMessage.termiiMessageId}
                   </Text>
                 </div>
               )}

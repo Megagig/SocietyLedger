@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -65,16 +65,11 @@ export default function NewCampaignPage() {
           ? 'Message too long (max 160 characters)'
           : null,
       templateId: (value) => (useTemplate && !value ? 'Please select a template' : null),
-      scheduledAt: (value) =>
-        form.values.scheduleType === 'scheduled' && !value
+      scheduledAt: (value, values) =>
+        values.scheduleType === 'scheduled' && !value
           ? 'Please select a date and time'
           : null,
     },
-  });
-
-  useState(() => {
-    loadTemplates();
-    loadBalance();
   });
 
   const loadTemplates = async () => {
@@ -95,8 +90,13 @@ export default function NewCampaignPage() {
     }
   };
 
+  useEffect(() => {
+    loadTemplates();
+    loadBalance();
+  }, []);
+
   const handleTemplateChange = (templateId: string) => {
-    const template = templates.find((t) => t.id === templateId);
+    const template = templates.find((t) => t.id.toString() === templateId);
     if (template) {
       form.setFieldValue('message', template.content);
     }
@@ -106,28 +106,27 @@ export default function NewCampaignPage() {
     try {
       setLoading(true);
 
-      // Build recipient filter
-      const filter: RecipientFilter = {};
+      // Determine recipient type and build filter
+      let recipientType = 'ALL_MEMBERS';
+      const recipientFilter: RecipientFilter = {};
+      
       if (values.sendToAll) {
-        filter.sendToAll = true;
-      }
-      if (values.memberType.length > 0) {
-        filter.memberType = values.memberType as any;
+        recipientType = 'ALL_MEMBERS';
+      } else if (values.memberType.length > 0) {
+        recipientType = 'MEMBER_CATEGORY';
+        recipientFilter.categories = values.memberType;
       }
       if (values.groups.length > 0) {
-        filter.groups = values.groups;
-      }
-      if (values.tags.length > 0) {
-        filter.tags = values.tags;
+        recipientFilter.statuses = values.groups;
       }
 
       // Create campaign
       const payload: any = {
         name: values.name,
-        description: values.description || undefined,
         message: useTemplate ? undefined : values.message,
-        templateId: useTemplate ? values.templateId : undefined,
-        filter,
+        templateId: useTemplate ? parseInt(values.templateId, 10) : undefined,
+        recipientType,
+        recipientFilter: Object.keys(recipientFilter).length > 0 ? recipientFilter : undefined,
       };
 
       if (values.scheduleType === 'scheduled' && values.scheduledAt) {
@@ -227,7 +226,7 @@ export default function NewCampaignPage() {
                 <Select
                   label="Select Template"
                   placeholder="Choose a template"
-                  data={templates.map((t) => ({ value: t.id, label: t.name }))}
+                  data={templates.map((t) => ({ value: t.id.toString(), label: t.name }))}
                   {...form.getInputProps('templateId')}
                   onChange={(value) => {
                     form.setFieldValue('templateId', value || '');

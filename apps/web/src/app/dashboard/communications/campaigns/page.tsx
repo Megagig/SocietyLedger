@@ -65,7 +65,6 @@ export default function CampaignsPage() {
       const res = await getSMSCampaigns({
         page,
         limit: 10,
-        search: debounced || undefined,
         status: status || undefined,
       });
       setCampaigns(res.data.campaigns);
@@ -82,7 +81,7 @@ export default function CampaignsPage() {
     }
   };
 
-  const handleStart = async (id: string) => {
+  const handleStart = async (id: number) => {
     try {
       await startSMSCampaign(id);
       notifications.show({
@@ -100,7 +99,7 @@ export default function CampaignsPage() {
     }
   };
 
-  const handleCancel = async (id: string) => {
+  const handleCancel = async (id: number) => {
     try {
       await cancelSMSCampaign(id);
       notifications.show({
@@ -118,7 +117,7 @@ export default function CampaignsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     modals.openConfirmModal({
       title: 'Delete Campaign',
       children: <Text size="sm">Are you sure you want to delete this campaign?</Text>,
@@ -244,11 +243,6 @@ export default function CampaignsPage() {
                         <Text size="sm" fw={500}>
                           {campaign.name}
                         </Text>
-                        {campaign.description && (
-                          <Text size="xs" c="dimmed" lineClamp={1}>
-                            {campaign.description}
-                          </Text>
-                        )}
                       </div>
                     </Table.Td>
                     <Table.Td>
@@ -364,15 +358,6 @@ export default function CampaignsPage() {
                   {selectedCampaign.name}
                 </Text>
               </div>
-
-              {selectedCampaign.description && (
-                <div>
-                  <Text size="sm" c="dimmed">
-                    Description
-                  </Text>
-                  <Text size="sm">{selectedCampaign.description}</Text>
-                </div>
-              )}
 
               <div>
                 <Text size="sm" c="dimmed">

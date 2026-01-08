@@ -926,33 +926,30 @@ cd apps/web && npm run dev
 2. Review available packages
 
 **Expected Results:**
-- ✅ Page shows pricing info (₦50 per SMS)
-- ✅ 5 package options display:
-  - Starter: 100 credits = ₦5,000
-  - Basic: 500 credits + 50 bonus = ₦22,500 (10% savings)
-  - Standard: 1,000 credits + 150 bonus = ₦40,000 (15% savings) - POPULAR
-  - Premium: 2,500 credits + 500 bonus = ₦93,750 (20% savings)
-  - Enterprise: 5,000 credits + 1,250 bonus = ₦175,000 (25% savings)
-- ✅ Bonus credits highlighted
+- ✅ Page shows pricing info (₦7 per SMS, minimum 100 credits)
+- ✅ 5 package options display (no bonuses, flat ₦7/credit rate):
+  - Starter: 100 credits = ₦700
+  - Basic: 500 credits = ₦3,500
+  - Standard: 1,000 credits = ₦7,000 - POPULAR
+  - Premium: 2,500 credits = ₦17,500
+  - Enterprise: 5,000 credits = ₦35,000
 - ✅ "Most Popular" badge on Standard
-- ✅ Savings percentages shown
 
 **Test Cases:**
 - [ ] All 5 packages display
-- [ ] Prices correct
-- [ ] Bonus amounts correct
-- [ ] Savings percentages accurate
-- [ ] Popular badge shows
+- [ ] Prices correct (₦7 × credits)
+- [ ] No bonus credits shown
+- [ ] Popular badge shows on Standard
 
 #### Test 12.6.2: Purchase with Package
 **Steps:**
-1. Click "Purchase" on "Starter" package (100 credits = ₦5,000)
+1. Click "Purchase" on "Starter" package (100 credits = ₦700)
 2. Wait for Paystack redirect
 
 **Expected Results:**
 - ✅ Loading spinner appears
 - ✅ Redirects to Paystack checkout page
-- ✅ Amount shows ₦5,000
+- ✅ Amount shows ₦700
 - ✅ Merchant shows as your platform
 
 **Test Cases:**
@@ -976,7 +973,7 @@ cd apps/web && npm run dev
 - ✅ Redirects to `/dashboard/communication/sms/credits/verify`
 - ✅ Verification page shows success
 - ✅ Credits added message displays
-- ✅ Shows credits added (100), amount paid (₦5,000), reference
+- ✅ Shows credits added (100), amount paid (₦700), reference
 
 **Test Cases:**
 - [ ] Payment completes successfully
@@ -1005,20 +1002,20 @@ cd apps/web && npm run dev
 1. Navigate to credits page
 2. Scroll to "Custom Amount" section
 3. Enter 200 credits
-4. Note total: ₦10,000 (200 × ₦50)
+4. Note total: ₦1,400 (200 × ₦7)
 5. Click "Purchase 200 Credits"
 6. Complete Paystack payment
 
 **Expected Results:**
 - ✅ Custom amount input works
-- ✅ Minimum 50 credits enforced
-- ✅ Total calculates correctly
+- ✅ Minimum 100 credits enforced
+- ✅ Total calculates correctly at ₦7/credit
 - ✅ Payment processes
 - ✅ Credits added
 
 **Test Cases:**
 - [ ] Can enter custom amount
-- [ ] Cannot enter < 50
+- [ ] Cannot enter < 100
 - [ ] Total updates dynamically
 - [ ] Payment works
 - [ ] Correct credits added

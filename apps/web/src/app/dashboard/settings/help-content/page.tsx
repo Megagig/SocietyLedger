@@ -15,7 +15,7 @@ import {
   IconStarFilled,
   IconSearch,
 } from '@tabler/icons-react';
-import { Modal, TextInput, Textarea, Select, MultiSelect, Switch, Button } from '@mantine/core';
+import { Modal, TextInput, Textarea, Select, MultiSelect, Switch, Button, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';

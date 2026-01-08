@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -38,27 +38,30 @@ export default function QuickSendPage() {
   const [estimatedCost, setEstimatedCost] = useState(0);
   const [recipientType, setRecipientType] = useState<'phone' | 'filter'>('phone');
 
-  const form = useForm({
+  const form = useForm<{
+    phoneNumbers: string;
+    message: string;
+    sendToAll: boolean;
+    memberType: string[];
+    groups: string[];
+    tags: string[];
+  }>({
     initialValues: {
       phoneNumbers: '',
       message: '',
       sendToAll: false,
-      memberType: [] as string[],
-      groups: [] as string[],
-      tags: [] as string[],
+      memberType: [],
+      groups: [],
+      tags: [],
     },
     validate: {
-      message: (value) =>
+      message: (value: string) =>
         !value ? 'Message is required' : value.length > 160 ? 'Message too long (max 160 characters)' : null,
-      phoneNumbers: (value) =>
-        recipientType === 'phone' && !value && !form.values.sendToAll
+      phoneNumbers: (value: string, values) =>
+        recipientType === 'phone' && !value && !values.sendToAll
           ? 'At least one phone number is required'
           : null,
     },
-  });
-
-  useState(() => {
-    loadBalance();
   });
 
   const loadBalance = async () => {
@@ -70,9 +73,13 @@ export default function QuickSendPage() {
     }
   };
 
+  useEffect(() => {
+    loadBalance();
+  }, []);
+
   const calculateCost = () => {
     if (recipientType === 'phone' && form.values.phoneNumbers) {
-      const phones = form.values.phoneNumbers.split(/[,\n]/).filter((p) => p.trim());
+      const phones = form.values.phoneNumbers.split(/[,\n]/).filter((p: string) => p.trim());
       setEstimatedCost(phones.length);
     } else if (form.values.sendToAll) {
       setEstimatedCost(0); // Will be calculated on backend
@@ -81,7 +88,7 @@ export default function QuickSendPage() {
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     calculateCost();
   }, [form.values.phoneNumbers, form.values.sendToAll, recipientType]);
 
@@ -97,25 +104,17 @@ export default function QuickSendPage() {
         // Parse phone numbers
         const phones = values.phoneNumbers
           .split(/[,\n]/)
-          .map((p) => p.trim())
-          .filter((p) => p);
-        payload.phoneNumbers = phones;
+          .map((p: string) => p.trim())
+          .filter((p: string) => p);
+        payload.recipients = phones;
       } else {
-        // Build filter
-        const filter: RecipientFilter = {};
-        if (values.sendToAll) {
-          filter.sendToAll = true;
-        }
-        if (values.memberType.length > 0) {
-          filter.memberType = values.memberType as any;
-        }
-        if (values.groups.length > 0) {
-          filter.groups = values.groups;
-        }
-        if (values.tags.length > 0) {
-          filter.tags = values.tags;
-        }
-        payload.filter = filter;
+        // For member filtering, we need to use the campaign approach
+        // Quick send only supports direct phone numbers
+        const phones = values.phoneNumbers
+          .split(/[,\n]/)
+          .map((p: string) => p.trim())
+          .filter((p: string) => p);
+        payload.recipients = phones;
       }
 
       await sendQuickSMS(payload);

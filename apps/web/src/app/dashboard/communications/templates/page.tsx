@@ -55,7 +55,8 @@ export default function TemplatesPage() {
     initialValues: {
       name: '',
       content: '',
-      variables: [] as string[],
+      category: 'GENERAL',
+      placeholders: [] as string[],
     },
     validate: {
       name: (value) => (!value ? 'Template name is required' : null),
@@ -78,7 +79,6 @@ export default function TemplatesPage() {
       const res = await getSMSTemplates({
         page,
         limit: 10,
-        search: search || undefined,
       });
       setTemplates(res.data.templates);
       setTotal(res.data.total);
@@ -100,7 +100,8 @@ export default function TemplatesPage() {
       form.setValues({
         name: template.name,
         content: template.content,
-        variables: template.variables || [],
+        category: template.category,
+        placeholders: template.placeholders || [],
       });
     } else {
       setEditingTemplate(null);
@@ -142,7 +143,7 @@ export default function TemplatesPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     modals.openConfirmModal({
       title: 'Delete Template',
       children: <Text size="sm">Are you sure you want to delete this template?</Text>,
@@ -229,11 +230,11 @@ export default function TemplatesPage() {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      {template.variables && template.variables.length > 0 ? (
+                      {template.placeholders && template.placeholders.length > 0 ? (
                         <Group gap="xs">
-                          {template.variables.map((variable, index) => (
+                          {template.placeholders.map((placeholder: string, index: number) => (
                             <Badge key={index} size="sm" variant="light">
-                              {variable}
+                              {placeholder}
                             </Badge>
                           ))}
                         </Group>

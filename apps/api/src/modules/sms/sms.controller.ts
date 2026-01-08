@@ -615,15 +615,15 @@ export const smsController = {
 
       const { credits, packageId } = req.body;
 
-      if (!credits || credits < 50) {
+      if (!credits || credits < 100) {
         return res.status(400).json({
           success: false,
-          message: 'Minimum 50 credits required',
+          message: 'Minimum 100 credits required',
         });
       }
 
-      // Calculate amount (₦50 per credit)
-      const pricePerCredit = 50;
+      // Calculate amount (₦7 per credit - flat rate, no discounts)
+      const pricePerCredit = 7;
       const amount = credits * pricePerCredit;
 
       // Import PaystackService dynamically
@@ -635,10 +635,18 @@ export const smsController = {
       // Convert amount to kobo
       const amountInKobo = PaystackService.nairaToKobo(amount);
 
-      // Get user email
+      // Get user email and name (firstName/lastName are on Member model)
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { email: true, firstName: true, lastName: true },
+        select: { 
+          email: true, 
+          member: {
+            select: {
+              firstName: true,
+              lastName: true,
+            }
+          }
+        },
       });
 
       if (!user || !user.email) {
@@ -647,6 +655,11 @@ export const smsController = {
           message: 'User email is required for payment',
         });
       }
+
+      // Get user name from member or fallback to email
+      const userName = user.member 
+        ? `${user.member.firstName} ${user.member.lastName}` 
+        : user.email;
 
       // Get association details
       const association = await prisma.association.findUnique({
@@ -664,7 +677,7 @@ export const smsController = {
         metadata: {
           associationId,
           userId,
-          userName: `${user.firstName} ${user.lastName}`,
+          userName,
           associationName: association?.name,
           credits,
           packageId,

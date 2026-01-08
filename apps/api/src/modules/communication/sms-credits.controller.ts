@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 // Validation schema
 const purchaseCreditsSchema = z.object({
-  credits: z.number().int().positive().min(50, 'Minimum 50 credits required'),
+  credits: z.number().int().positive().min(100, 'Minimum 100 credits required'),
   packageId: z.string().optional(),
 });
 
@@ -28,8 +28,8 @@ export const smsCreditsController = {
 
       const validatedData = purchaseCreditsSchema.parse(req.body);
 
-      // Calculate amount (₦50 per credit)
-      const pricePerCredit = 50;
+      // Calculate amount (₦7 per credit - flat rate, no discounts)
+      const pricePerCredit = 7;
       const amount = validatedData.credits * pricePerCredit;
 
       // Generate unique reference
@@ -38,10 +38,18 @@ export const smsCreditsController = {
       // Convert amount to kobo
       const amountInKobo = PaystackService.nairaToKobo(amount);
 
-      // Get user email
+      // Get user email and name (firstName/lastName are on Member model)
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { email: true, firstName: true, lastName: true },
+        select: { 
+          email: true, 
+          member: {
+            select: {
+              firstName: true,
+              lastName: true,
+            }
+          }
+        },
       });
 
       if (!user || !user.email) {
@@ -50,6 +58,11 @@ export const smsCreditsController = {
           message: 'User email is required for payment',
         });
       }
+
+      // Get user name from member or fallback to email
+      const userName = user.member 
+        ? `${user.member.firstName} ${user.member.lastName}` 
+        : user.email;
 
       // Get association details
       const association = await prisma.association.findUnique({
@@ -67,7 +80,7 @@ export const smsCreditsController = {
         metadata: {
           associationId,
           userId,
-          userName: `${user.firstName} ${user.lastName}`,
+          userName,
           associationName: association?.name,
           credits: validatedData.credits,
           packageId: validatedData.packageId,

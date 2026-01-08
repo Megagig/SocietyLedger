@@ -20,6 +20,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { Send, AlertCircle } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { notificationsApi } from '@/lib/api/notifications';
 
 export default function CreateAnnouncementPage() {
@@ -66,7 +67,7 @@ export default function CreateAnnouncementPage() {
 
   return (
     <Can
-      permission="NOTIFICATION_SEND"
+      permission={PERMISSIONS.NOTIFICATION_SEND}
       fallback={<Alert color="red">You don't have permission to create announcements</Alert>}
     >
       <Stack gap="lg">

@@ -31,46 +31,39 @@ interface CreditPackage {
   id: string;
   credits: number;
   price: number;
-  bonus: number;
   popular?: boolean;
-  savings?: string;
 }
+
+// SMS Credit Pricing: ₦7 per credit (no discounts, no bonuses)
+const PRICE_PER_CREDIT = 7;
+const MINIMUM_CREDITS = 100;
 
 const CREDIT_PACKAGES: CreditPackage[] = [
   {
     id: 'starter',
     credits: 100,
-    price: 5000,
-    bonus: 0,
+    price: 700, // 100 × ₦7
   },
   {
     id: 'basic',
     credits: 500,
-    price: 22500,
-    bonus: 50,
-    savings: '10%',
+    price: 3500, // 500 × ₦7
   },
   {
     id: 'standard',
     credits: 1000,
-    price: 40000,
-    bonus: 150,
+    price: 7000, // 1,000 × ₦7
     popular: true,
-    savings: '15%',
   },
   {
     id: 'premium',
     credits: 2500,
-    price: 93750,
-    bonus: 500,
-    savings: '20%',
+    price: 17500, // 2,500 × ₦7
   },
   {
     id: 'enterprise',
     credits: 5000,
-    price: 175000,
-    bonus: 1250,
-    savings: '25%',
+    price: 35000, // 5,000 × ₦7
   },
 ];
 
@@ -103,7 +96,7 @@ export default function SMSCreditsPage() {
           },
           credentials: 'include',
           body: JSON.stringify({
-            credits: selectedPkg.credits + selectedPkg.bonus,
+            credits: selectedPkg.credits,
             packageId: selectedPkg.id,
           }),
         }
@@ -125,7 +118,7 @@ export default function SMSCreditsPage() {
   };
 
   const handleCustomPurchase = async () => {
-    if (!customAmount || customAmount < 50) {
+    if (!customAmount || customAmount < MINIMUM_CREDITS) {
       return;
     }
     
@@ -195,11 +188,11 @@ export default function SMSCreditsPage() {
           <Group justify="space-between" mb="md">
             <div>
               <Text size="sm" c="dimmed">Current Rate</Text>
-              <Text size="xl" fw={700}>₦50 per SMS</Text>
+              <Text size="xl" fw={700}>₦{PRICE_PER_CREDIT} per SMS</Text>
             </div>
             <div>
               <Text size="sm" c="dimmed">Minimum Purchase</Text>
-              <Text size="xl" fw={700}>50 Credits</Text>
+              <Text size="xl" fw={700}>{MINIMUM_CREDITS} Credits</Text>
             </div>
           </Group>
         </Card>
@@ -229,17 +222,8 @@ export default function SMSCreditsPage() {
                       Most Popular
                     </Badge>
                   )}
-                  {pkg.savings && (
-                    <Badge
-                      color="green"
-                      variant="light"
-                      style={{ position: 'absolute', top: 10, left: 10 }}
-                    >
-                      Save {pkg.savings}
-                    </Badge>
-                  )}
                   
-                  <Stack gap="sm" mt={pkg.popular || pkg.savings ? 'md' : 0}>
+                  <Stack gap="sm" mt={pkg.popular ? 'md' : 0}>
                     <Text size="lg" fw={700} tt="capitalize">
                       {pkg.id}
                     </Text>
@@ -251,12 +235,6 @@ export default function SMSCreditsPage() {
                       <Text size="xs" c="dimmed">SMS Credits</Text>
                     </div>
 
-                    {pkg.bonus > 0 && (
-                      <Badge color="green" variant="light" leftSection={<CheckCircle size={14} />}>
-                        +{pkg.bonus} Bonus Credits
-                      </Badge>
-                    )}
-
                     <Divider />
 
                     <div>
@@ -264,7 +242,7 @@ export default function SMSCreditsPage() {
                         {formatCurrency(pkg.price)}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        Total: {(pkg.credits + pkg.bonus).toLocaleString()} credits
+                        ₦{PRICE_PER_CREDIT} per credit
                       </Text>
                     </div>
 
@@ -298,8 +276,8 @@ export default function SMSCreditsPage() {
             <Grid.Col span={{ base: 12, md: 6 }}>
               <NumberInput
                 label="Number of Credits"
-                placeholder="Enter amount"
-                min={50}
+                placeholder="Enter amount (min 100)"
+                min={MINIMUM_CREDITS}
                 max={100000}
                 value={customAmount}
                 onChange={(val) => setCustomAmount(val as number)}
@@ -310,7 +288,7 @@ export default function SMSCreditsPage() {
               <Stack gap="xs">
                 <Text size="sm" c="dimmed">Total Amount</Text>
                 <Text size="xl" fw={700}>
-                  {formatCurrency((customAmount || 0) * 50)}
+                  {formatCurrency((customAmount || 0) * PRICE_PER_CREDIT)}
                 </Text>
               </Stack>
             </Grid.Col>
@@ -319,7 +297,7 @@ export default function SMSCreditsPage() {
           <Button
             mt="md"
             leftSection={<CreditCard size={16} />}
-            disabled={!customAmount || customAmount < 50}
+            disabled={!customAmount || customAmount < MINIMUM_CREDITS}
             loading={loading}
             onClick={handleCustomPurchase}
           >
