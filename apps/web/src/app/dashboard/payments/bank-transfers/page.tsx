@@ -18,6 +18,7 @@ import {
   ActionIcon,
   Menu,
   Modal,
+  FileInput,
 } from '@mantine/core';
 import {
   Plus,
@@ -29,6 +30,8 @@ import {
   X,
   MoreVertical,
   AlertCircle,
+  Upload,
+  FileImage,
 } from 'lucide-react';
 import { DatePickerInput } from '@mantine/dates';
 import { Can } from '@/hooks/usePermissions';
@@ -36,6 +39,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import {
   getBankTransfers,
   verifyBankTransfer,
+  uploadPaymentProof,
   type BankTransfer,
 } from '@/lib/api/nigerian-payments';
 import { notifications } from '@mantine/notifications';
@@ -52,6 +56,9 @@ export default function BankTransfersPage() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [detailsModal, setDetailsModal] = useState<BankTransfer | null>(null);
+  const [uploadModal, setUploadModal] = useState<BankTransfer | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadTransfers();
@@ -120,6 +127,41 @@ export default function BankTransfersPage() {
         }
       },
     });
+  };
+
+  const handleUploadProof = async () => {
+    if (!proofFile || !uploadModal) return;
+
+    try {
+      setUploadingProof(true);
+      const formData = new FormData();
+      formData.append('file', proofFile);
+      formData.append('bankTransferId', uploadModal.id.toString());
+      if (uploadModal.memberId) {
+        formData.append('memberId', uploadModal.memberId.toString());
+      }
+
+      await uploadPaymentProof(formData);
+      
+      notifications.show({
+        title: 'Success',
+        message: 'Payment proof uploaded successfully',
+        color: 'green',
+      });
+
+      setUploadModal(null);
+      setProofFile(null);
+      loadTransfers();
+    } catch (error: any) {
+      console.error('Error uploading proof:', error);
+      notifications.show({
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to upload proof',
+        color: 'red',
+      });
+    } finally {
+      setUploadingProof(false);
+    }
   };
 
   const formatCurrency = (amount: string | number) => {
@@ -227,6 +269,7 @@ export default function BankTransfersPage() {
                     <Table.Th>Member/Sender</Table.Th>
                     <Table.Th>Bank</Table.Th>
                     <Table.Th>Amount</Table.Th>
+                    <Table.Th>Proof</Table.Th>
                     <Table.Th>Status</Table.Th>
                     <Table.Th>Actions</Table.Th>
                   </Table.Tr>
@@ -263,6 +306,17 @@ export default function BankTransfersPage() {
                         <Text fw={500}>{formatCurrency(transfer.amount)}</Text>
                       </Table.Td>
                       <Table.Td>
+                        {transfer.paymentProofs && transfer.paymentProofs.length > 0 ? (
+                          <Badge color="green" size="sm" variant="light">
+                            {transfer.paymentProofs.length} Proof{transfer.paymentProofs.length > 1 ? 's' : ''}
+                          </Badge>
+                        ) : (
+                          <Badge color="gray" size="sm" variant="light">
+                            No Proof
+                          </Badge>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
                         <Badge color={getStatusColor(transfer.status)} size="sm">
                           {transfer.status}
                         </Badge>
@@ -281,9 +335,20 @@ export default function BankTransfersPage() {
                             >
                               View Details
                             </Menu.Item>
+                            <Menu.Item
+                              leftSection={<Upload size={14} />}
+                              onClick={() => {
+                                setUploadModal(transfer);
+                                setProofFile(null);
+                              }}
+                            >
+                              {transfer.paymentProofs && transfer.paymentProofs.length > 0 
+                                ? 'Add More Proof' 
+                                : 'Upload Proof'}
+                            </Menu.Item>
                             {transfer.status === 'PENDING' && (
                               <>
-                                <Can permission="PAYMENT_VERIFY">
+                                <Can permission={PERMISSIONS.PAYMENT_VERIFY}>
                                   <Menu.Item
                                     leftSection={<CheckCircle size={14} />}
                                     color="green"
@@ -390,6 +455,83 @@ export default function BankTransfersPage() {
                   </Card>
                 </div>
               )}
+              {detailsModal.paymentProofs && detailsModal.paymentProofs.length > 0 && (
+                <div>
+                  <Text size="sm" c="dimmed" mb="xs">Payment Proofs</Text>
+                  <Stack gap="xs">
+                    {detailsModal.paymentProofs.map((proof) => (
+                      <Card key={proof.id} withBorder padding="sm">
+                        <Group justify="space-between">
+                          <div>
+                            <Text size="sm" fw={500}>{proof.filename}</Text>
+                            <Text size="xs" c="dimmed">
+                              Uploaded: {new Date(proof.uploadedAt).toLocaleDateString()}
+                            </Text>
+                          </div>
+                          <Badge size="sm" color={proof.status === 'VERIFIED' ? 'green' : 'gray'}>
+                            {proof.status}
+                          </Badge>
+                        </Group>
+                      </Card>
+                    ))}
+                  </Stack>
+                </div>
+              )}
+            </Stack>
+          )}
+        </Modal>
+
+        {/* Upload Proof Modal */}
+        <Modal
+          opened={!!uploadModal}
+          onClose={() => {
+            setUploadModal(null);
+            setProofFile(null);
+          }}
+          title="Upload Payment Proof"
+          size="md"
+        >
+          {uploadModal && (
+            <Stack>
+              <div>
+                <Text size="sm" fw={500}>Transfer Details</Text>
+                <Text size="sm" c="dimmed">
+                  Reference: {uploadModal.reference}
+                </Text>
+                <Text size="sm" c="dimmed">
+                  Amount: {formatCurrency(uploadModal.amount)}
+                </Text>
+              </div>
+
+              <FileInput
+                label="Payment Proof"
+                placeholder="Select image or PDF"
+                accept="image/*,application/pdf"
+                value={proofFile}
+                onChange={setProofFile}
+                leftSection={<FileImage size={16} />}
+                required
+              />
+
+              <Group justify="flex-end">
+                <Button
+                  variant="subtle"
+                  onClick={() => {
+                    setUploadModal(null);
+                    setProofFile(null);
+                  }}
+                  disabled={uploadingProof}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUploadProof}
+                  loading={uploadingProof}
+                  disabled={!proofFile}
+                >
+                  Upload
+                </Button>
+              </Group>
             </Stack>
           )}
         </Modal>

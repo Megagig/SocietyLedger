@@ -51,6 +51,13 @@ export interface BankTransfer {
     bankName: string;
     accountNumber: string;
   };
+  paymentProofs?: {
+    id: number;
+    filename: string;
+    filepath: string;
+    status: string;
+    uploadedAt: string;
+  }[];
 }
 
 export interface StatementImport {

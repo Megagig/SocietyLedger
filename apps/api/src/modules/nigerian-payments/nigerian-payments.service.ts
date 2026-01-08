@@ -219,6 +219,15 @@ export const nigerianPaymentsService = {
           bankAccount: {
             select: { id: true, bankName: true, accountNumber: true },
           },
+          paymentProofs: {
+            select: { 
+              id: true, 
+              filename: true, 
+              filepath: true, 
+              status: true, 
+              uploadedAt: true 
+            },
+          },
         },
       }),
       prisma.bankTransfer.count({ where }),

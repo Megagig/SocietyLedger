@@ -36,7 +36,7 @@ import {
   type BankTransfer,
   type AutoMatchResult,
 } from '@/lib/api/nigerian-payments';
-import { apiGet } from '@/lib/axios';
+import api from '@/lib/axios';
 import { notifications } from '@mantine/notifications';
 
 interface Transaction {
@@ -79,16 +79,19 @@ export default function ReconciliationPage() {
       const [dashboardRes, transfersRes, transactionsRes] = await Promise.all([
         getUnmatchedDashboard(),
         getBankTransfers({ status: 'VERIFIED', limit: 100 }),
-        apiGet('/finance/transactions', {
+        api.get('/finance/transactions', {
           params: { status: 'PENDING', limit: 100 },
         }),
       ]);
 
       setDashboard(dashboardRes.data);
+      // API returns: { data: { transfers: [...], pagination: {...} } }
+      const transfers = transfersRes.data?.transfers || [];
       setUnmatchedTransfers(
-        transfersRes.data?.bankTransfers?.filter((t: BankTransfer) => !t.transactionId) || []
+        transfers.filter((t: BankTransfer) => !t.transactionId) || []
       );
-      setPendingTransactions(transactionsRes.data?.transactions || []);
+      // API returns: { data: { transactions: [...], pagination: {...} } }
+      setPendingTransactions(transactionsRes.data?.data?.transactions || []);
     } catch (error: any) {
       console.error('Error loading data:', error);
       notifications.show({
