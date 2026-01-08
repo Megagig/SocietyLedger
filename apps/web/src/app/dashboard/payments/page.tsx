@@ -14,6 +14,8 @@ import {
   Stack,
   LoadingOverlay,
   Alert,
+  Center,
+  Loader,
 } from '@mantine/core';
 import {
   AlertCircle,
@@ -24,9 +26,11 @@ import {
   FileText,
   CreditCard,
   ArrowRight,
+  X,
 } from 'lucide-react';
-import { Can } from '@/hooks/usePermissions';
+import { Can, usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
+import { useAuthStore } from '@/store/authStore';
 import {
   getUnmatchedDashboard,
   getBankAccounts,
@@ -38,6 +42,8 @@ import {
 
 export default function PaymentsDashboardPage() {
   const router = useRouter();
+  const { _hasHydrated } = useAuthStore();
+  const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<UnmatchedDashboard | null>(null);
@@ -93,11 +99,45 @@ export default function PaymentsDashboardPage() {
     }
   };
 
+  // Wait for hydration before checking permissions
+  if (!_hasHydrated) {
+    return (
+      <Center style={{ minHeight: '400px' }}>
+        <Stack align="center" gap="md">
+          <Loader size="lg" />
+          <Text size="sm" c="dimmed">Loading...</Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  // Check permission after hydration
+  if (!can(PERMISSIONS.PAYMENT_RECORD)) {
+    return (
+      <Stack align="center" gap="lg" py="xl">
+        <Card withBorder padding="xl" w="100%" maw={600}>
+          <Stack align="center" gap="md">
+            <div style={{ padding: '1rem', borderRadius: '50%', backgroundColor: '#fee2e2' }}>
+              <X size={48} color="#dc2626" />
+            </div>
+            <Title order={2} ta="center">Access Denied</Title>
+            <Text size="sm" c="dimmed" ta="center">
+              You don't have permission to view the payments page. 
+              Please contact your administrator if you believe you should have access.
+            </Text>
+            <Text size="xs" c="dimmed" ta="center">
+              Required permission: PAYMENT_RECORD (payments.nigerian.record)
+            </Text>
+          </Stack>
+        </Card>
+      </Stack>
+    );
+  }
+
   return (
-    <Can permission={PERMISSIONS.PAYMENT_RECORD} fallback={<Alert color="red">You don't have permission to view payments</Alert>}>
-      <Stack gap="lg">
-        <Group justify="space-between">
-          <div>
+    <Stack gap="lg">
+      <Group justify="space-between">
+        <div>
             <Title order={2}>Payment Management</Title>
             <Text size="sm" c="dimmed">
               Manage bank transfers, reconciliation, and payment verification
@@ -330,6 +370,5 @@ export default function PaymentsDashboardPage() {
           </Alert>
         )}
       </Stack>
-    </Can>
   );
 }

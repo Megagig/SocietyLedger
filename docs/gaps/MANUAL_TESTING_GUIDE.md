@@ -813,7 +813,428 @@ OR use the Dynamic RBAC system:
 
 ---
 
-## 📤 Phase 10.5: Exports Management UI Testing
+## � SMS Credits Reseller Model - Complete Setup & Testing Guide
+
+### Overview
+This section covers the **SMS Credits Reseller/Aggregator Model** where:
+- Platform owner (YOU) has ONE Termii account with bulk credits
+- Associations purchase credits through your platform using Paystack
+- Credits are tracked per association in the database
+- You earn profit margin on each SMS sent
+
+### Architecture
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     SocietyLedger Platform                       │
+│                                                                 │
+│  Association A ──┐                                              │
+│  (100 credits)   │                                              │
+│                  ├──► Platform SMS Wallet ──► Your Termii Account
+│  Association B ──┤     (tracks credits)        (bulk credits)   │
+│  (500 credits)   │                                              │
+│                  │                                              │
+│  Association C ──┘                                              │
+│  (200 credits)                                                  │
+│                                                                 │
+│  ─── Associations pay YOU via Paystack ──►                      │
+│  ─── YOU buy bulk credits from Termii ──►                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 🚀 Initial Setup (One-Time Configuration)
+
+#### Step 1: Create Termii Business Account
+1. Go to https://app.termii.com/signup
+2. Register with your business details
+3. Complete verification (may take 24-48 hours)
+4. Fund your Termii wallet with bulk credits
+
+#### Step 2: Get Termii API Credentials
+1. Log in to Termii Dashboard: https://app.termii.com
+2. Navigate to **Developers → API Keys**
+3. Copy your **API Key**
+4. Note your **Sender ID** (you may need to create one)
+
+#### Step 3: Configure Environment Variables
+Add these to your `apps/api/.env` file:
+
+```bash
+# Termii SMS Configuration
+TERMII_API_KEY=your_termii_api_key_here
+TERMII_SENDER_ID=YourSenderID
+TERMII_BASE_URL=https://v3.api.termii.com
+```
+
+#### Step 4: Configure Paystack (for receiving payments)
+Ensure your Paystack is configured:
+
+```bash
+# Paystack Configuration (already in .env)
+PAYSTACK_SECRET_KEY=sk_live_xxxxx  # or sk_test_xxxxx for testing
+PAYSTACK_PUBLIC_KEY=pk_live_xxxxx  # or pk_test_xxxxx for testing
+```
+
+#### Step 5: Run Database Migration
+```bash
+cd apps/api
+npx prisma db push
+```
+
+#### Step 6: Restart Servers
+```bash
+# Terminal 1: API
+cd apps/api && npm run dev
+
+# Terminal 2: Web
+cd apps/web && npm run dev
+```
+
+---
+
+### 📊 Test 12.5: SMS Credits Dashboard
+**URL**: `/dashboard/communications`
+
+#### Test 12.5.1: Verify Credits Section
+**Steps:**
+1. Log in as association admin
+2. Navigate to **Messaging → Communications** in sidebar
+3. View the dashboard
+
+**Expected Results:**
+- ✅ "SMS Balance" card shows current credits (0 for new associations)
+- ✅ "Buy Credits" button visible in header
+- ✅ SMS Balance card is clickable (links to credits page)
+- ✅ Low balance warning appears if credits < 100
+
+**Test Cases:**
+- [ ] SMS Balance card displays
+- [ ] Balance shows correct number
+- [ ] Buy Credits button visible
+- [ ] Low balance warning works
+- [ ] Clicking balance card navigates to credits page
+
+---
+
+### 💰 Test 12.6: Purchase SMS Credits
+**URL**: `/dashboard/communication/sms/credits`
+
+#### Test 12.6.1: View Credit Packages
+**Steps:**
+1. Click "Buy Credits" button OR navigate directly to URL
+2. Review available packages
+
+**Expected Results:**
+- ✅ Page shows pricing info (₦50 per SMS)
+- ✅ 5 package options display:
+  - Starter: 100 credits = ₦5,000
+  - Basic: 500 credits + 50 bonus = ₦22,500 (10% savings)
+  - Standard: 1,000 credits + 150 bonus = ₦40,000 (15% savings) - POPULAR
+  - Premium: 2,500 credits + 500 bonus = ₦93,750 (20% savings)
+  - Enterprise: 5,000 credits + 1,250 bonus = ₦175,000 (25% savings)
+- ✅ Bonus credits highlighted
+- ✅ "Most Popular" badge on Standard
+- ✅ Savings percentages shown
+
+**Test Cases:**
+- [ ] All 5 packages display
+- [ ] Prices correct
+- [ ] Bonus amounts correct
+- [ ] Savings percentages accurate
+- [ ] Popular badge shows
+
+#### Test 12.6.2: Purchase with Package
+**Steps:**
+1. Click "Purchase" on "Starter" package (100 credits = ₦5,000)
+2. Wait for Paystack redirect
+
+**Expected Results:**
+- ✅ Loading spinner appears
+- ✅ Redirects to Paystack checkout page
+- ✅ Amount shows ₦5,000
+- ✅ Merchant shows as your platform
+
+**Test Cases:**
+- [ ] Purchase button works
+- [ ] Correct amount passed to Paystack
+- [ ] Reference generated correctly
+- [ ] Redirect happens
+
+#### Test 12.6.3: Complete Payment (Test Mode)
+**Steps:**
+1. On Paystack checkout, use test card:
+   - Card Number: `4084 0840 8408 4081`
+   - Expiry: Any future date
+   - CVV: `408`
+   - OTP: `123456`
+2. Complete payment
+3. Wait for redirect back to verify page
+
+**Expected Results:**
+- ✅ Paystack shows "Payment Successful"
+- ✅ Redirects to `/dashboard/communication/sms/credits/verify`
+- ✅ Verification page shows success
+- ✅ Credits added message displays
+- ✅ Shows credits added (100), amount paid (₦5,000), reference
+
+**Test Cases:**
+- [ ] Payment completes successfully
+- [ ] Redirect to verify page works
+- [ ] Success message displays
+- [ ] Credits amount shown
+- [ ] Reference displayed
+
+#### Test 12.6.4: Verify Credits Added
+**Steps:**
+1. Click "Go to SMS Dashboard" on success page
+2. Check SMS Balance card
+
+**Expected Results:**
+- ✅ SMS Balance shows 100 credits
+- ✅ Low balance warning gone (if was showing)
+- ✅ Can now send SMS
+
+**Test Cases:**
+- [ ] Balance updated immediately
+- [ ] Balance persists after page refresh
+- [ ] Can see in database
+
+#### Test 12.6.5: Custom Amount Purchase
+**Steps:**
+1. Navigate to credits page
+2. Scroll to "Custom Amount" section
+3. Enter 200 credits
+4. Note total: ₦10,000 (200 × ₦50)
+5. Click "Purchase 200 Credits"
+6. Complete Paystack payment
+
+**Expected Results:**
+- ✅ Custom amount input works
+- ✅ Minimum 50 credits enforced
+- ✅ Total calculates correctly
+- ✅ Payment processes
+- ✅ Credits added
+
+**Test Cases:**
+- [ ] Can enter custom amount
+- [ ] Cannot enter < 50
+- [ ] Total updates dynamically
+- [ ] Payment works
+- [ ] Correct credits added
+
+---
+
+### 📩 Test 12.7: SMS Sending with Credits
+**URL**: `/dashboard/communications/quick-send`
+
+#### Test 12.7.1: Send SMS (Deducts Credits)
+**Prerequisites:**
+- Association must have credits (from previous test)
+
+**Steps:**
+1. Navigate to Quick Send
+2. Select "Specific Phone Numbers"
+3. Enter a test phone number: `08012345678`
+4. Enter message: "Test SMS from SocietyLedger"
+5. Note the cost estimate (1 credit)
+6. Click "Send SMS"
+
+**Expected Results:**
+- ✅ Cost estimate shows "1 credit"
+- ✅ Balance check passes
+- ✅ SMS sends successfully
+- ✅ Success notification appears
+- ✅ Credits deducted (check balance - should be 99 now if started with 100)
+
+**Test Cases:**
+- [ ] Cost estimate accurate
+- [ ] SMS sends
+- [ ] Credits deducted
+- [ ] Balance updates
+- [ ] Message delivered (check phone)
+
+#### Test 12.7.2: Insufficient Credits
+**Steps:**
+1. Reduce association's credits to 0 (or test with new association)
+2. Try to send SMS
+
+**Expected Results:**
+- ✅ Error message: "Insufficient SMS credits"
+- ✅ Send button disabled OR error on submit
+- ✅ "Top Up" link/button provided
+
+**Test Cases:**
+- [ ] Cannot send with 0 balance
+- [ ] Clear error message
+- [ ] Top up option provided
+
+---
+
+### 📈 Test 12.8: Credit Transaction History
+**URL**: `/dashboard/sms/credits/history` (via API)
+
+#### Test 12.8.1: View Transaction History via API
+**Steps:**
+1. Make API call:
+```bash
+curl -X GET "http://localhost:3001/api/sms/credits/history" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+**Expected Results:**
+- ✅ Returns list of transactions
+- ✅ Each transaction has:
+  - `type`: PURCHASE, USAGE, REFUND, BONUS, ADJUSTMENT
+  - `amount`: Positive for additions, negative for usage
+  - `description`: What the transaction was for
+  - `reference`: Payment reference (if purchase)
+  - `createdAt`: Timestamp
+
+**Sample Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "transactions": [
+      {
+        "id": 1,
+        "type": "PURCHASE",
+        "amount": 100,
+        "description": "Package: starter",
+        "reference": "SMS_1704672000000_ABC123",
+        "createdAt": "2026-01-08T10:00:00Z"
+      },
+      {
+        "id": 2,
+        "type": "USAGE",
+        "amount": -1,
+        "description": "Quick SMS send",
+        "campaignId": null,
+        "createdAt": "2026-01-08T10:05:00Z"
+      }
+    ],
+    "total": 2,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+---
+
+### 🔧 Troubleshooting SMS Credits
+
+#### Issue: "Failed to initialize payment"
+**Causes:**
+1. Paystack not configured
+2. Invalid API key
+
+**Solutions:**
+```bash
+# Check .env file
+PAYSTACK_SECRET_KEY=sk_test_xxxxx  # Ensure this is set
+```
+
+#### Issue: "User email is required"
+**Cause:** User doesn't have email in database
+
+**Solution:**
+```sql
+UPDATE users SET email = 'user@example.com' WHERE id = YOUR_USER_ID;
+```
+
+#### Issue: Credits not added after payment
+**Cause:** Webhook/verification not completing
+
+**Solutions:**
+1. Check API logs for errors
+2. Manually verify:
+```bash
+curl -X GET "http://localhost:3001/api/sms/credits/verify/YOUR_REFERENCE" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### Issue: Payment successful but credits show 0
+**Cause:** SMSCreditBalance record not created
+
+**Solution:**
+```sql
+-- Check if balance exists
+SELECT * FROM sms_credit_balances WHERE association_id = YOUR_ASSOC_ID;
+
+-- If not, create it
+INSERT INTO sms_credit_balances (association_id, balance, total_purchased, total_used, created_at, updated_at)
+VALUES (YOUR_ASSOC_ID, 100, 100, 0, NOW(), NOW());
+```
+
+---
+
+### 💼 Platform Admin: Monitoring SMS Credits
+
+#### Check All Associations' Balances
+```sql
+SELECT 
+  a.name as association_name,
+  scb.balance,
+  scb.total_purchased,
+  scb.total_used,
+  scb.last_top_up_at
+FROM sms_credit_balances scb
+JOIN associations a ON a.id = scb.association_id
+ORDER BY scb.balance DESC;
+```
+
+#### Check Recent Purchases
+```sql
+SELECT 
+  a.name as association_name,
+  scp.credits,
+  scp.amount,
+  scp.status,
+  scp.created_at
+FROM sms_credits_purchases scp
+JOIN associations a ON a.id = scp.association_id
+ORDER BY scp.created_at DESC
+LIMIT 20;
+```
+
+#### Calculate Revenue
+```sql
+SELECT 
+  SUM(amount) as total_revenue,
+  SUM(credits) as total_credits_sold,
+  COUNT(*) as total_purchases
+FROM sms_credits_purchases
+WHERE status = 'success'
+AND created_at >= DATE_TRUNC('month', CURRENT_DATE);
+```
+
+---
+
+### 📋 SMS Credits Test Checklist
+
+| Test | Description | Status |
+|------|-------------|--------|
+| Setup | Termii account created | ⬜ |
+| Setup | Termii API key configured | ⬜ |
+| Setup | Paystack configured | ⬜ |
+| Setup | Database migration run | ⬜ |
+| Credits Page | Packages display correctly | ⬜ |
+| Credits Page | Custom amount works | ⬜ |
+| Purchase | Payment redirects to Paystack | ⬜ |
+| Purchase | Test payment completes | ⬜ |
+| Purchase | Verify page shows success | ⬜ |
+| Purchase | Credits added to balance | ⬜ |
+| SMS Send | Credits deducted on send | ⬜ |
+| SMS Send | Insufficient balance blocked | ⬜ |
+| History | Transactions logged | ⬜ |
+| Balance | Low balance warning works | ⬜ |
+
+---
+
+## �📤 Phase 10.5: Exports Management UI Testing
 
 ### Test 13: Export Data
 **URL**: `/dashboard/exports`

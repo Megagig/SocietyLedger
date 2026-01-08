@@ -76,13 +76,33 @@ export function Sidebar() {
   };
 
   const checkPermission = (permission: string | string[] | undefined, roleRequired?: string): boolean => {
-    // Don't show permission-gated items until Zustand store is hydrated from localStorage
-    if (!_hasHydrated) return false;
-    
     if (!permission && !roleRequired) return true;
     
     // Super admin has access to everything
     if (user?.platformRole === 'SUPER_ADMIN') return true;
+    
+    // During hydration, show items for logged-in users based on role
+    // This prevents the sidebar from flickering/hiding items during load
+    if (!_hasHydrated) {
+      // If there's no user yet, don't show permission-gated items
+      if (!user) return false;
+      
+      // For role-based items, show if user has the required role
+      if (roleRequired) {
+        return user.role === roleRequired;
+      }
+      
+      // For permission-based items, show for admin/treasurer/financial_secretary roles during hydration
+      // They'll be hidden after hydration if permissions don't match
+      if (permission && (user.role === 'admin' || user.role === 'treasurer' || user.role === 'financial_secretary')) {
+        return true;
+      }
+      
+      // Don't show other permission-gated items during hydration for regular members
+      return false;
+    }
+    
+    // After hydration, do proper permission checks
     
     // Check role requirement first (more restrictive)
     if (roleRequired && user?.role !== roleRequired) {

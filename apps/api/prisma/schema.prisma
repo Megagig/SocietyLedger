@@ -78,6 +78,7 @@ model Association {
   smsCampaigns               SMSCampaign[]
   smsTemplates               SMSTemplate[]
   smsCreditBalance           SMSCreditBalance?
+  smsCreditsPurchases        SMSCreditsPurchase[]
   // Phase 17: AI Integration
   aiAuditLogs                AIAuditLog[]
   documentEmbeddings         DocumentEmbedding[]
@@ -178,6 +179,9 @@ model User {
   assignedTickets   SupportTicket[]    @relation("TicketAssignee")
   ticketResponses   TicketResponse[]
   ticketAttachments TicketAttachment[]
+
+  // Phase 6.5: SMS Credits
+  smsCreditsPurchases SMSCreditsPurchase[]
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -1932,6 +1936,31 @@ enum SMSCreditTransactionType {
   REFUND // Credit refunded
   BONUS // Bonus credits
   ADJUSTMENT // Manual adjustment
+}
+
+// SMS Credits Purchase - Track individual purchase transactions via Paystack
+model SMSCreditsPurchase {
+  id               Int         @id @default(autoincrement())
+  associationId    Int         @map("association_id")
+  userId           Int         @map("user_id")
+  credits          Int         // Number of credits purchased
+  amount           Decimal     @db.Decimal(12, 2) // Amount in NGN
+  reference        String      @unique // Paystack reference
+  status           String      @default("pending") // pending, success, failed
+  provider         String      @default("paystack") // Payment provider
+  paidAt           DateTime?   @map("paid_at")
+  paystackResponse Json?       @map("paystack_response")
+  metadata         Json?       // Additional metadata
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  
+  association      Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([associationId])
+  @@index([reference])
+  @@index([status])
+  @@map("sms_credits_purchases")
 }
 
 // ============================================

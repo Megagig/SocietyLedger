@@ -26,6 +26,7 @@ import {
   FileText,
   DollarSign,
   Clock,
+  CreditCard,
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -90,6 +91,14 @@ export default function CommunicationsPage() {
           </div>
           <Group>
             <Button
+              leftSection={<CreditCard size={16} />}
+              variant="light"
+              color="green"
+              onClick={() => router.push('/dashboard/communication/sms/credits')}
+            >
+              Buy Credits
+            </Button>
+            <Button
               leftSection={<FileText size={16} />}
               variant="light"
               onClick={() => router.push('/dashboard/communications/templates')}
@@ -135,7 +144,12 @@ export default function CommunicationsPage() {
         {/* Stats Cards */}
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
-            <Card withBorder padding="lg">
+            <Card 
+              withBorder 
+              padding="lg" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => router.push('/dashboard/communication/sms/credits')}
+            >
               <Group justify="space-between" mb="xs">
                 <Text size="sm" c="dimmed" fw={500}>
                   SMS Balance
