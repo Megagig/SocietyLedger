@@ -4,6 +4,9 @@ const nextConfig = {
     domains: ['localhost'],
   },
   
+  // Optimize font loading and handle timeouts gracefully
+  optimizeFonts: true,
+  
   // PWA headers for service worker and manifest
   async headers() {
     return [

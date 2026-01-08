@@ -18,7 +18,7 @@ const quickActions = [
     title: 'Create a Transaction',
     description: 'Record dues, levies, or donations',
     icon: 'cash',
-    href: '/dashboard/transactions/new',
+    href: '/dashboard/finance/transactions/create',
     color: 'bg-green-500',
   },
   {
@@ -38,10 +38,10 @@ const quickActions = [
 ];
 
 const helpResources = [
-  { title: 'Getting Started Guide', href: '#' },
-  { title: 'Video Tutorials', href: '#' },
-  { title: 'FAQ', href: '#' },
-  { title: 'Contact Support', href: '#' },
+  { title: 'Getting Started Guide', href: '/dashboard/help/articles?category=getting-started' },
+  { title: 'Video Tutorials', href: 'https://www.youtube.com/@societyledger', external: true },
+  { title: 'FAQ', href: '/dashboard/help/faqs' },
+  { title: 'Contact Support', href: 'https://wa.me/2348060374755', external: true },
 ];
 
 export default function CompletePage() {
@@ -156,10 +156,17 @@ export default function CompletePage() {
               <a
                 key={index}
                 href={resource.href}
+                target={resource.external ? '_blank' : undefined}
+                rel={resource.external ? 'noopener noreferrer' : undefined}
                 className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <BookIcon className="w-5 h-5 text-teal-500" />
                 <span className="text-gray-700 dark:text-gray-300">{resource.title}</span>
+                {resource.external && (
+                  <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                )}
               </a>
             ))}
           </div>

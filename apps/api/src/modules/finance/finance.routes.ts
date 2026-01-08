@@ -105,6 +105,18 @@ router.delete('/transactions/:id',
   financeController.deleteTransaction
 );
 
+// Bulk delete transactions
+router.post('/transactions/bulk-delete',
+  requirePermission(PERMISSIONS.TRANSACTION_DELETE),
+  financeController.bulkDeleteTransactions
+);
+
+// Undo delete transaction (restore from audit log)
+router.post('/transactions/undo-delete/:auditLogId',
+  requirePermission(PERMISSIONS.TRANSACTION_CREATE),
+  financeController.undoDeleteTransaction
+);
+
 // ==========================================
 // PAYMENT ROUTES
 // ==========================================

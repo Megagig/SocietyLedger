@@ -15,9 +15,10 @@ import {
   IconStarFilled,
   IconSearch,
 } from '@tabler/icons-react';
-import { Modal, TextInput, Textarea, Select, MultiSelect, Switch, Button } from '@mantine/core';
+import { Modal, TextInput, Textarea, Select, MultiSelect, Switch, Button, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+import { modals } from '@mantine/modals';
 import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
@@ -208,23 +209,29 @@ export default function HelpContentManagementPage() {
   }
 
   async function handleDeleteArticle(article: HelpArticle) {
-    if (!confirm(`Are you sure you want to delete "${article.title}"?`)) return;
-
-    try {
-      await api.delete(`${API_ROUTES.HELP.ARTICLES}/${article.id}`);
-      notifications.show({
-        title: 'Success',
-        message: 'Article deleted successfully',
-        color: 'green',
-      });
-      loadContent();
-    } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete article',
-        color: 'red',
-      });
-    }
+    modals.openConfirmModal({
+      title: 'Delete Article',
+      children: <Text size="sm">Are you sure you want to delete "{article.title}"?</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await api.delete(`${API_ROUTES.HELP.ARTICLES}/${article.id}`);
+          notifications.show({
+            title: 'Success',
+            message: 'Article deleted successfully',
+            color: 'green',
+          });
+          loadContent();
+        } catch (error) {
+          notifications.show({
+            title: 'Error',
+            message: 'Failed to delete article',
+            color: 'red',
+          });
+        }
+      },
+    });
   }
 
   async function handleToggleArticlePublished(article: HelpArticle) {
@@ -325,23 +332,29 @@ export default function HelpContentManagementPage() {
   }
 
   async function handleDeleteFaq(faq: FAQItem) {
-    if (!confirm(`Are you sure you want to delete this FAQ?`)) return;
-
-    try {
-      await api.delete(`${API_ROUTES.HELP.FAQS}/${faq.id}`);
-      notifications.show({
-        title: 'Success',
-        message: 'FAQ deleted successfully',
-        color: 'green',
-      });
-      loadContent();
-    } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete FAQ',
-        color: 'red',
-      });
-    }
+    modals.openConfirmModal({
+      title: 'Delete FAQ',
+      children: <Text size="sm">Are you sure you want to delete this FAQ?</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await api.delete(`${API_ROUTES.HELP.FAQS}/${faq.id}`);
+          notifications.show({
+            title: 'Success',
+            message: 'FAQ deleted successfully',
+            color: 'green',
+          });
+          loadContent();
+        } catch (error) {
+          notifications.show({
+            title: 'Error',
+            message: 'Failed to delete FAQ',
+            color: 'red',
+          });
+        }
+      },
+    });
   }
 
   async function handleToggleFaqActive(faq: FAQItem) {

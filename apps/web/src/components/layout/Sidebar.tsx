@@ -42,6 +42,7 @@ import {
   IconQuestionMark,
   IconTicket,
   IconPlus,
+  IconClock,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -75,13 +76,33 @@ export function Sidebar() {
   };
 
   const checkPermission = (permission: string | string[] | undefined, roleRequired?: string): boolean => {
-    // Don't show permission-gated items until Zustand store is hydrated from localStorage
-    if (!_hasHydrated) return false;
-    
     if (!permission && !roleRequired) return true;
     
     // Super admin has access to everything
     if (user?.platformRole === 'SUPER_ADMIN') return true;
+    
+    // During hydration, show items for logged-in users based on role
+    // This prevents the sidebar from flickering/hiding items during load
+    if (!_hasHydrated) {
+      // If there's no user yet, don't show permission-gated items
+      if (!user) return false;
+      
+      // For role-based items, show if user has the required role
+      if (roleRequired) {
+        return user.role === roleRequired;
+      }
+      
+      // For permission-based items, show for admin/treasurer/financial_secretary roles during hydration
+      // They'll be hidden after hydration if permissions don't match
+      if (permission && (user.role === 'admin' || user.role === 'treasurer' || user.role === 'financial_secretary')) {
+        return true;
+      }
+      
+      // Don't show other permission-gated items during hydration for regular members
+      return false;
+    }
+    
+    // After hydration, do proper permission checks
     
     // Check role requirement first (more restrictive)
     if (roleRequired && user?.role !== roleRequired) {
@@ -225,9 +246,10 @@ export function Sidebar() {
           href: '/dashboard/finance/reminders',
         },
         {
-          label: 'Bank Payments',
+          label: 'Payment Management',
           icon: <IconBuildingBank size={18} />,
-          href: '/dashboard/finance/payments/nigerian',
+          href: '/dashboard/payments',
+          permission: PERMISSIONS.PAYMENT_RECORD,
         },
       ],
     },
@@ -312,6 +334,12 @@ export function Sidebar() {
           icon: <IconReceipt size={18} />,
           href: '/dashboard/reports/by-category',
           permission: PERMISSIONS.REPORT_FINANCIAL,
+        },
+        {
+          label: 'Export Data',
+          icon: <IconFileAnalytics size={18} />,
+          href: '/dashboard/exports',
+          permission: PERMISSIONS.REPORT_VIEW,
         },
       ],
     },
@@ -462,26 +490,32 @@ export function Sidebar() {
         {
           label: 'SMS Dashboard',
           icon: <IconMessage size={18} />,
-          href: '/dashboard/communication/sms',
+          href: '/dashboard/communications',
           permission: PERMISSIONS.SMS_VIEW,
+        },
+        {
+          label: 'Quick Send SMS',
+          icon: <IconMessage size={18} />,
+          href: '/dashboard/communications/quick-send',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Campaigns',
           icon: <IconSpeakerphone size={18} />,
-          href: '/dashboard/communication/sms/campaigns',
-          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
+          href: '/dashboard/communications/campaigns',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Templates',
           icon: <IconTemplate size={18} />,
-          href: '/dashboard/communication/sms/templates',
-          permission: PERMISSIONS.SMS_TEMPLATE_MANAGE,
+          href: '/dashboard/communications/templates',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS History',
           icon: <IconHistory size={18} />,
-          href: '/dashboard/communication/sms/history',
-          permission: PERMISSIONS.SMS_VIEW,
+          href: '/dashboard/communications/history',
+          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'Email Campaigns',
@@ -611,6 +645,12 @@ export function Sidebar() {
           icon: <IconHistory size={18} />,
           href: '/dashboard/settings/audit-logs',
           permission: PERMISSIONS.AUDIT_VIEW,
+        },
+        {
+          label: 'Cron Jobs',
+          icon: <IconClock size={18} />,
+          href: '/dashboard/system/cron-jobs',
+          permission: PERMISSIONS.SYSTEM_SETTINGS_MANAGE,
         },
       ],
     },

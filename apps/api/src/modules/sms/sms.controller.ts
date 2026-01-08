@@ -596,4 +596,262 @@ export const smsController = {
       return res.status(500).json({ success: false, message: 'Failed to fetch credit history' });
     }
   },
+
+  // ============================================
+  // Paystack Purchase Integration
+  // ============================================
+
+  async purchaseCredits(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Association ID and User ID are required' 
+        });
+      }
+
+      const { credits, packageId } = req.body;
+
+      if (!credits || credits < 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Minimum 100 credits required',
+        });
+      }
+
+      // Calculate amount (₦7 per credit - flat rate, no discounts)
+      const pricePerCredit = 7;
+      const amount = credits * pricePerCredit;
+
+      // Import PaystackService dynamically
+      const { PaystackService } = await import('../payments/paystack/paystack.service');
+
+      // Generate unique reference
+      const reference = PaystackService.generateReference('SMS');
+
+      // Convert amount to kobo
+      const amountInKobo = PaystackService.nairaToKobo(amount);
+
+      // Get user email and name (firstName/lastName are on Member model)
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { 
+          email: true, 
+          member: {
+            select: {
+              firstName: true,
+              lastName: true,
+            }
+          }
+        },
+      });
+
+      if (!user || !user.email) {
+        return res.status(400).json({
+          success: false,
+          message: 'User email is required for payment',
+        });
+      }
+
+      // Get user name from member or fallback to email
+      const userName = user.member 
+        ? `${user.member.firstName} ${user.member.lastName}` 
+        : user.email;
+
+      // Get association details
+      const association = await prisma.association.findUnique({
+        where: { id: associationId },
+        select: { name: true, subdomain: true },
+      });
+
+      // Initialize payment with Paystack
+      const paystackService = new PaystackService();
+      const paystackResponse = await paystackService.initializePayment({
+        email: user.email,
+        amount: amountInKobo,
+        reference,
+        callback_url: `${process.env.FRONTEND_URL}/dashboard/communication/sms/credits/verify?reference=${reference}`,
+        metadata: {
+          associationId,
+          userId,
+          userName,
+          associationName: association?.name,
+          credits,
+          packageId,
+          pricePerCredit,
+          totalAmount: amount,
+          type: 'sms_credits',
+        },
+      });
+
+      // Create SMS credits purchase record
+      await prisma.sMSCreditsPurchase.create({
+        data: {
+          associationId,
+          userId,
+          credits,
+          amount,
+          reference,
+          status: 'pending',
+          provider: 'paystack',
+          metadata: {
+            packageId,
+            accessCode: paystackResponse.data.access_code,
+            authorizationUrl: paystackResponse.data.authorization_url,
+          },
+        },
+      });
+
+      // Audit log
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'SMS_CREDITS_PURCHASE_INITIATED',
+          tableName: 'sms_credits_purchases',
+          newValues: {
+            reference,
+            credits,
+            amount,
+            provider: 'paystack',
+          },
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment initialized successfully',
+        data: {
+          reference,
+          authorizationUrl: paystackResponse.data.authorization_url,
+          accessCode: paystackResponse.data.access_code,
+          credits,
+          amount,
+          amountInKobo,
+        },
+      });
+    } catch (error) {
+      console.error('Error initializing SMS credits purchase:', error);
+      const message = error instanceof Error ? error.message : 'Failed to initialize payment';
+      return res.status(500).json({ success: false, message });
+    }
+  },
+
+  async verifyPurchase(req: Request, res: Response) {
+    try {
+      const { reference } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Association ID is required' 
+        });
+      }
+
+      // Get purchase record
+      const purchase = await prisma.sMSCreditsPurchase.findFirst({
+        where: { reference, associationId },
+      });
+
+      if (!purchase) {
+        return res.status(404).json({
+          success: false,
+          message: 'Purchase not found',
+        });
+      }
+
+      // If already successful, return cached result
+      if (purchase.status === 'success') {
+        return res.status(200).json({
+          success: true,
+          message: 'Payment already verified',
+          data: {
+            status: 'success',
+            reference: purchase.reference,
+            credits: purchase.credits,
+            amount: purchase.amount.toNumber(),
+          },
+        });
+      }
+
+      // Import PaystackService dynamically
+      const { PaystackService } = await import('../payments/paystack/paystack.service');
+
+      // Verify with Paystack
+      const paystackService = new PaystackService();
+      const verificationResponse = await paystackService.verifyPayment(reference);
+
+      if (!verificationResponse.status || verificationResponse.data.status !== 'success') {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment verification failed',
+          data: { status: verificationResponse.data.status },
+        });
+      }
+
+      // Update purchase and add credits
+      await prisma.$transaction([
+        // Update purchase status
+        prisma.sMSCreditsPurchase.update({
+          where: { id: purchase.id },
+          data: {
+            status: 'success',
+            paidAt: new Date(verificationResponse.data.paid_at),
+            paystackResponse: verificationResponse as any,
+          },
+        }),
+
+        // Add credits to association SMS balance
+        prisma.sMSCreditBalance.upsert({
+          where: { associationId },
+          create: {
+            associationId,
+            balance: purchase.credits,
+            totalPurchased: purchase.credits,
+            totalUsed: 0,
+          },
+          update: {
+            balance: { increment: purchase.credits },
+            totalPurchased: { increment: purchase.credits },
+          },
+        }),
+
+        // Audit log
+        prisma.auditLog.create({
+          data: {
+            associationId,
+            userId: purchase.userId,
+            action: 'SMS_CREDITS_ADDED',
+            tableName: 'sms_credit_balances',
+            newValues: {
+              reference: purchase.reference,
+              credits: purchase.credits,
+              amount: purchase.amount.toNumber(),
+              status: 'success',
+            },
+          },
+        }),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Payment verified and credits added successfully',
+        data: {
+          status: 'success',
+          reference: purchase.reference,
+          credits: purchase.credits,
+          amount: purchase.amount.toNumber(),
+          paidAt: verificationResponse.data.paid_at,
+        },
+      });
+    } catch (error) {
+      console.error('Error verifying SMS credits purchase:', error);
+      const message = error instanceof Error ? error.message : 'Failed to verify payment';
+      return res.status(500).json({ success: false, message });
+    }
+  },
 };

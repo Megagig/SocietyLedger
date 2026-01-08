@@ -68,6 +68,10 @@ const bulkTransactionSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
+const bulkDeleteSchema = z.object({
+  transactionIds: z.array(z.number().int().positive()).min(1, 'At least one transaction is required'),
+});
+
 const transactionQuerySchema = z.object({
   page: z.string().optional().default('1'),
   limit: z.string().optional().default('20'),
@@ -885,7 +889,7 @@ export const financeController = {
 
       await prisma.transaction.delete({ where: { id: parseInt(id) } });
 
-      await prisma.auditLog.create({
+      const auditLog = await prisma.auditLog.create({
         data: {
           associationId,
           userId: req.user!.id,
@@ -902,10 +906,235 @@ export const financeController = {
       return res.status(200).json({
         success: true,
         message: 'Transaction deleted successfully',
+        data: { auditLogId: auditLog.id },
       });
     } catch (error) {
       console.error('Error deleting transaction:', error);
       return res.status(500).json({ success: false, message: 'Failed to delete transaction' });
+    }
+  },
+
+  // Bulk delete transactions
+  async bulkDeleteTransactions(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const validatedData = bulkDeleteSchema.parse(req.body);
+
+      // Fetch all transactions
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          id: { in: validatedData.transactionIds },
+          associationId,
+        },
+        include: { payments: true },
+      });
+
+      if (transactions.length !== validatedData.transactionIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Some transactions not found',
+          found: transactions.length,
+          requested: validatedData.transactionIds.length,
+        });
+      }
+
+      // Check for transactions with payments
+      const transactionsWithPayments = transactions.filter(t => t.payments.length > 0);
+      if (transactionsWithPayments.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete ${transactionsWithPayments.length} transaction(s) with recorded payments`,
+          data: {
+            cannotDelete: transactionsWithPayments.map(t => ({
+              id: t.id,
+              referenceNumber: t.referenceNumber,
+              paymentsCount: t.payments.length,
+            })),
+          },
+        });
+      }
+
+      // Delete all transactions
+      await prisma.transaction.deleteMany({
+        where: { id: { in: validatedData.transactionIds } },
+      });
+
+      // Create audit log
+      const auditLog = await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: req.user!.id,
+          action: 'BULK_DELETE',
+          tableName: 'transactions',
+          oldValues: { count: transactions.length, transactions },
+        },
+      });
+
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
+
+      return res.status(200).json({
+        success: true,
+        message: `${transactions.length} transaction(s) deleted successfully`,
+        data: {
+          deletedCount: transactions.length,
+          auditLogId: auditLog.id,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error bulk deleting transactions:', error);
+      return res.status(500).json({ success: false, message: 'Failed to delete transactions' });
+    }
+  },
+
+  // Undo delete transaction (restore from audit log)
+  async undoDeleteTransaction(req: Request, res: Response) {
+    try {
+      const { auditLogId } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      // Fetch the audit log
+      const auditLog = await prisma.auditLog.findFirst({
+        where: {
+          id: parseInt(auditLogId),
+          associationId,
+          action: { in: ['DELETE', 'BULK_DELETE'] },
+          tableName: 'transactions',
+        },
+      });
+
+      if (!auditLog) {
+        return res.status(404).json({ success: false, message: 'Audit log not found or not a delete action' });
+      }
+
+      const oldValues = auditLog.oldValues as any;
+
+      if (auditLog.action === 'DELETE') {
+        // Single transaction restore
+        const txnData = oldValues;
+        
+        // Check if transaction was already restored
+        const existing = await prisma.transaction.findFirst({
+          where: { referenceNumber: txnData.referenceNumber, associationId },
+        });
+
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: 'Transaction already exists (may have been restored previously)',
+          });
+        }
+
+        // Restore the transaction
+        const restored = await prisma.transaction.create({
+          data: {
+            associationId: txnData.associationId,
+            memberId: txnData.memberId,
+            categoryId: txnData.categoryId,
+            amount: txnData.amount,
+            dueDate: txnData.dueDate ? new Date(txnData.dueDate) : null,
+            referenceNumber: txnData.referenceNumber,
+            status: txnData.status,
+            notes: txnData.notes,
+            createdBy: req.user!.id,
+          },
+        });
+
+        await prisma.auditLog.create({
+          data: {
+            associationId,
+            userId: req.user!.id,
+            action: 'RESTORE',
+            tableName: 'transactions',
+            recordId: restored.id,
+            newValues: { restoredFrom: auditLogId },
+          },
+        });
+
+        // Phase 12: Invalidate cache
+        await cacheInvalidationService.onTransactionChange(associationId);
+
+        return res.status(200).json({
+          success: true,
+          message: 'Transaction restored successfully',
+          data: restored,
+        });
+      } else {
+        // Bulk restore
+        const txnsData = oldValues.transactions;
+        
+        if (!txnsData || !Array.isArray(txnsData)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid audit log data for bulk restore',
+          });
+        }
+
+        // Check for existing transactions
+        const referenceNumbers = txnsData.map((t: any) => t.referenceNumber);
+        const existing = await prisma.transaction.findMany({
+          where: { referenceNumber: { in: referenceNumbers }, associationId },
+        });
+
+        if (existing.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: `${existing.length} transaction(s) already exist (may have been restored previously)`,
+          });
+        }
+
+        // Restore all transactions
+        const restored = await prisma.$transaction(
+          txnsData.map((txnData: any) =>
+            prisma.transaction.create({
+              data: {
+                associationId: txnData.associationId,
+                memberId: txnData.memberId,
+                categoryId: txnData.categoryId,
+                amount: txnData.amount,
+                dueDate: txnData.dueDate ? new Date(txnData.dueDate) : null,
+                referenceNumber: txnData.referenceNumber,
+                status: txnData.status,
+                notes: txnData.notes,
+                createdBy: req.user!.id,
+              },
+            })
+          )
+        );
+
+        await prisma.auditLog.create({
+          data: {
+            associationId,
+            userId: req.user!.id,
+            action: 'BULK_RESTORE',
+            tableName: 'transactions',
+            newValues: { count: restored.length, restoredFrom: auditLogId },
+          },
+        });
+
+        // Phase 12: Invalidate cache
+        await cacheInvalidationService.onTransactionChange(associationId);
+
+        return res.status(200).json({
+          success: true,
+          message: `${restored.length} transaction(s) restored successfully`,
+          data: { restoredCount: restored.length },
+        });
+      }
+    } catch (error) {
+      console.error('Error restoring transaction:', error);
+      return res.status(500).json({ success: false, message: 'Failed to restore transaction' });
     }
   },
 

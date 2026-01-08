@@ -29,7 +29,13 @@ export function Can({
   children, 
   fallback = null 
 }: CanProps) {
-  const { user } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
+
+  // Wait for store to hydrate from localStorage before checking permissions
+  if (!_hasHydrated) {
+    // Show nothing while loading to prevent flash of "no permission" message
+    return null;
+  }
 
   if (!user) return <>{fallback}</>;
 
@@ -72,12 +78,13 @@ export function Can({
  * if (can(PERMISSIONS.MEMBER_CREATE)) { ... }
  */
 export function usePermissions() {
-  const { user } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
 
   // Get permissions array from user (fetched from API/database)
   const userPermissions = user?.permissions || [];
 
   const can = (permission: Permission): boolean => {
+    if (!_hasHydrated) return false; // Wait for hydration
     if (!user) return false;
     // Super admins have all permissions
     if (user.platformRole === 'SUPER_ADMIN') return true;
@@ -85,6 +92,7 @@ export function usePermissions() {
   };
 
   const canAny = (permissions: Permission[]): boolean => {
+    if (!_hasHydrated) return false; // Wait for hydration
     if (!user) return false;
     // Super admins have all permissions
     if (user.platformRole === 'SUPER_ADMIN') return true;
@@ -92,6 +100,7 @@ export function usePermissions() {
   };
 
   const canAll = (permissions: Permission[]): boolean => {
+    if (!_hasHydrated) return false; // Wait for hydration
     if (!user) return false;
     // Super admins have all permissions
     if (user.platformRole === 'SUPER_ADMIN') return true;
@@ -99,11 +108,13 @@ export function usePermissions() {
   };
 
   const isAdmin = (): boolean => {
+    if (!_hasHydrated) return false; // Wait for hydration
     if (!user) return false;
     return user.role === 'admin' || user.platformRole === 'SUPER_ADMIN';
   };
 
   const isSuperAdmin = (): boolean => {
+    if (!_hasHydrated) return false; // Wait for hydration
     if (!user) return false;
     return user.platformRole === 'SUPER_ADMIN';
   };
@@ -115,6 +126,7 @@ export function usePermissions() {
     isAdmin,
     isSuperAdmin,
     user,
+    isHydrated: _hasHydrated,
     permissions: userPermissions,
     roles: user?.roles || [],
   };

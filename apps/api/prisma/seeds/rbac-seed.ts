@@ -1,4 +1,9 @@
 import { PrismaClient } from '@prisma/client';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load environment variables from .env file
+config({ path: resolve(__dirname, '../../.env') });
 
 const prisma = new PrismaClient();
 
@@ -231,6 +236,107 @@ const PERMISSION_REGISTRY = [
     description: "Export audit logs.",
     module: "Audit & Compliance",
     examples: ["GET /api/audit/export", "Audit exports"]
+  },
+  // Nigerian Payments
+  {
+    key: "payments.nigerian.view",
+    description: "View Nigerian payment records and transfers.",
+    module: "Nigerian Payments",
+    examples: ["GET /api/payments/nigerian/transfers", "Payment dashboard"]
+  },
+  {
+    key: "payments.nigerian.record",
+    description: "Record bank transfers and upload payment proofs.",
+    module: "Nigerian Payments",
+    examples: ["POST /api/payments/nigerian/transfers", "Record payment page"]
+  },
+  {
+    key: "payments.nigerian.verify",
+    description: "Verify and approve payment proofs.",
+    module: "Nigerian Payments",
+    examples: ["PUT /api/payments/nigerian/transfers/:id/verify", "Verification queue"]
+  },
+  {
+    key: "payments.nigerian.reconcile",
+    description: "Reconcile bank statements with transactions.",
+    module: "Nigerian Payments",
+    examples: ["POST /api/payments/nigerian/reconcile", "Reconciliation page"]
+  },
+  {
+    key: "payments.nigerian.import",
+    description: "Import bank statements via CSV.",
+    module: "Nigerian Payments",
+    examples: ["POST /api/payments/nigerian/import", "Import page"]
+  },
+  // SMS & Communications
+  {
+    key: "communication.sms.view",
+    description: "View SMS messages and campaigns.",
+    module: "SMS Communications",
+    examples: ["GET /api/communication/sms", "SMS dashboard"]
+  },
+  {
+    key: "communication.sms.send",
+    description: "Send SMS messages and create campaigns.",
+    module: "SMS Communications",
+    examples: ["POST /api/communication/sms/send", "Quick send page"]
+  },
+  {
+    key: "communication.sms.campaign",
+    description: "Manage SMS campaigns.",
+    module: "SMS Communications",
+    examples: ["POST /api/communication/campaigns", "Campaign management"]
+  },
+  {
+    key: "communication.sms.template",
+    description: "Manage SMS templates.",
+    module: "SMS Communications",
+    examples: ["POST /api/communication/templates", "Template management"]
+  },
+  // Notifications & Announcements
+  {
+    key: "notifications.view",
+    description: "View notifications.",
+    module: "Notifications",
+    examples: ["GET /api/notifications", "Notifications center"]
+  },
+  {
+    key: "notifications.send",
+    description: "Send announcements and broadcast notifications.",
+    module: "Notifications",
+    examples: ["POST /api/notifications/announcements", "Create announcement"]
+  },
+  // Exports
+  {
+    key: "exports.financial",
+    description: "Export financial reports (PDF/Excel).",
+    module: "Exports",
+    examples: ["POST /api/exports/financial", "Export data page"]
+  },
+  {
+    key: "exports.members",
+    description: "Export member data.",
+    module: "Exports",
+    examples: ["POST /api/exports/members", "Member exports"]
+  },
+  {
+    key: "exports.view_history",
+    description: "View and download export history.",
+    module: "Exports",
+    examples: ["GET /api/exports/history", "Export history page"]
+  },
+  // Cron Jobs & System
+  {
+    key: "system.cron.view",
+    description: "View cron job status and history.",
+    module: "System",
+    examples: ["GET /api/cron/status", "Cron jobs dashboard"]
+  },
+  {
+    key: "system.cron.trigger",
+    description: "Manually trigger cron jobs.",
+    module: "System",
+    examples: ["POST /api/cron/trigger/:job", "Manual job execution"]
   }
 ];
 
@@ -242,31 +348,47 @@ const ROLE_PERMISSION_MAPPING = {
     "ledger.view", "ledger.view_all", "ledger.view_own", "ledger.create", "ledger.edit", "ledger.reverse", 
     "ledger.export", "ledger.view_member_statement",
     "payments.view", "payments.view_all", "payments.view_own", "payments.manual_create", "payments.approve", "payments.delete",
+    "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.verify", "payments.nigerian.reconcile", "payments.nigerian.import",
     "reports.generate", "reports.export", "reports.financial_summary",
     "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
     "settings.view", "settings.edit", "settings.billing", "settings.integrations",
-    "audit.view", "audit.export"
+    "audit.view", "audit.export",
+    "communication.sms.view", "communication.sms.send", "communication.sms.campaign", "communication.sms.template",
+    "notifications.view", "notifications.send",
+    "exports.financial", "exports.members", "exports.view_history",
+    "system.cron.view", "system.cron.trigger"
   ],
   treasurer: [
     "members.view", "members.view_all",
     "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export", 
     "ledger.view_member_statement",
     "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
+    "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.verify", "payments.nigerian.reconcile", "payments.nigerian.import",
     "reports.generate", "reports.export", "reports.financial_summary",
+    "exports.financial", "exports.members", "exports.view_history",
+    "communication.sms.view",
+    "notifications.view",
     "settings.view"
   ],
   financial_secretary: [
     "members.view", "members.view_all",
     "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
     "payments.view", "payments.view_all", "payments.manual_create",
+    "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.reconcile", "payments.nigerian.import",
     "reports.generate", "reports.export", "reports.financial_summary",
+    "exports.financial", "exports.members", "exports.view_history",
+    "communication.sms.view",
+    "notifications.view",
     "settings.view"
   ],
   member: [
     "members.view_own", "members.edit_own",
     "ledger.view_own",
     "payments.view_own",
-    "reports.generate"
+    "payments.nigerian.view",
+    "reports.generate",
+    "notifications.view",
+    "exports.view_history"
   ]
 };
 

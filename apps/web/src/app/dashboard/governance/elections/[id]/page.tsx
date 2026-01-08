@@ -34,6 +34,8 @@ import {
   ElectionStatus
 } from '@/lib/api/voting';
 import { toast } from '@/lib/toast';
+import { modals } from '@mantine/modals';
+import { Text } from '@mantine/core';
 
 // Helper functions
 const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -306,9 +308,15 @@ export default function ElectionDetailPage() {
           {!['CANCELLED', 'RESULTS_PUBLISHED'].includes(election.status) && (
             <button
               onClick={() => {
-                if (confirm('Are you sure you want to cancel this election?')) {
-                  cancelMutation.mutate();
-                }
+                modals.openConfirmModal({
+                  title: 'Cancel Election',
+                  children: <Text size="sm">Are you sure you want to cancel this election?</Text>,
+                  labels: { confirm: 'Cancel Election', cancel: 'Go Back' },
+                  confirmProps: { color: 'red' },
+                  onConfirm: () => {
+                    cancelMutation.mutate();
+                  },
+                });
               }}
               disabled={cancelMutation.isPending}
               className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"

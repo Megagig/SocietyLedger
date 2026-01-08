@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Transaction, FinancialCategory } from '@/types';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
-import { apiGet } from '@/utils/api';
+import { apiGet, apiPost, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { 
-  Search, Plus, Eye, 
-  CheckCircle, Clock, AlertTriangle, XCircle 
+  Search, Plus, Eye, Trash2, CheckSquare, Square,
+  CheckCircle, Clock, AlertTriangle, XCircle, Calendar, Info
 } from 'lucide-react';
 
 interface TransactionWithDetails extends Transaction {
@@ -26,11 +27,21 @@ export default function TransactionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Selection state
+  const [selectedTransactions, setSelectedTransactions] = useState<number[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteType, setDeleteType] = useState<'single' | 'bulk'>('single');
+  const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [lastDeletedAuditLogId, setLastDeletedAuditLogId] = useState<number | null>(null);
+
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
@@ -46,7 +57,7 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     fetchTransactions();
-  }, [search, statusFilter, categoryFilter, typeFilter, page, limit]);
+  }, [search, statusFilter, categoryFilter, typeFilter, startDate, endDate, page, limit]);
 
   const fetchCategories = async () => {
     try {
@@ -86,6 +97,8 @@ export default function TransactionsPage() {
         ...(statusFilter && { status: statusFilter }),
         ...(categoryFilter && { categoryId: categoryFilter }),
         ...(typeFilter && { type: typeFilter }),
+        ...(startDate && { startDate: new Date(startDate).toISOString() }),
+        ...(endDate && { endDate: new Date(endDate).toISOString() }),
       });
 
       const response = await apiGet(
@@ -98,6 +111,7 @@ export default function TransactionsPage() {
       setTransactions(data.data.transactions);
       setTotalPages(data.data.pagination.totalPages);
       setTotalCount(data.data.pagination.totalCount);
+      setSelectedTransactions([]); // Clear selection on new data
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -150,8 +164,135 @@ export default function TransactionsPage() {
     });
   };
 
+  // Selection handlers
+  const toggleTransactionSelection = (id: number) => {
+    setSelectedTransactions(prev =>
+      prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTransactions.length === transactions.length) {
+      setSelectedTransactions([]);
+    } else {
+      setSelectedTransactions(transactions.map(t => t.id));
+    }
+  };
+
+  // Delete handlers
+  const handleDeleteClick = (id: number) => {
+    setTransactionToDelete(id);
+    setDeleteType('single');
+    setShowDeleteModal(true);
+  };
+
+  const handleBulkDeleteClick = () => {
+    setDeleteType('bulk');
+    setShowDeleteModal(true);
+  };
+
+  const getTotalAmount = (): number => {
+    if (deleteType === 'single' && transactionToDelete) {
+      const txn = transactions.find(t => t.id === transactionToDelete);
+      return Number(txn?.amount || 0);
+    }
+    return selectedTransactions.reduce((sum, id) => {
+      const txn = transactions.find(t => t.id === id);
+      return sum + Number(txn?.amount || 0);
+    }, 0);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      if (deleteType === 'single' && transactionToDelete) {
+        const response = await apiDelete(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/${transactionToDelete}`
+        );
+        const data = await response.json();
+        
+        if (!response.ok) throw new Error(data.message);
+        
+        setLastDeletedAuditLogId(data.data.auditLogId);
+        toast.success('Transaction deleted successfully');
+        
+        // Show undo option after successful deletion
+        setTimeout(() => {
+          if (lastDeletedAuditLogId === data.data.auditLogId) {
+            setLastDeletedAuditLogId(null);
+          }
+        }, 30000); // Clear after 30 seconds
+      } else {
+        const response = await apiPost(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/bulk-delete`,
+          { transactionIds: selectedTransactions }
+        );
+        const data = await response.json();
+        
+        if (!response.ok) throw new Error(data.message);
+        
+        setLastDeletedAuditLogId(data.data.auditLogId);
+        toast.success(`${data.data.deletedCount} transaction(s) deleted successfully`);
+        
+        // Show undo option after successful deletion
+        setTimeout(() => {
+          if (lastDeletedAuditLogId === data.data.auditLogId) {
+            setLastDeletedAuditLogId(null);
+          }
+        }, 30000); // Clear after 30 seconds
+      }
+      
+      setShowDeleteModal(false);
+      setTransactionToDelete(null);
+      setSelectedTransactions([]);
+      fetchTransactions();
+      fetchStats();
+    } catch (err: any) {
+      toast.apiError(err, 'Failed to delete transaction(s)');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleUndoDelete = async (auditLogId: number) => {
+    try {
+      const response = await apiPost(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/undo-delete/${auditLogId}`,
+        {}
+      );
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error(data.message);
+      
+      toast.success('Transaction restored successfully');
+      fetchTransactions();
+      fetchStats();
+      setLastDeletedAuditLogId(null);
+    } catch (err: any) {
+      toast.apiError(err, 'Failed to restore transaction');
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Undo Delete Banner */}
+      {lastDeletedAuditLogId && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm text-blue-900 dark:text-blue-100">
+              Transaction(s) deleted. You can restore them within 30 seconds.
+            </span>
+          </div>
+          <button
+            onClick={() => handleUndoDelete(lastDeletedAuditLogId)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Undo Delete
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
@@ -205,7 +346,7 @@ export default function TransactionsPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
           <div className="sm:col-span-2 md:col-span-2">
             <div className="relative">
@@ -256,6 +397,62 @@ export default function TransactionsPage() {
             ))}
           </select>
         </div>
+
+        {/* Date Range Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <Calendar className="w-4 h-4 inline mr-1" />
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <Calendar className="w-4 h-4 inline mr-1" />
+              End Date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <div className="flex items-end">
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}
+                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Clear Dates
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Bulk Actions Bar */}
+        {selectedTransactions.length > 0 && (
+          <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              {selectedTransactions.length} transaction(s) selected
+            </span>
+            <Can permission={PERMISSIONS.TRANSACTION_DELETE}>
+              <button
+                onClick={handleBulkDeleteClick}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected
+              </button>
+            </Can>
+          </div>
+        )}
       </div>
 
       {/* Transactions Table */}
@@ -276,51 +473,87 @@ export default function TransactionsPage() {
                 <div 
                   key={txn.id} 
                   className="p-4 space-y-3"
-                  onClick={() => router.push(`/dashboard/finance/transactions/${txn.id}`)}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {txn.member ? `${txn.member.firstName} ${txn.member.lastName}` : '-'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">{txn.member?.memberId}</p>
-                    </div>
-                    {getStatusBadge(txn.status)}
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">{txn.category?.name}</span>
-                    <span className="text-xs text-gray-400 font-mono">{txn.referenceNumber}</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2">
-                    <div>
-                      <p className="text-xs text-gray-500">Amount</p>
-                      <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatCurrency(txn.amount)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Paid</p>
-                      <p className="font-semibold text-green-600 text-sm">{formatCurrency(txn.totalPaid || 0)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Balance</p>
-                      <p className="font-semibold text-red-600 text-sm">{formatCurrency(txn.balance || 0)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <span className="text-xs text-gray-500">
-                      Due: {txn.dueDate ? formatDate(txn.dueDate) : '-'}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/dashboard/finance/transactions/${txn.id}`);
-                      }}
-                      className="flex items-center gap-1 text-blue-600 text-sm"
+                  <div className="flex items-start gap-3">
+                    <Can permission={PERMISSIONS.TRANSACTION_DELETE}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTransactionSelection(txn.id);
+                        }}
+                        className="mt-1"
+                      >
+                        {selectedTransactions.includes(txn.id) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    </Can>
+                    <div 
+                      className="flex-1"
+                      onClick={() => router.push(`/dashboard/finance/transactions/${txn.id}`)}
                     >
-                      <Eye className="w-4 h-4" /> View
-                    </button>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {txn.member ? `${txn.member.firstName} ${txn.member.lastName}` : '-'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">{txn.member?.memberId}</p>
+                        </div>
+                        {getStatusBadge(txn.status)}
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm mt-2">
+                        <span className="text-gray-500">{txn.category?.name}</span>
+                        <span className="text-xs text-gray-400 font-mono">{txn.referenceNumber}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg p-2 mt-2">
+                        <div>
+                          <p className="text-xs text-gray-500">Amount</p>
+                          <p className="font-semibold text-gray-900 dark:text-white text-sm">{formatCurrency(txn.amount)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Paid</p>
+                          <p className="font-semibold text-green-600 text-sm">{formatCurrency(txn.totalPaid || 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Balance</p>
+                          <p className="font-semibold text-red-600 text-sm">{formatCurrency(txn.balance || 0)}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700 mt-2">
+                        <span className="text-xs text-gray-500">
+                          Due: {txn.dueDate ? formatDate(txn.dueDate) : '-'}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/finance/transactions/${txn.id}`);
+                            }}
+                            className="flex items-center gap-1 text-blue-600 text-sm"
+                          >
+                            <Eye className="w-4 h-4" /> View
+                          </button>
+                          <Can permission={PERMISSIONS.TRANSACTION_DELETE}>
+                            {!txn.payments || txn.payments.length === 0 ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(txn.id);
+                                }}
+                                className="flex items-center gap-1 text-red-600 text-sm"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                          </Can>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -331,6 +564,20 @@ export default function TransactionsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
+                    <Can permission={PERMISSIONS.TRANSACTION_DELETE}>
+                      <th className="px-3 py-3 text-left">
+                        <button
+                          onClick={toggleSelectAll}
+                          className="hover:text-blue-600"
+                        >
+                          {selectedTransactions.length === transactions.length ? (
+                            <CheckSquare className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      </th>
+                    </Can>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Reference
                     </th>
@@ -363,6 +610,19 @@ export default function TransactionsPage() {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {transactions.map((txn) => (
                     <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <Can permission={PERMISSIONS.TRANSACTION_DELETE}>
+                        <td className="px-3 py-4">
+                          <button
+                            onClick={() => toggleTransactionSelection(txn.id)}
+                          >
+                            {selectedTransactions.includes(txn.id) ? (
+                              <CheckSquare className="w-5 h-5 text-blue-600" />
+                            ) : (
+                              <Square className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                        </td>
+                      </Can>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {txn.referenceNumber}
                       </td>
@@ -392,13 +652,26 @@ export default function TransactionsPage() {
                         {getStatusBadge(txn.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => router.push(`/dashboard/finance/transactions/${txn.id}`)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => router.push(`/dashboard/finance/transactions/${txn.id}`)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <Can permission={PERMISSIONS.TRANSACTION_DELETE}>
+                            {!txn.payments || txn.payments.length === 0 ? (
+                              <button
+                                onClick={() => handleDeleteClick(txn.id)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Delete Transaction"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                          </Can>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -446,6 +719,70 @@ export default function TransactionsPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {getTotalAmount() >= 100000 ? '⚠️ High-Value Transaction Deletion' : 'Confirm Deletion'}
+            </h3>
+            <div className="space-y-3 mb-6">
+              <p className="text-gray-600 dark:text-gray-400">
+                {deleteType === 'single' 
+                  ? 'Are you sure you want to delete this transaction?' 
+                  : `Are you sure you want to delete ${selectedTransactions.length} transaction(s)?`
+                }
+              </p>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {formatCurrency(getTotalAmount())}
+                  </span>
+                </div>
+                {deleteType === 'bulk' && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Count:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {selectedTransactions.length} transaction(s)
+                    </span>
+                  </div>
+                )}
+              </div>
+              {getTotalAmount() >= 100000 && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                    ⚠️ This is a high-value transaction (≥₦100,000). Please confirm you want to proceed.
+                  </p>
+                </div>
+              )}
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                This action can be undone within a short time window using the "Undo" button that appears after deletion.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setTransactionToDelete(null);
+                }}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 font-medium"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

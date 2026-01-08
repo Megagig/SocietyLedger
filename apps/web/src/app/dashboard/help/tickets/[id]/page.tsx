@@ -27,6 +27,8 @@ import {
   getStatusColor,
   getPriorityColor,
 } from '@/lib/api/support';
+import { modals } from '@mantine/modals';
+import { Text } from '@mantine/core';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -77,14 +79,22 @@ export default function TicketDetailPage() {
   }
 
   async function handleCloseTicket() {
-    if (!ticket || !confirm('Are you sure you want to close this ticket?')) return;
+    if (!ticket) return;
 
-    try {
-      await closeTicket(ticket.id);
-      await loadTicket();
-    } catch (err: any) {
-      setError(err.message || 'Failed to close ticket');
-    }
+    modals.openConfirmModal({
+      title: 'Close Ticket',
+      children: <Text size="sm">Are you sure you want to close this ticket?</Text>,
+      labels: { confirm: 'Close Ticket', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await closeTicket(ticket.id);
+          await loadTicket();
+        } catch (err: any) {
+          setError(err.message || 'Failed to close ticket');
+        }
+      },
+    });
   }
 
   async function handleReopenTicket() {

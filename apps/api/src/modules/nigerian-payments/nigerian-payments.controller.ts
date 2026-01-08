@@ -44,7 +44,7 @@ export const nigerianPaymentsController = {
 
       return res.status(200).json({
         success: true,
-        data: { accounts },
+        data: { bankAccounts: accounts },
       });
     } catch (error) {
       console.error('Error listing bank accounts:', error);
