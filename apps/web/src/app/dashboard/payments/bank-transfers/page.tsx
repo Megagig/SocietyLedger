@@ -70,8 +70,13 @@ export default function BankTransfersPage() {
       };
 
       const response = await getBankTransfers(params);
-      setTransfers(response.data?.bankTransfers || []);
-      setTotal(response.data?.total || 0);
+      
+      // API returns: { success: true, data: { transfers: [...], pagination: {...} } }
+      const transfersList = response.data?.transfers || [];
+      const totalCount = response.data?.pagination?.totalCount || 0;
+      
+      setTransfers(transfersList);
+      setTotal(totalCount);
     } catch (error: any) {
       console.error('Error loading transfers:', error);
       notifications.show({

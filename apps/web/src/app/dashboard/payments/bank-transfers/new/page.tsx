@@ -77,10 +77,19 @@ export default function RecordTransferPage() {
         getBankAccounts(true),
         api.get('/members', { params: { limit: 1000 } }),
       ]);
+      
       setBankAccounts(accountsRes.data?.bankAccounts || []);
-      setMembers(membersRes.data?.members || []);
+      
+      // API returns: { success: true, data: { members: [...], pagination: {...} } }
+      const membersList = membersRes.data?.data?.members || [];
+      setMembers(membersList);
     } catch (error) {
       console.error('Error loading data:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to load members and bank accounts',
+        color: 'red',
+      });
     }
   };
 
