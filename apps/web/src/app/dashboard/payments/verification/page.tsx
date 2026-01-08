@@ -35,6 +35,7 @@ import {
   type BankTransfer,
 } from '@/lib/api/nigerian-payments';
 import { notifications } from '@mantine/notifications';
+import { PERMISSIONS } from '@/lib/permissions';
 
 export default function VerificationPage() {
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,26 @@ export default function VerificationPage() {
       rejectionReason: '',
     },
   });
+
+  const accessDeniedFallback = (
+    <Stack align="center" gap="lg" py="xl">
+      <Card withBorder padding="xl" w="100%" maw={600}>
+        <Stack align="center" gap="md">
+          <div style={{ padding: '1rem', borderRadius: '50%', backgroundColor: '#fee2e2' }}>
+            <X size={48} color="#dc2626" />
+          </div>
+          <Title order={2} ta="center">Access Denied</Title>
+          <Text size="sm" c="dimmed" ta="center">
+            You don't have permission to access the payment verification page. 
+            Please contact your administrator if you believe you should have access.
+          </Text>
+          <Text size="xs" c="dimmed" ta="center">
+            Required permission: PAYMENT_CONFIRM (payments.approve)
+          </Text>
+        </Stack>
+      </Card>
+    </Stack>
+  );
 
   useEffect(() => {
     loadData();
@@ -131,7 +152,7 @@ export default function VerificationPage() {
   const totalPages = Math.ceil(total / 20);
 
   return (
-    <Can permission="PAYMENT_VERIFY">
+    <Can permission={PERMISSIONS.PAYMENT_CONFIRM} fallback={accessDeniedFallback}>
       <Stack gap="lg">
         <div>
           <Title order={2}>Payment Verification</Title>
