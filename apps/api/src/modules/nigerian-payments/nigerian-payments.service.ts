@@ -558,25 +558,31 @@ export const nigerianPaymentsService = {
   async autoMatchTransactions(associationId: number): Promise<AutoMatchResult> {
     const matches: AutoMatchResult['matches'] = [];
 
-    // Get unmatched bank transfers
+    // Get unmatched bank transfers (VERIFIED but not matched to transaction)
     const unmatchedTransfers = await prisma.bankTransfer.findMany({
       where: {
         associationId,
-        status: 'PENDING',
+        status: 'VERIFIED',
         transactionId: null,
       },
     });
 
-    // Get pending transactions
+    console.log(`[Auto-Match] Found ${unmatchedTransfers.length} unmatched transfers`);
+
+    // Get pending transactions (case-insensitive status check)
     const pendingTransactions = await prisma.transaction.findMany({
       where: {
         associationId,
-        status: { in: ['pending', 'overdue'] },
+        status: {
+          in: ['PENDING', 'OVERDUE', 'pending', 'overdue', 'Pending', 'Overdue'],
+        },
       },
       include: {
         member: true,
       },
     });
+
+    console.log(`[Auto-Match] Found ${pendingTransactions.length} pending transactions`);
 
     for (const transfer of unmatchedTransfers) {
       // Try to match by reference number first

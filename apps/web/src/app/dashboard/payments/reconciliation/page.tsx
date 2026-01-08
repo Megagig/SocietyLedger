@@ -80,18 +80,27 @@ export default function ReconciliationPage() {
         getUnmatchedDashboard(),
         getBankTransfers({ status: 'VERIFIED', limit: 100 }),
         api.get('/finance/transactions', {
-          params: { status: 'PENDING', limit: 100 },
+          params: { status: 'pending', limit: 100 }, // lowercase to match database
         }),
       ]);
+
+      console.log('[Reconciliation] Raw transactions response:', transactionsRes);
+      console.log('[Reconciliation] Response data:', transactionsRes.data);
 
       setDashboard(dashboardRes.data);
       // API returns: { data: { transfers: [...], pagination: {...} } }
       const transfers = transfersRes.data?.transfers || [];
-      setUnmatchedTransfers(
-        transfers.filter((t: BankTransfer) => !t.transactionId) || []
-      );
+      console.log('[Reconciliation] Loaded transfers:', transfers.length);
+      
+      const unmatched = transfers.filter((t: BankTransfer) => !t.transactionId) || [];
+      console.log('[Reconciliation] Unmatched transfers:', unmatched.length);
+      setUnmatchedTransfers(unmatched);
+      
       // API returns: { data: { transactions: [...], pagination: {...} } }
-      setPendingTransactions(transactionsRes.data?.data?.transactions || []);
+      const transactions = transactionsRes.data?.data?.transactions || [];
+      console.log('[Reconciliation] Pending transactions:', transactions.length);
+      console.log('[Reconciliation] Transactions array:', transactions);
+      setPendingTransactions(transactions);
     } catch (error: any) {
       console.error('Error loading data:', error);
       notifications.show({
