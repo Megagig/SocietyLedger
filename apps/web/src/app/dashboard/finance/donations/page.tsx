@@ -104,6 +104,8 @@ export default function DonationsPage() {
     donorMessage: '',
     isAnonymous: false,
     notes: '',
+    donationType: 'instant' as 'instant' | 'pledge',
+    pledgeDate: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -240,16 +242,18 @@ export default function DonationsPage() {
           allocationId: recordForm.allocationId ? parseInt(recordForm.allocationId) : undefined,
           donorMessage: recordForm.donorMessage || undefined,
           isAnonymous: recordForm.isAnonymous,
+          donationType: recordForm.donationType,
+          pledgeDate: recordForm.donationType === 'pledge' && recordForm.pledgeDate ? recordForm.pledgeDate : undefined,
         }
       );
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to record donation');
 
-      toast.success('Donation recorded successfully!');
+      toast.success(recordForm.donationType === 'instant' ? 'Donation recorded successfully!' : 'Pledge recorded successfully!');
       setShowRecordModal(false);
       setSelectedCategory(null);
-      setRecordForm({ memberId: '', amount: '', allocationId: '', donorMessage: '', isAnonymous: false, notes: '' });
+      setRecordForm({ memberId: '', amount: '', allocationId: '', donorMessage: '', isAnonymous: false, notes: '', donationType: 'instant', pledgeDate: '' });
       fetchRecentDonations();
       fetchDonationStats();
       
@@ -394,6 +398,8 @@ export default function DonationsPage() {
       donorMessage: '',
       isAnonymous: false,
       notes: '',
+      donationType: 'instant',
+      pledgeDate: '',
     });
     setShowRecordModal(true);
   };
@@ -861,6 +867,59 @@ export default function DonationsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Donation Type *
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="donationType"
+                      value="instant"
+                      checked={recordForm.donationType === 'instant'}
+                      onChange={(e) => setRecordForm({ ...recordForm, donationType: 'instant', pledgeDate: '' })}
+                      className="text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Instant Payment</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="donationType"
+                      value="pledge"
+                      checked={recordForm.donationType === 'pledge'}
+                      onChange={(e) => setRecordForm({ ...recordForm, donationType: 'pledge' })}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Pledge (Future Payment)</span>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {recordForm.donationType === 'instant' 
+                    ? 'Payment will be recorded immediately' 
+                    : 'A pledge to donate that will be redeemed later'}
+                </p>
+              </div>
+
+              {recordForm.donationType === 'pledge' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Expected Redemption Date
+                  </label>
+                  <input
+                    type="date"
+                    value={recordForm.pledgeDate}
+                    onChange={(e) => setRecordForm({ ...recordForm, pledgeDate: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    When is this pledge expected to be fulfilled?
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Amount (₦) *
                 </label>
                 <input
@@ -929,9 +988,11 @@ export default function DonationsPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50"
+                  className={`flex-1 px-4 py-2 ${recordForm.donationType === 'instant' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-lg disabled:opacity-50`}
                 >
-                  {isSubmitting ? 'Recording...' : 'Record Donation'}
+                  {isSubmitting 
+                    ? (recordForm.donationType === 'instant' ? 'Recording...' : 'Recording Pledge...') 
+                    : (recordForm.donationType === 'instant' ? 'Record Donation' : 'Record Pledge')}
                 </button>
               </div>
             </form>

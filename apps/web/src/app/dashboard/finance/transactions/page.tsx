@@ -207,7 +207,7 @@ export default function TransactionsPage() {
     try {
       if (deleteType === 'single' && transactionToDelete) {
         const response = await apiDelete(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/${transactionToDelete}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/${transactionToDelete}?forceDelete=true`
         );
         const data = await response.json();
         
@@ -225,7 +225,7 @@ export default function TransactionsPage() {
       } else {
         const response = await apiPost(
           `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/bulk-delete`,
-          { transactionIds: selectedTransactions }
+          { transactionIds: selectedTransactions, forceDelete: true }
         );
         const data = await response.json();
         

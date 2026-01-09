@@ -70,6 +70,7 @@ const bulkTransactionSchema = z.object({
 
 const bulkDeleteSchema = z.object({
   transactionIds: z.array(z.number().int().positive()).min(1, 'At least one transaction is required'),
+  forceDelete: z.boolean().optional().default(false), // When true, cascade deletes payments and donation records
 });
 
 const transactionQuerySchema = z.object({
@@ -865,6 +866,7 @@ export const financeController = {
     try {
       const { id } = req.params;
       const associationId = req.user?.associationId;
+      const forceDelete = req.query.forceDelete === 'true';
 
       if (!associationId) {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
@@ -872,22 +874,40 @@ export const financeController = {
 
       const transaction = await prisma.transaction.findFirst({
         where: { id: parseInt(id), associationId },
-        include: { payments: true },
+        include: { payments: true, donationRecord: true },
       });
 
       if (!transaction) {
         return res.status(404).json({ success: false, message: 'Transaction not found' });
       }
 
-      // Don't allow deleting transactions with payments
-      if (transaction.payments.length > 0) {
+      // Don't allow deleting transactions with payments unless forceDelete is true
+      if (transaction.payments.length > 0 && !forceDelete) {
         return res.status(400).json({
           success: false,
-          message: 'Cannot delete transaction with recorded payments',
+          message: 'Cannot delete transaction with recorded payments. Use forceDelete=true to cascade delete.',
         });
       }
 
-      await prisma.transaction.delete({ where: { id: parseInt(id) } });
+      // Use a transaction for cascade deletion
+      await prisma.$transaction(async (tx) => {
+        // First delete donation record if any
+        if (transaction.donationRecord) {
+          await tx.donationRecord.delete({
+            where: { id: transaction.donationRecord.id },
+          });
+        }
+
+        // Then delete payments if any
+        if (transaction.payments.length > 0) {
+          await tx.payment.deleteMany({
+            where: { transactionId: parseInt(id) },
+          });
+        }
+
+        // Finally delete the transaction
+        await tx.transaction.delete({ where: { id: parseInt(id) } });
+      });
 
       const auditLog = await prisma.auditLog.create({
         data: {
@@ -930,7 +950,7 @@ export const financeController = {
           id: { in: validatedData.transactionIds },
           associationId,
         },
-        include: { payments: true },
+        include: { payments: true, donationRecord: true },
       });
 
       if (transactions.length !== validatedData.transactionIds.length) {
@@ -944,10 +964,10 @@ export const financeController = {
 
       // Check for transactions with payments
       const transactionsWithPayments = transactions.filter(t => t.payments.length > 0);
-      if (transactionsWithPayments.length > 0) {
+      if (transactionsWithPayments.length > 0 && !validatedData.forceDelete) {
         return res.status(400).json({
           success: false,
-          message: `Cannot delete ${transactionsWithPayments.length} transaction(s) with recorded payments`,
+          message: `Cannot delete ${transactionsWithPayments.length} transaction(s) with recorded payments. Use forceDelete option to cascade delete.`,
           data: {
             cannotDelete: transactionsWithPayments.map(t => ({
               id: t.id,
@@ -958,9 +978,22 @@ export const financeController = {
         });
       }
 
-      // Delete all transactions
-      await prisma.transaction.deleteMany({
-        where: { id: { in: validatedData.transactionIds } },
+      // Use a transaction for cascade deletion
+      await prisma.$transaction(async (tx) => {
+        // First delete donation records if any
+        await tx.donationRecord.deleteMany({
+          where: { transactionId: { in: validatedData.transactionIds } },
+        });
+
+        // Then delete payments if any
+        await tx.payment.deleteMany({
+          where: { transactionId: { in: validatedData.transactionIds } },
+        });
+
+        // Finally delete the transactions
+        await tx.transaction.deleteMany({
+          where: { id: { in: validatedData.transactionIds } },
+        });
       });
 
       // Create audit log

@@ -196,6 +196,7 @@ export const donationsService = {
 
   /**
    * Record a donation with receipt generation (TASK-ADV-003)
+   * Supports both instant donations (with immediate payment) and pledges (to be redeemed later)
    */
   async recordDonation(
     associationId: number,
@@ -209,8 +210,13 @@ export const donationsService = {
       isAnonymous?: boolean;
       paymentMethod?: string;
       notes?: string;
+      donationType?: 'instant' | 'pledge'; // New field: instant = immediate payment, pledge = future redemption
+      pledgeDate?: string; // Expected redemption date for pledges
     }
   ) {
+    // Default to instant if not specified (backward compatibility)
+    const donationType = data.donationType || 'instant';
+    
     // Verify member exists
     const member = await prisma.member.findFirst({
       where: { id: data.memberId, associationId },
@@ -257,12 +263,17 @@ export const donationsService = {
     // Generate receipt number for donation record
     const receiptNumber = await this.generateReceiptNumber(associationId);
 
-    // Create transaction, payment, and donation record in a single transaction
+    // Determine transaction status and dates based on donation type
+    const isInstant = donationType === 'instant';
+    const transactionStatus = isInstant ? 'paid' : 'pending';
+    const paymentDate = isInstant ? new Date() : null;
+    const dueDate = data.pledgeDate ? new Date(data.pledgeDate) : null;
+
+    // Create transaction, payment (if instant), and donation record in a single transaction
     // Increase timeout for slow database connections (e.g., Neon cold starts)
     const result = await prisma.$transaction(async (tx) => {
       // Generate unique reference numbers inside transaction to avoid race conditions
       const transactionRef = generateUniqueTransactionRef();
-      const paymentReceiptNumber = generateUniqueReceiptNumber();
 
       // Create the transaction
       const transaction = await tx.transaction.create({
@@ -272,27 +283,32 @@ export const donationsService = {
           categoryId: data.categoryId,
           amount: data.amount,
           referenceNumber: transactionRef,
-          status: 'paid',
-          paymentDate: new Date(),
-          paymentMethod: data.paymentMethod || 'cash',
-          notes: data.notes || `Donation: ${category.name}`,
+          status: transactionStatus,
+          paymentDate,
+          dueDate,
+          paymentMethod: isInstant ? (data.paymentMethod || 'cash') : null,
+          notes: data.notes || `${isInstant ? 'Donation' : 'Donation Pledge'}: ${category.name}`,
           createdBy: userId,
         },
       });
 
-      // Create payment record
-      const payment = await tx.payment.create({
-        data: {
-          associationId,
-          transactionId: transaction.id,
-          amountPaid: data.amount,
-          paymentDate: new Date(),
-          paymentMethod: data.paymentMethod || 'cash',
-          receiptNumber: paymentReceiptNumber,
-          confirmedBy: userId,
-          confirmedAt: new Date(),
-        },
-      });
+      // Only create payment record for instant donations
+      let payment = null;
+      if (isInstant) {
+        const paymentReceiptNumber = generateUniqueReceiptNumber();
+        payment = await tx.payment.create({
+          data: {
+            associationId,
+            transactionId: transaction.id,
+            amountPaid: data.amount,
+            paymentDate: new Date(),
+            paymentMethod: data.paymentMethod || 'cash',
+            receiptNumber: paymentReceiptNumber,
+            confirmedBy: userId,
+            confirmedAt: new Date(),
+          },
+        });
+      }
 
       // Create donation record with receipt
       const donationRecord = await tx.donationRecord.create({
@@ -324,7 +340,7 @@ export const donationsService = {
       data: {
         associationId,
         userId,
-        action: 'RECORD_DONATION',
+        action: isInstant ? 'RECORD_DONATION' : 'RECORD_PLEDGE',
         tableName: 'donation_records',
         recordId: result.donationRecord.id,
         newValues: {
@@ -332,12 +348,15 @@ export const donationsService = {
           amount: data.amount,
           receiptNumber,
           allocationId: data.allocationId,
+          donationType,
+          pledgeDate: data.pledgeDate,
         },
       },
     });
 
     return {
       ...result,
+      donationType,
       member: {
         id: member.id,
         memberId: member.memberId,
