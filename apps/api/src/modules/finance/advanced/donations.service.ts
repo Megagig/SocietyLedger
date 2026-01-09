@@ -240,15 +240,30 @@ export const donationsService = {
       }
     }
 
-    // Generate receipt number
+    // Helper function to generate unique receipt number with timestamp and random suffix
+    const generateUniqueReceiptNumber = () => {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      return `RCP${timestamp}${random}`;
+    };
+
+    // Helper function to generate unique transaction reference
+    const generateUniqueTransactionRef = () => {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      return `TXN${timestamp}${random}`;
+    };
+
+    // Generate receipt number for donation record
     const receiptNumber = await this.generateReceiptNumber(associationId);
 
-    // Get transaction count for reference
-    const txnCount = await prisma.transaction.count({ where: { associationId } });
-    const paymentCount = await prisma.payment.count({ where: { associationId } });
-
     // Create transaction, payment, and donation record in a single transaction
+    // Increase timeout for slow database connections (e.g., Neon cold starts)
     const result = await prisma.$transaction(async (tx) => {
+      // Generate unique reference numbers inside transaction to avoid race conditions
+      const transactionRef = generateUniqueTransactionRef();
+      const paymentReceiptNumber = generateUniqueReceiptNumber();
+
       // Create the transaction
       const transaction = await tx.transaction.create({
         data: {
@@ -256,7 +271,7 @@ export const donationsService = {
           memberId: data.memberId,
           categoryId: data.categoryId,
           amount: data.amount,
-          referenceNumber: `TXN${String(txnCount + 1).padStart(6, '0')}`,
+          referenceNumber: transactionRef,
           status: 'paid',
           paymentDate: new Date(),
           paymentMethod: data.paymentMethod || 'cash',
@@ -273,7 +288,7 @@ export const donationsService = {
           amountPaid: data.amount,
           paymentDate: new Date(),
           paymentMethod: data.paymentMethod || 'cash',
-          receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
+          receiptNumber: paymentReceiptNumber,
           confirmedBy: userId,
           confirmedAt: new Date(),
         },
@@ -300,6 +315,9 @@ export const donationsService = {
       });
 
       return { transaction, payment, donationRecord };
+    }, {
+      maxWait: 30000, // Maximum time to wait for transaction to start (30 seconds)
+      timeout: 30000, // Maximum time for transaction to complete (30 seconds)
     });
 
     await prisma.auditLog.create({
