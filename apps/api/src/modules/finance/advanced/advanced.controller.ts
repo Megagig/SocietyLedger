@@ -58,6 +58,8 @@ const recordDonationSchema = z.object({
   isAnonymous: z.boolean().optional(),
   paymentMethod: z.string().optional(),
   notes: z.string().optional(),
+  donationType: z.enum(['instant', 'pledge']).optional().default('instant'),
+  pledgeDate: z.string().optional(),
 });
 
 // Penalty Schemas
