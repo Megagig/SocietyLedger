@@ -321,6 +321,18 @@ model Transaction {
   createdBy           Int                         @map("created_by")
   createdAt           DateTime                    @default(now()) @map("created_at")
   updatedAt           DateTime                    @updatedAt @map("updated_at")
+  
+  // Edit and void tracking
+  isVoided            Boolean                     @default(false) @map("is_voided")
+  voidReason          String?                     @map("void_reason")
+  voidedAt            DateTime?                   @map("voided_at")
+  voidedBy            Int?                        @map("voided_by")
+  replacedBy          Int?                        @map("replaced_by")
+  replaces            Int?                        @map("replaces")
+  editHistory         Json?                       @map("edit_history")
+  lastEditedBy        Int?                        @map("last_edited_by")
+  lastEditedAt        DateTime?                   @map("last_edited_at")
+  
   gatewayTransactions PaymentGatewayTransaction[]
   payments            Payment[]
   association         Association                 @relation(fields: [associationId], references: [id])

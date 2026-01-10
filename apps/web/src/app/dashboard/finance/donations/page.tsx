@@ -69,6 +69,14 @@ export default function DonationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   
+  // Pagination state for recent donations
+  const [donationsPagination, setDonationsPagination] = useState({
+    page: 1,
+    limit: 20,
+    totalCount: 0,
+    totalPages: 0,
+  });
+  
   // Modal states
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -148,14 +156,22 @@ export default function DonationsPage() {
     }
   };
 
-  const fetchRecentDonations = async () => {
+  const fetchRecentDonations = async (page = 1) => {
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/donations?limit=10`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/donations?page=${page}&limit=${donationsPagination.limit}`
       );
       if (response.ok) {
         const data = await response.json();
         setRecentDonations(data.data.donations || []);
+        if (data.data.pagination) {
+          setDonationsPagination(prev => ({
+            ...prev,
+            page: data.data.pagination.page,
+            totalCount: data.data.pagination.totalCount,
+            totalPages: data.data.pagination.totalPages,
+          }));
+        }
       }
     } catch (err: any) {
       console.error('Error fetching recent donations:', err);
@@ -481,7 +497,7 @@ export default function DonationsPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Donation Count</p>
               <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {donationStats?.totalCount || recentDonations.length}
+                {donationStats?.totalDonations || donationsPagination.totalCount || recentDonations.length}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-full">
@@ -524,7 +540,7 @@ export default function DonationsPage() {
         <Tabs.List>
           <Tabs.Tab value="categories">Categories ({donations.length})</Tabs.Tab>
           <Tabs.Tab value="allocations">Allocations ({allocations.length})</Tabs.Tab>
-          <Tabs.Tab value="recent">Recent Donations ({recentDonations.length})</Tabs.Tab>
+          <Tabs.Tab value="recent">Recent Donations ({donationsPagination.totalCount || recentDonations.length})</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="categories" pt="md">
@@ -748,6 +764,36 @@ export default function DonationsPage() {
                   ))}
                 </tbody>
               </table>
+              
+              {/* Pagination */}
+              {donationsPagination.totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="text-sm text-gray-500">
+                    Showing {((donationsPagination.page - 1) * donationsPagination.limit) + 1} to{' '}
+                    {Math.min(donationsPagination.page * donationsPagination.limit, donationsPagination.totalCount)} of{' '}
+                    {donationsPagination.totalCount} donations
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => fetchRecentDonations(donationsPagination.page - 1)}
+                      disabled={donationsPagination.page <= 1}
+                      className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400">
+                      Page {donationsPagination.page} of {donationsPagination.totalPages}
+                    </span>
+                    <button
+                      onClick={() => fetchRecentDonations(donationsPagination.page + 1)}
+                      disabled={donationsPagination.page >= donationsPagination.totalPages}
+                      className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Tabs.Panel>

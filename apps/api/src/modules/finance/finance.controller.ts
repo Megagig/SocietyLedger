@@ -60,6 +60,39 @@ const updateTransactionSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
+// Edit transaction schema (for unpaid/pending transactions only)
+const editTransactionSchema = z.object({
+  memberId: z.number().int().positive().optional(),
+  categoryId: z.number().int().positive().optional(),
+  amount: z.number().positive('Amount must be positive').optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  editReason: z.string().min(5, 'Please provide a reason for editing (min 5 characters)'),
+});
+
+// Void and replace schema (for paid transactions)
+const voidAndReplaceSchema = z.object({
+  voidReason: z.string().min(10, 'Please provide a detailed reason for voiding (min 10 characters)'),
+  newTransaction: z.object({
+    memberId: z.number().int().positive(),
+    categoryId: z.number().int().positive(),
+    amount: z.number().positive('Amount must be positive'),
+    dueDate: z.string().datetime().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  }),
+});
+
+// Bulk edit schema
+const bulkEditSchema = z.object({
+  transactionIds: z.array(z.number().int().positive()).min(1, 'At least one transaction is required'),
+  updates: z.object({
+    categoryId: z.number().int().positive().optional(),
+    dueDate: z.string().datetime().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  }),
+  editReason: z.string().min(5, 'Please provide a reason for bulk editing (min 5 characters)'),
+});
+
 const bulkTransactionSchema = z.object({
   categoryId: z.number().int().positive('Category ID is required'),
   memberIds: z.array(z.number().int().positive()).min(1, 'At least one member is required'),
@@ -1027,6 +1060,368 @@ export const financeController = {
     }
   },
 
+  // Edit unpaid transaction (Hybrid approach - only for unpaid/pending transactions)
+  async editTransaction(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const validatedData = editTransactionSchema.parse(req.body);
+
+      // Fetch the transaction with payments
+      const transaction = await prisma.transaction.findFirst({
+        where: { id: parseInt(id), associationId },
+        include: { payments: true, member: true, category: true },
+      });
+
+      if (!transaction) {
+        return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+
+      // Block editing if transaction is paid or partially paid
+      const totalPaid = transaction.payments.reduce((sum, p) => sum + Number(p.amountPaid), 0);
+      if (totalPaid > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot edit paid or partially paid transactions. Use void-and-replace instead.',
+          data: { totalPaid, status: transaction.status },
+        });
+      }
+
+      // Block editing voided transactions
+      if (transaction.isVoided) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot edit voided transactions',
+        });
+      }
+
+      // If member is changing, need to recalculate ledgers
+      const oldMemberId = transaction.memberId;
+      const newMemberId = validatedData.memberId || transaction.memberId;
+      const memberChanged = oldMemberId !== newMemberId;
+
+      // Store old values for edit history
+      const oldValues = {
+        memberId: transaction.memberId,
+        categoryId: transaction.categoryId,
+        amount: Number(transaction.amount),
+        dueDate: transaction.dueDate,
+        notes: transaction.notes,
+      };
+
+      // Update transaction
+      const updatedTransaction = await prisma.transaction.update({
+        where: { id: parseInt(id) },
+        data: {
+          memberId: validatedData.memberId,
+          categoryId: validatedData.categoryId,
+          amount: validatedData.amount,
+          dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
+          notes: validatedData.notes,
+          lastEditedBy: userId,
+          lastEditedAt: new Date(),
+          editHistory: {
+            ...(transaction.editHistory as any || {}),
+            edits: [
+              ...((transaction.editHistory as any)?.edits || []),
+              {
+                editedAt: new Date().toISOString(),
+                editedBy: userId,
+                reason: validatedData.editReason,
+                oldValues,
+                newValues: validatedData,
+              },
+            ],
+          },
+        },
+        include: { member: true, category: true },
+      });
+
+      // Recalculate ledgers if member changed
+      if (memberChanged) {
+        const { memberLedgerService } = await import('../member-finance/member-ledger.service');
+        // Re-sync both old and new member ledgers
+        await memberLedgerService.syncExistingTransactions(associationId, oldMemberId, userId, true);
+        await memberLedgerService.syncExistingTransactions(associationId, newMemberId, userId, true);
+      }
+
+      // Audit log
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'EDIT_TRANSACTION',
+          tableName: 'transactions',
+          recordId: parseInt(id),
+          oldValues,
+          newValues: validatedData,
+        },
+      });
+
+      // Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Transaction updated successfully',
+        data: updatedTransaction,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error editing transaction:', error);
+      return res.status(500).json({ success: false, message: 'Failed to edit transaction' });
+    }
+  },
+
+  // Void and replace transaction (for paid transactions)
+  async voidAndReplaceTransaction(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const validatedData = voidAndReplaceSchema.parse(req.body);
+
+      // Fetch the original transaction
+      const originalTransaction = await prisma.transaction.findFirst({
+        where: { id: parseInt(id), associationId },
+        include: { payments: true, member: true, category: true },
+      });
+
+      if (!originalTransaction) {
+        return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+
+      // Block if already voided
+      if (originalTransaction.isVoided) {
+        return res.status(400).json({
+          success: false,
+          message: 'Transaction is already voided',
+        });
+      }
+
+      // Generate unique reference for new transaction
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const newReferenceNumber = `TXN${timestamp}${random}`;
+
+      // Use transaction to void old and create new
+      const result = await prisma.$transaction(async (tx) => {
+        // Mark original as voided
+        const voidedTransaction = await tx.transaction.update({
+          where: { id: parseInt(id) },
+          data: {
+            isVoided: true,
+            voidReason: validatedData.voidReason,
+            voidedAt: new Date(),
+            voidedBy: userId,
+          },
+        });
+
+        // Create new corrected transaction
+        const newTransaction = await tx.transaction.create({
+          data: {
+            associationId,
+            memberId: validatedData.newTransaction.memberId,
+            categoryId: validatedData.newTransaction.categoryId,
+            amount: validatedData.newTransaction.amount,
+            dueDate: validatedData.newTransaction.dueDate ? new Date(validatedData.newTransaction.dueDate) : null,
+            notes: validatedData.newTransaction.notes || `Replacement for voided transaction ${originalTransaction.referenceNumber || originalTransaction.id}`,
+            referenceNumber: newReferenceNumber,
+            status: 'pending',
+            createdBy: userId,
+            replaces: parseInt(id),
+          },
+          include: { member: true, category: true },
+        });
+
+        // Link back to original
+        await tx.transaction.update({
+          where: { id: parseInt(id) },
+          data: { replacedBy: newTransaction.id },
+        });
+
+        return { voidedTransaction, newTransaction };
+      });
+
+      // Recalculate ledgers for affected members
+      const { memberLedgerService } = await import('../member-finance/member-ledger.service');
+      const affectedMemberIds = new Set([
+        originalTransaction.memberId,
+        validatedData.newTransaction.memberId,
+      ]);
+      
+      for (const memberId of affectedMemberIds) {
+        await memberLedgerService.syncExistingTransactions(associationId, memberId, userId, true);
+      }
+
+      // Audit log
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'VOID_AND_REPLACE_TRANSACTION',
+          tableName: 'transactions',
+          recordId: parseInt(id),
+          oldValues: originalTransaction,
+          newValues: { voidReason: validatedData.voidReason, newTransaction: result.newTransaction },
+        },
+      });
+
+      // Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Transaction voided and replaced successfully',
+        data: {
+          voidedTransaction: result.voidedTransaction,
+          newTransaction: result.newTransaction,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error voiding and replacing transaction:', error);
+      return res.status(500).json({ success: false, message: 'Failed to void and replace transaction' });
+    }
+  },
+
+  // Bulk edit transactions (only unpaid/pending transactions)
+  async bulkEditTransactions(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const validatedData = bulkEditSchema.parse(req.body);
+
+      // Fetch all transactions
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          id: { in: validatedData.transactionIds },
+          associationId,
+        },
+        include: { payments: true },
+      });
+
+      if (transactions.length !== validatedData.transactionIds.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Some transactions not found',
+          found: transactions.length,
+          requested: validatedData.transactionIds.length,
+        });
+      }
+
+      // Check for paid transactions
+      const paidTransactions = transactions.filter(t => {
+        const totalPaid = t.payments.reduce((sum, p) => sum + Number(p.amountPaid), 0);
+        return totalPaid > 0;
+      });
+
+      if (paidTransactions.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot bulk edit ${paidTransactions.length} paid/partially paid transaction(s)`,
+          data: {
+            cannotEdit: paidTransactions.map(t => ({
+              id: t.id,
+              referenceNumber: t.referenceNumber,
+              status: t.status,
+            })),
+          },
+        });
+      }
+
+      // Check for voided transactions
+      const voidedTransactions = transactions.filter(t => t.isVoided);
+      if (voidedTransactions.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot bulk edit ${voidedTransactions.length} voided transaction(s)`,
+        });
+      }
+
+      // Perform bulk update
+      const editEntry = {
+        editedAt: new Date().toISOString(),
+        editedBy: userId,
+        reason: validatedData.editReason,
+        updates: validatedData.updates,
+      };
+
+      const updated = await prisma.$transaction(
+        transactions.map(t =>
+          prisma.transaction.update({
+            where: { id: t.id },
+            data: {
+              categoryId: validatedData.updates.categoryId,
+              dueDate: validatedData.updates.dueDate ? new Date(validatedData.updates.dueDate) : undefined,
+              notes: validatedData.updates.notes,
+              lastEditedBy: userId,
+              lastEditedAt: new Date(),
+              editHistory: {
+                ...(t.editHistory as any || {}),
+                edits: [
+                  ...((t.editHistory as any)?.edits || []),
+                  editEntry,
+                ],
+              },
+            },
+          })
+        )
+      );
+
+      // Audit log
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'BULK_EDIT_TRANSACTIONS',
+          tableName: 'transactions',
+          newValues: {
+            count: updated.length,
+            updates: validatedData.updates,
+            reason: validatedData.editReason,
+            transactionIds: validatedData.transactionIds,
+          },
+        },
+      });
+
+      // Invalidate cache
+      await cacheInvalidationService.onTransactionChange(associationId);
+
+      return res.status(200).json({
+        success: true,
+        message: `${updated.length} transaction(s) updated successfully`,
+        data: { updatedCount: updated.length },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error bulk editing transactions:', error);
+      return res.status(500).json({ success: false, message: 'Failed to bulk edit transactions' });
+    }
+  },
+
   // Undo delete transaction (restore from audit log)
   async undoDeleteTransaction(req: Request, res: Response) {
     try {
@@ -1362,40 +1757,81 @@ export const financeController = {
         });
       }
 
-      // Get payment count for receipt numbers
-      const paymentCount = await prisma.payment.count({ where: { associationId } });
+      // Filter out already fully paid transactions
+      const unpaidTransactions = transactions.filter(txn => {
+        const currentPaid = txn.payments.reduce(
+          (sum, p) => sum.plus(p.amountPaid),
+          new Decimal(0)
+        );
+        return new Decimal(txn.amount).minus(currentPaid).greaterThan(0);
+      });
 
-      // Process each transaction
-      const results = await prisma.$transaction(
-        transactions.flatMap((txn, index) => {
+      if (unpaidTransactions.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'All selected transactions are already fully paid',
+        });
+      }
+
+      // Generate batch reference number (unique for this bulk payment)
+      const batchReference = `BATCH-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // Helper function to generate unique receipt number
+      const generateUniqueReceiptNumber = (index: number) => {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `RCP${timestamp}${random}${index}`;
+      };
+
+      const paymentDate = validatedData.paymentDate ? new Date(validatedData.paymentDate) : new Date();
+
+      // Process all transactions in a single database transaction
+      const result = await prisma.$transaction(async (tx) => {
+        const createdPayments = [];
+        
+        for (let i = 0; i < unpaidTransactions.length; i++) {
+          const txn = unpaidTransactions[i];
           const currentPaid = txn.payments.reduce(
             (sum, p) => sum.plus(p.amountPaid),
             new Decimal(0)
           );
           const balance = new Decimal(txn.amount).minus(currentPaid);
 
-          if (balance.lessThanOrEqualTo(0)) return [];
+          // Create payment record
+          const payment = await tx.payment.create({
+            data: {
+              associationId,
+              transactionId: txn.id,
+              amountPaid: balance,
+              paymentDate,
+              paymentMethod: validatedData.paymentMethod,
+              receiptNumber: generateUniqueReceiptNumber(i),
+              confirmedBy: req.user!.id,
+              confirmedAt: new Date(),
+            },
+          });
 
-          return [
-            prisma.payment.create({
-              data: {
-                associationId,
-                transactionId: txn.id,
-                amountPaid: balance,
-                paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : new Date(),
-                paymentMethod: validatedData.paymentMethod,
-                receiptNumber: `RCP${String(paymentCount + index + 1).padStart(6, '0')}`,
-                confirmedBy: req.user!.id,
-                confirmedAt: new Date(),
-              },
-            }),
-            prisma.transaction.update({
-              where: { id: txn.id },
-              data: { status: 'paid', paymentDate: new Date() },
-            }),
-          ];
-        })
-      );
+          // Update transaction status (notes are stored in transaction)
+          await tx.transaction.update({
+            where: { id: txn.id },
+            data: { 
+              status: 'paid', 
+              paymentDate,
+              paymentMethod: validatedData.paymentMethod,
+              notes: validatedData.notes 
+                ? `${txn.notes ? txn.notes + ' | ' : ''}Paid via batch: ${batchReference}. ${validatedData.notes}`
+                : txn.notes,
+            },
+          });
+
+          createdPayments.push(payment);
+        }
+
+        return createdPayments;
+      }, {
+        maxWait: 30000,
+        timeout: 30000,
+      });
 
       await prisma.auditLog.create({
         data: {
@@ -1403,7 +1839,13 @@ export const financeController = {
           userId: req.user!.id,
           action: 'BULK_PAYMENT',
           tableName: 'payments',
-          newValues: { transactionIds: validatedData.transactionIds, count: results.length / 2 },
+          newValues: { 
+            batchReference,
+            transactionIds: unpaidTransactions.map(t => t.id), 
+            count: result.length,
+            paymentMethod: validatedData.paymentMethod,
+            notes: validatedData.notes,
+          },
         },
       });
 
@@ -1412,7 +1854,17 @@ export const financeController = {
 
       return res.status(200).json({
         success: true,
-        message: `${results.length / 2} transactions marked as paid`,
+        message: `${result.length} transaction(s) marked as paid`,
+        data: {
+          batchReference,
+          paymentsCreated: result.length,
+          totalAmount: unpaidTransactions.reduce(
+            (sum, t) => sum.plus(new Decimal(t.amount).minus(
+              t.payments.reduce((s, p) => s.plus(p.amountPaid), new Decimal(0))
+            )),
+            new Decimal(0)
+          ).toNumber(),
+        },
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

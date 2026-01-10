@@ -99,6 +99,24 @@ router.patch('/transactions/:id',
   financeController.updateTransaction
 );
 
+// Edit transaction (unpaid only)
+router.put('/transactions/:id/edit',
+  requirePermission(PERMISSIONS.TRANSACTION_EDIT),
+  financeController.editTransaction
+);
+
+// Void and replace transaction (for paid transactions)
+router.post('/transactions/:id/void-and-replace',
+  requirePermission(PERMISSIONS.TRANSACTION_EDIT),
+  financeController.voidAndReplaceTransaction
+);
+
+// Bulk edit transactions (unpaid only)
+router.patch('/transactions/bulk-edit',
+  requirePermission(PERMISSIONS.TRANSACTION_EDIT),
+  financeController.bulkEditTransactions
+);
+
 // Delete transaction
 router.delete('/transactions/:id',
   requirePermission(PERMISSIONS.TRANSACTION_DELETE),

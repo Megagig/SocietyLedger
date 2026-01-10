@@ -104,7 +104,8 @@ export const memberLedgerService = {
   },
 
   /**
-   * Create ledger entry from a transaction (dues, levies, penalties, donations)
+   * Create ledger entry from a transaction (dues, levies, penalties)
+   * Note: Donations do NOT create a transaction entry - only the payment creates a credit
    */
   async createFromTransaction(transactionId: number, createdBy: number) {
     const transaction = await prisma.transaction.findUnique({
@@ -119,20 +120,23 @@ export const memberLedgerService = {
       throw new Error('Transaction not found');
     }
 
+    // Donations should NOT create a ledger entry from the transaction
+    // Only the payment should create a CREDIT entry for donations
+    if (transaction.category.type === 'donation') {
+      return null; // No ledger entry for donation transactions - wait for payment
+    }
+
     // Map transaction category type to ledger category
     const categoryMap: Record<string, LedgerCategory> = {
       'due': 'DUES',
       'levy': 'LEVY',
       'penalty': 'PENALTY',
-      'donation': 'DONATION',
     };
 
     const ledgerCategory = categoryMap[transaction.category.type] || 'OTHER';
     
-    // Donations are credits (member giving), others are debits (member owes)
-    const entryType: LedgerEntryType = transaction.category.type === 'donation' 
-      ? 'CREDIT' 
-      : 'DEBIT';
+    // Dues, levies, penalties are debits (member owes money)
+    const entryType: LedgerEntryType = 'DEBIT';
 
     const description = `${transaction.category.name}${transaction.notes ? ` - ${transaction.notes}` : ''}`;
 
@@ -153,6 +157,8 @@ export const memberLedgerService = {
 
   /**
    * Create ledger entry from a payment
+   * For donations: This is the actual donation being made (CREDIT)
+   * For dues/levies/penalties: This offsets the original DEBIT (CREDIT)
    */
   async createFromPayment(paymentId: number, createdBy: number) {
     const payment = await prisma.payment.findUnique({
@@ -176,10 +182,15 @@ export const memberLedgerService = {
       'donation': 'DONATION',
     };
 
+    const isDonation = payment.transaction.category.type === 'donation';
     const ledgerCategory = categoryMap[payment.transaction.category.type] || 'OTHER';
-    const description = `Payment for ${payment.transaction.category.name}`;
+    
+    // For donations, the payment IS the donation, not a payment "for" something
+    const description = isDonation 
+      ? `Donation: ${payment.transaction.category.name}`
+      : `Payment for ${payment.transaction.category.name}`;
 
-    // Payments are always credits (reducing what member owes)
+    // Payments are always credits (reducing what member owes, or adding credit for donations)
     return this.createEntry({
       associationId: payment.associationId,
       memberId: payment.transaction.memberId,
@@ -550,16 +561,42 @@ export const memberLedgerService = {
   },
 
   /**
-   * Sync existing transactions to ledger (for migration/backfill)
+   * Clear all ledger entries for a member (for re-sync)
    */
-  async syncExistingTransactions(associationId: number, memberId: number, createdBy: number) {
+  async clearMemberLedger(associationId: number, memberId: number) {
+    const deleted = await prisma.memberFinancialLedger.deleteMany({
+      where: { associationId, memberId },
+    });
+    return deleted.count;
+  },
+
+  /**
+   * Clear all ledger entries for an association (for full re-sync)
+   */
+  async clearAssociationLedgers(associationId: number) {
+    const deleted = await prisma.memberFinancialLedger.deleteMany({
+      where: { associationId },
+    });
+    return deleted.count;
+  },
+
+  /**
+   * Sync existing transactions to ledger (for migration/backfill)
+   * @param force - If true, clears existing entries before syncing
+   */
+  async syncExistingTransactions(associationId: number, memberId: number, createdBy: number, force: boolean = false) {
     // Check if member already has ledger entries
     const existingCount = await prisma.memberFinancialLedger.count({
       where: { associationId, memberId },
     });
 
     if (existingCount > 0) {
-      throw new Error('Member already has ledger entries. Use reconciliation instead.');
+      if (force) {
+        // Clear existing entries before re-syncing
+        await this.clearMemberLedger(associationId, memberId);
+      } else {
+        throw new Error('Member already has ledger entries. Use force=true to clear and re-sync.');
+      }
     }
 
     // Get all transactions for this member
@@ -572,7 +609,6 @@ export const memberLedgerService = {
     const entries: LedgerEntryInput[] = [];
 
     for (const txn of transactions) {
-      // Add transaction entry (debit for dues/levies/penalties, credit for donations)
       const categoryMap: Record<string, LedgerCategory> = {
         'due': 'DUES',
         'levy': 'LEVY',
@@ -580,23 +616,32 @@ export const memberLedgerService = {
         'donation': 'DONATION',
       };
       const ledgerCategory = categoryMap[txn.category.type] || 'OTHER';
-      const entryType: LedgerEntryType = txn.category.type === 'donation' ? 'CREDIT' : 'DEBIT';
+      
+      // For donations: Only payments should create CREDIT entries (the actual donation)
+      // For dues/levies/penalties: Transaction creates DEBIT (what is owed), payment creates CREDIT (payment made)
+      const isDonation = txn.category.type === 'donation';
+      
+      // Only create transaction entry for non-donation types (dues, levies, penalties)
+      // Donations don't create a debt - they are voluntary payments
+      if (!isDonation) {
+        entries.push({
+          associationId,
+          memberId,
+          entryType: 'DEBIT',
+          category: ledgerCategory,
+          amount: txn.amount,
+          effectiveDate: txn.createdAt,
+          description: `${txn.category.name}${txn.notes ? ` - ${txn.notes}` : ''}`,
+          sourceTable: 'transaction',
+          sourceId: txn.id,
+          referenceNumber: txn.referenceNumber || undefined,
+          createdBy,
+        });
+      }
 
-      entries.push({
-        associationId,
-        memberId,
-        entryType,
-        category: ledgerCategory,
-        amount: txn.amount,
-        effectiveDate: txn.createdAt,
-        description: `${txn.category.name}${txn.notes ? ` - ${txn.notes}` : ''}`,
-        sourceTable: 'transaction',
-        sourceId: txn.id,
-        referenceNumber: txn.referenceNumber || undefined,
-        createdBy,
-      });
-
-      // Add payment entries (always credits)
+      // Add payment entries
+      // For dues/levies/penalties: CREDIT to offset the DEBIT
+      // For donations: CREDIT as the actual donation (only when paid)
       for (const payment of txn.payments) {
         entries.push({
           associationId,
@@ -605,7 +650,9 @@ export const memberLedgerService = {
           category: ledgerCategory,
           amount: payment.amountPaid,
           effectiveDate: payment.paymentDate,
-          description: `Payment for ${txn.category.name}`,
+          description: isDonation 
+            ? `Donation: ${txn.category.name}` 
+            : `Payment for ${txn.category.name}`,
           sourceTable: 'payment',
           sourceId: payment.id,
           referenceNumber: payment.receiptNumber || undefined,

@@ -36,8 +36,26 @@ export const memberFinanceController = {
         where: { userId, associationId },
       });
 
+      // If user is not a member, return empty summary (they might be admin without member profile)
       if (!member) {
-        return res.status(404).json({ success: false, message: 'Member profile not found' });
+        return res.json({
+          success: true,
+          message: 'No member profile found - this user may be an admin without a member record',
+          data: {
+            totalDue: 0,
+            totalPaid: 0,
+            totalOutstanding: 0,
+            overdueAmount: 0,
+            overdueCount: 0,
+            duesSummary: { total: 0, paid: 0, outstanding: 0, count: 0 },
+            leviesSummary: { total: 0, paid: 0, outstanding: 0, count: 0 },
+            penaltiesSummary: { total: 0, paid: 0, outstanding: 0, count: 0 },
+            donationsSummary: { total: 0, count: 0 },
+            recentTransactions: [],
+            upcomingPayments: [],
+            hasMemberProfile: false,
+          },
+        });
       }
 
       // Get all transactions for this member
@@ -802,6 +820,205 @@ export const memberFinanceController = {
       }
       console.error('Error making donation:', error);
       return res.status(500).json({ success: false, message: 'Failed to record donation' });
+    }
+  },
+
+  // Create or link member profile for current user
+  async createOrLinkMemberProfile(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const associationId = req.user?.associationId;
+      const userEmail = req.user?.email;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      // Check if user already has a member profile in this association
+      const existingMember = await prisma.member.findFirst({
+        where: { userId, associationId },
+      });
+
+      if (existingMember) {
+        return res.json({
+          success: true,
+          message: 'Member profile already exists',
+          data: { member: existingMember, isNew: false },
+        });
+      }
+
+      // Try to find a member by email to link
+      if (userEmail) {
+        const memberByEmail = await prisma.member.findFirst({
+          where: { email: userEmail, associationId, userId: null },
+        });
+
+        if (memberByEmail) {
+          // Link the existing member to this user
+          const linkedMember = await prisma.member.update({
+            where: { id: memberByEmail.id },
+            data: { userId },
+          });
+
+          // Create audit log
+          await prisma.auditLog.create({
+            data: {
+              associationId,
+              userId,
+              action: 'MEMBER_PROFILE_LINKED',
+              tableName: 'members',
+              recordId: linkedMember.id,
+              newValues: { userId, linkedByEmail: userEmail },
+            },
+          });
+
+          return res.json({
+            success: true,
+            message: 'Your user account has been linked to your existing member profile',
+            data: { member: linkedMember, isNew: false, wasLinked: true },
+          });
+        }
+      }
+
+      // No existing member found - create a new one
+      // Use email prefix as default name or generic placeholder
+      const emailPrefix = userEmail ? userEmail.split('@')[0] : 'User';
+      const nameParts = emailPrefix.trim().split(/[._-]/); // Split on common email separators
+      const firstName = nameParts[0] || 'User';
+      const lastName = nameParts.slice(1).join(' ') || 'Account';
+
+      // Generate a unique member ID
+      const lastMember = await prisma.member.findFirst({
+        where: { associationId },
+        orderBy: { createdAt: 'desc' },
+        select: { memberId: true },
+      });
+
+      let memberIdNumber = 1;
+      if (lastMember?.memberId) {
+        const match = lastMember.memberId.match(/(\d+)$/);
+        if (match) {
+          memberIdNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+      const memberId = `MEM${memberIdNumber.toString().padStart(4, '0')}`;
+
+      const newMember = await prisma.member.create({
+        data: {
+          associationId,
+          userId,
+          memberId,
+          firstName,
+          lastName,
+          email: userEmail || null,
+          phone: null,
+          address: null,
+          joinDate: new Date(),
+          status: 'active',
+          category: 'regular',
+        },
+      });
+
+      // Create audit log
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'MEMBER_PROFILE_CREATED',
+          tableName: 'members',
+          recordId: newMember.id,
+          newValues: { memberId, firstName, lastName, email: userEmail, createdBySelf: true },
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Member profile created successfully',
+        data: { member: newMember, isNew: true },
+      });
+    } catch (error) {
+      console.error('Error creating/linking member profile:', error);
+      return res.status(500).json({ success: false, message: 'Failed to create member profile' });
+    }
+  },
+
+  // Check if current user has a member profile
+  async checkMemberProfile(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const associationId = req.user?.associationId;
+      const userEmail = req.user?.email;
+
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      // Check for linked member profile
+      const linkedMember = await prisma.member.findFirst({
+        where: { userId, associationId },
+        select: {
+          id: true,
+          memberId: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          status: true,
+          category: true,
+        },
+      });
+
+      if (linkedMember) {
+        return res.json({
+          success: true,
+          data: {
+            hasMemberProfile: true,
+            isLinked: true,
+            member: linkedMember,
+          },
+        });
+      }
+
+      // Check for unlinked member with same email
+      if (userEmail) {
+        const unlinkedMember = await prisma.member.findFirst({
+          where: { email: userEmail, associationId, userId: null },
+          select: {
+            id: true,
+            memberId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            status: true,
+            category: true,
+          },
+        });
+
+        if (unlinkedMember) {
+          return res.json({
+            success: true,
+            data: {
+              hasMemberProfile: true,
+              isLinked: false,
+              canLink: true,
+              member: unlinkedMember,
+              message: 'A member profile with your email exists. You can link it to your account.',
+            },
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          hasMemberProfile: false,
+          isLinked: false,
+          canCreate: true,
+          message: 'No member profile found. You can create one.',
+        },
+      });
+    } catch (error) {
+      console.error('Error checking member profile:', error);
+      return res.status(500).json({ success: false, message: 'Failed to check member profile' });
     }
   },
 };

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTenant } from '@/contexts/TenantContext';
 import Link from 'next/link';
+import api from '@/lib/axios';
 
 interface InviteData {
   member: {
@@ -47,18 +48,13 @@ export default function ActivateAccountPage() {
 
   const verifyToken = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/member-invites/verify?token=${token}`
-      );
-      const data = await response.json();
+      const response = await api.get('/member-invites/verify', {
+        params: { token }
+      });
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Invalid or expired invitation');
-      }
-
-      setInviteData(data.data);
+      setInviteData(response.data.data);
     } catch (error: any) {
-      setVerifyError(error.message);
+      setVerifyError(error.response?.data?.message || error.message || 'Invalid or expired invitation');
     } finally {
       setIsVerifying(false);
     }
@@ -81,27 +77,14 @@ export default function ActivateAccountPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/member-invites/accept`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token,
-            password: formData.password,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to activate account');
-      }
+      const response = await api.post('/member-invites/accept', {
+        token,
+        password: formData.password,
+      });
 
       setSuccess(true);
     } catch (error: any) {
-      setSubmitError(error.message);
+      setSubmitError(error.response?.data?.message || error.message || 'Failed to activate account');
     } finally {
       setIsSubmitting(false);
     }

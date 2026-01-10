@@ -522,10 +522,12 @@ export const donationsService = {
     const donationsWithAmount = donations.map(d => ({
       id: d.id,
       receiptNumber: d.receiptNumber,
-      amount: d.transaction.payments.reduce(
+      amount: new Decimal(d.transaction.amount).toNumber(),
+      paidAmount: d.transaction.payments.reduce(
         (sum, p) => sum.plus(p.amountPaid),
         new Decimal(0)
       ).toNumber(),
+      status: d.transaction.status,
       donor: d.isAnonymous
         ? { name: 'Anonymous' }
         : {
@@ -583,10 +585,8 @@ export const donationsService = {
     const byType: Record<string, { amount: Decimal; count: number }> = {};
 
     donations.forEach(d => {
-      const amount = d.transaction.payments.reduce(
-        (sum, p) => sum.plus(p.amountPaid),
-        new Decimal(0)
-      );
+      // Use transaction amount (not payments) to include pledges
+      const amount = new Decimal(d.transaction.amount);
       totalAmount = totalAmount.plus(amount);
 
       // By allocation
