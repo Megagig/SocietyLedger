@@ -829,7 +829,6 @@ export const memberFinanceController = {
       const userId = req.user?.id;
       const associationId = req.user?.associationId;
       const userEmail = req.user?.email;
-      const userName = req.user?.name;
 
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
@@ -882,8 +881,9 @@ export const memberFinanceController = {
       }
 
       // No existing member found - create a new one
-      // Parse name into first and last name
-      const nameParts = (userName || 'User').trim().split(' ');
+      // Use email prefix as default name or generic placeholder
+      const emailPrefix = userEmail ? userEmail.split('@')[0] : 'User';
+      const nameParts = emailPrefix.trim().split(/[._-]/); // Split on common email separators
       const firstName = nameParts[0] || 'User';
       const lastName = nameParts.slice(1).join(' ') || 'Account';
 
