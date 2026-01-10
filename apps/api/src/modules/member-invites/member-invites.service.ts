@@ -40,6 +40,12 @@ export async function sendMemberInviteEmail(
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   let activateUrl: string;
   
+  console.log('[Member Invite] Generating activation URL:', {
+    subdomain,
+    nodeEnv: process.env.NODE_ENV,
+    baseUrl,
+  });
+  
   if (subdomain && process.env.NODE_ENV === 'production') {
     activateUrl = `https://${subdomain}.societyledger.com/auth/activate?token=${inviteToken}`;
   } else if (subdomain) {
@@ -47,6 +53,8 @@ export async function sendMemberInviteEmail(
   } else {
     activateUrl = `${baseUrl}/auth/activate?token=${inviteToken}`;
   }
+  
+  console.log('[Member Invite] Generated activation URL:', activateUrl);
 
   await sendEmail({
     to: email,
