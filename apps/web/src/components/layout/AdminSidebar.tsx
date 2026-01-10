@@ -656,31 +656,37 @@ export function AdminSidebar() {
     {
       label: 'Help & Support',
       icon: <IconHelp size={20} />,
+      permission: undefined, // Explicitly allow for all users including super admin
       children: [
         {
           label: 'Help Center',
           icon: <IconHelp size={18} />,
           href: '/dashboard/help',
+          permission: undefined,
         },
         {
           label: 'Articles',
           icon: <IconFileAnalytics size={18} />,
           href: '/dashboard/help/articles',
+          permission: undefined,
         },
         {
           label: 'FAQs',
           icon: <IconQuestionMark size={18} />,
           href: '/dashboard/help/faqs',
+          permission: undefined,
         },
         {
           label: 'My Tickets',
           icon: <IconTicket size={18} />,
           href: '/dashboard/help/tickets',
+          permission: undefined,
         },
         {
           label: 'Create Ticket',
           icon: <IconPlus size={18} />,
           href: '/dashboard/help/tickets/new',
+          permission: undefined,
         },
       ],
     },
