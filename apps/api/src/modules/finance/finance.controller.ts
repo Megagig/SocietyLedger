@@ -1362,40 +1362,81 @@ export const financeController = {
         });
       }
 
-      // Get payment count for receipt numbers
-      const paymentCount = await prisma.payment.count({ where: { associationId } });
+      // Filter out already fully paid transactions
+      const unpaidTransactions = transactions.filter(txn => {
+        const currentPaid = txn.payments.reduce(
+          (sum, p) => sum.plus(p.amountPaid),
+          new Decimal(0)
+        );
+        return new Decimal(txn.amount).minus(currentPaid).greaterThan(0);
+      });
 
-      // Process each transaction
-      const results = await prisma.$transaction(
-        transactions.flatMap((txn, index) => {
+      if (unpaidTransactions.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'All selected transactions are already fully paid',
+        });
+      }
+
+      // Generate batch reference number (unique for this bulk payment)
+      const batchReference = `BATCH-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // Helper function to generate unique receipt number
+      const generateUniqueReceiptNumber = (index: number) => {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `RCP${timestamp}${random}${index}`;
+      };
+
+      const paymentDate = validatedData.paymentDate ? new Date(validatedData.paymentDate) : new Date();
+
+      // Process all transactions in a single database transaction
+      const result = await prisma.$transaction(async (tx) => {
+        const createdPayments = [];
+        
+        for (let i = 0; i < unpaidTransactions.length; i++) {
+          const txn = unpaidTransactions[i];
           const currentPaid = txn.payments.reduce(
             (sum, p) => sum.plus(p.amountPaid),
             new Decimal(0)
           );
           const balance = new Decimal(txn.amount).minus(currentPaid);
 
-          if (balance.lessThanOrEqualTo(0)) return [];
+          // Create payment record
+          const payment = await tx.payment.create({
+            data: {
+              associationId,
+              transactionId: txn.id,
+              amountPaid: balance,
+              paymentDate,
+              paymentMethod: validatedData.paymentMethod,
+              receiptNumber: generateUniqueReceiptNumber(i),
+              confirmedBy: req.user!.id,
+              confirmedAt: new Date(),
+            },
+          });
 
-          return [
-            prisma.payment.create({
-              data: {
-                associationId,
-                transactionId: txn.id,
-                amountPaid: balance,
-                paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : new Date(),
-                paymentMethod: validatedData.paymentMethod,
-                receiptNumber: `RCP${String(paymentCount + index + 1).padStart(6, '0')}`,
-                confirmedBy: req.user!.id,
-                confirmedAt: new Date(),
-              },
-            }),
-            prisma.transaction.update({
-              where: { id: txn.id },
-              data: { status: 'paid', paymentDate: new Date() },
-            }),
-          ];
-        })
-      );
+          // Update transaction status (notes are stored in transaction)
+          await tx.transaction.update({
+            where: { id: txn.id },
+            data: { 
+              status: 'paid', 
+              paymentDate,
+              paymentMethod: validatedData.paymentMethod,
+              notes: validatedData.notes 
+                ? `${txn.notes ? txn.notes + ' | ' : ''}Paid via batch: ${batchReference}. ${validatedData.notes}`
+                : txn.notes,
+            },
+          });
+
+          createdPayments.push(payment);
+        }
+
+        return createdPayments;
+      }, {
+        maxWait: 30000,
+        timeout: 30000,
+      });
 
       await prisma.auditLog.create({
         data: {
@@ -1403,7 +1444,13 @@ export const financeController = {
           userId: req.user!.id,
           action: 'BULK_PAYMENT',
           tableName: 'payments',
-          newValues: { transactionIds: validatedData.transactionIds, count: results.length / 2 },
+          newValues: { 
+            batchReference,
+            transactionIds: unpaidTransactions.map(t => t.id), 
+            count: result.length,
+            paymentMethod: validatedData.paymentMethod,
+            notes: validatedData.notes,
+          },
         },
       });
 
@@ -1412,7 +1459,17 @@ export const financeController = {
 
       return res.status(200).json({
         success: true,
-        message: `${results.length / 2} transactions marked as paid`,
+        message: `${result.length} transaction(s) marked as paid`,
+        data: {
+          batchReference,
+          paymentsCreated: result.length,
+          totalAmount: unpaidTransactions.reduce(
+            (sum, t) => sum.plus(new Decimal(t.amount).minus(
+              t.payments.reduce((s, p) => s.plus(p.amountPaid), new Decimal(0))
+            )),
+            new Decimal(0)
+          ).toNumber(),
+        },
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

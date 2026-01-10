@@ -8,7 +8,7 @@ import {
   IconArrowUpRight, IconArrowDownRight, IconRefresh, IconEye
 } from '@tabler/icons-react';
 import { toast } from '@/lib/toast';
-import { getAllMemberBalances, bulkSyncLedgers, MemberBalance } from '@/lib/api/member-ledger';
+import { getAllMemberBalances, bulkSyncLedgers, forceResyncAllLedgers, MemberBalance } from '@/lib/api/member-ledger';
 
 export default function MemberLedgerPage() {
   const router = useRouter();
@@ -98,6 +98,25 @@ export default function MemberLedgerPage() {
     }
   };
 
+  const handleForceResync = async () => {
+    if (!confirm('This will clear ALL ledger entries and rebuild them from transactions. This may take a while. Continue?')) {
+      return;
+    }
+    try {
+      setIsSyncing(true);
+      const result = await forceResyncAllLedgers();
+      toast.success(`Cleared ${result.data.cleared} entries, re-synced ${result.data.synced} of ${result.data.total} members`);
+      if (result.data.failed > 0) {
+        toast.warning(`${result.data.failed} members failed to sync`);
+      }
+      fetchMembers();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => `₦${Math.abs(amount).toLocaleString()}`;
   const formatDate = (date: string | null) => date 
     ? new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -115,14 +134,25 @@ export default function MemberLedgerPage() {
             View and manage all member financial ledgers
           </p>
         </div>
-        <button
-          onClick={handleBulkSync}
-          disabled={isSyncing}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
-        >
-          <IconRefresh size={18} className={isSyncing ? 'animate-spin' : ''} />
-          {isSyncing ? 'Syncing...' : 'Sync All Ledgers'}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={handleForceResync}
+            disabled={isSyncing}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 w-full sm:w-auto text-sm"
+            title="Clear and rebuild all ledger entries"
+          >
+            <IconRefresh size={18} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Rebuilding...' : 'Rebuild All Ledgers'}
+          </button>
+          <button
+            onClick={handleBulkSync}
+            disabled={isSyncing}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
+          >
+            <IconRefresh size={18} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Syncing...' : 'Sync All Ledgers'}
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}

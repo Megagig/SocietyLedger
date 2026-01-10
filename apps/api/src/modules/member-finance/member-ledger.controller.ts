@@ -232,6 +232,7 @@ export const memberLedgerController = {
       const userId = req.user?.id;
       const associationId = req.user?.associationId;
       const memberId = parseInt(req.params.memberId, 10);
+      const force = req.query.force === 'true';
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
@@ -239,14 +240,73 @@ export const memberLedgerController = {
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member not found' });
       }
-      const result = await memberLedgerService.syncExistingTransactions(associationId, memberId, userId);
+      const result = await memberLedgerService.syncExistingTransactions(associationId, memberId, userId, force);
       await prisma.auditLog.create({
-        data: { associationId, userId, action: 'LEDGER_SYNC', tableName: 'member_financial_ledger', recordId: memberId, newValues: result },
+        data: { associationId, userId, action: force ? 'LEDGER_RESYNC' : 'LEDGER_SYNC', tableName: 'member_financial_ledger', recordId: memberId, newValues: result },
       });
       return res.status(200).json({ success: true, message: `Successfully synced ${result.entriesCreated} ledger entries`, data: result });
     } catch (error: any) {
       console.error('Error syncing member ledger:', error);
       return res.status(500).json({ success: false, message: error.message || 'Failed to sync ledger' });
+    }
+  },
+
+  /**
+   * Force re-sync all ledgers for an association (clears and rebuilds)
+   */
+  async forceResyncAllLedgers(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const associationId = req.user?.associationId;
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+      
+      // Clear all existing ledger entries for the association
+      const cleared = await memberLedgerService.clearAssociationLedgers(associationId);
+      
+      // Get all members and sync their ledgers
+      const allMembers = await prisma.member.findMany({ 
+        where: { associationId }, 
+        select: { id: true, memberId: true, firstName: true, lastName: true } 
+      });
+      
+      const results = { 
+        cleared, 
+        total: allMembers.length, 
+        synced: 0, 
+        failed: 0, 
+        errors: [] as Array<{ memberId: number; error: string }> 
+      };
+      
+      for (const member of allMembers) {
+        try {
+          await memberLedgerService.syncExistingTransactions(associationId, member.id, userId, false);
+          results.synced++;
+        } catch (error: any) {
+          results.failed++;
+          results.errors.push({ memberId: member.id, error: error.message });
+        }
+      }
+      
+      await prisma.auditLog.create({
+        data: { 
+          associationId, 
+          userId, 
+          action: 'FORCE_RESYNC_ALL_LEDGERS', 
+          tableName: 'member_financial_ledger', 
+          newValues: { cleared, total: results.total, synced: results.synced, failed: results.failed } 
+        },
+      });
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: `Cleared ${cleared} entries, re-synced ${results.synced} of ${results.total} members`, 
+        data: results 
+      });
+    } catch (error) {
+      console.error('Error force re-syncing ledgers:', error);
+      return res.status(500).json({ success: false, message: 'Failed to force re-sync ledgers' });
     }
   },
 

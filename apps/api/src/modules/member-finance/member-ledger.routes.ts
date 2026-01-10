@@ -57,10 +57,16 @@ router.get('/ledger/members',
   memberLedgerController.getAllMemberBalances
 );
 
-// Bulk sync all members' ledgers
+// Bulk sync all members' ledgers (only for members without ledger entries)
 router.post('/ledger/bulk-sync',
   requirePermission(PERMISSIONS.FINANCE_APPROVE),
   memberLedgerController.bulkSyncLedgers
+);
+
+// Force re-sync all ledgers (clears and rebuilds ALL ledger entries)
+router.post('/ledger/force-resync',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  memberLedgerController.forceResyncAllLedgers
 );
 
 // Get specific member's ledger summary

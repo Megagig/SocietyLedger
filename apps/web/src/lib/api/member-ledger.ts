@@ -251,6 +251,27 @@ export async function bulkSyncLedgers(): Promise<{ data: { synced: number; membe
   return response.json();
 }
 
+/**
+ * Force re-sync all ledgers - clears and rebuilds all ledger entries
+ * Use this to fix incorrect ledger entries (e.g., donation pledges showing as credit)
+ */
+export async function forceResyncAllLedgers(): Promise<{ 
+  data: { 
+    cleared: number; 
+    total: number; 
+    synced: number; 
+    failed: number;
+    errors: Array<{ memberId: number; error: string }>;
+  } 
+}> {
+  const response = await apiPost(`${API_URL}/api/member-ledger/ledger/force-resync`, {});
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to force re-sync ledgers');
+  }
+  return response.json();
+}
+
 export async function exportMemberStatement(memberId: number, params: {
   startDate: string;
   endDate: string;
