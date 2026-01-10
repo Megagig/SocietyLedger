@@ -24,6 +24,8 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: BASE_DOMAIN
+        value: societyledger.com.ng
       - key: APP_URL
         sync: false
       - key: RESEND_API_KEY

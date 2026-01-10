@@ -38,16 +38,18 @@ export async function sendMemberInviteEmail(
   subdomain?: string
 ): Promise<void> {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseDomain = process.env.BASE_DOMAIN || 'societyledger.com';
   let activateUrl: string;
   
   console.log('[Member Invite] Generating activation URL:', {
     subdomain,
     nodeEnv: process.env.NODE_ENV,
     baseUrl,
+    baseDomain,
   });
   
   if (subdomain && process.env.NODE_ENV === 'production') {
-    activateUrl = `https://${subdomain}.societyledger.com/auth/activate?token=${inviteToken}`;
+    activateUrl = `https://${subdomain}.${baseDomain}/auth/activate?token=${inviteToken}`;
   } else if (subdomain) {
     activateUrl = `http://${subdomain}.localhost:3000/auth/activate?token=${inviteToken}`;
   } else {
