@@ -40,7 +40,9 @@ export function BottomNav({ onMenuClick, notificationCount = 0 }: BottomNavProps
     {
       label: 'Dashboard',
       icon: <IconLayoutDashboard size={24} />,
-      href: '/dashboard',
+      href: user?.role === 'admin' || user?.role === 'treasurer' || user?.role === 'financial_secretary' 
+        ? '/dashboard' 
+        : '/dashboard/member',
     },
     {
       label: 'Members',
@@ -51,8 +53,9 @@ export function BottomNav({ onMenuClick, notificationCount = 0 }: BottomNavProps
     {
       label: 'Finance',
       icon: <IconCurrencyNaira size={24} />,
-      href: '/dashboard/finance/overview',
-      permission: PERMISSIONS.FINANCE_VIEW,
+      href: user?.role === 'admin' || user?.role === 'treasurer' || user?.role === 'financial_secretary'
+        ? '/dashboard/finance/overview'
+        : '/dashboard/my-finances',
     },
     {
       label: 'Alerts',

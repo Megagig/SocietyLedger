@@ -9720,3 +9720,689 @@ apps/web/src/store/authStore.ts (add impersonation state)
 apps/web/src/utils/constants.ts (add END_IMPERSONATION route)
 ```
 
+
+
+---
+
+## Phase 23: Member vs Admin Dashboard Separation ⚪ NOT STARTED
+
+**Status:** ⚪ Not Started  
+**Priority:** 🔴 HIGH - Essential for User Experience  
+**Dependencies:** RBAC ✅, Multi-tenancy ✅, Member Management ✅  
+**Estimated Time:** 10-12 days  
+**Location:** `apps/web/src/app/dashboard/`, `apps/web/src/components/layout/`
+
+### Overview
+
+Create a clear separation between member and admin dashboards while ensuring admins (who are also members) can access both their personal member features AND association management features through a dual-section sidebar.
+
+### Problem Statement
+
+Currently, the dashboard and sidebar serve both members and administrators with the same interface, using permission-based filtering to show/hide features. This creates:
+
+1. **Cognitive Overload**: Members see admin-only sections (even if disabled)
+2. **Role Confusion**: Admins who are also members see cluttered interfaces
+3. **Poor UX**: No clear visual distinction between member and admin contexts
+4. **Missed Opportunity**: Can't optimize each interface for its specific audience
+
+### Solution: Three-Tier Dashboard Architecture
+
+**Tier 1: Member Dashboard** (`/dashboard/member/*`)
+- Clean, simple interface for regular members
+- Self-service features only
+- Mobile-first, card-based design
+
+**Tier 2: Admin Dashboard** (`/dashboard/admin/*`)
+- Comprehensive management interface
+- **Dual-section sidebar**: Member Area + Administration
+- Admins access both personal and management features
+
+**Tier 3: Super Admin Dashboard** (`/admin/*`)
+- Platform-wide management (already exists, no changes)
+
+### Key Design Principle
+
+**Admin is Member + Extra Powers**: An admin is first a member of the association, then an administrator.
+
+**Implications**:
+- Admins need "My Finances" (their personal dues/payments)
+- Admins need "My Meetings" (their attendance)
+- Admins need "My Cooperatives" (their savings/loans)
+- Admin sidebar must have BOTH member section AND admin section
+
+---
+
+### Phase 23.1: Route Restructuring (4 tasks)
+
+#### TASK-DASH-001: Create Smart Dashboard Redirect
+
+**Description**: Update `/dashboard/page.tsx` to redirect users based on their role
+- Members → `/dashboard/member`
+- Admins (admin, treasurer, financial_secretary) → `/dashboard/admin`
+- Super Admins → `/admin`
+
+**Files to Update**:
+- `apps/web/src/app/dashboard/page.tsx`
+
+**Implementation**:
+```typescript
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+
+export default function DashboardRedirect() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    // Super Admin
+    if (user.platformRole === 'SUPER_ADMIN') {
+      router.push('/admin');
+      return;
+    }
+
+    // Check if user has admin role
+    const isAdmin = ['admin', 'treasurer', 'financial_secretary'].includes(user.role);
+
+    if (isAdmin) {
+      router.push('/dashboard/admin');
+    } else {
+      router.push('/dashboard/member');
+    }
+  }, [user, router]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+    </div>
+  );
+}
+```
+
+**Dependencies**: None
+
+**Acceptance Criteria**:
+- [ ] Members redirect to `/dashboard/member`
+- [ ] Admins redirect to `/dashboard/admin`
+- [ ] Super admins redirect to `/admin`
+- [ ] Unauthenticated users redirect to login
+
+---
+
+#### TASK-DASH-002: Create Member Dashboard Route Structure
+
+**Description**: Create `/dashboard/member` folder with layout and page
+
+**Files to Create**:
+1. `apps/web/src/app/dashboard/member/layout.tsx`
+2. `apps/web/src/app/dashboard/member/page.tsx`
+
+**Implementation**:
+
+**layout.tsx**:
+```typescript
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
+
+export default function MemberLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthenticatedLayout sidebarType="member">
+      {children}
+    </AuthenticatedLayout>
+  );
+}
+```
+
+**page.tsx**:
+```typescript
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getMemberDashboard } from '@/lib/api/dashboard';
+
+export default function MemberDashboard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['member-dashboard'],
+    queryFn: getMemberDashboard,
+  });
+
+  if (isLoading) return <DashboardSkeleton />;
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">My Dashboard</h1>
+      
+      {/* Personal Financial Summary */}
+      <PersonalFinancialSummary data={data?.financialSummary} />
+      
+      {/* Upcoming Obligations */}
+      <UpcomingObligations data={data?.upcomingDues} />
+      
+      {/* Recent Activity */}
+      <RecentActivity data={data?.recentActivity} />
+      
+      {/* Quick Actions */}
+      <QuickActions />
+    </div>
+  );
+}
+```
+
+**Dependencies**: TASK-DASH-001
+
+**Acceptance Criteria**:
+- [ ] Member dashboard accessible at `/dashboard/member`
+- [ ] Layout uses member sidebar
+- [ ] Dashboard shows personal data only
+
+---
+
+#### TASK-DASH-003: Create Admin Dashboard Route Structure
+
+**Description**: Create `/dashboard/admin` folder with layout and page
+
+**Files to Create**:
+1. `apps/web/src/app/dashboard/admin/layout.tsx`
+2. `apps/web/src/app/dashboard/admin/page.tsx`
+
+**Implementation**:
+
+**layout.tsx**:
+```typescript
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthenticatedLayout sidebarType="admin">
+      {children}
+    </AuthenticatedLayout>
+  );
+}
+```
+
+**page.tsx**:
+```typescript
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getAdminDashboard } from '@/lib/api/dashboard';
+
+export default function AdminDashboard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-dashboard'],
+    queryFn: getAdminDashboard,
+  });
+
+  if (isLoading) return <DashboardSkeleton />;
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+      
+      {/* Personal Summary Section */}
+      <section>
+        <h2 className="text-lg font-semibold mb-4">My Personal Summary</h2>
+        <PersonalSummaryCards data={data?.personalSummary} />
+      </section>
+      
+      {/* Admin Metrics Section */}
+      <section>
+        <h2 className="text-lg font-semibold mb-4">Association Overview</h2>
+        <AdminMetricsCards data={data?.adminMetrics} />
+      </section>
+      
+      {/* Charts and Analytics */}
+      <ChartsSection data={data?.analytics} />
+    </div>
+  );
+}
+```
+
+**Dependencies**: TASK-DASH-001
+
+**Acceptance Criteria**:
+- [ ] Admin dashboard accessible at `/dashboard/admin`
+- [ ] Layout uses admin sidebar
+- [ ] Dashboard shows both personal and admin data
+
+---
+
+#### TASK-DASH-004: Create Member-Specific Routes
+
+**Description**: Create member self-service routes
+
+**Files to Create**:
+1. `apps/web/src/app/dashboard/member/my-profile/page.tsx`
+2. `apps/web/src/app/dashboard/member/my-meetings/page.tsx`
+3. `apps/web/src/app/dashboard/member/my-voting/page.tsx`
+
+**Implementation**:
+
+**my-profile/page.tsx**:
+```typescript
+'use client';
+
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { getMemberProfile, updateMemberProfile } from '@/lib/api/members';
+
+export default function MyProfilePage() {
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['my-profile'],
+    queryFn: getMemberProfile,
+  });
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">My Profile</h1>
+      
+      <ProfileForm profile={profile} />
+      <EmergencyContacts contacts={profile?.emergencyContacts} />
+      <AccountSettings />
+    </div>
+  );
+}
+```
+
+**my-meetings/page.tsx**:
+```typescript
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getMyMeetings } from '@/lib/api/meetings';
+
+export default function MyMeetingsPage() {
+  const { data: meetings, isLoading } = useQuery({
+    queryKey: ['my-meetings'],
+    queryFn: getMyMeetings,
+  });
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">My Meetings</h1>
+      
+      <UpcomingMeetings meetings={meetings?.upcoming} />
+      <MyAttendanceHistory history={meetings?.attendanceHistory} />
+    </div>
+  );
+}
+```
+
+**my-voting/page.tsx**:
+```typescript
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { getMyVoting } from '@/lib/api/voting';
+
+export default function MyVotingPage() {
+  const { data: voting, isLoading } = useQuery({
+    queryKey: ['my-voting'],
+    queryFn: getMyVoting,
+  });
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">My Voting</h1>
+      
+      <ActiveElections elections={voting?.activeElections} />
+      <MyVotingHistory history={voting?.votingHistory} />
+      <ActivePolls polls={voting?.activePolls} />
+    </div>
+  );
+}
+```
+
+**Dependencies**: TASK-DASH-002
+
+**Acceptance Criteria**:
+- [ ] Member routes accessible
+- [ ] Each page shows member-specific data
+- [ ] Permission checks work correctly
+
+**Note**: `/dashboard/my-finances` already exists, just link to it from member sidebar
+
+---
+
+### Phase 23.2: Sidebar Components (6 tasks)
+
+#### TASK-DASH-005: Create Section Divider Component
+
+**Description**: Build reusable section divider for sidebar
+
+**Files to Create**:
+- `apps/web/src/components/layout/SectionDivider.tsx`
+
+**Implementation**:
+```typescript
+interface SectionDividerProps {
+  icon: React.ReactNode;
+  title: string;
+  color?: 'blue' | 'teal' | 'purple';
+}
+
+export function SectionDivider({ icon, title, color = 'teal' }: SectionDividerProps) {
+  const colorClasses = {
+    blue: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20',
+    teal: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20',
+    purple: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20',
+  };
+  
+  return (
+    <div className="px-4 py-3 mt-4 mb-2">
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${colorClasses[color]}`}>
+        <span className="text-sm">{icon}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider">
+          {title}
+        </span>
+      </div>
+    </div>
+  );
+}
+```
+
+**Dependencies**: None
+
+**Acceptance Criteria**:
+- [ ] Component renders with icon and title
+- [ ] Color variants work correctly
+- [ ] Responsive design
+
+---
+
+#### TASK-DASH-006: Create Member Sidebar Component
+
+**Description**: Build clean, simple sidebar for members
+
+**Files to Create**:
+- `apps/web/src/components/layout/MemberSidebar.tsx`
+
+**Features**:
+- My Finances
+- My Profile
+- My Meetings
+- My Voting
+- My Cooperatives (if enabled)
+- My Welfare (if enabled)
+- Notifications
+- Help & Support
+
+**Implementation**: See `docs/dashboard-separation/PHASE_23_PLAN.md` for full code
+
+**Dependencies**: TASK-DASH-005
+
+**Acceptance Criteria**:
+- [ ] Sidebar shows only member features
+- [ ] Permission checks work
+- [ ] Mobile responsive
+
+---
+
+#### TASK-DASH-007: Create Admin Sidebar Component (Part 1: Member Section)
+
+**Description**: Build admin sidebar with member section
+
+**Files to Create**:
+- `apps/web/src/components/layout/AdminSidebar.tsx`
+
+**Features**: Member section with all personal features
+
+**Implementation**:
+```typescript
+export function AdminSidebar() {
+  const { user } = useAuthStore();
+  const hasMemberRecord = !!user?.member || !!user?.memberId;
+  
+  return (
+    <aside className="sidebar">
+      <SidebarHeader />
+      
+      {/* MEMBER SECTION */}
+      {hasMemberRecord && (
+        <>
+          <SectionDivider 
+            icon={<IconUser />} 
+            title="My Member Area" 
+            color="blue"
+          />
+          
+          <NavGroup>
+            <NavItem href="/dashboard/my-finances" icon={<IconWallet />}>
+              My Finances
+            </NavItem>
+            <NavItem href="/dashboard/member/my-profile" icon={<IconUserCircle />}>
+              My Profile
+            </NavItem>
+            {/* ... more member items */}
+          </NavGroup>
+        </>
+      )}
+      
+      {/* Admin section will be added in TASK-DASH-008 */}
+    </aside>
+  );
+}
+```
+
+**Dependencies**: TASK-DASH-005
+
+**Acceptance Criteria**:
+- [ ] Admin sidebar shows member section
+- [ ] Only shows if user has member record
+
+---
+
+#### TASK-DASH-008: Create Admin Sidebar Component (Part 2: Admin Section)
+
+**Description**: Add administration section to admin sidebar
+
+**Features**:
+- Members Management
+- Finance (Association)
+- Accounting
+- Reports
+- Governance Management
+- Welfare Management
+- Cooperatives Management
+- Communication
+- AI Assistant
+- Subscription
+- Settings
+
+**Implementation**: Continue from TASK-DASH-007, add admin section after member section
+
+**Dependencies**: TASK-DASH-007
+
+**Acceptance Criteria**:
+- [ ] Admin sidebar shows both sections
+- [ ] Clear visual separation
+- [ ] Permission checks work
+
+---
+
+#### TASK-DASH-009: Update AuthenticatedLayout to Use Correct Sidebar
+
+**Description**: Modify layout to render correct sidebar based on route
+
+**Files to Update**:
+- `apps/web/src/components/layout/AuthenticatedLayout.tsx`
+
+**Implementation**:
+```typescript
+interface AuthenticatedLayoutProps {
+  children: React.ReactNode;
+  sidebarType?: 'member' | 'admin' | 'superadmin';
+}
+
+export function AuthenticatedLayout({ 
+  children, 
+  sidebarType 
+}: AuthenticatedLayoutProps) {
+  const pathname = usePathname();
+  
+  // Auto-detect sidebar type if not provided
+  const detectedType = sidebarType || (() => {
+    if (pathname.startsWith('/admin')) return 'superadmin';
+    if (pathname.startsWith('/dashboard/member')) return 'member';
+    if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/dashboard')) return 'admin';
+    return 'admin'; // default
+  })();
+  
+  const SidebarComponent = {
+    member: MemberSidebar,
+    admin: AdminSidebar,
+    superadmin: SuperAdminSidebar,
+  }[detectedType];
+  
+  return (
+    <div className="flex h-screen">
+      <SidebarComponent />
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
+    </div>
+  );
+}
+```
+
+**Dependencies**: TASK-DASH-006, TASK-DASH-008
+
+**Acceptance Criteria**:
+- [ ] Correct sidebar renders for each route
+- [ ] Auto-detection works
+- [ ] Manual override works
+
+---
+
+#### TASK-DASH-010: Add Permission Checks to Sidebar Items
+
+**Description**: Ensure sidebar items respect RBAC permissions
+
+**Files to Update**:
+- `MemberSidebar.tsx`
+- `AdminSidebar.tsx`
+
+**Implementation**: Use existing `hasPermission` utility and permission constants
+
+**Dependencies**: TASK-DASH-008
+
+**Acceptance Criteria**:
+- [ ] Users only see items they have permission for
+- [ ] Permission checks don't break sidebar
+- [ ] Graceful degradation
+
+---
+
+### Phase 23.3: Dashboard Pages (6 tasks)
+
+#### TASK-DASH-011: Build Member Dashboard Page
+
+**Description**: Create member-focused dashboard
+
+**Files to Create**:
+- `apps/web/src/app/dashboard/member/page.tsx`
+
+**Features**:
+- Personal financial summary
+- Upcoming obligations
+- Recent activity
+- Quick actions
+
+**Dependencies**: TASK-DASH-002
+
+**Acceptance Criteria**:
+- [ ] Dashboard shows personal data only
+- [ ] Quick actions work
+- [ ] Responsive design
+
+---
+
+#### TASK-DASH-012: Build Admin Dashboard Page (Hybrid View)
+
+**Description**: Create admin dashboard with personal + admin sections
+
+**Files to Create**:
+- `apps/web/src/app/dashboard/admin/page.tsx`
+
+**Features**:
+- Top Section: Personal summary
+- Bottom Section: Admin metrics
+
+**Dependencies**: TASK-DASH-003
+
+**Acceptance Criteria**:
+- [ ] Shows both personal and admin data
+- [ ] Clear visual separation
+- [ ] Charts and analytics work
+
+---
+
+#### TASK-DASH-013 through TASK-DASH-016
+
+See `docs/dashboard-separation/PHASE_23_PLAN.md` for detailed specifications.
+
+---
+
+### Phase 23.4: Navigation & Links (4 tasks)
+
+#### TASK-DASH-017 through TASK-DASH-020
+
+See `docs/dashboard-separation/PHASE_23_PLAN.md` for detailed specifications.
+
+---
+
+### Phase 23.5: Testing & Documentation (4 tasks)
+
+#### TASK-DASH-021 through TASK-DASH-024
+
+See `docs/dashboard-separation/PHASE_23_PLAN.md` for detailed specifications.
+
+---
+
+## Success Criteria
+
+### Functional Requirements
+- [ ] Members land on member dashboard by default
+- [ ] Admins land on admin dashboard by default
+- [ ] Super admins land on super admin dashboard
+- [ ] Admins can access their own member features
+- [ ] Admins can access association management features
+- [ ] Sidebar shows correct items based on role
+- [ ] All existing features still work
+- [ ] No breaking changes to existing routes
+
+### User Experience Requirements
+- [ ] Clear visual distinction between member and admin contexts
+- [ ] Admins don't lose access to their personal member features
+- [ ] Navigation is intuitive and easy to understand
+- [ ] Mobile navigation works correctly
+- [ ] Role context is always clear to the user
+
+### Technical Requirements
+- [ ] All routes follow RESTful conventions
+- [ ] Permission checks work correctly
+- [ ] No duplicate code between sidebars
+- [ ] Components are reusable and maintainable
+- [ ] Tests cover all critical paths
+- [ ] Documentation is complete
+
+---
+
+**Phase Status**: ⚪ Not Started  
+**Total Tasks**: 24  
+**Estimated Time**: 10-12 days  
+**Documentation**: `docs/dashboard-separation/PHASE_23_PLAN.md`
+

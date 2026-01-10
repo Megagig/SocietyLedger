@@ -107,6 +107,7 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 | **16** | Enterprise Features | ⚪ Not Started | 0/8 | 🟢 LOW |
 | **21** | Help & Support Module | ⚪ Not Started | 0/28 | 🟡 MEDIUM |
 | **22** | Hybrid Super Admin Architecture | ⚪ Not Started | 0/23 | 🔴 HIGH |
+| **23** | Member vs Admin Dashboard Separation | ⚪ Not Started | 0/24 | 🔴 HIGH |
 
 
 **Legend:**
@@ -3165,4 +3166,174 @@ apps/web/src/utils/constants.ts (add END_IMPERSONATION route)
 #### Implementation Tasks
 
 See `docs/hybrid-super-admin/TASKS.md` for detailed task breakdown (23 tasks total).
+
+
+
+---
+
+### Phase 23: Member vs Admin Dashboard Separation 🔴 HIGH PRIORITY
+
+**Status:** ⚪ Not Started  
+**Priority:** 🔴 HIGH - Essential for User Experience  
+**Dependencies:** RBAC ✅, Multi-tenancy ✅, Member Management ✅  
+**Estimated Time:** 10-12 days  
+**Documentation:** `docs/dashboard-separation/PHASE_23_PLAN.md`
+
+#### Overview
+
+Create a clear separation between member and admin dashboards while ensuring admins (who are also members) can access both their personal member features AND association management features.
+
+#### Problem Statement
+
+Currently, the dashboard serves both members and admins with the same interface, using permission-based filtering. This creates:
+- Cognitive overload for members
+- Role confusion for admins who are also members
+- Poor UX with no clear visual distinction
+- Missed opportunity to optimize each interface
+
+#### Solution: Three-Tier Dashboard Architecture
+
+**Tier 1: Member Dashboard** (`/dashboard/member/*`)
+- Clean, simple interface for regular members
+- Self-service features only (My Finances, My Profile, My Meetings)
+- Mobile-first, card-based design
+
+**Tier 2: Admin Dashboard** (`/dashboard/admin/*`)
+- Comprehensive management interface
+- **Dual-section sidebar**: 
+  - 👤 MY MEMBER AREA (personal features)
+  - 🛠️ ADMINISTRATION (management features)
+- Admins can access their own member data AND manage the association
+
+**Tier 3: Super Admin Dashboard** (`/admin/*`)
+- Platform-wide management (already exists, no changes)
+
+#### Key Design Principle: Admin is Member + Extra Powers
+
+An admin is first a member of the association, then an administrator. Therefore:
+- Admins need "My Finances" (their personal dues/payments)
+- Admins need "My Meetings" (their attendance)
+- Admins need "My Cooperatives" (their savings/loans)
+- Admin sidebar must have BOTH member section AND admin section
+
+#### Naming Conventions
+
+| Member Section | Admin Section |
+|----------------|---------------|
+| **My Finances** | **Finance** (Association) |
+| **My Meetings** | **Meetings Management** |
+| **My Cooperatives** | **Cooperatives Management** |
+| **My Welfare** | **Welfare Management** |
+
+#### Implementation Tasks (24 tasks)
+
+**Phase 23.1: Route Restructuring (4 tasks)**
+- TASK-DASH-001: Create Smart Dashboard Redirect
+- TASK-DASH-002: Create Member Dashboard Route Structure
+- TASK-DASH-003: Create Admin Dashboard Route Structure
+- TASK-DASH-004: Create Member-Specific Routes
+
+**Phase 23.2: Sidebar Components (6 tasks)**
+- TASK-DASH-005: Create Section Divider Component
+- TASK-DASH-006: Create Member Sidebar Component
+- TASK-DASH-007: Create Admin Sidebar (Part 1: Member Section)
+- TASK-DASH-008: Create Admin Sidebar (Part 2: Admin Section)
+- TASK-DASH-009: Update AuthenticatedLayout
+- TASK-DASH-010: Add Permission Checks
+
+**Phase 23.3: Dashboard Pages (6 tasks)**
+- TASK-DASH-011: Build Member Dashboard Page
+- TASK-DASH-012: Build Admin Dashboard Page (Hybrid)
+- TASK-DASH-013: Create Member Profile Page
+- TASK-DASH-014: Create Member Meetings Page
+- TASK-DASH-015: Create Member Voting Page
+- TASK-DASH-016: Update Existing Pages
+
+**Phase 23.4: Navigation & Links (4 tasks)**
+- TASK-DASH-017: Update All Internal Links
+- TASK-DASH-018: Add Breadcrumbs
+- TASK-DASH-019: Update Mobile Navigation
+- TASK-DASH-020: Add Role Indicator Badge
+
+**Phase 23.5: Testing & Documentation (4 tasks)**
+- TASK-DASH-021: Write Unit Tests for Sidebars
+- TASK-DASH-022: Write Integration Tests for Routes
+- TASK-DASH-023: Test Member-Admin Dual Role
+- TASK-DASH-024: Document Dashboard Architecture
+
+#### Success Criteria
+
+**Functional:**
+- [ ] Members land on member dashboard by default
+- [ ] Admins land on admin dashboard with dual-section sidebar
+- [ ] Admins can access their own member features
+- [ ] All existing features still work
+- [ ] No breaking changes
+
+**User Experience:**
+- [ ] Clear visual distinction between contexts
+- [ ] Admins don't lose personal member features
+- [ ] Navigation is intuitive
+- [ ] Role context is always clear
+
+**Technical:**
+- [ ] Permission checks work correctly
+- [ ] No duplicate code
+- [ ] Tests cover all critical paths
+- [ ] Documentation complete
+
+#### Benefits
+
+**For Members:**
+- Simplified interface with only relevant features
+- Reduced confusion
+- Better mobile experience
+
+**For Admins:**
+- Dual access to personal and management features
+- Clear context switching
+- Fair treatment (follow same rules as members)
+
+**For Platform:**
+- Scalability (easy to add new roles)
+- Maintainability (separate concerns)
+- Better analytics
+
+#### Files to Create
+
+```
+apps/web/src/components/layout/
+├── MemberSidebar.tsx             # NEW
+├── AdminSidebar.tsx              # NEW
+├── SectionDivider.tsx            # NEW
+├── RoleIndicator.tsx             # NEW
+└── Breadcrumbs.tsx               # NEW
+
+apps/web/src/app/dashboard/
+├── member/
+│   ├── layout.tsx                # NEW
+│   ├── page.tsx                  # NEW
+│   ├── my-profile/page.tsx       # NEW
+│   ├── my-meetings/page.tsx      # NEW
+│   └── my-voting/page.tsx        # NEW
+└── admin/
+    ├── layout.tsx                # NEW
+    └── page.tsx                  # NEW
+
+docs/dashboard-separation/
+├── PHASE_23_PLAN.md              # CREATED
+├── ARCHITECTURE.md               # NEW
+├── USER_GUIDE.md                 # NEW
+└── DEVELOPER_GUIDE.md            # NEW
+```
+
+#### Files to Update
+
+```
+apps/web/src/app/dashboard/page.tsx           # Add smart redirect
+apps/web/src/components/layout/AuthenticatedLayout.tsx  # Use correct sidebar
+apps/web/src/components/mobile/BottomNav.tsx  # Update mobile nav
+```
+
+---
 

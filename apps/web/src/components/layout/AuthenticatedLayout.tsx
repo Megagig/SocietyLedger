@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { MemberSidebar } from '@/components/layout/MemberSidebar';
+import { AdminSidebar } from '@/components/layout/AdminSidebar';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
+import { RoleIndicator } from '@/components/layout/RoleIndicator';
 import { ContextIndicator } from '@/components/layout/ContextIndicator';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
@@ -63,16 +67,49 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     return null;
   }
 
+  // Determine which sidebar to show based on route
+  const renderSidebar = () => {
+    // Member routes → MemberSidebar
+    if (pathname.startsWith('/dashboard/member')) {
+      return <MemberSidebar />;
+    }
+    
+    // Admin routes → AdminSidebar (dual-section)
+    if (pathname.startsWith('/dashboard/admin')) {
+      return <AdminSidebar />;
+    }
+    
+    // Super Admin routes → Keep existing Sidebar (unchanged)
+    if (pathname.startsWith('/admin')) {
+      return <Sidebar />;
+    }
+    
+    // Default dashboard routes → Use AdminSidebar for admins, MemberSidebar for members
+    if (pathname.startsWith('/dashboard')) {
+      // Check user role
+      if (user?.role === 'admin' || user?.role === 'treasurer' || user?.role === 'financial_secretary') {
+        return <AdminSidebar />;
+      }
+      return <MemberSidebar />;
+    }
+    
+    // Fallback to existing Sidebar
+    return <Sidebar />;
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* PWA Status Indicators */}
       <OfflineIndicator />
       <UpdatePrompt />
       
-      <Sidebar />
+      {renderSidebar()}
       <main className="flex-1 lg:ml-72 min-h-screen">
         {/* Phase 22: Context Indicator for impersonation */}
         <ContextIndicator />
+        
+        {/* Phase 23: Role Indicator Badge */}
+        <RoleIndicator />
         
         {/* Super Admin Context Banner */}
         <SuperAdminContextBanner />
@@ -83,7 +120,8 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
             <NotificationBell />
           </div>
         </div>
-        <div className="p-4 sm:p-6 lg:p-8 mb-bottom-nav">
+        <div className="p-4 sm:p-5 lg:p-6 mb-bottom-nav">
+          <Breadcrumbs />
           {children}
         </div>
       </main>

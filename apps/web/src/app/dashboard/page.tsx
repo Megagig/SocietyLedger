@@ -1,10 +1,50 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
+import { useAuthStore } from '@/store/authStore';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, _hasHydrated } = useAuthStore();
+
+  // Smart redirect based on user role
+  useEffect(() => {
+    if (!_hasHydrated) return; // Wait for auth store to hydrate
+
+    if (user) {
+      // Super Admin → Platform admin dashboard
+      if (user.platformRole === 'SUPER_ADMIN') {
+        router.replace('/admin');
+        return;
+      }
+
+      // Regular Admin/Treasurer/Financial Secretary → Stay here (admin dashboard)
+      if (user.role === 'admin' || user.role === 'treasurer' || user.role === 'financial_secretary') {
+        // Show admin dashboard (current page)
+        return;
+      }
+
+      // Regular Member → Redirect to member dashboard
+      if (user.role === 'member') {
+        router.replace('/dashboard/member');
+        return;
+      }
+    }
+  }, [user, _hasHydrated, router]);
+
+  // Show loading while checking auth
+  if (!_hasHydrated) {
+    return <DashboardSkeleton />;
+  }
+
+  // If member, don't show this page (will redirect)
+  if (user?.role === 'member') {
+    return <DashboardSkeleton />;
+  }
   // Fetch dashboard data
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dashboard-overview'],
