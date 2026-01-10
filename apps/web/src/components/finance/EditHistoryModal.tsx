@@ -4,14 +4,11 @@ import { useState, useEffect } from 'react';
 import { X, History, User, Calendar } from 'lucide-react';
 
 interface EditEntry {
-  timestamp: string;
-  editedBy: string;
+  editedAt: string;
+  editedBy: string | number;
   reason: string;
-  changes: {
-    field: string;
-    oldValue: any;
-    newValue: any;
-  }[];
+  oldValues: Record<string, any>;
+  newValues: Record<string, any>;
 }
 
 interface EditHistoryModalProps {
@@ -34,8 +31,16 @@ export function EditHistoryModal({
   useEffect(() => {
     if (editHistory) {
       try {
-        const parsed = JSON.parse(editHistory);
-        setHistory(Array.isArray(parsed) ? parsed : []);
+        const parsed = typeof editHistory === 'string' ? JSON.parse(editHistory) : editHistory;
+        // Handle both formats: { edits: [...] } or direct array
+        if (parsed?.edits && Array.isArray(parsed.edits)) {
+          setHistory(parsed.edits);
+        } else if (Array.isArray(parsed)) {
+          setHistory(parsed);
+        } else {
+          console.log('EditHistory format:', parsed);
+          setHistory([]);
+        }
       } catch (error) {
         console.error('Failed to parse edit history:', error);
         setHistory([]);
@@ -138,11 +143,11 @@ export function EditHistoryModal({
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-200 dark:border-gray-600">
                           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <User className="w-4 h-4" />
-                            <span className="font-medium">{entry.editedBy}</span>
+                            <span className="font-medium">User #{entry.editedBy}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-500">
                             <Calendar className="w-4 h-4" />
-                            <span>{formatDate(entry.timestamp)}</span>
+                            <span>{formatDate(entry.editedAt)}</span>
                           </div>
                         </div>
 
@@ -152,45 +157,51 @@ export function EditHistoryModal({
                             Reason
                           </p>
                           <p className="text-sm text-gray-900 dark:text-white italic">
-                            "{entry.reason}"
+                            &quot;{entry.reason}&quot;
                           </p>
                         </div>
 
-                        {/* Changes */}
-                        {entry.changes && entry.changes.length > 0 && (
+                        {/* Changes - Compare oldValues vs newValues */}
+                        {entry.oldValues && entry.newValues && (
                           <div>
                             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
                               Changes Made
                             </p>
                             <div className="space-y-2">
-                              {entry.changes.map((change, changeIndex) => (
-                                <div
-                                  key={changeIndex}
-                                  className="bg-white dark:bg-gray-800 rounded-lg p-3 text-sm"
-                                >
-                                  <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    {getFieldLabel(change.field)}
-                                  </p>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <div>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                        Old Value
-                                      </p>
-                                      <p className="text-gray-900 dark:text-white bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-                                        {formatValue(change.oldValue)}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                        New Value
-                                      </p>
-                                      <p className="text-gray-900 dark:text-white bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
-                                        {formatValue(change.newValue)}
-                                      </p>
+                              {Object.keys(entry.newValues).filter(key => key !== 'editReason').map((field, changeIndex) => {
+                                const oldVal = entry.oldValues[field];
+                                const newVal = entry.newValues[field];
+                                // Skip if values are the same
+                                if (JSON.stringify(oldVal) === JSON.stringify(newVal)) return null;
+                                return (
+                                  <div
+                                    key={changeIndex}
+                                    className="bg-white dark:bg-gray-800 rounded-lg p-3 text-sm"
+                                  >
+                                    <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                      {getFieldLabel(field)}
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                          Old Value
+                                        </p>
+                                        <p className="text-gray-900 dark:text-white bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                                          {formatValue(oldVal)}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                          New Value
+                                        </p>
+                                        <p className="text-gray-900 dark:text-white bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                                          {formatValue(newVal)}
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
