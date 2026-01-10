@@ -8,9 +8,12 @@ import { apiGet, apiPost } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { 
   ArrowLeft, DollarSign, User, 
-  CheckCircle, Clock, AlertTriangle, Plus 
+  CheckCircle, Clock, AlertTriangle, Plus, Edit, FileText, History
 } from 'lucide-react';
 import { PaymentButton } from '@/components/finance/PaymentButton';
+import { EditTransactionModal } from '@/components/finance/EditTransactionModal';
+import { VoidAndReplaceModal } from '@/components/finance/VoidAndReplaceModal';
+import { EditHistoryModal } from '@/components/finance/EditHistoryModal';
 
 interface TransactionDetail {
   id: number;
@@ -28,6 +31,15 @@ interface TransactionDetail {
   creator: { id: number; email: string };
   totalPaid: number;
   balance: number;
+  editHistory?: string | null;
+  lastEditedAt?: string | null;
+  lastEditedBy?: string | null;
+  isVoided?: boolean;
+  voidReason?: string | null;
+  voidedAt?: string | null;
+  voidedBy?: string | null;
+  replacedBy?: number | null;
+  replaces?: number | null;
 }
 
 export default function TransactionDetailPage() {
@@ -37,6 +49,9 @@ export default function TransactionDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showVoidReplaceModal, setShowVoidReplaceModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [paymentData, setPaymentData] = useState({
     amountPaid: '',
     paymentDate: new Date().toISOString().split('T')[0],
@@ -137,6 +152,31 @@ export default function TransactionDetailPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Voided Transaction Banner */}
+      {transaction.isVoided && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-red-800 dark:text-red-200 text-sm">
+                This Transaction Has Been Voided
+              </h3>
+              {transaction.voidReason && (
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  Reason: {transaction.voidReason}
+                </p>
+              )}
+              {transaction.voidedAt && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Voided on {formatDate(transaction.voidedAt)}
+                  {transaction.voidedBy && ` by ${transaction.voidedBy}`}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Settlement Warning Banner */}
       {transaction.status !== 'paid' && transaction.status !== 'waived' && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
@@ -155,7 +195,7 @@ export default function TransactionDetailPage() {
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col gap-4">
         <div>
           <button
             onClick={() => router.back()}
@@ -167,12 +207,63 @@ export default function TransactionDetailPage() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Transaction {transaction.referenceNumber}
           </h1>
-          <div className="mt-2">{getStatusBadge(transaction.status)}</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {getStatusBadge(transaction.status)}
+            {transaction.isVoided && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full text-sm font-medium" title={transaction.voidReason || 'Transaction voided'}>
+                🚫 VOIDED
+              </span>
+            )}
+            {!transaction.isVoided && transaction.lastEditedAt && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-sm font-medium" title={`Last edited: ${formatDate(transaction.lastEditedAt)}`}>
+                ✏️ EDITED
+              </span>
+            )}
+          </div>
         </div>
 
-        {transaction.status !== 'paid' && transaction.status !== 'waived' && (
-          <Can permission={PERMISSIONS.PAYMENT_CREATE}>
-            <div className="flex gap-3">
+        {/* Action Buttons Row */}
+        <div className="flex flex-wrap gap-3">
+          {/* View History button - show if transaction has been edited */}
+          {(transaction.editHistory || transaction.lastEditedAt) && (
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <History className="w-4 h-4" />
+              View History
+            </button>
+          )}
+
+          {/* Edit button - only for unpaid transactions with no payments */}
+          <Can permission={PERMISSIONS.TRANSACTION_EDIT}>
+            {transaction.status !== 'paid' && transaction.status !== 'waived' && Number(transaction.totalPaid) === 0 && (
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                Edit Transaction
+              </button>
+            )}
+          </Can>
+
+          {/* Void & Replace button - for paid or partially paid transactions */}
+          <Can permission={PERMISSIONS.TRANSACTION_EDIT}>
+            {(transaction.status === 'paid' || Number(transaction.totalPaid) > 0) && (
+              <button
+                onClick={() => setShowVoidReplaceModal(true)}
+                className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Void & Replace
+              </button>
+            )}
+          </Can>
+
+          {/* Payment buttons - Always show for unpaid/partial transactions */}
+          {transaction.status !== 'paid' && transaction.status !== 'waived' && (
+            <Can permission={PERMISSIONS.PAYMENT_CREATE}>
               <PaymentButton
                 transactionId={transaction.id}
                 amount={transaction.balance}
@@ -181,14 +272,14 @@ export default function TransactionDetailPage() {
               />
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
               >
                 <Plus className="w-4 h-4" />
                 Record Payment
               </button>
-            </div>
-          </Can>
-        )}
+            </Can>
+          )}
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -422,6 +513,52 @@ export default function TransactionDetailPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {showEditModal && transaction && (
+        <EditTransactionModal
+          transaction={{
+            id: transaction.id,
+            memberId: transaction.member.id,
+            categoryId: transaction.category.id,
+            amount: transaction.amount,
+            dueDate: transaction.dueDate,
+            notes: transaction.notes,
+            status: transaction.status,
+            totalPaid: transaction.totalPaid,
+          }}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={fetchTransaction}
+        />
+      )}
+
+      {/* Void & Replace Transaction Modal */}
+      {showVoidReplaceModal && transaction && (
+        <VoidAndReplaceModal
+          transaction={{
+            id: transaction.id,
+            referenceNumber: transaction.referenceNumber,
+            memberId: transaction.member.id,
+            categoryId: transaction.category.id,
+            amount: transaction.amount,
+            dueDate: transaction.dueDate,
+            notes: transaction.notes,
+          }}
+          onClose={() => setShowVoidReplaceModal(false)}
+          onSuccess={fetchTransaction}
+        />
+      )}
+
+      {/* Edit History Modal */}
+      {showHistoryModal && transaction && (
+        <EditHistoryModal
+          transactionId={transaction.id}
+          editHistory={transaction.editHistory || null}
+          lastEditedAt={transaction.lastEditedAt}
+          lastEditedBy={transaction.lastEditedBy}
+          onClose={() => setShowHistoryModal(false)}
+        />
       )}
     </div>
   );

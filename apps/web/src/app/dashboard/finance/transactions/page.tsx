@@ -7,9 +7,10 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { BulkEditModal } from '@/components/finance/BulkEditModal';
 import { 
   Search, Plus, Eye, Trash2, CheckSquare, Square,
-  CheckCircle, Clock, AlertTriangle, XCircle, Calendar, Info
+  CheckCircle, Clock, AlertTriangle, XCircle, Calendar, Info, Edit3
 } from 'lucide-react';
 
 interface TransactionWithDetails extends Transaction {
@@ -18,6 +19,9 @@ interface TransactionWithDetails extends Transaction {
   payments?: { id: number; amountPaid: number; paymentDate: string }[];
   totalPaid?: number;
   balance?: number;
+  isVoided?: boolean;
+  voidReason?: string | null;
+  lastEditedAt?: string | null;
 }
 
 export default function TransactionsPage() {
@@ -43,6 +47,9 @@ export default function TransactionsPage() {
     paymentDate: new Date().toISOString().split('T')[0],
     notes: '',
   });
+
+  // Bulk Edit state
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -519,7 +526,16 @@ export default function TransactionsPage() {
             <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
               {selectedTransactions.length} transaction(s) selected
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Can permission={PERMISSIONS.TRANSACTION_EDIT}>
+                <button
+                  onClick={() => setShowBulkEditModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  Bulk Edit
+                </button>
+              </Can>
               <Can permission={PERMISSIONS.PAYMENT_CREATE}>
                 <button
                   onClick={handleBulkPayClick}
@@ -589,7 +605,19 @@ export default function TransactionsPage() {
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5">{txn.member?.memberId}</p>
                         </div>
-                        {getStatusBadge(txn.status)}
+                        <div className="flex flex-col items-end gap-1">
+                          {getStatusBadge(txn.status)}
+                          {txn.isVoided && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded text-xs font-medium" title={txn.voidReason || 'Transaction voided'}>
+                              VOIDED
+                            </span>
+                          )}
+                          {!txn.isVoided && txn.lastEditedAt && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded text-xs font-medium" title={`Last edited: ${formatDate(txn.lastEditedAt)}`}>
+                              EDITED
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="flex items-center justify-between text-sm mt-2">
@@ -737,7 +765,19 @@ export default function TransactionsPage() {
                         {txn.dueDate ? formatDate(txn.dueDate) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(txn.status)}
+                        <div className="flex flex-col gap-1">
+                          {getStatusBadge(txn.status)}
+                          {txn.isVoided && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded text-xs font-medium" title={txn.voidReason || 'Transaction voided'}>
+                              VOIDED
+                            </span>
+                          )}
+                          {!txn.isVoided && txn.lastEditedAt && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded text-xs font-medium" title={`Last edited: ${formatDate(txn.lastEditedAt)}`}>
+                              EDITED
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex items-center gap-2">
@@ -957,6 +997,19 @@ export default function TransactionsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bulk Edit Modal */}
+      {showBulkEditModal && (
+        <BulkEditModal
+          transactionIds={selectedTransactions}
+          onClose={() => setShowBulkEditModal(false)}
+          onSuccess={() => {
+            setSelectedTransactions([]);
+            fetchTransactions();
+            fetchStats();
+          }}
+        />
       )}
     </div>
   );
