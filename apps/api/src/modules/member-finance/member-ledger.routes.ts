@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { memberLedgerController, memberLedgerExportController } from './member-ledger.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { requirePermission } from '../../middleware/rbac';
+import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
 const router = Router();
@@ -11,6 +11,13 @@ const router = Router();
 // No tenant middleware needed - these are user-specific routes
 router.use(authMiddleware);
 
+// Permission set that allows both members viewing own data and admins viewing any data
+const selfViewPermissions = [
+  PERMISSIONS.MEMBER_FINANCE_VIEW,  // ledger.view_own - members viewing their own
+  PERMISSIONS.LEDGER_VIEW,           // ledger.view - admins viewing ledger
+  PERMISSIONS.LEDGER_VIEW_ALL,       // ledger.view_all - admins viewing all ledgers
+];
+
 // ============================================
 // MEMBER SELF-SERVICE ENDPOINTS
 // These allow members to view their own ledger
@@ -18,31 +25,31 @@ router.use(authMiddleware);
 
 // Get my ledger summary
 router.get('/my-ledger/summary',
-  requirePermission(PERMISSIONS.MEMBER_FINANCE_VIEW),
+  requireAnyPermission(selfViewPermissions),
   memberLedgerController.getMyLedgerSummary
 );
 
 // Get my ledger entries
 router.get('/my-ledger/entries',
-  requirePermission(PERMISSIONS.MEMBER_FINANCE_VIEW),
+  requireAnyPermission(selfViewPermissions),
   memberLedgerController.getMyLedgerEntries
 );
 
 // Get my statement
 router.get('/my-ledger/statement',
-  requirePermission(PERMISSIONS.MEMBER_FINANCE_VIEW),
+  requireAnyPermission(selfViewPermissions),
   memberLedgerController.getMyStatement
 );
 
 // Get my current balance
 router.get('/my-ledger/balance',
-  requirePermission(PERMISSIONS.MEMBER_FINANCE_VIEW),
+  requireAnyPermission(selfViewPermissions),
   memberLedgerController.getMyBalance
 );
 
 // Export my ledger statement as PDF
 router.post('/my-ledger/export',
-  requirePermission(PERMISSIONS.MEMBER_FINANCE_VIEW),
+  requireAnyPermission(selfViewPermissions),
   memberLedgerExportController.exportMyStatement
 );
 
