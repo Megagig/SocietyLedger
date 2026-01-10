@@ -149,7 +149,7 @@ export function MemberSidebar() {
     {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
-      badge: 'Enterprise',
+      // badge: 'Enterprise',
       children: [
         {
           label: 'My Savings',
