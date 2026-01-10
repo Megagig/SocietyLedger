@@ -445,7 +445,8 @@ export const memberFinanceController = {
           id: txn.id,
           referenceNumber: txn.referenceNumber,
           category: txn.category,
-          amount: Number(paid),
+          amount: Number(txn.amount), // Use transaction amount, not just paid amount
+          amountPaid: Number(paid),   // Also include paid amount for reference
           purpose: txn.category.name,
           isAnonymous: txn.donationRecord?.isAnonymous || false,
           receiptNumber: txn.donationRecord?.receiptNumber,

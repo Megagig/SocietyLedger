@@ -11,6 +11,16 @@ const router = Router();
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
+// Get current user's member profile (must come before /:id route)
+router.get('/me',
+  memberController.getMe
+);
+
+// Update current user's member profile (must come before /:id route)
+router.patch('/me',
+  memberController.updateMe
+);
+
 // Get member statistics (dashboard)
 router.get('/stats',
   requirePermission(PERMISSIONS.MEMBER_VIEW),

@@ -100,9 +100,11 @@ export default function MemberLedgerDetailPage() {
       if (dateRange[1]) params.endDate = dateRange[1].toISOString().split('T')[0];
       
       const result = await getMemberLedgerEntries(memberId, params);
-      setEntries(result.data);
-      if (result.pagination) {
-        setPagination(prev => ({ ...prev, ...result.pagination }));
+      // API returns { data: { member, entries, pagination } }
+      const responseData = result.data as any;
+      setEntries(responseData.entries || []);
+      if (responseData.pagination) {
+        setPagination(prev => ({ ...prev, ...responseData.pagination }));
       }
     } catch (err: any) {
       toast.error(err.message);

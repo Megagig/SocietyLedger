@@ -684,4 +684,155 @@ export const memberController = {
       });
     }
   },
+
+  // Get current user's member profile
+  async getMe(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userEmail = req.user?.email;
+
+      if (!associationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association ID is required',
+        });
+      }
+
+      if (!userEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'User email is required',
+        });
+      }
+
+      // Find member by email and association
+      const member = await prisma.member.findFirst({
+        where: {
+          associationId,
+          email: userEmail,
+        },
+      });
+
+      if (!member) {
+        return res.status(404).json({
+          success: false,
+          message: 'Member profile not found',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: member,
+      });
+    } catch (error) {
+      console.error('Error fetching member profile:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch member profile',
+      });
+    }
+  },
+
+  // Update current user's member profile
+  async updateMe(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userEmail = req.user?.email;
+
+      if (!associationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association ID is required',
+        });
+      }
+
+      if (!userEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'User email is required',
+        });
+      }
+
+      // Validate request body
+      const validatedData = updateMemberSchema.parse(req.body);
+
+      // Find member by email and association
+      const existingMember = await prisma.member.findFirst({
+        where: {
+          associationId,
+          email: userEmail,
+        },
+      });
+
+      if (!existingMember) {
+        return res.status(404).json({
+          success: false,
+          message: 'Member profile not found',
+        });
+      }
+
+      // Check email uniqueness if changing
+      if (validatedData.email && validatedData.email !== existingMember.email) {
+        const emailExists = await prisma.member.findFirst({
+          where: {
+            associationId,
+            email: validatedData.email,
+            id: { not: existingMember.id },
+          },
+        });
+
+        if (emailExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email already in use by another member',
+          });
+        }
+      }
+
+      // Update member
+      const updatedMember = await prisma.member.update({
+        where: { id: existingMember.id },
+        data: {
+          ...validatedData,
+          joinDate: validatedData.joinDate ? new Date(validatedData.joinDate) : undefined,
+        },
+      });
+
+      // Create audit log
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: req.user!.id,
+          action: 'UPDATE',
+          tableName: 'members',
+          recordId: updatedMember.id,
+          oldValues: existingMember,
+          newValues: updatedMember,
+        },
+      });
+
+      // Phase 12: Invalidate cache
+      await cacheInvalidationService.onMemberChange(associationId);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: updatedMember,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: error.errors,
+        });
+      }
+
+      console.error('Error updating member profile:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update profile',
+      });
+    }
+  },
 };

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Modal, NumberInput, Select, Button, Badge } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconHeart, IconCurrencyNaira, IconPlus } from '@tabler/icons-react';
+import { IconHeart, IconCurrencyNaira, IconPlus, IconCheck, IconClock } from '@tabler/icons-react';
 import { apiGet, apiPost } from '@/utils/api';
 import { toast } from '@/lib/toast';
 
@@ -12,6 +13,7 @@ interface DonationItem {
   referenceNumber: string;
   category: { id: number; name: string; type: string };
   amount: number;
+  amountPaid?: number;
   purpose: string;
   isAnonymous: boolean;
   receiptNumber?: string;
@@ -26,6 +28,7 @@ interface DonationCategory {
 }
 
 export default function MyDonationsPage() {
+  const router = useRouter();
   const [donations, setDonations] = useState<DonationItem[]>([]);
   const [categories, setCategories] = useState<DonationCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +85,15 @@ export default function MyDonationsPage() {
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
 
   const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
+  
+  // Calculate unpaid donations
+  const getBalance = (donation: DonationItem) => {
+    const paid = donation.amountPaid ?? donation.payments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+    return donation.amount - paid;
+  };
+  
+  const isPaid = (donation: DonationItem) => getBalance(donation) <= 0;
+  const totalUnpaid = donations.filter(d => !isPaid(d)).reduce((sum, d) => sum + getBalance(d), 0);
 
   if (isLoading) {
     return (
@@ -129,33 +141,55 @@ export default function MyDonationsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {donations.map((donation) => (
-            <div key={donation.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-lg">
-                    <IconHeart className="text-pink-600" size={24} />
+          {donations.map((donation) => {
+            const balance = getBalance(donation);
+            const paid = isPaid(donation);
+            
+            return (
+              <div key={donation.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-lg ${paid ? 'bg-green-100 dark:bg-green-900/30' : 'bg-pink-100 dark:bg-pink-900/30'}`}>
+                      <IconHeart className={paid ? 'text-green-600' : 'text-pink-600'} size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        {donation.purpose || donation.category.name}
+                      </h3>
+                      <Badge color="pink" variant="light" size="sm">{donation.category.name}</Badge>
+                      <p className="text-sm text-gray-500 mt-1">{formatDate(donation.createdAt)}</p>
+                      {donation.isAnonymous && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">Anonymous donation</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {donation.purpose || donation.category.name}
-                    </h3>
-                    <Badge color="pink" variant="light" size="sm">{donation.category.name}</Badge>
-                    <p className="text-sm text-gray-500 mt-1">{formatDate(donation.createdAt)}</p>
-                    {donation.isAnonymous && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">Anonymous donation</p>
+                  <div className="text-right">
+                    <Badge color={paid ? 'green' : 'yellow'} leftSection={paid ? <IconCheck size={14} /> : <IconClock size={14} />}>
+                      {paid ? 'PAID' : 'PENDING'}
+                    </Badge>
+                    <p className="text-xl font-bold text-pink-600 mt-2">{formatCurrency(donation.amount)}</p>
+                    {donation.receiptNumber && (
+                      <p className="text-xs text-gray-500 mt-1">Receipt: {donation.receiptNumber}</p>
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold text-pink-600">{formatCurrency(donation.amount)}</p>
-                  {donation.receiptNumber && (
-                    <p className="text-xs text-gray-500 mt-1">Receipt: {donation.receiptNumber}</p>
-                  )}
-                </div>
+                {!paid && (
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Balance: <span className="font-semibold text-pink-600">{formatCurrency(balance)}</span>
+                    </p>
+                    <Button 
+                      size="sm" 
+                      color="pink"
+                      onClick={() => router.push(`/dashboard/my-finances/pay?transactionId=${donation.id}`)}
+                    >
+                      Pay Now
+                    </Button>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
