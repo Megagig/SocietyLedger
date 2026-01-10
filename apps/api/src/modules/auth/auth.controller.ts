@@ -644,4 +644,93 @@ export class AuthController {
       });
     }
   }
+
+  async changePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorized',
+        });
+        return;
+      }
+
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Current password and new password are required',
+        });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        res.status(400).json({
+          success: false,
+          message: 'New password must be at least 6 characters',
+        });
+        return;
+      }
+
+      // Get user with password
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+        return;
+      }
+
+      // Verify current password
+      const isValidPassword = await verifyPassword(currentPassword, user.passwordHash);
+      if (!isValidPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Current password is incorrect',
+        });
+        return;
+      }
+
+      // Hash new password
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update password
+      await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: hashedPassword },
+      });
+
+      // Create audit log
+      if (user.associationId) {
+        await prisma.auditLog.create({
+          data: {
+            associationId: user.associationId,
+            userId: user.id,
+            action: 'UPDATE',
+            tableName: 'users',
+            recordId: user.id,
+            oldValues: { action: 'password_change' },
+            newValues: { action: 'password_changed' },
+          },
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Password changed successfully',
+      });
+    } catch (error) {
+      console.error('Change password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to change password',
+      });
+    }
+  }
 }

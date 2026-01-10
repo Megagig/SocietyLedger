@@ -20,5 +20,6 @@ router.post('/reset-password', (req, res) => authController.resetPassword(req, r
 
 // Protected routes
 router.get('/me', authMiddleware, (req, res) => authController.me(req, res));
+router.post('/change-password', authMiddleware, (req, res) => authController.changePassword(req, res));
 
 export default router;
