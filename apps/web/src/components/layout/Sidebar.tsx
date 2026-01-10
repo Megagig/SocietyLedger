@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Text } from '@mantine/core';
@@ -56,6 +56,7 @@ interface NavItem {
   href?: string;
   permission?: string | string[];
   roleRequired?: 'admin' | 'treasurer' | 'financial_secretary'; // Admin-only sections
+  hideForSuperAdmin?: boolean; // Hide for Super Admin users
   comingSoon?: boolean;
   badge?: string;
   children?: NavItem[];
@@ -64,8 +65,14 @@ interface NavItem {
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const { user, logout, _hasHydrated } = useAuthStore();
+
+  // Track client-side mount to prevent hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
@@ -75,32 +82,24 @@ export function Sidebar() {
     );
   };
 
-  const checkPermission = (permission: string | string[] | undefined, roleRequired?: string): boolean => {
-    if (!permission && !roleRequired) return true;
-    
-    // Super admin has access to everything
-    if (user?.platformRole === 'SUPER_ADMIN') return true;
-    
-    // During hydration, show items for logged-in users based on role
-    // This prevents the sidebar from flickering/hiding items during load
-    if (!_hasHydrated) {
-      // If there's no user yet, don't show permission-gated items
-      if (!user) return false;
-      
-      // For role-based items, show if user has the required role
-      if (roleRequired) {
-        return user.role === roleRequired;
-      }
-      
-      // For permission-based items, show for admin/treasurer/financial_secretary roles during hydration
-      // They'll be hidden after hydration if permissions don't match
-      if (permission && (user.role === 'admin' || user.role === 'treasurer' || user.role === 'financial_secretary')) {
-        return true;
-      }
-      
-      // Don't show other permission-gated items during hydration for regular members
+  const checkPermission = (permission: string | string[] | undefined, roleRequired?: string, hideForSuperAdmin?: boolean): boolean => {
+    // Wait for client-side mount and store hydration before showing permission-gated items
+    // This prevents hydration mismatch between server and client
+    if (!isMounted || !_hasHydrated) {
+      // During SSR or before hydration, only show items without permissions
+      if (!permission && !roleRequired) return true;
       return false;
     }
+    
+    // Check if item should be hidden for Super Admin
+    if (hideForSuperAdmin && user?.platformRole === 'SUPER_ADMIN') {
+      return false;
+    }
+    
+    if (!permission && !roleRequired) return true;
+    
+    // Super admin has access to everything (except items explicitly hidden)
+    if (user?.platformRole === 'SUPER_ADMIN') return true;
     
     // After hydration, do proper permission checks
     
@@ -119,6 +118,14 @@ export function Sidebar() {
     // This handles the case where permissions haven't been fetched yet
     if (userPermissions.length === 0 && user?.role === 'admin') {
       return true;
+    }
+    
+    // Also show for members if they have any role and the item requires member-finance permission
+    if (userPermissions.length === 0 && user?.role) {
+      const permArray = Array.isArray(permission) ? permission : [permission];
+      if (permArray.includes(PERMISSIONS.MEMBER_FINANCE_VIEW)) {
+        return true;
+      }
     }
     
     if (Array.isArray(permission)) {
@@ -142,10 +149,11 @@ export function Sidebar() {
     },
     // Member Self-Service Finance Section (visible to both members and admins)
     // Note: Hidden for Super Admins as they don't have member records
-    ...(user?.platformRole !== 'SUPER_ADMIN' ? [{
+    {
       label: 'My Finances',
       icon: <IconCurrencyNaira size={20} />,
       permission: [PERMISSIONS.MEMBER_FINANCE_VIEW, PERMISSIONS.FINANCE_VIEW], // Accept either member or admin permission
+      hideForSuperAdmin: true, // Super admins don't have member records
       children: [
         {
           label: 'Overview',
@@ -188,7 +196,7 @@ export function Sidebar() {
           href: '/dashboard/my-finances/pay',
         },
       ],
-    }] : []),
+    },
     // Admin Finance Section (visible to roles with FINANCE_VIEW permission)
     {
       label: 'Finance',
@@ -858,7 +866,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {navItems.map((item) => {
-            if (!checkPermission(item.permission, item.roleRequired)) return null;
+            if (!checkPermission(item.permission, item.roleRequired, item.hideForSuperAdmin)) return null;
 
             const hasChildren = item.children && item.children.length > 0;
             const isExpanded = expandedItems.includes(item.label);
@@ -892,7 +900,7 @@ export function Sidebar() {
                     {isExpanded && item.children && (
                       <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
                         {item.children.map((child) => {
-                          if (!checkPermission(child.permission, child.roleRequired)) return null;
+                          if (!checkPermission(child.permission, child.roleRequired, child.hideForSuperAdmin)) return null;
 
                           return (
                             <Link
