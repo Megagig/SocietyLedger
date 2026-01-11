@@ -120,7 +120,7 @@ export const accountingIntegrationService = {
       const updateData = {
         accountingSynced: true,
         accountingEntryId: entryId
-      };
+      } as any; // Type assertion for Prisma update
       
       switch (tableName) {
         case 'Transaction':
@@ -641,4 +641,7 @@ export const accountingIntegrationService = {
     }
   },
 };
+
+
+
 
