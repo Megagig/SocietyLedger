@@ -39,7 +39,7 @@ export function Breadcrumbs() {
   return (
     <nav className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
       {allBreadcrumbs.map((crumb, index) => (
-        <div key={crumb.href} className="flex items-center">
+        <div key={`${crumb.href}-${index}`} className="flex items-center">
           {index > 0 && (
             <IconChevronRight size={16} className="mx-2 text-gray-400" />
           )}

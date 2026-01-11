@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
 // Phase 12: Cache invalidation
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
+// Accounting integration
+import { accountingIntegrationService } from '../../services/accounting-integration.service';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -727,6 +729,14 @@ export const financeController = {
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onTransactionChange(associationId);
 
+      // Accounting integration: Sync transaction to accounting module
+      try {
+        await accountingIntegrationService.onTransactionCreated(transaction, req.user!.id);
+      } catch (syncError) {
+        console.error('Accounting sync failed (non-critical):', syncError);
+        // Don't throw - transaction creation succeeded
+      }
+
       return res.status(201).json({
         success: true,
         message: 'Transaction created successfully',
@@ -808,6 +818,26 @@ export const financeController = {
 
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onTransactionChange(associationId);
+
+      // Accounting integration: Sync all transactions to accounting module
+      for (const transaction of transactions) {
+        try {
+          // Fetch full transaction with relations for accounting sync
+          const fullTransaction = await prisma.transaction.findUnique({
+            where: { id: transaction.id },
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+              category: { select: { id: true, name: true, type: true } },
+            },
+          });
+          if (fullTransaction) {
+            await accountingIntegrationService.onTransactionCreated(fullTransaction, req.user!.id);
+          }
+        } catch (syncError) {
+          console.error(`Accounting sync failed for transaction ${transaction.id} (non-critical):`, syncError);
+          // Continue with other transactions
+        }
+      }
 
       return res.status(201).json({
         success: true,
@@ -1716,6 +1746,28 @@ export const financeController = {
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onPaymentChange(associationId);
 
+      // Accounting integration: Sync payment to accounting module
+      try {
+        // Fetch full payment with transaction relations for accounting sync
+        const fullPayment = await prisma.payment.findUnique({
+          where: { id: payment.id },
+          include: {
+            transaction: {
+              include: {
+                member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+                category: { select: { id: true, name: true, type: true } },
+              },
+            },
+          },
+        });
+        if (fullPayment) {
+          await accountingIntegrationService.onPaymentRecorded(fullPayment, req.user!.id);
+        }
+      } catch (syncError) {
+        console.error('Accounting sync failed (non-critical):', syncError);
+        // Don't throw - payment recording succeeded
+      }
+
       return res.status(201).json({
         success: true,
         message: 'Payment recorded successfully',
@@ -1851,6 +1903,30 @@ export const financeController = {
 
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onPaymentChange(associationId);
+
+      // Accounting integration: Sync all payments to accounting module
+      for (const payment of result) {
+        try {
+          // Fetch full payment with transaction relations for accounting sync
+          const fullPayment = await prisma.payment.findUnique({
+            where: { id: payment.id },
+            include: {
+              transaction: {
+                include: {
+                  member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+                  category: { select: { id: true, name: true, type: true } },
+                },
+              },
+            },
+          });
+          if (fullPayment) {
+            await accountingIntegrationService.onPaymentRecorded(fullPayment, req.user!.id);
+          }
+        } catch (syncError) {
+          console.error(`Accounting sync failed for payment ${payment.id} (non-critical):`, syncError);
+          // Continue with other payments
+        }
+      }
 
       return res.status(200).json({
         success: true,

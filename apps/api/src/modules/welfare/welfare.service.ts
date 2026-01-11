@@ -13,6 +13,8 @@ import {
   ReviewPayoutInput,
   DisbursePayoutInput,
 } from './welfare.validation';
+// Accounting integration
+import { accountingIntegrationService } from '../../services/accounting-integration.service';
 
 export const welfareService = {
   // ==========================================
@@ -366,6 +368,20 @@ export const welfareService = {
       return updatedContribution;
     });
 
+    // Accounting integration: Sync confirmed contribution to accounting module
+    if (status === 'CONFIRMED') {
+      try {
+        await accountingIntegrationService.onWelfareContributionConfirmed(
+          updated,
+          updated.fund,
+          userId
+        );
+      } catch (syncError) {
+        console.error('Accounting sync failed (non-critical):', syncError);
+        // Don't throw - contribution confirmation succeeded
+      }
+    }
+
     return updated;
   },
 
@@ -661,6 +677,18 @@ export const welfareService = {
 
       return updatedRequest;
     });
+
+    // Accounting integration: Sync payout disbursement to accounting module
+    try {
+      await accountingIntegrationService.onWelfarePayoutDisbursed(
+        updated,
+        updated.fund,
+        userId
+      );
+    } catch (syncError) {
+      console.error('Accounting sync failed (non-critical):', syncError);
+      // Don't throw - payout disbursement succeeded
+    }
 
     return updated;
   },

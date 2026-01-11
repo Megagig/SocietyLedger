@@ -289,6 +289,7 @@ export const STANDARD_CHART_OF_ACCOUNTS: ChartOfAccountInput[] = [
   { code: '1121', name: 'Member Dues Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT' },
   { code: '1122', name: 'Levy Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT' },
   { code: '1130', name: 'Prepaid Expenses', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT' },
+  { code: '1300', name: 'Loans Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT', description: 'Cooperative loans given to members' },
   { code: '1200', name: 'Fixed Assets', type: 'ASSET', subType: 'fixed_asset', normalBalance: 'DEBIT' },
   { code: '1210', name: 'Equipment', type: 'ASSET', subType: 'fixed_asset', normalBalance: 'DEBIT' },
   { code: '1220', name: 'Furniture and Fixtures', type: 'ASSET', subType: 'fixed_asset', normalBalance: 'DEBIT' },
@@ -300,6 +301,8 @@ export const STANDARD_CHART_OF_ACCOUNTS: ChartOfAccountInput[] = [
   { code: '2110', name: 'Accounts Payable', type: 'LIABILITY', subType: 'current_liability', normalBalance: 'CREDIT' },
   { code: '2120', name: 'Accrued Expenses', type: 'LIABILITY', subType: 'current_liability', normalBalance: 'CREDIT' },
   { code: '2130', name: 'Deferred Revenue', type: 'LIABILITY', subType: 'current_liability', normalBalance: 'CREDIT' },
+  { code: '2300', name: 'Welfare Fund Liability', type: 'LIABILITY', subType: 'current_liability', normalBalance: 'CREDIT', description: 'Welfare contributions held for members' },
+  { code: '2400', name: 'Member Savings Liability', type: 'LIABILITY', subType: 'current_liability', normalBalance: 'CREDIT', description: 'Cooperative savings deposits from members' },
   { code: '2200', name: 'Long-term Liabilities', type: 'LIABILITY', subType: 'long_term_liability', normalBalance: 'CREDIT' },
   { code: '2210', name: 'Loans Payable', type: 'LIABILITY', subType: 'long_term_liability', normalBalance: 'CREDIT' },
 
@@ -319,6 +322,9 @@ export const STANDARD_CHART_OF_ACCOUNTS: ChartOfAccountInput[] = [
   { code: '4400', name: 'Penalty Income', type: 'INCOME', subType: 'other_income', normalBalance: 'CREDIT' },
   { code: '4500', name: 'Interest Income', type: 'INCOME', subType: 'other_income', normalBalance: 'CREDIT' },
   { code: '4600', name: 'Other Income', type: 'INCOME', subType: 'other_income', normalBalance: 'CREDIT' },
+  { code: '4700', name: 'Welfare Interest Income', type: 'INCOME', subType: 'other_income', normalBalance: 'CREDIT', description: 'Interest earned on welfare fund investments' },
+  { code: '4800', name: 'Loan Interest Income', type: 'INCOME', subType: 'operating_income', normalBalance: 'CREDIT', description: 'Interest income from cooperative loans' },
+  { code: '4900', name: 'Fee Income', type: 'INCOME', subType: 'operating_income', normalBalance: 'CREDIT', description: 'Processing fees, late fees, and other charges' },
 
   // Expenses (5000-5999)
   { code: '5000', name: 'Expenses', type: 'EXPENSE', normalBalance: 'DEBIT' },
@@ -337,4 +343,5 @@ export const STANDARD_CHART_OF_ACCOUNTS: ChartOfAccountInput[] = [
   { code: '5500', name: 'Bank Charges', type: 'EXPENSE', subType: 'other_expense', normalBalance: 'DEBIT' },
   { code: '5600', name: 'Depreciation Expense', type: 'EXPENSE', subType: 'other_expense', normalBalance: 'DEBIT' },
   { code: '5700', name: 'Miscellaneous Expenses', type: 'EXPENSE', subType: 'other_expense', normalBalance: 'DEBIT' },
+  { code: '5800', name: 'Savings Interest Expense', type: 'EXPENSE', subType: 'operating_expense', normalBalance: 'DEBIT', description: 'Interest paid on member savings deposits' },
 ];

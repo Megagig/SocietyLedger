@@ -14,6 +14,8 @@ import {
   PaymentProofVerification,
   UnmatchedPaymentsDashboard,
 } from './nigerian-payments.types';
+// Accounting integration
+import { accountingIntegrationService } from '../../services/accounting-integration.service';
 
 export const nigerianPaymentsService = {
   // ==========================================
@@ -484,7 +486,7 @@ export const nigerianPaymentsService = {
 
       // Create a payment record
       const paymentCount = await prisma.payment.count({ where: { associationId } });
-      await prisma.payment.create({
+      const payment = await prisma.payment.create({
         data: {
           associationId,
           transactionId: reconciliation.transactionId,
@@ -495,7 +497,23 @@ export const nigerianPaymentsService = {
           confirmedBy: userId,
           confirmedAt: new Date(),
         },
+        include: {
+          transaction: {
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+              category: { select: { id: true, name: true, type: true } },
+            },
+          },
+        },
       });
+
+      // Accounting integration: Sync payment to accounting module
+      try {
+        await accountingIntegrationService.onPaymentRecorded(payment, userId);
+      } catch (syncError) {
+        console.error('Accounting sync failed (non-critical):', syncError);
+        // Don't throw - payment creation succeeded
+      }
     }
 
     return reconciliation;
@@ -782,7 +800,7 @@ export const nigerianPaymentsService = {
 
       // Create payment record
       const paymentCount = await prisma.payment.count({ where: { associationId } });
-      await prisma.payment.create({
+      const payment = await prisma.payment.create({
         data: {
           associationId,
           transactionId: proof.transactionId,
@@ -793,7 +811,23 @@ export const nigerianPaymentsService = {
           confirmedBy: userId,
           confirmedAt: new Date(),
         },
+        include: {
+          transaction: {
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+              category: { select: { id: true, name: true, type: true } },
+            },
+          },
+        },
       });
+
+      // Accounting integration: Sync payment to accounting module
+      try {
+        await accountingIntegrationService.onPaymentRecorded(payment, userId);
+      } catch (syncError) {
+        console.error('Accounting sync failed (non-critical):', syncError);
+        // Don't throw - payment creation succeeded
+      }
     }
 
     // If approved and linked to bank transfer, update transfer status

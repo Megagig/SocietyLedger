@@ -333,6 +333,10 @@ model Transaction {
   lastEditedBy        Int?                        @map("last_edited_by")
   lastEditedAt        DateTime?                   @map("last_edited_at")
   
+  // Accounting integration sync tracking
+  accountingSynced    Boolean                     @default(false) @map("accounting_synced")
+  accountingEntryId   Int?                        @map("accounting_entry_id")
+  
   gatewayTransactions PaymentGatewayTransaction[]
   payments            Payment[]
   association         Association                 @relation(fields: [associationId], references: [id])
@@ -370,6 +374,11 @@ model Payment {
   confirmedBy   Int?        @map("confirmed_by")
   confirmedAt   DateTime?   @map("confirmed_at")
   createdAt     DateTime    @default(now()) @map("created_at")
+  
+  // Accounting integration sync tracking
+  accountingSynced    Boolean   @default(false) @map("accounting_synced")
+  accountingEntryId   Int?      @map("accounting_entry_id")
+  
   association   Association @relation(fields: [associationId], references: [id])
   confirmer     User?       @relation("PaymentConfirmedBy", fields: [confirmedBy], references: [id])
   transaction   Transaction @relation(fields: [transactionId], references: [id])
@@ -1186,6 +1195,12 @@ model SavingsTransaction {
   processedBy      Int                    @map("processed_by")
   notes            String?
   createdAt        DateTime               @default(now()) @map("created_at")
+  transactionDate  DateTime               @default(now()) @map("transaction_date")
+  
+  // Accounting integration sync tracking
+  accountingSynced Boolean                @default(false) @map("accounting_synced")
+  accountingEntryId Int?                  @map("accounting_entry_id")
+  
   association      Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
   savingsAccount   SavingsAccount         @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
   processor        User                   @relation("SavingsTransactionProcessor", fields: [processedBy], references: [id])
@@ -1324,6 +1339,11 @@ model Loan {
   closedAt           DateTime?               @map("closed_at")
   createdAt          DateTime                @default(now()) @map("created_at")
   updatedAt          DateTime                @updatedAt @map("updated_at")
+  
+  // Accounting integration sync tracking
+  accountingSynced   Boolean                 @default(false) @map("accounting_synced")
+  accountingEntryId  Int?                    @map("accounting_entry_id")
+  
   association        Association             @relation(fields: [associationId], references: [id], onDelete: Cascade)
   application        LoanApplication         @relation(fields: [applicationId], references: [id])
   member             Member                  @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -1379,7 +1399,13 @@ model LoanRepayment {
   processedBy      Int                    @map("processed_by")
   notes            String?
   paidAt           DateTime               @default(now()) @map("paid_at")
+  paymentDate      DateTime               @default(now()) @map("payment_date")
   createdAt        DateTime               @default(now()) @map("created_at")
+  
+  // Accounting integration sync tracking
+  accountingSynced Boolean                @default(false) @map("accounting_synced")
+  accountingEntryId Int?                  @map("accounting_entry_id")
+  
   association      Association            @relation(fields: [associationId], references: [id], onDelete: Cascade)
   loan             Loan                   @relation(fields: [loanId], references: [id], onDelete: Cascade)
   scheduleItem     LoanRepaymentSchedule? @relation(fields: [scheduleItemId], references: [id])
@@ -1687,6 +1713,11 @@ model WelfareContribution {
   confirmedAt      DateTime?                 @map("confirmed_at")
   createdAt        DateTime                  @default(now()) @map("created_at")
   updatedAt        DateTime                  @updatedAt @map("updated_at")
+  
+  // Accounting integration sync tracking
+  accountingSynced    Boolean                @default(false) @map("accounting_synced")
+  accountingEntryId   Int?                   @map("accounting_entry_id")
+  
   association      Association               @relation(fields: [associationId], references: [id], onDelete: Cascade)
   fund             WelfareFund               @relation(fields: [fundId], references: [id], onDelete: Cascade)
   member           Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -1725,6 +1756,11 @@ model WelfarePayoutRequest {
   requestedAt           DateTime            @default(now()) @map("requested_at")
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
+  
+  // Accounting integration sync tracking
+  accountingSynced      Boolean             @default(false) @map("accounting_synced")
+  accountingEntryId     Int?                @map("accounting_entry_id")
+  
   association           Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
   fund                  WelfareFund         @relation(fields: [fundId], references: [id], onDelete: Cascade)
   member                Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
