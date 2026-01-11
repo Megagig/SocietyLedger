@@ -17,6 +17,8 @@ import {
   CooperativeDashboard,
   MemberCooperativeProfile,
 } from './cooperatives.types';
+// Accounting integration
+import { accountingIntegrationService } from '../../services/accounting-integration.service';
 
 // ============================================
 // HELPER FUNCTIONS
@@ -358,6 +360,28 @@ export const cooperativesService = {
         },
       }),
     ]);
+
+    // Accounting integration: Sync savings transaction to accounting module
+    try {
+      // Fetch full account details for accounting sync
+      const fullAccount = await prisma.savingsAccount.findUnique({
+        where: { id: data.savingsAccountId },
+        include: {
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        },
+      });
+      
+      if (fullAccount) {
+        if (data.type === 'DEPOSIT') {
+          await accountingIntegrationService.onSavingsDeposit(transaction, fullAccount, userId);
+        } else if (data.type === 'WITHDRAWAL') {
+          await accountingIntegrationService.onSavingsWithdrawal(transaction, fullAccount, userId);
+        }
+      }
+    } catch (syncError) {
+      console.error('Accounting sync failed (non-critical):', syncError);
+      // Don't throw - transaction succeeded
+    }
 
     return this.formatSavingsTransactionResponse(transaction);
   },
@@ -983,6 +1007,28 @@ export const cooperativesService = {
       return newLoan;
     });
 
+    // Accounting integration: Sync loan disbursement to accounting module
+    try {
+      // Fetch full loan with application details for accounting sync
+      const fullLoan = await prisma.loan.findUnique({
+        where: { id: loan.id },
+        include: {
+          application: {
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+            },
+          },
+        },
+      });
+      
+      if (fullLoan && fullLoan.application) {
+        await accountingIntegrationService.onLoanDisbursed(fullLoan, fullLoan.application, userId);
+      }
+    } catch (syncError) {
+      console.error('Accounting sync failed (non-critical):', syncError);
+      // Don't throw - loan disbursement succeeded
+    }
+
     return (await this.getLoan(associationId, loan.id))!;
   },
 
@@ -1317,6 +1363,24 @@ export const cooperativesService = {
 
       return newRepayment;
     });
+
+    // Accounting integration: Sync loan repayment to accounting module
+    try {
+      // Fetch full loan details for accounting sync
+      const fullLoan = await prisma.loan.findUnique({
+        where: { id: data.loanId },
+        include: {
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        },
+      });
+      
+      if (fullLoan) {
+        await accountingIntegrationService.onLoanRepayment(repayment, fullLoan, userId);
+      }
+    } catch (syncError) {
+      console.error('Accounting sync failed (non-critical):', syncError);
+      // Don't throw - repayment succeeded
+    }
 
     return this.formatLoanRepaymentResponse(repayment);
   },
