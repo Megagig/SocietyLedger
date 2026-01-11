@@ -84,7 +84,7 @@ export const accountingIntegrationService = {
     sourceId: number
   ) {
     try {
-      // Create journal entry
+      // Create journal entry with APPROVED status for auto-sync
       const entry = await accountingService.createJournalEntry(
         associationId,
         userId,
@@ -97,7 +97,13 @@ export const accountingIntegrationService = {
         }
       );
       
-      // Auto-post the entry (skip approval workflow for auto-sync)
+      // Update entry to APPROVED status (skip approval workflow for auto-sync)
+      await prisma.journalEntry.update({
+        where: { id: entry.id },
+        data: { status: 'APPROVED' }
+      });
+      
+      // Now post the entry
       await accountingService.postJournalEntry(associationId, entry.id);
       
       // Update source record with sync status
@@ -107,7 +113,7 @@ export const accountingIntegrationService = {
       
       return entry;
     } catch (error) {
-      await this.logSyncFailure(sourceTable, sourceId, error);
+      await this.logSyncFailure(associationId, sourceTable, sourceId, error);
       throw error;
     }
   },
@@ -177,14 +183,14 @@ export const accountingIntegrationService = {
   /**
    * Log sync failure for troubleshooting
    */
-  async logSyncFailure(tableName: string, recordId: number, error: any) {
+  async logSyncFailure(associationId: number, tableName: string, recordId: number, error: any) {
     try {
       console.error(`❌ Accounting sync failed for ${tableName}:${recordId}:`, error);
       
-      // Log to audit table
+      // Log to audit table with correct associationId
       await prisma.auditLog.create({
         data: {
-          associationId: 0, // Will be updated if we have context
+          associationId, // Use the actual associationId, not 0
           userId: 0,
           action: 'ACCOUNTING_SYNC_FAILED',
           tableName,

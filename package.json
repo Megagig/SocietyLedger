@@ -16,7 +16,9 @@
     "db:push": "turbo run db:push",
     "db:migrate": "turbo run db:migrate",
     "api:dev": "npm run dev --workspace=apps/api",
-    "web:dev": "npm run dev --workspace=apps/web"
+    "web:dev": "npm run dev --workspace=apps/web",
+    "migrate:accounting": "ts-node scripts/migrate-to-accounting.ts",
+    "rollback:accounting": "ts-node scripts/rollback-accounting-sync.ts"
   },
   "devDependencies": {
     "turbo": "^2.7.1"

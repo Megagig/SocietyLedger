@@ -263,6 +263,46 @@ router.get(
 // ==========================================
 
 /**
+ * Get sync status for all modules
+ * GET /api/accounting/sync/status
+ */
+router.get(
+  '/sync/status',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  accountingController.getSyncStatus
+);
+
+/**
+ * Get sync errors
+ * GET /api/accounting/sync/errors
+ */
+router.get(
+  '/sync/errors',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  accountingController.getSyncErrors
+);
+
+/**
+ * Bulk sync transactions
+ * POST /api/accounting/sync/transactions/bulk
+ */
+router.post(
+  '/sync/transactions/bulk',
+  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  accountingController.bulkSyncTransactions
+);
+
+/**
+ * Bulk sync payments
+ * POST /api/accounting/sync/payments/bulk
+ */
+router.post(
+  '/sync/payments/bulk',
+  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  accountingController.bulkSyncPayments
+);
+
+/**
  * Sync a transaction to accounting
  * POST /api/accounting/sync/transaction/:id
  */

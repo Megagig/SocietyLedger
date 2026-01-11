@@ -18,7 +18,11 @@
     "db:studio": "prisma studio",
     "migrate:rbac": "tsx scripts/migrate-rbac.ts",
     "migrate:rbac:dry": "tsx scripts/migrate-rbac.ts --dry-run",
-    "seed:rbac": "tsx prisma/seeds/rbac-seed.ts"
+    "seed:rbac": "tsx prisma/seeds/rbac-seed.ts",
+    "migrate:accounting": "tsx ../../scripts/migrate-to-accounting.ts",
+    "rollback:accounting": "tsx ../../scripts/rollback-accounting-sync.ts",
+    "check:accounting": "tsx ../../scripts/check-accounting-status.ts",
+    "debug:accounting": "tsx ../../scripts/debug-association-accounting.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",

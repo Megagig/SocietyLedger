@@ -634,6 +634,12 @@ export function AdminSidebar() {
           permission: PERMISSIONS.SETTINGS_INTEGRATIONS,
         },
         {
+          label: 'Accounting Integration',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/settings/accounting-integration',
+          permission: PERMISSIONS.FINANCE_VIEW,
+        },
+        {
           label: 'Data & Privacy',
           icon: <IconFileAnalytics size={18} />,
           href: '/dashboard/settings/data-privacy',
