@@ -1,362 +1,271 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
-  Card,
+  Container,
   Title,
-  Text,
   Stack,
+  Group,
+  Button,
+  Card,
   TextInput,
   Textarea,
-  Button,
-  Group,
-  Alert,
-  Checkbox,
   Select,
-  MultiSelect,
   LoadingOverlay,
-  Divider,
-  Badge,
-  Radio,
+  Alert,
+  Text as MantineText,
 } from '@mantine/core';
-import { DateTimePicker } from '@mantine/dates';
-import { useForm } from '@mantine/form';
+import { DateInput } from '@mantine/dates';
+import { IconArrowLeft, IconSend, IconClock } from '@tabler/icons-react';
+import { useRouter, useParams } from 'next/navigation';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { Plus, AlertCircle, Send } from 'lucide-react';
-import { Can } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/lib/permissions';
-import {
-  createSMSCampaign,
-  startSMSCampaign,
-  getSMSTemplates,
-  getSMSCreditBalance,
-  type RecipientFilter,
-  type SMSTemplate,
-} from '@/lib/api/communication';
+import { smsApi, CreateCampaignRequest, SMSTemplate } from '@/lib/api/sms';
+import { membersApi, Member } from '@/lib/api/members';
+import { SMSComposer } from '@/components/communications/SMSComposer';
+import { RecipientSelector } from '@/components/communications/RecipientSelector';
 
-export default function NewCampaignPage() {
+export default function CampaignBuilderPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [templates, setTemplates] = useState<SMSTemplate[]>([]);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [estimatedCost, setEstimatedCost] = useState(0);
-  const [useTemplate, setUseTemplate] = useState(false);
+  const params = useParams();
+  const campaignId = Array.isArray(params.id) ? parseInt(params.id[0]) : (params.id ? parseInt(params.id) : null);
 
-  const form = useForm({
-    initialValues: {
-      name: '',
-      description: '',
-      message: '',
-      templateId: '',
-      sendToAll: false,
-      memberType: [] as string[],
-      groups: [] as string[],
-      tags: [] as string[],
-      scheduleType: 'immediate' as 'immediate' | 'scheduled',
-      scheduledAt: null as Date | null,
+  const [campaignName, setCampaignName] = useState('');
+  const [message, setMessage] = useState('');
+  const [scheduleDate, setScheduleDate] = useState<Date | null>(null);
+  const [recipients, setRecipients] = useState<Array<{ id: string; type: 'member' | 'phone'; value: string | number; label: string }>>([]);
+  const [recipientType, setRecipientType] = useState<'all' | 'category' | 'status' | 'custom'>('custom');
+  const [selectedTemplate, setSelectedTemplate] = useState<SMSTemplate | undefined>();
+
+  // Fetch templates
+  const { data: templatesData } = useQuery({
+    queryKey: ['sms-templates'],
+    queryFn: () => smsApi.getTemplates(),
+  });
+
+  // Fetch members
+  const { data: membersData } = useQuery({
+    queryKey: ['members-list'],
+    queryFn: () => membersApi.getMembers({ limit: 1000 }),
+  });
+
+  const members: Array<{ id: number; name: string; phone: string; category: string; status: string }> =
+    membersData?.members?.map((m: Member) => ({
+      id: m.id,
+      name: `${m.firstName} ${m.lastName}`,
+      phone: m.phone || '',
+      category: m.category,
+      status: m.status,
+    })) || [];
+
+  // Fetch existing campaign if editing
+  const { data: existingCampaign } = useQuery({
+    queryKey: ['sms-campaign', campaignId],
+    queryFn: () => (campaignId ? smsApi.getCampaign(campaignId) : Promise.resolve(null)),
+    enabled: !!campaignId,
+  });
+
+  // Load existing campaign data
+  useState(() => {
+    if (existingCampaign && campaignId) {
+      setCampaignName(existingCampaign.name);
+      setMessage(existingCampaign.message);
+      if (existingCampaign.scheduledFor) {
+        setScheduleDate(new Date(existingCampaign.scheduledFor));
+      }
+    }
+  });
+
+  const templates = templatesData?.templates || [];
+
+  // Create/Update campaign mutation
+  const campaignMutation = useMutation({
+    mutationFn: (data: CreateCampaignRequest) => smsApi.createCampaign(data),
+    onSuccess: () => {
+      notifications.show({
+        title: 'Campaign Created',
+        message: 'Your SMS campaign has been created successfully',
+        color: 'green',
+      });
+      router.push('/dashboard/communications/campaigns');
     },
-    validate: {
-      name: (value) => (!value ? 'Campaign name is required' : null),
-      message: (value) =>
-        !useTemplate && !value
-          ? 'Message is required'
-          : value.length > 160
-          ? 'Message too long (max 160 characters)'
-          : null,
-      templateId: (value) => (useTemplate && !value ? 'Please select a template' : null),
-      scheduledAt: (value, values) =>
-        values.scheduleType === 'scheduled' && !value
-          ? 'Please select a date and time'
-          : null,
+    onError: (error: any) => {
+      notifications.show({
+        title: 'Failed to Create Campaign',
+        message: error.response?.data?.message || 'An error occurred',
+        color: 'red',
+      });
     },
   });
 
-  const loadTemplates = async () => {
-    try {
-      const res = await getSMSTemplates();
-      setTemplates(res.data.templates);
-    } catch (err: any) {
-      console.error('Error loading templates:', err);
-    }
-  };
-
-  const loadBalance = async () => {
-    try {
-      const res = await getSMSCreditBalance();
-      setBalance(res.data.balance);
-    } catch (err: any) {
-      console.error('Error loading balance:', err);
-    }
-  };
-
-  useEffect(() => {
-    loadTemplates();
-    loadBalance();
-  }, []);
-
-  const handleTemplateChange = (templateId: string) => {
-    const template = templates.find((t) => t.id.toString() === templateId);
-    if (template) {
-      form.setFieldValue('message', template.content);
-    }
-  };
-
-  const handleSubmit = async (values: typeof form.values) => {
-    try {
-      setLoading(true);
-
-      // Determine recipient type and build filter
-      let recipientType = 'ALL_MEMBERS';
-      const recipientFilter: RecipientFilter = {};
-      
-      if (values.sendToAll) {
-        recipientType = 'ALL_MEMBERS';
-      } else if (values.memberType.length > 0) {
-        recipientType = 'MEMBER_CATEGORY';
-        recipientFilter.categories = values.memberType;
-      }
-      if (values.groups.length > 0) {
-        recipientFilter.statuses = values.groups;
-      }
-
-      // Create campaign
-      const payload: any = {
-        name: values.name,
-        message: useTemplate ? undefined : values.message,
-        templateId: useTemplate ? parseInt(values.templateId, 10) : undefined,
-        recipientType,
-        recipientFilter: Object.keys(recipientFilter).length > 0 ? recipientFilter : undefined,
-      };
-
-      if (values.scheduleType === 'scheduled' && values.scheduledAt) {
-        payload.scheduledAt = values.scheduledAt.toISOString();
-      }
-
-      const res = await createSMSCampaign(payload);
-
-      // Start immediately if not scheduled
-      if (values.scheduleType === 'immediate') {
-        await startSMSCampaign(res.data.id);
-        notifications.show({
-          title: 'Campaign Started',
-          message: 'Your campaign has been created and started',
-          color: 'green',
-        });
-      } else {
-        notifications.show({
-          title: 'Campaign Scheduled',
-          message: 'Your campaign has been scheduled successfully',
-          color: 'green',
-        });
-      }
-
-      router.push('/dashboard/communications/campaigns');
-    } catch (err: any) {
-      console.error('Error creating campaign:', err);
+  const handleSave = () => {
+    if (!campaignName.trim()) {
       notifications.show({
-        title: 'Error',
-        message: err.message || 'Failed to create campaign',
-        color: 'red',
+        title: 'Campaign Name Required',
+        message: 'Please enter a name for your campaign',
+        color: 'yellow',
       });
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    if (recipients.length === 0 && recipientType !== 'all') {
+      notifications.show({
+        title: 'No Recipients',
+        message: 'Please add recipients or select "All Members"',
+        color: 'yellow',
+      });
+      return;
+    }
+
+    if (!message.trim()) {
+      notifications.show({
+        title: 'Message Required',
+        message: 'Please enter a message for your campaign',
+        color: 'yellow',
+      });
+      return;
+    }
+
+    const requestData: CreateCampaignRequest = {
+      name: campaignName.trim(),
+      message: message.trim(),
+      recipientType,
+      ...(recipientType === 'custom' && {
+        recipientIds: recipients.map(r => typeof r.value === 'number' ? r.value : parseInt(r.value as string)),
+      }),
+      ...(scheduleDate && { scheduleAt: scheduleDate.toISOString() }),
+    };
+
+    campaignMutation.mutate(requestData);
   };
 
   return (
-    <Can
-      permission={PERMISSIONS.SMS_SEND}
-      fallback={<Alert color="red">You don't have permission to create campaigns</Alert>}
-    >
-      <Stack gap="lg">
-        <Group justify="space-between">
-          <div>
-            <Title order={2}>Create SMS Campaign</Title>
-            <Text size="sm" c="dimmed">
-              Create a campaign to send SMS to multiple members
-            </Text>
-          </div>
-          <Button variant="light" onClick={() => router.back()}>
-            Cancel
+    <Container size="xl" py="xl">
+      <LoadingOverlay visible={campaignMutation.isPending} />
+      <Stack gap="xl">
+        {/* Header */}
+        <Group justify="space-between" align="center">
+          <Group>
+            <Button
+              variant="subtle"
+              onClick={() => router.push('/dashboard/communications/campaigns')}
+            >
+              <IconArrowLeft size={18} />
+            </Button>
+            <div>
+              <Title order={2}>
+                {campaignId ? 'Edit Campaign' : 'Create New Campaign'}
+              </Title>
+              <MantineText c="dimmed">
+                {campaignId ? 'Update campaign details' : 'Create and schedule SMS campaign'}
+              </MantineText>
+            </div>
+          </Group>
+          <Button
+            leftSection={<IconSend size={18} />}
+            onClick={handleSave}
+            loading={campaignMutation.isPending}
+            size="lg"
+          >
+            {campaignId ? 'Update Campaign' : 'Create Campaign'}
           </Button>
         </Group>
 
-        {balance !== null && balance < 10 && (
-          <Alert icon={<AlertCircle size={16} />} color="orange" title="Low SMS Balance">
-            You have only {balance} SMS credits remaining. Top up to continue sending messages.
+        {/* Campaign Settings */}
+        <Card padding="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <TextInput
+              label="Campaign Name"
+              placeholder="e.g., Monthly Dues Reminder"
+              value={campaignName}
+              onChange={(e) => setCampaignName(e.currentTarget.value)}
+              required
+              size="md"
+            />
+
+            <Select
+              label="Recipient Type"
+              placeholder="Select recipient type"
+              data={[
+                { value: 'all', label: 'All Members' },
+                { value: 'category', label: 'By Category' },
+                { value: 'status', label: 'By Status' },
+                { value: 'custom', label: 'Custom Selection' },
+              ]}
+              value={recipientType}
+              onChange={(value) => setRecipientType(value as any)}
+              size="md"
+            />
+
+            <DateInput
+              label="Schedule For (Optional)"
+              placeholder="Select date and time"
+              value={scheduleDate}
+              onChange={setScheduleDate}
+              leftSection={<IconClock size={16} />}
+              clearable
+              size="md"
+              minDate={new Date()}
+            />
+          </Stack>
+        </Card>
+
+        {/* Main Content */}
+        {recipientType === 'custom' ? (
+          <Group align="flex-start">
+            {/* Recipient Selector */}
+            <div style={{ flex: '0 0 40%' }}>
+              <RecipientSelector
+                members={members}
+                selectedRecipients={recipients}
+                onRecipientsChange={setRecipients}
+                maxRecipients={500}
+              />
+            </div>
+
+            {/* Message Composer */}
+            <div style={{ flex: '0 0 60%' }}>
+              <SMSComposer
+                message={message}
+                onMessageChange={setMessage}
+                templates={templates}
+                selectedTemplate={selectedTemplate}
+                onTemplateSelect={setSelectedTemplate}
+                disabled={recipients.length === 0}
+              />
+            </div>
+          </Group>
+        ) : (
+          <Alert color="blue" variant="light">
+            <MantineText size="sm">
+              {recipientType === 'all'
+                ? 'This campaign will be sent to all active members.'
+                : recipientType === 'category'
+                ? 'This campaign will be sent to members in the selected category.'
+                : 'This campaign will be sent to members with the selected status.'}
+            </MantineText>
           </Alert>
         )}
 
-        <Card withBorder padding="lg">
-          <LoadingOverlay visible={loading} />
-
-          <form onSubmit={form.onSubmit(handleSubmit)}>
-            <Stack gap="md">
-              {/* Campaign Details */}
-              <Title order={4}>Campaign Details</Title>
-
-              <TextInput
-                label="Campaign Name"
-                placeholder="e.g., Monthly Newsletter"
-                {...form.getInputProps('name')}
-                required
-              />
-
-              <Textarea
-                label="Description"
-                description="Optional description for your reference"
-                placeholder="Brief description of the campaign"
-                minRows={2}
-                {...form.getInputProps('description')}
-              />
-
-              <Divider />
-
-              {/* Message */}
-              <Title order={4}>Message</Title>
-
-              <Checkbox
-                label="Use template"
-                checked={useTemplate}
-                onChange={(e) => setUseTemplate(e.currentTarget.checked)}
-              />
-
-              {useTemplate ? (
-                <Select
-                  label="Select Template"
-                  placeholder="Choose a template"
-                  data={templates.map((t) => ({ value: t.id.toString(), label: t.name }))}
-                  {...form.getInputProps('templateId')}
-                  onChange={(value) => {
-                    form.setFieldValue('templateId', value || '');
-                    if (value) handleTemplateChange(value);
-                  }}
-                  required
-                />
-              ) : (
-                <Textarea
-                  label="Message"
-                  description={`${form.values.message.length}/160 characters`}
-                  placeholder="Type your message here..."
-                  minRows={4}
-                  maxRows={6}
-                  {...form.getInputProps('message')}
-                  required
-                />
-              )}
-
-              <Divider />
-
-              {/* Recipients */}
-              <Title order={4}>Recipients</Title>
-
-              <Checkbox
-                label="Send to all members"
-                {...form.getInputProps('sendToAll', { type: 'checkbox' })}
-              />
-
-              {!form.values.sendToAll && (
-                <Stack gap="sm">
-                  <MultiSelect
-                    label="Member Type"
-                    description="Filter by member type"
-                    placeholder="Select member types"
-                    data={[
-                      { value: 'REGULAR', label: 'Regular Members' },
-                      { value: 'EXECUTIVE', label: 'Executive Members' },
-                      { value: 'HONORARY', label: 'Honorary Members' },
-                    ]}
-                    {...form.getInputProps('memberType')}
-                  />
-
-                  <MultiSelect
-                    label="Groups"
-                    description="Filter by member groups"
-                    placeholder="Select groups"
-                    data={[]} // Populate from API
-                    {...form.getInputProps('groups')}
-                  />
-
-                  <MultiSelect
-                    label="Tags"
-                    description="Filter by member tags"
-                    placeholder="Select tags"
-                    data={[]} // Populate from API
-                    {...form.getInputProps('tags')}
-                  />
-                </Stack>
-              )}
-
-              <Divider />
-
-              {/* Schedule */}
-              <Title order={4}>Schedule</Title>
-
-              <Radio.Group {...form.getInputProps('scheduleType')}>
-                <Stack gap="xs">
-                  <Radio value="immediate" label="Send immediately after creation" />
-                  <Radio value="scheduled" label="Schedule for later" />
-                </Stack>
-              </Radio.Group>
-
-              {form.values.scheduleType === 'scheduled' && (
-                <DateTimePicker
-                  label="Schedule Date & Time"
-                  placeholder="Select date and time"
-                  {...form.getInputProps('scheduledAt')}
-                  minDate={new Date()}
-                  required
-                />
-              )}
-
-              {/* Cost Estimate */}
-              {estimatedCost > 0 && (
-                <Alert icon={<AlertCircle size={16} />} color="blue">
-                  <Group justify="space-between">
-                    <Text size="sm">Estimated Cost:</Text>
-                    <Badge size="lg">{estimatedCost} credits</Badge>
-                  </Group>
-                </Alert>
-              )}
-
-              {balance !== null && (
-                <Alert color="gray">
-                  <Group justify="space-between">
-                    <Text size="sm">Available Balance:</Text>
-                    <Badge size="lg" color={balance < estimatedCost ? 'red' : 'green'}>
-                      {balance} credits
-                    </Badge>
-                  </Group>
-                </Alert>
-              )}
-
-              {/* Submit */}
-              <Group justify="flex-end" mt="md">
-                <Button variant="light" onClick={() => router.back()} disabled={loading}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  leftSection={
-                    form.values.scheduleType === 'immediate' ? (
-                      <Send size={16} />
-                    ) : (
-                      <Plus size={16} />
-                    )
-                  }
-                  loading={loading}
-                  disabled={balance !== null && balance < estimatedCost}
-                >
-                  {form.values.scheduleType === 'immediate'
-                    ? 'Create & Send'
-                    : 'Schedule Campaign'}
-                </Button>
-              </Group>
-            </Stack>
-          </form>
+        {/* Info */}
+        <Card padding="md" radius="md" withBorder>
+          <MantineText size="sm" fw={500} mb="xs">Campaign Tips</MantineText>
+          <Stack gap="xs">
+            <MantineText size="sm" c="dimmed">
+              • Give your campaign a descriptive name for easy identification
+            </MantineText>
+            <MantineText size="sm" c="dimmed">
+              • Use templates to save time and ensure consistency
+            </MantineText>
+            <MantineText size="sm" c="dimmed">
+              • Schedule campaigns in advance for better planning
+            </MantineText>
+            <MantineText size="sm" c="dimmed">
+              • Each SMS segment costs 1 credit. Long messages use multiple segments.
+            </MantineText>
+          </Stack>
         </Card>
       </Stack>
-    </Can>
+    </Container>
   );
 }

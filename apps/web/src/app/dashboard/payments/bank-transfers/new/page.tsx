@@ -23,9 +23,7 @@ import { Upload, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import {
-  createBankTransfer,
-  getBankAccounts,
-  uploadPaymentProof,
+  nigerianPaymentsApi,
   type BankAccount,
 } from '@/lib/api/nigerian-payments';
 import api from '@/lib/axios';
@@ -74,11 +72,11 @@ export default function RecordTransferPage() {
   const loadData = async () => {
     try {
       const [accountsRes, membersRes] = await Promise.all([
-        getBankAccounts(true),
+        nigerianPaymentsApi.getBankAccounts(),
         api.get('/members', { params: { limit: 1000 } }),
       ]);
       
-      setBankAccounts(accountsRes.data?.bankAccounts || []);
+      setBankAccounts(accountsRes || []);
       
       // API returns: { success: true, data: { members: [...], pagination: {...} } }
       const membersList = membersRes.data?.data?.members || [];
@@ -99,24 +97,19 @@ export default function RecordTransferPage() {
 
       const data = {
         ...values,
-        memberId: values.memberId ? parseInt(values.memberId) : undefined,
+        memberId: values.memberId ? values.memberId : undefined,
         bankAccountId: values.bankAccountId
-          ? parseInt(values.bankAccountId)
+          ? values.bankAccountId
           : undefined,
         transferDate: values.transferDate.toISOString(),
       };
 
-      const response = await createBankTransfer(data);
+      const response = await nigerianPaymentsApi.createBankTransfer(data);
 
       // Upload proof if provided
-      if (proofFile && response.data?.bankTransfer) {
-        const formData = new FormData();
-        formData.append('file', proofFile);
-        formData.append('bankTransferId', response.data.bankTransfer.id.toString());
-        formData.append('memberId', data.memberId?.toString() || '');
-
+      if (proofFile && response) {
         try {
-          await uploadPaymentProof(formData);
+          await nigerianPaymentsApi.uploadPaymentProof(proofFile, data.memberId, response.id);
         } catch (proofError) {
           console.error('Error uploading proof:', proofError);
           // Don't fail the whole operation if proof upload fails

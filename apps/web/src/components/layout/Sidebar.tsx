@@ -113,6 +113,12 @@ export function Sidebar() {
     // Super admin has access to everything (except items explicitly hidden)
     if (user?.platformRole === 'SUPER_ADMIN') return true;
     
+    // Admin role has access to all features including SMS/Communications
+    // This ensures admins can see all menu items regardless of specific permissions
+    if (user?.role === 'admin') {
+      return true;
+    }
+    
     // After hydration, do proper permission checks
     
     // Check role requirement first (more restrictive)
@@ -516,44 +522,42 @@ export function Sidebar() {
           label: 'SMS Dashboard',
           icon: <IconMessage size={18} />,
           href: '/dashboard/communications',
-          permission: PERMISSIONS.SMS_VIEW,
         },
         {
           label: 'Quick Send SMS',
           icon: <IconMessage size={18} />,
           href: '/dashboard/communications/quick-send',
-          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Campaigns',
           icon: <IconSpeakerphone size={18} />,
           href: '/dashboard/communications/campaigns',
-          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Templates',
           icon: <IconTemplate size={18} />,
           href: '/dashboard/communications/templates',
-          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS History',
           icon: <IconHistory size={18} />,
           href: '/dashboard/communications/history',
-          permission: PERMISSIONS.SMS_SEND,
+        },
+        {
+          label: 'SMS Reports',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/communications/reports',
         },
         {
           label: 'Email Campaigns',
           icon: <IconMail size={18} />,
           href: '/dashboard/communication/email',
-          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
         },
         {
           label: 'WhatsApp',
           icon: <IconBrandWhatsapp size={18} />,
           href: '/dashboard/communication/whatsapp',
           badge: 'Pro',
-          permission: PERMISSIONS.SMS_VIEW,
         },
       ],
     },

@@ -1,292 +1,213 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
-  Card,
+  Container,
   Title,
-  Text,
   Stack,
-  TextInput,
-  Textarea,
-  Button,
   Group,
+  Button,
   Alert,
-  Checkbox,
-  Select,
-  MultiSelect,
   LoadingOverlay,
-  Badge,
-  Divider,
-  NumberInput,
+  Card,
+  Text as MantineText,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
+import { IconArrowLeft, IconSend, IconCheck } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { Send, AlertCircle, Users, Phone } from 'lucide-react';
-import { Can } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/lib/permissions';
-import {
-  sendQuickSMS,
-  getSMSCreditBalance,
-  type RecipientFilter,
-} from '@/lib/api/communication';
+import { smsApi, SendSMSRequest, SMSTemplate } from '@/lib/api/sms';
+import { membersApi, Member } from '@/lib/api/members';
+import { RecipientSelector } from '@/components/communications/RecipientSelector';
+import { SMSComposer } from '@/components/communications/SMSComposer';
 
 export default function QuickSendPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [estimatedCost, setEstimatedCost] = useState(0);
-  const [recipientType, setRecipientType] = useState<'phone' | 'filter'>('phone');
+  const [message, setMessage] = useState('');
+  const [recipients, setRecipients] = useState<Array<{ id: string; type: 'member' | 'phone'; value: string | number; label: string }>>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<SMSTemplate | undefined>();
 
-  const form = useForm<{
-    phoneNumbers: string;
-    message: string;
-    sendToAll: boolean;
-    memberType: string[];
-    groups: string[];
-    tags: string[];
-  }>({
-    initialValues: {
-      phoneNumbers: '',
-      message: '',
-      sendToAll: false,
-      memberType: [],
-      groups: [],
-      tags: [],
+  // Fetch templates
+  const { data: templatesData } = useQuery({
+    queryKey: ['sms-templates'],
+    queryFn: () => smsApi.getTemplates(),
+  });
+
+  const templates = templatesData?.templates || [];
+
+  // Fetch members
+  const { data: membersData, isLoading: isLoadingMembers } = useQuery({
+    queryKey: ['members-list'],
+    queryFn: () => membersApi.getMembers({ limit: 1000 }),
+  });
+
+  const members: Array<{ id: number; name: string; phone: string; category: string; status: string }> =
+    membersData?.members?.map((m: Member) => ({
+      id: m.id,
+      name: `${m.firstName} ${m.lastName}`,
+      phone: m.phone || '',
+      category: m.category,
+      status: m.status,
+    })) || [];
+
+  // Send SMS mutation
+  const sendMutation = useMutation({
+    mutationFn: (data: SendSMSRequest) => smsApi.sendSMS(data),
+    onSuccess: (response) => {
+      notifications.show({
+        title: 'SMS Sent Successfully',
+        message: `Message sent to ${recipients.length} recipient(s)`,
+        color: 'green',
+        icon: <IconCheck size={18} />,
+      });
+      // Reset form
+      setMessage('');
+      setRecipients([]);
+      setSelectedTemplate(undefined);
     },
-    validate: {
-      message: (value: string) =>
-        !value ? 'Message is required' : value.length > 160 ? 'Message too long (max 160 characters)' : null,
-      phoneNumbers: (value: string, values) =>
-        recipientType === 'phone' && !value && !values.sendToAll
-          ? 'At least one phone number is required'
-          : null,
+    onError: (error: any) => {
+      notifications.show({
+        title: 'Failed to Send SMS',
+        message: error.response?.data?.message || 'An error occurred while sending the message',
+        color: 'red',
+      });
     },
   });
 
-  const loadBalance = async () => {
-    try {
-      const res = await getSMSCreditBalance();
-      setBalance(res.data.balance);
-    } catch (err: any) {
-      console.error('Error loading balance:', err);
-    }
-  };
-
-  useEffect(() => {
-    loadBalance();
-  }, []);
-
-  const calculateCost = () => {
-    if (recipientType === 'phone' && form.values.phoneNumbers) {
-      const phones = form.values.phoneNumbers.split(/[,\n]/).filter((p: string) => p.trim());
-      setEstimatedCost(phones.length);
-    } else if (form.values.sendToAll) {
-      setEstimatedCost(0); // Will be calculated on backend
-    } else {
-      setEstimatedCost(0);
-    }
-  };
-
-  useEffect(() => {
-    calculateCost();
-  }, [form.values.phoneNumbers, form.values.sendToAll, recipientType]);
-
-  const handleSubmit = async (values: typeof form.values) => {
-    try {
-      setLoading(true);
-
-      let payload: any = {
-        message: values.message,
-      };
-
-      if (recipientType === 'phone') {
-        // Parse phone numbers
-        const phones = values.phoneNumbers
-          .split(/[,\n]/)
-          .map((p: string) => p.trim())
-          .filter((p: string) => p);
-        payload.recipients = phones;
-      } else {
-        // For member filtering, we need to use the campaign approach
-        // Quick send only supports direct phone numbers
-        const phones = values.phoneNumbers
-          .split(/[,\n]/)
-          .map((p: string) => p.trim())
-          .filter((p: string) => p);
-        payload.recipients = phones;
-      }
-
-      await sendQuickSMS(payload);
-
+  const handleSend = () => {
+    if (recipients.length === 0) {
       notifications.show({
-        title: 'SMS Sent',
-        message: 'Your message has been queued for delivery',
-        color: 'green',
+        title: 'No Recipients',
+        message: 'Please add at least one recipient',
+        color: 'yellow',
       });
-
-      router.push('/dashboard/communications');
-    } catch (err: any) {
-      console.error('Error sending SMS:', err);
-      notifications.show({
-        title: 'Error',
-        message: err.message || 'Failed to send SMS',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    if (!message.trim()) {
+      notifications.show({
+        title: 'Empty Message',
+        message: 'Please enter a message to send',
+        color: 'yellow',
+      });
+      return;
+    }
+
+    const requestData: SendSMSRequest = {
+      recipients: recipients.map(r => ({
+        type: r.type,
+        value: typeof r.value === 'number' ? r.value.toString() : r.value,
+      })),
+      message: message.trim(),
+      ...(selectedTemplate && { templateId: selectedTemplate.id }),
+    };
+
+    sendMutation.mutate(requestData);
   };
+
+  const estimatedCost = recipients.length * Math.ceil(message.length / 160);
 
   return (
-    <Can
-      permission={PERMISSIONS.SMS_SEND}
-      fallback={<Alert color="red">You don't have permission to send SMS</Alert>}
-    >
-      <Stack gap="lg">
-        <Group justify="space-between">
-          <div>
-            <Title order={2}>Quick Send SMS</Title>
-            <Text size="sm" c="dimmed">
-              Send SMS to specific phone numbers or member groups
-            </Text>
-          </div>
-          <Button variant="light" onClick={() => router.back()}>
-            Cancel
+    <Container size="xl" py="xl">
+      <LoadingOverlay visible={sendMutation.isPending} />
+      <Stack gap="xl">
+        {/* Header */}
+        <Group justify="space-between" align="center">
+          <Group>
+            <Button
+              variant="subtle"
+              onClick={() => router.push('/dashboard/communications')}
+            >
+              <IconArrowLeft size={18} />
+            </Button>
+            <div>
+              <Title order={2}>Quick Send</Title>
+              <MantineText c="dimmed">Send SMS to members or custom numbers</MantineText>
+            </div>
+          </Group>
+          <Button
+            leftSection={<IconSend size={18} />}
+            onClick={handleSend}
+            loading={sendMutation.isPending}
+            disabled={recipients.length === 0 || !message.trim()}
+            size="lg"
+          >
+            Send Message
           </Button>
         </Group>
 
-        {balance !== null && balance < 10 && (
-          <Alert icon={<AlertCircle size={16} />} color="orange" title="Low SMS Balance">
-            You have only {balance} SMS credits remaining. Top up to continue sending messages.
+        {/* Cost Estimate */}
+        {recipients.length > 0 && message.length > 0 && (
+          <Alert color="blue" variant="light">
+            <Group gap="md">
+              <div>
+                <MantineText size="sm" c="dimmed">Estimated Cost</MantineText>
+                <MantineText size="lg" fw={600}>
+                  {estimatedCost} credits
+                </MantineText>
+              </div>
+              <div>
+                <MantineText size="sm" c="dimmed">Recipients</MantineText>
+                <MantineText size="lg" fw={600}>
+                  {recipients.length}
+                </MantineText>
+              </div>
+              <div>
+                <MantineText size="sm" c="dimmed">Segments</MantineText>
+                <MantineText size="lg" fw={600}>
+                  {Math.ceil(message.length / 160)}
+                </MantineText>
+              </div>
+            </Group>
           </Alert>
         )}
 
-        <Card withBorder padding="lg">
-          <LoadingOverlay visible={loading} />
+        {/* Main Content */}
+        <Group align="flex-start">
+          {/* Recipient Selector - Takes 40% width */}
+          <div style={{ flex: '0 0 40%' }}>
+            <RecipientSelector
+              members={members}
+              selectedRecipients={recipients}
+              onRecipientsChange={setRecipients}
+              maxRecipients={500}
+            />
+          </div>
 
-          <form onSubmit={form.onSubmit(handleSubmit)}>
-            <Stack gap="md">
-              {/* Recipient Type */}
-              <Select
-                label="Recipient Type"
-                value={recipientType}
-                onChange={(value) => setRecipientType(value as 'phone' | 'filter')}
-                data={[
-                  { value: 'phone', label: 'Specific Phone Numbers' },
-                  { value: 'filter', label: 'Member Groups/Filters' },
-                ]}
-                required
-              />
+          {/* Message Composer - Takes 60% width */}
+          <div style={{ flex: '0 0 60%' }}>
+            <SMSComposer
+              message={message}
+              onMessageChange={setMessage}
+              templates={templates}
+              selectedTemplate={selectedTemplate}
+              onTemplateSelect={setSelectedTemplate}
+              onSend={handleSend}
+              sending={sendMutation.isPending}
+              disabled={recipients.length === 0}
+            />
+          </div>
+        </Group>
 
-              {recipientType === 'phone' ? (
-                <>
-                  <Textarea
-                    label="Phone Numbers"
-                    description="Enter phone numbers separated by commas or new lines (e.g., 08012345678, 09087654321)"
-                    placeholder="08012345678, 09087654321"
-                    minRows={4}
-                    {...form.getInputProps('phoneNumbers')}
-                    required
-                  />
-                </>
-              ) : (
-                <>
-                  <Checkbox
-                    label="Send to all members"
-                    {...form.getInputProps('sendToAll', { type: 'checkbox' })}
-                  />
-
-                  {!form.values.sendToAll && (
-                    <>
-                      <MultiSelect
-                        label="Member Type"
-                        description="Filter by member type"
-                        placeholder="Select member types"
-                        data={[
-                          { value: 'REGULAR', label: 'Regular Members' },
-                          { value: 'EXECUTIVE', label: 'Executive Members' },
-                          { value: 'HONORARY', label: 'Honorary Members' },
-                        ]}
-                        {...form.getInputProps('memberType')}
-                      />
-
-                      <MultiSelect
-                        label="Groups"
-                        description="Filter by member groups"
-                        placeholder="Select groups"
-                        data={[]} // Populate from API
-                        {...form.getInputProps('groups')}
-                      />
-
-                      <MultiSelect
-                        label="Tags"
-                        description="Filter by member tags"
-                        placeholder="Select tags"
-                        data={[]} // Populate from API
-                        {...form.getInputProps('tags')}
-                      />
-                    </>
-                  )}
-                </>
-              )}
-
-              <Divider />
-
-              {/* Message */}
-              <Textarea
-                label="Message"
-                description={`${form.values.message.length}/160 characters`}
-                placeholder="Type your message here..."
-                minRows={4}
-                maxRows={6}
-                {...form.getInputProps('message')}
-                required
-              />
-
-              {/* Cost Estimate */}
-              {estimatedCost > 0 && (
-                <Alert icon={<AlertCircle size={16} />} color="blue">
-                  <Group justify="space-between">
-                    <Text size="sm">Estimated Cost:</Text>
-                    <Badge size="lg">{estimatedCost} credits</Badge>
-                  </Group>
-                </Alert>
-              )}
-
-              {balance !== null && (
-                <Alert color="gray">
-                  <Group justify="space-between">
-                    <Text size="sm">Available Balance:</Text>
-                    <Badge size="lg" color={balance < estimatedCost ? 'red' : 'green'}>
-                      {balance} credits
-                    </Badge>
-                  </Group>
-                </Alert>
-              )}
-
-              {/* Submit */}
-              <Group justify="flex-end">
-                <Button
-                  variant="light"
-                  onClick={() => router.back()}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  leftSection={<Send size={16} />}
-                  loading={loading}
-                  disabled={balance !== null && balance < estimatedCost}
-                >
-                  Send SMS
-                </Button>
-              </Group>
-            </Stack>
-          </form>
+        {/* Info Cards */}
+        <Card padding="md" radius="md" withBorder>
+          <Title order={4} mb="md">Quick Tips</Title>
+          <Stack gap="sm">
+            <MantineText size="sm">
+              • Each SMS segment is 160 characters. Longer messages use multiple segments.
+            </MantineText>
+            <MantineText size="sm">
+              • Variables like {'{'}name{'}'}, {'{'}amount{'}'} can be inserted from templates.
+            </MantineText>
+            <MantineText size="sm">
+              • Phone numbers must be in Nigerian format: 08012345678 or +2348012345678
+            </MantineText>
+            <MantineText size="sm">
+              • Maximum 500 recipients per send. Use campaigns for larger groups.
+            </MantineText>
+          </Stack>
         </Card>
       </Stack>
-    </Can>
+    </Container>
   );
 }

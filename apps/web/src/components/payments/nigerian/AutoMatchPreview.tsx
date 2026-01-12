@@ -55,6 +55,8 @@ export function AutoMatchPreview({ matches, onApply, onCancel }: AutoMatchPrevie
   const mediumConfidenceMatches = matches.filter(m => m.confidenceScore >= 50 && m.confidenceScore < 80);
   const lowConfidenceMatches = matches.filter(m => m.confidenceScore < 50);
 
+  const lowConfidenceLabel = 'Low Confidence (<50%):';
+
   return (
     <Modal
       opened={true}
@@ -89,7 +91,7 @@ export function AutoMatchPreview({ matches, onApply, onCancel }: AutoMatchPrevie
             <Badge color="yellow" variant="light">{mediumConfidenceMatches.length}</Badge>
           </Group>
           <Group gap="xs">
-            <Text size="sm" c="dimmed">Low Confidence (<50%):</Text>
+            <Text size="sm" c="dimmed">{lowConfidenceLabel}</Text>
             <Badge color="red" variant="light">{lowConfidenceMatches.length}</Badge>
           </Group>
         </Card>

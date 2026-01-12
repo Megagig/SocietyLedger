@@ -289,7 +289,23 @@ export const API_ROUTES = {
     // Nigerian Banks
     BANKS: `${API_BASE_URL}/api/payments/nigerian/banks`,
   },
-  } as const;
+  // Phase 6.6: SMS/Communications UI
+  SMS: {
+    DASHBOARD: `${API_BASE_URL}/api/sms/dashboard`,
+    SEND: `${API_BASE_URL}/api/sms/send`,
+    CAMPAIGNS: `${API_BASE_URL}/api/sms/campaigns`,
+    CAMPAIGN_BY_ID: (id: number) => `${API_BASE_URL}/api/sms/campaigns/${id}`,
+    START_CAMPAIGN: (id: number) => `${API_BASE_URL}/api/sms/campaigns/${id}/start`,
+    CANCEL_CAMPAIGN: (id: number) => `${API_BASE_URL}/api/sms/campaigns/${id}/cancel`,
+    TEMPLATES: `${API_BASE_URL}/api/sms/templates`,
+    TEMPLATE_BY_ID: (id: number) => `${API_BASE_URL}/api/sms/templates/${id}`,
+    MESSAGES: `${API_BASE_URL}/api/sms/messages`,
+    MESSAGE_BY_ID: (id: number) => `${API_BASE_URL}/api/sms/messages/${id}`,
+    CREDITS_BALANCE: `${API_BASE_URL}/api/sms/credits/balance`,
+    CREDITS_TOPUP: `${API_BASE_URL}/api/sms/credits/topup`,
+    CREDITS_HISTORY: `${API_BASE_URL}/api/sms/credits/history`,
+  },
+} as const;
 
 // App Settings
 export const APP_CONFIG = {
