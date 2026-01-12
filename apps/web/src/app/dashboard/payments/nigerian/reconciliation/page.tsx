@@ -43,9 +43,21 @@ export default function ReconciliationDashboard() {
       const data = await nigerianPaymentsApi.getUnmatchedDashboard();
       setDashboardData(data);
       const reconciliationsResponse = await nigerianPaymentsApi.getReconciliations({ status: 'PENDING', limit: 10 });
-      setReconciliations(reconciliationsResponse.data);
+      
+      // Handle different response structures
+      if (Array.isArray(reconciliationsResponse)) {
+        // Response is directly an array
+        setReconciliations(reconciliationsResponse);
+      } else if (reconciliationsResponse && typeof reconciliationsResponse === 'object' && 'data' in reconciliationsResponse) {
+        // Response has a data property
+        setReconciliations(Array.isArray(reconciliationsResponse.data) ? reconciliationsResponse.data : []);
+      } else {
+        // Fallback
+        setReconciliations([]);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load reconciliation data');
+      setReconciliations([]);
     } finally {
       setLoading(false);
     }
@@ -202,7 +214,7 @@ export default function ReconciliationDashboard() {
       </SimpleGrid>
 
       {/* Pending Reconciliations */}
-      {reconciliations.length > 0 && (
+      {reconciliations && reconciliations.length > 0 && (
         <>
           <Group justify="space-between" mb="md">
             <Title order={3}>Pending Reconciliations</Title>
@@ -271,7 +283,7 @@ export default function ReconciliationDashboard() {
         </>
       )}
 
-      {reconciliations.length === 0 && !loading && (
+      {(!reconciliations || reconciliations.length === 0) && !loading && (
         <Card shadow="sm" padding="xl" withBorder>
           <Stack align="center" gap="md">
             <IconSearch size={48} className="text-gray-400" />

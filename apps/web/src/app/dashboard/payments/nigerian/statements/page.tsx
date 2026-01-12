@@ -49,10 +49,25 @@ export default function StatementImportPage() {
         page,
         limit: pageSize,
       });
-      setImports(response.data);
-      setTotal(response.total);
+      
+      // Handle different response structures
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        setImports(response);
+        setTotal(response.length);
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        // Response has a data property
+        setImports(Array.isArray(response.data) ? response.data : []);
+        setTotal(response.total || 0);
+      } else {
+        // Fallback
+        setImports([]);
+        setTotal(0);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load statement imports');
+      setImports([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -199,11 +214,11 @@ ${new Date().toISOString().split('T')[0]},Example payment,-500.00,REF456,4500.00
 
       {/* Import History */}
       <Title order={3} mb="md">Import History</Title>
-      {loading && imports.length === 0 ? (
+      {loading && (!imports || imports.length === 0) ? (
         <div className="flex items-center justify-center">
           <Loader size="xl" />
         </div>
-      ) : imports.length === 0 ? (
+      ) : (!imports || imports.length === 0) ? (
         <Card shadow="sm" padding="xl" withBorder>
           <Stack align="center" gap="md">
             <IconFileText size={48} className="text-gray-400" />
@@ -231,7 +246,7 @@ ${new Date().toISOString().split('T')[0]},Example payment,-500.00,REF456,4500.00
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {imports.map((imp) => (
+                {imports && imports.map((imp) => (
                   <Table.Tr key={imp.id}>
                     <Table.Td>{imp.fileName}</Table.Td>
                     <Table.Td>

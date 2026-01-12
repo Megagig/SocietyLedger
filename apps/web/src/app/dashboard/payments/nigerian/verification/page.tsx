@@ -43,13 +43,13 @@ export default function PaymentVerificationQueue() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-
+  
   const pageSize = 10;
-
+  
   useEffect(() => {
     loadProofs();
   }, [page, statusFilter]);
-
+  
   const loadProofs = async () => {
     try {
       setLoading(true);
@@ -59,32 +59,47 @@ export default function PaymentVerificationQueue() {
         limit: pageSize,
         status: statusFilter || undefined,
       });
-      setProofs(response.data);
-      setTotal(response.total);
+      
+      // Handle different response structures
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        setProofs(response);
+        setTotal(response.length);
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        // Response has a data property
+        setProofs(Array.isArray(response.data) ? response.data : []);
+        setTotal(response.total || 0);
+      } else {
+        // Fallback
+        setProofs([]);
+        setTotal(0);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load payment proofs');
+      setProofs([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const handleStatusFilter = (value: string | null) => {
     setStatusFilter(value);
     setPage(1);
   };
-
+  
   const handleViewProof = (proof: PaymentProof) => {
     setSelectedProof(proof);
   };
-
+  
   const handleVerify = () => {
     if (!selectedProof) return;
     setShowVerifyModal(true);
   };
-
+  
   const confirmVerify = async () => {
     if (!selectedProof) return;
-
+    
     try {
       await nigerianPaymentsApi.verifyPaymentProof(selectedProof.id, {
         verified: true,
@@ -96,19 +111,19 @@ export default function PaymentVerificationQueue() {
       setError(err.response?.data?.message || 'Failed to verify payment proof');
     }
   };
-
+  
   const handleReject = () => {
     if (!selectedProof) return;
     setShowRejectModal(true);
   };
-
+  
   const confirmReject = async () => {
     if (!selectedProof) return;
     if (!rejectReason.trim()) {
       setError('Please provide a rejection reason');
       return;
     }
-
+    
     try {
       await nigerianPaymentsApi.verifyPaymentProof(selectedProof.id, {
         verified: false,
@@ -122,15 +137,15 @@ export default function PaymentVerificationQueue() {
       setError(err.response?.data?.message || 'Failed to reject payment proof');
     }
   };
-
+  
   const totalPages = Math.ceil(total / pageSize);
-
+  
   const statusOptions = [
     { value: 'PENDING', label: 'Pending' },
     { value: 'VERIFIED', label: 'Verified' },
     { value: 'REJECTED', label: 'Rejected' },
   ];
-
+  
   if (loading && proofs.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -138,7 +153,7 @@ export default function PaymentVerificationQueue() {
       </div>
     );
   }
-
+  
   return (
     <div className="p-6">
       <Group justify="space-between" mb="md">
@@ -147,13 +162,13 @@ export default function PaymentVerificationQueue() {
           Refresh
         </Button>
       </Group>
-
+      
       {error && (
         <Alert color="red" title="Error" mb="md" withCloseButton onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
-
+      
       {/* Filters */}
       <Card shadow="sm" padding="md" withBorder mb="md">
         <Group gap="md">
@@ -167,13 +182,13 @@ export default function PaymentVerificationQueue() {
           />
         </Group>
       </Card>
-
+      
       {/* Summary Cards */}
       <SimpleGrid cols={{ base: 1, xs: 2, sm: 4 }} spacing="md" mb="xl">
         <Card shadow="sm" padding="lg" withBorder>
           <Stack align="center" gap="xs">
             <Text size="xl" fw={700} c="yellow">
-              {proofs.filter(p => p.status === 'PENDING').length}
+              {proofs?.filter(p => p.status === 'PENDING').length || 0}
             </Text>
             <Text size="sm" c="dimmed">Pending</Text>
           </Stack>
@@ -181,7 +196,7 @@ export default function PaymentVerificationQueue() {
         <Card shadow="sm" padding="lg" withBorder>
           <Stack align="center" gap="xs">
             <Text size="xl" fw={700} c="green">
-              {proofs.filter(p => p.status === 'VERIFIED').length}
+              {proofs?.filter(p => p.status === 'VERIFIED').length || 0}
             </Text>
             <Text size="sm" c="dimmed">Verified</Text>
           </Stack>
@@ -189,7 +204,7 @@ export default function PaymentVerificationQueue() {
         <Card shadow="sm" padding="lg" withBorder>
           <Stack align="center" gap="xs">
             <Text size="xl" fw={700} c="red">
-              {proofs.filter(p => p.status === 'REJECTED').length}
+              {proofs?.filter(p => p.status === 'REJECTED').length || 0}
             </Text>
             <Text size="sm" c="dimmed">Rejected</Text>
           </Stack>
@@ -201,9 +216,9 @@ export default function PaymentVerificationQueue() {
           </Stack>
         </Card>
       </SimpleGrid>
-
+      
       {/* Proofs Table */}
-      {proofs.length === 0 && !loading ? (
+      {(!proofs || proofs.length === 0) && !loading ? (
         <Card shadow="sm" padding="xl" withBorder>
           <Stack align="center" gap="md">
             <IconFileText size={48} className="text-gray-400" />
@@ -225,7 +240,7 @@ export default function PaymentVerificationQueue() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {proofs.map((proof) => (
+                {proofs && proofs.map((proof) => (
                   <Table.Tr key={proof.id}>
                     <Table.Td>
                       <Text size="sm" fw={500}>{proof.fileName}</Text>
@@ -252,7 +267,7 @@ export default function PaymentVerificationQueue() {
               </Table.Tbody>
             </Table>
           </Card>
-
+          
           {totalPages > 1 && (
             <Pagination
               total={totalPages}
@@ -263,7 +278,7 @@ export default function PaymentVerificationQueue() {
           )}
         </>
       )}
-
+      
       {/* Proof Detail Modal */}
       {selectedProof && (
         <Modal
@@ -287,7 +302,7 @@ export default function PaymentVerificationQueue() {
                 {selectedProof.status}
               </Badge>
             </Group>
-
+            
             {selectedProof.status === 'PENDING' && (
               <Group gap="sm" mt="md">
                 <Button color="green" onClick={handleVerify} fullWidth leftSection={<IconCheck size={18} />}>
@@ -298,7 +313,7 @@ export default function PaymentVerificationQueue() {
                 </Button>
               </Group>
             )}
-
+            
             {selectedProof.rejectionReason && (
               <Text size="sm" c="dimmed" mt="md">
                 Rejection Reason: {selectedProof.rejectionReason}
@@ -307,7 +322,7 @@ export default function PaymentVerificationQueue() {
           </Stack>
         </Modal>
       )}
-
+      
       {/* Verify Confirmation Modal */}
       <Modal
         opened={showVerifyModal}
@@ -323,7 +338,7 @@ export default function PaymentVerificationQueue() {
           </Group>
         </Stack>
       </Modal>
-
+      
       {/* Reject Modal */}
       <Modal
         opened={showRejectModal}

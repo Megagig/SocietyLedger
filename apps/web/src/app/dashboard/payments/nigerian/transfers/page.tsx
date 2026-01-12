@@ -67,10 +67,25 @@ export default function BankTransfersList() {
         status: statusFilter || undefined,
         search: searchQuery || undefined,
       });
-      setTransfers(response.data);
-      setTotal(response.total);
+      
+      // Handle different response structures
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        setTransfers(response);
+        setTotal(response.length);
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        // Response has a data property
+        setTransfers(Array.isArray(response.data) ? response.data : []);
+        setTotal(response.total || 0);
+      } else {
+        // Fallback
+        setTransfers([]);
+        setTotal(0);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load bank transfers');
+      setTransfers([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -99,7 +114,7 @@ export default function BankTransfersList() {
     { value: 'REJECTED', label: 'Rejected' },
   ];
 
-  if (loading && transfers.length === 0) {
+  if (loading && (!transfers || transfers.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader size="xl" />
@@ -144,7 +159,7 @@ export default function BankTransfersList() {
       </Card>
 
       {/* Transfers Table */}
-      {transfers.length === 0 && !loading ? (
+      {(!transfers || transfers.length === 0) && !loading ? (
         <Card shadow="sm" padding="xl" withBorder>
           <Stack align="center" gap="md">
             <Text c="dimmed" ta="center">
@@ -172,7 +187,7 @@ export default function BankTransfersList() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {transfers.map((transfer) => (
+                {transfers && transfers.map((transfer) => (
                   <Table.Tr key={transfer.id}>
                     <Table.Td className="font-mono">{transfer.reference}</Table.Td>
                     <Table.Td>{transfer.senderBankName}</Table.Td>

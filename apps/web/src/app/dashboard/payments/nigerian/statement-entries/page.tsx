@@ -55,10 +55,25 @@ export default function StatementEntriesPage() {
         matchStatus: matchStatusFilter || undefined,
         search: searchQuery || undefined,
       });
-      setEntries(response.data);
-      setTotal(response.total);
+      
+      // Handle different response structures
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        setEntries(response);
+        setTotal(response.length);
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        // Response has a data property
+        setEntries(Array.isArray(response.data) ? response.data : []);
+        setTotal(response.total || 0);
+      } else {
+        // Fallback
+        setEntries([]);
+        setTotal(0);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load statement entries');
+      setEntries([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -81,7 +96,9 @@ export default function StatementEntriesPage() {
   };
 
   const selectAll = () => {
-    setSelectedEntries(entries.map(e => e.id));
+    if (entries) {
+      setSelectedEntries(entries.map(e => e.id));
+    }
   };
 
   const clearSelection = () => {
@@ -104,7 +121,7 @@ export default function StatementEntriesPage() {
     { value: 'MANUALLY_MATCHED', label: 'Manually Matched' },
   ];
 
-  if (loading && entries.length === 0) {
+  if (loading && (!entries || entries.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader size="xl" />
@@ -158,8 +175,8 @@ export default function StatementEntriesPage() {
           <Button variant="subtle" onClick={clearSelection}>
             Clear Selection ({selectedEntries.length})
           </Button>
-          <Button onClick={selectAll} variant="subtle">
-            Select All ({entries.length})
+          <Button onClick={selectAll} variant="subtle" disabled={!entries || entries.length === 0}>
+            Select All ({entries?.length || 0})
           </Button>
           <Button onClick={handleManualMatch} color="blue">
             Match Selected ({selectedEntries.length})
@@ -168,7 +185,7 @@ export default function StatementEntriesPage() {
       )}
 
       {/* Entries Table */}
-      {entries.length === 0 && !loading ? (
+      {(!entries || entries.length === 0) && !loading ? (
         <Card shadow="sm" padding="xl" withBorder>
           <Stack align="center" gap="md">
             <IconSearch size={48} className="text-gray-400" />
@@ -189,7 +206,7 @@ export default function StatementEntriesPage() {
                   <Table.Th w={40}>
                     <input
                       type="checkbox"
-                      checked={selectedEntries.length === entries.length && entries.length > 0}
+                      checked={entries && selectedEntries.length === entries.length && entries.length > 0}
                       onChange={selectAll}
                       className="cursor-pointer"
                     />
@@ -204,7 +221,7 @@ export default function StatementEntriesPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {entries.map((entry) => (
+                {entries && entries.map((entry) => (
                   <Table.Tr key={entry.id}>
                     <Table.Td w={40}>
                       <input

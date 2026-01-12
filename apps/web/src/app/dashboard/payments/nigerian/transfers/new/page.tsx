@@ -103,7 +103,7 @@ export default function CreateBankTransferPage() {
         reference: formData.reference,
         narration: formData.narration,
         receivingBankAccountId: formData.receivingBankAccountId,
-        memberId: formData.memberId ? parseInt(formData.memberId) : undefined
+        memberId: formData.memberId || undefined
       };
 
       const transfer = await nigerianPaymentsApi.createBankTransfer(transferData);

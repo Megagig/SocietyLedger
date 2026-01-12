@@ -275,7 +275,6 @@ export function Sidebar() {
           label: 'Nigerian Payments ✓',
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments/nigerian',
-          key: 'nigerian-payments-2024',
         },
       ],
     },

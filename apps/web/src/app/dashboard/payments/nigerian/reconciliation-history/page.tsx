@@ -52,10 +52,25 @@ export default function ReconciliationHistoryPage() {
         limit: pageSize,
         status: statusFilter || undefined,
       });
-      setReconciliations(response.data);
-      setTotal(response.total);
+      
+      // Handle different response structures
+      if (Array.isArray(response)) {
+        // Response is directly an array
+        setReconciliations(response);
+        setTotal(response.length);
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        // Response has a data property
+        setReconciliations(Array.isArray(response.data) ? response.data : []);
+        setTotal(response.total || 0);
+      } else {
+        // Fallback
+        setReconciliations([]);
+        setTotal(0);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load reconciliations');
+      setReconciliations([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -109,7 +124,7 @@ export default function ReconciliationHistoryPage() {
     { value: 'REJECTED', label: 'Rejected' },
   ];
 
-  if (loading && reconciliations.length === 0) {
+  if (loading && (!reconciliations || reconciliations.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader size="xl" />
@@ -146,7 +161,7 @@ export default function ReconciliationHistoryPage() {
       </Card>
 
       {/* Reconciliations Table */}
-      {reconciliations.length === 0 && !loading ? (
+      {(!reconciliations || reconciliations.length === 0) && !loading ? (
         <Card shadow="sm" padding="xl" withBorder>
           <Stack align="center" gap="md">
             <IconAlertTriangle size={48} className="text-gray-400" />
@@ -175,7 +190,7 @@ export default function ReconciliationHistoryPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {reconciliations.map((rec) => (
+                {reconciliations && reconciliations.map((rec) => (
                   <Table.Tr key={rec.id}>
                     <Table.Td>{new Date(rec.createdAt).toLocaleDateString()}</Table.Td>
                     <Table.Td>
