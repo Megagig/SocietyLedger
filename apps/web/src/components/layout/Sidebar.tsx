@@ -74,6 +74,18 @@ export function Sidebar() {
     setIsMounted(true);
   }, []);
 
+  // Auto-expand Finance section if on Nigerian Payments page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/payments/nigerian')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Finance')) {
+          return [...prev, 'Finance'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]);
+
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
       prev.includes(label)
