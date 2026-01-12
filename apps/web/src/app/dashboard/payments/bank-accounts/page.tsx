@@ -37,12 +37,7 @@ import {
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
-import {
-  getBankAccounts,
-  createBankAccount,
-  updateBankAccount,
-  deleteBankAccount,
-  getNigerianBanks,
+import nigerianPaymentsApi, {
   type BankAccount,
   type NigerianBank,
 } from '@/lib/api/nigerian-payments';
@@ -84,11 +79,11 @@ export default function BankAccountsPage() {
     try {
       setLoading(true);
       const [accountsRes, banksRes] = await Promise.all([
-        getBankAccounts(),
-        getNigerianBanks(),
+        nigerianPaymentsApi.getBankAccounts(),
+        nigerianPaymentsApi.getNigerianBanks(),
       ]);
-      setAccounts(accountsRes.data?.bankAccounts || []);
-      setBanks(banksRes.data?.banks || []);
+      setAccounts(accountsRes || []);
+      setBanks(banksRes || []);
     } catch (error: any) {
       console.error('Error loading data:', error);
       notifications.show({
@@ -123,14 +118,14 @@ export default function BankAccountsPage() {
     try {
       setSubmitting(true);
       if (editingAccount) {
-        await updateBankAccount(editingAccount.id, values);
+        await nigerianPaymentsApi.updateBankAccount(editingAccount.id, values);
         notifications.show({
           title: 'Success',
           message: 'Bank account updated successfully',
           color: 'green',
         });
       } else {
-        await createBankAccount(values);
+        await nigerianPaymentsApi.createBankAccount(values);
         notifications.show({
           title: 'Success',
           message: 'Bank account created successfully',
@@ -150,7 +145,7 @@ export default function BankAccountsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     modals.openConfirmModal({
       title: 'Delete Bank Account',
       children: <Text size="sm">Are you sure you want to delete this bank account? This action cannot be undone.</Text>,
@@ -158,7 +153,7 @@ export default function BankAccountsPage() {
       confirmProps: { color: 'red' },
       onConfirm: async () => {
         try {
-          await deleteBankAccount(id);
+          await nigerianPaymentsApi.deleteBankAccount(id);
           notifications.show({
             title: 'Success',
             message: 'Bank account deleted successfully',
@@ -178,7 +173,7 @@ export default function BankAccountsPage() {
 
   const handleSetDefault = async (account: BankAccount) => {
     try {
-      await updateBankAccount(account.id, { isDefault: true });
+      await nigerianPaymentsApi.setDefaultBankAccount(account.id);
       notifications.show({
         title: 'Success',
         message: 'Default bank account updated',

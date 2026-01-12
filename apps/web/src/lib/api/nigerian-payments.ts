@@ -1,380 +1,332 @@
-// ============================================
-// PHASE 3.5: NIGERIAN PAYMENT FEATURES API CLIENT
-// ============================================
-
-import api from '../axios';
+import api from '@/lib/axios';
+import { API_ROUTES } from '@/utils/constants';
 
 // Types
-export interface BankAccount {
-  id: number;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  bankCode: string | null;
-  isDefault: boolean;
-  isActive: boolean;
-  description: string | null;
-  createdAt: string;
-}
-
-export interface BankTransfer {
-  id: number;
-  transactionId: number | null;
-  bankAccountId: number | null;
-  memberId: number | null;
-  senderBankName: string;
-  senderAccountNumber: string | null;
-  senderAccountName: string | null;
-  amount: string;
-  reference: string;
-  transferDate: string;
-  narration: string | null;
-  status: 'PENDING' | 'VERIFIED' | 'MATCHED' | 'REJECTED';
-  verifiedBy: number | null;
-  verifiedAt: string | null;
-  notes: string | null;
-  createdAt: string;
-  transaction?: {
-    id: number;
-    referenceNumber: string;
-    amount: string;
-    status: string;
-  };
-  member?: {
-    id: number;
-    memberId: string;
-    firstName: string;
-    lastName: string;
-  };
-  bankAccount?: {
-    id: number;
-    bankName: string;
-    accountNumber: string;
-  };
-  paymentProofs?: {
-    id: number;
-    filename: string;
-    filepath: string;
-    status: string;
-    uploadedAt: string;
-  }[];
-}
-
-export interface StatementImport {
-  id: number;
-  bankAccountId: number;
-  filename: string;
-  importDate: string;
-  startDate: string | null;
-  endDate: string | null;
-  totalEntries: number;
-  matchedEntries: number;
-  unmatchedEntries: number;
-  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  bankAccount?: {
-    bankName: string;
-    accountNumber: string;
-  };
-}
-
-export interface StatementEntry {
-  id: number;
-  importId: number;
-  transactionDate: string;
-  valueDate: string | null;
-  reference: string | null;
-  description: string;
-  debitAmount: string | null;
-  creditAmount: string | null;
-  balance: string | null;
-  matchStatus: 'UNMATCHED' | 'AUTO_MATCHED' | 'MANUAL_MATCHED' | 'REJECTED';
-  matchedTransactionId: number | null;
-  matchConfidence: number | null;
-}
-
-export interface Reconciliation {
-  id: number;
-  transactionId: number;
-  statementEntryId: number | null;
-  matchType: 'AUTO_REFERENCE' | 'AUTO_AMOUNT' | 'MANUAL';
-  matchedAmount: string;
-  variance: string;
-  status: 'PENDING' | 'CONFIRMED' | 'DISPUTED';
-  reconciledBy: number | null;
-  reconciledAt: string | null;
-  notes: string | null;
-  transaction?: any;
-  bankTransfers?: any[];
-}
-
-export interface PaymentProof {
-  id: number;
-  transactionId: number | null;
-  bankTransferId: number | null;
-  memberId: number;
-  filename: string;
-  filepath: string;
-  fileSize: number;
-  mimeType: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  uploadedAt: string;
-  verifiedBy: number | null;
-  verifiedAt: string | null;
-  rejectionReason: string | null;
-  notes: string | null;
-  transaction?: any;
-  bankTransfer?: any;
-  member?: any;
-}
-
 export interface UnmatchedDashboard {
   totalUnmatched: number;
-  totalUnmatchedAmount: string;
-  pendingBankTransfers: number;
-  pendingStatementEntries: number;
-  pendingPaymentProofs: number;
-  recentUnmatched: Array<{
-    type: 'bank_transfer' | 'statement_entry';
-    id: number;
-    amount: string;
-    reference: string | null;
-    date: string;
-    description: string;
-  }>;
+  totalUnmatchedAmount: number;
+  pendingProofs: number;
+  recentUnmatched: BankStatementEntry[];
 }
-
-export interface AutoMatchResult {
-  matched: number;
-  unmatched: number;
-  matches: Array<{
-    transactionId: number;
-    bankTransferId?: number;
-    statementEntryId?: number;
-    confidence: number;
-    matchType: string;
-  }>;
-}
-
-export interface NigerianBank {
-  code: string;
-  name: string;
-}
-
-// API Functions
-
-// Bank Accounts
-export const getBankAccounts = async (isActive?: boolean) => {
-  const params = isActive !== undefined ? { isActive: String(isActive) } : {};
-  const response = await api.get('/payments/nigerian/bank-accounts', { params });
-  return response.data;
-};
-
-export const getBankAccountById = async (id: number) => {
-  const response = await api.get(`/payments/nigerian/bank-accounts/${id}`);
-  return response.data;
-};
-
-export const createBankAccount = async (data: {
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  bankCode?: string;
-  isDefault?: boolean;
-  description?: string;
-}) => {
-  const response = await api.post('/payments/nigerian/bank-accounts', data);
-  return response.data;
-};
-
-export const updateBankAccount = async (id: number, data: Partial<{
+export interface BankAccount {
+  id: string;
+  associationId: string;
   bankName: string;
   accountName: string;
   accountNumber: string;
   bankCode: string;
+  description?: string;
   isDefault: boolean;
-  description: string;
-}>) => {
-  const response = await api.patch(`/payments/nigerian/bank-accounts/${id}`, data);
-  return response.data;
-};
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const deleteBankAccount = async (id: number) => {
-  const response = await api.delete(`/payments/nigerian/bank-accounts/${id}`);
-  return response.data;
-};
-
-export const getNigerianBanks = async (): Promise<{ data: { banks: NigerianBank[] } }> => {
-  const response = await api.get('/payments/nigerian/banks');
-  return response.data;
-};
-
-// Bank Transfers
-export const getBankTransfers = async (params?: {
-  page?: number;
-  limit?: number;
-  status?: string;
-  memberId?: number;
-  bankAccountId?: number;
-  startDate?: string;
-  endDate?: string;
-  search?: string;
-}) => {
-  const response = await api.get('/payments/nigerian/bank-transfers', { params });
-  return response.data;
-};
-
-export const getBankTransferById = async (id: number) => {
-  const response = await api.get(`/payments/nigerian/bank-transfers/${id}`);
-  return response.data;
-};
-
-export const createBankTransfer = async (data: {
-  transactionId?: number;
-  bankAccountId?: number;
-  memberId?: number;
+export interface BankTransfer {
+  id: string;
+  associationId: string;
   senderBankName: string;
-  senderAccountNumber?: string;
+  senderAccountNumber: string;
   senderAccountName?: string;
   amount: number;
   reference: string;
   transferDate: string;
   narration?: string;
-  notes?: string;
-}) => {
-  const response = await api.post('/payments/nigerian/bank-transfers', data);
-  return response.data;
-};
+  memberId?: string;
+  member?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    memberId: string;
+  };
+  receivingBankAccountId: string;
+  receivingBankAccount?: BankAccount;
+  status: 'PENDING' | 'VERIFIED' | 'MATCHED' | 'REJECTED';
+  verifiedAt?: string;
+  verifiedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const updateBankTransfer = async (id: number, data: any) => {
-  const response = await api.patch(`/payments/nigerian/bank-transfers/${id}`, data);
-  return response.data;
-};
+export interface Reconciliation {
+  id: string;
+  associationId: string;
+  bankStatementEntryId?: string;
+  bankTransferId?: string;
+  transactionId?: string;
+  variance: number;
+  confidenceScore?: number;
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED';
+  reconciledAt?: string;
+  reconciledBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const verifyBankTransfer = async (id: number, data: {
-  status: 'VERIFIED' | 'REJECTED';
-  notes?: string;
-}) => {
-  const response = await api.post(`/payments/nigerian/bank-transfers/${id}/verify`, data);
-  return response.data;
-};
+export interface BankStatementImport {
+  id: string;
+  associationId: string;
+  fileName: string;
+  totalEntries: number;
+  matchedEntries: number;
+  unmatchedEntries: number;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  importedAt: string;
+  createdAt: string;
+}
 
-// Statement Import
-export const importBankStatement = async (data: {
-  bankAccountId: number;
-  filename: string;
-  entries: Array<{
-    transactionDate: string;
-    valueDate?: string;
-    reference?: string;
-    description: string;
-    debitAmount?: number;
-    creditAmount?: number;
-    balance?: number;
-  }>;
-  startDate?: string;
-  endDate?: string;
-}) => {
-  const response = await api.post('/payments/nigerian/import-statement', data);
-  return response.data;
-};
+export interface BankStatementEntry {
+  id: string;
+  importId: string;
+  date: string;
+  description: string;
+  amount: number;
+  reference: string;
+  balance?: number;
+  matchStatus: 'UNMATCHED' | 'AUTO_MATCHED' | 'MANUALLY_MATCHED';
+  reconciliationId?: string;
+  createdAt: string;
+}
 
-export const getStatementImports = async (page = 1, limit = 20) => {
-  const response = await api.get('/payments/nigerian/statement-imports', {
-    params: { page, limit },
-  });
-  return response.data;
-};
-
-export const getStatementEntries = async (params?: {
-  page?: number;
-  limit?: number;
-  importId?: number;
-  matchStatus?: string;
-  startDate?: string;
-  endDate?: string;
-}) => {
-  const response = await api.get('/payments/nigerian/statement-entries', { params });
-  return response.data;
-};
-
-// Reconciliation
-export const reconcilePayment = async (data: {
-  transactionId: number;
-  bankTransferId?: number;
-  statementEntryId?: number;
-  matchType: 'AUTO_REFERENCE' | 'AUTO_AMOUNT' | 'MANUAL';
-  matchedAmount: number;
-  variance?: number;
-  notes?: string;
-}) => {
-  const response = await api.post('/payments/nigerian/reconcile', data);
-  return response.data;
-};
-
-export const confirmReconciliation = async (id: number, data: {
-  status: 'CONFIRMED' | 'DISPUTED';
-  notes?: string;
-}) => {
-  const response = await api.post(`/payments/nigerian/reconciliations/${id}/confirm`, data);
-  return response.data;
-};
-
-export const getReconciliations = async (params?: {
-  page?: number;
-  limit?: number;
-  status?: string;
-  matchType?: string;
-}) => {
-  const response = await api.get('/payments/nigerian/reconciliations', { params });
-  return response.data;
-};
-
-// Auto-Matching
-export const runAutoMatch = async (): Promise<{ data: AutoMatchResult }> => {
-  const response = await api.post('/payments/nigerian/auto-match');
-  return response.data;
-};
-
-export const applyAutoMatches = async (matches: AutoMatchResult['matches']) => {
-  const response = await api.post('/payments/nigerian/auto-match/apply', { matches });
-  return response.data;
-};
-
-// Payment Proofs
-export const uploadPaymentProof = async (formData: FormData) => {
-  const response = await api.post('/payments/nigerian/proofs', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return response.data;
-};
-
-export const getPaymentProofs = async (params?: {
-  page?: number;
-  limit?: number;
-  status?: string;
-  memberId?: number;
-  transactionId?: number;
-}) => {
-  const response = await api.get('/payments/nigerian/proofs', { params });
-  return response.data;
-};
-
-export const getPaymentProofById = async (id: number) => {
-  const response = await api.get(`/payments/nigerian/proofs/${id}`);
-  return response.data;
-};
-
-export const verifyPaymentProof = async (id: number, data: {
-  status: 'APPROVED' | 'REJECTED';
+export interface PaymentProof {
+  id: string;
+  associationId: string;
+  memberId?: string;
+  transactionId?: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  uploadedAt: string;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  verifiedAt?: string;
+  verifiedBy?: string;
   rejectionReason?: string;
-  notes?: string;
-}) => {
-  const response = await api.post(`/payments/nigerian/proofs/${id}/verify`, data);
-  return response.data;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NigerianBank {
+  code: string;
+  name: string;
+  slug: string;
+  longcode: string;
+  gateway?: string;
+  pay_with_bank_transfer: boolean;
+  active: boolean;
+  is_deleted: boolean;
+  country: string;
+  currency: string;
+  type: string;
+  iso31662: string;
+}
+
+export interface UnmatchedDashboard {
+  totalUnmatched: number;
+  totalUnmatchedAmount: number;
+  pendingProofs: number;
+  recentUnmatched: BankStatementEntry[];
+}
+
+// API Client
+export const nigerianPaymentsApi = {
+  // Bank Accounts
+  async getBankAccounts(): Promise<BankAccount[]> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS);
+    return response.data.data?.bankAccounts || [];
+  },
+
+  async createBankAccount(data: Partial<BankAccount>): Promise<BankAccount> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS, data);
+    return response.data.data;
+  },
+
+  async updateBankAccount(id: string, data: Partial<BankAccount>): Promise<BankAccount> {
+    const response = await api.put(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteBankAccount(id: string): Promise<void> {
+    await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`);
+  },
+
+  async setDefaultBankAccount(id: string): Promise<BankAccount> {
+    const response = await api.patch(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}/set-default`);
+    return response.data.data;
+  },
+
+  // Bank Transfers
+  async getBankTransfers(params?: {
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    memberId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: BankTransfer[]; total: number; page: number; limit: number }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS, { params });
+    const result = response.data.data;
+    return { data: result.transfers || [], total: result.total, page: result.page, limit: result.limit };
+  },
+
+  async getBankTransfer(id: string): Promise<BankTransfer> {
+    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}`);
+    return response.data.data;
+  },
+
+  async createBankTransfer(data: Partial<BankTransfer>): Promise<BankTransfer> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS, data);
+    return response.data.data;
+  },
+
+  async updateBankTransfer(id: string, data: Partial<BankTransfer>): Promise<BankTransfer> {
+    const response = await api.put(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteBankTransfer(id: string): Promise<void> {
+    await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}`);
+  },
+
+  async verifyBankTransfer(id: string, data: { verified: boolean; notes?: string }): Promise<BankTransfer> {
+    const response = await api.post(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}/verify`, data);
+    return response.data.data;
+  },
+
+  // Reconciliation
+  async getReconciliations(params?: {
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: Reconciliation[]; total: number; page: number; limit: number }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS, { params });
+    return response.data;
+  },
+
+  async getReconciliation(id: string): Promise<Reconciliation> {
+    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS}/${id}`);
+    return response.data.data;
+  },
+
+  async createReconciliation(data: {
+    bankStatementEntryId?: string;
+    bankTransferId?: string;
+    transactionId?: string;
+  }): Promise<Reconciliation> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS, data);
+    return response.data.data;
+  },
+
+  async confirmReconciliation(id: string): Promise<Reconciliation> {
+    const response = await api.post(`${API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS}/${id}/confirm`);
+    return response.data.data;
+  },
+
+  async deleteReconciliation(id: string): Promise<void> {
+    await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS}/${id}`);
+  },
+
+  async runAutoMatch(): Promise<{ matches: Reconciliation[]; total: number }> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.AUTO_MATCH);
+    return response.data;
+  },
+
+  async applyAutoMatches(matches: Array<{ bankStatementEntryId: string; bankTransferId?: string; transactionId?: string }>): Promise<Reconciliation[]> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.AUTO_MATCH_APPLY, { matches });
+    return response.data.data;
+  },
+
+  async getUnmatchedDashboard(): Promise<UnmatchedDashboard> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.UNMATCHED_DASHBOARD);
+    return response.data.data;
+  },
+
+  // Bank Statements
+  async getStatementImports(params?: {
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: BankStatementImport[]; total: number; page: number; limit: number }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_IMPORTS, { params });
+    return response.data;
+  },
+
+  async getStatementImport(id: string): Promise<BankStatementImport> {
+    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_IMPORTS}/${id}`);
+    return response.data.data;
+  },
+
+  async importStatement(file: File): Promise<BankStatementImport> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.IMPORT_STATEMENT, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async getStatementEntries(params?: {
+    importId?: string;
+    matchStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    amountMin?: number;
+    amountMax?: number;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: BankStatementEntry[]; total: number; page: number; limit: number }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_ENTRIES, { params });
+    return response.data;
+  },
+
+  // Payment Proofs
+  async getPaymentProofs(params?: {
+    status?: string;
+    memberId?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: PaymentProof[]; total: number; page: number; limit: number }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS, { params });
+    return response.data;
+  },
+
+  async getPaymentProof(id: string): Promise<PaymentProof> {
+    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS}/${id}`);
+    return response.data.data;
+  },
+
+  async uploadPaymentProof(file: File, memberId?: string, transactionId?: string): Promise<PaymentProof> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (memberId) formData.append('memberId', memberId);
+    if (transactionId) formData.append('transactionId', transactionId);
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async verifyPaymentProof(id: string, data: { verified: boolean; rejectionReason?: string }): Promise<PaymentProof> {
+    const response = await api.post(`${API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS}/${id}/verify`, data);
+    return response.data.data;
+  },
+
+  async deletePaymentProof(id: string): Promise<void> {
+    await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS}/${id}`);
+  },
+
+  // Nigerian Banks
+  async getNigerianBanks(): Promise<NigerianBank[]> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.BANKS);
+    return response.data.data?.banks || [];
+  },
 };
 
-// Dashboard
-export const getUnmatchedDashboard = async (): Promise<{ data: UnmatchedDashboard }> => {
-  const response = await api.get('/payments/nigerian/unmatched-dashboard');
-  return response.data;
-};
+export default nigerianPaymentsApi;

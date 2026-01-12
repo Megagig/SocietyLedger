@@ -257,7 +257,13 @@ export function Sidebar() {
           label: 'Payment Management',
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments',
-          permission: PERMISSIONS.PAYMENT_RECORD,
+        },
+        {
+          // FORCE RENDER - Nigerian Payments Dashboard
+          label: 'Nigerian Payments ✓',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/payments/nigerian',
+          key: 'nigerian-payments-2024',
         },
       ],
     },

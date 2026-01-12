@@ -260,7 +260,36 @@ export const API_ROUTES = {
     TICKET_STATS: `${API_BASE_URL}/api/support/tickets/stats`,
     TICKET_COUNT: `${API_BASE_URL}/api/support/tickets/count`,
   },
-} as const;
+  // Phase 3.6: Nigerian Payments UI
+  NIGERIAN_PAYMENTS: {
+    // Bank Accounts
+    BANK_ACCOUNTS: `${API_BASE_URL}/api/payments/nigerian/bank-accounts`,
+    BANK_ACCOUNT_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-accounts/${id}`,
+    SET_DEFAULT: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-accounts/${id}/set-default`,
+    // Bank Transfers
+    BANK_TRANSFERS: `${API_BASE_URL}/api/payments/nigerian/bank-transfers`,
+    BANK_TRANSFER_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-transfers/${id}`,
+    VERIFY_TRANSFER: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-transfers/${id}/verify`,
+    // Reconciliation
+    RECONCILIATIONS: `${API_BASE_URL}/api/payments/nigerian/reconciliations`,
+    RECONCILIATION_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/reconciliations/${id}`,
+    CONFIRM_RECONCILIATION: (id: string) => `${API_BASE_URL}/api/payments/nigerian/reconciliations/${id}/confirm`,
+    AUTO_MATCH: `${API_BASE_URL}/api/payments/nigerian/auto-match`,
+    AUTO_MATCH_APPLY: `${API_BASE_URL}/api/payments/nigerian/auto-match/apply`,
+    UNMATCHED_DASHBOARD: `${API_BASE_URL}/api/payments/nigerian/unmatched-dashboard`,
+    // Bank Statements
+    STATEMENT_IMPORTS: `${API_BASE_URL}/api/payments/nigerian/statement-imports`,
+    STATEMENT_IMPORT_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/statement-imports/${id}`,
+    IMPORT_STATEMENT: `${API_BASE_URL}/api/payments/nigerian/import-statement`,
+    STATEMENT_ENTRIES: `${API_BASE_URL}/api/payments/nigerian/statement-entries`,
+    // Payment Proofs
+    PAYMENT_PROOFS: `${API_BASE_URL}/api/payments/nigerian/proofs`,
+    PAYMENT_PROOF_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/proofs/${id}`,
+    VERIFY_PROOF: (id: string) => `${API_BASE_URL}/api/payments/nigerian/proofs/${id}/verify`,
+    // Nigerian Banks
+    BANKS: `${API_BASE_URL}/api/payments/nigerian/banks`,
+  },
+  } as const;
 
 // App Settings
 export const APP_CONFIG = {

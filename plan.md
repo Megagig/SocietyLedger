@@ -119,12 +119,40 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 
 ## 🎯 API-UI GAP IMPLEMENTATION PLAN (IMMEDIATE PRIORITY)
 
-### Phase 3.6: Nigerian Payments UI Module (Days 1-7)
+### Overview
 
-**Priority:** 🔴 CRITICAL  
-**Backend:** ✅ 100% Complete (24+ endpoints)  
-**Frontend:** ❌ Zero UI  
-**Estimated Time:** 5-7 days
+**Total Tasks:** 82 tasks across 6 phases
+**Estimated Time:** 18-25 days
+**Backend Status:** ✅ 100% Complete (all endpoints tested and working)
+**Frontend Status:** ❌ Zero UI (pure additive work)
+**Implementation Type:** Zero breaking changes - only new pages/components
+
+### Implementation Order (Week-by-Week)
+
+```mermaid
+gantt
+    title API-UI Gap Implementation Schedule (25 Days)
+    dateFormat  D
+    section Week 1-2 (Critical)
+    Phase 3.6 Nigerian Payments UI :crit, 1, 7
+    Phase 6.6 SMS Communications UI :crit, 8, 13
+    section Week 3 (High Value)
+    Phase 10.5 Exports Management :active, 14, 16
+    Phase 6.7 Notifications Center :active, 17, 19
+    section Week 4 (Admin Tools)
+    Phase 14 Webhooks Management :14, 22
+    Phase 15 Cron Jobs Management :15, 25
+```
+
+### Week 1-2: Critical Revenue Features (Days 1-13)
+
+#### Phase 3.6: Nigerian Payments UI Module (Days 1-7)
+
+**Priority:** 🔴 CRITICAL
+**Backend:** ✅ 100% Complete (24+ endpoints)
+**Frontend:** ❌ Zero UI
+**Tasks:** 22 tasks
+**Route:** `/dashboard/payments/nigerian/`
 
 **Why Critical:**
 - Essential for African market operations
@@ -132,20 +160,35 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 - Payment reconciliation is manual without UI
 - Bank transfer tracking not accessible to admins
 
-**Implementation Tasks:**
-1. Day 1-2: Payments Dashboard + Bank Accounts Management (8 tasks)
-2. Day 3-4: Bank Transfer Tracking + Recording (5 tasks)
-3. Day 5-6: Payment Reconciliation Interface (5 tasks)
-4. Day 7: Statement Import + Verification Workflow (4 tasks)
+**Day 1-2: Payments Dashboard + Bank Accounts Management (8 tasks)**
+- TASK-NIG-001: Create Nigerian Payments Dashboard Page
+- TASK-NIG-002: Create Bank Accounts List Page
+- TASK-NIG-003: Create Bank Account Form Component
+- TASK-NIG-004: Create Nigerian Banks Dropdown Component
+- TASK-NIG-005: Create Bank Account Card Component
+- TASK-NIG-006: Add Nigerian Payments API Client
+- TASK-NIG-007: Add Nigerian Payments Route to Sidebar
+- TASK-NIG-008: Add Nigerian Payments to Constants
 
-**Key Features to Build:**
-- Bank accounts CRUD interface
-- Bank transfer recording form
-- Auto-matching UI with preview
-- Manual reconciliation drag-and-drop
-- CSV statement import with validation
-- Payment verification queue
-- Unmatched payments dashboard
+**Day 3-4: Bank Transfer Tracking + Recording (5 tasks)**
+- TASK-NIG-009: Create Bank Transfers List Page
+- TASK-NIG-010: Create Bank Transfer Form Component
+- TASK-NIG-011: Create Bank Transfer Detail Page
+- TASK-NIG-012: Create Transfer Status Badge Component
+- TASK-NIG-013: Create Transfer Actions Component
+
+**Day 5-6: Payment Reconciliation Interface (5 tasks)**
+- TASK-NIG-014: Create Reconciliation Dashboard Page
+- TASK-NIG-015: Create Auto-Match Preview Modal
+- TASK-NIG-016: Create Manual Reconciliation Modal
+- TASK-NIG-017: Create Reconciliation Card Component
+- TASK-NIG-018: Create Reconciliation History Page
+
+**Day 7: Statement Import + Verification Workflow (4 tasks)**
+- TASK-NIG-019: Create Statement Import Page
+- TASK-NIG-020: Create Statement Import Component
+- TASK-NIG-021: Create Statement Entries List Page
+- TASK-NIG-022: Create Payment Verification Queue Page
 
 **Success Metrics:**
 - [ ] All 24+ backend endpoints integrated
@@ -155,12 +198,13 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 
 ---
 
-### Phase 6.6: SMS/Communications UI Module (Days 8-13)
+#### Phase 6.6: SMS/Communications UI Module (Days 8-13)
 
-**Priority:** 🔴 HIGH  
-**Backend:** ✅ 100% Complete (10+ endpoints)  
-**Frontend:** ❌ Zero UI  
-**Estimated Time:** 4-6 days
+**Priority:** 🔴 HIGH
+**Backend:** ✅ 100% Complete (10+ endpoints)
+**Frontend:** ❌ Zero UI
+**Tasks:** 18 tasks
+**Route:** `/dashboard/communications/`
 
 **Why High Priority:**
 - High-value feature that differentiates from competitors
@@ -168,20 +212,31 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 - Bulk communication is critical for associations
 - Marketing feature for Professional tier
 
-**Implementation Tasks:**
-1. Day 8-9: Communications Dashboard + Quick Send (7 tasks)
-2. Day 10-11: SMS Campaigns Management (5 tasks)
-3. Day 12: SMS Templates CRUD (3 tasks)
-4. Day 13: SMS History & Reports (3 tasks)
+**Day 8-9: Communications Dashboard + Quick Send (7 tasks)**
+- TASK-SMS-001: Create Communications Dashboard Page
+- TASK-SMS-002: Create Quick Send Page
+- TASK-SMS-003: Create SMS Composer Component
+- TASK-SMS-004: Create Recipient Selector Component
+- TASK-SMS-005: Create SMS Balance Card Component
+- TASK-SMS-006: Add SMS API Client
+- TASK-SMS-007: Add Communications Route to Sidebar
 
-**Key Features to Build:**
-- Communications dashboard with SMS balance
-- Quick send form (single + bulk)
-- Campaign builder with scheduling
-- Template management with variables
-- Message history with delivery status
-- SMS usage analytics
-- Credit management interface
+**Day 10-11: SMS Campaigns Management (5 tasks)**
+- TASK-SMS-008: Create SMS Campaigns List Page
+- TASK-SMS-009: Create Campaign Builder Page
+- TASK-SMS-010: Create Campaign Detail Page
+- TASK-SMS-011: Create Campaign Progress Component
+- TASK-SMS-012: Create Campaign Status Badge Component
+
+**Day 12: SMS Templates CRUD (3 tasks)**
+- TASK-SMS-013: Create SMS Templates List Page
+- TASK-SMS-014: Create Template Editor Component
+- TASK-SMS-015: Create Template Category Component
+
+**Day 13: SMS History & Reports (3 tasks)**
+- TASK-SMS-016: Create SMS Messages History Page
+- TASK-SMS-017: Create Message Detail Modal
+- TASK-SMS-018: Create SMS Usage Report Page
 
 **Success Metrics:**
 - [ ] All 10+ backend endpoints integrated
@@ -191,12 +246,15 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 
 ---
 
-### Phase 10.5: Exports Management UI (Days 14-16)
+### Week 3: High Value Features (Days 14-19)
 
-**Priority:** 🟡 MEDIUM  
-**Backend:** ✅ 100% Complete (6 endpoints)  
-**Frontend:** ⚠️ Scattered across pages  
-**Estimated Time:** 2-3 days
+#### Phase 10.5: Exports Management UI (Days 14-16)
+
+**Priority:** 🟡 MEDIUM
+**Backend:** ✅ 100% Complete (6 endpoints)
+**Frontend:** ⚠️ Scattered across pages
+**Tasks:** 12 tasks
+**Route:** `/dashboard/exports/`
 
 **Why Medium Priority:**
 - Exports already work but scattered
@@ -204,18 +262,23 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 - Export history not visible to users
 - No way to re-download expired exports
 
-**Implementation Tasks:**
-1. Day 14: Exports Center Dashboard (3 tasks)
-2. Day 15: Export History Management (4 tasks)
-3. Day 16: Quick Export Actions + Custom Builder (5 tasks)
+**Day 14: Exports Center Dashboard (3 tasks)**
+- TASK-EXP-001: Create Exports Center Dashboard Page
+- TASK-EXP-002: Create Quick Export Modal Component
+- TASK-EXP-003: Create Export Type Card Component
 
-**Key Features to Build:**
-- Centralized exports dashboard
-- Export history table with filters
-- Quick export modal
-- Custom export builder
-- Re-generate expired exports
-- Expiration countdown indicators
+**Day 15: Export History Management (4 tasks)**
+- TASK-EXP-004: Create Export History Page
+- TASK-EXP-005: Create Export History Table Component
+- TASK-EXP-006: Create Export Status Badge Component
+- TASK-EXP-007: Create Expiration Countdown Component
+
+**Day 16: Quick Export Actions + Custom Builder (5 tasks)**
+- TASK-EXP-008: Create Custom Export Builder Page
+- TASK-EXP-009: Create Export Field Selector Component
+- TASK-EXP-010: Create Export Preview Component
+- TASK-EXP-011: Create Export Progress Component
+- TASK-EXP-012: Add Exports API Client Functions
 
 **Success Metrics:**
 - [ ] All 6 backend endpoints integrated
@@ -225,12 +288,13 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 
 ---
 
-### Phase 6.7: Notifications Center UI (Days 17-19)
+#### Phase 6.7: Notifications Center UI (Days 17-19)
 
-**Priority:** 🟡 MEDIUM  
-**Backend:** ✅ 100% Complete (6 endpoints)  
-**Frontend:** ⚠️ Dropdown only  
-**Estimated Time:** 2-3 days
+**Priority:** 🟡 MEDIUM
+**Backend:** ✅ 100% Complete (6 endpoints)
+**Frontend:** ⚠️ Dropdown only
+**Tasks:** 10 tasks
+**Route:** `/dashboard/notifications/`
 
 **Why Medium Priority:**
 - Enhances existing notification system
@@ -238,18 +302,21 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 - Preferences not configurable
 - Improves user engagement
 
-**Implementation Tasks:**
-1. Day 17: Notifications Center Page (3 tasks)
-2. Day 18: Notification Preferences (4 tasks)
-3. Day 19: Notification History & Archive (3 tasks)
+**Day 17: Notifications Center Page (3 tasks)**
+- TASK-NOT-001: Create Notifications Center Page
+- TASK-NOT-002: Create Notification List Component
+- TASK-NOT-003: Create Notification Filter Component
 
-**Key Features to Build:**
-- Full notifications page (paginated)
-- Notification preferences by type
-- Email/SMS toggle per notification type
-- Quiet hours settings
-- Notification archive (90 days)
-- Bulk actions (mark all read, delete)
+**Day 18: Notification Preferences (4 tasks)**
+- TASK-NOT-004: Create Notification Preferences Page
+- TASK-NOT-005: Create Notification Type Preferences Component
+- TASK-NOT-006: Create Quiet Hours Component
+- TASK-NOT-007: Add Notifications Preferences API Client
+
+**Day 19: Notification History & Archive (3 tasks)**
+- TASK-NOT-008: Create Notification Archive Page
+- TASK-NOT-009: Create Notification Detail Modal
+- TASK-NOT-010: Add Notifications Route to Sidebar
 
 **Success Metrics:**
 - [ ] All 6 backend endpoints integrated
@@ -259,12 +326,15 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 
 ---
 
-### Phase 14: Webhooks Management UI (Days 20-22)
+### Week 4: Admin Tools (Days 20-25)
 
-**Priority:** 🟢 LOW (Admin Tool)  
-**Backend:** ✅ Complete (handlers + logs)  
-**Frontend:** ❌ Zero UI  
-**Estimated Time:** 2-3 days
+#### Phase 14: Webhooks Management UI (Days 20-22)
+
+**Priority:** 🟢 LOW (Admin Tool)
+**Backend:** ✅ Complete (handlers + logs)
+**Frontend:** ❌ Zero UI
+**Tasks:** 10 tasks
+**Route:** `/admin/webhooks/`
 
 **Why Low Priority:**
 - Admin/developer monitoring tool
@@ -272,18 +342,21 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 - Helpful for debugging only
 - Not user-facing feature
 
-**Implementation Tasks:**
-1. Day 20: Webhooks Dashboard (3 tasks)
-2. Day 21: Webhook Events Log (4 tasks)
-3. Day 22: Webhook Testing Interface (3 tasks)
+**Day 20: Webhooks Dashboard (3 tasks)**
+- TASK-WEB-001: Create Webhooks Dashboard Page
+- TASK-WEB-002: Create Webhook Status Card Component
+- TASK-WEB-003: Create Webhook Quick Actions Component
 
-**Key Features to Build:**
-- Webhook events log viewer
-- Success/failure rate dashboard
-- Event payload JSON viewer
-- Retry failed webhooks button
-- Webhook testing interface
-- Event filtering and search
+**Day 21: Webhook Events Log (4 tasks)**
+- TASK-WEB-004: Create Webhook Events Log Page
+- TASK-WEB-005: Create Webhook Event Table Component
+- TASK-WEB-006: Create Event Payload Viewer Component
+- TASK-WEB-007: Create Event Status Badge Component
+
+**Day 22: Webhook Testing Interface (3 tasks)**
+- TASK-WEB-008: Create Webhook Testing Page
+- TASK-WEB-009: Create Webhook Test Builder Component
+- TASK-WEB-010: Create Test Response Viewer Component
 
 **Success Metrics:**
 - [ ] Webhook logs accessible to admins
@@ -293,12 +366,13 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 
 ---
 
-### Phase 15: Cron Jobs Management UI (Days 23-25)
+#### Phase 15: Cron Jobs Management UI (Days 23-25)
 
-**Priority:** 🟢 LOW (Admin Tool)  
-**Backend:** ✅ Complete (4+ jobs running)  
-**Frontend:** ❌ Zero UI  
-**Estimated Time:** 2-3 days
+**Priority:** 🟢 LOW (Admin Tool)
+**Backend:** ✅ Complete (4+ jobs running)
+**Frontend:** ❌ Zero UI
+**Tasks:** 8 tasks
+**Route:** `/admin/cron/`
 
 **Why Low Priority:**
 - Admin monitoring tool only
@@ -306,24 +380,92 @@ The SocietyLedger platform has completed its core infrastructure and is now in t
 - Helpful for troubleshooting
 - Not critical for operations
 
-**Implementation Tasks:**
-1. Day 23: Cron Jobs Dashboard (3 tasks)
-2. Day 24: Job Execution Logs (3 tasks)
-3. Day 25: Job Configuration Interface (2 tasks)
+**Day 23: Cron Jobs Dashboard (3 tasks)**
+- TASK-CRON-001: Create Cron Jobs Dashboard Page
+- TASK-CRON-002: Create Job Card Component
+- TASK-CRON-003: Create Job Status Indicator Component
 
-**Key Features to Build:**
-- Scheduled jobs list with status
-- Next run time display
-- Job execution logs table
-- Manual trigger buttons
-- Job performance metrics
-- Enable/disable job toggle
+**Day 24: Job Execution Logs (3 tasks)**
+- TASK-CRON-004: Create Job Execution Logs Page
+- TASK-CRON-005: Create Job Log Table Component
+- TASK-CRON-006: Create Log Detail Modal
+
+**Day 25: Job Configuration Interface (2 tasks)**
+- TASK-CRON-007: Create Job Configuration Page
+- TASK-CRON-008: Create Cron Expression Builder Component
 
 **Success Metrics:**
 - [ ] All cron jobs visible to admins
 - [ ] Manual triggers work
 - [ ] Execution logs helpful for debugging
 - [ ] Job health monitoring functional
+
+---
+
+### Detailed Task Breakdown
+
+For complete details on all 82 tasks, including:
+- Task IDs and descriptions
+- Files to create/update
+- Acceptance criteria
+- Dependencies
+
+See the companion file: [`tasks.md`](tasks.md)
+
+---
+
+### Implementation Summary
+
+| Phase | Name | Tasks | Days | Priority | Status |
+|-------|------|-------|------|----------|--------|
+| **3.6** | Nigerian Payments UI | 22 | 7 | 🔴 CRITICAL | ⚪ Not Started |
+| **6.6** | SMS/Communications UI | 18 | 6 | 🔴 HIGH | ⚪ Not Started |
+| **10.5** | Exports Management UI | 12 | 3 | 🟡 MEDIUM | ⚪ Not Started |
+| **6.7** | Notifications Center UI | 10 | 3 | 🟡 MEDIUM | ⚪ Not Started |
+| **14** | Webhooks Management UI | 10 | 3 | 🟢 LOW | ⚪ Not Started |
+| **15** | Cron Jobs Management UI | 8 | 3 | 🟢 LOW | ⚪ Not Started |
+| **TOTAL** | - | **82** | **25** | - | ⚪ Not Started |
+
+---
+
+### Quick Start Guide
+
+To begin implementation, follow these steps:
+
+1. **Review the detailed tasks in [`tasks.md`](tasks.md)**
+2. **Start with Phase 3.6 (Nigerian Payments UI)** - highest priority
+3. **Complete tasks in order within each phase**
+4. **Mark tasks as complete in tasks.md as you finish them**
+5. **Test each feature thoroughly before moving to the next**
+
+### Zero Breaking Changes Guarantee
+
+**Critical Rules:**
+1. **Pure Additive Work**: Only CREATE new pages/components, never modify existing ones
+2. **Independent Routing**: New routes don't interfere with existing routes
+3. **Isolated Components**: New components don't replace existing ones
+4. **Backend Tested**: All backend endpoints already tested and working
+5. **Permission Checks**: Always use existing RBAC permission system
+
+### Testing Checklist (Per Phase)
+
+**Before Starting:**
+- [ ] Review existing backend endpoints and schemas
+- [ ] Identify required permissions
+- [ ] Map out route structure
+- [ ] Create API client functions
+
+**During Development:**
+- [ ] Test each endpoint integration immediately
+- [ ] Verify permission checks work
+- [ ] Test with real backend data
+- [ ] Check responsive design
+
+**After Completion:**
+- [ ] Full E2E testing of new module
+- [ ] Verify existing features still work
+- [ ] Test permission boundaries
+- [ ] Document new routes/features
 
 ---
 
