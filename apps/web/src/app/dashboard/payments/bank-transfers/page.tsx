@@ -37,9 +37,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import {
-  getBankTransfers,
-  verifyBankTransfer,
-  uploadPaymentProof,
+  nigerianPaymentsApi,
   type BankTransfer,
 } from '@/lib/api/nigerian-payments';
 import { notifications } from '@mantine/notifications';
@@ -76,14 +74,11 @@ export default function BankTransfersPage() {
         endDate: endDate?.toISOString(),
       };
 
-      const response = await getBankTransfers(params);
+      const response = await nigerianPaymentsApi.getBankTransfers(params);
       
-      // API returns: { success: true, data: { transfers: [...], pagination: {...} } }
-      const transfersList = response.data?.transfers || [];
-      const totalCount = response.data?.pagination?.totalCount || 0;
-      
-      setTransfers(transfersList);
-      setTotal(totalCount);
+      // API returns: { data: [...], total: number, page: number, limit: number }
+      setTransfers(response.data || []);
+      setTotal(response.total || 0);
     } catch (error: any) {
       console.error('Error loading transfers:', error);
       notifications.show({
@@ -101,7 +96,7 @@ export default function BankTransfersPage() {
     loadTransfers();
   };
 
-  const handleVerify = async (id: number, status: 'VERIFIED' | 'REJECTED') => {
+  const handleVerify = async (id: string, status: 'VERIFIED' | 'REJECTED') => {
     const message = status === 'VERIFIED' ? 'verify' : 'reject';
     
     modals.openConfirmModal({
@@ -111,7 +106,7 @@ export default function BankTransfersPage() {
       confirmProps: { color: status === 'REJECTED' ? 'red' : 'green' },
       onConfirm: async () => {
         try {
-          await verifyBankTransfer(id, { status });
+          await nigerianPaymentsApi.verifyBankTransfer(id, { verified: status === 'VERIFIED' });
           notifications.show({
             title: 'Success',
             message: `Transfer ${status.toLowerCase()} successfully`,
@@ -134,14 +129,8 @@ export default function BankTransfersPage() {
 
     try {
       setUploadingProof(true);
-      const formData = new FormData();
-      formData.append('file', proofFile);
-      formData.append('bankTransferId', uploadModal.id.toString());
-      if (uploadModal.memberId) {
-        formData.append('memberId', uploadModal.memberId.toString());
-      }
-
-      await uploadPaymentProof(formData);
+      
+      await nigerianPaymentsApi.uploadPaymentProof(proofFile, uploadModal.memberId, uploadModal.id);
       
       notifications.show({
         title: 'Success',

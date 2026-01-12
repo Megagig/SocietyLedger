@@ -287,7 +287,6 @@ export function AdminSidebar() {
           label: 'Nigerian Payments',
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments/nigerian',
-          permission: PERMISSIONS.NIGERIAN_PAYMENTS_VIEW,
         },
       ],
     },
