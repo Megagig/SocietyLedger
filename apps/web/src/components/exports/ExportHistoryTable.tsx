@@ -10,8 +10,8 @@ interface ExportHistoryTableProps {
   onSelect: (id: number) => void;
   onSelectAll: () => void;
   onDownload: (id: number) => void;
-  onDelete: (id: number) => void;
-  onRegenerate: (id: number) => void;
+  onDelete?: (id: number) => void; // Optional since backend doesn't support it
+  onRegenerate?: (id: number) => void; // Optional since backend doesn't support it
 }
 
 export function ExportHistoryTable({
@@ -23,8 +23,10 @@ export function ExportHistoryTable({
   onDelete,
   onRegenerate,
 }: ExportHistoryTableProps) {
-  const allSelected = data.length > 0 && selectedIds.length === data.length;
-  const someSelected = selectedIds.length > 0 && selectedIds.length < data.length;
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : [];
+  const allSelected = safeData.length > 0 && selectedIds.length === safeData.length;
+  const someSelected = selectedIds.length > 0 && selectedIds.length < safeData.length;
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -87,11 +89,20 @@ export function ExportHistoryTable({
             <Table.Th>Expires</Table.Th>
             <Table.Th>Size</Table.Th>
             <Table.Th>Status</Table.Th>
-            <Table.Th w={150}>Actions</Table.Th>
+            <Table.Th w={100}>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {data.map((item) => (
+          {safeData.length === 0 ? (
+            <Table.Tr>
+              <Table.Td colSpan={7}>
+                <Text size="sm" c="dimmed" ta="center" py="xl">
+                  No export history found
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+          ) : (
+            safeData.map((item) => (
             <Table.Tr key={item.id}>
               <Table.Td>
                 <Checkbox
@@ -136,6 +147,7 @@ export function ExportHistoryTable({
                   >
                     <IconDownload size={16} />
                   </ActionIcon>
+                  {/* Regenerate and Delete buttons disabled - backend endpoints not implemented
                   <ActionIcon
                     variant="light"
                     color="orange"
@@ -154,10 +166,11 @@ export function ExportHistoryTable({
                   >
                     <IconTrash size={16} />
                   </ActionIcon>
+                  */}
                 </Group>
               </Table.Td>
             </Table.Tr>
-          ))}
+          )))}
         </Table.Tbody>
       </Table>
     </Table.ScrollContainer>

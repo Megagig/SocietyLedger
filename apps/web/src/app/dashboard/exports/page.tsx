@@ -15,6 +15,7 @@ import {
   Table,
   Loader,
   Alert,
+  LoadingOverlay,
 } from '@mantine/core';
 import { IconDownload, IconHistory, IconSettings, IconRefresh } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -23,10 +24,13 @@ import { ExportTypeCard } from '@/components/exports/ExportTypeCard';
 import { QuickExportModal } from '@/components/exports/QuickExportModal';
 import { ExportStatusBadge } from '@/components/exports/ExportStatusBadge';
 import { ExpirationCountdown } from '@/components/exports/ExpirationCountdown';
+import { notifications } from '@mantine/notifications';
 import Link from 'next/link';
 
 export default function ExportsPage() {
   const [quickExportOpened, setQuickExportOpened] = useState(false);
+  const [selectedExportType, setSelectedExportType] = useState<string>('financial_summary');
+  const [loading, setLoading] = useState(false);
   
   const { data: historyData, isLoading: historyLoading, refetch } = useQuery({
     queryKey: ['export-history'],
@@ -36,13 +40,75 @@ export default function ExportsPage() {
   const recentExports = (() => {
     console.log('historyData:', historyData);
     console.log('historyData?.data:', historyData?.data);
-    console.log('Array.isArray(historyData?.data):', Array.isArray(historyData?.data));
     
     if (!historyData) return [];
+    if (historyData.data && Array.isArray(historyData.data.exports)) {
+      return historyData.data.exports;
+    }
     if (Array.isArray(historyData.data)) return historyData.data;
     if (Array.isArray(historyData)) return historyData;
     return [];
   })();
+
+  const handleDirectExport = async (type: 'financial_summary' | 'all_members' | 'member_statement', format: 'pdf' | 'excel' = 'pdf') => {
+    // For member statement, always open the modal since it requires member selection
+    if (type === 'member_statement') {
+      setSelectedExportType('member_statement');
+      setQuickExportOpened(true);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log(`Starting export: ${type} in ${format} format`);
+      let result;
+      
+      if (type === 'financial_summary') {
+        if (format === 'pdf') {
+          console.log('Calling exportFinancialPDF...');
+          result = await exportsApi.exportFinancialPDF({ period: 'this_month' });
+        } else {
+          console.log('Calling exportFinancialExcel...');
+          result = await exportsApi.exportFinancialExcel({ period: 'this_month' });
+        }
+      } else if (type === 'all_members') {
+        console.log('Calling exportAllMembersExcel...');
+        result = await exportsApi.exportAllMembersExcel();
+      }
+
+      console.log('Export result:', result);
+
+      // Trigger download using the export ID
+      if (result?.data?.id) {
+        const downloadUrl = exportsApi.getDownloadUrl(result.data.id);
+        window.open(downloadUrl, '_blank');
+        // Refresh the history to show the new export
+        refetch();
+        notifications.show({
+          title: 'Export Generated',
+          message: 'Your export has been generated and download started.',
+          color: 'green',
+        });
+      } else {
+        console.error('No export ID in result:', result);
+        notifications.show({
+          title: 'Export Error',
+          message: 'Export was generated but ID is missing.',
+          color: 'red',
+        });
+      }
+    } catch (error: any) {
+      console.error('Export failed:', error);
+      console.error('Error details:', error.response?.data);
+      notifications.show({
+        title: 'Export Failed',
+        message: error.response?.data?.message || 'Failed to generate export. Please try again.',
+        color: 'red',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getExportStatus = (expiresAt: string): 'processing' | 'completed' | 'expired' | 'failed' => {
     const now = new Date();
@@ -91,6 +157,7 @@ export default function ExportsPage() {
 
   return (
     <Container size="xl" py="xl">
+      <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
       <Stack gap="xl">
         {/* Header */}
         <Group justify="space-between" align="center">
@@ -110,7 +177,10 @@ export default function ExportsPage() {
             </Button>
             <Button 
               leftSection={<IconDownload size={16} />}
-              onClick={() => setQuickExportOpened(true)}
+              onClick={() => {
+                setSelectedExportType('financial_summary');
+                setQuickExportOpened(true);
+              }}
             >
               Quick Export
             </Button>
@@ -127,7 +197,7 @@ export default function ExportsPage() {
                 title="Financial Summary"
                 description="Export financial data including income, expenses, and balances"
                 icon="pdf"
-                onClick={() => setQuickExportOpened(true)}
+                onClick={() => handleDirectExport('financial_summary', 'pdf')}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 4 }}>
@@ -136,7 +206,7 @@ export default function ExportsPage() {
                 title="All Members"
                 description="Export complete member list with balances"
                 icon="excel"
-                onClick={() => setQuickExportOpened(true)}
+                onClick={() => handleDirectExport('all_members', 'excel')}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 4 }}>
@@ -145,7 +215,7 @@ export default function ExportsPage() {
                 title="Member Statement"
                 description="Export individual member financial statements"
                 icon="pdf"
-                onClick={() => setQuickExportOpened(true)}
+                onClick={() => handleDirectExport('member_statement', 'pdf')}
               />
             </Grid.Col>
           </Grid>
@@ -261,6 +331,7 @@ export default function ExportsPage() {
       <QuickExportModal
         opened={quickExportOpened}
         onClose={() => setQuickExportOpened(false)}
+        initialExportType={selectedExportType}
       />
     </Container>
   );

@@ -65,17 +65,22 @@ export default function CustomExportPage() {
       }, 300);
 
       try {
-        // Call the exports API with selected fields
-        // For now, we'll use the existing all members export
-        const result = await exportsApi.exportAllMembersExcel();
+        // Call the custom exports API with selected fields
+        const result = await exportsApi.exportCustomMembersExcel({
+          fields: selectedFields,
+          status: 'all'
+        });
         
         clearInterval(progressInterval);
         setProgress(100);
         setExportStatus('completed');
         setProgressMessage('Export completed successfully!');
         
-        // Trigger download
-        if (result?.downloadUrl) {
+        // Trigger download using the export ID
+        if (result?.data?.id) {
+          const downloadUrl = exportsApi.getDownloadUrl(result.data.id);
+          window.open(downloadUrl, '_blank');
+        } else if (result?.downloadUrl) {
           window.open(result.downloadUrl, '_blank');
         }
 

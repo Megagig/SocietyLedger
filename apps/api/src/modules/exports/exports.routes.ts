@@ -11,45 +11,51 @@ router.use(authMiddleware);
 /**
  * @route   POST /api/exports/financial-pdf
  * @desc    Export financial summary as PDF
- * @access  Private (requires report:view permission)
+ * @access  Private (authenticated users)
  */
 router.post(
   '/financial-pdf',
-  requirePermission('report:view'),
   exportsController.exportFinancialPDF
 );
 
 /**
  * @route   POST /api/exports/financial-excel
  * @desc    Export financial summary as Excel
- * @access  Private (requires report:view permission)
+ * @access  Private (authenticated users)
  */
 router.post(
   '/financial-excel',
-  requirePermission('report:view'),
   exportsController.exportFinancialExcel
 );
 
 /**
  * @route   POST /api/exports/member-statement/:memberId
  * @desc    Export member statement as PDF
- * @access  Private (requires member:view permission)
+ * @access  Private (authenticated users)
  */
 router.post(
   '/member-statement/:memberId',
-  requirePermission('member:view'),
   exportsController.exportMemberStatementPDF
 );
 
 /**
  * @route   POST /api/exports/members-excel
  * @desc    Export all members with balances as Excel
- * @access  Private (requires member:view permission)
+ * @access  Private (authenticated users)
  */
 router.post(
   '/members-excel',
-  requirePermission('member:view'),
   exportsController.exportAllMembersExcel
+);
+
+/**
+ * @route   POST /api/exports/custom-members-excel
+ * @desc    Export members with custom selected fields as Excel
+ * @access  Private (authenticated users)
+ */
+router.post(
+  '/custom-members-excel',
+  exportsController.exportCustomMembersExcel
 );
 
 /**

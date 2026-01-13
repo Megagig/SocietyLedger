@@ -15,8 +15,8 @@ import {
   LoadingOverlay,
   Alert,
 } from '@mantine/core';
-import { IconSearch, IconFilter, IconDownload, IconTrash, IconRefresh } from '@tabler/icons-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { IconSearch, IconFilter, IconRefresh } from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { exportsApi, ExportHistoryItem } from '@/lib/api/exports';
 import { ExportHistoryTable } from '@/components/exports/ExportHistoryTable';
 import { notifications } from '@mantine/notifications';
@@ -39,60 +39,24 @@ export default function ExportHistoryPage() {
     }),
   });
 
-  const exports = historyData?.data || [];
-  const totalPages = historyData?.totalPages || 1;
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => exportsApi.deleteExport(id),
-    onSuccess: () => {
-      notifications.show({
-        title: 'Export deleted',
-        message: 'The export has been deleted successfully',
-        color: 'green',
-      });
-      queryClient.invalidateQueries(['export-history']);
-      setSelectedIds([]);
-    },
-    onError: (error: any) => {
-      notifications.show({
-        title: 'Delete failed',
-        message: error.response?.data?.message || 'Failed to delete export',
-        color: 'red',
-      });
-    },
-  });
-
-  const regenerateMutation = useMutation({
-    mutationFn: (id: number) => exportsApi.regenerateExport(id),
-    onSuccess: () => {
-      notifications.show({
-        title: 'Export regenerated',
-        message: 'The export is being regenerated',
-        color: 'blue',
-      });
-      refetch();
-    },
-    onError: (error: any) => {
-      notifications.show({
-        title: 'Regeneration failed',
-        message: error.response?.data?.message || 'Failed to regenerate export',
-        color: 'red',
-      });
-    },
-  });
+  const exports = (() => {
+    console.log('Export history data:', historyData);
+    console.log('Export history data.data:', historyData?.data);
+    
+    if (!historyData) return [];
+    if (historyData.data && Array.isArray(historyData.data.exports)) {
+      return historyData.data.exports;
+    }
+    if (Array.isArray(historyData.data)) return historyData.data;
+    if (Array.isArray(historyData)) return historyData;
+    return [];
+  })();
+  
+  const totalPages = historyData?.data?.pagination?.totalPages || 
+                    Math.ceil((historyData?.data?.pagination?.totalCount || 0) / 20) || 1;
 
   const handleDownload = (id: number) => {
     exportsApi.downloadExport(id);
-  };
-
-  const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this export?')) {
-      deleteMutation.mutate(id);
-    }
-  };
-
-  const handleRegenerate = (id: number) => {
-    regenerateMutation.mutate(id);
   };
 
   const handleSelect = (id: number) => {
@@ -203,8 +167,6 @@ export default function ExportHistoryPage() {
                 onSelect={handleSelect}
                 onSelectAll={handleSelectAll}
                 onDownload={handleDownload}
-                onDelete={handleDelete}
-                onRegenerate={handleRegenerate}
               />
 
               {totalPages > 1 && (

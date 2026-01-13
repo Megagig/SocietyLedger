@@ -90,6 +90,20 @@ export const exportsApi = {
   },
 
   /**
+   * Export custom member data with selected fields
+   */
+  async exportCustomMembersExcel(params: {
+    fields: string[];
+    status?: 'all' | 'with_balance' | 'overdue';
+  }) {
+    const response = await api.post(`${API_URL}/api/exports/custom-members-excel`, {
+      format: 'excel',
+      ...params,
+    });
+    return response.data;
+  },
+
+  /**
    * Get export history
    */
   async getExportHistory(params?: {

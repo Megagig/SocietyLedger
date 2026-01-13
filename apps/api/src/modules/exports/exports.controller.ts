@@ -200,6 +200,47 @@ export const exportsController = {
   },
 
   /**
+   * TASK-EXP-008: Export Custom Members as Excel
+   * POST /api/exports/custom-members-excel
+   */
+  async exportCustomMembersExcel(req: Request, res: Response) {
+    try {
+      const associationId = req.user!.associationId!;
+      const userId = req.user!.id;
+
+      const { fields, status } = req.body;
+
+      if (!fields || !Array.isArray(fields) || fields.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Fields array is required and must not be empty',
+        });
+      }
+
+      const filters: any = { fields };
+      if (status) filters.status = status;
+
+      const result = await exportsService.exportCustomMembersExcel(
+        associationId,
+        userId,
+        filters
+      );
+
+      res.json({
+        success: true,
+        message: 'Custom members Excel generated successfully',
+        data: result,
+      });
+    } catch (error: any) {
+      console.error('Export custom members Excel error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to generate custom members export',
+      });
+    }
+  },
+
+  /**
    * TASK-EXP-008: Get Export History
    * GET /api/exports/history
    */
