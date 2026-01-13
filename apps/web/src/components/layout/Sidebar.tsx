@@ -924,12 +924,26 @@ export function Sidebar() {
             if (!checkPermission(item.permission, item.roleRequired, item.hideForSuperAdmin)) return null;
 
             const hasChildren = item.children && item.children.length > 0;
+            // Special handling for Notifications to ensure it's always expandable
+            let hasVisibleChildren;
+            let visibleChildren;
+            
+            if (item.label === 'Notifications') {
+              // Force Notifications to be expandable with all children visible
+              visibleChildren = item.children || [];
+              hasVisibleChildren = visibleChildren.length > 0;
+            } else {
+              visibleChildren = item.children?.filter(child => 
+                checkPermission(child.permission, child.roleRequired, child.hideForSuperAdmin)
+              ) || [];
+              hasVisibleChildren = visibleChildren.length > 0;
+            }
             const isExpanded = expandedItems.includes(item.label);
             const active = isActive(item.href);
 
             return (
               <div key={item.label}>
-                {hasChildren ? (
+                {hasVisibleChildren ? (
                   <>
                     <button
                       onClick={() => toggleExpanded(item.label)}
@@ -952,42 +966,38 @@ export function Sidebar() {
                       />
                     </button>
 
-                    {isExpanded && item.children && (
+                    {isExpanded && (
                       <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                        {item.children.map((child) => {
-                          if (!checkPermission(child.permission, child.roleRequired, child.hideForSuperAdmin)) return null;
-
-                          return (
-                            <Link
-                              key={child.label}
-                              href={child.comingSoon ? '#' : (child.href || '#')}
-                              onClick={(e) => {
-                                if (child.comingSoon) {
-                                  e.preventDefault();
-                                }
-                                setIsOpen(false);
-                              }}
-                              className={`
-                                flex items-center justify-between gap-2 px-3 py-2 rounded-lg
-                                transition-all duration-200 text-sm bg-transparent
-                                ${isActive(child.href)
-                                  ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
-                                  : 'text-gray-700 dark:text-white hover:text-teal-600 dark:hover:text-teal-400'
-                                }
-                              `}
-                            >
-                              <div className="flex items-center gap-2">
-                                {child.icon}
-                                <span>{child.label}</span>
-                              </div>
-                              {child.comingSoon && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                                  Soon
-                                </span>
-                              )}
-                            </Link>
-                          );
-                        })}
+                        {visibleChildren.map((child) => (
+                          <Link
+                            key={child.label}
+                            href={child.comingSoon ? '#' : (child.href || '#')}
+                            onClick={(e) => {
+                              if (child.comingSoon) {
+                                e.preventDefault();
+                              }
+                              setIsOpen(false);
+                            }}
+                            className={`
+                              flex items-center justify-between gap-2 px-3 py-2 rounded-lg
+                              transition-all duration-200 text-sm bg-transparent
+                              ${isActive(child.href)
+                                ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
+                                : 'text-gray-700 dark:text-white hover:text-teal-600 dark:hover:text-teal-400'
+                              }
+                            `}
+                          >
+                            <div className="flex items-center gap-2">
+                              {child.icon}
+                              <span>{child.label}</span>
+                            </div>
+                            {child.comingSoon && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                Soon
+                              </span>
+                            )}
+                          </Link>
+                        ))}
                       </div>
                     )}
                   </>
