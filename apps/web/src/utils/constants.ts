@@ -305,6 +305,16 @@ export const API_ROUTES = {
     CREDITS_TOPUP: `${API_BASE_URL}/api/sms/credits/topup`,
     CREDITS_HISTORY: `${API_BASE_URL}/api/sms/credits/history`,
   },
+  // Phase 14: Webhooks Management UI
+  WEBHOOKS: {
+    STATS: `${API_BASE_URL}/api/webhooks/stats`,
+    EVENTS: `${API_BASE_URL}/api/webhooks/events`,
+    EVENT_BY_ID: (id: number) => `${API_BASE_URL}/api/webhooks/events/${id}`,
+    RETRY_EVENT: (id: number) => `${API_BASE_URL}/api/webhooks/events/${id}/retry`,
+    CLEAR_LOGS: `${API_BASE_URL}/api/webhooks/logs/clear`,
+    TEST: `${API_BASE_URL}/api/webhooks/test`,
+    EVENT_TYPES: `${API_BASE_URL}/api/webhooks/event-types`,
+  },
 } as const;
 
 // App Settings

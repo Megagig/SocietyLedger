@@ -153,20 +153,20 @@ export default function MemberSettingsPage() {
         </div>
 
         {/* Show error if member data failed to load */}
-        {memberError && (
+        {memberError ? (
           <Alert color="red" variant="light" icon={<IconAlertCircle size={16} />}>
             <Text size="sm">
               Failed to load member information. Some features may not work correctly.
             </Text>
           </Alert>
-        )}
+        ) : null}
 
         {/* Success Message */}
-        {showSuccess && (
+        {showSuccess ? (
           <Alert color="green" variant="light" icon={<IconCheck size={16} />}>
             Your settings have been updated successfully!
           </Alert>
-        )}
+        ) : null}
 
         {/* Profile Information */}
         <Card shadow="sm" padding="lg" radius="md" withBorder>

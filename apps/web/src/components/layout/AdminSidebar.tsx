@@ -44,6 +44,7 @@ import {
   IconPlus,
   IconClock,
   IconUser,
+  IconWebhook,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -575,7 +576,27 @@ export function AdminSidebar() {
         },
       ],
     },
-
+    {
+      label: 'Webhooks',
+      icon: <IconWebhook size={20} />,
+      children: [
+        {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/admin/webhooks',
+        },
+        {
+          label: 'Events Log',
+          icon: <IconHistory size={18} />,
+          href: '/admin/webhooks/events',
+        },
+        {
+          label: 'Test Webhooks',
+          icon: <IconRobot size={18} />,
+          href: '/admin/webhooks/test',
+        },
+      ],
+    },
     {
       label: 'AI Assistant',
       icon: <IconRobot size={20} />,

@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AssociationBranding } from './exports.types';
 import { reportsService } from '../reports/reports.service';
+import { prisma } from '../../lib/prisma';
 
 // ============================================
 // EXCEL SERVICE
@@ -572,12 +573,12 @@ export const excelService = {
       case 'penalties':
         data = await this.getPenaltiesData(associationId);
         fieldMapping = {
-          memberNumber: { header: 'Member Number', extractor: (p) => p.member?.memberId || '', width: 15 },
-          firstName: { header: 'First Name', extractor: (p) => p.member?.firstName || '', width: 15 },
-          lastName: { header: 'Last Name', extractor: (p) => p.member?.lastName || '', width: 15 },
+          memberNumber: { header: 'Member Number', extractor: (p) => p.sourceTransaction?.member?.memberId || '', width: 15 },
+          firstName: { header: 'First Name', extractor: (p) => p.sourceTransaction?.member?.firstName || '', width: 15 },
+          lastName: { header: 'Last Name', extractor: (p) => p.sourceTransaction?.member?.lastName || '', width: 15 },
           penaltyType: { header: 'Penalty Type', extractor: (p) => p.rule?.name || '', width: 20 },
           amount: { header: 'Amount', extractor: (p) => this.formatCurrency(p.amount), width: 15 },
-          appliedDate: { header: 'Applied Date', extractor: (p) => this.formatDate(p.appliedDate), width: 15 },
+          appliedDate: { header: 'Applied Date', extractor: (p) => this.formatDate(p.appliedAt), width: 15 },
           reason: { header: 'Reason', extractor: (p) => p.reason || '', width: 30 },
           status: { header: 'Status', extractor: (p) => p.status?.toUpperCase() || '', width: 12 },
         };
@@ -592,8 +593,8 @@ export const excelService = {
           subcategory: { header: 'Subcategory', extractor: (a) => a.subcategory || '', width: 20 },
           amount: { header: 'Amount', extractor: (a) => this.formatCurrency(a.amount), width: 15 },
           description: { header: 'Description', extractor: (a) => a.description || '', width: 30 },
-          date: { header: 'Date', extractor: (a) => this.formatDate(a.date), width: 15 },
-          reference: { header: 'Reference', extractor: (a) => a.reference || '', width: 20 },
+          date: { header: 'Date', extractor: (a) => this.formatDate(a.transactionDate), width: 15 },
+          reference: { header: 'Reference', extractor: (a) => a.referenceNumber || '', width: 20 },
         };
         break;
 
@@ -701,13 +702,13 @@ export const excelService = {
 
     // Transform and combine data
     const welfareData = [
-      ...contributions.map(c => ({
+      ...contributions.map((c: any) => ({
         ...c,
         contributionAmount: c.amount,
         payoutAmount: 0,
         date: c.createdAt,
       })),
-      ...payouts.map(p => ({
+      ...payouts.map((p: any) => ({
         ...p,
         contributionAmount: 0,
         payoutAmount: p.amount,
@@ -750,12 +751,20 @@ export const excelService = {
 
   async getPenaltiesData(associationId: number) {
     return await prisma.appliedPenalty.findMany({
-      where: { associationId },
+      where: { 
+        sourceTransaction: {
+          associationId: associationId
+        }
+      },
       include: {
-        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        sourceTransaction: {
+          include: {
+            member: { select: { id: true, memberId: true, firstName: true, lastName: true } }
+          }
+        },
         rule: { select: { name: true } },
       },
-      orderBy: { appliedDate: 'desc' },
+      orderBy: { appliedAt: 'desc' },
       take: 10000,
     });
   },
@@ -763,7 +772,7 @@ export const excelService = {
   async getAccountingData(associationId: number) {
     return await prisma.accountingEntry.findMany({
       where: { associationId },
-      orderBy: { date: 'desc' },
+      orderBy: { transactionDate: 'desc' },
       take: 10000,
     });
   },
