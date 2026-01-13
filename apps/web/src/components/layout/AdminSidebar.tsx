@@ -87,6 +87,18 @@ export function AdminSidebar() {
     }
   }, [pathname]);
 
+  // Auto-expand Notifications section if on notifications page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/notifications')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Notifications')) {
+          return [...prev, 'Notifications'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]);
+
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
       prev.includes(label)
@@ -489,14 +501,30 @@ export function AdminSidebar() {
       ],
     },
     {
-      label: 'Communication',
-      icon: <IconSpeakerphone size={20} />,
+      label: 'Notifications',
+      icon: <IconBell size={20} />,
       children: [
         {
-          label: 'Notifications',
+          label: 'Notifications Center',
           icon: <IconBell size={18} />,
           href: '/dashboard/notifications',
         },
+        {
+          label: 'Preferences',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/notifications/preferences',
+        },
+        {
+          label: 'Archive',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/notifications/archive',
+        },
+      ],
+    },
+    {
+      label: 'Communication',
+      icon: <IconSpeakerphone size={20} />,
+      children: [
         {
           label: 'Announcements',
           icon: <IconBell size={18} />,

@@ -4,6 +4,9 @@ import prisma from '../../lib/prisma';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { sendEmail } from '../../lib/email';
 
+// In-memory store for preferences (in production, this should be a database table)
+const preferencesStore = new Map<string, any>();
+
 const createNotificationSchema = z.object({
   title: z.string().min(1).max(200),
   message: z.string().min(1).max(1000),
@@ -386,6 +389,91 @@ export class NotificationsController {
           errors: error.errors,
         });
       }
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Get notification preferences for the current user
+   */
+  async getPreferences(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const associationId = req.user?.associationId;
+
+      if (!userId || !associationId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const userKey = `${associationId}-${userId}`;
+      
+      // Get preferences from store or return defaults
+      const storedPreferences = preferencesStore.get(userKey);
+      
+      const defaultPreferences = {
+        emailEnabled: true,
+        smsEnabled: false,
+        inAppEnabled: true,
+        paymentDueEmail: true,
+        paymentDueSMS: false,
+        paymentDueInApp: true,
+        paymentReceivedEmail: true,
+        paymentReceivedSMS: false,
+        paymentReceivedInApp: true,
+        systemEmail: true,
+        systemSMS: false,
+        systemInApp: true,
+        approvalEmail: true,
+        approvalSMS: false,
+        approvalInApp: true,
+        announcementEmail: true,
+        announcementSMS: false,
+        announcementInApp: true,
+        quietHoursEnabled: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '08:00',
+        quietHoursTimezone: 'UTC',
+      };
+
+      const preferences = storedPreferences || defaultPreferences;
+
+      return res.json({
+        success: true,
+        data: preferences,
+      });
+    } catch (error) {
+      console.error('Get preferences error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Update notification preferences for the current user
+   */
+  async updatePreferences(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const associationId = req.user?.associationId;
+
+      if (!userId || !associationId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const userKey = `${associationId}-${userId}`;
+      const preferences = req.body;
+
+      // Store preferences in memory
+      preferencesStore.set(userKey, preferences);
+
+      console.log(`Updated preferences for user ${userKey}:`, preferences);
+
+      return res.json({
+        success: true,
+        message: 'Preferences updated successfully',
+        data: preferences,
+      });
+    } catch (error) {
+      console.error('Update preferences error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

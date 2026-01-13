@@ -263,16 +263,20 @@ export function NotificationBell() {
           </div>
 
           {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-              <a
-                href="/dashboard/notifications"
-                className="block text-center text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
-              >
-                View all notifications
-              </a>
-            </div>
-          )}
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+            <a
+              href="/dashboard/notifications"
+              className="flex-1 text-center text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium py-2 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors"
+            >
+              View All
+            </a>
+            <a
+              href="/dashboard/notifications/preferences"
+              className="flex-1 text-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+            >
+              Preferences
+            </a>
+          </div>
         </div>
       )}
     </div>
