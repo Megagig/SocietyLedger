@@ -241,6 +241,54 @@ export const exportsController = {
   },
 
   /**
+   * TASK-EXP-009: Export Custom Report as Excel
+   * POST /api/exports/custom-report-excel
+   */
+  async exportCustomReportExcel(req: Request, res: Response) {
+    try {
+      const associationId = req.user!.associationId!;
+      const userId = req.user!.id;
+
+      const { reportType, fields, filters } = req.body;
+
+      if (!reportType) {
+        return res.status(400).json({
+          success: false,
+          message: 'Report type is required',
+        });
+      }
+
+      if (!fields || !Array.isArray(fields) || fields.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Fields array is required and must not be empty',
+        });
+      }
+
+      const exportFilters: any = { reportType, fields };
+      if (filters) exportFilters.filters = filters;
+
+      const result = await exportsService.exportCustomReportExcel(
+        associationId,
+        userId,
+        exportFilters
+      );
+
+      res.json({
+        success: true,
+        message: `Custom ${reportType} Excel generated successfully`,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error('Export custom report Excel error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to generate custom report export',
+      });
+    }
+  },
+
+  /**
    * TASK-EXP-008: Get Export History
    * GET /api/exports/history
    */

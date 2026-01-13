@@ -470,4 +470,301 @@ export const excelService = {
     // Save workbook
     await workbook.xlsx.writeFile(filepath);
   },
+
+  /**
+   * Generate Custom Report Excel with selected fields for different report types
+   */
+  async generateCustomReportExcel(
+    associationId: number,
+    branding: AssociationBranding,
+    filters: any,
+    filepath: string
+  ): Promise<void> {
+    const workbook = new ExcelJS.Workbook();
+    const { reportType, fields } = filters;
+
+    // ===== MAIN DATA SHEET =====
+    const dataSheet = workbook.addWorksheet(reportType.charAt(0).toUpperCase() + reportType.slice(1));
+    this.addTitleSection(dataSheet, branding, `Custom ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Export`);
+
+    let data: any[] = [];
+    let fieldMapping: Record<string, { header: string; extractor: (item: any) => any; width?: number }> = {};
+
+    // Get data and field mapping based on report type
+    switch (reportType) {
+      case 'transactions':
+        data = await this.getTransactionsData(associationId);
+        fieldMapping = {
+          transactionId: { header: 'Transaction ID', extractor: (t) => t.id, width: 15 },
+          memberNumber: { header: 'Member Number', extractor: (t) => t.member?.memberId || '', width: 15 },
+          firstName: { header: 'First Name', extractor: (t) => t.member?.firstName || '', width: 15 },
+          lastName: { header: 'Last Name', extractor: (t) => t.member?.lastName || '', width: 15 },
+          email: { header: 'Email', extractor: (t) => t.member?.email || '', width: 25 },
+          categoryName: { header: 'Category Name', extractor: (t) => t.category?.name || '', width: 20 },
+          categoryType: { header: 'Category Type', extractor: (t) => t.category?.type || '', width: 15 },
+          amount: { header: 'Amount', extractor: (t) => this.formatCurrency(t.amount), width: 15 },
+          dueDate: { header: 'Due Date', extractor: (t) => this.formatDate(t.dueDate), width: 15 },
+          status: { header: 'Status', extractor: (t) => t.status?.toUpperCase() || '', width: 12 },
+          createdAt: { header: 'Created Date', extractor: (t) => this.formatDate(t.createdAt), width: 15 },
+          description: { header: 'Description', extractor: (t) => t.description || '', width: 30 },
+        };
+        break;
+
+      case 'payments':
+        data = await this.getPaymentsData(associationId);
+        fieldMapping = {
+          paymentId: { header: 'Payment ID', extractor: (p) => p.id, width: 15 },
+          memberNumber: { header: 'Member Number', extractor: (p) => p.transaction?.member?.memberId || '', width: 15 },
+          firstName: { header: 'First Name', extractor: (p) => p.transaction?.member?.firstName || '', width: 15 },
+          lastName: { header: 'Last Name', extractor: (p) => p.transaction?.member?.lastName || '', width: 15 },
+          email: { header: 'Email', extractor: (p) => p.transaction?.member?.email || '', width: 25 },
+          amount: { header: 'Amount', extractor: (p) => this.formatCurrency(p.amountPaid), width: 15 },
+          paymentMethod: { header: 'Payment Method', extractor: (p) => p.paymentMethod || '', width: 15 },
+          paymentDate: { header: 'Payment Date', extractor: (p) => this.formatDate(p.paymentDate), width: 15 },
+          status: { header: 'Status', extractor: (p) => p.status?.toUpperCase() || '', width: 12 },
+          reference: { header: 'Reference', extractor: (p) => p.reference || '', width: 20 },
+        };
+        break;
+
+      case 'welfare':
+        data = await this.getWelfareData(associationId);
+        fieldMapping = {
+          memberNumber: { header: 'Member Number', extractor: (w) => w.member?.memberId || '', width: 15 },
+          firstName: { header: 'First Name', extractor: (w) => w.member?.firstName || '', width: 15 },
+          lastName: { header: 'Last Name', extractor: (w) => w.member?.lastName || '', width: 15 },
+          fundName: { header: 'Fund Name', extractor: (w) => w.fund?.name || '', width: 20 },
+          contributionAmount: { header: 'Contribution Amount', extractor: (w) => this.formatCurrency(w.contributionAmount || 0), width: 18 },
+          payoutAmount: { header: 'Payout Amount', extractor: (w) => this.formatCurrency(w.payoutAmount || 0), width: 15 },
+          date: { header: 'Date', extractor: (w) => this.formatDate(w.date || w.createdAt), width: 15 },
+          status: { header: 'Status', extractor: (w) => w.status?.toUpperCase() || '', width: 12 },
+          reason: { header: 'Reason', extractor: (w) => w.reason || '', width: 30 },
+        };
+        break;
+
+      case 'donations':
+        data = await this.getDonationsData(associationId);
+        fieldMapping = {
+          memberNumber: { header: 'Member Number', extractor: (d) => d.member?.memberId || '', width: 15 },
+          firstName: { header: 'First Name', extractor: (d) => d.member?.firstName || '', width: 15 },
+          lastName: { header: 'Last Name', extractor: (d) => d.member?.lastName || '', width: 15 },
+          categoryName: { header: 'Category Name', extractor: (d) => d.category?.name || '', width: 20 },
+          amount: { header: 'Amount', extractor: (d) => this.formatCurrency(d.amount), width: 15 },
+          donationDate: { header: 'Donation Date', extractor: (d) => this.formatDate(d.createdAt), width: 15 },
+          allocationName: { header: 'Allocation', extractor: (d) => d.allocation?.name || '', width: 20 },
+          status: { header: 'Status', extractor: (d) => d.status?.toUpperCase() || '', width: 12 },
+        };
+        break;
+
+      case 'levies':
+        data = await this.getLeviesData(associationId);
+        fieldMapping = {
+          memberNumber: { header: 'Member Number', extractor: (l) => l.member?.memberId || '', width: 15 },
+          firstName: { header: 'First Name', extractor: (l) => l.member?.firstName || '', width: 15 },
+          lastName: { header: 'Last Name', extractor: (l) => l.member?.lastName || '', width: 15 },
+          categoryName: { header: 'Category Name', extractor: (l) => l.category?.name || '', width: 20 },
+          amount: { header: 'Amount', extractor: (l) => this.formatCurrency(l.amount), width: 15 },
+          dueDate: { header: 'Due Date', extractor: (l) => this.formatDate(l.dueDate), width: 15 },
+          campaignName: { header: 'Campaign Name', extractor: (l) => l.campaign?.name || '', width: 20 },
+          status: { header: 'Status', extractor: (l) => l.status?.toUpperCase() || '', width: 12 },
+        };
+        break;
+
+      case 'penalties':
+        data = await this.getPenaltiesData(associationId);
+        fieldMapping = {
+          memberNumber: { header: 'Member Number', extractor: (p) => p.member?.memberId || '', width: 15 },
+          firstName: { header: 'First Name', extractor: (p) => p.member?.firstName || '', width: 15 },
+          lastName: { header: 'Last Name', extractor: (p) => p.member?.lastName || '', width: 15 },
+          penaltyType: { header: 'Penalty Type', extractor: (p) => p.rule?.name || '', width: 20 },
+          amount: { header: 'Amount', extractor: (p) => this.formatCurrency(p.amount), width: 15 },
+          appliedDate: { header: 'Applied Date', extractor: (p) => this.formatDate(p.appliedDate), width: 15 },
+          reason: { header: 'Reason', extractor: (p) => p.reason || '', width: 30 },
+          status: { header: 'Status', extractor: (p) => p.status?.toUpperCase() || '', width: 12 },
+        };
+        break;
+
+      case 'accounting':
+        data = await this.getAccountingData(associationId);
+        fieldMapping = {
+          entryId: { header: 'Entry ID', extractor: (a) => a.id, width: 15 },
+          entryType: { header: 'Entry Type', extractor: (a) => a.entryType || '', width: 15 },
+          category: { header: 'Category', extractor: (a) => a.category || '', width: 20 },
+          subcategory: { header: 'Subcategory', extractor: (a) => a.subcategory || '', width: 20 },
+          amount: { header: 'Amount', extractor: (a) => this.formatCurrency(a.amount), width: 15 },
+          description: { header: 'Description', extractor: (a) => a.description || '', width: 30 },
+          date: { header: 'Date', extractor: (a) => this.formatDate(a.date), width: 15 },
+          reference: { header: 'Reference', extractor: (a) => a.reference || '', width: 20 },
+        };
+        break;
+
+      default:
+        throw new Error(`Unsupported report type: ${reportType}`);
+    }
+
+    // Headers - only for selected fields
+    const headers = fields.map((field: string) => fieldMapping[field]?.header || field);
+    dataSheet.addRow(headers);
+    this.styleHeaderRow(dataSheet.lastRow!);
+
+    // Data rows - only selected fields
+    data.forEach(item => {
+      const rowData = fields.map((field: string) => {
+        const mapping = fieldMapping[field];
+        return mapping ? mapping.extractor(item) : '';
+      });
+      dataSheet.addRow(rowData);
+    });
+
+    // Format columns based on selected fields
+    fields.forEach((field: string, index: number) => {
+      const mapping = fieldMapping[field];
+      if (mapping?.width) {
+        dataSheet.getColumn(index + 1).width = mapping.width;
+      }
+    });
+
+    // Freeze header row
+    dataSheet.views = [{ state: 'frozen', ySplit: 6 }];
+
+    // ===== SUMMARY SHEET =====
+    const summarySheet = workbook.addWorksheet('Summary');
+    this.addTitleSection(summarySheet, branding, 'Export Summary');
+
+    summarySheet.addRow(['Metric', 'Value']);
+    this.styleHeaderRow(summarySheet.lastRow!);
+
+    summarySheet.addRow(['Report Type', reportType.charAt(0).toUpperCase() + reportType.slice(1)]);
+    summarySheet.addRow(['Total Records', data.length]);
+    summarySheet.addRow(['Selected Fields', fields.length]);
+    summarySheet.addRow(['Export Date', new Date().toLocaleDateString()]);
+    summarySheet.addRow([]);
+    summarySheet.addRow(['Selected Fields:']);
+    fields.forEach((field: string) => {
+      summarySheet.addRow(['', fieldMapping[field]?.header || field]);
+    });
+
+    summarySheet.getColumn(1).width = 25;
+    summarySheet.getColumn(2).width = 20;
+
+    // Save workbook
+    await workbook.xlsx.writeFile(filepath);
+  },
+
+  // Helper methods to get data for different report types
+  async getTransactionsData(associationId: number) {
+    return await prisma.transaction.findMany({
+      where: { associationId },
+      include: {
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true } },
+        category: { select: { id: true, name: true, type: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10000,
+    });
+  },
+
+  async getPaymentsData(associationId: number) {
+    return await prisma.payment.findMany({
+      where: { associationId },
+      include: {
+        transaction: {
+          include: {
+            member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true } },
+          },
+        },
+      },
+      orderBy: { paymentDate: 'desc' },
+      take: 10000,
+    });
+  },
+
+  async getWelfareData(associationId: number) {
+    // Combine welfare contributions and payouts
+    const [contributions, payouts] = await Promise.all([
+      prisma.welfareContribution.findMany({
+        where: { associationId },
+        include: {
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+          fund: { select: { name: true } },
+        },
+        take: 5000,
+      }),
+      prisma.welfarePayoutRequest.findMany({
+        where: { associationId },
+        include: {
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+          fund: { select: { name: true } },
+        },
+        take: 5000,
+      }),
+    ]);
+
+    // Transform and combine data
+    const welfareData = [
+      ...contributions.map(c => ({
+        ...c,
+        contributionAmount: c.amount,
+        payoutAmount: 0,
+        date: c.createdAt,
+      })),
+      ...payouts.map(p => ({
+        ...p,
+        contributionAmount: 0,
+        payoutAmount: p.amount,
+        date: p.createdAt,
+      })),
+    ];
+
+    return welfareData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  },
+
+  async getDonationsData(associationId: number) {
+    return await prisma.transaction.findMany({
+      where: { 
+        associationId,
+        category: { type: 'donation' }
+      },
+      include: {
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        category: { select: { id: true, name: true, type: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10000,
+    });
+  },
+
+  async getLeviesData(associationId: number) {
+    return await prisma.transaction.findMany({
+      where: { 
+        associationId,
+        category: { type: 'levy' }
+      },
+      include: {
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        category: { select: { id: true, name: true, type: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10000,
+    });
+  },
+
+  async getPenaltiesData(associationId: number) {
+    return await prisma.appliedPenalty.findMany({
+      where: { associationId },
+      include: {
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        rule: { select: { name: true } },
+      },
+      orderBy: { appliedDate: 'desc' },
+      take: 10000,
+    });
+  },
+
+  async getAccountingData(associationId: number) {
+    return await prisma.accountingEntry.findMany({
+      where: { associationId },
+      orderBy: { date: 'desc' },
+      take: 10000,
+    });
+  },
 };

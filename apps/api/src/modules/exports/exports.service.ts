@@ -499,6 +499,33 @@ export const exportsService = {
   },
 
   /**
+   * Export custom report with selected fields as Excel
+   */
+  async exportCustomReportExcel(
+    associationId: number,
+    userId: number,
+    filters: any
+  ): Promise<ExportResult> {
+    const branding = await this.getAssociationBranding(associationId);
+    const exportDir = this.ensureExportDirectory();
+    const filename = this.generateFilename(`custom_${filters.reportType}`, 'xlsx', associationId);
+    const filepath = path.join(exportDir, filename);
+
+    await excelService.generateCustomReportExcel(associationId, branding, filters, filepath);
+
+    const stats = fs.statSync(filepath);
+    return this.saveExportRecord(
+      associationId,
+      userId,
+      `custom_${filters.reportType}`,
+      'excel',
+      filename,
+      filepath,
+      stats.size
+    );
+  },
+
+  /**
    * Export member ledger statement as PDF
    * Complete financial history with opening/closing balance
    */

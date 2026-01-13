@@ -59,6 +59,16 @@ router.post(
 );
 
 /**
+ * @route   POST /api/exports/custom-report-excel
+ * @desc    Export custom report data with selected fields as Excel
+ * @access  Private (authenticated users)
+ */
+router.post(
+  '/custom-report-excel',
+  exportsController.exportCustomReportExcel
+);
+
+/**
  * @route   GET /api/exports/history
  * @desc    Get export history
  * @access  Private

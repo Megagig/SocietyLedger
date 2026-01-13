@@ -104,6 +104,21 @@ export const exportsApi = {
   },
 
   /**
+   * Export custom report data with selected fields
+   */
+  async exportCustomReportExcel(params: {
+    reportType: string;
+    fields: string[];
+    filters?: any;
+  }) {
+    const response = await api.post(`${API_URL}/api/exports/custom-report-excel`, {
+      format: 'excel',
+      ...params,
+    });
+    return response.data;
+  },
+
+  /**
    * Get export history
    */
   async getExportHistory(params?: {

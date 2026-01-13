@@ -13,8 +13,9 @@ import {
   Select,
   LoadingOverlay,
   Alert,
+  Tabs,
 } from '@mantine/core';
-import { IconDownload, IconArrowBack, IconEye } from '@tabler/icons-react';
+import { IconDownload, IconArrowBack, IconEye, IconUsers, IconCoin, IconReceipt, IconGift } from '@tabler/icons-react';
 import { ExportFieldSelector } from '@/components/exports/ExportFieldSelector';
 import { ExportPreview } from '@/components/exports/ExportPreview';
 import { ExportProgress } from '@/components/exports/ExportProgress';
@@ -28,7 +29,10 @@ interface PreviewData {
   [key: string]: any;
 }
 
+type ReportType = 'members' | 'transactions' | 'payments' | 'welfare' | 'donations' | 'levies' | 'penalties' | 'accounting';
+
 export default function CustomExportPage() {
+  const [reportType, setReportType] = useState<ReportType>('members');
   const [selectedFields, setSelectedFields] = useState<string[]>([
     'memberNumber',
     'firstName',
@@ -65,11 +69,21 @@ export default function CustomExportPage() {
       }, 300);
 
       try {
-        // Call the custom exports API with selected fields
-        const result = await exportsApi.exportCustomMembersExcel({
-          fields: selectedFields,
-          status: 'all'
-        });
+        let result;
+        
+        // Call appropriate API based on report type
+        if (reportType === 'members') {
+          result = await exportsApi.exportCustomMembersExcel({
+            fields: selectedFields,
+            status: 'all'
+          });
+        } else {
+          // For other report types, use the general custom export API
+          result = await exportsApi.exportCustomReportExcel({
+            reportType,
+            fields: selectedFields,
+          });
+        }
         
         clearInterval(progressInterval);
         setProgress(100);
@@ -120,6 +134,20 @@ export default function CustomExportPage() {
       totalDues: 50000,
       totalPaid: 45000,
       balance: 5000,
+      // Transaction fields
+      transactionId: 'TXN001',
+      amount: 25000,
+      dueDate: '2024-01-15',
+      categoryName: 'Monthly Dues',
+      categoryType: 'due',
+      // Payment fields
+      paymentId: 'PAY001',
+      paymentMethod: 'bank_transfer',
+      paymentDate: '2024-01-10',
+      // Welfare fields
+      contributionAmount: 5000,
+      payoutAmount: 15000,
+      fundName: 'Emergency Fund',
     },
     {
       id: 2,
@@ -132,20 +160,66 @@ export default function CustomExportPage() {
       totalDues: 75000,
       totalPaid: 75000,
       balance: 0,
-    },
-    {
-      id: 3,
-      memberNumber: 'MEM003',
-      firstName: 'Bob',
-      lastName: 'Johnson',
-      email: 'bob.johnson@example.com',
-      category: 'regular',
-      status: 'inactive',
-      totalDues: 50000,
-      totalPaid: 25000,
-      balance: 25000,
+      // Transaction fields
+      transactionId: 'TXN002',
+      amount: 50000,
+      dueDate: '2024-01-15',
+      categoryName: 'Development Levy',
+      categoryType: 'levy',
+      // Payment fields
+      paymentId: 'PAY002',
+      paymentMethod: 'cash',
+      paymentDate: '2024-01-12',
+      // Welfare fields
+      contributionAmount: 10000,
+      payoutAmount: 0,
+      fundName: 'Medical Fund',
     },
   ];
+
+  const getFieldsForReportType = (type: ReportType): string[] => {
+    const fieldSets = {
+      members: [
+        'memberNumber', 'firstName', 'lastName', 'email', 'category', 'status',
+        'totalDues', 'totalPaid', 'balance'
+      ],
+      transactions: [
+        'transactionId', 'memberNumber', 'firstName', 'lastName', 'categoryName',
+        'categoryType', 'amount', 'dueDate', 'status'
+      ],
+      payments: [
+        'paymentId', 'memberNumber', 'firstName', 'lastName', 'amount',
+        'paymentMethod', 'paymentDate', 'status'
+      ],
+      welfare: [
+        'memberNumber', 'firstName', 'lastName', 'fundName', 'contributionAmount',
+        'payoutAmount', 'date', 'status'
+      ],
+      donations: [
+        'memberNumber', 'firstName', 'lastName', 'categoryName', 'amount',
+        'donationDate', 'allocationName', 'status'
+      ],
+      levies: [
+        'memberNumber', 'firstName', 'lastName', 'categoryName', 'amount',
+        'dueDate', 'campaignName', 'status'
+      ],
+      penalties: [
+        'memberNumber', 'firstName', 'lastName', 'penaltyType', 'amount',
+        'appliedDate', 'reason', 'status'
+      ],
+      accounting: [
+        'entryId', 'entryType', 'category', 'subcategory', 'amount',
+        'description', 'date', 'reference'
+      ],
+    };
+    return fieldSets[type] || fieldSets.members;
+  };
+
+  const handleReportTypeChange = (newType: ReportType) => {
+    setReportType(newType);
+    setSelectedFields(getFieldsForReportType(newType));
+    setShowPreview(false);
+  };
 
   const handlePreview = () => {
     setShowPreview(true);
@@ -165,17 +239,7 @@ export default function CustomExportPage() {
 
   const handleCancelExport = () => {
     setShowProgress(false);
-    setSelectedFields([
-      'memberNumber',
-      'firstName',
-      'lastName',
-      'email',
-      'category',
-      'status',
-      'totalDues',
-      'totalPaid',
-      'balance',
-    ]);
+    setSelectedFields(getFieldsForReportType(reportType));
   };
 
   const handleRetry = () => {
@@ -210,7 +274,7 @@ export default function CustomExportPage() {
           />
         ) : showPreview ? (
           <ExportPreview
-            title="Custom Member Export Preview"
+            title={`Custom ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Export Preview`}
             fields={selectedFields}
             sampleData={sampleData}
             estimatedRecords={150}
@@ -225,78 +289,166 @@ export default function CustomExportPage() {
             onCancel={() => setShowPreview(false)}
           />
         ) : (
-          <Grid>
-            <Grid.Col span={{ base: 12, lg: 8 }}>
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Stack gap="md">
-                  <div>
-                    <Title order={4} mb="md">Select Fields</Title>
-                    <Text size="sm" c="dimmed" mb="md">
-                      Choose the fields you want to include in your export
-                    </Text>
-                  </div>
-
-                  <ExportFieldSelector
-                    selectedFields={selectedFields}
-                    onChange={setSelectedFields}
-                  />
-
-                  <Group justify="flex-end" mt="md">
-                    <Button variant="default" onClick={() => setShowPreview(false)}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      leftSection={<IconEye size={16} />}
-                      onClick={handlePreview}
-                      disabled={selectedFields.length === 0}
-                    >
-                      Preview Export
-                    </Button>
-                  </Group>
-                </Stack>
-              </Card>
-            </Grid.Col>
-
-            <Grid.Col span={{ base: 12, lg: 4 }}>
+          <Stack gap="xl">
+            {/* Report Type Selection */}
+            <Card shadow="sm" padding="lg" radius="md" withBorder>
               <Stack gap="md">
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                  <Stack gap="sm">
-                    <Title order={5}>Export Summary</Title>
-                    <Text size="sm" c="dimmed">
-                      {selectedFields.length} fields selected
-                    </Text>
-                    <Text size="sm" c="dimmed">
-                      Estimated records: 150
-                    </Text>
-                    <Text size="sm" c="dimmed">
-                      Format: Excel (.xlsx)
-                    </Text>
-                  </Stack>
-                </Card>
-
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                  <Stack gap="sm">
-                    <Title order={5}>Quick Actions</Title>
-                    <Button 
-                      variant="light" 
-                      fullWidth 
-                      leftSection={<IconDownload size={16} />}
-                      onClick={handleGenerate}
-                      disabled={selectedFields.length === 0}
-                    >
-                      Generate Export
-                    </Button>
-                  </Stack>
-                </Card>
-
-                <Alert color="blue" variant="light">
-                  <Text size="sm">
-                    <strong>Tip:</strong> You can preview your export before generating to ensure you have selected the correct fields.
+                <div>
+                  <Title order={4} mb="md">Select Report Type</Title>
+                  <Text size="sm" c="dimmed" mb="md">
+                    Choose the type of data you want to export
                   </Text>
-                </Alert>
+                </div>
+
+                <Tabs value={reportType} onChange={(value) => handleReportTypeChange(value as ReportType)}>
+                  <Tabs.List>
+                    <Tabs.Tab value="members" leftSection={<IconUsers size={16} />}>
+                      Members
+                    </Tabs.Tab>
+                    <Tabs.Tab value="transactions" leftSection={<IconReceipt size={16} />}>
+                      Transactions
+                    </Tabs.Tab>
+                    <Tabs.Tab value="payments" leftSection={<IconCoin size={16} />}>
+                      Payments
+                    </Tabs.Tab>
+                    <Tabs.Tab value="welfare" leftSection={<IconGift size={16} />}>
+                      Welfare
+                    </Tabs.Tab>
+                    <Tabs.Tab value="donations" leftSection={<IconGift size={16} />}>
+                      Donations
+                    </Tabs.Tab>
+                    <Tabs.Tab value="levies" leftSection={<IconReceipt size={16} />}>
+                      Levies
+                    </Tabs.Tab>
+                    <Tabs.Tab value="penalties" leftSection={<IconReceipt size={16} />}>
+                      Penalties
+                    </Tabs.Tab>
+                    <Tabs.Tab value="accounting" leftSection={<IconReceipt size={16} />}>
+                      Accounting
+                    </Tabs.Tab>
+                  </Tabs.List>
+
+                  <Tabs.Panel value="members" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export member information including personal details, contact info, and financial balances.
+                    </Text>
+                  </Tabs.Panel>
+                  <Tabs.Panel value="transactions" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export transaction records including dues, levies, donations, and penalties.
+                    </Text>
+                  </Tabs.Panel>
+                  <Tabs.Panel value="payments" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export payment records showing all member payments and payment methods.
+                    </Text>
+                  </Tabs.Panel>
+                  <Tabs.Panel value="welfare" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export welfare contributions and payouts from various welfare funds.
+                    </Text>
+                  </Tabs.Panel>
+                  <Tabs.Panel value="donations" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export donation records and allocation details.
+                    </Text>
+                  </Tabs.Panel>
+                  <Tabs.Panel value="levies" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export levy campaigns and member assignments.
+                    </Text>
+                  </Tabs.Panel>
+                  <Tabs.Panel value="penalties" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export penalty records including late payment fees and other penalties.
+                    </Text>
+                  </Tabs.Panel>
+                  <Tabs.Panel value="accounting" pt="md">
+                    <Text size="sm" c="dimmed">
+                      Export accounting entries for financial reporting and analysis.
+                    </Text>
+                  </Tabs.Panel>
+                </Tabs>
               </Stack>
-            </Grid.Col>
-          </Grid>
+            </Card>
+
+            <Grid>
+              <Grid.Col span={{ base: 12, lg: 8 }}>
+                <Card shadow="sm" padding="lg" radius="md" withBorder>
+                  <Stack gap="md">
+                    <div>
+                      <Title order={4} mb="md">Select Fields</Title>
+                      <Text size="sm" c="dimmed" mb="md">
+                        Choose the fields you want to include in your {reportType} export
+                      </Text>
+                    </div>
+
+                    <ExportFieldSelector
+                      selectedFields={selectedFields}
+                      onChange={setSelectedFields}
+                      reportType={reportType}
+                    />
+
+                    <Group justify="flex-end" mt="md">
+                      <Button variant="default" onClick={() => setShowPreview(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        leftSection={<IconEye size={16} />}
+                        onClick={handlePreview}
+                        disabled={selectedFields.length === 0}
+                      >
+                        Preview Export
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Card>
+              </Grid.Col>
+
+              <Grid.Col span={{ base: 12, lg: 4 }}>
+                <Stack gap="md">
+                  <Card shadow="sm" padding="lg" radius="md" withBorder>
+                    <Stack gap="sm">
+                      <Title order={5}>Export Summary</Title>
+                      <Text size="sm" c="dimmed">
+                        Report Type: {reportType.charAt(0).toUpperCase() + reportType.slice(1)}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        {selectedFields.length} fields selected
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Estimated records: 150
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Format: Excel (.xlsx)
+                      </Text>
+                    </Stack>
+                  </Card>
+
+                  <Card shadow="sm" padding="lg" radius="md" withBorder>
+                    <Stack gap="sm">
+                      <Title order={5}>Quick Actions</Title>
+                      <Button 
+                        variant="light" 
+                        fullWidth 
+                        leftSection={<IconDownload size={16} />}
+                        onClick={handleGenerate}
+                        disabled={selectedFields.length === 0}
+                      >
+                        Generate Export
+                      </Button>
+                    </Stack>
+                  </Card>
+
+                  <Alert color="blue" variant="light">
+                    <Text size="sm">
+                      <strong>Tip:</strong> You can preview your export before generating to ensure you have selected the correct fields for your {reportType} report.
+                    </Text>
+                  </Alert>
+                </Stack>
+              </Grid.Col>
+            </Grid>
+          </Stack>
         )}
       </Stack>
     </Container>
