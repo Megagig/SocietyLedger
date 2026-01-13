@@ -21,7 +21,8 @@ import authRoutes from './modules/auth/auth.routes';
 import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
-import webhookRoutes from './modules/webhooks/webhooks.routes';
+import webhookHandlerRoutes from './modules/webhooks/webhooks.routes';
+import webhookManagementRoutes from './modules/webhooks/webhooks-management.routes';
 import memberRoutes from './modules/members/members.routes';
 import financeRoutes from './modules/finance/finance.routes';
 import cronRoutes from './modules/cron/cron.routes';
@@ -110,8 +111,14 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(uploadsPath));
 
-// Webhook routes (must be before tenantMiddleware for raw body access)
-app.use('/api/webhooks', webhookRoutes);
+// Webhook handler routes (must be before tenantMiddleware for raw body access)
+app.use('/api/webhooks', webhookHandlerRoutes);
+
+// Webhooks management routes (for admin UI)
+app.use('/api/webhooks', webhookManagementRoutes);
+
+// Cron routes (Super Admin only, must be before tenantMiddleware)
+app.use('/api/cron', cronRoutes);
 
 // Tenant middleware for all other routes
 app.use(tenantMiddleware);
@@ -153,7 +160,6 @@ app.use('/api/members/me', memberFinanceRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/cron', cronRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/member-invites', memberInviteRoutes);

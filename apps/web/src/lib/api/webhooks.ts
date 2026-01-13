@@ -1,5 +1,47 @@
-import axios from 'axios';
-import { API_ROUTES } from '@/utils/constants';
+// Get auth token from localStorage
+const getAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
+      const { state } = JSON.parse(authStorage);
+      return state?.token || null;
+    }
+  } catch (error) {
+    console.error('[Webhooks API] Error parsing auth storage:', error);
+  }
+  return null;
+};
+
+// Create headers for Super Admin API calls (no tenant context needed)
+const createSuperAdminHeaders = (): HeadersInit => {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
+// API Base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+// Webhook API Routes
+const WEBHOOK_ROUTES = {
+  STATS: `${API_BASE_URL}/api/webhooks/stats`,
+  EVENTS: `${API_BASE_URL}/api/webhooks/events`,
+  EVENT_BY_ID: (id: number) => `${API_BASE_URL}/api/webhooks/events/${id}`,
+  RETRY_EVENT: (id: number) => `${API_BASE_URL}/api/webhooks/events/${id}/retry`,
+  RETRY_FAILED: `${API_BASE_URL}/api/webhooks/events/retry-failed`,
+  CLEAR_LOGS: `${API_BASE_URL}/api/webhooks/logs/clear`,
+  TEST: `${API_BASE_URL}/api/webhooks/test`,
+  EVENT_TYPES: `${API_BASE_URL}/api/webhooks/event-types`,
+};
 
 // Types
 export interface WebhookStats {
@@ -70,8 +112,18 @@ export interface WebhookTestResponse {
 export const webhooksApi = {
   // Get webhook statistics
   getStats: async (): Promise<WebhookStats> => {
-    const response = await axios.get(API_ROUTES.WEBHOOKS.STATS);
-    return response.data;
+    const response = await fetch(WEBHOOK_ROUTES.STATS, {
+      method: 'GET',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data;
   },
 
   // Get webhook events with pagination and filters
@@ -84,24 +136,69 @@ export const webhooksApi = {
     endDate?: string;
     search?: string;
   }): Promise<{ events: WebhookEvent[]; total: number; page: number; limit: number }> => {
-    const response = await axios.get(API_ROUTES.WEBHOOKS.EVENTS, { params });
-    return response.data;
+    const url = new URL(WEBHOOK_ROUTES.EVENTS);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          url.searchParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data;
   },
 
   // Get single webhook event
   getEvent: async (id: number): Promise<WebhookEvent> => {
-    const response = await axios.get(API_ROUTES.WEBHOOKS.EVENT_BY_ID(id));
-    return response.data;
+    const response = await fetch(WEBHOOK_ROUTES.EVENT_BY_ID(id), {
+      method: 'GET',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data;
   },
 
   // Retry failed webhook event
   retryEvent: async (id: number): Promise<void> => {
-    await axios.post(API_ROUTES.WEBHOOKS.RETRY_EVENT(id));
+    const response = await fetch(WEBHOOK_ROUTES.RETRY_EVENT(id), {
+      method: 'POST',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
   },
 
   // Retry all failed webhook events
   retryFailed: async (): Promise<void> => {
-    await axios.post(`${API_ROUTES.WEBHOOKS.EVENTS}/retry-failed`);
+    const response = await fetch(WEBHOOK_ROUTES.RETRY_FAILED, {
+      method: 'POST',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
   },
 
   // Clear webhook logs
@@ -109,19 +206,57 @@ export const webhooksApi = {
     olderThan?: string;
     status?: string;
   }): Promise<void> => {
-    await axios.delete(API_ROUTES.WEBHOOKS.CLEAR_LOGS, { params });
+    const url = new URL(WEBHOOK_ROUTES.CLEAR_LOGS);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          url.searchParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const response = await fetch(url.toString(), {
+      method: 'DELETE',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
   },
 
   // Test webhook
   testWebhook: async (data: WebhookTestRequest): Promise<WebhookTestResponse> => {
-    const response = await axios.post(API_ROUTES.WEBHOOKS.TEST, data);
-    return response.data;
+    const response = await fetch(WEBHOOK_ROUTES.TEST, {
+      method: 'POST',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    return result;
   },
 
   // Get webhook event types
   getEventTypes: async (): Promise<string[]> => {
-    const response = await axios.get(API_ROUTES.WEBHOOKS.EVENT_TYPES);
-    return response.data;
+    const response = await fetch(WEBHOOK_ROUTES.EVENT_TYPES, {
+      method: 'GET',
+      headers: createSuperAdminHeaders(),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data;
   },
 };
 

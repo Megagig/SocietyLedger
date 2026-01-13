@@ -43,6 +43,7 @@ import {
   IconTicket,
   IconPlus,
   IconClock,
+  IconWebhook,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -813,6 +814,16 @@ export function Sidebar() {
           label: 'Settings',
           icon: <IconSettings size={18} />,
           href: '/admin/settings',
+        },
+        {
+          label: 'Webhooks',
+          icon: <IconWebhook size={18} />,
+          href: '/admin/webhooks',
+        },
+        {
+          label: 'Cron Jobs',
+          icon: <IconRobot size={18} />,
+          href: '/admin/cron-jobs',
         },
       ],
     });

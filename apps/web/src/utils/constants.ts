@@ -315,6 +315,18 @@ export const API_ROUTES = {
     TEST: `${API_BASE_URL}/api/webhooks/test`,
     EVENT_TYPES: `${API_BASE_URL}/api/webhooks/event-types`,
   },
+  // Phase 15: Cron Jobs Management UI
+  CRON: {
+    STATUS: `${API_BASE_URL}/api/cron/status`,
+    TRIAL_EXPIRY: `${API_BASE_URL}/api/cron/trial-expiry`,
+    RENEWAL_REMINDERS: `${API_BASE_URL}/api/cron/renewal-reminders`,
+    LATE_FEES: `${API_BASE_URL}/api/cron/late-fees`,
+    UPDATE_OVERDUE: `${API_BASE_URL}/api/cron/update-overdue`,
+    LOGS: `${API_BASE_URL}/api/cron/logs`,
+    LOG_BY_ID: (id: number) => `${API_BASE_URL}/api/cron/logs/${id}`,
+    CONFIG: (jobId: string) => `${API_BASE_URL}/api/cron/jobs/${jobId}/config`,
+    TOGGLE: (jobId: string) => `${API_BASE_URL}/api/cron/jobs/${jobId}/toggle`,
+  },
 } as const;
 
 // App Settings
