@@ -31,10 +31,7 @@ import {
 import { Can, usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import { useAuthStore } from '@/store/authStore';
-import {
-  getUnmatchedDashboard,
-  getBankAccounts,
-  getBankTransfers,
+import nigerianPaymentsApi, {
   type UnmatchedDashboard,
   type BankAccount,
   type BankTransfer,
@@ -61,14 +58,14 @@ export default function PaymentsDashboardPage() {
 
       // Load dashboard data
       const [dashboardRes, accountsRes, transfersRes] = await Promise.all([
-        getUnmatchedDashboard(),
-        getBankAccounts(true),
-        getBankTransfers({ limit: 5, page: 1 }),
+        nigerianPaymentsApi.getUnmatchedDashboard(),
+        nigerianPaymentsApi.getBankAccounts(),
+        nigerianPaymentsApi.getBankTransfers({ limit: 5, page: 1 }),
       ]);
 
-      setDashboard(dashboardRes.data);
-      setBankAccounts(accountsRes.data?.bankAccounts || []);
-      setRecentTransfers(transfersRes.data?.bankTransfers || []);
+      setDashboard(dashboardRes);
+      setBankAccounts(accountsRes || []);
+      setRecentTransfers(transfersRes.data || []);
     } catch (err: any) {
       console.error('Error loading dashboard:', err);
       setError(err.response?.data?.message || 'Failed to load dashboard data');
@@ -179,7 +176,7 @@ export default function PaymentsDashboardPage() {
                 <Clock size={20} color="orange" />
               </Group>
               <Text size="xl" fw={700}>
-                {dashboard?.pendingBankTransfers || 0}
+                {dashboard?.pendingProofs || 0}
               </Text>
               <Text size="xs" c="dimmed" mt="xs">
                 Bank transfers awaiting verification
@@ -213,7 +210,7 @@ export default function PaymentsDashboardPage() {
                 <FileText size={20} color="blue" />
               </Group>
               <Text size="xl" fw={700}>
-                {dashboard?.pendingPaymentProofs || 0}
+                {dashboard?.pendingProofs || 0}
               </Text>
               <Text size="xs" c="dimmed" mt="xs">
                 Uploaded proofs pending review

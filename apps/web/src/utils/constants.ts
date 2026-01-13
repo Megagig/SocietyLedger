@@ -260,6 +260,73 @@ export const API_ROUTES = {
     TICKET_STATS: `${API_BASE_URL}/api/support/tickets/stats`,
     TICKET_COUNT: `${API_BASE_URL}/api/support/tickets/count`,
   },
+  // Phase 3.6: Nigerian Payments UI
+  NIGERIAN_PAYMENTS: {
+    // Bank Accounts
+    BANK_ACCOUNTS: `${API_BASE_URL}/api/payments/nigerian/bank-accounts`,
+    BANK_ACCOUNT_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-accounts/${id}`,
+    SET_DEFAULT: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-accounts/${id}/set-default`,
+    // Bank Transfers
+    BANK_TRANSFERS: `${API_BASE_URL}/api/payments/nigerian/bank-transfers`,
+    BANK_TRANSFER_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-transfers/${id}`,
+    VERIFY_TRANSFER: (id: string) => `${API_BASE_URL}/api/payments/nigerian/bank-transfers/${id}/verify`,
+    // Reconciliation
+    RECONCILIATIONS: `${API_BASE_URL}/api/payments/nigerian/reconciliations`,
+    RECONCILIATION_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/reconciliations/${id}`,
+    CONFIRM_RECONCILIATION: (id: string) => `${API_BASE_URL}/api/payments/nigerian/reconciliations/${id}/confirm`,
+    AUTO_MATCH: `${API_BASE_URL}/api/payments/nigerian/auto-match`,
+    AUTO_MATCH_APPLY: `${API_BASE_URL}/api/payments/nigerian/auto-match/apply`,
+    UNMATCHED_DASHBOARD: `${API_BASE_URL}/api/payments/nigerian/unmatched-dashboard`,
+    // Bank Statements
+    STATEMENT_IMPORTS: `${API_BASE_URL}/api/payments/nigerian/statement-imports`,
+    STATEMENT_IMPORT_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/statement-imports/${id}`,
+    IMPORT_STATEMENT: `${API_BASE_URL}/api/payments/nigerian/import-statement`,
+    STATEMENT_ENTRIES: `${API_BASE_URL}/api/payments/nigerian/statement-entries`,
+    // Payment Proofs
+    PAYMENT_PROOFS: `${API_BASE_URL}/api/payments/nigerian/proofs`,
+    PAYMENT_PROOF_BY_ID: (id: string) => `${API_BASE_URL}/api/payments/nigerian/proofs/${id}`,
+    VERIFY_PROOF: (id: string) => `${API_BASE_URL}/api/payments/nigerian/proofs/${id}/verify`,
+    // Nigerian Banks
+    BANKS: `${API_BASE_URL}/api/payments/nigerian/banks`,
+  },
+  // Phase 6.6: SMS/Communications UI
+  SMS: {
+    DASHBOARD: `${API_BASE_URL}/api/sms/dashboard`,
+    SEND: `${API_BASE_URL}/api/sms/send`,
+    CAMPAIGNS: `${API_BASE_URL}/api/sms/campaigns`,
+    CAMPAIGN_BY_ID: (id: number) => `${API_BASE_URL}/api/sms/campaigns/${id}`,
+    START_CAMPAIGN: (id: number) => `${API_BASE_URL}/api/sms/campaigns/${id}/start`,
+    CANCEL_CAMPAIGN: (id: number) => `${API_BASE_URL}/api/sms/campaigns/${id}/cancel`,
+    TEMPLATES: `${API_BASE_URL}/api/sms/templates`,
+    TEMPLATE_BY_ID: (id: number) => `${API_BASE_URL}/api/sms/templates/${id}`,
+    MESSAGES: `${API_BASE_URL}/api/sms/messages`,
+    MESSAGE_BY_ID: (id: number) => `${API_BASE_URL}/api/sms/messages/${id}`,
+    CREDITS_BALANCE: `${API_BASE_URL}/api/sms/credits/balance`,
+    CREDITS_TOPUP: `${API_BASE_URL}/api/sms/credits/topup`,
+    CREDITS_HISTORY: `${API_BASE_URL}/api/sms/credits/history`,
+  },
+  // Phase 14: Webhooks Management UI
+  WEBHOOKS: {
+    STATS: `${API_BASE_URL}/api/webhooks/stats`,
+    EVENTS: `${API_BASE_URL}/api/webhooks/events`,
+    EVENT_BY_ID: (id: number) => `${API_BASE_URL}/api/webhooks/events/${id}`,
+    RETRY_EVENT: (id: number) => `${API_BASE_URL}/api/webhooks/events/${id}/retry`,
+    CLEAR_LOGS: `${API_BASE_URL}/api/webhooks/logs/clear`,
+    TEST: `${API_BASE_URL}/api/webhooks/test`,
+    EVENT_TYPES: `${API_BASE_URL}/api/webhooks/event-types`,
+  },
+  // Phase 15: Cron Jobs Management UI
+  CRON: {
+    STATUS: `${API_BASE_URL}/api/cron/status`,
+    TRIAL_EXPIRY: `${API_BASE_URL}/api/cron/trial-expiry`,
+    RENEWAL_REMINDERS: `${API_BASE_URL}/api/cron/renewal-reminders`,
+    LATE_FEES: `${API_BASE_URL}/api/cron/late-fees`,
+    UPDATE_OVERDUE: `${API_BASE_URL}/api/cron/update-overdue`,
+    LOGS: `${API_BASE_URL}/api/cron/logs`,
+    LOG_BY_ID: (id: number) => `${API_BASE_URL}/api/cron/logs/${id}`,
+    CONFIG: (jobId: string) => `${API_BASE_URL}/api/cron/jobs/${jobId}/config`,
+    TOGGLE: (jobId: string) => `${API_BASE_URL}/api/cron/jobs/${jobId}/toggle`,
+  },
 } as const;
 
 // App Settings

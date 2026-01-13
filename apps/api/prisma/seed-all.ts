@@ -59,9 +59,10 @@ async function main() {
   console.log('📝 Summary:');
   console.log('  ✅ Super admin account');
   console.log('  ✅ Subscription plans (Starter, Professional, Enterprise)');
-  console.log('  ✅ RBAC roles & permissions');
-  console.log('  ✅ Platform modules');
-  console.log('  ✅ Help system');
+  console.log('  ✅ RBAC roles & permissions (54+ permissions)');
+  console.log('  ✅ Platform modules (14 modules, 17+ features)');
+  console.log('  ✅ Platform association for hybrid super admin');
+  console.log('  ✅ Help & support system (10 articles, 19 FAQs)');
   console.log('\n🔐 Super Admin Credentials:');
   console.log('  Email: megagigdev@gmail.com');
   console.log('  Password: SuperSecret123!');

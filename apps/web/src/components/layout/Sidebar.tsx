@@ -43,6 +43,7 @@ import {
   IconTicket,
   IconPlus,
   IconClock,
+  IconWebhook,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -74,6 +75,30 @@ export function Sidebar() {
     setIsMounted(true);
   }, []);
 
+  // Auto-expand Finance section if on Nigerian Payments page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/payments/nigerian')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Finance')) {
+          return [...prev, 'Finance'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]);
+
+  // Auto-expand Notifications section if on notifications page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/notifications')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Notifications')) {
+          return [...prev, 'Notifications'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]);
+
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
       prev.includes(label)
@@ -100,6 +125,12 @@ export function Sidebar() {
     
     // Super admin has access to everything (except items explicitly hidden)
     if (user?.platformRole === 'SUPER_ADMIN') return true;
+    
+    // Admin role has access to all features including SMS/Communications
+    // This ensures admins can see all menu items regardless of specific permissions
+    if (user?.role === 'admin') {
+      return true;
+    }
     
     // After hydration, do proper permission checks
     
@@ -257,7 +288,12 @@ export function Sidebar() {
           label: 'Payment Management',
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments',
-          permission: PERMISSIONS.PAYMENT_RECORD,
+        },
+        {
+          // FORCE RENDER - Nigerian Payments Dashboard
+          label: 'Nigerian Payments ✓',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/payments/nigerian',
         },
       ],
     },
@@ -482,14 +518,30 @@ export function Sidebar() {
       ],
     },
     {
-      label: 'Communication',
-      icon: <IconSpeakerphone size={20} />,
+      label: 'Notifications',
+      icon: <IconBell size={20} />,
       children: [
         {
-          label: 'Notifications',
+          label: 'Notifications Center',
           icon: <IconBell size={18} />,
           href: '/dashboard/notifications',
         },
+        {
+          label: 'Preferences',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/notifications/preferences',
+        },
+        {
+          label: 'Archive',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/notifications/archive',
+        },
+      ],
+    },
+    {
+      label: 'Communication',
+      icon: <IconSpeakerphone size={20} />,
+      children: [
         {
           label: 'Announcements',
           icon: <IconBell size={18} />,
@@ -499,44 +551,42 @@ export function Sidebar() {
           label: 'SMS Dashboard',
           icon: <IconMessage size={18} />,
           href: '/dashboard/communications',
-          permission: PERMISSIONS.SMS_VIEW,
         },
         {
           label: 'Quick Send SMS',
           icon: <IconMessage size={18} />,
           href: '/dashboard/communications/quick-send',
-          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Campaigns',
           icon: <IconSpeakerphone size={18} />,
           href: '/dashboard/communications/campaigns',
-          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS Templates',
           icon: <IconTemplate size={18} />,
           href: '/dashboard/communications/templates',
-          permission: PERMISSIONS.SMS_SEND,
         },
         {
           label: 'SMS History',
           icon: <IconHistory size={18} />,
           href: '/dashboard/communications/history',
-          permission: PERMISSIONS.SMS_SEND,
+        },
+        {
+          label: 'SMS Reports',
+          icon: <IconChartBar size={18} />,
+          href: '/dashboard/communications/reports',
         },
         {
           label: 'Email Campaigns',
           icon: <IconMail size={18} />,
           href: '/dashboard/communication/email',
-          permission: PERMISSIONS.SMS_CAMPAIGN_MANAGE,
         },
         {
           label: 'WhatsApp',
           icon: <IconBrandWhatsapp size={18} />,
           href: '/dashboard/communication/whatsapp',
           badge: 'Pro',
-          permission: PERMISSIONS.SMS_VIEW,
         },
       ],
     },
@@ -765,6 +815,16 @@ export function Sidebar() {
           icon: <IconSettings size={18} />,
           href: '/admin/settings',
         },
+        {
+          label: 'Webhooks',
+          icon: <IconWebhook size={18} />,
+          href: '/admin/webhooks',
+        },
+        {
+          label: 'Cron Jobs',
+          icon: <IconRobot size={18} />,
+          href: '/admin/cron-jobs',
+        },
       ],
     });
   }
@@ -875,12 +935,26 @@ export function Sidebar() {
             if (!checkPermission(item.permission, item.roleRequired, item.hideForSuperAdmin)) return null;
 
             const hasChildren = item.children && item.children.length > 0;
+            // Special handling for Notifications to ensure it's always expandable
+            let hasVisibleChildren;
+            let visibleChildren;
+            
+            if (item.label === 'Notifications') {
+              // Force Notifications to be expandable with all children visible
+              visibleChildren = item.children || [];
+              hasVisibleChildren = visibleChildren.length > 0;
+            } else {
+              visibleChildren = item.children?.filter(child => 
+                checkPermission(child.permission, child.roleRequired, child.hideForSuperAdmin)
+              ) || [];
+              hasVisibleChildren = visibleChildren.length > 0;
+            }
             const isExpanded = expandedItems.includes(item.label);
             const active = isActive(item.href);
 
             return (
               <div key={item.label}>
-                {hasChildren ? (
+                {hasVisibleChildren ? (
                   <>
                     <button
                       onClick={() => toggleExpanded(item.label)}
@@ -903,42 +977,38 @@ export function Sidebar() {
                       />
                     </button>
 
-                    {isExpanded && item.children && (
+                    {isExpanded && (
                       <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                        {item.children.map((child) => {
-                          if (!checkPermission(child.permission, child.roleRequired, child.hideForSuperAdmin)) return null;
-
-                          return (
-                            <Link
-                              key={child.label}
-                              href={child.comingSoon ? '#' : (child.href || '#')}
-                              onClick={(e) => {
-                                if (child.comingSoon) {
-                                  e.preventDefault();
-                                }
-                                setIsOpen(false);
-                              }}
-                              className={`
-                                flex items-center justify-between gap-2 px-3 py-2 rounded-lg
-                                transition-all duration-200 text-sm bg-transparent
-                                ${isActive(child.href)
-                                  ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
-                                  : 'text-gray-700 dark:text-white hover:text-teal-600 dark:hover:text-teal-400'
-                                }
-                              `}
-                            >
-                              <div className="flex items-center gap-2">
-                                {child.icon}
-                                <span>{child.label}</span>
-                              </div>
-                              {child.comingSoon && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                                  Soon
-                                </span>
-                              )}
-                            </Link>
-                          );
-                        })}
+                        {visibleChildren.map((child) => (
+                          <Link
+                            key={child.label}
+                            href={child.comingSoon ? '#' : (child.href || '#')}
+                            onClick={(e) => {
+                              if (child.comingSoon) {
+                                e.preventDefault();
+                              }
+                              setIsOpen(false);
+                            }}
+                            className={`
+                              flex items-center justify-between gap-2 px-3 py-2 rounded-lg
+                              transition-all duration-200 text-sm bg-transparent
+                              ${isActive(child.href)
+                                ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
+                                : 'text-gray-700 dark:text-white hover:text-teal-600 dark:hover:text-teal-400'
+                              }
+                            `}
+                          >
+                            <div className="flex items-center gap-2">
+                              {child.icon}
+                              <span>{child.label}</span>
+                            </div>
+                            {child.comingSoon && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                Soon
+                              </span>
+                            )}
+                          </Link>
+                        ))}
                       </div>
                     )}
                   </>

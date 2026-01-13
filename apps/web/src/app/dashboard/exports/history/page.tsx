@@ -1,295 +1,189 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
-  Card,
+  Container,
   Title,
   Text,
+  Card,
   Stack,
-  Table,
-  Badge,
   Button,
   Group,
   TextInput,
   Select,
+  Pagination,
   LoadingOverlay,
   Alert,
-  ActionIcon,
 } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import { useDebouncedValue } from '@mantine/hooks';
+import { IconSearch, IconFilter, IconRefresh } from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { exportsApi, ExportHistoryItem } from '@/lib/api/exports';
+import { ExportHistoryTable } from '@/components/exports/ExportHistoryTable';
 import { notifications } from '@mantine/notifications';
-import { Search, Download, FileText, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { Can } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/lib/permissions';
-import { exportsApi, type ExportHistoryItem } from '@/lib/api/exports';
 
 export default function ExportHistoryPage() {
-  const [loading, setLoading] = useState(true);
-  const [exports, setExports] = useState<ExportHistoryItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<string>('');
-  const [format, setFormat] = useState<string>('');
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const [debounced] = useDebouncedValue(search, 500);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [formatFilter, setFormatFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  useEffect(() => {
-    loadHistory();
-  }, [page, debounced, type, format]);
+  const { data: historyData, isLoading, refetch } = useQuery({
+    queryKey: ['export-history', page, typeFilter, formatFilter],
+    queryFn: () => exportsApi.getExportHistory({
+      page,
+      limit: 20,
+      type: typeFilter || undefined,
+      format: (formatFilter as 'pdf' | 'excel') || undefined,
+    }),
+  });
 
-  const loadHistory = async () => {
-    try {
-      setLoading(true);
-      const res = await exportsApi.getExportHistory({
-        page,
-        limit: 20,
-        type: type || undefined,
-        format: format as any || undefined,
-      });
-      setExports(res.data.exports);
-      setTotal(res.data.total);
-    } catch (err: any) {
-      console.error('Error loading export history:', err);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load export history',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
+  const exports = (() => {
+    console.log('Export history data:', historyData);
+    console.log('Export history data.data:', historyData?.data);
+    
+    if (!historyData) return [];
+    if (historyData.data && Array.isArray(historyData.data.exports)) {
+      return historyData.data.exports;
     }
+    if (Array.isArray(historyData.data)) return historyData.data;
+    if (Array.isArray(historyData)) return historyData;
+    return [];
+  })();
+  
+  const totalPages = historyData?.data?.pagination?.totalPages || 
+                    Math.ceil((historyData?.data?.pagination?.totalCount || 0) / 20) || 1;
+
+  const handleDownload = (id: number) => {
+    exportsApi.downloadExport(id);
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  const handleSelect = (id: number) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
   };
 
-  const isExpired = (expiresAt: string) => {
-    return new Date(expiresAt) < new Date();
+  const handleSelectAll = () => {
+    setSelectedIds(exports.map((item: ExportHistoryItem) => item.id));
   };
 
-  const getFormatIcon = (format: string) => {
-    return format === 'pdf' ? <FileText size={16} /> : <FileSpreadsheet size={16} />;
+  const handleSearch = () => {
+    refetch();
   };
 
-  const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      financial_summary: 'Financial Summary',
-      member_statement: 'Member Statement',
-      members_list: 'All Members',
-      transactions: 'Transactions',
-    };
-    return labels[type] || type;
+  const handleClearFilters = () => {
+    setSearch('');
+    setTypeFilter(null);
+    setFormatFilter(null);
+    setPage(1);
   };
+
+  const exportTypes = [
+    { value: 'financial_summary', label: 'Financial Summary' },
+    { value: 'member_balances', label: 'Member Balances' },
+    { value: 'member_statement', label: 'Member Statement' },
+    { value: 'aging_analysis', label: 'Aging Analysis' },
+    { value: 'collection_rate', label: 'Collection Rate' },
+    { value: 'category_report', label: 'Category Report' },
+    { value: 'all_members', label: 'All Members' },
+  ];
+
+  const formatOptions = [
+    { value: 'pdf', label: 'PDF' },
+    { value: 'excel', label: 'Excel' },
+  ];
 
   return (
-    <Can
-      permission={PERMISSIONS.EXPORT_VIEW_HISTORY}
-      fallback={<Alert color="red">You don't have permission to view export history</Alert>}
-    >
-      <Stack gap="lg">
-        <Group justify="space-between">
+    <Container size="xl" py="xl">
+      <Stack gap="xl">
+        {/* Header */}
+        <Group justify="space-between" align="center">
           <div>
             <Title order={2}>Export History</Title>
-            <Text size="sm" c="dimmed">
-              View and download previously generated exports
+            <Text size="sm" c="dimmed" mt="xs">
+              View and manage all your exports
             </Text>
           </div>
-          <Button variant="light" onClick={() => window.history.back()}>
-            Back
-          </Button>
+          <Group gap="sm">
+            <Button 
+              variant="light" 
+              leftSection={<IconRefresh size={16} />}
+              onClick={() => refetch()}
+            >
+              Refresh
+            </Button>
+          </Group>
         </Group>
 
         {/* Filters */}
-        <Card withBorder padding="md">
-          <Stack gap="md">
-            <Group>
-              <TextInput
-                placeholder="Search exports..."
-                leftSection={<Search size={16} />}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <Select
-                placeholder="Type"
-                value={type}
-                onChange={(value) => setType(value || '')}
-                data={[
-                  { value: '', label: 'All Types' },
-                  { value: 'financial_summary', label: 'Financial Summary' },
-                  { value: 'member_statement', label: 'Member Statement' },
-                  { value: 'members_list', label: 'All Members' },
-                ]}
-                style={{ width: 200 }}
-                clearable
-              />
-              <Select
-                placeholder="Format"
-                value={format}
-                onChange={(value) => setFormat(value || '')}
-                data={[
-                  { value: '', label: 'All Formats' },
-                  { value: 'pdf', label: 'PDF' },
-                  { value: 'excel', label: 'Excel' },
-                ]}
-                style={{ width: 150 }}
-                clearable
-              />
-            </Group>
-
-            <Group>
-              <DatePickerInput
-                placeholder="Start date"
-                value={startDate}
-                onChange={setStartDate}
-                clearable
-                style={{ flex: 1 }}
-              />
-              <DatePickerInput
-                placeholder="End date"
-                value={endDate}
-                onChange={setEndDate}
-                clearable
-                style={{ flex: 1 }}
-              />
-            </Group>
-          </Stack>
+        <Card shadow="sm" padding="md" radius="md" withBorder>
+          <Group gap="md">
+            <TextInput
+              placeholder="Search exports..."
+              leftSection={<IconSearch size={16} />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <Select
+              placeholder="Filter by type"
+              leftSection={<IconFilter size={16} />}
+              data={exportTypes}
+              value={typeFilter}
+              onChange={setTypeFilter}
+              clearable
+              style={{ minWidth: 200 }}
+            />
+            <Select
+              placeholder="Filter by format"
+              leftSection={<IconFilter size={16} />}
+              data={formatOptions}
+              value={formatFilter}
+              onChange={setFormatFilter}
+              clearable
+              style={{ minWidth: 150 }}
+            />
+            <Button variant="light" onClick={handleClearFilters}>
+              Clear Filters
+            </Button>
+          </Group>
         </Card>
 
-        {/* Exports Table */}
-        <Card withBorder padding="lg">
-          <LoadingOverlay visible={loading} />
-
-          {exports.length === 0 ? (
-            <Text size="sm" c="dimmed" ta="center" py="xl">
-              No exports found
-            </Text>
+        {/* Export List */}
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <LoadingOverlay visible={isLoading} />
+          
+          {exports.length === 0 && !isLoading ? (
+            <Alert color="blue" variant="light">
+              <Text size="sm">No exports found. Create your first export using the Quick Export button.</Text>
+            </Alert>
           ) : (
-            <>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Filename</Table.Th>
-                    <Table.Th>Type</Table.Th>
-                    <Table.Th>Format</Table.Th>
-                    <Table.Th>Size</Table.Th>
-                    <Table.Th>Created By</Table.Th>
-                    <Table.Th>Created</Table.Th>
-                    <Table.Th>Expires</Table.Th>
-                    <Table.Th>Actions</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {exports.map((exportItem) => (
-                    <Table.Tr key={exportItem.id}>
-                      <Table.Td>
-                        <Group gap="xs">
-                          {getFormatIcon(exportItem.format)}
-                          <Text size="sm">{exportItem.filename}</Text>
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{getTypeLabel(exportItem.type)}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge
-                          color={exportItem.format === 'pdf' ? 'red' : 'green'}
-                          size="sm"
-                        >
-                          {exportItem.format.toUpperCase()}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{formatFileSize(exportItem.fileSize)}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <div>
-                          <Text size="sm">{exportItem.createdBy.name}</Text>
-                          <Text size="xs" c="dimmed">
-                            {exportItem.createdBy.email}
-                          </Text>
-                        </div>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          {new Date(exportItem.createdAt).toLocaleDateString()}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {isExpired(exportItem.expiresAt) ? (
-                          <Badge color="red" size="sm">
-                            Expired
-                          </Badge>
-                        ) : (
-                          <Text size="sm">
-                            {new Date(exportItem.expiresAt).toLocaleDateString()}
-                          </Text>
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        {!isExpired(exportItem.expiresAt) ? (
-                          <ActionIcon
-                            variant="light"
-                            onClick={() => exportsApi.downloadExport(exportItem.id)}
-                          >
-                            <Download size={16} />
-                          </ActionIcon>
-                        ) : (
-                          <Text size="xs" c="dimmed">
-                            Unavailable
-                          </Text>
-                        )}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+            <Stack gap="md">
+              <ExportHistoryTable
+                data={exports}
+                selectedIds={selectedIds}
+                onSelect={handleSelect}
+                onSelectAll={handleSelectAll}
+                onDownload={handleDownload}
+              />
 
-              {/* Pagination */}
-              {total > 20 && (
-                <Group justify="space-between" mt="md">
-                  <Text size="sm" c="dimmed">
-                    Showing {(page - 1) * 20 + 1} to {Math.min(page * 20, total)} of {total}{' '}
-                    exports
-                  </Text>
-                  <Group>
-                    <Button
-                      variant="light"
-                      disabled={page === 1}
-                      onClick={() => setPage(page - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <Text size="sm">
-                      Page {page} of {Math.ceil(total / 20)}
-                    </Text>
-                    <Button
-                      variant="light"
-                      disabled={page >= Math.ceil(total / 20)}
-                      onClick={() => setPage(page + 1)}
-                    >
-                      Next
-                    </Button>
-                  </Group>
+              {totalPages > 1 && (
+                <Group justify="center" mt="md">
+                  <Pagination
+                    total={totalPages}
+                    value={page}
+                    onChange={setPage}
+                    boundaries={1}
+                    siblings={1}
+                  />
                 </Group>
               )}
-            </>
+            </Stack>
           )}
         </Card>
-
-        <Alert icon={<AlertCircle size={16} />} color="blue">
-          <Text size="sm">
-            Exported files are automatically deleted after 7 days for security. Download them
-            promptly.
-          </Text>
-        </Alert>
       </Stack>
-    </Can>
+    </Container>
   );
 }

@@ -93,4 +93,45 @@ export const notificationsApi = {
     const response = await api.post(`${API_URL}/api/notifications/announcement`, data);
     return response.data;
   },
+
+  /**
+   * Get notification preferences
+   */
+  async getPreferences() {
+    const response = await api.get(`${API_URL}/api/notifications/preferences`);
+    return response.data as { success: boolean; data: NotificationPreferences };
+  },
+
+  /**
+   * Update notification preferences
+   */
+  async updatePreferences(data: NotificationPreferences) {
+    const response = await api.put(`${API_URL}/api/notifications/preferences`, data);
+    return response.data;
+  },
 };
+
+export interface NotificationPreferences {
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  inAppEnabled: boolean;
+  paymentDueEmail: boolean;
+  paymentDueSMS: boolean;
+  paymentDueInApp: boolean;
+  paymentReceivedEmail: boolean;
+  paymentReceivedSMS: boolean;
+  paymentReceivedInApp: boolean;
+  systemEmail: boolean;
+  systemSMS: boolean;
+  systemInApp: boolean;
+  approvalEmail: boolean;
+  approvalSMS: boolean;
+  approvalInApp: boolean;
+  announcementEmail: boolean;
+  announcementSMS: boolean;
+  announcementInApp: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  quietHoursTimezone: string;
+}

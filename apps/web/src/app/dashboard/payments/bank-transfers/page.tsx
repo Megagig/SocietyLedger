@@ -37,9 +37,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import {
-  getBankTransfers,
-  verifyBankTransfer,
-  uploadPaymentProof,
+  nigerianPaymentsApi,
   type BankTransfer,
 } from '@/lib/api/nigerian-payments';
 import { notifications } from '@mantine/notifications';
@@ -76,14 +74,11 @@ export default function BankTransfersPage() {
         endDate: endDate?.toISOString(),
       };
 
-      const response = await getBankTransfers(params);
+      const response = await nigerianPaymentsApi.getBankTransfers(params);
       
-      // API returns: { success: true, data: { transfers: [...], pagination: {...} } }
-      const transfersList = response.data?.transfers || [];
-      const totalCount = response.data?.pagination?.totalCount || 0;
-      
-      setTransfers(transfersList);
-      setTotal(totalCount);
+      // API returns: { data: [...], total: number, page: number, limit: number }
+      setTransfers(response.data || []);
+      setTotal(response.total || 0);
     } catch (error: any) {
       console.error('Error loading transfers:', error);
       notifications.show({
@@ -101,7 +96,7 @@ export default function BankTransfersPage() {
     loadTransfers();
   };
 
-  const handleVerify = async (id: number, status: 'VERIFIED' | 'REJECTED') => {
+  const handleVerify = async (id: string, status: 'VERIFIED' | 'REJECTED') => {
     const message = status === 'VERIFIED' ? 'verify' : 'reject';
     
     modals.openConfirmModal({
@@ -111,7 +106,7 @@ export default function BankTransfersPage() {
       confirmProps: { color: status === 'REJECTED' ? 'red' : 'green' },
       onConfirm: async () => {
         try {
-          await verifyBankTransfer(id, { status });
+          await nigerianPaymentsApi.verifyBankTransfer(id, { verified: status === 'VERIFIED' });
           notifications.show({
             title: 'Success',
             message: `Transfer ${status.toLowerCase()} successfully`,
@@ -134,14 +129,8 @@ export default function BankTransfersPage() {
 
     try {
       setUploadingProof(true);
-      const formData = new FormData();
-      formData.append('file', proofFile);
-      formData.append('bankTransferId', uploadModal.id.toString());
-      if (uploadModal.memberId) {
-        formData.append('memberId', uploadModal.memberId.toString());
-      }
-
-      await uploadPaymentProof(formData);
+      
+      await nigerianPaymentsApi.uploadPaymentProof(proofFile, uploadModal.memberId, uploadModal.id);
       
       notifications.show({
         title: 'Success',
@@ -306,15 +295,9 @@ export default function BankTransfersPage() {
                         <Text fw={500}>{formatCurrency(transfer.amount)}</Text>
                       </Table.Td>
                       <Table.Td>
-                        {transfer.paymentProofs && transfer.paymentProofs.length > 0 ? (
-                          <Badge color="green" size="sm" variant="light">
-                            {transfer.paymentProofs.length} Proof{transfer.paymentProofs.length > 1 ? 's' : ''}
-                          </Badge>
-                        ) : (
-                          <Badge color="gray" size="sm" variant="light">
-                            No Proof
-                          </Badge>
-                        )}
+                        <Badge color="gray" size="sm" variant="light">
+                          No Proof
+                        </Badge>
                       </Table.Td>
                       <Table.Td>
                         <Badge color={getStatusColor(transfer.status)} size="sm">
@@ -342,9 +325,7 @@ export default function BankTransfersPage() {
                                 setProofFile(null);
                               }}
                             >
-                              {transfer.paymentProofs && transfer.paymentProofs.length > 0 
-                                ? 'Add More Proof' 
-                                : 'Upload Proof'}
+                              Upload Proof
                             </Menu.Item>
                             {transfer.status === 'PENDING' && (
                               <>
@@ -430,53 +411,12 @@ export default function BankTransfersPage() {
                   <Text size="sm">{detailsModal.narration}</Text>
                 </div>
               )}
-              {detailsModal.notes && (
-                <div>
-                  <Text size="sm" c="dimmed">Notes</Text>
-                  <Text size="sm">{detailsModal.notes}</Text>
-                </div>
-              )}
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Status</Text>
                 <Badge color={getStatusColor(detailsModal.status)}>
                   {detailsModal.status}
                 </Badge>
               </Group>
-              {detailsModal.transaction && (
-                <div>
-                  <Text size="sm" c="dimmed" mb="xs">Matched Transaction</Text>
-                  <Card withBorder padding="sm">
-                    <Text size="sm" fw={500}>
-                      Ref: {detailsModal.transaction.referenceNumber}
-                    </Text>
-                    <Text size="sm">
-                      Amount: {formatCurrency(detailsModal.transaction.amount)}
-                    </Text>
-                  </Card>
-                </div>
-              )}
-              {detailsModal.paymentProofs && detailsModal.paymentProofs.length > 0 && (
-                <div>
-                  <Text size="sm" c="dimmed" mb="xs">Payment Proofs</Text>
-                  <Stack gap="xs">
-                    {detailsModal.paymentProofs.map((proof) => (
-                      <Card key={proof.id} withBorder padding="sm">
-                        <Group justify="space-between">
-                          <div>
-                            <Text size="sm" fw={500}>{proof.filename}</Text>
-                            <Text size="xs" c="dimmed">
-                              Uploaded: {new Date(proof.uploadedAt).toLocaleDateString()}
-                            </Text>
-                          </div>
-                          <Badge size="sm" color={proof.status === 'VERIFIED' ? 'green' : 'gray'}>
-                            {proof.status}
-                          </Badge>
-                        </Group>
-                      </Card>
-                    ))}
-                  </Stack>
-                </div>
-              )}
             </Stack>
           )}
         </Modal>

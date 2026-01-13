@@ -28,9 +28,7 @@ import {
 } from 'lucide-react';
 import { Can } from '@/hooks/usePermissions';
 import {
-  getPaymentProofs,
-  verifyPaymentProof,
-  getBankTransfers,
+  nigerianPaymentsApi,
   type PaymentProof,
   type BankTransfer,
 } from '@/lib/api/nigerian-payments';
@@ -83,13 +81,13 @@ export default function VerificationPage() {
     try {
       setLoading(true);
       const [proofsRes, transfersRes] = await Promise.all([
-        getPaymentProofs({ status: 'PENDING', page, limit: 20 }),
-        getBankTransfers({ status: 'PENDING', limit: 100 }),
+        nigerianPaymentsApi.getPaymentProofs({ status: 'PENDING', page, limit: 20 }),
+        nigerianPaymentsApi.getBankTransfers({ status: 'PENDING', limit: 100 }),
       ]);
 
-      setPaymentProofs(proofsRes.data?.proofs || []);
-      setTotal(proofsRes.data?.total || 0);
-      setBankTransfers(transfersRes.data?.bankTransfers || []);
+      setPaymentProofs(proofsRes.data || []);
+      setTotal(proofsRes.total || 0);
+      setBankTransfers(transfersRes.data || []);
     } catch (error: any) {
       console.error('Error loading data:', error);
       notifications.show({
@@ -115,10 +113,9 @@ export default function VerificationPage() {
     try {
       setSubmitting(true);
 
-      await verifyPaymentProof(selectedProof.id, {
-        status: action,
+      await nigerianPaymentsApi.verifyPaymentProof(selectedProof.id, {
+        verified: action === 'APPROVED',
         rejectionReason: action === 'REJECTED' ? values.rejectionReason : undefined,
-        notes: values.notes || undefined,
       });
 
       notifications.show({
@@ -225,13 +222,10 @@ export default function VerificationPage() {
                             {new Date(proof.uploadedAt).toLocaleDateString()}
                           </Table.Td>
                           <Table.Td>
-                            {proof.member ? (
+                            {proof.memberId ? (
                               <div>
                                 <Text size="sm" fw={500}>
-                                  {proof.member.firstName} {proof.member.lastName}
-                                </Text>
-                                <Text size="xs" c="dimmed">
-                                  {proof.member.memberId}
+                                  Member ID: {proof.memberId}
                                 </Text>
                               </div>
                             ) : (
@@ -239,22 +233,10 @@ export default function VerificationPage() {
                             )}
                           </Table.Td>
                           <Table.Td>
-                            {proof.transaction ? (
+                            {proof.transactionId ? (
                               <div>
                                 <Text size="sm" fw={500}>
-                                  {proof.transaction.referenceNumber}
-                                </Text>
-                                <Text size="xs" c="dimmed">
-                                  {formatCurrency(proof.transaction.amount)}
-                                </Text>
-                              </div>
-                            ) : proof.bankTransfer ? (
-                              <div>
-                                <Text size="sm" fw={500}>
-                                  {proof.bankTransfer.reference}
-                                </Text>
-                                <Text size="xs" c="dimmed">
-                                  {formatCurrency(proof.bankTransfer.amount)}
+                                  Transaction ID: {proof.transactionId}
                                 </Text>
                               </div>
                             ) : (
@@ -263,7 +245,7 @@ export default function VerificationPage() {
                           </Table.Td>
                           <Table.Td>
                             <Group gap="xs">
-                              <Text size="sm">{proof.filename}</Text>
+                              <Text size="sm">{proof.fileName}</Text>
                               <ActionIcon
                                 size="sm"
                                 variant="light"
@@ -382,7 +364,7 @@ export default function VerificationPage() {
             <form onSubmit={form.onSubmit(handleVerify)}>
               <Stack>
                 {/* Proof Preview */}
-                {selectedProof.mimeType.startsWith('image/') && (
+                {selectedProof.fileUrl && selectedProof.fileUrl.includes('image') && (
                   <div>
                     <Text size="sm" fw={500} mb="xs">
                       Payment Proof
@@ -403,13 +385,13 @@ export default function VerificationPage() {
                     Details
                   </Text>
                   <Stack gap="xs">
-                    {selectedProof.member && (
+                    {selectedProof.memberId && (
                       <Group justify="space-between">
                         <Text size="sm" c="dimmed">
-                          Member
+                          Member ID
                         </Text>
                         <Text size="sm">
-                          {selectedProof.member.firstName} {selectedProof.member.lastName}
+                          {selectedProof.memberId}
                         </Text>
                       </Group>
                     )}
@@ -417,7 +399,7 @@ export default function VerificationPage() {
                       <Text size="sm" c="dimmed">
                         File
                       </Text>
-                      <Text size="sm">{selectedProof.filename}</Text>
+                      <Text size="sm">{selectedProof.fileName}</Text>
                     </Group>
                     <Group justify="space-between">
                       <Text size="sm" c="dimmed">

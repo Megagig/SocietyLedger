@@ -221,4 +221,8 @@ async function handleExpiringCards(data: any) {
   // You can implement email notification here
 }
 
+// Mount webhooks management routes
+import webhooksManagementRouter from './webhooks-management.routes';
+router.use('/management', webhooksManagementRouter);
+
 export default router;

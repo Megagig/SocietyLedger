@@ -29,8 +29,7 @@ import {
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import {
-  getBankAccounts,
-  importBankStatement,
+  nigerianPaymentsApi,
   type BankAccount,
 } from '@/lib/api/nigerian-payments';
 import { notifications } from '@mantine/notifications';
@@ -70,8 +69,8 @@ export default function StatementImportPage() {
 
   const loadBankAccounts = async () => {
     try {
-      const response = await getBankAccounts(true);
-      setBankAccounts(response.data?.bankAccounts || []);
+      const response = await nigerianPaymentsApi.getBankAccounts();
+      setBankAccounts(response || []);
     } catch (error) {
       console.error('Error loading bank accounts:', error);
     }
@@ -193,13 +192,7 @@ export default function StatementImportPage() {
         }
       }
 
-      await importBankStatement({
-        bankAccountId: parseInt(values.bankAccountId),
-        filename: csvFile.name,
-        entries,
-        startDate: values.startDate?.toISOString(),
-        endDate: values.endDate?.toISOString(),
-      });
+      await nigerianPaymentsApi.importStatement(csvFile);
 
       notifications.show({
         title: 'Success',

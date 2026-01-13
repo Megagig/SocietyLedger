@@ -27,14 +27,9 @@ import {
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import {
-  getUnmatchedDashboard,
-  getBankTransfers,
-  runAutoMatch,
-  applyAutoMatches,
-  reconcilePayment,
+  nigerianPaymentsApi,
   type UnmatchedDashboard,
   type BankTransfer,
-  type AutoMatchResult,
 } from '@/lib/api/nigerian-payments';
 import api from '@/lib/axios';
 import { notifications } from '@mantine/notifications';
@@ -54,7 +49,7 @@ export default function ReconciliationPage() {
   const [dashboard, setDashboard] = useState<UnmatchedDashboard | null>(null);
   const [unmatchedTransfers, setUnmatchedTransfers] = useState<BankTransfer[]>([]);
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([]);
-  const [autoMatchResult, setAutoMatchResult] = useState<AutoMatchResult | null>(null);
+  const [autoMatchResult, setAutoMatchResult] = useState<any>(null);
   const [matchModal, setMatchModal] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<BankTransfer | null>(null);
   const [applying, setApplying] = useState(false);
@@ -77,8 +72,8 @@ export default function ReconciliationPage() {
     try {
       setLoading(true);
       const [dashboardRes, transfersRes, transactionsRes] = await Promise.all([
-        getUnmatchedDashboard(),
-        getBankTransfers({ status: 'VERIFIED', limit: 100 }),
+        nigerianPaymentsApi.getUnmatchedDashboard(),
+        nigerianPaymentsApi.getBankTransfers({ status: 'VERIFIED', limit: 100 }),
         api.get('/finance/transactions', {
           params: { status: 'pending', limit: 100 }, // lowercase to match database
         }),
@@ -87,12 +82,12 @@ export default function ReconciliationPage() {
       console.log('[Reconciliation] Raw transactions response:', transactionsRes);
       console.log('[Reconciliation] Response data:', transactionsRes.data);
 
-      setDashboard(dashboardRes.data);
-      // API returns: { data: { transfers: [...], pagination: {...} } }
-      const transfers = transfersRes.data?.transfers || [];
+      setDashboard(dashboardRes);
+      // API returns: { data: [...], total: number, page: number, limit: number }
+      const transfers = transfersRes.data || [];
       console.log('[Reconciliation] Loaded transfers:', transfers.length);
       
-      const unmatched = transfers.filter((t: BankTransfer) => !t.transactionId) || [];
+      const unmatched = transfers.filter((t: BankTransfer) => !t.receivingBankAccountId) || [];
       console.log('[Reconciliation] Unmatched transfers:', unmatched.length);
       setUnmatchedTransfers(unmatched);
       
@@ -116,13 +111,13 @@ export default function ReconciliationPage() {
   const handleRunAutoMatch = async () => {
     try {
       setLoading(true);
-      const response = await runAutoMatch();
-      setAutoMatchResult(response.data);
+      const response = await nigerianPaymentsApi.runAutoMatch();
+      setAutoMatchResult(response);
 
-      if (response.data.matched > 0) {
+      if (response.matches && response.matches.length > 0) {
         notifications.show({
           title: 'Auto-Match Results',
-          message: `Found ${response.data.matched} potential matches. Review and apply.`,
+          message: `Found ${response.matches.length} potential matches. Review and apply.`,
           color: 'blue',
         });
       } else {
@@ -144,11 +139,11 @@ export default function ReconciliationPage() {
   };
 
   const handleApplyMatches = async () => {
-    if (!autoMatchResult || autoMatchResult.matches.length === 0) return;
+    if (!autoMatchResult || !autoMatchResult.matches || autoMatchResult.matches.length === 0) return;
 
     try {
       setApplying(true);
-      await applyAutoMatches(autoMatchResult.matches);
+      await nigerianPaymentsApi.applyAutoMatches(autoMatchResult.matches);
       notifications.show({
         title: 'Success',
         message: `${autoMatchResult.matches.length} matches applied successfully`,
@@ -180,15 +175,9 @@ export default function ReconciliationPage() {
         throw new Error('Transaction not found');
       }
 
-      await reconcilePayment({
-        transactionId: parseInt(values.transactionId),
+      await nigerianPaymentsApi.createReconciliation({
+        transactionId: values.transactionId,
         bankTransferId: selectedTransfer.id,
-        matchType: 'MANUAL',
-        matchedAmount: parseFloat(selectedTransfer.amount),
-        variance: Math.abs(
-          parseFloat(selectedTransfer.amount) - parseFloat(transaction.amount)
-        ),
-        notes: values.notes,
       });
 
       notifications.show({
@@ -275,7 +264,7 @@ export default function ReconciliationPage() {
         </Group>
 
         {/* Auto-Match Results */}
-        {autoMatchResult && autoMatchResult.matches.length > 0 && (
+        {autoMatchResult && autoMatchResult.matches && autoMatchResult.matches.length > 0 && (
           <Alert
             icon={<CheckCircle size={16} />}
             color="green"
@@ -284,7 +273,7 @@ export default function ReconciliationPage() {
             onClose={() => setAutoMatchResult(null)}
           >
             <Text size="sm" mb="sm">
-              Found {autoMatchResult.matched} potential matches. Review and apply below.
+              Found {autoMatchResult.matches.length} potential matches. Review and apply below.
             </Text>
             <Button size="xs" onClick={handleApplyMatches} loading={applying}>
               Apply All Matches

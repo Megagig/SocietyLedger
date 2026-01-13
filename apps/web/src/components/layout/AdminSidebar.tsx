@@ -44,6 +44,7 @@ import {
   IconPlus,
   IconClock,
   IconUser,
+  IconWebhook,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -74,6 +75,30 @@ export function AdminSidebar() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Auto-expand Finance section if on Nigerian Payments page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/payments/nigerian')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Finance')) {
+          return [...prev, 'Finance'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]);
+
+  // Auto-expand Notifications section if on notifications page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/notifications')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Notifications')) {
+          return [...prev, 'Notifications'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
@@ -270,6 +295,11 @@ export function AdminSidebar() {
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments',
           permission: PERMISSIONS.PAYMENT_RECORD,
+        },
+        {
+          label: 'Nigerian Payments',
+          icon: <IconBuildingBank size={18} />,
+          href: '/dashboard/payments/nigerian',
         },
       ],
     },
@@ -472,14 +502,30 @@ export function AdminSidebar() {
       ],
     },
     {
-      label: 'Communication',
-      icon: <IconSpeakerphone size={20} />,
+      label: 'Notifications',
+      icon: <IconBell size={20} />,
       children: [
         {
-          label: 'Notifications',
+          label: 'Notifications Center',
           icon: <IconBell size={18} />,
           href: '/dashboard/notifications',
         },
+        {
+          label: 'Preferences',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/notifications/preferences',
+        },
+        {
+          label: 'Archive',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/notifications/archive',
+        },
+      ],
+    },
+    {
+      label: 'Communication',
+      icon: <IconSpeakerphone size={20} />,
+      children: [
         {
           label: 'Announcements',
           icon: <IconBell size={18} />,
@@ -530,7 +576,27 @@ export function AdminSidebar() {
         },
       ],
     },
-
+    {
+      label: 'Webhooks',
+      icon: <IconWebhook size={20} />,
+      children: [
+        {
+          label: 'Dashboard',
+          icon: <IconChartBar size={18} />,
+          href: '/admin/webhooks',
+        },
+        {
+          label: 'Events Log',
+          icon: <IconHistory size={18} />,
+          href: '/admin/webhooks/events',
+        },
+        {
+          label: 'Test Webhooks',
+          icon: <IconRobot size={18} />,
+          href: '/admin/webhooks/test',
+        },
+      ],
+    },
     {
       label: 'AI Assistant',
       icon: <IconRobot size={20} />,

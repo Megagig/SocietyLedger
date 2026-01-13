@@ -30,6 +30,7 @@ import {
   IconTicket,
   IconSettings,
   IconChevronDown,
+  IconHistory,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -54,6 +55,18 @@ export function MemberSidebar() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Auto-expand Notifications section if on notifications page
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/notifications')) {
+      setExpandedItems(prev => {
+        if (!prev.includes('Notifications')) {
+          return [...prev, 'Notifications'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname]);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems(prev =>
@@ -192,7 +205,23 @@ export function MemberSidebar() {
     {
       label: 'Notifications',
       icon: <IconBell size={20} />,
-      href: '/dashboard/notifications',
+      children: [
+        {
+          label: 'Notifications Center',
+          icon: <IconBell size={18} />,
+          href: '/dashboard/notifications',
+        },
+        {
+          label: 'Preferences',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/notifications/preferences',
+        },
+        {
+          label: 'Archive',
+          icon: <IconHistory size={18} />,
+          href: '/dashboard/notifications/archive',
+        },
+      ],
     },
     {
       label: 'Help & Support',
