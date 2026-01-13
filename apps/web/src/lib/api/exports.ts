@@ -116,4 +116,20 @@ export const exportsApi = {
     const url = this.getDownloadUrl(exportId);
     window.open(url, '_blank');
   },
+
+  /**
+   * Delete export file
+   */
+  async deleteExport(exportId: number) {
+    const response = await api.delete(`${API_URL}/api/exports/${exportId}`);
+    return response.data;
+  },
+
+  /**
+   * Re-generate export
+   */
+  async regenerateExport(exportId: number) {
+    const response = await api.post(`${API_URL}/api/exports/${exportId}/regenerate`);
+    return response.data;
+  },
 };

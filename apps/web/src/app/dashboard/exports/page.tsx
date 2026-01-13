@@ -1,348 +1,267 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  Card,
+  Container,
   Title,
   Text,
+  Grid,
+  Card,
   Stack,
-  Group,
   Button,
-  Select,
-  Alert,
-  LoadingOverlay,
+  Group,
   Badge,
-  Divider,
+  ActionIcon,
+  Table,
+  Loader,
+  Alert,
 } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import { notifications } from '@mantine/notifications';
-import {
-  FileText,
-  Download,
-  FileSpreadsheet,
-  Users,
-  DollarSign,
-  AlertCircle,
-} from 'lucide-react';
-import { Can } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/lib/permissions';
-import { exportsApi, type ExportResult } from '@/lib/api/exports';
+import { IconDownload, IconHistory, IconSettings, IconRefresh } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
+import { exportsApi, ExportHistoryItem } from '@/lib/api/exports';
+import { ExportTypeCard } from '@/components/exports/ExportTypeCard';
+import { QuickExportModal } from '@/components/exports/QuickExportModal';
+import { ExportStatusBadge } from '@/components/exports/ExportStatusBadge';
+import { ExpirationCountdown } from '@/components/exports/ExpirationCountdown';
+import Link from 'next/link';
 
 export default function ExportsPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [exportType, setExportType] = useState<string>('financial');
-  const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
-  const [period, setPeriod] = useState<string>('');
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const [memberStatus, setMemberStatus] = useState<string>('all');
-  const [lastExport, setLastExport] = useState<ExportResult | null>(null);
+  const [quickExportOpened, setQuickExportOpened] = useState(false);
+  
+  const { data: historyData, isLoading: historyLoading, refetch } = useQuery({
+    queryKey: ['export-history'],
+    queryFn: () => exportsApi.getExportHistory({ limit: 5 }),
+  });
 
-  const handleExport = async () => {
-    try {
-      setLoading(true);
-      let result: ExportResult;
+  const recentExports = (() => {
+    console.log('historyData:', historyData);
+    console.log('historyData?.data:', historyData?.data);
+    console.log('Array.isArray(historyData?.data):', Array.isArray(historyData?.data));
+    
+    if (!historyData) return [];
+    if (Array.isArray(historyData.data)) return historyData.data;
+    if (Array.isArray(historyData)) return historyData;
+    return [];
+  })();
 
-      if (exportType === 'financial') {
-        const params = {
-          period: period || undefined,
-          startDate: startDate?.toISOString(),
-          endDate: endDate?.toISOString(),
-          includeComparison: true,
-        };
-
-        if (format === 'pdf') {
-          const res = await exportsApi.exportFinancialPDF(params);
-          result = res.data;
-        } else {
-          const res = await exportsApi.exportFinancialExcel(params);
-          result = res.data;
-        }
-      } else if (exportType === 'members') {
-        const res = await exportsApi.exportAllMembersExcel({
-          status: memberStatus as any,
-        });
-        result = res.data;
-      } else {
-        throw new Error('Invalid export type');
-      }
-
-      setLastExport(result);
-
-      notifications.show({
-        title: 'Export Generated',
-        message: 'Your export is ready for download',
-        color: 'green',
-      });
-
-      // Auto-download
-      exportsApi.downloadExport(result.id);
-    } catch (err: any) {
-      console.error('Error generating export:', err);
-      notifications.show({
-        title: 'Export Failed',
-        message: err.message || 'Failed to generate export',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
+  const getExportStatus = (expiresAt: string): 'processing' | 'completed' | 'expired' | 'failed' => {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    return expiry > now ? 'completed' : 'expired';
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getExportTypeLabel = (type: string) => {
+    const typeMap: Record<string, string> = {
+      financial_summary: 'Financial Summary',
+      member_balances: 'Member Balances',
+      member_statement: 'Member Statement',
+      aging_analysis: 'Aging Analysis',
+      collection_rate: 'Collection Rate',
+      category_report: 'Category Report',
+      all_members: 'All Members',
+    };
+    return typeMap[type] || type;
+  };
+
+  const getStatus = (expiresAt: string) => {
+    const now = new Date();
+    const expiration = new Date(expiresAt);
+    if (expiration < now) {
+      return 'expired' as const;
+    }
+    return 'completed' as const;
   };
 
   return (
-    <Can
-      permission={PERMISSIONS.EXPORT_FINANCIAL}
-      fallback={<Alert color="red">You don't have permission to generate exports</Alert>}
-    >
-      <Stack gap="lg">
-        <Group justify="space-between">
+    <Container size="xl" py="xl">
+      <Stack gap="xl">
+        {/* Header */}
+        <Group justify="space-between" align="center">
           <div>
-            <Title order={2}>Export Data</Title>
-            <Text size="sm" c="dimmed">
-              Generate and download financial and member reports
+            <Title order={2}>Exports Center</Title>
+            <Text size="sm" c="dimmed" mt="xs">
+              Generate and download exports of your association data
             </Text>
           </div>
-          <Button
-            variant="light"
-            onClick={() => router.push('/dashboard/exports/history')}
-          >
-            Export History
-          </Button>
+          <Group gap="sm">
+            <Button 
+              variant="light" 
+              leftSection={<IconRefresh size={16} />}
+              onClick={() => refetch()}
+            >
+              Refresh
+            </Button>
+            <Button 
+              leftSection={<IconDownload size={16} />}
+              onClick={() => setQuickExportOpened(true)}
+            >
+              Quick Export
+            </Button>
+          </Group>
         </Group>
 
-        <Card withBorder padding="lg">
-          <LoadingOverlay visible={loading} />
-
-          <Stack gap="md">
-            <Title order={4}>Export Settings</Title>
-
-            {/* Export Type */}
-            <Select
-              label="Export Type"
-              placeholder="Select export type"
-              value={exportType}
-              onChange={(value) => setExportType(value || 'financial')}
-              data={[
-                {
-                  value: 'financial',
-                  label: 'Financial Summary',
-                },
-                {
-                  value: 'members',
-                  label: 'All Members',
-                },
-              ]}
-              required
-            />
-
-            {/* Format Selection */}
-            {exportType === 'financial' && (
-              <Select
-                label="Format"
-                placeholder="Select format"
-                value={format}
-                onChange={(value) => setFormat(value as 'pdf' | 'excel')}
-                data={[
-                  { value: 'pdf', label: 'PDF Document' },
-                  { value: 'excel', label: 'Excel Spreadsheet' },
-                ]}
-                required
+        {/* Quick Export Types */}
+        <div>
+          <Title order={4} mb="md">Quick Exports</Title>
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <ExportTypeCard
+                type="financial_summary"
+                title="Financial Summary"
+                description="Export financial data including income, expenses, and balances"
+                icon="pdf"
+                onClick={() => setQuickExportOpened(true)}
               />
-            )}
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <ExportTypeCard
+                type="all_members"
+                title="All Members"
+                description="Export complete member list with balances"
+                icon="excel"
+                onClick={() => setQuickExportOpened(true)}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <ExportTypeCard
+                type="member_statement"
+                title="Member Statement"
+                description="Export individual member financial statements"
+                icon="pdf"
+                onClick={() => setQuickExportOpened(true)}
+              />
+            </Grid.Col>
+          </Grid>
+        </div>
 
-            <Divider />
-
-            {/* Financial Export Options */}
-            {exportType === 'financial' && (
-              <Stack gap="sm">
-                <Title order={5}>Financial Report Options</Title>
-
-                <Select
-                  label="Period"
-                  placeholder="Select period or custom range"
-                  value={period}
-                  onChange={(value) => setPeriod(value || '')}
-                  data={[
-                    { value: 'this_month', label: 'This Month' },
-                    { value: 'last_month', label: 'Last Month' },
-                    { value: 'this_quarter', label: 'This Quarter' },
-                    { value: 'last_quarter', label: 'Last Quarter' },
-                    { value: 'this_year', label: 'This Year' },
-                    { value: 'last_year', label: 'Last Year' },
-                    { value: 'custom', label: 'Custom Range' },
-                  ]}
-                  clearable
-                />
-
-                {(period === 'custom' || !period) && (
-                  <Group grow>
-                    <DatePickerInput
-                      label="Start Date"
-                      placeholder="Select start date"
-                      value={startDate}
-                      onChange={setStartDate}
-                      clearable
-                    />
-                    <DatePickerInput
-                      label="End Date"
-                      placeholder="Select end date"
-                      value={endDate}
-                      onChange={setEndDate}
-                      clearable
-                    />
-                  </Group>
-                )}
-
-                <Alert icon={<AlertCircle size={16} />} color="blue">
-                  <Text size="sm">
-                    Financial summary includes income, expenses, member dues, levies, and
-                    overall financial health metrics.
-                  </Text>
-                </Alert>
-              </Stack>
-            )}
-
-            {/* Members Export Options */}
-            {exportType === 'members' && (
-              <Stack gap="sm">
-                <Title order={5}>Members Export Options</Title>
-
-                <Select
-                  label="Member Status"
-                  placeholder="Select member status filter"
-                  value={memberStatus}
-                  onChange={(value) => setMemberStatus(value || 'all')}
-                  data={[
-                    { value: 'all', label: 'All Members' },
-                    { value: 'with_balance', label: 'Members with Outstanding Balance' },
-                    { value: 'overdue', label: 'Members with Overdue Payments' },
-                  ]}
-                  required
-                />
-
-                <Alert icon={<AlertCircle size={16} />} color="blue">
-                  <Text size="sm">
-                    Members export includes contact details, financial balances, dues status,
-                    and payment history.
-                  </Text>
-                </Alert>
-              </Stack>
-            )}
-
-            <Divider />
-
-            {/* Export Button */}
-            <Group justify="flex-end">
-              <Button
-                leftSection={
-                  exportType === 'financial' && format === 'pdf' ? (
-                    <FileText size={16} />
-                  ) : (
-                    <FileSpreadsheet size={16} />
-                  )
-                }
-                onClick={handleExport}
-                loading={loading}
-                size="md"
-              >
-                Generate Export
+        {/* Recent Exports */}
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Group justify="space-between" align="center" mb="md">
+            <Title order={4}>Recent Exports</Title>
+            <Link href="/dashboard/exports/history">
+              <Button variant="subtle" size="xs" rightSection={<IconHistory size={14} />}>
+                View All History
               </Button>
-            </Group>
-          </Stack>
+            </Link>
+          </Group>
+
+          {historyLoading ? (
+            <Stack align="center" py="xl">
+              <Loader size="md" />
+              <Text size="sm" c="dimmed">Loading exports...</Text>
+            </Stack>
+          ) : !Array.isArray(recentExports) || recentExports.length === 0 ? (
+            <Alert color="blue" variant="light">
+              <Text size="sm">No exports yet. Create your first export using the Quick Export button.</Text>
+            </Alert>
+          ) : (
+            <Table.ScrollContainer minWidth={600}>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Filename</Table.Th>
+                    <Table.Th>Type</Table.Th>
+                    <Table.Th>Created</Table.Th>
+                    <Table.Th>Expires</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {Array.isArray(recentExports) ? recentExports.map((item: ExportHistoryItem) => (
+                    <Table.Tr key={item.id}>
+                      <Table.Td>
+                        <Text size="sm" fw={500}>{item.filename}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{getExportTypeLabel(item.type)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{new Date(item.createdAt).toLocaleDateString()}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <ExpirationCountdown expiresAt={item.expiresAt} />
+                      </Table.Td>
+                      <Table.Td>
+                        <ExportStatusBadge 
+                          status={getExportStatus(item.expiresAt)}
+                        />
+                      </Table.Td>
+                    </Table.Tr>
+                  )) : (
+                    <Table.Tr>
+                      <Table.Td colSpan={5}>
+                        <Text size="sm" c="dimmed" ta="center">No exports available</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          )}
         </Card>
 
-        {/* Last Export Info */}
-        {lastExport && (
-          <Card withBorder padding="lg">
-            <Group justify="space-between">
-              <div>
-                <Text size="sm" fw={500}>
-                  Last Export
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {lastExport.filename}
-                </Text>
-                <Badge size="sm" mt={4}>
-                  {formatFileSize(lastExport.fileSize)}
-                </Badge>
-              </div>
-              <Button
-                leftSection={<Download size={16} />}
-                onClick={() => exportsApi.downloadExport(lastExport.id)}
-                variant="light"
-              >
-                Download Again
-              </Button>
-            </Group>
-          </Card>
-        )}
-
-        {/* Quick Export Cards */}
-        <Group grow>
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Group>
-                <DollarSign size={24} color="green" />
-                <div style={{ flex: 1 }}>
-                  <Text size="sm" fw={500}>
-                    Financial Summary
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Income, expenses, and balance
-                  </Text>
-                </div>
-              </Group>
-              <Button
-                size="xs"
-                variant="light"
-                onClick={() => {
-                  setExportType('financial');
-                  setFormat('pdf');
-                  setPeriod('this_month');
-                  handleExport();
-                }}
-              >
-                Export This Month
-              </Button>
-            </Stack>
-          </Card>
-
-          <Card withBorder padding="lg">
-            <Stack gap="xs">
-              <Group>
-                <Users size={24} color="blue" />
-                <div style={{ flex: 1 }}>
-                  <Text size="sm" fw={500}>
-                    All Members
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Complete member list with balances
-                  </Text>
-                </div>
-              </Group>
-              <Button
-                size="xs"
-                variant="light"
-                onClick={() => {
-                  setExportType('members');
-                  setMemberStatus('all');
-                  handleExport();
-                }}
-              >
-                Export All Members
-              </Button>
-            </Stack>
-          </Card>
-        </Group>
+        {/* Info Cards */}
+        <Grid>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Card shadow="sm" padding="lg" radius="md" withBorder>
+              <Stack gap="sm">
+                <Group gap="sm">
+                  <IconDownload size={24} color="#228be6" />
+                  <div>
+                    <Text size="sm" fw={500}>Export History</Text>
+                    <Text size="xs" c="dimmed">View all past exports</Text>
+                  </div>
+                </Group>
+                <Link href="/dashboard/exports/history" style={{ textDecoration: 'none' }}>
+                  <Button variant="light" fullWidth size="sm">
+                    View History
+                  </Button>
+                </Link>
+              </Stack>
+            </Card>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Card shadow="sm" padding="lg" radius="md" withBorder>
+              <Stack gap="sm">
+                <Group gap="sm">
+                  <IconSettings size={24} color="#40c057" />
+                  <div>
+                    <Text size="sm" fw={500}>Custom Export Builder</Text>
+                    <Text size="xs" c="dimmed">Create custom exports</Text>
+                  </div>
+                </Group>
+                <Link href="/dashboard/exports/custom" style={{ textDecoration: 'none' }}>
+                  <Button variant="light" fullWidth size="sm">
+                    Build Custom Export
+                  </Button>
+                </Link>
+              </Stack>
+            </Card>
+          </Grid.Col>
+        </Grid>
       </Stack>
-    </Can>
+
+      <QuickExportModal
+        opened={quickExportOpened}
+        onClose={() => setQuickExportOpened(false)}
+      />
+    </Container>
   );
 }
