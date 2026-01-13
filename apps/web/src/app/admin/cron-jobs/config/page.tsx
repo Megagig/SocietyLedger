@@ -100,7 +100,10 @@ export default function CronJobConfigPage() {
     try {
       setLoading(true);
       const jobConfig = await cronApi.getConfig(jobId);
-      setConfig(jobConfig);
+      setConfig({
+        ...jobConfig,
+        parameters: jobConfig.parameters || {}
+      });
     } catch (err: any) {
       console.error('Error loading job config:', err);
       // Use defaults if API fails

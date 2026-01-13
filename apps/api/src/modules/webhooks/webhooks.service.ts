@@ -75,7 +75,9 @@ export interface WebhookTestResponse {
 }
 
 // Get webhook statistics
-export async function getWebhookStats(associationId: number): Promise<WebhookStats> {
+export async function getWebhookStats(associationId?: number): Promise<WebhookStats> {
+  const whereClause = associationId ? { associationId } : {};
+  
   const [
     paystackTotal,
     paystackSuccess,
@@ -85,33 +87,33 @@ export async function getWebhookStats(associationId: number): Promise<WebhookSta
     customFailed
   ] = await Promise.all([
     prisma.webhookEventLog.count({
-      where: { associationId, source: 'paystack', isTest: false }
+      where: { ...whereClause, source: 'paystack', isTest: false }
     }),
     prisma.webhookEventLog.count({
-      where: { associationId, source: 'paystack', status: 'SUCCESS', isTest: false }
+      where: { ...whereClause, source: 'paystack', status: 'SUCCESS', isTest: false }
     }),
     prisma.webhookEventLog.count({
-      where: { associationId, source: 'paystack', status: 'FAILED', isTest: false }
+      where: { ...whereClause, source: 'paystack', status: 'FAILED', isTest: false }
     }),
     prisma.webhookEventLog.count({
-      where: { associationId, source: 'custom', isTest: false }
+      where: { ...whereClause, source: 'custom', isTest: false }
     }),
     prisma.webhookEventLog.count({
-      where: { associationId, source: 'custom', status: 'SUCCESS', isTest: false }
+      where: { ...whereClause, source: 'custom', status: 'SUCCESS', isTest: false }
     }),
     prisma.webhookEventLog.count({
-      where: { associationId, source: 'custom', status: 'FAILED', isTest: false }
+      where: { ...whereClause, source: 'custom', status: 'FAILED', isTest: false }
     }),
   ]);
 
   const paystackLastEvent = await prisma.webhookEventLog.findFirst({
-    where: { associationId, source: 'paystack', isTest: false },
+    where: { ...whereClause, source: 'paystack', isTest: false },
     orderBy: { createdAt: 'desc' },
     select: { createdAt: true }
   });
 
   const customLastEvent = await prisma.webhookEventLog.findFirst({
-    where: { associationId, source: 'custom', isTest: false },
+    where: { ...whereClause, source: 'custom', isTest: false },
     orderBy: { createdAt: 'desc' },
     select: { createdAt: true }
   });
@@ -127,7 +129,7 @@ export async function getWebhookStats(associationId: number): Promise<WebhookSta
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
   const recentEvents = await prisma.webhookEventLog.findMany({
-    where: { associationId, isTest: false },
+    where: { ...whereClause, isTest: false },
     orderBy: { createdAt: 'desc' },
     take: 10,
     select: {
@@ -176,7 +178,7 @@ export async function getWebhookStats(associationId: number): Promise<WebhookSta
 
 // Get webhook events with pagination and filters
 export async function getWebhookEvents(params: {
-  associationId: number;
+  associationId?: number;
   page?: number;
   limit?: number;
   eventType?: string;
@@ -196,7 +198,11 @@ export async function getWebhookEvents(params: {
     search
   } = params;
 
-  const where: any = { associationId };
+  const where: any = {};
+  
+  if (associationId) {
+    where.associationId = associationId;
+  }
 
   if (eventType) {
     where.eventType = eventType;
@@ -255,9 +261,11 @@ export async function getWebhookEvents(params: {
 }
 
 // Get single webhook event
-export async function getWebhookEvent(id: number, associationId: number): Promise<WebhookEventResponse | null> {
+export async function getWebhookEvent(id: number, associationId?: number): Promise<WebhookEventResponse | null> {
+  const whereClause = associationId ? { id, associationId } : { id };
+  
   const event = await prisma.webhookEventLog.findFirst({
-    where: { id, associationId }
+    where: whereClause
   });
 
   if (!event) return null;
@@ -279,9 +287,11 @@ export async function getWebhookEvent(id: number, associationId: number): Promis
 }
 
 // Retry failed webhook event
-export async function retryWebhookEvent(id: number, associationId: number): Promise<void> {
+export async function retryWebhookEvent(id: number, associationId?: number): Promise<void> {
+  const whereClause = associationId ? { id, associationId } : { id };
+  
   const event = await prisma.webhookEventLog.findFirst({
-    where: { id, associationId }
+    where: whereClause
   });
 
   if (!event) {
@@ -300,13 +310,18 @@ export async function retryWebhookEvent(id: number, associationId: number): Prom
 }
 
 // Retry all failed webhook events
-export async function retryFailedWebhooks(associationId: number): Promise<void> {
+export async function retryFailedWebhooks(associationId?: number): Promise<void> {
+  const whereClause: any = { 
+    status: 'FAILED' as const, 
+    isTest: false 
+  };
+  
+  if (associationId) {
+    whereClause.associationId = associationId;
+  }
+    
   await prisma.webhookEventLog.updateMany({
-    where: {
-      associationId,
-      status: 'FAILED',
-      isTest: false
-    },
+    where: whereClause,
     data: {
       status: 'RETRYING',
       retryCount: { increment: 1 },
@@ -317,13 +332,17 @@ export async function retryFailedWebhooks(associationId: number): Promise<void> 
 
 // Clear webhook logs
 export async function clearWebhookLogs(params: {
-  associationId: number;
+  associationId?: number;
   olderThan?: string;
   status?: string;
 }): Promise<{ count: number }> {
   const { associationId, olderThan, status } = params;
 
-  const where: any = { associationId };
+  const where: any = {};
+  
+  if (associationId) {
+    where.associationId = associationId;
+  }
 
   if (status) {
     where.status = status;
@@ -342,7 +361,7 @@ export async function clearWebhookLogs(params: {
 
 // Test webhook
 export async function testWebhook(params: {
-  associationId: number;
+  associationId?: number;
   testRequest: WebhookTestRequest;
 }): Promise<WebhookTestResponse> {
   const { associationId, testRequest } = params;
@@ -363,12 +382,13 @@ export async function testWebhook(params: {
       error: 'Simulated error for testing purposes'
     };
 
-    // Log the test event
-    await prisma.webhookEventLog.create({
-      data: {
-        associationId,
-        eventType: testRequest.eventType,
-        status: 'FAILED',
+    // Log the test event (only if associationId is provided)
+    if (associationId) {
+      await prisma.webhookEventLog.create({
+        data: {
+          associationId,
+          eventType: testRequest.eventType,
+          status: 'FAILED',
         statusCode: testRequest.errorStatusCode || 500,
         duration: Date.now() - startTime,
         payload: testRequest.payload,
@@ -378,6 +398,7 @@ export async function testWebhook(params: {
         isTest: true
       }
     });
+    }
 
     return errorResponse;
   }
@@ -394,14 +415,15 @@ export async function testWebhook(params: {
     responseTime: Date.now() - startTime
   };
 
-  // Log the test event
-  await prisma.webhookEventLog.create({
-    data: {
-      associationId,
-      eventType: testRequest.eventType,
-      status: 'SUCCESS',
-      statusCode: 200,
-      duration: Date.now() - startTime,
+  // Log the test event (only if associationId is provided)
+  if (associationId) {
+    await prisma.webhookEventLog.create({
+      data: {
+        associationId,
+        eventType: testRequest.eventType,
+        status: 'SUCCESS',
+        statusCode: 200,
+        duration: Date.now() - startTime,
       payload: testRequest.payload,
       responseBody: successResponse.responseBody,
       source: 'custom',
@@ -409,6 +431,7 @@ export async function testWebhook(params: {
       isTest: true
     }
   });
+  }
 
   return successResponse;
 }

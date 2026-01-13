@@ -130,8 +130,9 @@ router.post('/events/:id/retry', async (req: Request, res: Response) => {
 router.post('/events/retry-failed', async (req: Request, res: Response) => {
   try {
     const { associationId } = req.query; // Optional filter for specific association
+    const associationIdNum = associationId ? parseInt(associationId as string) : undefined;
     
-    await retryFailedWebhooks(associationId as string);
+    await retryFailedWebhooks(associationIdNum);
     
     res.json({
       success: true,
@@ -182,7 +183,7 @@ router.post('/test', async (req: Request, res: Response) => {
     const { associationId } = req.query; // Optional association context for testing
     
     const result = await testWebhook({
-      associationId: associationId as string,
+      associationId: associationId ? parseInt(associationId as string) : undefined,
       testRequest
     });
     
