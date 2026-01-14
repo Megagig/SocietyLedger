@@ -414,17 +414,32 @@ export default function HomePage() {
             </div>
             
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-              <Link href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+              <Link href="/features" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                Features
+              </Link>
+              <Link href="/pricing" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                Pricing
+              </Link>
+              <Link href="/about" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                About
+              </Link>
+              <Link href="/contact" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
                 Contact Us
               </Link>
-              <Link href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+              <Link href="/faq" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                FAQ
+              </Link>
+              <Link href="/documentation" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                Documentation
+              </Link>
+              <Link href="/blog" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                Blog
+              </Link>
+              <Link href="/privacy" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+              <Link href="/terms" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
                 Terms of Service
-              </Link>
-              <Link href="#" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Documentation
               </Link>
             </div>
             
