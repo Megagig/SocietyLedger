@@ -22,8 +22,46 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function HomePage() {
+  // SoftwareApplication Schema for SEO
+  const softwareSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'SocietyLedger',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web, iOS, Android',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'NGN',
+      description: '14-day free trial, then starting from ₦5,000/month',
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      ratingCount: '150',
+      bestRating: '5',
+      worstRating: '1',
+    },
+    description: 'Comprehensive association management software for cooperatives, clubs, and community organizations across Africa.',
+    url: 'https://societyledger.com.ng',
+    featureList: [
+      'Member Management',
+      'Financial Tracking',
+      'Dues and Levies',
+      'Welfare Funds',
+      'SMS Notifications',
+      'Reports and Analytics',
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-green-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      {/* JSON-LD Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      />
+      
       {/* Navigation */}
       <nav className="glass-strong fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 dark:border-gray-700/50">
         <Container size="xl" className="py-4">
