@@ -44,6 +44,8 @@ import {
   IconPlus,
   IconClock,
   IconWebhook,
+  IconArticle,
+  IconBook,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
@@ -824,6 +826,24 @@ export function Sidebar() {
           label: 'Cron Jobs',
           icon: <IconRobot size={18} />,
           href: '/admin/cron-jobs',
+        },
+      ],
+    });
+
+    // Add CMS section for Super Admin
+    navItems.push({
+      label: 'CMS',
+      icon: <IconArticle size={20} />,
+      children: [
+        {
+          label: 'Blog',
+          icon: <IconArticle size={18} />,
+          href: '/admin/blog',
+        },
+        {
+          label: 'Documentation',
+          icon: <IconBook size={18} />,
+          href: '/admin/documentation',
         },
       ],
     });
