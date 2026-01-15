@@ -1,168 +1,129 @@
-// ============================================
-// BLOG & DOCUMENTATION SYSTEM - BLOG ROUTES
-// ============================================
-
 import { Router } from 'express';
-import { blogController } from './blog.controller';
+import { BlogController } from './blog.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { requirePermission } from '../../middleware/rbac';
-import { PERMISSIONS } from '../../lib/permissions';
+import { requirePlatformRole } from '../../middleware/rbac';
+import { PlatformRole } from '@prisma/client';
 
 const router = Router();
+const ctrl = new BlogController();
 
-// ==========================================
-// PUBLIC ENDPOINTS (No Auth Required)
-// ==========================================
+// ============================================
+// PUBLIC ROUTES (No authentication required)
+// ============================================
 
-/**
- * @route   GET /api/blog/posts
- * @desc    List published blog posts
- * @access  Public
- */
-router.get('/posts', blogController.listPosts);
+// Blog posts
+router.get('/posts', (req, res) => ctrl.getPublishedPosts(req, res));
+router.get('/posts/:slug', (req, res) => ctrl.getPostBySlug(req, res));
+router.post('/posts/:id/view', (req, res) => ctrl.incrementView(req, res));
 
-/**
- * @route   GET /api/blog/posts/:slug
- * @desc    Get a single blog post by slug
- * @access  Public
- */
-router.get('/posts/:slug', blogController.getPostBySlug);
+// Categories & Tags
+router.get('/categories', (req, res) => ctrl.getCategories(req, res));
+router.get('/tags', (req, res) => ctrl.getTags(req, res));
 
-/**
- * @route   GET /api/blog/posts/:id/related
- * @desc    Get related posts
- * @access  Public
- */
-router.get('/posts/:id/related', blogController.getRelatedPosts);
+// Comments
+router.get('/posts/:id/comments', (req, res) => ctrl.getComments(req, res));
+router.post('/posts/:id/comments', (req, res) => ctrl.createComment(req, res));
 
-/**
- * @route   POST /api/blog/posts/:id/view
- * @desc    Increment post view count
- * @access  Public
- */
-router.post('/posts/:id/view', blogController.incrementView);
+// Related posts
+router.get('/posts/:id/related', (req, res) => ctrl.getRelatedPosts(req, res));
 
-/**
- * @route   GET /api/blog/posts/:id/comments
- * @desc    List comments for a post
- * @access  Public
- */
-router.get('/posts/:id/comments', blogController.listComments);
+// ============================================
+// SUPER ADMIN ROUTES (Platform admin only)
+// ============================================
 
-/**
- * @route   POST /api/blog/posts/:id/comments
- * @desc    Create a comment on a post
- * @access  Public (or authenticated users)
- */
-router.post('/posts/:id/comments', authMiddleware, blogController.createComment);
+// Posts management
+router.get(
+  '/admin/posts',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.getAllPosts(req, res)
+);
 
-/**
- * @route   GET /api/blog/categories
- * @desc    List all blog categories
- * @access  Public
- */
-router.get('/categories', blogController.listCategories);
+router.post(
+  '/admin/posts',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.createPost(req, res)
+);
 
-/**
- * @route   GET /api/blog/tags
- * @desc    List all blog tags
- * @access  Public
- */
-router.get('/tags', blogController.listTags);
+router.get(
+  '/admin/posts/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.getPostById(req, res)
+);
 
-// ==========================================
-// ADMIN ENDPOINTS (Super Admin Only)
-// ==========================================
+router.put(
+  '/admin/posts/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.updatePost(req, res)
+);
 
-/**
- * @route   GET /api/admin/blog/posts
- * @desc    List all blog posts (including drafts)
- * @access  Super Admin
- */
-router.get('/admin/blog/posts', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.listAllPosts);
+router.delete(
+  '/admin/posts/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.deletePost(req, res)
+);
 
-/**
- * @route   POST /api/admin/blog/posts
- * @desc    Create a new blog post
- * @access  Super Admin
- */
-router.post('/admin/blog/posts', authMiddleware, requirePermission(PERMISSIONS.BLOG_POST_CREATE), blogController.createPost);
+// Categories management
+router.post(
+  '/admin/categories',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.createCategory(req, res)
+);
 
-/**
- * @route   GET /api/admin/blog/posts/:id
- * @desc    Get a blog post by ID
- * @access  Super Admin
- */
-router.get('/admin/blog/posts/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.getPostById);
+router.put(
+  '/admin/categories/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.updateCategory(req, res)
+);
 
-/**
- * @route   PUT /api/admin/blog/posts/:id
- * @desc    Update a blog post
- * @access  Super Admin
- */
-router.put('/admin/blog/posts/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_POST_EDIT), blogController.updatePost);
+router.delete(
+  '/admin/categories/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.deleteCategory(req, res)
+);
 
-/**
- * @route   DELETE /api/admin/blog/posts/:id
- * @desc    Delete a blog post
- * @access  Super Admin
- */
-router.delete('/admin/blog/posts/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_POST_DELETE), blogController.deletePost);
+// Tags management
+router.post(
+  '/admin/tags',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.createTag(req, res)
+);
 
-/**
- * @route   POST /api/admin/blog/categories
- * @desc    Create a new blog category
- * @access  Super Admin
- */
-router.post('/admin/blog/categories', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.createCategory);
+router.put(
+  '/admin/tags/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.updateTag(req, res)
+);
 
-/**
- * @route   PUT /api/admin/blog/categories/:id
- * @desc    Update a blog category
- * @access  Super Admin
- */
-router.put('/admin/blog/categories/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.updateCategory);
+router.delete(
+  '/admin/tags/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.deleteTag(req, res)
+);
 
-/**
- * @route   DELETE /api/admin/blog/categories/:id
- * @desc    Delete a blog category
- * @access  Super Admin
- */
-router.delete('/admin/blog/categories/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.deleteCategory);
+// Comments moderation
+router.put(
+  '/admin/comments/:id/approve',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.approveComment(req, res)
+);
 
-/**
- * @route   POST /api/admin/blog/tags
- * @desc    Create a new blog tag
- * @access  Super Admin
- */
-router.post('/admin/blog/tags', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.createTag);
-
-/**
- * @route   PUT /api/admin/blog/tags/:id
- * @desc    Update a blog tag
- * @access  Super Admin
- */
-router.put('/admin/blog/tags/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.updateTag);
-
-/**
- * @route   DELETE /api/admin/blog/tags/:id
- * @desc    Delete a blog tag
- * @access  Super Admin
- */
-router.delete('/admin/blog/tags/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_MANAGE), blogController.deleteTag);
-
-/**
- * @route   PUT /api/admin/blog/comments/:id/approve
- * @desc    Approve a comment
- * @access  Super Admin
- */
-router.put('/admin/blog/comments/:id/approve', authMiddleware, requirePermission(PERMISSIONS.BLOG_COMMENT_MODERATE), blogController.approveComment);
-
-/**
- * @route   DELETE /api/admin/blog/comments/:id
- * @desc    Delete a comment
- * @access  Super Admin
- */
-router.delete('/admin/blog/comments/:id', authMiddleware, requirePermission(PERMISSIONS.BLOG_COMMENT_MODERATE), blogController.deleteComment);
+router.delete(
+  '/admin/comments/:id',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  (req, res) => ctrl.deleteComment(req, res)
+);
 
 export default router;

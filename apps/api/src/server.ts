@@ -49,8 +49,10 @@ import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import helpRoutes from './modules/help/help.routes';
 import aiHelpRoutes from './modules/help/ai-help.routes';
 import supportRoutes from './modules/support/support.routes';
-import blogRoutes from './modules/blog/blog.routes';
-import documentationRoutes from './modules/documentation/documentation.routes';
+import blogPublicRoutes from './modules/blog/blog-public.routes';
+import blogAdminRoutes from './modules/blog/blog-admin.routes';
+import documentationPublicRoutes from './modules/documentation/documentation-public.routes';
+import documentationAdminRoutes from './modules/documentation/documentation-admin.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -122,6 +124,14 @@ app.use('/api/webhooks', webhookManagementRoutes);
 // Cron routes (Super Admin only, must be before tenantMiddleware)
 app.use('/api/cron', cronRoutes);
 
+// Blog & Documentation routes (Platform-level, must be before tenantMiddleware)
+// Public routes - no auth required
+app.use('/api/blog', blogPublicRoutes);
+app.use('/api/docs', documentationPublicRoutes);
+// Admin routes - Super Admin only
+app.use('/api/admin/blog', blogAdminRoutes);
+app.use('/api/admin/docs', documentationAdminRoutes);
+
 // Tenant middleware for all other routes
 app.use(tenantMiddleware);
 
@@ -183,8 +193,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/help', helpRoutes);
 app.use('/api/help/ai', aiHelpRoutes);
 app.use('/api/support', supportRoutes);
-app.use('/api/blog', blogRoutes);
-app.use('/api/docs', documentationRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

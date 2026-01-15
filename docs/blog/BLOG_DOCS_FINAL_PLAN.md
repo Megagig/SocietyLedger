@@ -624,9 +624,9 @@ apps/web/src/components/documentation/
 
 ---
 
-### Phase 9: Search & Performance (4 hours)
+### Phase 9:
+**Tasks:** Search & Performance (4 hours)
 
-**Tasks:**
 1. Implement PostgreSQL full-text search
 2. Add search indexing
 3. Implement Redis caching

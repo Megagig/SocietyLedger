@@ -6,6 +6,10 @@ import { IconArticle, IconAlertCircle } from '@tabler/icons-react';
 import { PostCard } from '@/components/blog/PostCard';
 import { BlogSearch } from '@/components/blog/BlogSearch';
 import { API_ROUTES } from '@/utils/constants';
+import { generateBlogMetadata } from './metadata';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = generateBlogMetadata();
 
 interface BlogPost {
   id: number;

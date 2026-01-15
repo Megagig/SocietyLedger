@@ -1,920 +1,760 @@
-// ============================================
-// BLOG & DOCUMENTATION SYSTEM - BLOG CONTROLLER
-// ============================================
-
 import { Request, Response } from 'express';
-import { blogService } from './blog.service';
-import {
-  createPostSchema,
-  updatePostSchema,
-  searchPostsSchema,
-  incrementViewSchema,
-  createCategorySchema,
-  updateCategorySchema,
-  createTagSchema,
-  updateTagSchema,
-  createCommentSchema,
-  updateCommentSchema,
-  listCommentsSchema,
-  getRelatedPostsSchema,
-  listPostsQuerySchema,
-  listCategoriesQuerySchema,
-  listTagsQuerySchema,
-} from './blog.validation';
-import { prisma } from '../../lib/prisma';
+import { z } from 'zod';
+import prisma from '../../lib/prisma';
+import { PostStatus, CommentStatus, ContentScope } from '@prisma/client';
 
-// ============================================
-// BLOG CONTROLLER
-// ============================================
+// Validation schemas
+const createPostSchema = z.object({
+  title: z.string().min(3).max(200),
+  slug: z.string().min(3).max(200).regex(/^[a-z0-9-]+$/),
+  excerpt: z.string().max(500).optional(),
+  content: z.string().min(10),
+  coverImage: z.string().url().optional(),
+  status: z.nativeEnum(PostStatus).default(PostStatus.DRAFT),
+  publishedAt: z.string().datetime().optional(),
+  readTimeMinutes: z.number().int().positive().optional(),
+  metaTitle: z.string().max(60).optional(),
+  metaDescription: z.string().max(160).optional(),
+  metaKeywords: z.array(z.string()).optional(),
+  categoryId: z.number().int().positive().optional(),
+  tagIds: z.array(z.number().int().positive()).optional(),
+});
 
-export const blogController = {
-  // ==========================================
-  // PUBLIC ENDPOINTS (No Auth Required)
-  // ==========================================
+const updatePostSchema = createPostSchema.partial();
 
-  /**
-   * List published posts
-   * GET /api/blog/posts
-   */
-  async listPosts(req: Request, res: Response) {
+const createCategorySchema = z.object({
+  name: z.string().min(2).max(50),
+  slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
+  description: z.string().max(200).optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+const createTagSchema = z.object({
+  name: z.string().min(2).max(30),
+  slug: z.string().min(2).max(30).regex(/^[a-z0-9-]+$/),
+});
+
+const createCommentSchema = z.object({
+  content: z.string().min(3).max(1000),
+  guestName: z.string().min(2).max(50).optional(),
+  guestEmail: z.string().email().optional(),
+  parentId: z.number().int().positive().optional(),
+});
+
+export class BlogController {
+  // ============================================
+  // PUBLIC ENDPOINTS
+  // ============================================
+
+  async getPublishedPosts(req: Request, res: Response) {
     try {
-      const validation = searchPostsSchema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+      const categorySlug = req.query.category as string;
+      const tagSlug = req.query.tag as string;
+      const search = req.query.search as string;
+
+      const where: any = {
+        status: PostStatus.PUBLISHED,
+        scope: ContentScope.PLATFORM,
+      };
+
+      if (categorySlug) {
+        where.category = { slug: categorySlug };
       }
 
-      const result = await blogService.listPosts({
-        ...validation.data,
-        status: 'PUBLISHED',
-      });
+      if (tagSlug) {
+        where.tags = {
+          some: {
+            tag: { slug: tagSlug },
+          },
+        };
+      }
 
-      res.json({
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { excerpt: { contains: search, mode: 'insensitive' } },
+          { content: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      const [posts, total] = await Promise.all([
+        prisma.blogPost.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { publishedAt: 'desc' },
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+            category: true,
+            tags: {
+              include: {
+                tag: true,
+              },
+            },
+            _count: {
+              select: {
+                comments: {
+                  where: { status: CommentStatus.APPROVED },
+                },
+              },
+            },
+          },
+        }),
+        prisma.blogPost.count({ where }),
+      ]);
+
+      return res.json({
         success: true,
-        data: result,
+        data: {
+          posts,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        },
       });
-    } catch (error: any) {
-      console.error('Error listing blog posts:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to list posts',
-        message: error.message,
-      });
+    } catch (error) {
+      console.error('Get published posts error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Get post by slug
-   * GET /api/blog/posts/:slug
-   */
   async getPostBySlug(req: Request, res: Response) {
     try {
       const { slug } = req.params;
 
-      const post = await blogService.getPostBySlug(slug, true);
+      const post = await prisma.blogPost.findUnique({
+        where: { slug, status: PostStatus.PUBLISHED },
+        include: {
+          author: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          category: true,
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          _count: {
+            select: {
+              comments: {
+                where: { status: CommentStatus.APPROVED },
+              },
+            },
+          },
+        },
+      });
 
       if (!post) {
-        return res.status(404).json({
-          success: false,
-          error: 'Post not found',
-        });
+        return res.status(404).json({ success: false, message: 'Post not found' });
       }
 
-      res.json({
-        success: true,
-        data: post,
-      });
-    } catch (error: any) {
-      console.error('Error getting blog post:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get post',
-        message: error.message,
-      });
+      return res.json({ success: true, data: post });
+    } catch (error) {
+      console.error('Get post by slug error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Get related posts
-   * GET /api/blog/posts/:id/related
-   */
-  async getRelatedPosts(req: Request, res: Response) {
-    try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid post ID',
-        });
-      }
-
-      const validation = getRelatedPostsSchema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const relatedPosts = await blogService.getRelatedPosts(
-        postId,
-        validation.data.limit
-      );
-
-      res.json({
-        success: true,
-        data: relatedPosts,
-      });
-    } catch (error: any) {
-      console.error('Error getting related posts:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get related posts',
-        message: error.message,
-      });
-    }
-  },
-
-  /**
-   * Increment post view count
-   * POST /api/blog/posts/:id/view
-   */
   async incrementView(req: Request, res: Response) {
     try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid post ID',
-        });
-      }
+      const id = Number(req.params.id);
 
-      const validation = incrementViewSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      await blogService.incrementViewCount(validation.data);
-
-      res.json({
-        success: true,
-        message: 'View count incremented',
+      await prisma.blogPost.update({
+        where: { id },
+        data: {
+          viewCount: {
+            increment: 1,
+          },
+        },
       });
-    } catch (error: any) {
-      console.error('Error incrementing view count:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to increment view count',
-        message: error.message,
-      });
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Increment view error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * List comments for a post
-   * GET /api/blog/posts/:id/comments
-   */
-  async listComments(req: Request, res: Response) {
+  async getCategories(req: Request, res: Response) {
     try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid post ID',
-        });
-      }
-
-      const validation = listCommentsSchema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const comments = await blogService.listComments({
-        postId,
-        ...validation.data,
+      const categories = await prisma.blogCategory.findMany({
+        orderBy: { name: 'asc' },
+        include: {
+          _count: {
+            select: {
+              posts: {
+                where: { status: PostStatus.PUBLISHED },
+              },
+            },
+          },
+        },
       });
 
-      res.json({
-        success: true,
-        data: comments,
-      });
-    } catch (error: any) {
-      console.error('Error listing comments:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to list comments',
-        message: error.message,
-      });
+      return res.json({ success: true, data: categories });
+    } catch (error) {
+      console.error('Get categories error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Create comment (public)
-   * POST /api/blog/posts/:id/comments
-   */
+  async getTags(req: Request, res: Response) {
+    try {
+      const tags = await prisma.blogTag.findMany({
+        orderBy: { name: 'asc' },
+        include: {
+          _count: {
+            select: {
+              posts: true,
+            },
+          },
+        },
+      });
+
+      return res.json({ success: true, data: tags });
+    } catch (error) {
+      console.error('Get tags error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async getComments(req: Request, res: Response) {
+    try {
+      const postId = Number(req.params.id);
+
+      const comments = await prisma.blogComment.findMany({
+        where: {
+          postId,
+          status: CommentStatus.APPROVED,
+          parentId: null, // Only top-level comments
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          author: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          replies: {
+            where: { status: CommentStatus.APPROVED },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return res.json({ success: true, data: comments });
+    } catch (error) {
+      console.error('Get comments error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
   async createComment(req: Request, res: Response) {
     try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid post ID',
-        });
-      }
+      const postId = Number(req.params.id);
+      const input = createCommentSchema.parse(req.body);
+      const userId = req.user?.id;
 
-      const validation = createCommentSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const authorId = req.user?.id;
-
-      const comment = await blogService.createComment(
-        {
-          ...validation.data,
-          postId,
-        },
-        authorId
-      );
-
-      res.status(201).json({
-        success: true,
-        data: comment,
-        message: 'Comment submitted for moderation',
-      });
-    } catch (error: any) {
-      console.error('Error creating comment:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create comment',
-        message: error.message,
-      });
-    }
-  },
-
-  /**
-   * List categories
-   * GET /api/blog/categories
-   */
-  async listCategories(req: Request, res: Response) {
-    try {
-      const validation = listCategoriesQuerySchema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const categories = await blogService.listCategories(validation.data.limit);
-
-      res.json({
-        success: true,
-        data: categories,
-      });
-    } catch (error: any) {
-      console.error('Error listing categories:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to list categories',
-        message: error.message,
-      });
-    }
-  },
-
-  /**
-   * List tags
-   * GET /api/blog/tags
-   */
-  async listTags(req: Request, res: Response) {
-    try {
-      const validation = listTagsQuerySchema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const tags = await blogService.listTags(validation.data.limit);
-
-      res.json({
-        success: true,
-        data: tags,
-      });
-    } catch (error: any) {
-      console.error('Error listing tags:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to list tags',
-        message: error.message,
-      });
-    }
-  },
-
-  // ==========================================
-  // ADMIN ENDPOINTS (Super Admin Only)
-  // ==========================================
-
-  /**
-   * List all posts (including drafts)
-   * GET /api/admin/blog/posts
-   */
-  async listAllPosts(req: Request, res: Response) {
-    try {
-      const validation = searchPostsSchema.safeParse(req.query);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const result = await blogService.listPosts(validation.data);
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error: any) {
-      console.error('Error listing all blog posts:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to list posts',
-        message: error.message,
-      });
-    }
-  },
-
-  /**
-   * Create post
-   * POST /api/admin/blog/posts
-   */
-  async createPost(req: Request, res: Response) {
-    try {
-      const validation = createPostSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      if (!req.user?.id) {
-        return res.status(401).json({
-          success: false,
-          error: 'Unauthorized',
-        });
-      }
-
-      const post = await blogService.createPost(validation.data, req.user.id);
-
-      // Audit log
-      await prisma.auditLog.create({
+      const comment = await prisma.blogComment.create({
         data: {
-          associationId: req.user.associationId || null,
-          userId: req.user.id,
-          action: 'blog_post_created',
-          tableName: 'blog_posts',
-          recordId: post.id,
-          newValues: { title: post.title, status: post.status },
+          postId,
+          content: input.content,
+          authorId: userId,
+          guestName: input.guestName,
+          guestEmail: input.guestEmail,
+          parentId: input.parentId,
+          status: CommentStatus.PENDING, // Requires moderation
         },
       });
 
-      res.status(201).json({
-        success: true,
-        data: post,
-      });
-    } catch (error: any) {
-      console.error('Error creating blog post:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create post',
-        message: error.message,
-      });
-    }
-  },
-
-  /**
-   * Get post by ID (admin)
-   * GET /api/admin/blog/posts/:id
-   */
-  async getPostById(req: Request, res: Response) {
-    try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid post ID',
-        });
+      return res.status(201).json({ success: true, data: comment });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
       }
+      console.error('Create comment error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
 
-      const post = await blogService.getPostById(postId);
+  async getRelatedPosts(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const limit = Number(req.query.limit) || 3;
+
+      const post = await prisma.blogPost.findUnique({
+        where: { id },
+        include: {
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+        },
+      });
 
       if (!post) {
-        return res.status(404).json({
-          success: false,
-          error: 'Post not found',
-        });
+        return res.status(404).json({ success: false, message: 'Post not found' });
       }
 
-      res.json({
-        success: true,
-        data: post,
-      });
-    } catch (error: any) {
-      console.error('Error getting blog post:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get post',
-        message: error.message,
-      });
-    }
-  },
+      const tagIds = post.tags.map((t) => t.tagId);
 
-  /**
-   * Update post
-   * PUT /api/admin/blog/posts/:id
-   */
+      const relatedPosts = await prisma.blogPost.findMany({
+        where: {
+          id: { not: id },
+          status: PostStatus.PUBLISHED,
+          OR: [
+            { categoryId: post.categoryId },
+            {
+              tags: {
+                some: {
+                  tagId: { in: tagIds },
+                },
+              },
+            },
+          ],
+        },
+        take: limit,
+        orderBy: { publishedAt: 'desc' },
+        include: {
+          author: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          category: true,
+        },
+      });
+
+      return res.json({ success: true, data: relatedPosts });
+    } catch (error) {
+      console.error('Get related posts error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  // ============================================
+  // SUPER ADMIN ENDPOINTS
+  // ============================================
+
+  async getAllPosts(req: Request, res: Response) {
+    try {
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+      const status = req.query.status as PostStatus;
+      const search = req.query.search as string;
+
+      const where: any = {
+        scope: ContentScope.PLATFORM,
+      };
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { excerpt: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      const [posts, total] = await Promise.all([
+        prisma.blogPost.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+            category: true,
+            tags: {
+              include: {
+                tag: true,
+              },
+            },
+            _count: {
+              select: {
+                comments: true,
+              },
+            },
+          },
+        }),
+        prisma.blogPost.count({ where }),
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          posts,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Get all posts error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async getPostById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+
+      const post = await prisma.blogPost.findUnique({
+        where: { id },
+        include: {
+          author: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          category: true,
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+        },
+      });
+
+      if (!post) {
+        return res.status(404).json({ success: false, message: 'Post not found' });
+      }
+
+      return res.json({ success: true, data: post });
+    } catch (error) {
+      console.error('Get post by ID error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async createPost(req: Request, res: Response) {
+    try {
+      const input = createPostSchema.parse(req.body);
+      const authorId = req.user!.id;
+
+      // Check if slug exists
+      const existing = await prisma.blogPost.findUnique({
+        where: { slug: input.slug },
+      });
+
+      if (existing) {
+        return res.status(409).json({ success: false, message: 'Slug already exists' });
+      }
+
+      const { tagIds, ...postData } = input;
+
+      const post = await prisma.blogPost.create({
+        data: {
+          ...postData,
+          authorId,
+          scope: ContentScope.PLATFORM,
+          publishedAt: input.status === PostStatus.PUBLISHED ? input.publishedAt || new Date().toISOString() : null,
+          tags: tagIds
+            ? {
+                create: tagIds.map((tagId) => ({
+                  tag: { connect: { id: tagId } },
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          category: true,
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+        },
+      });
+
+      return res.status(201).json({ success: true, data: post });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+      }
+      console.error('Create post error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
   async updatePost(req: Request, res: Response) {
     try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid post ID',
-        });
-      }
+      const id = Number(req.params.id);
+      const input = updatePostSchema.parse(req.body);
 
-      const validation = updatePostSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const post = await blogService.updatePost(postId, validation.data);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_post_updated',
-            tableName: 'blog_posts',
-            recordId: post.id,
-            newValues: validation.data,
+      // Check if slug exists (excluding current post)
+      if (input.slug) {
+        const existing = await prisma.blogPost.findFirst({
+          where: {
+            slug: input.slug,
+            id: { not: id },
           },
         });
+
+        if (existing) {
+          return res.status(409).json({ success: false, message: 'Slug already exists' });
+        }
       }
 
-      res.json({
-        success: true,
-        data: post,
-      });
-    } catch (error: any) {
-      console.error('Error updating blog post:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to update post',
-        message: error.message,
-      });
-    }
-  },
+      const { tagIds, ...postData } = input;
 
-  /**
-   * Delete post
-   * DELETE /api/admin/blog/posts/:id
-   */
+      // Update tags if provided
+      if (tagIds !== undefined) {
+        await prisma.blogPostTag.deleteMany({
+          where: { postId: id },
+        });
+      }
+
+      const post = await prisma.blogPost.update({
+        where: { id },
+        data: {
+          ...postData,
+          publishedAt:
+            input.status === PostStatus.PUBLISHED && !postData.publishedAt
+              ? new Date().toISOString()
+              : postData.publishedAt,
+          tags: tagIds
+            ? {
+                create: tagIds.map((tagId) => ({
+                  tag: { connect: { id: tagId } },
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              email: true,
+            },
+          },
+          category: true,
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+        },
+      });
+
+      return res.json({ success: true, data: post });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+      }
+      console.error('Update post error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
   async deletePost(req: Request, res: Response) {
     try {
-      const postId = parseInt(req.params.id);
-      if (isNaN(postId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid post ID',
-        });
-      }
+      const id = Number(req.params.id);
 
-      await blogService.deletePost(postId);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_post_deleted',
-            tableName: 'blog_posts',
-            recordId: postId,
-          },
-        });
-      }
-
-      res.json({
-        success: true,
-        message: 'Post deleted successfully',
+      await prisma.blogPost.delete({
+        where: { id },
       });
-    } catch (error: any) {
-      console.error('Error deleting blog post:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to delete post',
-        message: error.message,
-      });
+
+      return res.json({ success: true, message: 'Post deleted successfully' });
+    } catch (error) {
+      console.error('Delete post error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Create category
-   * POST /api/admin/blog/categories
-   */
   async createCategory(req: Request, res: Response) {
     try {
-      const validation = createCategorySchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
+      const input = createCategorySchema.parse(req.body);
+
+      const existing = await prisma.blogCategory.findUnique({
+        where: { slug: input.slug },
+      });
+
+      if (existing) {
+        return res.status(409).json({ success: false, message: 'Category slug already exists' });
       }
 
-      const category = await blogService.createCategory(validation.data);
+      const category = await prisma.blogCategory.create({
+        data: input,
+      });
 
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_category_created',
-            tableName: 'blog_categories',
-            recordId: category.id,
-            newValues: { name: category.name },
-          },
-        });
+      return res.status(201).json({ success: true, data: category });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
       }
-
-      res.status(201).json({
-        success: true,
-        data: category,
-      });
-    } catch (error: any) {
-      console.error('Error creating blog category:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create category',
-        message: error.message,
-      });
+      console.error('Create category error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Update category
-   * PUT /api/admin/blog/categories/:id
-   */
   async updateCategory(req: Request, res: Response) {
     try {
-      const categoryId = parseInt(req.params.id);
-      if (isNaN(categoryId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid category ID',
-        });
-      }
+      const id = Number(req.params.id);
+      const input = createCategorySchema.partial().parse(req.body);
 
-      const validation = updateCategorySchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const category = await blogService.updateCategory(categoryId, validation.data);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_category_updated',
-            tableName: 'blog_categories',
-            recordId: category.id,
-            newValues: validation.data,
-          },
-        });
-      }
-
-      res.json({
-        success: true,
-        data: category,
+      const category = await prisma.blogCategory.update({
+        where: { id },
+        data: input,
       });
-    } catch (error: any) {
-      console.error('Error updating blog category:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to update category',
-        message: error.message,
-      });
+
+      return res.json({ success: true, data: category });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+      }
+      console.error('Update category error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Delete category
-   * DELETE /api/admin/blog/categories/:id
-   */
   async deleteCategory(req: Request, res: Response) {
     try {
-      const categoryId = parseInt(req.params.id);
-      if (isNaN(categoryId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid category ID',
-        });
-      }
+      const id = Number(req.params.id);
 
-      await blogService.deleteCategory(categoryId);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_category_deleted',
-            tableName: 'blog_categories',
-            recordId: categoryId,
-          },
-        });
-      }
-
-      res.json({
-        success: true,
-        message: 'Category deleted successfully',
+      await prisma.blogCategory.delete({
+        where: { id },
       });
-    } catch (error: any) {
-      console.error('Error deleting blog category:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to delete category',
-        message: error.message,
-      });
+
+      return res.json({ success: true, message: 'Category deleted successfully' });
+    } catch (error) {
+      console.error('Delete category error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Create tag
-   * POST /api/admin/blog/tags
-   */
   async createTag(req: Request, res: Response) {
     try {
-      const validation = createTagSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
+      const input = createTagSchema.parse(req.body);
+
+      const existing = await prisma.blogTag.findUnique({
+        where: { slug: input.slug },
+      });
+
+      if (existing) {
+        return res.status(409).json({ success: false, message: 'Tag slug already exists' });
       }
 
-      const tag = await blogService.createTag(validation.data);
+      const tag = await prisma.blogTag.create({
+        data: input,
+      });
 
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_tag_created',
-            tableName: 'blog_tags',
-            recordId: tag.id,
-            newValues: { name: tag.name },
-          },
-        });
+      return res.status(201).json({ success: true, data: tag });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
       }
-
-      res.status(201).json({
-        success: true,
-        data: tag,
-      });
-    } catch (error: any) {
-      console.error('Error creating blog tag:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create tag',
-        message: error.message,
-      });
+      console.error('Create tag error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Update tag
-   * PUT /api/admin/blog/tags/:id
-   */
   async updateTag(req: Request, res: Response) {
     try {
-      const tagId = parseInt(req.params.id);
-      if (isNaN(tagId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid tag ID',
-        });
-      }
+      const id = Number(req.params.id);
+      const input = createTagSchema.partial().parse(req.body);
 
-      const validation = updateTagSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: validation.error.errors,
-        });
-      }
-
-      const tag = await blogService.updateTag(tagId, validation.data);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_tag_updated',
-            tableName: 'blog_tags',
-            recordId: tag.id,
-            newValues: validation.data,
-          },
-        });
-      }
-
-      res.json({
-        success: true,
-        data: tag,
+      const tag = await prisma.blogTag.update({
+        where: { id },
+        data: input,
       });
-    } catch (error: any) {
-      console.error('Error updating blog tag:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to update tag',
-        message: error.message,
-      });
+
+      return res.json({ success: true, data: tag });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+      }
+      console.error('Update tag error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Delete tag
-   * DELETE /api/admin/blog/tags/:id
-   */
   async deleteTag(req: Request, res: Response) {
     try {
-      const tagId = parseInt(req.params.id);
-      if (isNaN(tagId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid tag ID',
-        });
-      }
+      const id = Number(req.params.id);
 
-      await blogService.deleteTag(tagId);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_tag_deleted',
-            tableName: 'blog_tags',
-            recordId: tagId,
-          },
-        });
-      }
-
-      res.json({
-        success: true,
-        message: 'Tag deleted successfully',
+      await prisma.blogTag.delete({
+        where: { id },
       });
-    } catch (error: any) {
-      console.error('Error deleting blog tag:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to delete tag',
-        message: error.message,
-      });
+
+      return res.json({ success: true, message: 'Tag deleted successfully' });
+    } catch (error) {
+      console.error('Delete tag error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Approve comment
-   * PUT /api/admin/blog/comments/:id/approve
-   */
   async approveComment(req: Request, res: Response) {
     try {
-      const commentId = parseInt(req.params.id);
-      if (isNaN(commentId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid comment ID',
-        });
-      }
+      const id = Number(req.params.id);
 
-      const comment = await blogService.approveComment(commentId);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_comment_approved',
-            tableName: 'blog_comments',
-            recordId: comment.id,
-          },
-        });
-      }
-
-      res.json({
-        success: true,
-        data: comment,
+      const comment = await prisma.blogComment.update({
+        where: { id },
+        data: {
+          status: CommentStatus.APPROVED,
+        },
       });
-    } catch (error: any) {
-      console.error('Error approving comment:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to approve comment',
-        message: error.message,
-      });
+
+      return res.json({ success: true, data: comment });
+    } catch (error) {
+      console.error('Approve comment error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
+  }
 
-  /**
-   * Delete comment
-   * DELETE /api/admin/blog/comments/:id
-   */
   async deleteComment(req: Request, res: Response) {
     try {
-      const commentId = parseInt(req.params.id);
-      if (isNaN(commentId)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid comment ID',
-        });
-      }
+      const id = Number(req.params.id);
 
-      await blogService.deleteComment(commentId);
-
-      // Audit log
-      if (req.user?.associationId && req.user?.id) {
-        await prisma.auditLog.create({
-          data: {
-            associationId: req.user.associationId,
-            userId: req.user.id,
-            action: 'blog_comment_deleted',
-            tableName: 'blog_comments',
-            recordId: commentId,
-          },
-        });
-      }
-
-      res.json({
-        success: true,
-        message: 'Comment deleted successfully',
+      await prisma.blogComment.delete({
+        where: { id },
       });
-    } catch (error: any) {
-      console.error('Error deleting comment:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to delete comment',
-        message: error.message,
-      });
+
+      return res.json({ success: true, message: 'Comment deleted successfully' });
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-  },
-};
-
-export default blogController;
+  }
+}

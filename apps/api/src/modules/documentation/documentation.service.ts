@@ -405,49 +405,6 @@ export const documentationService = {
 
   /**
    * Create page (admin only)
-   */
-  async createPage(data: CreatePageDto, authorId: number): Promise<DocPageWithRelations> {
-    const baseSlug = generateSlug(data.title);
-    const slug = await ensureUniqueSlug(baseSlug);
-
-    const page = await prisma.docPage.create({
-      data: {
-        slug,
-        title: data.title,
-        content: data.content,
-        excerpt: data.excerpt || null,
-        order: data.order || 0,
-        scope: data.scope || ContentScope.PLATFORM,
-        parentId: data.parentId || null,
-        sectionId: data.sectionId || null,
-        metaTitle: data.metaTitle || null,
-        metaDescription: data.metaDescription || null,
-        version: data.version || '1.0',
-        status: DocStatus.DRAFT,
-        authorId,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            email: true,
-          },
-        },
-        section: true,
-        parent: true,
-        _count: {
-          select: {
-            feedback: true,
-          },
-        },
-      },
-    });
-
-    return page as DocPageWithRelations;
-  },
-
-  /**
-   * Create page (admin only)
    * Phase 9: Enhanced with cache invalidation
    */
   async createPage(data: CreatePageDto, authorId: number): Promise<DocPageWithRelations> {
@@ -491,47 +448,6 @@ export const documentationService = {
     await cacheService.invalidateByTag(CACHE_TAGS.DOC_LIST);
     await cacheService.delete(`${DOC_CACHE_PREFIX}:page:${slug}`);
     
-    return page as DocPageWithRelations;
-  },
-
-  /**
-   * Update page (admin only)
-   */
-  async updatePage(pageId: number, data: UpdatePageDto): Promise<DocPageWithRelations> {
-    const updateData: any = { ...data };
-
-    // Update slug if title changed
-    if (data.title) {
-      const baseSlug = generateSlug(data.title);
-      updateData.slug = await ensureUniqueSlug(baseSlug, pageId);
-    }
-
-    // Handle status change to published
-    if (data.status === DocStatus.PUBLISHED && !data.publishedAt) {
-      updateData.publishedAt = new Date();
-    }
-
-    const page = await prisma.docPage.update({
-      where: { id: pageId },
-      data: updateData,
-      include: {
-        author: {
-          select: {
-            id: true,
-            email: true,
-          },
-        },
-        section: true,
-        parent: true,
-        children: true,
-        _count: {
-          select: {
-            feedback: true,
-          },
-        },
-      },
-    });
-
     return page as DocPageWithRelations;
   },
 

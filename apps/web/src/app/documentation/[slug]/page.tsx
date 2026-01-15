@@ -11,6 +11,7 @@ import { TableOfContents } from '@/components/documentation/TableOfContents';
 import { DocFeedback } from '@/components/documentation/DocFeedback';
 import { DocBreadcrumbs } from '@/components/documentation/DocBreadcrumbs';
 import { DocNavigation } from '@/components/documentation/DocNavigation';
+import { JsonLd } from '@/components/seo/JsonLd';
 import { API_ROUTES } from '@/utils/constants';
 
 interface DocPage {
@@ -59,6 +60,8 @@ export default function DocPagePage() {
   const [nextPage, setNextPage] = useState<{ title: string; slug: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [jsonLd, setJsonLd] = useState<string>('');
+  const [breadcrumbJsonLd, setBreadcrumbJsonLd] = useState<string>('');
 
   useEffect(() => {
     if (slug) {
@@ -84,6 +87,44 @@ export default function DocPagePage() {
       setPage(pageData);
 
       if (pageData) {
+        // Generate JSON-LD schemas
+        const { generateWebPageJsonLd, generateBreadcrumbJsonLd } = await import('@/lib/json-ld');
+
+        const authorName = pageData.author
+          ? `${pageData.author.firstName || ''} ${pageData.author.lastName || ''}`.trim() || pageData.author.email
+          : 'SocietyLedger Team';
+
+        const webpageJsonLd = generateWebPageJsonLd({
+          title: pageData.title,
+          description: pageData.excerpt,
+          slug: pageData.slug,
+          publishedAt: pageData.publishedAt || undefined,
+          updatedAt: pageData.updatedAt,
+          authorName,
+        });
+
+        const breadcrumbItems = [
+          { name: 'Home', href: 'https://societyledger.com.ng' },
+          { name: 'Documentation', href: 'https://societyledger.com.ng/documentation' },
+        ];
+
+        if (pageData.section) {
+          breadcrumbItems.push({
+            name: pageData.section.name,
+            href: `https://societyledger.com.ng/documentation#${pageData.section.slug}`,
+          });
+        }
+
+        breadcrumbItems.push({
+          name: pageData.title,
+          href: `https://societyledger.com.ng/documentation/${pageData.slug}`,
+        });
+
+        const breadcrumbJsonLd = generateBreadcrumbJsonLd(breadcrumbItems);
+
+        setJsonLd(webpageJsonLd);
+        setBreadcrumbJsonLd(breadcrumbJsonLd);
+
         // Fetch related pages
         fetchRelatedPages(pageData.id);
 
@@ -185,6 +226,8 @@ export default function DocPagePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-green-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      {jsonLd && <JsonLd data={jsonLd} />}
+      {breadcrumbJsonLd && <JsonLd data={breadcrumbJsonLd} />}
       <nav className="glass-strong fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 dark:border-gray-700/50">
         <Container size="xl" className="py-4">
           <div className="flex items-center justify-between">

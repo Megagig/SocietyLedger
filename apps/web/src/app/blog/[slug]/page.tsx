@@ -12,6 +12,7 @@ import { TagList } from '@/components/blog/TagList';
 import { CommentSection } from '@/components/blog/CommentSection';
 import { RelatedPosts } from '@/components/blog/RelatedPosts';
 import { ShareButtons } from '@/components/blog/ShareButtons';
+import { JsonLd } from '@/components/seo/JsonLd';
 import { API_ROUTES } from '@/utils/constants';
 
 interface BlogPost {
@@ -90,6 +91,8 @@ export default function BlogPostPage() {
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [jsonLd, setJsonLd] = useState<string>('');
+  const [breadcrumbJsonLd, setBreadcrumbJsonLd] = useState<string>('');
 
   useEffect(() => {
     if (slug) {
@@ -126,16 +129,46 @@ export default function BlogPostPage() {
       }
 
       const data = await response.json();
-      setPost(data.data?.post || null);
+      const postData = data.data?.post || null;
+      setPost(postData);
 
-      // Fetch comments
-      fetchComments(data.data?.post?.id);
+      if (postData) {
+        // Generate JSON-LD schemas
+        const { generateArticleJsonLd, generateBreadcrumbJsonLd } = await import('@/lib/json-ld');
 
-      // Fetch related posts
-      fetchRelatedPosts(data.data?.post?.id);
+        const authorName = postData.author
+          ? `${postData.author.firstName || ''} ${postData.author.lastName || ''}`.trim() || postData.author.email
+          : 'SocietyLedger Team';
 
-      // Increment view count
-      incrementViewCount(data.data?.post?.id);
+        const articleJsonLd = generateArticleJsonLd({
+          title: postData.title,
+          excerpt: postData.excerpt,
+          content: postData.content,
+          coverImage: postData.coverImage || undefined,
+          publishedAt: postData.publishedAt || undefined,
+          updatedAt: postData.updatedAt,
+          authorName,
+          slug: postData.slug,
+        });
+
+        const breadcrumbJsonLd = generateBreadcrumbJsonLd([
+          { name: 'Home', href: 'https://societyledger.com.ng' },
+          { name: 'Blog', href: 'https://societyledger.com.ng/blog' },
+          { name: postData.title, href: `https://societyledger.com.ng/blog/${postData.slug}` },
+        ]);
+
+        setJsonLd(articleJsonLd);
+        setBreadcrumbJsonLd(breadcrumbJsonLd);
+
+        // Fetch comments
+        fetchComments(postData.id);
+
+        // Fetch related posts
+        fetchRelatedPosts(postData.id);
+
+        // Increment view count
+        incrementViewCount(postData.id);
+      }
     } catch (err) {
       console.error('Error fetching post:', err);
       setError('Failed to load blog post. Please try again later.');
@@ -246,6 +279,8 @@ export default function BlogPostPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-green-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      {jsonLd && <JsonLd data={jsonLd} />}
+      {breadcrumbJsonLd && <JsonLd data={breadcrumbJsonLd} />}
       <nav className="glass-strong fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 dark:border-gray-700/50">
         <Container size="xl" className="py-4">
           <div className="flex items-center justify-between">

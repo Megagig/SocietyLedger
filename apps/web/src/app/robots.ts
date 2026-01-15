@@ -1,33 +1,16 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = 'https://societyledger.com.ng';
+
   return {
     rules: [
       {
         userAgent: '*',
-        allow: [
-          '/',
-          '/pricing',
-          '/features',
-          '/contact',
-          '/about',
-          '/faq',
-          '/privacy',
-          '/terms',
-          '/documentation',
-          '/testimonials',
-          '/blog',
-        ],
-        disallow: [
-          '/dashboard/*',
-          '/admin/*',
-          '/auth/*',
-          '/login',
-          '/register',
-          '/api/*',
-        ],
+        allow: '/',
+        disallow: ['/admin/', '/dashboard/', '/api/', '/auth/'],
       },
     ],
-    sitemap: 'https://societyledger.com.ng/sitemap.xml',
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }
