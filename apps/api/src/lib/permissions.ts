@@ -202,6 +202,19 @@ export const PERMISSIONS = {
   SUPPORT_VIEW_ALL: 'support.view_all',
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
+  
+  // Blog & Documentation (Phase 2)
+  BLOG_VIEW: 'blog.view',
+  BLOG_MANAGE: 'blog.manage',
+  BLOG_POST_CREATE: 'blog.post.create',
+  BLOG_POST_EDIT: 'blog.post.edit',
+  BLOG_POST_DELETE: 'blog.post.delete',
+  BLOG_COMMENT_MODERATE: 'blog.comment.moderate',
+  DOCS_VIEW: 'docs.view',
+  DOCS_MANAGE: 'docs.manage',
+  DOCS_PAGE_CREATE: 'docs.page.create',
+  DOCS_PAGE_EDIT: 'docs.page.edit',
+  DOCS_PAGE_DELETE: 'docs.page.delete',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
