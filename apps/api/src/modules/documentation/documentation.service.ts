@@ -1,8 +1,10 @@
 // ============================================
 // BLOG & DOCUMENTATION SYSTEM - DOCUMENTATION SERVICE
+// Phase 9: Enhanced with Full-Text Search & Redis Caching
 // ============================================
 
 import { prisma } from '../../lib/prisma';
+import { cacheService, CACHE_TTL } from '../../services/cache.service';
 import {
   DocPageWithRelations,
   DocSectionWithPages,
@@ -16,6 +18,14 @@ import {
   DocPageListResponse,
 } from './types/documentation.types';
 import { DocStatus, ContentScope } from '@prisma/client';
+
+// Cache key prefixes
+const DOC_CACHE_PREFIX = 'docs';
+const CACHE_TAGS = {
+  DOC_PAGE: 'doc_page',
+  DOC_LIST: 'doc_list',
+  DOC_SECTION: 'doc_section',
+};
 
 // ============================================
 // HELPER FUNCTIONS
@@ -64,6 +74,7 @@ export const documentationService = {
 
   /**
    * List published pages (public)
+   * Phase 9: Enhanced with full-text search and Redis caching
    */
   async listPages(params: DocSearchParams): Promise<DocPageListResponse> {
     const {
@@ -76,6 +87,15 @@ export const documentationService = {
 
     const offset = (page - 1) * limit;
 
+    // Generate cache key
+    const cacheKey = `${DOC_CACHE_PREFIX}:list:${status}:${sectionId || 'all'}:${query || 'none'}:${page}:${limit}`;
+
+    // Try to get from cache
+    const cached = await cacheService.get<DocPageListResponse>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const where: any = {
       status,
       scope: 'PLATFORM',
@@ -86,8 +106,88 @@ export const documentationService = {
       where.sectionId = sectionId;
     }
 
-    // Search by query
+    // Phase 9: Enhanced full-text search using PostgreSQL tsvector
     if (query) {
+      const searchQuery = query.trim();
+      
+      // Try full-text search first
+      try {
+        const searchResults = await prisma.$queryRaw<Array<any>>`
+          SELECT 
+            dp.*,
+            ts_rank(dp.search_vector, plainto_tsquery('english', ${searchQuery})) as rank
+          FROM doc_pages dp
+          WHERE 
+            dp.status = ${status}::text
+            AND dp.scope = 'PLATFORM'
+            AND dp.search_vector @@ plainto_tsquery('english', ${searchQuery})
+            ${sectionId ? prisma.$queryRaw`AND dp."sectionId" = ${sectionId}` : prisma.$queryRaw``}
+          ORDER BY rank DESC, dp.order ASC, dp."publishedAt" DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+
+        if (searchResults.length > 0) {
+          // Get total count for this search
+          const totalResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+            SELECT COUNT(*) as count
+            FROM doc_pages dp
+            WHERE 
+              dp.status = ${status}::text
+              AND dp.scope = 'PLATFORM'
+              AND dp.search_vector @@ plainto_tsquery('english', ${searchQuery})
+              ${sectionId ? prisma.$queryRaw`AND dp."sectionId" = ${sectionId}` : prisma.$queryRaw``}
+          `;
+
+          const total = Number(totalResult[0]?.count || 0);
+
+          // Fetch relations for each page
+          const pageIds = searchResults.map(p => p.id);
+          const pagesWithRelations = await prisma.docPage.findMany({
+            where: { id: { in: pageIds } },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  email: true,
+                },
+              },
+              section: true,
+              parent: true,
+              _count: {
+                select: {
+                  feedback: true,
+                },
+              },
+            },
+          });
+
+          // Sort by rank
+          const sortedPages = pageIds.map(id => 
+            pagesWithRelations.find(p => p.id === id)
+          ).filter((page): page is typeof pagesWithRelations[0] => page !== undefined);
+
+          const result = {
+            pages: sortedPages as DocPageWithRelations[],
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+          };
+
+          // Cache the result
+          await cacheService.set(cacheKey, result, {
+            ttl: CACHE_TTL.MEDIUM,
+            tags: [CACHE_TAGS.DOC_LIST],
+          });
+
+          return result;
+        }
+      } catch (error) {
+        console.error('Full-text search error, falling back to basic search:', error);
+      }
+
+      // Fallback to basic search if full-text search fails
       where.OR = [
         { title: { contains: query, mode: 'insensitive' } },
         { content: { contains: query, mode: 'insensitive' } },
@@ -123,19 +223,43 @@ export const documentationService = {
       prisma.docPage.count({ where }),
     ]);
 
-    return {
+    const result = {
       pages: pages as DocPageWithRelations[],
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     };
+
+    // Cache the result
+    await cacheService.set(cacheKey, result, {
+      ttl: CACHE_TTL.MEDIUM,
+      tags: [CACHE_TAGS.DOC_LIST],
+    });
+
+    return result;
   },
 
   /**
    * Get page by slug (public)
+   * Phase 9: Enhanced with Redis caching
    */
   async getPageBySlug(slug: string, incrementView = true): Promise<DocPageWithRelations | null> {
+    const cacheKey = `${DOC_CACHE_PREFIX}:page:${slug}`;
+
+    // Try to get from cache
+    const cached = await cacheService.get<DocPageWithRelations>(cacheKey);
+    if (cached) {
+      // Increment view count asynchronously
+      if (incrementView) {
+        prisma.docPage.update({
+          where: { id: cached.id },
+          data: { viewCount: { increment: 1 } },
+        }).catch(err => console.error('Error incrementing view count:', err));
+      }
+      return cached;
+    }
+
     const page = await prisma.docPage.findUnique({
       where: { slug },
       include: {
@@ -185,6 +309,12 @@ export const documentationService = {
         data: { viewCount: { increment: 1 } },
       });
     }
+
+    // Cache the result
+    await cacheService.set(cacheKey, page as DocPageWithRelations, {
+      ttl: CACHE_TTL.LONG,
+      tags: [CACHE_TAGS.DOC_PAGE],
+    });
 
     return page as DocPageWithRelations;
   },
@@ -317,6 +447,54 @@ export const documentationService = {
   },
 
   /**
+   * Create page (admin only)
+   * Phase 9: Enhanced with cache invalidation
+   */
+  async createPage(data: CreatePageDto, authorId: number): Promise<DocPageWithRelations> {
+    const baseSlug = generateSlug(data.title);
+    const slug = await ensureUniqueSlug(baseSlug);
+    
+    const page = await prisma.docPage.create({
+      data: {
+        slug,
+        title: data.title,
+        content: data.content,
+        excerpt: data.excerpt || null,
+        order: data.order || 0,
+        scope: data.scope || ContentScope.PLATFORM,
+        parentId: data.parentId || null,
+        sectionId: data.sectionId || null,
+        metaTitle: data.metaTitle || null,
+        metaDescription: data.metaDescription || null,
+        version: data.version || '1.0',
+        status: DocStatus.DRAFT,
+        authorId,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        section: true,
+        parent: true,
+        _count: {
+          select: {
+            feedback: true,
+          },
+        },
+      },
+    });
+    
+    // Phase 9: Invalidate cache
+    await cacheService.invalidateByTag(CACHE_TAGS.DOC_LIST);
+    await cacheService.delete(`${DOC_CACHE_PREFIX}:page:${slug}`);
+    
+    return page as DocPageWithRelations;
+  },
+
+  /**
    * Update page (admin only)
    */
   async updatePage(pageId: number, data: UpdatePageDto): Promise<DocPageWithRelations> {
@@ -358,12 +536,71 @@ export const documentationService = {
   },
 
   /**
+   * Update page (admin only)
+   * Phase 9: Enhanced with cache invalidation
+   */
+  async updatePage(pageId: number, data: UpdatePageDto): Promise<DocPageWithRelations> {
+    const updateData: any = { ...data };
+
+    // Update slug if title changed
+    if (data.title) {
+      const baseSlug = generateSlug(data.title);
+      updateData.slug = await ensureUniqueSlug(baseSlug, pageId);
+    }
+
+    // Handle status change to published
+    if (data.status === DocStatus.PUBLISHED && !data.publishedAt) {
+      updateData.publishedAt = new Date();
+    }
+
+    const page = await prisma.docPage.update({
+      where: { id: pageId },
+      data: updateData,
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        section: true,
+        parent: true,
+        children: true,
+        _count: {
+          select: {
+            feedback: true,
+          },
+        },
+      },
+    });
+
+    // Phase 9: Invalidate cache
+    await cacheService.invalidateByTag(CACHE_TAGS.DOC_LIST);
+    await cacheService.delete(`${DOC_CACHE_PREFIX}:page:${page.slug}`);
+
+    return page as DocPageWithRelations;
+  },
+
+  /**
    * Delete page (admin only)
+   * Phase 9: Enhanced with cache invalidation
    */
   async deletePage(pageId: number): Promise<void> {
+    // Get page slug before deletion for cache invalidation
+    const page = await prisma.docPage.findUnique({
+      where: { id: pageId },
+      select: { slug: true },
+    });
+    
     await prisma.docPage.delete({
       where: { id: pageId },
     });
+    
+    // Phase 9: Invalidate cache
+    if (page) {
+      await cacheService.invalidateByTag(CACHE_TAGS.DOC_LIST);
+      await cacheService.delete(`${DOC_CACHE_PREFIX}:page:${page.slug}`);
+    }
   },
 
   // ==========================================

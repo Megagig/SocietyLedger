@@ -1,8 +1,10 @@
 // ============================================
 // BLOG & DOCUMENTATION SYSTEM - BLOG SERVICE
+// Phase 9: Enhanced with Full-Text Search & Redis Caching
 // ============================================
 
 import { prisma } from '../../lib/prisma';
+import { cacheService, CACHE_TTL } from '../../services/cache.service';
 import {
   BlogPost,
   BlogPostWithRelations,
@@ -24,6 +26,15 @@ import {
   ViewIncrementRequest,
 } from './blog.types';
 import { PostStatus, CommentStatus } from '@prisma/client';
+
+// Cache key prefixes
+const BLOG_CACHE_PREFIX = 'blog';
+const CACHE_TAGS = {
+  BLOG_POST: 'blog_post',
+  BLOG_LIST: 'blog_list',
+  BLOG_CATEGORY: 'blog_category',
+  BLOG_TAG: 'blog_tag',
+};
 
 // ============================================
 // HELPER FUNCTIONS
@@ -72,6 +83,7 @@ export const blogService = {
 
   /**
    * List published posts (public)
+   * Phase 9: Enhanced with full-text search and Redis caching
    */
   async listPosts(params: PostSearchParams): Promise<PostSearchResult> {
     const {
@@ -85,6 +97,15 @@ export const blogService = {
       sortBy = 'publishedAt',
       sortOrder = 'desc',
     } = params;
+
+    // Generate cache key
+    const cacheKey = `${BLOG_CACHE_PREFIX}:list:${status}:${categoryId || 'all'}:${tagId || 'all'}:${authorId || 'all'}:${search || 'none'}:${limit}:${offset}:${sortBy}:${sortOrder}`;
+
+    // Try to get from cache
+    const cached = await cacheService.get<PostSearchResult>(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     const where: any = {
       status,
@@ -108,8 +129,101 @@ export const blogService = {
       where.authorId = authorId;
     }
 
-    // Search by query
+    // Phase 9: Enhanced full-text search using PostgreSQL tsvector
     if (search) {
+      // Use raw query for full-text search with ranking
+      const searchQuery = search.trim();
+      
+      // Try full-text search first
+      try {
+        const searchResults = await prisma.$queryRaw<Array<any>>`
+          SELECT 
+            bp.*,
+            ts_rank(bp.search_vector, plainto_tsquery('english', ${searchQuery})) as rank
+          FROM blog_posts bp
+          WHERE 
+            bp.status = ${status}::text
+            AND bp.scope = 'PLATFORM'
+            AND bp.search_vector @@ plainto_tsquery('english', ${searchQuery})
+            ${categoryId ? prisma.$queryRaw`AND bp."categoryId" = ${categoryId}` : prisma.$queryRaw``}
+            ${tagId ? prisma.$queryRaw`AND EXISTS (SELECT 1 FROM "blog_post_tags" bpt WHERE bpt."postId" = bp.id AND bpt."tagId" = ${tagId})` : prisma.$queryRaw``}
+            ${authorId ? prisma.$queryRaw`AND bp."authorId" = ${authorId}` : prisma.$queryRaw``}
+          ORDER BY rank DESC, bp."publishedAt" DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
+
+        if (searchResults.length > 0) {
+          // Get total count for this search
+          const totalResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+            SELECT COUNT(*) as count
+            FROM blog_posts bp
+            WHERE 
+              bp.status = ${status}::text
+              AND bp.scope = 'PLATFORM'
+              AND bp.search_vector @@ plainto_tsquery('english', ${searchQuery})
+              ${categoryId ? prisma.$queryRaw`AND bp."categoryId" = ${categoryId}` : prisma.$queryRaw``}
+              ${tagId ? prisma.$queryRaw`AND EXISTS (SELECT 1 FROM "blog_post_tags" bpt WHERE bpt."postId" = bp.id AND bpt."tagId" = ${tagId})` : prisma.$queryRaw``}
+              ${authorId ? prisma.$queryRaw`AND bp."authorId" = ${authorId}` : prisma.$queryRaw``}
+          `;
+
+          const total = Number(totalResult[0]?.count || 0);
+
+          // Fetch relations for each post
+          const postIds = searchResults.map(p => p.id);
+          const postsWithRelations = await prisma.blogPost.findMany({
+            where: { id: { in: postIds } },
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  email: true,
+                },
+              },
+              category: true,
+              tags: {
+                include: {
+                  tag: true,
+                },
+              },
+              _count: {
+                select: {
+                  comments: true,
+                },
+              },
+            },
+          });
+
+          // Sort by rank
+          const sortedPosts = postIds.map(id => 
+            postsWithRelations.find(p => p.id === id)
+          ).filter((post): post is typeof postsWithRelations[0] => post !== undefined);
+
+          // Transform tags
+          const transformedPosts = sortedPosts.map(post => ({
+            ...post,
+            tags: post.tags.map(pt => pt.tag),
+          })) as unknown as BlogPostWithRelations[];
+
+          const result = {
+            posts: transformedPosts,
+            total,
+            hasMore: offset + transformedPosts.length < total,
+          };
+
+          // Cache the result
+          await cacheService.set(cacheKey, result, {
+            ttl: CACHE_TTL.MEDIUM,
+            tags: [CACHE_TAGS.BLOG_LIST],
+          });
+
+          return result;
+        }
+      } catch (error) {
+        console.error('Full-text search error, falling back to basic search:', error);
+      }
+
+      // Fallback to basic search if full-text search fails
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { content: { contains: search, mode: 'insensitive' } },
@@ -152,17 +266,41 @@ export const blogService = {
       tags: post.tags.map(pt => pt.tag),
     })) as unknown as BlogPostWithRelations[];
 
-    return {
+    const result = {
       posts: transformedPosts,
       total,
       hasMore: offset + posts.length < total,
     };
+
+    // Cache the result
+    await cacheService.set(cacheKey, result, {
+      ttl: CACHE_TTL.MEDIUM,
+      tags: [CACHE_TAGS.BLOG_LIST],
+    });
+
+    return result;
   },
 
   /**
    * Get post by slug (public)
+   * Phase 9: Enhanced with Redis caching
    */
   async getPostBySlug(slug: string, incrementView = true): Promise<BlogPostWithRelations | null> {
+    const cacheKey = `${BLOG_CACHE_PREFIX}:post:${slug}`;
+
+    // Try to get from cache
+    const cached = await cacheService.get<BlogPostWithRelations>(cacheKey);
+    if (cached) {
+      // Increment view count asynchronously
+      if (incrementView) {
+        prisma.blogPost.update({
+          where: { id: cached.id },
+          data: { viewCount: { increment: 1 } },
+        }).catch(err => console.error('Error incrementing view count:', err));
+      }
+      return cached;
+    }
+
     const post = await prisma.blogPost.findUnique({
       where: { slug },
       include: {
@@ -204,6 +342,12 @@ export const blogService = {
       ...post,
       tags: post.tags.map(pt => pt.tag),
     } as unknown as BlogPostWithRelations;
+
+    // Cache the result
+    await cacheService.set(cacheKey, transformedPost, {
+      ttl: CACHE_TTL.LONG,
+      tags: [CACHE_TAGS.BLOG_POST],
+    });
 
     return transformedPost;
   },
@@ -354,7 +498,11 @@ export const blogService = {
       ...post,
       tags: post.tags.map(pt => pt.tag),
     } as unknown as BlogPostWithRelations;
-
+    
+    // Phase 9: Invalidate cache
+    await cacheService.invalidateByTag(CACHE_TAGS.BLOG_LIST);
+    await cacheService.delete(`${BLOG_CACHE_PREFIX}:post:${slug}`);
+    
     return transformedPost;
   },
 
@@ -419,17 +567,34 @@ export const blogService = {
       ...post,
       tags: post.tags.map(pt => pt.tag),
     } as unknown as BlogPostWithRelations;
-
+    
+    // Phase 9: Invalidate cache
+    await cacheService.invalidateByTag(CACHE_TAGS.BLOG_LIST);
+    await cacheService.delete(`${BLOG_CACHE_PREFIX}:post:${post.slug}`);
+    
     return transformedPost;
   },
 
   /**
    * Delete post (admin only)
+   * Phase 9: Enhanced with cache invalidation
    */
   async deletePost(postId: number): Promise<void> {
+    // Get post slug before deletion for cache invalidation
+    const post = await prisma.blogPost.findUnique({
+      where: { id: postId },
+      select: { slug: true },
+    });
+    
     await prisma.blogPost.delete({
       where: { id: postId },
     });
+    
+    // Phase 9: Invalidate cache
+    if (post) {
+      await cacheService.invalidateByTag(CACHE_TAGS.BLOG_LIST);
+      await cacheService.delete(`${BLOG_CACHE_PREFIX}:post:${post.slug}`);
+    }
   },
 
   // ==========================================

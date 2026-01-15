@@ -1,12 +1,21 @@
 'use client';
 
 import { Paper } from '@mantine/core';
+import { useEffect } from 'react';
 
 interface DocContentProps {
   content: string;
 }
 
 export function DocContent({ content }: DocContentProps) {
+  // Add lazy loading to images after render
+  useEffect(() => {
+    const images = document.querySelectorAll('.doc-content img');
+    images.forEach((img) => {
+      img.setAttribute('loading', 'lazy');
+    });
+  }, [content]);
+
   return (
     <Paper
       p="xl"

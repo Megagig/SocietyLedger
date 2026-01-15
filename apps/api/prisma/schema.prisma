@@ -2808,6 +2808,9 @@ model BlogPost {
   metaDescription String?
   metaKeywords    String[]  @default([])
   
+  // Full-text search vector (managed by PostgreSQL triggers)
+  searchVector    Unsupported("tsvector")?
+  
   // Relations
   authorId        Int
   author          User      @relation("BlogPostAuthor", fields: [authorId], references: [id])
@@ -2823,6 +2826,9 @@ model BlogPost {
   @@index([status, publishedAt])
   @@index([slug])
   @@index([authorId])
+  @@index([categoryId])
+  @@index([status, viewCount], name: "blog_posts_status_viewcount_idx")
+  @@index([searchVector], type: Gin, name: "blog_posts_search_idx")
 }
 
 // Blog Category Model
@@ -2928,6 +2934,9 @@ model DocPage {
   helpfulCount    Int       @default(0)
   notHelpfulCount Int       @default(0)
   
+  // Full-text search vector (managed by PostgreSQL triggers)
+  searchVector    Unsupported("tsvector")?
+  
   // Relations
   authorId        Int
   author          User      @relation("DocPageAuthor", fields: [authorId], references: [id])
@@ -2940,6 +2949,9 @@ model DocPage {
   @@index([status, publishedAt])
   @@index([slug])
   @@index([sectionId])
+  @@index([parentId])
+  @@index([status, viewCount], name: "doc_pages_status_viewcount_idx")
+  @@index([searchVector], type: Gin, name: "doc_pages_search_idx")
 }
 
 // Documentation Section Model

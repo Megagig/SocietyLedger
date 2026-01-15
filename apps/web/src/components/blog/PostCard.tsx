@@ -59,6 +59,7 @@ export function PostCard({
             src={coverImage}
             alt={title}
             fit="cover"
+            loading="lazy"
             className="rounded-md"
           />
         </AspectRatio>
