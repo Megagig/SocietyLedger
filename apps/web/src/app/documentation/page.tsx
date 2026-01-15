@@ -1,37 +1,115 @@
 'use client';
 
-import { Container, Button } from '@mantine/core';
-import { IconUsers, IconBook, IconRocket, IconSettings, IconChartBar, IconArrowRight } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { Container, Button, Stack, Title, Text, LoadingOverlay, Alert, Group, Card, Badge, Anchor } from '@mantine/core';
+import { IconBook, IconAlertCircle, IconArrowRight, IconRocket, IconUsers, IconChartBar, IconSettings } from '@tabler/icons-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DocSearch } from '@/components/documentation/DocSearch';
+import { API_ROUTES } from '@/utils/constants';
+
+interface DocSection {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  icon?: string | null;
+  order: number;
+  pages?: DocPage[];
+}
+
+interface DocPage {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  order: number;
+  sectionId?: number | null;
+}
 
 export default function DocumentationPage() {
-  const docSections = [
-    {
-      icon: <IconRocket size={32} />,
-      title: 'Getting Started',
-      description: 'Quick start guide to set up your association',
-      topics: ['Create Account', 'Association Setup', 'Add Members', 'Configure Settings']
-    },
-    {
-      icon: <IconUsers size={32} />,
-      title: 'Member Management',
-      description: 'Learn how to manage your members effectively',
-      topics: ['Add Members', 'Member Profiles', 'Bulk Operations', 'Member Status']
-    },
-    {
-      icon: <IconChartBar size={32} />,
-      title: 'Financial Management',
-      description: 'Track finances, dues, and levies',
-      topics: ['Dues Setup', 'Payment Tracking', 'Financial Reports', 'Welfare Funds']
-    },
-    {
-      icon: <IconSettings size={32} />,
-      title: 'Advanced Features',
-      description: 'Explore advanced capabilities',
-      topics: ['SMS Notifications', 'Role Permissions', 'Elections', 'API Access']
+  const [sections, setSections] = useState<DocSection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchSections();
+  }, []);
+
+  const fetchSections = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(API_ROUTES.DOCUMENTATION.SECTIONS);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch documentation');
+      }
+
+      const data = await response.json();
+      const sectionsData = data.data?.sections || [];
+
+      // Fetch pages for each section
+      const sectionsWithPages = await Promise.all(
+        sectionsData.map(async (section: DocSection) => {
+          try {
+            const pagesResponse = await fetch(
+              `${API_ROUTES.DOCUMENTATION.PAGES}?sectionId=${section.id}`
+            );
+            if (pagesResponse.ok) {
+              const pagesData = await pagesResponse.json();
+              return {
+                ...section,
+                pages: pagesData.data?.pages || [],
+              };
+            }
+            return section;
+          } catch (err) {
+            console.error('Error fetching pages for section:', section.id, err);
+            return section;
+          }
+        })
+      );
+
+      setSections(sectionsWithPages);
+    } catch (err) {
+      console.error('Error fetching documentation:', err);
+      setError('Failed to load documentation. Please try again later.');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const getIconComponent = (iconName?: string | null) => {
+    const iconMap: Record<string, any> = {
+      rocket: IconRocket,
+      book: IconBook,
+      users: IconUsers,
+      chart: IconChartBar,
+      settings: IconSettings,
+    };
+    const IconComponent = iconName ? iconMap[iconName] : IconBook;
+    return IconComponent ? <IconComponent size={32} /> : <IconBook size={32} />;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-green-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+        <LoadingOverlay visible={loading} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-green-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+        <Container size="lg" py="xl">
+          <Alert icon={<IconAlertCircle size={20} />} color="red" title="Error">
+            {error}
+          </Alert>
+        </Container>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-green-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
@@ -40,16 +118,17 @@ export default function DocumentationPage() {
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={24} />
+                <IconBook className="text-white" size={24} />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
                 SocietyLedger
               </span>
             </Link>
-            <div className="flex items-center gap-4">
+            <Group>
+              <DocSearch />
               <ThemeToggle />
               <Button component={Link} href="/" variant="subtle">Back to Home</Button>
-            </div>
+            </Group>
           </div>
         </Container>
       </nav>
@@ -60,14 +139,14 @@ export default function DocumentationPage() {
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-500/20 to-green-500/20 border border-teal-500/30 mb-6">
               <IconBook className="text-teal-500" size={40} />
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+            <Title order={1} className="mb-6">
               <span className="bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
                 Documentation
               </span>
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            </Title>
+            <Text size="xl" c="dimmed" maw={800} mx="auto">
               Everything you need to know about using SocietyLedger. From setup to advanced features.
-            </p>
+            </Text>
           </div>
         </Container>
       </section>
@@ -75,57 +154,56 @@ export default function DocumentationPage() {
       <section className="pb-20 px-4">
         <Container size="lg">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-            {docSections.map((section, idx) => (
-              <div key={idx} className="glass-strong p-8 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 hover:shadow-xl transition-all">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-green-500/20 border border-teal-500/30 flex items-center justify-center mb-6 text-teal-500">
-                  {section.icon}
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                  {section.title}
-                </h2>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  {section.description}
-                </p>
-                <ul className="space-y-2">
-                  {section.topics.map((topic, tIdx) => (
-                    <li key={tIdx} className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                      <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
-                      {topic}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {sections.map((section) => (
+              <Card
+                key={section.id}
+                p="xl"
+                radius="md"
+                className="glass-strong hover:shadow-xl transition-all"
+              >
+                <Stack gap="md">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-green-500/20 border border-teal-500/30 flex items-center justify-center text-teal-500">
+                    {getIconComponent(section.icon)}
+                  </div>
+                  <div>
+                    <Title order={3} mb="xs">{section.name}</Title>
+                    {section.description && (
+                      <Text c="dimmed" mb="md">{section.description}</Text>
+                    )}
+                  </div>
+                  {section.pages && section.pages.length > 0 && (
+                    <Stack gap="xs">
+                      {section.pages
+                        .sort((a, b) => a.order - b.order)
+                        .slice(0, 4)
+                        .map((page) => (
+                          <Anchor
+                            key={page.id}
+                            component={Link}
+                            href={`/documentation/${page.slug}`}
+                            size="sm"
+                            c="dimmed"
+                          >
+                            {page.title}
+                          </Anchor>
+                        ))}
+                      {section.pages.length > 4 && (
+                        <Text size="sm" c="teal" fw={500}>
+                          +{section.pages.length - 4} more pages
+                        </Text>
+                      )}
+                    </Stack>
+                  )}
+                </Stack>
+              </Card>
             ))}
           </div>
 
-          <div className="glass-strong p-10 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 text-center">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Need More Help?
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-              Can't find what you're looking for? Check our FAQ or contact our support team.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button 
-                component={Link}
-                href="/faq"
-                size="lg"
-                className="bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
-                rightSection={<IconArrowRight size={20} />}
-              >
-                View FAQ
-              </Button>
-              <Button 
-                component={Link}
-                href="/contact"
-                size="lg"
-                variant="outline"
-                className="border-2 border-teal-500 text-teal-600 dark:text-teal-400"
-              >
-                Contact Support
-              </Button>
-            </div>
-          </div>
+          {sections.length === 0 && (
+            <Alert icon={<IconAlertCircle size={20} />} color="blue" title="No Documentation Yet">
+              Documentation is being created. Check back soon for helpful guides and tutorials.
+            </Alert>
+          )}
         </Container>
       </section>
 
@@ -134,11 +212,13 @@ export default function DocumentationPage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={20} />
+                <IconBook className="text-white" size={20} />
               </div>
-              <span className="font-bold text-gray-900 dark:text-white">SocietyLedger</span>
+              <Text fw={600} c="gray">SocietyLedger</Text>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">© {new Date().getFullYear()} SocietyLedger</p>
+            <Text size="sm" c="dimmed">
+              © {new Date().getFullYear()} SocietyLedger
+            </Text>
           </div>
         </Container>
       </footer>
