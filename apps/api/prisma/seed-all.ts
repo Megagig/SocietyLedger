@@ -39,6 +39,7 @@ async function main() {
     { file: 'seeds/platform-association.seed.ts', name: 'Platform Association (Hybrid Super Admin)' },
     { file: 'seeds/help-permissions.seed.ts', name: 'Help Permissions' },
     { file: 'seeds/help-content.seed.ts', name: 'Help Content' },
+    { file: 'seeds/blog-docs.seed.ts', name: 'Blog & Documentation' },
   ];
 
   for (const script of seedScripts) {
@@ -63,6 +64,7 @@ async function main() {
   console.log('  ✅ Platform modules (14 modules, 17+ features)');
   console.log('  ✅ Platform association for hybrid super admin');
   console.log('  ✅ Help & support system (10 articles, 19 FAQs)');
+  console.log('  ✅ Blog & Documentation (4 categories, 6 sections)');
   console.log('\n🔐 Super Admin Credentials:');
   console.log('  Email: megagigdev@gmail.com');
   console.log('  Password: SuperSecret123!');
