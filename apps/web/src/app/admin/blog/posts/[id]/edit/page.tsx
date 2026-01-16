@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import QuillEditor from '@/components/editor/QuillEditor';
 
 type Category = {
   id: number;
@@ -155,6 +156,35 @@ export default function EditPostPage() {
       .trim();
   };
 
+  // Cloudinary image upload handler for Quill editor
+  const handleImageUpload = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'societyledger');
+    
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+      toast.error('Cloudinary not configured');
+      throw new Error('Cloudinary not configured');
+    }
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!res.ok) {
+      toast.error('Failed to upload image');
+      throw new Error('Failed to upload image');
+    }
+
+    const data = await res.json();
+    return data.secure_url;
+  };
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value;
     setFormData(prev => ({
@@ -301,14 +331,12 @@ export default function EditPostPage() {
             <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Content <span className="text-red-500">*</span>
             </label>
-            <textarea
-              id="content"
-              required
+            <QuillEditor
               value={formData.content}
-              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-              rows={15}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+              onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
               placeholder="Write your post content here..."
+              minHeight="400px"
+              onImageUpload={handleImageUpload}
             />
           </div>
 

@@ -7,10 +7,6 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DocSearch } from '@/components/documentation/DocSearch';
 import { API_ROUTES } from '@/utils/constants';
-import { generateDocumentationMetadata } from './metadata';
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = generateDocumentationMetadata();
 
 interface DocSection {
   id: number;

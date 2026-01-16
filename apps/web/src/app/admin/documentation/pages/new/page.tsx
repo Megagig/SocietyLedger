@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { API_ROUTES } from '@/utils/constants';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import QuillEditor from '@/components/editor/QuillEditor';
 
 type DocSection = {
   id: number;
@@ -95,6 +96,35 @@ export default function NewDocumentationPage() {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, ''),
     }));
+  };
+
+  // Cloudinary image upload handler for Quill editor
+  const handleImageUpload = async (file: File): Promise<string> => {
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+    formDataUpload.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'societyledger');
+    
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+      toast.error('Cloudinary not configured');
+      throw new Error('Cloudinary not configured');
+    }
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formDataUpload,
+      }
+    );
+
+    if (!res.ok) {
+      toast.error('Failed to upload image');
+      throw new Error('Failed to upload image');
+    }
+
+    const data = await res.json();
+    return data.secure_url;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -306,18 +336,13 @@ export default function NewDocumentationPage() {
             <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Content <span className="text-red-500">*</span>
             </label>
-            <textarea
-              id="content"
+            <QuillEditor
               value={formData.content}
-              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-              placeholder="Write your documentation content here... You can use Markdown formatting."
-              rows={15}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-              required
+              onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
+              placeholder="Write your documentation content here..."
+              minHeight="400px"
+              onImageUpload={handleImageUpload}
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Supports Markdown formatting. You can use headings, lists, code blocks, links, and more.
-            </p>
           </div>
 
           {/* Status */}
