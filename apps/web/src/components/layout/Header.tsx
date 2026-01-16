@@ -12,7 +12,7 @@ const navItems = [
   { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/about' },
   { label: 'Blog', href: '/blog' },
-  { label: 'Documentation', href: '/documentation' },
+  { label: 'Docs', href: '/documentation' },
   { label: 'Contact', href: '/contact' },
 ];
 
@@ -27,10 +27,10 @@ export default function Header() {
 
   return (
     <nav className="glass-strong fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 dark:border-gray-700/50">
-      <Container size="xl" className="py-4">
+      <Container size="xl" className="py-3">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 shrink-0 no-underline">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
               <IconUsers className="text-white" size={24} />
             </div>
@@ -40,15 +40,15 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-2">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2.5 rounded-lg text-[15px] font-semibold transition-all duration-200 no-underline ${
                   isActive(item.href)
-                    ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
+                    : 'text-gray-700 dark:text-gray-200 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-gray-100/80 dark:hover:bg-gray-800/80'
                 }`}
               >
                 {item.label}
@@ -57,7 +57,7 @@ export default function Header() {
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
             
             {/* Desktop Auth Buttons */}
@@ -65,15 +65,17 @@ export default function Header() {
               component={Link}
               href="/auth/login"
               variant="subtle"
+              size="md"
               leftSection={<IconLogin size={18} />}
-              className="hidden sm:flex"
+              className="hidden md:flex font-semibold"
             >
               Login
             </Button>
             <Button
               component={Link}
               href="/signup"
-              className="hidden sm:flex bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
+              size="md"
+              className="hidden sm:flex bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600 font-semibold"
             >
               Get Started
             </Button>
@@ -98,10 +100,10 @@ export default function Header() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-3.5 rounded-lg text-base font-semibold transition-colors no-underline ${
                     isActive(item.href)
-                      ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
+                      : 'text-gray-700 dark:text-gray-200 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   {item.label}
@@ -109,11 +111,12 @@ export default function Header() {
               ))}
               
               {/* Mobile Auth Buttons */}
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50 sm:hidden">
+              <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50 sm:hidden">
                 <Button
                   component={Link}
                   href="/auth/login"
                   variant="outline"
+                  size="md"
                   leftSection={<IconLogin size={18} />}
                   fullWidth
                   onClick={() => setMobileMenuOpen(false)}
@@ -123,6 +126,7 @@ export default function Header() {
                 <Button
                   component={Link}
                   href="/signup"
+                  size="md"
                   fullWidth
                   className="bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
                   onClick={() => setMobileMenuOpen(false)}
