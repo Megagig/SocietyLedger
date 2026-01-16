@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+// import { Inter } from 'next/font/google';
 import { Providers } from './providers';
 import { GoogleAnalytics } from '@/components/seo/GoogleAnalytics';
 import '@mantine/core/styles.css';
@@ -7,11 +7,14 @@ import '@mantine/notifications/styles.css';
 import '@mantine/dates/styles.css';
 import './globals.css';
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  fallback: ['system-ui', 'arial'],
-});
+// Temporarily using system fonts due to network issues with Google Fonts
+// const inter = Inter({ 
+//   subsets: ['latin'],
+//   display: 'swap',
+//   fallback: ['system-ui', 'arial'],
+// });
+
+const fontClass = 'font-sans'; // Uses Tailwind's default system font stack
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://societyledger.com.ng'),
@@ -172,7 +175,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="SocietyLedger" />
       </head>
-      <body className={inter.className}>
+      <body className={fontClass}>
         <GoogleAnalytics measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         <Providers>
           {children}

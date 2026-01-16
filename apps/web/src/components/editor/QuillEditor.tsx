@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import 'quill/dist/quill.snow.css';
 
 interface QuillEditorProps {
   value: string;
@@ -33,9 +34,6 @@ export default function QuillEditor({
     const initQuill = async () => {
       try {
         const Quill = (await import('quill')).default;
-        
-        // Import CSS
-        await import('quill/dist/quill.snow.css');
 
         // Check if already initialized or container doesn't exist
         if (!containerRef.current || quillRef.current) return;
@@ -91,8 +89,8 @@ export default function QuillEditor({
 
         // Custom image handler
         if (onImageUpload) {
-          const toolbar = quill.getModule('toolbar');
-          toolbar.addHandler('image', () => {
+          const toolbar = quill.getModule('toolbar') as any;
+          toolbar?.addHandler('image', () => {
             const input = document.createElement('input');
             input.setAttribute('type', 'file');
             input.setAttribute('accept', 'image/*');
