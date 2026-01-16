@@ -18,6 +18,7 @@ import {
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import Footer from '@/components/layout/Footer';
 
 export default function FeaturesPage() {
   const features = [
@@ -191,24 +192,7 @@ export default function FeaturesPage() {
         </Container>
       </section>
 
-      <footer className="py-12 px-4 border-t border-gray-200 dark:border-gray-800">
-        <Container size="xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={20} />
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">SocietyLedger</span>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-              <Link href="/" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Home</Link>
-              <Link href="/pricing" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Pricing</Link>
-              <Link href="/contact" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Contact</Link>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">© {new Date().getFullYear()} SocietyLedger</p>
-          </div>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 }

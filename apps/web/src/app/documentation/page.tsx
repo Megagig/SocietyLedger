@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DocSearch } from '@/components/documentation/DocSearch';
 import { API_ROUTES } from '@/utils/constants';
+import Footer from '@/components/layout/Footer';
 
 interface DocSection {
   id: number;
@@ -207,21 +208,7 @@ export default function DocumentationPage() {
         </Container>
       </section>
 
-      <footer className="py-12 px-4 border-t border-gray-200 dark:border-gray-800">
-        <Container size="xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconBook className="text-white" size={20} />
-              </div>
-              <Text fw={600} c="gray">SocietyLedger</Text>
-            </div>
-            <Text size="sm" c="dimmed">
-              © {new Date().getFullYear()} SocietyLedger
-            </Text>
-          </div>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 }

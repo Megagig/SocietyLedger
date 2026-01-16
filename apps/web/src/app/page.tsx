@@ -20,6 +20,7 @@ import {
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import Footer from '@/components/layout/Footer';
 
 export default function HomePage() {
   // SoftwareApplication Schema for SEO
@@ -401,54 +402,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 border-t border-gray-200 dark:border-gray-800">
-        <Container size="xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={20} />
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">
-                SocietyLedger
-              </span>
-            </div>
-            
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-              <Link href="/features" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Features
-              </Link>
-              <Link href="/pricing" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Pricing
-              </Link>
-              <Link href="/about" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                About
-              </Link>
-              <Link href="/contact" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Contact Us
-              </Link>
-              <Link href="/faq" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                FAQ
-              </Link>
-              <Link href="/documentation" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Documentation
-              </Link>
-              <Link href="/blog" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Blog
-              </Link>
-              <Link href="/privacy" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-                Terms of Service
-              </Link>
-            </div>
-            
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              © {new Date().getFullYear()} SocietyLedger. All rights reserved.
-            </p>
-          </div>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -6,10 +6,7 @@ import { IconArticle, IconAlertCircle } from '@tabler/icons-react';
 import { PostCard } from '@/components/blog/PostCard';
 import { BlogSearch } from '@/components/blog/BlogSearch';
 import { API_ROUTES } from '@/utils/constants';
-import { generateBlogMetadata } from './metadata';
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = generateBlogMetadata();
+import Footer from '@/components/layout/Footer';
 
 interface BlogPost {
   id: number;
@@ -49,46 +46,52 @@ export default function BlogPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
+  // Fetch categories once on mount
   useEffect(() => {
-    fetchPosts();
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(API_ROUTES.BLOG.CATEGORIES);
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+
+        const data = await response.json();
+        setCategories(data.data?.categories || []);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+
     fetchCategories();
+  }, []);
+
+  // Fetch posts when selectedCategory changes
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const url = selectedCategory
+          ? `${API_ROUTES.BLOG.POSTS}?categoryId=${selectedCategory}`
+          : API_ROUTES.BLOG.POSTS;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch posts');
+        }
+
+        const data = await response.json();
+        setPosts(data.data?.posts || []);
+      } catch (err) {
+        console.error('Error fetching posts:', err);
+        setError('Failed to load blog posts. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
   }, [selectedCategory]);
-
-  const fetchPosts = async () => {
-    try {
-      setLoading(true);
-      const url = selectedCategory
-        ? `${API_ROUTES.BLOG.POSTS}?categoryId=${selectedCategory}`
-        : API_ROUTES.BLOG.POSTS;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch posts');
-      }
-
-      const data = await response.json();
-      setPosts(data.data?.posts || []);
-    } catch (err) {
-      console.error('Error fetching posts:', err);
-      setError('Failed to load blog posts. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch(API_ROUTES.BLOG.CATEGORIES);
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-
-      const data = await response.json();
-      setCategories(data.data?.categories || []);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-    }
-  };
 
   const handleSearch = async (query: string) => {
     try {
@@ -218,21 +221,7 @@ export default function BlogPage() {
         </Container>
       </section>
 
-      <footer className="py-12 px-4 border-t border-gray-200 dark:border-gray-800">
-        <Container size="xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconArticle className="text-white" size={20} />
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">SocietyLedger</span>
-            </div>
-            <Text size="sm" c="dimmed">
-              © {new Date().getFullYear()} SocietyLedger
-            </Text>
-          </div>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 }

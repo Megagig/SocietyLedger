@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TextInput, Stack, Paper, Text, Group, Badge } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import Link from 'next/link';
@@ -33,17 +33,23 @@ export function BlogSearch({
 }: BlogSearchProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const onSearchRef = useRef(onSearch);
+  
+  // Keep the ref updated
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(query);
-      if (onSearch) {
-        onSearch(query);
+      if (onSearchRef.current) {
+        onSearchRef.current(query);
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query, onSearch]);
+  }, [query]);
 
   const handleClear = () => {
     setQuery('');

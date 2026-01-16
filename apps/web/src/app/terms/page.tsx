@@ -1,6 +1,7 @@
 'use client';
 
 import { Container, Button } from '@mantine/core';
+import Footer from '@/components/layout/Footer';
 import { IconUsers, IconFileText } from '@tabler/icons-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -141,19 +142,7 @@ export default function TermsPage() {
         </Container>
       </section>
 
-      <footer className="py-12 px-4 border-t border-gray-200 dark:border-gray-800">
-        <Container size="xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={20} />
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">SocietyLedger</span>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">© {new Date().getFullYear()} SocietyLedger</p>
-          </div>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 }

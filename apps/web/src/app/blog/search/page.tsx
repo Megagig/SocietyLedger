@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Footer from '@/components/layout/Footer';
 import { useSearchParams } from 'next/navigation';
 import { Container, Stack, Title, Text, SimpleGrid, LoadingOverlay, Alert } from '@mantine/core';
 import { IconArticle, IconAlertCircle, IconSearch } from '@tabler/icons-react';
@@ -155,21 +156,7 @@ export default function BlogSearchPage() {
         </Container>
       </section>
 
-      <footer className="py-12 px-4 border-t border-gray-200 dark:border-gray-800">
-        <Container size="xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconArticle className="text-white" size={20} />
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">SocietyLedger</span>
-            </div>
-            <Text size="sm" c="dimmed">
-              © {new Date().getFullYear()} SocietyLedger
-            </Text>
-          </div>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 }
