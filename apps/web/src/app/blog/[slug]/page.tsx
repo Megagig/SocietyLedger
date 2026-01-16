@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Footer from '@/components/layout/Footer';
+import Header from '@/components/layout/Header';
 import { useParams, useRouter } from 'next/navigation';
 import { Container, Stack, Title, Text, LoadingOverlay, Alert, Breadcrumbs, Anchor, Group, AspectRatio, Image } from '@mantine/core';
 import { IconArticle, IconAlertCircle, IconArrowLeft } from '@tabler/icons-react';
@@ -282,26 +283,7 @@ export default function BlogPostPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-green-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
       {jsonLd && <JsonLd data={jsonLd} />}
       {breadcrumbJsonLd && <JsonLd data={breadcrumbJsonLd} />}
-      <nav className="glass-strong fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 dark:border-gray-700/50">
-        <Container size="xl" className="py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconArticle className="text-white" size={24} />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
-                SocietyLedger
-              </span>
-            </Link>
-            <Anchor component={Link} href="/blog" size="sm">
-              <Group gap="xs">
-                <IconArrowLeft size={16} />
-                Back to Blog
-              </Group>
-            </Anchor>
-          </div>
-        </Container>
-      </nav>
+      <Header />
 
       <section className="pt-32 pb-12 px-4">
         <Container size="lg">

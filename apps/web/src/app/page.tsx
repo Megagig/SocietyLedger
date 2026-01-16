@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import Footer from '@/components/layout/Footer';
+import Header from '@/components/layout/Header';
 
 export default function HomePage() {
   // SoftwareApplication Schema for SEO
@@ -64,40 +65,7 @@ export default function HomePage() {
       />
       
       {/* Navigation */}
-      <nav className="glass-strong fixed top-0 left-0 right-0 z-50 border-b border-gray-200/50 dark:border-gray-700/50">
-        <Container size="xl" className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={24} />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
-                SocietyLedger
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-              <Button 
-                component={Link}
-                href="/auth/login"
-                variant="subtle"
-                leftSection={<IconLogin size={18} />}
-                className="hidden sm:flex"
-              >
-                Login
-              </Button>
-              <Button 
-                component={Link}
-                href="/signup"
-                className="bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
-              >
-                Get Started
-              </Button>
-            </div>
-          </div>
-        </Container>
-      </nav>
+      <Header />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4">
