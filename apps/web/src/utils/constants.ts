@@ -327,6 +327,42 @@ export const API_ROUTES = {
     CONFIG: (jobId: string) => `${API_BASE_URL}/api/cron/jobs/${jobId}/config`,
     TOGGLE: (jobId: string) => `${API_BASE_URL}/api/cron/jobs/${jobId}/toggle`,
   },
+  // Blog & Documentation System
+  BLOG: {
+    // Public endpoints
+    POSTS: `${API_BASE_URL}/api/blog/posts`,
+    POST_BY_SLUG: (slug: string) => `${API_BASE_URL}/api/blog/posts/${slug}`,
+    POST_RELATED: (id: number) => `${API_BASE_URL}/api/blog/posts/${id}/related`,
+    POST_VIEW: (id: number) => `${API_BASE_URL}/api/blog/posts/${id}/view`,
+    POST_COMMENTS: (id: number) => `${API_BASE_URL}/api/blog/posts/${id}/comments`,
+    CATEGORIES: `${API_BASE_URL}/api/blog/categories`,
+    TAGS: `${API_BASE_URL}/api/blog/tags`,
+    // Admin endpoints
+    ADMIN_POSTS: `${API_BASE_URL}/api/admin/blog/posts`,
+    ADMIN_POST_BY_ID: (id: number) => `${API_BASE_URL}/api/admin/blog/posts/${id}`,
+    ADMIN_CATEGORIES: `${API_BASE_URL}/api/admin/blog/categories`,
+    ADMIN_CATEGORY_BY_ID: (id: number) => `${API_BASE_URL}/api/admin/blog/categories/${id}`,
+    ADMIN_TAGS: `${API_BASE_URL}/api/admin/blog/tags`,
+    ADMIN_TAG_BY_ID: (id: number) => `${API_BASE_URL}/api/admin/blog/tags/${id}`,
+    ADMIN_COMMENT_APPROVE: (id: number) => `${API_BASE_URL}/api/admin/blog/comments/${id}/approve`,
+    ADMIN_COMMENT_DELETE: (id: number) => `${API_BASE_URL}/api/admin/blog/comments/${id}`,
+  },
+  DOCUMENTATION: {
+    // Public endpoints
+    SECTIONS: `${API_BASE_URL}/api/docs/sections`,
+    PAGES: `${API_BASE_URL}/api/docs/pages`,
+    PAGE_BY_SLUG: (slug: string) => `${API_BASE_URL}/api/docs/pages/${slug}`,
+    SEARCH: `${API_BASE_URL}/api/docs/search`,
+    PAGE_FEEDBACK: (id: number) => `${API_BASE_URL}/api/docs/pages/${id}/feedback`,
+    PAGE_VIEW: (id: number) => `${API_BASE_URL}/api/docs/pages/${id}/view`,
+    PAGE_RELATED: (id: number) => `${API_BASE_URL}/api/docs/pages/${id}/related`,
+    // Admin endpoints
+    ADMIN_PAGES: `${API_BASE_URL}/api/admin/docs/pages`,
+    ADMIN_PAGE_BY_ID: (id: number) => `${API_BASE_URL}/api/admin/docs/pages/${id}`,
+    ADMIN_SECTIONS: `${API_BASE_URL}/api/admin/docs/sections`,
+    ADMIN_SECTION_BY_ID: (id: number) => `${API_BASE_URL}/api/admin/docs/sections/${id}`,
+    ADMIN_FEEDBACK: `${API_BASE_URL}/api/admin/docs/feedback`,
+  },
 } as const;
 
 // App Settings

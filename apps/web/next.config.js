@@ -4,6 +4,9 @@ const nextConfig = {
     domains: ['localhost'],
   },
   
+  // Transpile packages that need it (monorepo support)
+  transpilePackages: ['react-quill', 'quill'],
+  
   // Optimize font loading and handle timeouts gracefully
   optimizeFonts: true,
   

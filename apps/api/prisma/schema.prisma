@@ -185,6 +185,12 @@ model User {
   // Phase 6.5: SMS Credits
   smsCreditsPurchases SMSCreditsPurchase[]
 
+  // Blog & Documentation relations
+  blogPosts       BlogPost[]    @relation("BlogPostAuthor")
+  blogComments    BlogComment[] @relation("BlogCommentAuthor")
+  docPages        DocPage[]     @relation("DocPageAuthor")
+  docFeedback     DocFeedback[]  @relation("DocFeedbackUser")
+
   @@unique([associationId, email])
   @@index([associationId, email])
   @@map("users")
@@ -2752,4 +2758,237 @@ enum WebhookEventStatus {
   SUCCESS
   FAILED
   RETRYING
+}
+
+// ============================================
+// BLOG & DOCUMENTATION SYSTEM MODELS
+// Platform-level CMS for Super Admins
+// ============================================
+
+// Blog & Documentation Enums
+enum ContentScope {
+  PLATFORM
+  ASSOCIATION  // Future extensibility
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  SPAM
+}
+
+enum DocStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Blog Post Model
+model BlogPost {
+  id              Int       @id @default(autoincrement())
+  title           String
+  slug            String    @unique
+  excerpt         String?
+  content         String    @db.Text
+  coverImage      String?   // Cloudinary URL
+  status          PostStatus @default(DRAFT)
+  scope           ContentScope @default(PLATFORM)
+  publishedAt     DateTime?
+  viewCount       Int       @default(0)
+  readTimeMinutes Int?
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String[]  @default([])
+  
+  // Full-text search vector (managed by PostgreSQL triggers)
+  searchVector    Unsupported("tsvector")?
+  
+  // Relations
+  authorId        Int
+  author          User      @relation("BlogPostAuthor", fields: [authorId], references: [id])
+  categoryId      Int?
+  category        BlogCategory? @relation(fields: [categoryId], references: [id])
+  tags            BlogPostTag[]
+  comments        BlogComment[]
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@map("blog_posts")
+  @@index([status, publishedAt])
+  @@index([slug])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([status, viewCount], name: "blog_posts_status_viewcount_idx")
+  @@index([searchVector], type: Gin, name: "blog_posts_search_idx")
+}
+
+// Blog Category Model
+model BlogCategory {
+  id          Int         @id @default(autoincrement())
+  name        String
+  slug        String      @unique
+  description String?
+  color       String?     // Hex color for UI
+  posts       BlogPost[]
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  @@map("blog_categories")
+}
+
+// Blog Tag Model
+model BlogTag {
+  id        Int           @id @default(autoincrement())
+  name      String
+  slug      String        @unique
+  posts     BlogPostTag[]
+  
+  createdAt DateTime      @default(now()) @map("created_at")
+  
+  @@map("blog_tags")
+}
+
+// Blog Post Tag Junction Table
+model BlogPostTag {
+  postId    Int
+  tagId     Int
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       BlogTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([postId, tagId])
+  @@map("blog_post_tags")
+}
+
+// Blog Comment Model
+model BlogComment {
+  id        Int       @id @default(autoincrement())
+  content   String    @db.Text
+  status    CommentStatus @default(PENDING)
+  
+  postId    Int
+  post      BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  // Authenticated user (optional)
+  authorId  Int?
+  author    User?     @relation("BlogCommentAuthor", fields: [authorId], references: [id])
+  
+  // Guest comments (optional)
+  guestName  String?
+  guestEmail String?
+  
+  // Threading
+  parentId  Int?
+  parent    BlogComment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   BlogComment[] @relation("CommentReplies")
+  
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  
+  @@map("blog_comments")
+  @@index([postId, status])
+}
+
+// Documentation Page Model
+model DocPage {
+  id              Int       @id @default(autoincrement())
+  title           String
+  slug            String    @unique
+  content         String    @db.Text
+  excerpt         String?
+  order           Int       @default(0)
+  scope           ContentScope @default(PLATFORM)
+  
+  // Hierarchy
+  parentId        Int?
+  parent          DocPage?  @relation("DocPageHierarchy", fields: [parentId], references: [id])
+  children        DocPage[] @relation("DocPageHierarchy")
+  
+  // Section
+  sectionId       Int?
+  section         DocSection? @relation(fields: [sectionId], references: [id])
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  
+  // Versioning
+  version         String    @default("1.0")
+  isLatest        Boolean   @default(true)
+  
+  // Status
+  status          DocStatus @default(DRAFT)
+  publishedAt     DateTime?
+  
+  // Analytics
+  viewCount       Int       @default(0)
+  helpfulCount    Int       @default(0)
+  notHelpfulCount Int       @default(0)
+  
+  // Full-text search vector (managed by PostgreSQL triggers)
+  searchVector    Unsupported("tsvector")?
+  
+  // Relations
+  authorId        Int
+  author          User      @relation("DocPageAuthor", fields: [authorId], references: [id])
+  feedback        DocFeedback[]
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@map("doc_pages")
+  @@index([status, publishedAt])
+  @@index([slug])
+  @@index([sectionId])
+  @@index([parentId])
+  @@index([status, viewCount], name: "doc_pages_status_viewcount_idx")
+  @@index([searchVector], type: Gin, name: "doc_pages_search_idx")
+}
+
+// Documentation Section Model
+model DocSection {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  description String?
+  icon        String?   // Icon name (e.g., "rocket", "book")
+  order       Int       @default(0)
+  pages       DocPage[]
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  @@map("doc_sections")
+  @@index([order])
+}
+
+// Documentation Feedback Model
+model DocFeedback {
+  id        Int      @id @default(autoincrement())
+  pageId    Int
+  page      DocPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  isHelpful Boolean
+  comment   String?  @db.Text
+  
+  // Authenticated user (optional)
+  userId    Int?
+  user      User?    @relation("DocFeedbackUser", fields: [userId], references: [id])
+  
+  // Anonymous feedback
+  email     String?
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@map("doc_feedback")
+  @@index([pageId])
 }
