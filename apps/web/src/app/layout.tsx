@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 // import { Inter } from 'next/font/google';
+import Script from 'next/script';
 import { Providers } from './providers';
-import { GoogleAnalytics } from '@next/third-parties/google';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/dates/styles.css';
@@ -176,7 +176,19 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="SocietyLedger" />
       </head>
       <body className={fontClass}>
-        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID!} />
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-8R6Q5WT9Z1"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-8R6Q5WT9Z1');
+          `}
+        </Script>
         <Providers>
           {children}
         </Providers>
