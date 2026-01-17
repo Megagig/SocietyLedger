@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Button, Container } from '@mantine/core';
 import { IconUsers, IconLogin, IconMenu2, IconX } from '@tabler/icons-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 const navItems = [
   { label: 'Features', href: '/features' },
@@ -19,6 +20,7 @@ const navItems = [
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { trackSignUpClick, trackLoginClick } = useAnalytics();
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -68,6 +70,7 @@ export default function Header() {
               size="md"
               leftSection={<IconLogin size={18} />}
               className="hidden md:flex font-semibold"
+              onClick={() => trackLoginClick('Header')}
             >
               Login
             </Button>
@@ -76,6 +79,7 @@ export default function Header() {
               href="/signup"
               size="md"
               className="hidden sm:flex bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600 font-semibold"
+              onClick={() => trackSignUpClick('Header')}
             >
               Get Started
             </Button>
@@ -119,7 +123,10 @@ export default function Header() {
                   size="md"
                   leftSection={<IconLogin size={18} />}
                   fullWidth
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={() => {
+                    trackLoginClick('Mobile Menu');
+                    setMobileMenuOpen(false);
+                  }}
                 >
                   Login
                 </Button>
@@ -129,7 +136,10 @@ export default function Header() {
                   size="md"
                   fullWidth
                   className="bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600"
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={() => {
+                    trackSignUpClick('Mobile Menu');
+                    setMobileMenuOpen(false);
+                  }}
                 >
                   Get Started
                 </Button>

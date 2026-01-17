@@ -17,6 +17,7 @@ import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
 import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -26,10 +27,14 @@ export default function ContactPage() {
     message: ''
   });
   const [loading, setLoading] = useState(false);
+  const { trackContactFormSubmit } = useAnalytics();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Track form submission
+    trackContactFormSubmit();
     
     // Simulate form submission
     setTimeout(() => {

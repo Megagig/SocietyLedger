@@ -2,8 +2,11 @@
 
 import Link from 'next/link';
 import { IconUsers, IconBrandFacebook, IconBrandInstagram, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconPhone, IconMail, IconBrandWhatsapp } from '@tabler/icons-react';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export default function Footer() {
+  const { trackSocialClick } = useAnalytics();
+
   return (
     <footer className="bg-gray-900 dark:bg-black text-white py-12 px-4 border-t border-gray-800">
       <div className="max-w-7xl mx-auto">
@@ -108,6 +111,7 @@ export default function Footer() {
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-teal-400 transition-colors flex items-center gap-2"
+                  onClick={() => trackSocialClick('Facebook')}
                 >
                   <IconBrandFacebook size={18} />
                   Facebook
@@ -119,6 +123,7 @@ export default function Footer() {
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-teal-400 transition-colors flex items-center gap-2"
+                  onClick={() => trackSocialClick('Instagram')}
                 >
                   <IconBrandInstagram size={18} />
                   Instagram
@@ -130,6 +135,7 @@ export default function Footer() {
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-teal-400 transition-colors flex items-center gap-2"
+                  onClick={() => trackSocialClick('LinkedIn')}
                 >
                   <IconBrandLinkedin size={18} />
                   LinkedIn
@@ -141,6 +147,7 @@ export default function Footer() {
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-teal-400 transition-colors flex items-center gap-2"
+                  onClick={() => trackSocialClick('X')}
                 >
                   <IconBrandX size={18} />
                   X
@@ -152,6 +159,7 @@ export default function Footer() {
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-teal-400 transition-colors flex items-center gap-2"
+                  onClick={() => trackSocialClick('YouTube')}
                 >
                   <IconBrandYoutube size={18} />
                   Youtube
