@@ -43,6 +43,9 @@
     "zod": "^3.22.0",
     "zustand": "^4.4.0"
   },
+  "prisma": {
+    "schema": "../api/prisma/schema.prisma"
+  },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.5",

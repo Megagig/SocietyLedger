@@ -1,0 +1,710 @@
+# Architecture — SocietyLedger Mobile & Documentation Site
+
+> How the mobile app (`apps/mobile`) and the documentation site (`apps/docs`) are built and how they connect to the existing platform. §1–§13 cover the mobile app and shared infrastructure; §14–§15 cover the docs site and the links into it. The **Rules** in §12 (mobile) and §14.12 (docs) are non-negotiable; if a task seems to require breaking one, stop and ask.
+
+---
+
+## 1. System context
+
+```
+┌──────────────────────────┐        HTTPS (JSON, Bearer JWT, X-Tenant)        ┌───────────────────────────┐
+│  apps/mobile (Expo)      │ ───────────────────────────────────────────────► │  apps/api (Express)       │
+│  iOS + Android           │ ◄─────────────────────────────────────────────── │  Render, port 4000        │
+│                          │                                                  │  Prisma ─► PostgreSQL     │
+│  SecureStore (tokens)    │                                                  │  Redis (cache, optional)  │
+│  MMKV (cache, prefs)     │                                                  │  Resend (email)           │
+└──────┬─────────▲─────────┘                                                  │  Termii (SMS)             │
+       │         │ push                                                       │  Paystack (payments)      │
+       │   ┌─────┴──────────────┐   expo-server-sdk    ┌──────────────────┐   │  OpenRouter (AI)          │
+       │   │ Expo Push Service  │ ◄──────────────────── │ push.service.ts  │◄──┤                           │
+       │   │ (APNs / FCM)       │                       │ (new, in api)    │   └───────────────────────────┘
+       │   └────────────────────┘                       └──────────────────┘
+       │ openAuthSessionAsync
+       ▼
+┌────────────────────┐  redirect   ┌───────────────────────────────┐  302   societyledger://payments/return?reference=…
+│ Paystack checkout  │ ──────────► │ GET /api/payments/mobile-return│ ─────► (closes browser, app verifies)
+└────────────────────┘             └───────────────────────────────┘
+```
+
+- The mobile app is a **pure client** of `apps/api`. It never talks to the database, Paystack secret APIs, Termii, Resend or OpenRouter directly.
+- `apps/web` is unaffected except for two "Open in app" links (F0.6) and the docs links/redirects (D6.3, §15).
+- `apps/docs` is a **static site** (no API calls, no auth) deployed to `docs.societyledger.com.ng`; it only links out to the web app.
+
+---
+
+## 2. Monorepo placement
+
+```
+societyledger/                 (Turborepo, npm workspaces)
+├── apps/
+│   ├── api/                   existing — receives the backend additions in §9
+│   ├── web/                   existing — "open in app" + docs links/redirects only
+│   ├── docs/                  NEW — documentation site (Fumadocs, static export) → docs.societyledger.com.ng
+│   └── mobile/                NEW — Expo app
+├── packages/
+│   └── shared/                existing — types + zod validators, consumed by mobile
+├── context/                   the 9 context files (this folder)
+└── turbo.json
+```
+
+- `apps/mobile` is an npm workspace named `@societyledger/mobile`.
+- Metro must be configured for the monorepo (`watchFolders` = repo root, `nodeModulesPaths` = app + root `node_modules`). Expo's `expo/metro-config` monorepo defaults handle this on SDK 52+; verify on scaffold.
+- `packages/shared` currently has stale types (`User.id: string`, while the API returns numbers). **Mobile does not import stale types.** F1.3 adds correct, API-verified types under `packages/shared/src/mobile/` (or fixes the existing ones if the web is not using them — check with `grep` first). Zod validators in `packages/shared/src/validators.ts` may be reused where they match API schemas.
+- Turbo tasks for mobile: `dev` (expo start), `lint`, `type-check`, `test`. Mobile is **not** part of `turbo build` (EAS builds it).
+- `apps/docs` is an npm workspace named `@societyledger/docs` with `dev` (port 3001), `build` (static export to `apps/docs/out`), `lint`, `type-check`, `check:links`, `gen:reference`. Its `build` **is** part of `turbo build` (outputs `out/**`, `.source/**`).
+- **Dependency versions differ per app** (web: Next 14 + React 18; docs: Next 15/16 + React 19 as Fumadocs requires; mobile: React 19.2 via Expo). Each app declares its own `react`, `react-dom`, `next` in its own `package.json`; never add them to the root. After install, verify with `npm ls react` that each app resolves its own version; if hoisting causes conflicts, add `overrides` scoped per workspace or move docs to pnpm-style isolation (record the decision).
+
+---
+
+## 3. Tech stack
+
+| Concern | Choice | Notes |
+|---|---|---|
+| Runtime | **Expo SDK 56** (React Native 0.85, React 19.2, New Architecture) | Pin exact SDK at scaffold. Node ≥ 20.19.4. iOS ≥ 16.4. |
+| Language | TypeScript, `strict: true`, `noUncheckedIndexedAccess: true` | |
+| Navigation | **Expo Router** (file-based; `Stack`, `Tabs`, modals) | SDK 56 Router no longer wraps React Navigation — import navigation primitives from `expo-router` only. |
+| Styling | **NativeWind** (Tailwind for RN) with **CSS variables** from `src/theme/global.css` | Tokens in `ui-tokens.md`. Use the latest NativeWind line verified compatible with SDK 56 at scaffold (v4.2+ stable or v5 if stable); token file is the same either way. |
+| Server state | **TanStack Query v5** + `@tanstack/query-async-storage-persister` backed by MMKV | Same mental model as web (web uses v4). |
+| Client state | **Zustand** (session, tenant, UI prefs) with MMKV persistence for non-secret slices | |
+| Forms | **react-hook-form** + **zod** (`@hookform/resolvers`) | Same as web. |
+| HTTP | **axios** single instance with interceptors | Same as web. |
+| Secure storage | **expo-secure-store** | Access + refresh tokens only. |
+| Fast KV storage | **react-native-mmkv** | Query cache, prefs, recent associations. Requires dev build (no Expo Go). |
+| Push | **expo-notifications** + **expo-device**; server: **expo-server-sdk** | |
+| Auth browser | **expo-web-browser** (`openAuthSessionAsync`) + **expo-linking** | Paystack checkout. |
+| Biometrics | **expo-local-authentication** | App lock, re-auth. |
+| Files | **expo-image-picker**, **expo-document-picker**, **expo-file-system**, **expo-sharing**, **expo-print** (receipt PDFs) | |
+| Images | **expo-image** | Caching, placeholders. |
+| Lists | **@shopify/flash-list** | All lists > 20 rows. |
+| Animation / gestures | **react-native-reanimated**, **react-native-gesture-handler** | Watch SDK 56 Hermes v1 + worklets memory regression; upgrade to SDK 57 when available. |
+| Bottom sheets | **@gorhom/bottom-sheet** | |
+| Charts | **victory-native** (Skia) via `@shopify/react-native-skia` | Line, bar, donut, stacked bar. |
+| Icons | **lucide-react-native** + `react-native-svg` | Web already uses lucide; keeps visual parity. (`@expo/vector-icons` is deprecated in SDK 56.) |
+| Toasts | **sonner-native** | |
+| Dates | **date-fns** (+ `date-fns-tz` if needed) | Web uses date-fns too. Display in device locale, `Africa/Lagos` default. |
+| Money | **decimal.js-light** | Never float arithmetic on money. |
+| Clipboard / haptics | **expo-clipboard**, **expo-haptics** | |
+| Calendar | **expo-calendar** (new API) | Add meeting to calendar. |
+| Errors / crashes | **@sentry/react-native** (Expo plugin) | |
+| Updates | **expo-updates** + EAS Update | Channels: `development`, `preview`, `production`. |
+| Testing | **jest-expo**, **@testing-library/react-native**, **msw** (API mocks); **Maestro** for E2E flows | |
+| Lint/format | ESLint (`eslint-config-expo`) + Prettier | |
+| Build/deploy | **EAS Build**, **EAS Submit** | Bundle IDs below. |
+
+App identity: name **SocietyLedger**; iOS bundle `ng.com.societyledger.app`; Android package `ng.com.societyledger.app`; URL scheme `societyledger`.
+
+---
+
+## 4. Folder structure — `apps/mobile`
+
+```
+apps/mobile/
+├── app/                              # Expo Router — ROUTES ONLY (thin screens)
+│   ├── _layout.tsx                   # Providers, fonts, splash, theme, push listeners
+│   ├── index.tsx                     # Splash/redirect logic
+│   ├── +not-found.tsx
+│   ├── (auth)/                       # Unauthenticated stack
+│   │   ├── _layout.tsx
+│   │   ├── welcome.tsx  association.tsx  login.tsx  register.tsx
+│   │   ├── verify-email.tsx  forgot-password.tsx  reset-password.tsx
+│   │   ├── accept-invite.tsx  pending.tsx  blocked.tsx  web-only.tsx
+│   │   └── create-association.tsx
+│   ├── (lock)/unlock.tsx
+│   └── (app)/                        # Authenticated area (guarded in _layout)
+│       ├── _layout.tsx               # Auth guard, onboarding guard, push registration
+│       ├── (tabs)/
+│       │   ├── _layout.tsx           # Tabs (Manage tab conditional)
+│       │   ├── home/       (index.tsx, _layout.tsx)
+│       │   ├── money/      (index, pay/*, ledger/*, dues, levies, penalties, donations/*, payments, transaction/[id], savings/*, loans/*, guarantor-requests)
+│       │   ├── community/  (index, meetings/*, voting/*, polls/*, welfare/*, announcements/*)
+│       │   ├── manage/     (index, members/*, finance/*, payments/*, accounting/*, reports/*, meetings/*, elections/*, polls/*, welfare/*, cooperatives/*, communication/*, ai/*, settings/*, support/*)
+│       │   └── profile/    (index, details, security, appearance, about, help/*)
+│       ├── notifications/  (index, preferences)
+│       └── onboarding/     (profile, finance, members, team, complete)
+├── src/
+│   ├── api/                          # HTTP layer — no React, no UI
+│   │   ├── client.ts                 # axios instance + interceptors (auth, tenant, refresh, errors)
+│   │   ├── errors.ts                 # ApiError class + code mapping
+│   │   ├── envelope.ts               # unwrap {success,data,message}
+│   │   └── endpoints/                # one file per API module: auth.ts, members.ts, memberFinance.ts,
+│   │                                 # memberLedger.ts, finance.ts, financeAdvanced.ts, payments.ts,
+│   │                                 # nigerianPayments.ts, accounting.ts, reports.ts, exports.ts,
+│   │                                 # meetings.ts, voting.ts, welfare.ts, cooperatives.ts,
+│   │                                 # notifications.ts, sms.ts, ai.ts, help.ts, support.ts,
+│   │                                 # settings.ts, rbac.ts, onboarding.ts, associations.ts,
+│   │                                 # subscriptions.ts, devices.ts, dashboard.ts
+│   ├── features/                     # Feature modules (domain hooks + feature components)
+│   │   └── <feature>/
+│   │       ├── queries.ts            # useQuery hooks + query keys
+│   │       ├── mutations.ts          # useMutation hooks + invalidation
+│   │       ├── schemas.ts            # zod form schemas
+│   │       ├── types.ts              # feature-local types (API DTOs live in src/types/api)
+│   │       └── components/           # components used only by this feature
+│   ├── components/                   # Shared, domain-agnostic UI (design system)
+│   │   ├── ui/                       # Button, Text, Card, Badge, Input, Money, Avatar, Chip, Skeleton…
+│   │   ├── layout/                   # Screen, ScreenHeader, Section, StickyFooter, ListItem…
+│   │   ├── feedback/                 # EmptyState, ErrorState, OfflineBanner, ModuleLocked, Toast…
+│   │   ├── forms/                    # FormField wrappers for RHF: TextField, AmountField, DateField, SelectSheet…
+│   │   └── charts/                   # LineChart, BarChart, DonutChart, ProgressRing wrappers
+│   ├── lib/                          # Pure utilities (no React unless named use*)
+│   │   ├── permissions.ts            # alias map + can()/canAny()
+│   │   ├── money.ts                  # toDecimal, formatMoney
+│   │   ├── dates.ts                  # formatters
+│   │   ├── storage.ts                # MMKV instance + typed helpers
+│   │   ├── secure.ts                 # SecureStore wrappers
+│   │   ├── push.ts                   # permission, token, routing map
+│   │   ├── linking.ts                # deep-link parsing
+│   │   ├── biometrics.ts
+│   │   ├── files.ts                  # upload FormData builders, download+share
+│   │   ├── docs.ts                   # docsUrl/openDocs → docs site (§15), filters plan-billing targets
+│   │   └── i18n.ts                   # t() helper, en.json
+│   ├── stores/                       # Zustand stores
+│   │   ├── session.ts                # user, permissions, tokens status
+│   │   ├── tenant.ts                 # current association + recent list
+│   │   ├── modules.ts                # modules found disabled this session
+│   │   └── prefs.ts                  # theme, biometrics, auto-lock
+│   ├── hooks/                        # Cross-feature hooks: useCan, useOnline, useAppState, useRefreshOnFocus…
+│   ├── providers/                    # QueryProvider, ThemeProvider, SessionProvider
+│   ├── theme/                        # global.css (CSS variables), tokens.ts (JS mirror for charts/nav)
+│   ├── types/
+│   │   └── api/                      # DTOs matching API responses (verified against controllers)
+│   └── config/
+│       └── env.ts                    # typed EXPO_PUBLIC_* access
+├── assets/                           # fonts, images, icon, splash
+├── e2e/                              # Maestro flows (*.yaml)
+├── __tests__/ or co-located *.test.ts(x)
+├── app.config.ts                     # dynamic Expo config (env-specific)
+├── eas.json
+├── tailwind.config.js
+├── metro.config.js
+├── babel.config.js
+├── tsconfig.json                     # paths: "@/*" → "src/*"
+└── package.json
+```
+
+---
+
+## 5. Layer boundaries & data flow
+
+```
+app/ (route screen) ──uses──► features/<x>/queries|mutations ──calls──► api/endpoints/<x> ──► api/client ──► HTTP
+        │                              │
+        └──renders──► components/ (ui, layout, feedback, forms, charts) + features/<x>/components
+                                        stores/ ◄── read by hooks; written by api/client (session) and features
+```
+
+| Layer | May import | Must NOT import |
+|---|---|---|
+| `app/**` (routes) | `features/*`, `components/*`, `hooks/*`, `lib/*`, `stores/*` (read via hooks) | `api/*` directly, `axios` |
+| `features/<x>/*` | `api/endpoints/*`, `components/*`, `lib/*`, `stores/*`, `hooks/*`, `types/*` | other features' internals (only their `queries.ts` exports, for cross-feature invalidation), `app/*` |
+| `components/**` | `lib/*`, `theme/*`, other `components/*` | `api/*`, `features/*`, `stores/*`, `app/*` (pure presentational, props in/out) |
+| `api/**` | `lib/secure`, `stores/session` + `stores/tenant` (client.ts only), `types/api` | React, `components/*`, `features/*`, `app/*` |
+| `lib/**` | other `lib/*`, `types/*` | `api/*`, `components/*`, `features/*`, `app/*` |
+| `stores/**` | `lib/*`, `types/*` | `api/*` (except calling nothing — stores hold state only), `components/*`, `features/*` |
+
+Request lifecycle:
+1. Screen calls `useMemberOutstanding()` (features/memberFinance/queries.ts).
+2. Hook runs `memberFinanceApi.getOutstanding()` (api/endpoints/memberFinance.ts).
+3. `client` interceptor adds `Authorization: Bearer <access>`, `X-Tenant: <subdomain>`, `X-Client: mobile`, `X-App-Version`.
+4. Response passes through `unwrapEnvelope` → returns `data` or throws `ApiError`.
+5. On `401` with refresh available → single-flight refresh → retry once → else sign out.
+6. On `403 MODULE_DISABLED` → `modules` store marks module disabled → screen renders `ModuleLocked`.
+7. TanStack Query caches; persister writes to MMKV (whitelisted keys only).
+
+---
+
+## 6. API contract (what the mobile client relies on)
+
+### 6.1 Base & headers
+- Base URL from `EXPO_PUBLIC_API_URL` (`https://api.societyledger.com.ng` prod — confirm actual Render URL; `http://<LAN-IP>:4000` dev). All paths start `/api`.
+- Headers on every request after tenant selection: `X-Tenant: <subdomain>`; after login: `Authorization: Bearer <accessToken>`; always `X-Client: mobile`, `X-App-Version: <version>+<build>`.
+- No cookies. Mobile never reads or relies on the `token` cookie. Requests have no `Origin`, which the API's CORS already allows.
+
+### 6.2 Response envelope
+```ts
+// success
+{ success: true, data: T, message?: string }
+// list with pagination (shape used by members and most lists)
+{ success: true, data: { <items>: T[], pagination: { page, limit, totalCount, totalPages, hasMore } } }
+// failure
+{ success: false, message: string, code?: string, error?: string, errors?: ZodIssue[] }
+```
+Not every endpoint is uniform (some return arrays directly in `data`, some name the list key differently). **Every endpoint function in `api/endpoints/*` must be verified against its controller before use** and normalise to `{ items, pagination }` for lists.
+
+### 6.3 Error codes the app handles
+| Signal | Source | App behaviour |
+|---|---|---|
+| `401` + `code: EMAIL_NOT_VERIFIED` | login | → Verify Email |
+| `401` + `code: PENDING_APPROVAL` | login | → Pending screen |
+| `401` + `code: ACCOUNT_REJECTED` / `ACCOUNT_SUSPENDED` | login | → Blocked screen |
+| `401` other on authed request | auth middleware | refresh → retry → sign out with toast "Session expired" |
+| `403` "Access denied for this association" | tenant mismatch | sign out, clear tenant |
+| `403` `error: MODULE_DISABLED` | module middleware | `ModuleLocked` state |
+| `403` subscription messages (no active subscription / expired / trial ended) | subscription middleware | `SubscriptionInactive` state. Add `code: SUBSCRIPTION_INACTIVE` server-side in F0.5 so matching isn't string-based. |
+| `403` "Insufficient permissions" | rbac | `NoPermission` state; also re-fetch `/auth/me` (permissions may have changed) |
+| `400` "Association not found…" / `403` suspended/cancelled association | tenant middleware | Blocked screen (association variant) |
+| `400` with `errors[]` (Zod) | controllers | map to form fields via `setError` |
+| `429` | rate limiter (auth 10/min, standard 100/min, `/auth/me` 200/min) | toast "Too many attempts, try again in a minute"; never auto-retry |
+| network error / timeout (15 s) | — | offline handling, retry button |
+
+### 6.4 Money & dates in responses
+- Prisma `Decimal` fields serialise as **strings** (e.g. `"25000.00"`); some controllers convert to `Number`. The app accepts `string | number` and converts through `lib/money.ts → toDecimal()` immediately in the endpoint layer. UI receives `Decimal`-backed values or formatted strings, never raw floats for arithmetic.
+- Dates are ISO strings (UTC). Parse in the endpoint layer to strings kept as ISO; format only in UI via `lib/dates.ts`.
+
+### 6.5 Pagination
+Use `useInfiniteQuery` with `page`/`limit` (default `limit=20`). Stop when `hasMore === false` (or `page >= totalPages` when `hasMore` absent).
+
+---
+
+## 7. Authentication, session & tenant
+
+### 7.1 Tenant selection
+- Association code → `GET /api/associations/check-subdomain?subdomain=` returns `{ id, name, slug, subdomain, tier, status, logo, primaryColor }` (404 not found, 403 cancelled).
+- Stored in `stores/tenant` (persisted to MMKV): `current`, `recent[]` (max 5, most recent first).
+- `X-Tenant` = `subdomain`. Changing association = full sign out (revoke refresh token, clear query cache, clear session) then set new tenant.
+- Logos: if `logo` is a relative `/uploads/...` path, prefix with API origin.
+
+### 7.2 Tokens (after backend F0.3)
+- Login/accept-invite with `X-Client: mobile` returns `{ user, token, refreshToken, accessTokenExpiresAt }`. `token` = short-lived access JWT (15 min) with the same payload as today; `refreshToken` = opaque random 256-bit string (30 days, rotating).
+- Both stored in **SecureStore** (`keychainAccessible: AFTER_FIRST_UNLOCK`). Never in MMKV, Zustand-persisted state, logs, Sentry breadcrumbs or query cache.
+- `client.ts` refreshes proactively when < 60 s left and reactively on 401, **single-flight** (one refresh promise shared by concurrent requests).
+- `POST /api/auth/refresh { refreshToken }` → new pair; old token revoked. Reuse of a revoked token revokes the whole family (theft detection) → app signs out.
+- Logout: `POST /api/auth/logout { refreshToken }` (best effort) → delete SecureStore keys → unregister push token → clear MMKV query cache → reset stores → `(auth)/association` (tenant kept) or `(auth)/welcome` if "Switch association".
+- Until F0.3 ships, the app works with the existing 7-day JWT (no refresh); the client code path handles absence of `refreshToken`.
+
+### 7.3 Session bootstrap
+`app/index.tsx`: read tenant + tokens → if none → Welcome/Association. If tokens → `GET /auth/me` (from cache first for instant UI) → route by user state (platform role → web-only; requiresOnboarding → onboarding; else tabs). App lock applied by `(app)/_layout` when enabled.
+
+### 7.4 Permissions in the client
+- `stores/session.user.permissions: string[]` from login/me. `lib/permissions.ts` exports `PERMISSIONS` alias map (copied from web/API) and `can(perms, alias)`, `canAny`, `canAll`.
+- `hooks/useCan(alias | alias[])` is the only way components check permissions.
+- `/auth/me` refetched on app foreground (max once per 5 min) and after any 403 "Insufficient permissions".
+
+### 7.5 App lock
+- Optional, prompted once after first login. `expo-local-authentication` with device-passcode fallback.
+- Lock on cold start and after `autoLockMinutes` (default 5) in background. Lock screen hides content (blur) in the app switcher via `AppState` + privacy overlay.
+- Re-auth (biometric prompt) required before: casting a vote, void-and-replace, deleting transactions, disbursing loans/welfare, posting journal entries.
+
+---
+
+## 8. Push notifications, deep links & payments
+
+### 8.1 Push registration (client)
+1. After login (and on each app start while signed in), if permission granted: get Expo push token (`getExpoPushTokenAsync({ projectId })`).
+2. `POST /api/devices/register { expoPushToken, platform, deviceName, appVersion }`.
+3. On logout / association switch: `POST /api/devices/unregister { expoPushToken }` before clearing tokens.
+4. Android channels: `default`, `payments`, `governance`, `announcements` (importance HIGH for payments/governance).
+
+### 8.2 Push payload contract (server → app)
+```json
+{ "to": "ExponentPushToken[...]", "title": "...", "body": "...",
+  "data": { "type": "payment.confirmed", "entityId": 123, "associationId": 7, "notificationId": 991 },
+  "channelId": "payments", "sound": "default" }
+```
+`lib/push.ts` maps `type` → route. If `associationId` ≠ current tenant id, show the notification but route to a prompt "This is for <association>. Switch?".
+
+| `type` | Route |
+|---|---|
+| `payment.confirmed`, `payment.received` | `/(app)/(tabs)/money/payments` |
+| `payment.proof_submitted` (officer) | `/(app)/(tabs)/manage/payments/proofs/[entityId]` |
+| `transfer.pending` (officer) | `/(app)/(tabs)/manage/payments/transfers/[entityId]` |
+| `dues.reminder`, `dues.overdue`, `levy.assigned`, `penalty.applied` | `/(app)/(tabs)/money/pay` |
+| `meeting.scheduled`, `meeting.reminder`, `meeting.cancelled` | `/(app)/(tabs)/community/meetings/[entityId]` |
+| `election.nominations_open`, `election.voting_open`, `election.results` | `/(app)/(tabs)/community/voting/[entityId]` |
+| `poll.open` | `/(app)/(tabs)/community/polls/[entityId]` |
+| `loan.application_submitted` (officer) | `/(app)/(tabs)/manage/cooperatives/applications/[entityId]` |
+| `loan.application_updated`, `loan.repayment_due` | `/(app)/(tabs)/money/loans` |
+| `guarantor.requested` | `/(app)/(tabs)/money/guarantor-requests` |
+| `welfare.payout_requested` (officer) | `/(app)/(tabs)/manage/welfare/payouts/[entityId]` |
+| `welfare.payout_updated` | `/(app)/(tabs)/community/welfare` |
+| `announcement` | `/(app)/(tabs)/community/announcements` |
+| `support.ticket_reply` | `/(app)/(tabs)/profile/help/tickets/[entityId]` |
+| `user.approval_pending` (officer) | `/(app)/(tabs)/manage/members/approvals` |
+| anything else | `/(app)/notifications` |
+
+The API's existing `Notification.type` strings must be mapped to these keys in `push.service.ts` (F0.2 inventories current types).
+
+### 8.3 Deep links (custom scheme `societyledger://`)
+| Link | Screen |
+|---|---|
+| `societyledger://invite?token=&tenant=` | Accept Invite (sets tenant first) |
+| `societyledger://reset-password?token=&tenant=` | Reset Password |
+| `societyledger://payments/return?reference=&status=` | Payment Result (verifies) |
+| `societyledger://notifications/<route>` | used internally by push routing |
+All parameters validated with zod in `lib/linking.ts`; unknown links → Home.
+
+### 8.4 Paystack flow
+1. `POST /api/payments/paystack/initialize { transactionId, callbackUrl: <API>/api/payments/mobile-return }` → `{ authorizationUrl, reference }` (one transaction per checkout in v1).
+2. `WebBrowser.openAuthSessionAsync(authorizationUrl, 'societyledger://payments/return')`.
+3. Paystack redirects to `/api/payments/mobile-return?reference=…&trxref=…` → API 302 → `societyledger://payments/return?reference=…`.
+4. App always calls `GET /api/payments/paystack/verify/:reference` (never trusts the redirect alone). If the user dismissed the browser, still verify with the stored reference; if pending, poll `GET /status/:reference` 3× over 10 s, then show "Pending — we'll notify you".
+5. Webhook remains the source of truth server-side.
+
+---
+
+## 9. Backend additions (the ONLY permitted `apps/api` changes)
+
+All additions are backward compatible: web behaviour must not change. Each ships with a Prisma migration (`prisma migrate dev --name …`), Zod validation, tests, and a docs note in `docs/mobile/`.
+
+### 9.1 Refresh tokens (F0.3)
+```prisma
+model RefreshToken {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  associationId Int?     @map("association_id")
+  tokenHash    String    @unique @map("token_hash")     // sha256 of the opaque token
+  familyId     String    @map("family_id")             // rotation chain id (uuid)
+  deviceName   String?   @map("device_name")
+  platform     String?                                  // ios | android
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById Int?      @map("replaced_by_id")
+  lastUsedAt   DateTime? @map("last_used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+```
+Endpoints (under `/api/auth`, tenant-optional list in `tenant.middleware.ts` updated):
+- `POST /login`, `POST /member-invites/accept`: when header `X-Client: mobile`, issue 15-min access token + refresh token; response adds `refreshToken`, `accessTokenExpiresAt`. Without the header: unchanged (7-day token + cookie).
+- `POST /refresh { refreshToken }` → rotate; reuse detection revokes family; re-checks `user.isActive`, approval and association status.
+- `POST /logout { refreshToken? }` → also revokes the refresh token.
+- `GET /sessions` → active refresh families for the user (device, platform, lastUsedAt). `POST /sessions/revoke-others`.
+- `POST /change-password` and `POST /reset-password` revoke all refresh tokens for the user.
+- Rate limit `/auth/refresh` with `sessionRateLimit`.
+
+### 9.2 Push notifications (F0.2)
+```prisma
+model DeviceToken {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  associationId Int?      @map("association_id")
+  expoPushToken String    @unique @map("expo_push_token")
+  platform      String                                  // ios | android
+  deviceName    String?   @map("device_name")
+  appVersion    String?   @map("app_version")
+  lastSeenAt    DateTime  @default(now()) @map("last_seen_at")
+  disabledAt    DateTime? @map("disabled_at")           // set on DeviceNotRegistered receipts
+  createdAt     DateTime  @default(now()) @map("created_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, associationId])
+  @@map("device_tokens")
+}
+```
+- New module `apps/api/src/modules/devices/` → `POST /api/devices/register`, `POST /api/devices/unregister` (auth required; upsert by token, reassign to current user).
+- New `apps/api/src/services/push.service.ts` using `expo-server-sdk`: chunked sends, receipt checking (job every 15 min via existing `node-cron` pattern), disables tokens on `DeviceNotRegistered`.
+- New `apps/api/src/services/notification-dispatch.service.ts`: single function `dispatchNotification({ associationId, userIds, title, message, type, entityId? })` that writes `Notification` rows **and** enqueues push respecting user notification preferences. Refactor the three current writers to call it: `modules/notifications/notifications.controller.ts` (create, createMany, announcement), `jobs/meeting-jobs.ts`, `services/tenant-management.service.ts`. Add `entityId`-carrying calls at key events (payment confirmed, proof submitted/verified, loan/welfare status changes, election phase changes, guarantor requests, ticket replies, user approvals) — inventoried in F0.2.
+- Push failures never fail the originating request (fire-and-forget with logging).
+- Env: `EXPO_ACCESS_TOKEN` (optional, enhanced security).
+
+### 9.3 Mobile payment return bridge (F0.4)
+- `GET /api/payments/mobile-return` (public, before tenant middleware): reads `reference`/`trxref`, responds `302 Location: societyledger://payments/return?reference=<urlencoded>`. Target scheme is **hard-coded** (no open redirect; ignore any `redirect` param). Also renders a tiny HTML fallback with a button link in case the redirect is blocked.
+- `paystack.controller.ts initialize` currently accepts **one** `transactionId` and an optional `callbackUrl` (`z.string().url()`); passing the API's own `/api/payments/mobile-return` URL already validates, so **no schema change is needed**. Multi-item checkout (`transactionIds[]`) is **not** part of this addition — it is logged as a backend gap in `progress-tracker.md` for the owner to decide.
+
+### 9.4 Small supporting changes (F0.5)
+- Add `code` fields: `SUBSCRIPTION_INACTIVE` (subscription middleware), `INSUFFICIENT_PERMISSIONS` (rbac), `TENANT_MISMATCH` (auth middleware), `ASSOCIATION_SUSPENDED` / `ASSOCIATION_CANCELLED` / `ASSOCIATION_NOT_FOUND` (tenant middleware). Messages unchanged.
+- Add `/api/devices` and `/api/payments/mobile-return` to the correct place in `server.ts` / `tenant.middleware.ts`.
+
+### 9.5 Web change (F0.6)
+`apps/web` `/auth/activate` and `/auth/reset-password` show an "Open in the SocietyLedger app" button linking to the `societyledger://` URLs (with `tenant` = current subdomain), visible on mobile user agents only.
+
+---
+
+## 10. Data model reference (read-only for mobile)
+
+The app never touches the DB, but screens map 1:1 to these Prisma models (`apps/api/prisma/schema.prisma`, ~3,000 lines). Key models and the fields the mobile UI shows:
+
+| Domain | Models | Key fields used by mobile |
+|---|---|---|
+| Tenancy | `Association` | id, name, subdomain, slug, logo, primaryColor, status (`ACTIVE`/`SUSPENDED`/`CANCELLED`…), tier |
+| Identity | `User`, `UserApproval`, `Member`, `MemberInvite` | User: id, email, role, platformRole, isActive, emailVerified · Member: id, memberId, firstName, lastName, email, phone, address, city, state, country, gender, dateOfBirth, occupation, category, status, loginStatus, joinDate, emergency contact · Approval: approvalStatus |
+| RBAC | `Permission`, `Role`, `RolePermission`, `UserRole` | role name/description/isSystem, permission key/category |
+| Plans | `Plan`, `Subscription`, `PlatformModule`, `TenantModule`, `PlanModule` | current plan name, status, expiresAt, modules |
+| Finance | `FinancialCategory`, `Transaction`, `Payment`, `MemberFinancialLedger` | Transaction: amount, dueDate, status, type/category, member, referenceNumber, description · Payment: amountPaid, paymentDate, paymentMethod (`BANK_TRANSFER`/`CASH`/`CARD`/`POS`/`MOBILE_MONEY`), reference |
+| Advanced finance | `LevyCampaign`, `LevyCampaignAssignment`, `DonationAllocation`, `DonationRecord`, `PenaltyRule`, `AppliedPenalty`, `PenaltyWaiver` | campaign target/collected/status, assignment amount/paid |
+| Nigerian payments | `AssociationBankAccount`, `BankTransfer`, `BankStatementImport`, `BankStatementEntry`, `PaymentReconciliation`, `PaymentProof` | bank name/account number/account name, transfer status, proof status (`PENDING`/`VERIFIED`/`REJECTED`), file URL |
+| Gateway | `PaymentGatewayTransaction`, `PaymentHistory` | reference, status |
+| Accounting | `ChartOfAccount`, `JournalEntry`, `JournalEntryLine`, `Budget`, `BudgetItem`, `AccountingPeriod` | account type (`ASSET`/`LIABILITY`/`EQUITY`/`INCOME`/`EXPENSE`), entry status (`DRAFT`→`POSTED`), budget status |
+| Cooperatives | `SavingsAccount`, `SavingsTransaction`, `LoanProduct`, `LoanApplication`, `LoanGuarantor`, `Loan`, `LoanRepaymentSchedule`, `LoanRepayment` | balances, rates, `LoanApplicationStatus`, `LoanStatus`, `GuarantorStatus`, `RepaymentStatus` |
+| Governance | `Meeting`, `MeetingAgenda`, `MeetingAttendance`, `MeetingMinutes`, `Election`, `ElectionPosition`, `Candidate`, `Vote`, `Poll`, `PollOption`, `PollResponse` | `MeetingType`, `MeetingStatus` (`SCHEDULED`/`IN_PROGRESS`/`COMPLETED`/`CANCELLED`/`POSTPONED`), `AttendanceStatus`, `ElectionStatus`, `CandidateStatus`, `PollType`, `PollStatus` |
+| Welfare | `WelfareFund`, `WelfareContribution`, `WelfarePayoutRequest` | `WelfareFundType`, `WelfarePayoutType`, `WelfarePayoutStatus` |
+| Comms | `Notification`, `SMSMessage`, `SMSCampaign`, `SMSTemplate`, `SMSCreditBalance` | Notification: title, message, type, isRead, createdAt |
+| Support | `HelpArticle`, `FAQItem`, `SupportTicket`, `TicketResponse`, `TicketAttachment` | `TicketCategory`, `TicketPriority`, `TicketStatus` |
+| New (mobile) | `RefreshToken`, `DeviceToken` | §9 |
+
+Enum values used in UI (status chips, pickers) are mirrored as TS string-literal unions in `src/types/api/enums.ts`, generated by reading `schema.prisma` (F1.3). Do not hand-type enum values from memory.
+
+---
+
+## 11. Caching, offline & performance
+
+- QueryClient defaults: `staleTime 60_000`, `gcTime 24h`, `retry: (count, err) => count < 2 && isNetworkError(err)`, `refetchOnReconnect: true`. `focusManager` wired to `AppState`; `onlineManager` wired to `@react-native-community/netinfo`.
+- **Persisted** (MMKV, `maxAge 24h`, buster = app version + user id + tenant): own finance summary, outstanding, payment history, ledger first page, upcoming meetings, active votes, notifications first page, profile, `/auth/me`. **Never persist**: admin lists with other members' PII beyond first page, AI chats, files.
+- Persisted cache is wiped on logout / tenant switch.
+- Mutations disabled while offline (`useOnline()`); buttons show "You're offline".
+- Lists use FlashList with `estimatedItemSize`; images via expo-image with memory+disk cache.
+- Query keys: `['<tenant>', '<domain>', '<resource>', params]` — tenant first so switching never leaks data.
+
+---
+
+## 12. Rules the agent must never violate
+
+1. **Routes are thin.** Files in `app/` compose feature hooks and components; no `axios`, no `fetch`, no business logic, no inline styles beyond layout props.
+2. **Only `src/api/` makes HTTP calls.** Only `src/api/client.ts` touches tokens and headers.
+3. **`src/components/` contains no domain or API knowledge** — no imports from `api`, `features`, `stores`, or `app`.
+4. **Features never import another feature's components or internals.** Shared UI moves to `components/`; cross-feature data access goes through the other feature's exported query hooks/keys only.
+5. **No hard-coded colours, spacing, radii or font sizes.** Use NativeWind classes backed by tokens (`ui-tokens.md`). JS-side values (charts, navigation themes) come from `src/theme/tokens.ts`, which mirrors the CSS variables.
+6. **Tokens live only in SecureStore.** Never log, persist elsewhere, or send them to Sentry. Sentry `beforeSend` scrubs `Authorization`, `refreshToken`, `password`, `token`.
+7. **Every request carries the tenant.** Query keys start with the tenant subdomain. Switching tenants always clears cache and session.
+8. **Permission checks go through `useCan()` with alias names.** Never check `user.role === '…'` for gating (only for display, and the onboarding rule).
+9. **Hide, don't disable,** controls the user lacks permission for. Disabled state is for transient conditions (offline, invalid form, in-flight).
+10. **Money is never a float.** Convert API values with `toDecimal()` at the API boundary; display with `<Money>` / `formatMoney()`; amounts sent to the API are converted from Decimal at the last moment in the expected type.
+11. **Never trust client-side checks for security.** The API enforces permissions/modules; the client mirrors them for UX only.
+12. **Never verify a payment from the redirect alone.** Always call the verify endpoint.
+13. **Do not invent API endpoints or response fields.** Verify against the controller source; if missing, log a Backend gap and ask.
+14. **Backend changes are limited to §9; web changes are limited to §9.5 and §15.3.** No other edits to `apps/api` or `apps/web` without explicit approval.
+15. **Platform/Super Admin features never ship in mobile.**
+16. **No in-app selling of SocietyLedger subscriptions or SMS credits**, and no links that steer to web purchase.
+17. **All user-facing strings go through `t()`** (`src/lib/i18n.ts`, `en.json`).
+18. **Every data screen implements loading, empty, error, offline and module-locked states** using the shared feedback components.
+19. **Irreversible actions require confirmation**, and the ones listed in §7.5 require biometric re-auth.
+20. **Update the living docs**: `ui-registry.md` when a reusable component is created or changed, `progress-tracker.md` when a feature ships.
+
+---
+
+## 13. Environments & configuration
+
+> Docs-site environment variables are in §14.10; the docs URL used by web and mobile is in §15.1.
+
+| Variable (`EXPO_PUBLIC_*` unless noted) | dev | preview | production |
+|---|---|---|---|
+| `EXPO_PUBLIC_API_URL` | `http://<LAN-IP>:4000` | staging API URL | production API URL |
+| `EXPO_PUBLIC_WEB_URL` | `http://localhost:3000` | staging web | `https://www.societyledger.com.ng` |
+| `EXPO_PUBLIC_BASE_DOMAIN` | `localhost` | — | `societyledger.com.ng` |
+| `EXPO_PUBLIC_DOCS_URL` | `http://localhost:3001` | `https://docs.societyledger.com.ng` | `https://docs.societyledger.com.ng` |
+| `EXPO_PUBLIC_SENTRY_DSN` | — | set | set |
+| `EAS_PROJECT_ID` (app.config) | set | set | set |
+| `SENTRY_AUTH_TOKEN` (EAS secret, build-time) | — | set | set |
+
+`app.config.ts` selects values by `APP_VARIANT` (`development` | `preview` | `production`) and gives dev/preview builds distinct bundle IDs/names (`… (Dev)`) so they install side by side.
+
+EAS profiles (`eas.json`): `development` (dev client, internal), `preview` (internal distribution, channel `preview`), `production` (store, channel `production`, autoIncrement build numbers).
+
+---
+
+## 14. Documentation site — `apps/docs`
+
+### 14.1 Stack
+| Concern | Choice | Notes |
+|---|---|---|
+| Framework | **Fumadocs** (`fumadocs-core`, `fumadocs-ui`, `fumadocs-mdx`) on **Next.js App Router** | Matches the BusinessCopilot docs look (grouped sidebar, ⌘K search, "On this page", cards). Use the Next.js/React/Tailwind versions the current Fumadocs release requires — confirm on fumadocs.dev at D1.1 and pin. |
+| Content | **MDX** files in `apps/docs/content/docs/**` with typed frontmatter (zod schema in `source.config.ts`) | Content is code: reviewed in PRs, versioned in git. |
+| Output | **Static export** (`output: 'export'`) to `apps/docs/out` | No server, no API calls, no auth. Cheap, fast, cacheable. |
+| Search | Fumadocs built-in **static search** (client-side index generated at build) | Works with static export; no third-party service. Implementation has changed across Fumadocs releases (Orama → built-in static client) — follow the current docs at D1.5. |
+| Styling | Tailwind CSS (version required by Fumadocs UI) + Fumadocs UI theme variables overridden with our tokens (`ui-tokens.md §14`) | |
+| Fonts | Manrope (via `next/font/google`), self-hosted at build | Same family as mobile. |
+| Icons | `lucide-react` | Same set as web/mobile. |
+| Diagrams | Static SVG files in `public/diagrams/` authored by hand (lifecycles, money flow) | No runtime Mermaid (keeps export static and fast). |
+| Images | WebP screenshots in `public/images/`, rendered with a `Screenshot` component (width/height required, lazy, zoom on click) | `next/image` with `unoptimized: true` (static export). |
+| Screenshots | **Playwright** script against staging with a seeded demo association; mobile screenshots from Maestro runs (D7) | §14.7 |
+| SEO | Next.js Metadata API per page, `sitemap.ts`, `robots.ts`, Open Graph images generated at build (Fumadocs OG / `next/og` at build time), JSON-LD | |
+| AI-readable | `/llms.txt` and `/llms-full.txt` generated from content (Fumadocs supports this) | Lets support AI and external assistants read the manual. |
+| Analytics | Google Analytics 4 (same property family as web, separate data stream) via `@next/third-parties` | Page views, search terms, feedback events, outbound "Open SocietyLedger" clicks. |
+| Link checking | `lychee` (GitHub Action) or a Node script over `out/` | Fails CI on broken internal links. |
+| Hosting | **Netlify** (the web app already deploys there — `apps/web/netlify.toml`), site base `apps/docs`, publish `out` | Custom domain `docs.societyledger.com.ng` (CNAME to Netlify), HTTPS auto. Alternative if the owner prefers: static container on Dokploy (Nginx) — record in Decisions if chosen. |
+
+### 14.2 Folder structure
+```
+apps/docs/
+├── app/
+│   ├── layout.tsx                    # RootProvider (Fumadocs), fonts, theme, GA
+│   ├── page.tsx                      # redirect "/" → "/docs"
+│   ├── docs/
+│   │   ├── layout.tsx                # DocsLayout: sidebar tree, nav links, banner
+│   │   └── [[...slug]]/page.tsx      # DocsPage: renders MDX, TOC, breadcrumb, footer nav, feedback
+│   ├── api/search/route.ts           # static search index (exported at build)
+│   ├── og/[...slug]/route.tsx        # build-time Open Graph images
+│   ├── llms.txt/route.ts             # generated, static
+│   ├── llms-full.txt/route.ts
+│   ├── sitemap.ts
+│   ├── robots.ts
+│   └── not-found.tsx                 # friendly 404 with search
+├── content/
+│   └── docs/
+│       ├── index.mdx                 # /docs
+│       ├── meta.json                 # root sidebar order (sections)
+│       ├── getting-started/
+│       │   ├── meta.json             # title, icon, page order
+│       │   ├── index.mdx
+│       │   └── create-your-association.mdx …
+│       ├── core-concepts/ … account-security/ … member-guide/ … members/ … finance/ …
+│       ├── payments/ … accounting/ … accounting-guide/ … reports/ … meetings/ …
+│       ├── elections/ … welfare/ … cooperatives/ … communication/ … ai/ …
+│       ├── settings/ … plan-billing/ … mobile-app/ … help-support/ …
+│       ├── troubleshooting-faq/ …
+│       └── reference/                # permissions.mdx & statuses.mdx are GENERATED — do not hand-edit
+├── components/
+│   ├── mdx/                          # MDX components registered in mdx-components.tsx (catalogue: ui-registry.md)
+│   │   ├── AppliesTo.tsx  Callout.tsx  Steps.tsx  Screenshot.tsx  MenuPath.tsx  UiLabel.tsx
+│   │   ├── PlatformBadge.tsx  PermissionNote.tsx  PlanNote.tsx  RoleTabs.tsx  PlatformTabs.tsx
+│   │   ├── StatusChip.tsx  CardGrid.tsx  Faq.tsx  Glossary.tsx  Diagram.tsx  VideoEmbed.tsx
+│   └── layout/                       # Feedback.tsx, LastUpdated.tsx, Footer.tsx, HeaderLinks.tsx
+├── lib/
+│   ├── source.ts                     # Fumadocs loader (pageTree, getPage)
+│   ├── metadata.ts                   # per-page metadata + JSON-LD builders
+│   ├── analytics.ts                  # gtag event helpers (feedback, search, outbound)
+│   └── links.ts                      # APP_URL, outbound link builder with UTM
+├── scripts/
+│   ├── gen-reference.ts              # writes reference/permissions.mdx, statuses.mdx, payment-methods.mdx from repo sources
+│   ├── screenshots/                  # Playwright: capture.config.ts, flows/*.ts (one per section), seed-demo.md
+│   ├── check-links.ts                # internal link + anchor check over out/
+│   ├── check-frontmatter.ts          # every page has required fields; no `status: draft` at launch; no pending screenshots
+│   └── coverage.ts                   # compares web routes (apps/web/src/app/**/page.tsx) with frontmatter `covers` → report
+├── public/
+│   ├── images/<section>/<page>-<n>[-dark].webp
+│   ├── diagrams/*.svg
+│   ├── favicon.ico, logo.svg, og-default.png
+│   └── _redirects                    # Netlify redirects inside docs (renamed pages)
+├── source.config.ts                  # fumadocs-mdx collections + frontmatter zod schema
+├── mdx-components.tsx
+├── next.config.mjs                   # output: 'export', images.unoptimized, trailingSlash: false
+├── tailwind / postcss config         # per Fumadocs version
+├── netlify.toml
+├── tsconfig.json
+└── package.json
+```
+
+### 14.3 Content model (frontmatter)
+Defined once in `source.config.ts` with zod; the build fails if a page doesn't match.
+```yaml
+---
+title: Verifying payment proofs                  # sentence case, ≤ 60 chars
+description: Check a member's transfer receipt and confirm or reject the payment.   # ≤ 160 chars, used for SEO + cards
+type: task                                       # overview | task | concept | reference | faq | platform
+audience: [officer]                              # member | officer | admin | founder | all
+platforms: [web, mobile]                         # web | mobile
+permission: PAYMENT_VERIFY                       # optional; alias name from permissions.ts → rendered as plain words via a map
+module: payments                                 # optional; module code → "Available on plans that include Payments"
+covers: ["/dashboard/payments/nigerian/verification", "PY2", "PY3"]   # web routes and mobile screen IDs documented
+related: [/docs/payments/recording-bank-transfers, /docs/payments/how-members-pay]
+status: published                                # draft | review | published
+lastVerified: 2026-10-20                         # date the steps were re-checked against the app
+icon: BadgeCheck                                 # optional lucide name for cards
+---
+```
+- `AppliesTo` box is rendered automatically from `audience`, `platforms`, `permission`, `module` — authors don't hand-write it.
+- `status: draft` pages are excluded from the production sidebar, search and sitemap, and shown with a banner in preview builds.
+- `lastVerified` drives the "Last updated" line (falls back to git commit date).
+
+### 14.4 Navigation (sidebar) model
+- Root `content/docs/meta.json` lists sections in the order of `project-overview.md §9.6`, with separators: *Start* (Introduction, Getting started, Core concepts, Account & security) · *For members* (Member guide) · *Running your association* (Members, Finance, Payments, Accounting, Accounting guide, Reports) · *Community* (Meetings, Elections, Welfare, Cooperatives, Communication) · *Admin* (AI assistant, Settings, Plan & billing) · *Apps & help* (Mobile app, Help & support, Troubleshooting & FAQ, Reference).
+- Each section folder has `meta.json` with `title`, `icon`, `pages` order, `defaultOpen: false` (except Getting started).
+- Section index pages render a `CardGrid` of their pages automatically (from the page tree), plus hand-written intro.
+
+### 14.5 Rendering of a page
+`DocsPage` = breadcrumb → title → description → `AppliesTo` → MDX body → `Related` cards (from frontmatter) → `Feedback` → previous/next → `LastUpdated`. Right rail: TOC (H2/H3). Mobile: TOC collapses to a "On this page" dropdown at the top.
+
+### 14.6 Search
+- Index built at build time from title, description, headings and body text of `published` pages; result groups by section; keyboard shortcut ⌘K / Ctrl K.
+- Synonyms list in `lib/search-synonyms.ts` (e.g. "dues" ↔ "subscription fee", "levy" ↔ "contribution", "proof" ↔ "receipt", "exco" ↔ "officer") applied by indexing synonyms into each page's hidden keywords field (`keywords` optional frontmatter).
+- Search queries (not personal data) sent to GA4 as `docs_search` events for content-gap analysis.
+
+### 14.7 Screenshots pipeline
+- A **demo association** on staging (`demo` subdomain) seeded with realistic Nigerian data (60 members with Nigerian names, 12 months of dues, levies, a running election, meetings, a cooperative with loans, welfare fund). Seed steps documented in `scripts/screenshots/seed-demo.md` — use staging only, never production data or real member PII.
+- Playwright logs in as `demo-admin`, `demo-treasurer`, `demo-member` (credentials in CI secrets), runs one flow file per section, captures at 1280×800 (desktop) and 390×844 (phone web), light and dark, saves WebP (quality 80) to `public/images/<section>/<page>-<n>[-dark].webp`.
+- Annotations (numbered markers) are added in MDX via the `Screenshot` component's `markers` prop, not burned into images, so re-captures don't need re-editing.
+- Mobile app screenshots (D7) come from Maestro flows on preview builds (iPhone 15 + Pixel 7 frames off).
+- Pending screenshots are written as `<Screenshot pending="Proof detail with Verify and Reject buttons" />`; the frontmatter check fails launch builds if any remain.
+
+### 14.8 Feedback & analytics
+- `Feedback` component: "Was this page helpful?" Yes / No; on No, optional 280-char textarea. Sends GA4 event `docs_feedback { slug, helpful, comment_length }`; the comment text goes to GA only if the owner approves (default: not sent; store count only). No backend endpoint (the API's `DocFeedback` model is tied to the old DB docs and is not used).
+- Outbound clicks to the app tracked as `docs_outbound`.
+- Cookie/consent: GA loads with consent mode defaults; a minimal consent banner if required by NDPR guidance (decide at D1.5).
+
+### 14.9 Build, CI & deploy
+- CI (GitHub Actions, on PRs touching `apps/docs/**` or `context/**`): install → `gen:reference` (fails if generated files changed but weren't committed) → `type-check` → `lint` → `build` → `check:links` → `check:frontmatter` → `coverage` report as PR comment.
+- Netlify: production branch `main` → `docs.societyledger.com.ng`; deploy previews per PR (`noindex` header on previews).
+- Headers: long cache for `/_next/static/*` and `/images/*`; `X-Robots-Tag: noindex` on preview domains; security headers (CSP allowing GA only).
+
+### 14.10 Docs environment variables
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | `https://docs.societyledger.com.ng` (preview: Netlify preview URL) |
+| `NEXT_PUBLIC_APP_URL` | `https://www.societyledger.com.ng` |
+| `NEXT_PUBLIC_GA_ID` | docs GA4 measurement ID |
+| `NEXT_PUBLIC_SHOW_DRAFTS` | `true` in previews only |
+| `DOCS_SCREENSHOT_BASE_URL`, `DOCS_SCREENSHOT_*_PASSWORD` (CI secrets) | staging demo association |
+
+### 14.11 Redirects
+- Inside docs: renamed/moved pages get an entry in `public/_redirects` (301). Never delete a published URL without a redirect.
+- From web: §15.3.
+
+### 14.12 Rules the agent must never violate (docs)
+1. **The app is the source of truth.** Every step must be reproducible in the current app; verify against the route/component/controller listed in `covers` before writing, and set `lastVerified`.
+2. **No invented features, fields, buttons or limits.** If unsure, read the code; if still unsure, mark the page `status: review` with a `{/* QUESTION: … */}` comment and log it in `progress-tracker.md`.
+3. **Never document platform/Super Admin features, internal endpoints, environment variables or security internals** on the public site.
+4. **No real personal data** in screenshots or examples — demo association only; Nigerian-style fictional names and amounts.
+5. **No prices** on the docs site (they change); link to the pricing page on the main site from plan-billing pages only.
+6. **Generated reference pages are never hand-edited** — change the generator or the source.
+7. **No hard-coded colours or fonts** in docs components — use the docs tokens (`ui-tokens.md §14`).
+8. **Every published URL is permanent** — moves need redirects.
+9. **Every task page has at least one screenshot** (or a `pending` placeholder before launch) and a "Before you start" section stating permission/plan.
+10. **Write for the reader's goal, in the docs voice** (`code-standards.md §17`).
+11. When an app feature changes (web or mobile), the affected docs pages are updated **in the same PR** (`covers` makes them findable: `grep -r "PY3" apps/docs/content`).
+
+---
+
+## 15. Links into the docs from web and mobile
+
+### 15.1 Configuration
+| App | Variable | Value |
+|---|---|---|
+| web | `NEXT_PUBLIC_DOCS_URL` | `https://docs.societyledger.com.ng` |
+| mobile | `EXPO_PUBLIC_DOCS_URL` | `https://docs.societyledger.com.ng` |
+
+### 15.2 Helpers
+- Web: `apps/web/src/lib/docs.ts` → `docsUrl(path = '/docs', surface: string): string` (adds UTM). Mobile: `apps/mobile/src/lib/docs.ts` → same signature + `openDocs(path, surface)` using `WebBrowser.openBrowserAsync` (in-app browser, toolbar colour from tokens).
+- A shared map lives in `packages/shared/src/docs-links.ts` (`DOCS_LINKS: Record<string, string>` keyed by web route pattern or mobile screen ID) so both apps use identical targets.
+
+### 15.3 Permitted web changes (D6.3)
+1. Header "Docs" and Footer "Documentation" links → `docsUrl('/docs', 'web_header' | 'web_footer')`, opening in a new tab.
+2. `next.config.js` `redirects()`: `/documentation` → docs `/docs` (301); `/documentation/:slug` → mapped docs path via a static map (unmapped → `/docs`); `/documentation/search` → `/docs`.
+3. "User manual" item at the bottom of `Sidebar.tsx` and `MemberSidebar.tsx` (members → member guide).
+4. `HelpLink` component (`?` icon button with tooltip "Help for this page") added to dashboard page headers for routes in `DOCS_LINKS`.
+5. Help Center (`/dashboard/help`) card "Read the full user manual"; onboarding wizard "See the setup guide" link.
+No other web changes. The DB-backed documentation CMS (`/admin/documentation`, `/api/docs`, `DocPage` models) is left untouched and unlinked from public navigation.
+
+### 15.4 Docs link map (initial; extend as pages publish)
+| Key (web route / mobile ID) | Docs path |
+|---|---|
+| `/dashboard`, H2 | `/docs/reports/association-dashboard` |
+| `/dashboard/member`, H1 | `/docs/member-guide/your-dashboard` |
+| `/dashboard/my-finances`, M1 | `/docs/member-guide/what-you-owe` |
+| `/dashboard/my-finances/pay`, M2, M3 | `/docs/member-guide/paying-online` |
+| M4, `/dashboard/payments/bank-transfers/new` | `/docs/member-guide/paying-by-bank-transfer` |
+| `/dashboard/my-finances/ledger`, M6 | `/docs/member-guide/your-statement` |
+| `/dashboard/members`, MG1 | `/docs/members/your-member-list` |
+| `/dashboard/members/create`, MG3 | `/docs/members/adding-a-member` |
+| `/dashboard/members/invite`, MG4 | `/docs/members/inviting-members-to-log-in` |
+| `/dashboard/finance/transactions*`, FN2–FN4 | `/docs/finance/creating-charges` |
+| `/dashboard/finance/levies*`, FN8 | `/docs/finance/levy-campaigns` |
+| `/dashboard/finance/penalties`, FN11 | `/docs/finance/penalties-and-late-fees` |
+| `/dashboard/finance/overdue`, FN12 | `/docs/finance/overdue-and-reminders` |
+| `/dashboard/payments/nigerian/verification`, PY3 | `/docs/payments/verifying-payment-proofs` |
+| `/dashboard/payments/nigerian/reconciliation`, PY8 | `/docs/payments/matching-and-reconciliation` |
+| `/dashboard/accounting/journal-entries`, AC3 | `/docs/accounting-guide/journal-entries` |
+| `/dashboard/reports`, RP1 | `/docs/reports/finding-the-report-you-need` |
+| `/dashboard/governance/meetings/[id]`, GV4 | `/docs/meetings/taking-attendance` |
+| `/dashboard/governance/elections/[id]`, GV9 | `/docs/elections/how-elections-work` |
+| C7 (ballot) | `/docs/member-guide/voting` |
+| `/dashboard/welfare/requests`, WF4 | `/docs/welfare/payout-requests` |
+| `/dashboard/cooperatives/apply`, M19 | `/docs/cooperatives/applying-for-a-loan` |
+| `/dashboard/cooperatives/applications`, CP4 | `/docs/cooperatives/reviewing-and-disbursing-loans` |
+| `/dashboard/communication/sms`, CM3 | `/docs/communication/sending-sms` |
+| `/dashboard/settings/roles`, ST8 | `/docs/settings/custom-roles` |
+| `/dashboard/subscription*` (web only) | `/docs/plan-billing/plans-and-whats-included` |
+| `/onboarding/*`, O1–O5 | `/docs/getting-started/onboarding-wizard` |
+| `/dashboard/help`, P5 | `/docs/help-support/in-app-help-center` |
+Rule: the mobile app must never use a `plan-billing/*` target; `lib/docs.ts` in mobile filters them out and a unit test enforces it.
