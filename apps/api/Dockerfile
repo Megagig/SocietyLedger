@@ -24,6 +24,10 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
+# apps/api/tsconfig.json has `"extends": "../../tsconfig.base.json"`, but that root file
+# isn't part of any workspace package's manifest, so `turbo prune` doesn't carry it into
+# out/full — without it, tsc fails to load its config (TS5083) before it can compile anything.
+COPY tsconfig.base.json ./tsconfig.base.json
 RUN pnpm --filter @societyledger/api run db:generate
 # `tsc` does not set noEmitOnError, so it still writes dist/*.js even when it reports
 # pre-existing type errors elsewhere in the codebase (unrelated to this Docker build) —
