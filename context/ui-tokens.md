@@ -1,6 +1,6 @@
-# UI Tokens — SocietyLedger Mobile & Docs
+# UI Tokens — SocietyLedger Mobile, Docs & Admin
 
-> Every colour, spacing value, radius, type size, shadow and motion value the mobile app (§0–§13) and the docs site (§14) may use. **No hard-coded hex, px or font-size values anywhere else, ever.** Tokens are CSS variables in `apps/mobile/src/theme/global.css` (consumed by NativeWind classes) and mirrored for JS in `src/theme/tokens.ts` (charts, navigation, status bar). Change a value here first, then in both files, in the same commit.
+> Every colour, spacing value, radius, type size, shadow and motion value the mobile app (§0–§13), the docs site (§14) and the admin console (§15) may use. **No hard-coded hex, px or font-size values anywhere else, ever.** Tokens are CSS variables in `apps/mobile/src/theme/global.css` (consumed by NativeWind classes) and mirrored for JS in `src/theme/tokens.ts` (charts, navigation, status bar). Change a value here first, then in both files, in the same commit.
 
 ---
 
@@ -429,3 +429,59 @@ Sentence case everywhere; no all-caps labels; tabular figures in tables with amo
 
 ### 14.5 Rule
 Docs components use only these variables (via Tailwind theme mapping in `theme.css`) — no hex values in TSX/MDX. A unit test in `apps/docs` compares §14.1/§14.2 hex values against `apps/mobile/src/theme/tokens.ts` once mobile exists, so the two brands can't drift.
+
+---
+
+## 15. Admin console tokens (`apps/admin/src/theme`)
+
+Same brand palette as mobile and docs, delivered as a **Mantine 7 theme** (`createTheme`) plus a small set of CSS variables for Tailwind. Admin is dense and data-first: tighter type scale, compact tables, and a fixed dark-green chrome so staff always know they're in the platform console, not a tenant dashboard.
+
+### 15.1 Mantine colour tuples (10 shades, index 0 → 9)
+| Name | Shades | Use |
+|---|---|---|
+| `ledger` (primary) | `#EEF7F5` `#D3EBE6` `#A8D7CE` `#6FBDB0` `#3CA294` `#178678` `#0E7064` `#0B5C53` `#0A4842` `#083731` | `primaryColor: 'ledger'`, `primaryShade: { light: 7, dark: 4 }` |
+| `brass` (accent) | `#FBF5E6` `#F7EBCF` `#EFD9A6` `#E3C27A` `#D6AC52` `#C8962E` `#A67C22` `#8A6516` `#6E500F` `#523B0A` | Highlights only (unread, selected-row marker); text on light uses shade 7+ |
+| `gray` (override) | `#F5F8F7` `#EDF2F0` `#DDE5E3` `#C5D0CD` `#8A9B97` `#5E706C` `#33433F` `#25403C` `#1A2D2B` `#13211F` | Mantine neutrals, light scheme |
+| `dark` (override) | `#E8F0EE` `#9AB0AC` `#6E8581` `#34544F` `#25403C` `#1A2D2B` `#122120` `#0C1716` `#091211` `#05100F` | Mantine dark scheme (dark[7] = page background, dark[6] = surfaces, dark[0] = text) |
+| `red` (danger) | Mantine default `red`, but `danger` usages map to `#B42318` light / `#F87166` dark via semantic variables below | Destructive buttons, failed statuses |
+| `orange` (warning) | maps to `#C2410C` / `#FB923C` | Pending, impersonation |
+| `green` (success) | maps to `#16804A` / `#4AC780` | Active, success |
+| `blue` (info) | maps to `#2554AA` / `#7DA5F0` | Info, scheduled |
+
+### 15.2 Admin semantic CSS variables (`theme/admin.css`)
+| Variable | Light | Dark | Use |
+|---|---|---|---|
+| `--admin-chrome-bg` | `#0A4842` | `#091211` | Left navigation and top bar background (same in light mode — the "platform" signal) |
+| `--admin-chrome-fg` | `#E8F0EE` | `#E8F0EE` | Nav text |
+| `--admin-chrome-fg-muted` | `#A8D7CE` | `#9AB0AC` | Nav group labels, inactive icons |
+| `--admin-chrome-active-bg` | `#0E7064` | `#122120` | Active nav item |
+| `--admin-chrome-active-marker` | `#E3C27A` | `#E3C27A` | 3-px brass bar left of the active item |
+| `--admin-page-bg` | `#F5F8F7` | `#0C1716` | Content background |
+| `--admin-surface` | `#FFFFFF` | `#122120` | Cards, tables |
+| `--admin-border` | `#DDE5E3` | `#25403C` | Table rules, card borders |
+| `--admin-row-hover` | `#EEF7F5` | `#1A2D2B` | Table row hover |
+| `--admin-env-prod-bg` / `-fg` | `#FEE8E6` / `#B42318` | `#421411` / `#F87166` | "Production" badge |
+| `--admin-env-staging-bg` / `-fg` | `#E7EEFC` / `#2554AA` | `#142242` / `#7DA5F0` | "Staging" badge |
+| `--admin-impersonation-bg` / `-fg` | `#FFEDE1` / `#C2410C` | `#3D200E` / `#FB923C` | Active impersonation pill and the tenant-side banner |
+| `--admin-danger-zone-border` | `#B42318` | `#F87166` | Danger-zone card border on association detail |
+
+### 15.3 Admin typography (Manrope, dense scale)
+| Token | px (size / line) | Weight | Use |
+|---|---|---|---|
+| `h1` (page title) | 24 / 32 | 700 | `PageHeader` title |
+| `h2` | 18 / 26 | 700 | Card / section titles |
+| `h3` | 15 / 22 | 600 | Sub-sections, tab panels |
+| `body` (`md`) | 14 / 20 | 400 | Default text, table cells |
+| `sm` | 13 / 18 | 500 | Secondary text, filters, badges |
+| `xs` | 12 / 16 | 500 | Timestamps, table meta |
+| `stat` | 28 / 34 | 700, tabular | `StatCard` values |
+Sentence case; tabular figures in tables and stats.
+
+### 15.4 Admin spacing, radius, sizes
+- Spacing: same 4-px scale as mobile (`xs 4, sm 8, md 12, lg 16, xl 24`, plus 32/48 for page sections). Page padding 24 px; card padding 16 px.
+- Radius: `xs 4, sm 6, md 8, lg 12` (denser UI than mobile); badges `sm`, buttons/inputs `md`, cards `lg`.
+- Table row height: 44 px (compact 36 px option). Nav width 248 px (collapsed 64 px). Top bar 56 px.
+- Shadows: none on cards; `md` shadow only for menus, modals, notifications.
+
+### 15.5 Rule
+No hex values in admin components — only Mantine theme colours (`c="ledger.7"`, `var(--mantine-color-ledger-7)`) and the CSS variables above. Raw Tailwind palette classes from the migrated web code (`text-teal-600`, `bg-gray-800`…) must be replaced during migration.

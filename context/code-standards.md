@@ -1,6 +1,6 @@
-# Code Standards — SocietyLedger Mobile & Docs
+# Code Standards — SocietyLedger Mobile, Docs & Admin
 
-> How code is written in `apps/mobile` (§1–§16) and how code **and content** are written in `apps/docs` (§17–§19). Consistency beats cleverness. When this file and an existing pattern disagree, this file wins — fix the pattern.
+> How code is written in `apps/mobile` (§1–§16), how code **and content** are written in `apps/docs` (§17–§19), how `apps/admin` is written (§20), and monorepo/package-manager rules for all apps (§21). Consistency beats cleverness. When this file and an existing pattern disagree, this file wins — fix the pattern.
 
 ---
 
@@ -204,8 +204,8 @@ export const memberFinanceApi = {
 - No snapshot tests of whole screens (brittle); targeted snapshots of primitives only.
 
 ## 14. Git & commits
-- Conventional commits scoped by app: `feat(mobile):`, `fix(mobile):`, `feat(api):`, `chore(mobile):`, `test(mobile):`, `docs(context):`.
-- One feature (F-number) per branch: `feature/mobile-F2.8-paystack`.
+- Conventional commits scoped by app: `feat(mobile):`, `fix(mobile):`, `feat(api):`, `feat(admin):`, `feat(web):`, `chore(mobile):`, `test(mobile):`, `docs(context):`.
+- One feature per branch: `feature/mobile-F2.8-paystack`, `feature/admin-A2.2-associations`, `feature/docs-D3.3-finance`.
 - Context file updates committed together with the feature that caused them.
 
 ## 15. Performance rules
@@ -311,3 +311,50 @@ The member gets a notification, the payment is applied to their oldest unpaid ch
 - Follow the existing web conventions (Mantine + Tailwind, `@/` paths, Next 14 App Router); no refactors outside the files listed in `architecture.md §15.3`.
 - External docs links open in a new tab with `rel="noopener"` and an external-link icon; label "User manual" / "Help for this page".
 - `HelpLink` reads its target from `DOCS_LINKS` (`packages/shared`), renders nothing if the route has no mapping.
+
+---
+
+## 20. Admin console standards (`apps/admin`)
+
+### 20.1 Structure & naming
+- Next.js App Router with route groups `(auth)` and `(console)`; route folders kebab-case; pages are thin and compose `features/<area>` hooks and components (same layering as mobile: routes → features → components; only `lib/api.ts` performs HTTP, only `*.server.ts` and route handlers touch the session cookie).
+- Feature folders: `dashboard`, `associations`, `tenants`, `approvals`, `analytics`, `settlements`, `modules`, `logs`, `settings`, `webhooks`, `jobs`, `blog`, `helpContent`, `support`, `impersonation`, `account`, `auth`.
+- Query keys: `['admin', '<area>', '<resource>', params]` via `<area>Keys` factories.
+- Server-only modules end in `.server.ts` and start with `import 'server-only'`.
+- Client components only where interactivity is needed (`'use client'` at the top); data-heavy pages may prefetch on the server through the API with the session token and hydrate TanStack Query.
+
+### 20.2 Migrating a page from `apps/web`
+1. Copy the page and the components it uses into the matching `features/<area>/components/`; replace `fetch(API_ROUTES…, { headers: { Authorization: … } })` and `useAuthStore().token` with `features/<area>/queries.ts` hooks calling `lib/api.ts` (`/bff`).
+2. Replace raw Tailwind colour classes (`text-teal-600`, `bg-gray-800`…) and inline Mantine colours (`c="var(--mantine-color-gray-1)"`) with theme tokens (`ui-tokens.md §15`).
+3. Replace ad-hoc tables with `DataTable`, page titles with `PageHeader`, confirmations with `ConfirmDestructive`.
+4. Keep API calls, payloads, validation and business rules identical; list them in the PR parity checklist.
+5. Remove dead code (super-admin checks are implicit — the whole app is platform-only; role checks use `lib/permissions.ts`).
+
+### 20.3 UI code rules
+- Mantine components first (`Table`, `Tabs`, `Modal`, `Drawer`, `Select`, `DatePickerInput`, `Notifications`); don't mix in another component library.
+- Tables: server-side pagination/sort/filter when the endpoint supports it; filters live in the URL (`useSearchParams`) so views can be shared between staff.
+- Every mutation shows a Mantine notification on success ("Association suspended") and on error (API `message`).
+- Destructive actions: `ConfirmDestructive` with consequence sentence, required `ReasonField` (min 10 chars), and typed-subdomain confirmation for permanent delete.
+- Dates shown in `Africa/Lagos` with absolute timestamps in logs (`14 Oct 2026, 14:32:05`); money with the shared formatter (`₦`, thousands separators, 2 decimals).
+- No `console.log`; errors to Sentry via `lib/logger.ts` with PII scrubbing (emails/phones redacted).
+
+### 20.4 Security code rules
+- Never read or forward cookies to the API from `/bff` except the bearer token; never echo the token in responses.
+- `/bff/[...path]` validates the path against the prefix allow-list and rejects `..` and absolute URLs.
+- Validate all route params and search params with zod before use.
+- Opening tenant URLs for impersonation uses `window.open(url, '_blank', 'noopener,noreferrer')` with the URL built from `NEXT_PUBLIC_BASE_DOMAIN` and a validated subdomain only.
+
+### 20.5 Testing
+- Unit: `lib/permissions.ts`, proxy allow-list, session helpers, formatters.
+- Component: `DataTable`, `ConfirmDestructive`, `ReasonField`.
+- E2E (Playwright, staging): login (+2FA if enabled), suspend → reactivate a test association, impersonation handoff opens the tenant with the banner and ends cleanly, proxy rejects a disallowed path.
+
+## 21. Monorepo & package-manager rules (all apps)
+- **pnpm only.** `pnpm install` at the root; add deps with `pnpm add -F @societyledger/<app> <pkg>` (dev: `-D`); one-off CLIs with `pnpm dlx`; scripts with `pnpm -F <app> <script>` or `pnpm turbo run <task> --filter=<app>`.
+- Expo native packages: `pnpm -F @societyledger/mobile exec expo install <pkg>` (keeps SDK-compatible versions).
+- Never commit `package-lock.json` or `yarn.lock`; CI uses `pnpm install --frozen-lockfile`.
+- Workspace dependencies use `"@societyledger/shared": "workspace:*"`.
+- Don't hoist React/Next to the root; each app owns its framework versions.
+- Shared code (types, zod schemas, reserved subdomains, docs link map) lives in `packages/shared`, which must stay framework-free (no React, no Node-only APIs).
+- Environment variables: each app has `.env.example` committed; real values only in Dokploy (and EAS secrets for mobile). Never commit `.env*` with secrets.
+- Dockerfiles follow the pattern in `architecture.md §17.2` (repo root as build context, `turbo prune`).

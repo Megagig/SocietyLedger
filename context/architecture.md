@@ -1,6 +1,6 @@
-# Architecture — SocietyLedger Mobile & Documentation Site
+# Architecture — SocietyLedger Mobile, Docs Site & Admin Console
 
-> How the mobile app (`apps/mobile`) and the documentation site (`apps/docs`) are built and how they connect to the existing platform. §1–§13 cover the mobile app and shared infrastructure; §14–§15 cover the docs site and the links into it. The **Rules** in §12 (mobile) and §14.12 (docs) are non-negotiable; if a task seems to require breaking one, stop and ask.
+> How the mobile app (`apps/mobile`), the documentation site (`apps/docs`) and the platform admin console (`apps/admin`) are built and how they connect to the existing platform. §1–§13 cover the mobile app and shared infrastructure; §14–§15 the docs site and the links into it; §16 the admin console; §17 deployment of every app on Dokploy. The **Rules** in §12 (mobile), §14.12 (docs) and §16.10 (admin) are non-negotiable; if a task seems to require breaking one, stop and ask.
 
 ---
 
@@ -9,9 +9,10 @@
 ```
 ┌──────────────────────────┐        HTTPS (JSON, Bearer JWT, X-Tenant)        ┌───────────────────────────┐
 │  apps/mobile (Expo)      │ ───────────────────────────────────────────────► │  apps/api (Express)       │
-│  iOS + Android           │ ◄─────────────────────────────────────────────── │  Render, port 4000        │
-│                          │                                                  │  Prisma ─► PostgreSQL     │
-│  SecureStore (tokens)    │                                                  │  Redis (cache, optional)  │
+│  iOS + Android           │ ◄─────────────────────────────────────────────── │  Dokploy app, port 4000   │
+│                          │                                                  │  Prisma ─► PostgreSQL 16  │
+│  SecureStore (tokens)    │                                                  │  (Dokploy DB, ex-Neon)    │
+│                          │                                                  │  Redis (optional)         │
 │  MMKV (cache, prefs)     │                                                  │  Resend (email)           │
 └──────┬─────────▲─────────┘                                                  │  Termii (SMS)             │
        │         │ push                                                       │  Paystack (payments)      │
@@ -29,16 +30,19 @@
 - The mobile app is a **pure client** of `apps/api`. It never talks to the database, Paystack secret APIs, Termii, Resend or OpenRouter directly.
 - `apps/web` is unaffected except for two "Open in app" links (F0.6) and the docs links/redirects (D6.3, §15).
 - `apps/docs` is a **static site** (no API calls, no auth) deployed to `docs.societyledger.com.ng`; it only links out to the web app.
+- `apps/admin` is the platform console at `admin.societyledger.com.ng` (§16). It talks to the same API through its own server-side proxy; nothing in `apps/web` or `apps/mobile` links to it.
+- Every app is a separate **Dokploy** application (§17).
 
 ---
 
 ## 2. Monorepo placement
 
 ```
-societyledger/                 (Turborepo, pnpm workspaces)
+societyledger/                 (Turborepo + pnpm 9 workspaces — pnpm-workspace.yaml)
 ├── apps/
 │   ├── api/                   existing — receives the backend additions in §9
-│   ├── web/                   existing — "open in app" + docs links/redirects only
+│   ├── web/                   existing tenant app — "open in app", docs links, Super Admin removal (§16.8)
+│   ├── admin/                 NEW — platform admin console (Next.js) → admin.societyledger.com.ng
 │   ├── docs/                  NEW — documentation site (Fumadocs, static export) → docs.societyledger.com.ng
 │   └── mobile/                NEW — Expo app
 ├── packages/
@@ -47,12 +51,14 @@ societyledger/                 (Turborepo, pnpm workspaces)
 └── turbo.json
 ```
 
-- `apps/mobile` is an pnpm workspace named `@societyledger/mobile`.
+- Package manager is **pnpm** (`packageManager: pnpm@9.15.0`). Use `pnpm --filter <name> <script>` (or `pnpm -F`), `pnpm add -F <name> <pkg>`, `pnpm dlx` instead of `npx` for one-off CLIs. Never commit `package-lock.json`; `pnpm-lock.yaml` is the only lockfile. Root scripts that still say `npm run … --workspace` (`api:dev`, `web:dev`) and `engines.npm` are leftovers to fix in the first feature that touches the root `package.json`.
+- `apps/mobile` is a pnpm workspace package named `@societyledger/mobile`. **Expo + pnpm:** SDK 54+ supports pnpm's isolated `node_modules`; start isolated. If Metro or a native module fails to resolve, set `node-linker=hoisted` in the root `.npmrc` (affects every app — record in Decisions) rather than adding per-package hacks.
 - Metro must be configured for the monorepo (`watchFolders` = repo root, `nodeModulesPaths` = app + root `node_modules`). Expo's `expo/metro-config` monorepo defaults handle this on SDK 52+; verify on scaffold.
 - `packages/shared` currently has stale types (`User.id: string`, while the API returns numbers). **Mobile does not import stale types.** F1.3 adds correct, API-verified types under `packages/shared/src/mobile/` (or fixes the existing ones if the web is not using them — check with `grep` first). Zod validators in `packages/shared/src/validators.ts` may be reused where they match API schemas.
 - Turbo tasks for mobile: `dev` (expo start), `lint`, `type-check`, `test`. Mobile is **not** part of `turbo build` (EAS builds it).
-- `apps/docs` is an npm workspace named `@societyledger/docs` with `dev` (port 3001), `build` (static export to `apps/docs/out`), `lint`, `type-check`, `check:links`, `gen:reference`. Its `build` **is** part of `turbo build` (outputs `out/**`, `.source/**`).
-- **Dependency versions differ per app** (web: Next 14 + React 18; docs: Next 15/16 + React 19 as Fumadocs requires; mobile: React 19.2 via Expo). Each app declares its own `react`, `react-dom`, `next` in its own `package.json`; never add them to the root. After install, verify with `npm ls react` that each app resolves its own version; if hoisting causes conflicts, add `overrides` scoped per workspace or move docs to pnpm-style isolation (record the decision).
+- `apps/docs` is a pnpm workspace package named `@societyledger/docs` with `dev` (port 3001), `build` (static export to `apps/docs/out`), `lint`, `type-check`, `check:links`, `gen:reference`. Its `build` **is** part of `turbo build` (outputs `out/**`, `.source/**`).
+- `apps/admin` is a pnpm workspace package named `@societyledger/admin` with `dev` (port 3002), `build` (Next.js `output: 'standalone'`), `start`, `lint`, `type-check`, `test`; part of `turbo build`.
+- **Dependency versions differ per app** (web and admin: Next 14 + React 18 + Mantine 7 at migration time; docs: the Next/React versions Fumadocs requires; mobile: React 19.2 via Expo). Each app declares its own `react`, `react-dom`, `next` in its own `package.json`; never add them to the root. pnpm's isolated layout keeps them apart; verify with `pnpm why react -r` after installs. Do not add `public-hoist-pattern` for React.
 
 ---
 
@@ -216,7 +222,7 @@ Request lifecycle:
 ## 6. API contract (what the mobile client relies on)
 
 ### 6.1 Base & headers
-- Base URL from `EXPO_PUBLIC_API_URL` (`https://api.societyledger.com.ng` prod — confirm actual Render URL; `http://<LAN-IP>:4000` dev). All paths start `/api`.
+- Base URL from `EXPO_PUBLIC_API_URL` (production API domain on Dokploy — confirm the exact host, expected `https://api.societyledger.com.ng`; `http://<LAN-IP>:4000` dev). All paths start `/api`.
 - Headers on every request after tenant selection: `X-Tenant: <subdomain>`; after login: `Authorization: Bearer <accessToken>`; always `X-Client: mobile`, `X-App-Version: <version>+<build>`.
 - No cookies. Mobile never reads or relies on the `token` cookie. Requests have no `Origin`, which the API's CORS already allows.
 
@@ -237,6 +243,7 @@ Not every endpoint is uniform (some return arrays directly in `data`, some name 
 | `401` + `code: EMAIL_NOT_VERIFIED` | login | → Verify Email |
 | `401` + `code: PENDING_APPROVAL` | login | → Pending screen |
 | `401` + `code: ACCOUNT_REJECTED` / `ACCOUNT_SUSPENDED` | login | → Blocked screen |
+| `403` + `code: PLATFORM_LOGIN_REQUIRED` | login (after admin backend A1.2) | → Platform staff screen (A12) |
 | `401` other on authed request | auth middleware | refresh → retry → sign out with toast "Session expired" |
 | `403` "Access denied for this association" | tenant mismatch | sign out, clear tenant |
 | `403` `error: MODULE_DISABLED` | module middleware | `ModuleLocked` state |
@@ -464,8 +471,8 @@ Enum values used in UI (status chips, pickers) are mirrored as TS string-literal
 11. **Never trust client-side checks for security.** The API enforces permissions/modules; the client mirrors them for UX only.
 12. **Never verify a payment from the redirect alone.** Always call the verify endpoint.
 13. **Do not invent API endpoints or response fields.** Verify against the controller source; if missing, log a Backend gap and ask.
-14. **Backend changes are limited to §9; web changes are limited to §9.5 and §15.3.** No other edits to `apps/api` or `apps/web` without explicit approval.
-15. **Platform/Super Admin features never ship in mobile.**
+14. **Backend changes are limited to §9 (mobile) and §16.6 (admin); web changes are limited to §9.5, §15.3 and §16.8.** No other edits to `apps/api` or `apps/web` without explicit approval.
+15. **Platform/Super Admin features never ship in mobile or in the tenant web app** — they live only in `apps/admin`.
 16. **No in-app selling of SocietyLedger subscriptions or SMS credits**, and no links that steer to web purchase.
 17. **All user-facing strings go through `t()`** (`src/lib/i18n.ts`, `en.json`).
 18. **Every data screen implements loading, empty, error, offline and module-locked states** using the shared feedback components.
@@ -513,7 +520,7 @@ EAS profiles (`eas.json`): `development` (dev client, internal), `preview` (inte
 | AI-readable | `/llms.txt` and `/llms-full.txt` generated from content (Fumadocs supports this) | Lets support AI and external assistants read the manual. |
 | Analytics | Google Analytics 4 (same property family as web, separate data stream) via `@next/third-parties` | Page views, search terms, feedback events, outbound "Open SocietyLedger" clicks. |
 | Link checking | `lychee` (GitHub Action) or a Node script over `out/` | Fails CI on broken internal links. |
-| Hosting | **Netlify** (the web app already deploys there — `apps/web/netlify.toml`), site base `apps/docs`, publish `out` | Custom domain `docs.societyledger.com.ng` (CNAME to Netlify), HTTPS auto. Alternative if the owner prefers: static container on Dokploy (Nginx) — record in Decisions if chosen. |
+| Hosting | **Dokploy** application serving `apps/docs/out` from an **Nginx** container (multi-stage Dockerfile: pnpm build → `nginx:alpine` with our `nginx.conf`) | Domain `docs.societyledger.com.ng` on the Dokploy app (Traefik, Let's Encrypt). Explicit router priority above the tenant wildcard (§17.3). |
 
 ### 14.2 Folder structure
 ```
@@ -561,17 +568,20 @@ apps/docs/
 │   ├── screenshots/                  # Playwright: capture.config.ts, flows/*.ts (one per section), seed-demo.md
 │   ├── check-links.ts                # internal link + anchor check over out/
 │   ├── check-frontmatter.ts          # every page has required fields; no `status: draft` at launch; no pending screenshots
-│   └── coverage.ts                   # compares web routes (apps/web/src/app/**/page.tsx) with frontmatter `covers` → report
+│   └── coverage.ts                   # compares tenant web routes (apps/web/src/app/**/page.tsx, excluding /admin/**, /dashboard/debug-permissions and marketing pages) with frontmatter `covers` → report
 ├── public/
 │   ├── images/<section>/<page>-<n>[-dark].webp
 │   ├── diagrams/*.svg
 │   ├── favicon.ico, logo.svg, og-default.png
-│   └── _redirects                    # Netlify redirects inside docs (renamed pages)
+│   └── (no redirects file here — redirects live in nginx/redirects.conf)
 ├── source.config.ts                  # fumadocs-mdx collections + frontmatter zod schema
 ├── mdx-components.tsx
 ├── next.config.mjs                   # output: 'export', images.unoptimized, trailingSlash: false
 ├── tailwind / postcss config         # per Fumadocs version
-├── netlify.toml
+├── Dockerfile                        # pnpm build → nginx:alpine serving out/
+├── nginx/
+│   ├── nginx.conf                    # caching, security headers, clean URLs (try_files $uri $uri.html $uri/ =404), 404 page
+│   └── redirects.conf                # `rewrite ^/docs/old$ /docs/new permanent;` per moved page
 ├── tsconfig.json
 └── package.json
 ```
@@ -625,20 +635,20 @@ icon: BadgeCheck                                 # optional lucide name for card
 
 ### 14.9 Build, CI & deploy
 - CI (GitHub Actions, on PRs touching `apps/docs/**` or `context/**`): install → `gen:reference` (fails if generated files changed but weren't committed) → `type-check` → `lint` → `build` → `check:links` → `check:frontmatter` → `coverage` report as PR comment.
-- Netlify: production branch `main` → `docs.societyledger.com.ng`; deploy previews per PR (`noindex` header on previews).
+- Dokploy: production app tracks `main` → `docs.societyledger.com.ng`; a staging app tracks `develop` (or Dokploy preview deployments for PRs, if enabled for the GitHub provider) at `docs-staging.societyledger.com.ng`, which sends `X-Robots-Tag: noindex`. Dokploy builds from git via its auto-deploy webhook; branch protection makes CI pass before merge.
 - Headers: long cache for `/_next/static/*` and `/images/*`; `X-Robots-Tag: noindex` on preview domains; security headers (CSP allowing GA only).
 
 ### 14.10 Docs environment variables
 | Variable | Value |
 |---|---|
-| `NEXT_PUBLIC_SITE_URL` | `https://docs.societyledger.com.ng` (preview: Netlify preview URL) |
+| `NEXT_PUBLIC_SITE_URL` | `https://docs.societyledger.com.ng` (staging: `https://docs-staging.societyledger.com.ng`) |
 | `NEXT_PUBLIC_APP_URL` | `https://www.societyledger.com.ng` |
 | `NEXT_PUBLIC_GA_ID` | docs GA4 measurement ID |
 | `NEXT_PUBLIC_SHOW_DRAFTS` | `true` in previews only |
 | `DOCS_SCREENSHOT_BASE_URL`, `DOCS_SCREENSHOT_*_PASSWORD` (CI secrets) | staging demo association |
 
 ### 14.11 Redirects
-- Inside docs: renamed/moved pages get an entry in `public/_redirects` (301). Never delete a published URL without a redirect.
+- Inside docs: renamed/moved pages get an entry in `nginx/redirects.conf` (301). Never delete a published URL without a redirect.
 - From web: §15.3.
 
 ### 14.12 Rules the agent must never violate (docs)
@@ -708,3 +718,195 @@ No other web changes. The DB-backed documentation CMS (`/admin/documentation`, `
 | `/onboarding/*`, O1–O5 | `/docs/getting-started/onboarding-wizard` |
 | `/dashboard/help`, P5 | `/docs/help-support/in-app-help-center` |
 Rule: the mobile app must never use a `plan-billing/*` target; `lib/docs.ts` in mobile filters them out and a unit test enforces it.
+
+---
+
+## 16. Platform admin console — `apps/admin`
+
+### 16.1 Stack
+| Concern | Choice | Notes |
+|---|---|---|
+| Framework | **Next.js App Router**, `output: 'standalone'` (Node server) | Server needed for the session proxy and auth guard. Start on the **same Next 14 / React 18 versions as `apps/web`** so pages move with minimal change; upgrading is a separate, later decision. |
+| UI | **Mantine 7** (`@mantine/core`, `dates`, `form`, `hooks`, `modals`, `notifications`) + Tailwind (preflight off), **@tabler/icons-react**, **recharts** | Same as the pages being migrated — lift and shift, then align with admin tokens (`ui-tokens.md §15`). |
+| Data | **TanStack Query** (upgrade to v5 during migration — small API changes) + **axios** pointing at the admin app's own `/bff` proxy | Never call the API host directly from the browser. |
+| Client state | **Zustand** (UI prefs only — no tokens, no tenant context) | |
+| Forms | react-hook-form + zod (new forms); existing Mantine forms may stay until touched | |
+| Session | Host-only `httpOnly` cookie `sl_admin_session` holding the API token, set by admin route handlers; read with `cookies()` in server code only (`import 'server-only'`) | No `Domain` attribute → never shared with `*.societyledger.com.ng`. |
+| Guard | `middleware.ts`: unauthenticated → `/login`; optional IP allowlist check (`ADMIN_IP_ALLOWLIST`, uses `x-forwarded-for` from Traefik); adds `X-Robots-Tag: noindex` | |
+| Rich text | existing Quill editor component (moves from web with the blog screens) | |
+| Tests | Jest/Vitest + Testing Library for components; Playwright smoke tests (login + 2FA, impersonation handoff, suspend/reactivate on staging) | |
+| Errors | Sentry (Next.js SDK) with PII scrubbing, separate project from web | |
+| Hosting | Dokploy application, domain `admin.societyledger.com.ng` (§17) | |
+
+### 16.2 Folder structure
+```
+apps/admin/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx                  # MantineProvider (admin theme), QueryProvider, Notifications, Modals
+│   │   ├── (auth)/login/page.tsx       # X1
+│   │   ├── (auth)/login/2fa/page.tsx   # X3
+│   │   ├── (auth)/login/2fa/setup/page.tsx  # X2
+│   │   ├── (console)/layout.tsx        # AppShell: nav, header (env badge, user menu), impersonation sessions pill
+│   │   ├── (console)/page.tsx          # X4 dashboard
+│   │   ├── (console)/associations/…    # X5, X6
+│   │   ├── (console)/tenants/…         # X7
+│   │   ├── (console)/approvals/…       # X8
+│   │   ├── (console)/analytics/…       # X9
+│   │   ├── (console)/settlements/…     # X10
+│   │   ├── (console)/modules/…         # X11
+│   │   ├── (console)/logs/actions|audit/…  # X12, X13
+│   │   ├── (console)/settings/…        # X14
+│   │   ├── (console)/webhooks/…        # X15
+│   │   ├── (console)/jobs/…            # X16
+│   │   ├── (console)/blog/…            # X17
+│   │   ├── (console)/help-content/…    # X18
+│   │   ├── (console)/support/…         # X19
+│   │   ├── (console)/impersonation/…   # X20
+│   │   ├── (console)/account/…         # X21
+│   │   ├── bff/[...path]/route.ts      # server proxy → API (GET/POST/PUT/PATCH/DELETE), attaches Bearer, strips cookies
+│   │   ├── bff/session/route.ts        # POST login, DELETE logout, GET current admin (proxies /api/admin/auth/*)
+│   │   ├── robots.ts                   # Disallow: /
+│   │   └── not-found.tsx, forbidden/page.tsx
+│   ├── features/<area>/                # queries.ts, mutations.ts, schemas.ts, components/ (same pattern as mobile)
+│   ├── components/                     # shared admin UI: DataTable, FilterBar, StatCard, ConfirmDestructive, ReasonField, StatusBadge, EmptyState, PageHeader, EnvBadge
+│   ├── lib/
+│   │   ├── api.ts                      # axios instance baseURL '/bff'
+│   │   ├── session.server.ts           # read/write session cookie (server-only)
+│   │   ├── env.ts                      # typed env (server + public)
+│   │   ├── permissions.ts              # platform-role → section map (§10.7)
+│   │   └── format.ts                   # money/date formatting (shared rules with mobile)
+│   └── theme/                          # Mantine theme built from admin tokens
+├── middleware.ts
+├── Dockerfile                          # turbo prune → pnpm install → next build → standalone runner
+├── next.config.js                      # output: 'standalone', headers (CSP, noindex), no images from external hosts except API uploads
+└── package.json
+```
+
+### 16.3 Session & proxy
+1. `POST /bff/session { email, password }` → server calls `POST {API_URL}/api/admin/auth/login` with header `X-Client: admin`.
+2. If the API replies `{ requires2fa: true, challengeId }` (or `{ requires2faSetup: true, challengeId }`), the server stores `challengeId` in a short-lived host-only cookie (`sl_admin_challenge`, 5 min) and the UI moves to X3/X2.
+3. On success the server sets `sl_admin_session` = API token (`httpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800`, **no Domain**).
+4. `/bff/[...path]` forwards method, query, JSON/multipart body to `{API_URL}/api/<path>` with `Authorization: Bearer <token>`; it **only forwards to an allow-listed set of prefixes**: `admin/`, `cron/`, `webhooks/`, `admin/blog/`, `help/`, `support/`, `auth/change-password`, `subscriptions/plans`. Anything else → 404.
+5. API `401` → proxy clears the cookie and returns 401 → client redirects to `/login?expired=1`.
+6. CSRF: `SameSite=Strict` + the proxy rejects requests whose `Origin` isn't the admin host.
+
+### 16.4 Impersonation handoff (end to end)
+```
+admin UI ──POST /bff/admin/impersonate/:id {reason, durationMinutes}──► API
+API: create ImpersonationHandoff { codeHash, adminUserId, associationId, reason, expiresAt = now+60s, usedAt = null }
+     ◄── { handoffCode, subdomain, expiresAt }
+admin UI: window.open(`https://${subdomain}.${BASE_DOMAIN}/auth/impersonate?code=${handoffCode}`, '_blank', 'noopener')
+tenant web /auth/impersonate: POST /api/auth/impersonation/exchange { code }
+API: verify hash, not expired, not used, admin still SUPER_ADMIN (or allowed role), association active →
+     mark used, issue impersonation JWT (existing payload: isImpersonating, originalAssociationId, impersonationTimestamp; exp = durationMinutes ≤ 4 h),
+     set tenant cookie exactly as login does, write PlatformActionLog + AuditLog
+tenant web: ContextIndicator banner; "End now" → POST /api/admin/end-impersonation → cookie cleared
+```
+The existing `POST /api/admin/impersonate/:associationId` that returns a JWT is changed to return a handoff code (the web's old in-app impersonation is removed in the same cutover, so no client depends on the old response).
+
+### 16.5 Tenant resolution & reserved subdomains
+- `RESERVED_SUBDOMAINS` constant in `packages/shared/src/reserved-subdomains.ts`: `admin, docs, www, api, app, platform, mail, status, staging, preview, cdn, static, help, support, blog, docs-staging, admin-staging, api-staging`.
+- API: signup and `check-subdomain` reject them (`409 { code: 'SUBDOMAIN_RESERVED' }`); `extractSubdomain` / `extractSubdomainFromOrigin` return `null` for them, so an `Origin: https://admin.societyledger.com.ng` never resolves a tenant.
+- Web signup form and mobile association-code screen validate against the same list.
+- One-off check before deploying: confirm no existing association already uses a reserved subdomain (query in A1.2; if one exists, owner decides).
+
+### 16.6 Backend additions for the admin console (the ONLY permitted `apps/api` changes for track A)
+| # | Change | Details |
+|---|---|---|
+| B1 | **Platform login endpoint** | `POST /api/admin/auth/login` (before tenant middleware, `authRateLimit`): accepts only users with `platformRole`; same error message for wrong password and non-platform user; returns 8 h token (new `PLATFORM_TOKEN_EXPIRY`, default `8h`) or a 2FA challenge. `GET /api/admin/auth/me`. |
+| B2 | **Tenant login refuses platform users** (ships at cutover, A3.1 — not before the admin console is live) | `POST /api/auth/login`: if the matched user has `platformRole` → `403 { code: 'PLATFORM_LOGIN_REQUIRED' }`. Remove the "platform login via any subdomain" branch. |
+| B3 | **Reserved subdomains** | §16.5. |
+| B4 | **Impersonation handoff** | Prisma `ImpersonationHandoff` model; changed `POST /api/admin/impersonate/:associationId` (requires `reason`, `durationMinutes` ≤ 240); new `POST /api/auth/impersonation/exchange` (tenant-optional path in tenant middleware); `GET /api/admin/impersonation-sessions`. |
+| B5 | **TOTP 2FA for platform users** (recommended; owner may defer) | Prisma fields on `User`: `totpSecretEnc` (encrypted with `TOTP_ENCRYPTION_KEY`, AES-256-GCM), `totpEnabledAt`, plus `RecoveryCode { userId, codeHash, usedAt }`; endpoints `POST /api/admin/auth/2fa/setup`, `/confirm`, `/verify`, `/recovery`, `POST /api/admin/auth/2fa/regenerate-recovery`; library `otplib`. Login challenge stored server-side (`AdminLoginChallenge`, 5 min). |
+| B6 | **Admin IP allowlist (optional)** | Middleware on `/api/admin/*`, `/api/cron/*`, `/api/webhooks` management routes reading `ADMIN_IP_ALLOWLIST` (comma-separated CIDRs; empty = off). Uses `app.set('trust proxy', …)` correctly for Traefik. |
+| B7 | **Reasons on destructive actions** | Suspend, soft delete, permanent delete, force logout, billing override/credit, module override, platform settings change require `reason` (zod) and store it in `PlatformActionLog`. |
+| B8 | **CORS** | Add `https://admin.societyledger.com.ng` (and the staging host) explicitly to `allowedOrigins` (the existing subdomain regex already matches, but explicit is auditable). The admin browser normally doesn't call the API directly (proxy), so this is defence in depth. |
+Each addition ships with a Prisma migration (`pnpm -F @societyledger/api prisma migrate dev --name …`), zod validation, tests and a note in `docs/admin/`.
+
+### 16.7 Data & API contract
+- Admin uses the existing `/api/admin/*`, `/api/cron/*`, webhooks management, `/api/admin/blog/*`, and platform-scope `/api/help/*`, `/api/support/*` endpoints. **Verify each endpoint's request/response against its controller** before building a screen (same rule as mobile §6.2).
+- Response envelopes as §6.2. Lists normalised to `{ items, pagination }` in `features/<area>/queries.ts`.
+- Money values from analytics/settlements are Decimal strings → format with the shared rules; never float maths for sums shown to staff.
+
+### 16.8 Cutover of `apps/web` (the ONLY permitted web changes for track A)
+Listed in `project-overview.md §10.8`. Implementation notes:
+- Delete files rather than leaving dead branches; run `pnpm -F @societyledger/web type-check` and `lint` after each deletion batch.
+- `authStore` keeps `isImpersonating` + `impersonatedAssociation` (banner) but drops `startImpersonation` from in-app admin pages.
+- Add `/auth/impersonate/page.tsx` (exchange code → redirect to `/dashboard`; on failure: "This link has expired. Start impersonation again from the admin console.").
+- `next.config.js` `redirects()`: `{ source: '/admin/:path*', destination: 'https://admin.societyledger.com.ng/:path*', permanent: true }`.
+
+### 16.9 Admin environment variables
+| Variable | Scope | Value |
+|---|---|---|
+| `API_URL` | server | internal API URL on the Dokploy network (e.g. `http://societyledger-api:4000`) — avoids the public round trip |
+| `NEXT_PUBLIC_ADMIN_ENV` | public | `production` / `staging` (drives the environment badge) |
+| `NEXT_PUBLIC_BASE_DOMAIN` | public | `societyledger.com.ng` (impersonation URLs) |
+| `ADMIN_IP_ALLOWLIST` | server | optional CIDR list |
+| `SESSION_COOKIE_NAME` | server | `sl_admin_session` |
+| `SENTRY_DSN`, `SENTRY_AUTH_TOKEN` | server/build | admin Sentry project |
+API additions: `PLATFORM_TOKEN_EXPIRY=8h`, `TOTP_ENCRYPTION_KEY` (32-byte base64), `ADMIN_IP_ALLOWLIST`, `IMPERSONATION_EXPIRY` (existing, max 4h).
+
+### 16.10 Rules the agent must never violate (admin)
+1. **The API token never reaches browser JavaScript.** Only server code (`*.server.ts`, route handlers, middleware) reads the session cookie; client code calls `/bff/*`.
+2. **The admin session cookie is host-only** (no `Domain`), `httpOnly`, `Secure`, `SameSite=Strict`.
+3. **Nothing in `apps/web`, `apps/mobile` or `apps/docs` links to or mentions the admin console** (except the web login notice text and the mobile A12 text).
+4. **No platform code in `apps/web` after cutover** — no `SUPER_ADMIN` branches, no `/admin` routes, no `X-Association-Id` context switching.
+5. **Impersonation only through the handoff** (no JWT in URLs, logs or the admin browser); every impersonation has a reason and an expiry ≤ 4 h.
+6. **Every destructive action requires confirmation + reason**; permanent delete also requires typing the subdomain.
+7. **The proxy forwards only allow-listed API prefixes.**
+8. **Platform-role checks are enforced by the API**; the admin UI mirrors them for navigation only.
+9. **No public indexing, no third-party analytics, no marketing scripts** on the admin host.
+10. **Migration keeps behaviour:** when moving a page, keep its API calls and business rules; improvements are limited to layout/tokens unless the plan says otherwise. Note any bug found during migration in `progress-tracker.md` instead of silently changing behaviour.
+11. **Backend changes are limited to §16.6; web changes to §16.8.**
+
+---
+
+## 17. Deployment — Dokploy (all apps)
+
+### 17.1 Topology
+| Dokploy service | Source | Build | Domain(s) | Notes |
+|---|---|---|---|---|
+| `societyledger-db` | Dokploy **PostgreSQL 16** database | — | internal only | Migrated from Neon. `DATABASE_URL` and `DIRECT_URL` both point here (no pooler); keep `directUrl` in `schema.prisma` so a pooler (PgBouncer) can be added later without code changes. Scheduled backups to S3-compatible storage (Dokploy backups), daily, 14-day retention; monthly restore test. |
+| `societyledger-redis` (optional) | Dokploy Redis | — | internal only | `REDIS_URL`; API runs without it. |
+| `societyledger-api` | git `apps/api` | Dockerfile (`turbo prune @societyledger/api --docker` → pnpm install → `prisma generate` → `tsc`); pre-deploy/start runs `prisma migrate deploy` | `api.societyledger.com.ng` (confirm) | Port 4000; `trust proxy` set for Traefik. Persistent volume for `uploads/` (or move uploads to object storage later). |
+| `societyledger-web` | git `apps/web` | Dockerfile (`turbo prune @societyledger/web --docker`, Next standalone) | `societyledger.com.ng`, `www.societyledger.com.ng`, **wildcard** `*.societyledger.com.ng` | Wildcard needs a **DNS-01** certificate (Traefik certresolver with the DNS provider's API token) — HTTP-01 can't issue wildcards. |
+| `societyledger-admin` | git `apps/admin` | Dockerfile (Next standalone) | `admin.societyledger.com.ng` | Explicit Traefik priority above the wildcard (§17.3). |
+| `societyledger-docs` | git `apps/docs` | Dockerfile (pnpm build → `nginx:alpine`) | `docs.societyledger.com.ng` | Explicit priority above the wildcard. |
+| Staging copies | same repos, `develop` branch | same | `*-staging` hosts or a separate staging server | Staging database separate from production; demo association seeded here (docs screenshots). |
+
+> The repo currently has no Dockerfiles — Dokploy may be building with Nixpacks/Railpack. Before adding Dockerfiles, record the current Dokploy build type per app in `progress-tracker.md` and keep what works; the Dockerfile pattern below is the target for new apps (admin, docs) and an optional upgrade for api/web.
+
+### 17.2 Dockerfile pattern (pnpm + Turborepo monorepo)
+```dockerfile
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+FROM base AS pruner
+WORKDIR /repo
+COPY . .
+RUN pnpm dlx turbo prune @societyledger/admin --docker
+FROM base AS builder
+WORKDIR /repo
+COPY --from=pruner /repo/out/json/ .
+RUN pnpm install --frozen-lockfile
+COPY --from=pruner /repo/out/full/ .
+RUN pnpm turbo run build --filter=@societyledger/admin
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /repo/apps/admin/.next/standalone ./
+COPY --from=builder /repo/apps/admin/.next/static ./apps/admin/.next/static
+COPY --from=builder /repo/apps/admin/public ./apps/admin/public
+USER node
+EXPOSE 3002
+CMD ["node", "apps/admin/server.js"]
+```
+For docs the runner is `nginx:alpine` copying `apps/docs/out` and `apps/docs/nginx/*.conf`. Use Dokploy "Build path / Dockerfile path" pointing at the app's Dockerfile with the **repo root as context** (pruning needs the whole workspace).
+
+### 17.3 Traefik routing gotcha (wildcard vs specific hosts)
+The tenant wildcard (`*.societyledger.com.ng` → web) can capture `admin.` and `docs.` requests. Traefik orders routers by rule length unless `priority` is set, so **set explicit priorities**: admin and docs routers `priority=100`, API `priority=100`, web wildcard `priority=1`. In Dokploy, add the labels in the app's advanced Traefik config (or the domain's custom config). Verify after every domain change: `curl -sI https://admin.societyledger.com.ng | grep -i x-robots-tag` should show the admin's `noindex` header, not the web app's response.
+
+### 17.4 Releases & rollback
+- Each app deploys independently from `main` via Dokploy's git auto-deploy; keep previous images for one-click rollback.
+- Database migrations run only from the API service (`prisma migrate deploy`) and must be backward compatible with the previous API version (expand → migrate → contract) so either app can roll back.
+- Order for track A cutover: API (B1–B8, backward compatible) → admin app live → web cutover (deletes Super Admin, adds redirect) → API removes the old platform-login branch last.

@@ -1,4 +1,4 @@
-# Library Docs — SocietyLedger Mobile & Docs
+# Library Docs — SocietyLedger Mobile, Docs & Admin
 
 > Not generic documentation — **our** patterns for each library. If you need a library not listed here, stop and ask; once approved, add a section here before using it. Version pins are set at scaffold (F1.1) and recorded in the table; bump only via a dedicated `chore(mobile): upgrade` change.
 
@@ -43,8 +43,26 @@
 | sharp | WebP conversion in screenshot script | latest |
 | tsx | run scripts | latest |
 | lychee (GitHub Action) | external/internal link check | latest |
+| nginx:alpine (docker image) | serve docs static export on Dokploy | stable alpine |
+| **Admin console (`apps/admin`)** | | |
+| next, react, react-dom (admin workspace only) | framework | same versions as `apps/web` at migration |
+| @mantine/core, @mantine/dates, @mantine/form, @mantine/hooks, @mantine/modals, @mantine/notifications | UI kit | 7.x (same as web) |
+| tailwindcss | utility classes (preflight off) | same as web |
+| @tabler/icons-react | icons | same as web |
+| recharts | charts (analytics) | same as web |
+| quill | blog editor (moved from web) | same as web |
+| @tanstack/react-query | server state via /bff | v5.x |
+| zustand | UI prefs | v4/v5 (match web, upgrade later) |
+| axios | HTTP to /bff | 1.x |
+| react-hook-form, @hookform/resolvers, zod | new forms | as web |
+| server-only | guard server modules | latest |
+| @sentry/nextjs | errors | latest |
+| @playwright/test | admin E2E | latest |
+| **API additions for admin (`apps/api`)** | | |
+| otplib | TOTP 2FA | latest 12.x |
+| qrcode | 2FA enrolment QR (data URL) | latest |
 
-Install Expo-managed packages with `npx expo install <pkg>` (picks SDK-compatible versions). Never `npm install` an `expo-*` or React Native native module directly.
+Install Expo-managed packages with `pnpm -F @societyledger/mobile exec expo install <pkg>` (picks SDK-compatible versions). Never `pnpm add` an `expo-*` or React Native native module directly. Other packages: `pnpm add -F <app> <pkg>`.
 
 ---
 
@@ -184,7 +202,7 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 # Docs site libraries (`apps/docs`)
 
 ## Fumadocs (core / ui / mdx)
-- Scaffold with the official CLI (`npm create fumadocs-app`) choosing **Next.js** + **Fumadocs MDX**; then move into `apps/docs`. Read fumadocs.dev for the current release before writing config — APIs (search, loaders, plugin registration) change between majors.
+- Scaffold with the official CLI (`pnpm create fumadocs-app`) choosing **Next.js** + **Fumadocs MDX**; then move into `apps/docs`. Read fumadocs.dev for the current release before writing config — APIs (search, loaders, plugin registration) change between majors.
 - `source.config.ts`: one `defineDocs({ dir: 'content/docs' })` collection; extend the frontmatter schema with our fields (`architecture.md §14.3`) using zod. Build fails on invalid frontmatter — keep it that way.
 - `lib/source.ts`: `loader({ baseUrl: '/docs', source })` exporting `source` (page tree + `getPage`). All components read pages through it.
 - Layouts: `DocsLayout` (sidebar tree, nav links, theme switch) in `app/docs/layout.tsx`; `DocsPage`, `DocsBody`, `DocsTitle`, `DocsDescription` in the page route; pass `toc`, `full={false}`, footer prev/next.
@@ -218,11 +236,53 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 
 ---
 
+# Admin console libraries (`apps/admin`)
+
+## Next.js (admin) — standalone server
+- `next.config.js`: `output: 'standalone'`, `poweredByHeader: false`, `headers()` adding `X-Robots-Tag: noindex, nofollow`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, a CSP that allows only `'self'`, the API uploads origin for images, and Sentry.
+- Route handlers in `src/app/bff/**` run on the Node runtime (`export const runtime = 'nodejs'`), never cached (`export const dynamic = 'force-dynamic'`).
+- `cookies()` from `next/headers` to read/set `sl_admin_session` (`httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: 28800` — and **no `domain`**).
+- `middleware.ts` matcher excludes `/_next/*`, `/login*`, `/bff/session`, `robots.txt`; checks cookie presence (not validity — the API validates) and IP allowlist.
+
+## Mantine 7 (admin)
+- One `createTheme()` in `src/theme/index.ts` built from admin tokens (`ui-tokens.md §15`): custom 10-shade `ledger` and `brass` colours, `primaryColor: 'ledger'`, `defaultRadius: 'md'`, `fontFamily: 'Manrope, …'`, headings sizes, component default props (`Button: { radius: 'md' }`, `Table: { striped: false, highlightOnHover: true, verticalSpacing: 'sm' }`).
+- Colour scheme via `MantineProvider defaultColorScheme="auto"` + `ColorSchemeScript`; Tailwind `darkMode: ['class', '[data-mantine-color-scheme="dark"]']` so both agree.
+- Use `@mantine/modals` `openConfirmModal` only inside `ConfirmDestructive` (single implementation).
+- Notifications at `top-right`, autoClose 4 s (errors 8 s).
+
+## TanStack Query v5 (admin)
+- `QueryClient` defaults: `staleTime: 30_000`, `retry: 1` (never retry 4xx), `refetchOnWindowFocus: true` (staff keep tabs open — fresh data matters).
+- 401 from `/bff` → global `QueryCache` `onError` redirects to `/login?expired=1`.
+- Mutations invalidate by key factories; destructive mutations also invalidate the action-log query.
+
+## recharts (admin analytics)
+- Wrap in `components/charts/*` (`TrendChart`, `BarBreakdown`, `DonutBreakdown`) taking token colours from the Mantine theme; never hard-code the API's per-method hex colours.
+
+## otplib + qrcode (apps/api, 2FA)
+- `authenticator.options = { window: 1, step: 30 }`; secret generated with `authenticator.generateSecret()`, stored encrypted (AES-256-GCM, key `TOTP_ENCRYPTION_KEY`), never returned after enrolment.
+- `otpauth://` label: `SocietyLedger Admin:<email>`, issuer `SocietyLedger`.
+- Recovery codes: 10 × 10-char base32, stored as bcrypt hashes, single use.
+
+## Dokploy (deployment)
+- Each app = one Dokploy **Application** from the GitHub repo; build type Dockerfile (repo root context) for new apps; env vars in the app's Environment tab; domains in Domains tab with HTTPS (Let's Encrypt); wildcard tenant domain uses a DNS-01 cert resolver.
+- Internal service-to-service calls (admin → API) use the Dokploy network hostname instead of the public URL.
+- Database: Dokploy PostgreSQL service; backups configured in Dokploy (S3 destination); connection string stored only in API env.
+- Preview/staging: separate Dokploy apps on `develop` (or Dokploy preview deployments if enabled) with `-staging` hosts.
+- Always set Traefik router priority for specific hosts above the wildcard (architecture §17.3).
+
+## pnpm
+- `packageManager` pinned in root `package.json`; enable via `corepack enable`.
+- Filtering: `pnpm -F @societyledger/admin dev`; recursive: `pnpm -r type-check` or `pnpm turbo run type-check`.
+- Inspect duplicate/conflicting versions: `pnpm why <pkg> -r`.
+- `pnpm dlx turbo prune <pkg> --docker` for Docker builds.
+
+---
+
 ## MCP servers / agent tooling (optional, verify availability before relying on them)
 | Tool | Our use |
 |---|---|
 | Expo MCP server | Look up current Expo SDK docs/APIs instead of relying on memory; check package compatibility. |
-| Context7 (docs MCP) | Current docs for NativeWind, TanStack Query, victory-native, gorhom bottom sheet, **Fumadocs, Next.js, Playwright**. |
+| Context7 (docs MCP) | Current docs for NativeWind, TanStack Query, victory-native, gorhom bottom sheet, Fumadocs, Next.js, Playwright, **Mantine, otplib, Dokploy**. |
 | Playwright MCP / browser tool | Click through staging flows while writing docs pages; verify steps before publishing. |
 | GitHub | Branches/PRs per feature. |
 | Postgres/Prisma tooling (api only) | Inspect staging data shapes during F0.x — read-only. |

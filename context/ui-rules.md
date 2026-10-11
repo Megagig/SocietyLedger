@@ -1,6 +1,6 @@
-# UI Rules — SocietyLedger Mobile & Docs
+# UI Rules — SocietyLedger Mobile, Docs & Admin
 
-> How the mobile interface (§1–§10) and the documentation site (§11–§12) look and behave. Values come from `ui-tokens.md`; components that implement these rules are listed in `ui-registry.md`. Before building any screen, check the registry and reuse.
+> How the mobile interface (§1–§10), the documentation site (§11–§12) and the admin console (§13) look and behave. Values come from `ui-tokens.md`; components that implement these rules are listed in `ui-registry.md`. Before building any screen, check the registry and reuse.
 
 ---
 
@@ -321,3 +321,89 @@ WCAG 2.1 AA: contrast per token checks; alt text on every screenshot describing 
 - **Mobile:** "User manual" row (P12) uses `ListItem` with `BookOpen` icon and an external-link trailing icon; the header `?` is an `IconButton` with `CircleHelp` icon, label "Help for this screen"; both open the in-app browser via `openDocs()`; the browser toolbar uses `--color-surface` / `--color-primary`. Never shown offline (the row shows "Available when you're online").
 - **Web:** `HelpLink` is a Mantine `ActionIcon` (subtle variant, `IconHelpCircle`, tooltip "Help for this page") placed at the right end of the page title row; sidebar "User manual" item at the bottom of the nav, separated by a divider, with an external-link icon; header/footer "Docs" links open the docs site in a new tab.
 - Links go to the **most specific** page in the link map; if none, the section overview; never the bare docs home from a module screen.
+
+---
+
+## 13. Admin console UI rules (`apps/admin`)
+
+### 13.1 Principles
+1. **Unmistakably the platform console.** Fixed dark-green chrome, an always-visible environment badge (Production / Staging) and the words "SocietyLedger Admin" in the top bar. Nobody should confuse it with a tenant dashboard.
+2. **Data first, dense but calm.** Tables and filters are the main interface; compact rows, tabular numbers, no decorative cards or illustrations.
+3. **Make dangerous things slow.** Read actions are one click; destructive actions need confirmation, a reason and sometimes typing the subdomain.
+4. **Always show who and why.** Every change shows up in the Action log with actor and reason; detail pages show recent activity for that association.
+5. **Parity before polish.** Migrated pages keep their behaviour; layout is unified through the shared shell and components.
+
+### 13.2 Layout
+```
+┌──────────────┬──────────────────────────────────────────────────────────────────────┐
+│ SocietyLedger│  [Production]   Search associations…            ⧗ 1 impersonation  AO ▾│  ← top bar 56 px
+│ Admin        ├──────────────────────────────────────────────────────────────────────┤
+│              │ Associations                                         [ Export CSV ]   │  ← PageHeader
+│ Overview     │ 214 associations · 9 suspended                                        │
+│  Dashboard   │ [Status ▾] [Tier ▾] [Created ▾] [Search……………]          Reset filters  │  ← FilterBar
+│  Analytics   │ ┌──────────────────────────────────────────────────────────────────┐ │
+│ Tenants      │ │ Name              Subdomain     Tier   Status    Members  Created │ │
+│ ▌Associations│ │ Opuogun State U.  opuogunstate  Pro    Active      412   12 Jan 26│ │  ← DataTable
+│  Operations  │ │ …                                                                 │ │
+│  Approvals   │ └──────────────────────────────────────────────────────────────────┘ │
+│ Money        │  ‹ 1 2 3 … 11 ›                              25 per page ▾            │
+│  Settlements │                                                                       │
+│ Platform     │                                                                       │
+│  Modules     │                                                                       │
+│  Settings    │                                                                       │
+│  Webhooks    │                                                                       │
+│  Jobs        │                                                                       │
+│ Content      │                                                                       │
+│  Blog        │                                                                       │
+│  Help content│                                                                       │
+│  Support     │                                                                       │
+│ Logs         │                                                                       │
+│  Actions     │                                                                       │
+│  Audit       │                                                                       │
+└──────────────┴──────────────────────────────────────────────────────────────────────┘
+```
+- Navigation groups (in this order): Overview (Dashboard, Analytics) · Tenants (Associations, Operations, Approvals, Impersonation) · Money (Settlements) · Platform (Modules, Settings, Webhooks, Jobs) · Content (Blog, Help content, Support) · Logs (Actions, Audit). Items hidden when the platform role lacks access.
+- Active item: `--admin-chrome-active-bg` with the brass marker; group labels in sentence case, `xs`, muted — not all caps.
+- Content max width: none for tables (fluid), 960 px for forms and settings.
+
+### 13.3 Components
+| Component | Rules |
+|---|---|
+| **PageHeader** | Title (`h1`), one-line summary with live counts, primary action on the right (max one primary + one secondary). Breadcrumb only on detail pages. |
+| **FilterBar** | Filters as compact selects/date ranges in one row, search last; "Reset filters" text button appears only when filters are active; all filters mirrored in the URL. |
+| **DataTable** | Sticky header, sortable columns marked with an icon, row hover, row click opens detail (with a visible "Open" affordance for keyboard users), right-aligned numbers, status as `StatusBadge`, empty state inside the table frame, skeleton rows while loading, pagination + page size at the bottom. No zebra stripes. |
+| **StatCard** | Label (`sm`, secondary) · value (`stat`) · change vs previous period with ▲/▼ and colour + text. Cards in a 4-column grid (2 on tablets). Clicking a card opens the filtered list it summarises. |
+| **StatusBadge** | Light variant, `sm` radius, text always present; colour from the shared status mapping (`ui-tokens.md §1.4`). |
+| **Tabs (detail pages)** | Association detail uses tabs: Overview · Subscription & billing · Modules & features · Security · Activity. Tab state in the URL (`?tab=billing`). |
+| **Danger zone** | Last card on association detail, bordered with `--admin-danger-zone-border`, listing Suspend/Reactivate, Soft delete/Restore, Permanent delete, Force sign-out — each with a one-line consequence. |
+| **ConfirmDestructive** | Modal: title = action as a question ("Suspend Opuogun State Union?"), consequence sentence, `ReasonField` (required, min 10 chars, saved to the Action log), typed-subdomain input for permanent delete, buttons "Cancel" + red action button repeating the verb ("Suspend association"). |
+| **Impersonation dialog** | Explains what happens ("A new tab opens on opuogunstate.societyledger.com.ng signed in as platform staff. Members can't see that you're there; every action is logged."), reason (required), duration select (30 min / 1 h / 4 h), button "Open as this association". |
+| **Impersonation pill** (top bar) | Orange pill "⧗ 1 impersonation" when the current admin has active sessions; click → Impersonation sessions page with "End session". |
+| **EnvBadge** | "Production" (danger tones) or "Staging" (info tones), always visible, never dismissible. |
+| **Forms** | Single column, labels above, helper text below, Save button bottom-right of the card; unsaved-changes guard on navigation. |
+| **Notifications** | Past-tense success ("Association suspended"), errors with the API message and what to do. |
+| **Charts** | recharts wrappers with token colours; titles + one-line takeaways; tooltips with full ₦ values. |
+
+### 13.4 Login screens
+Centered 400-px card on `--admin-chrome-bg`, logo + "SocietyLedger Admin", EnvBadge, email/password, "Sign in". 2FA: six input boxes, "Use a recovery code" link; setup: QR + manual key + confirm field, then recovery codes with "Download" and "I've saved these codes" checkbox before continuing. No sign-up link, no marketing copy.
+
+### 13.5 Copy
+- Plain, specific, staff-facing: "Suspend association", "Extend trial by 14 days", "Apply ₦5,000 credit".
+- Consequences stated before the action: "Members of Opuogun State Union won't be able to sign in until you reactivate it."
+- Errors say what failed and what to try: "Couldn't extend the trial: the association has an active paid subscription."
+
+### 13.6 Accessibility & behaviour
+- Keyboard: `/` focuses the global association search; `g` then `a` → Associations, `g` then `d` → Dashboard (shown in a "Keyboard shortcuts" menu); all actions reachable by keyboard; focus ring visible.
+- Contrast per tokens (AA); status never by colour alone.
+- Motion: Mantine defaults only (modals, notifications); respect reduced motion.
+- Session expiry: a non-blocking banner 5 minutes before the 8-hour limit ("Your session ends at 18:32. Save your work.").
+
+### 13.7 Do / don't
+| Do | Don't |
+|---|---|
+| One shared `DataTable` for every list | Hand-built tables per page (as in the old web pages) |
+| Reason required for every destructive action | Silent destructive buttons |
+| URL-synced filters and tabs | Filters that reset on refresh |
+| Environment badge on every screen | Identical-looking staging and production |
+| Theme colours (`ledger.7`, CSS variables) | `text-teal-600`, `bg-gray-800`, inline hex |
+| Open tenants only via the impersonation dialog | Links that browse tenant data inside the admin app |

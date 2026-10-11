@@ -1,9 +1,9 @@
-# Build Plan — SocietyLedger Docs Site & Mobile
+# Build Plan — SocietyLedger Docs Site, Admin Console & Mobile
 
-> The full, ordered sequence of work for both deliverables. **Always build the next unchecked item in the Master sequence below (mirrored in `progress-tracker.md`).** Never skip ahead, never build two features at once, never start a feature whose dependencies aren't done. Each feature lists its pages/screens (IDs from `project-overview.md` §6 and §9.6), deliverables and Definition of Done.
+> The full, ordered sequence of work for all three deliverables. **Always build the next unchecked item in the Master sequence below (mirrored in `progress-tracker.md`).** Never skip ahead, never build two features at once, never start a feature whose dependencies aren't done. Each feature lists its pages/screens (IDs from `project-overview.md` §6, §9.6 and §10.6), deliverables and Definition of Done.
 
 ## Master sequence
-The web app is finished, so the documentation site ships **first**; the mobile app follows. Mobile-specific docs are written as mobile milestones land.
+The web app is finished, so the documentation site ships **first**. The admin console (track A) comes next: it restructures the web app, so it must land before the mobile track builds on the same API and auth. The mobile app follows. Mobile-specific docs are written as mobile milestones land.
 
 | Order | Block | Features |
 |---|---|---|
@@ -13,24 +13,28 @@ The web app is finished, so the documentation site ships **first**; the mobile a
 | 4 | **Docs Phase D4** — Community & services | D4.1 – D4.5 |
 | 5 | **Docs Phase D5** — Admin | D5.1 – D5.4 |
 | 6 | **Docs Phase D6** — Reference, integration & launch | D6.1 – D6.4 → **Milestone DL: docs live** |
-| 7 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
-| 8 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
-| 9 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
-| 10 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
-| 11 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
-| 12 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
+| 7 | **Admin Phase A1** — Backend, scaffold & shell | A1.1 – A1.7 |
+| 8 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
+| 9 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
+| 10 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
+| 11 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
+| 12 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
+| 13 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
+| 14 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
+| 15 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
 
-If the owner runs two agents in parallel, one may take the docs track while the other takes the mobile track — each still goes strictly in order within its track, and D7.x waits for its mobile milestone.
+If the owner runs agents in parallel: the docs track (D) and the admin track (A) touch different apps and may run side by side, **except** D6.3 and A3.1 both edit `apps/web` — do them one after the other, D6.3 first. The mobile track starts after Milestone AL (mobile login relies on `PLATFORM_LOGIN_REQUIRED` and reserved subdomains). Each track goes strictly in order, and D7.x waits for its mobile milestone.
 
 ## How to run a feature
 1. Read `progress-tracker.md` → find the next unchecked feature in the Master sequence.
 2. Read its block below + the referenced screens/pages in `project-overview.md` + relevant sections of `architecture.md`, `code-standards.md`, `ui-rules.md`, `ui-registry.md` (reuse before you build).
    - **Docs features:** read the pages' "Source" routes in `apps/web` (and API controllers for rules), the migrated material listed in `project-overview.md §9.7`, then click through each flow on staging before writing.
+   - **Admin migration features:** open the "From web" page(s) in `project-overview.md §10.6`, list every API call, control and rule they contain, and reproduce them in `apps/admin` before improving anything.
 3. Verify every endpoint you'll call against the API controller source (request body, response shape). Note mismatches as Backend gaps.
-4. Build → write tests → run `npm run type-check`, `npm run lint`, `npm test` in `apps/mobile`.
-5. Manually check in the dev client on one iOS and one Android device/emulator, light and dark.
+4. Build → write tests → run `pnpm -F <app> type-check`, `pnpm -F <app> lint`, `pnpm -F <app> test` (app = `@societyledger/mobile`, `@societyledger/docs`, `@societyledger/admin`, `@societyledger/api`, `@societyledger/web`).
+5. Manually check: mobile in the dev client on one iOS and one Android device, light and dark; docs and admin in Chrome + Safari at desktop and phone widths, light and dark.
 6. Update `ui-registry.md` (new/changed reusable components) and tick the feature in `progress-tracker.md` with date + notes.
-7. Commit: `feat(mobile): F<x.y> <title>` (backend: `feat(api): …`).
+7. Commit: `feat(mobile): F<x.y> <title>`, `feat(admin): A<x.y> <title>`, `docs(site): D<x.y> <title>` (backend: `feat(api): …`, web: `feat(web): …`).
 
 ## Universal Definition of Done (applies to every feature)
 - Type-check, lint and tests pass; no `any` added without a `// TODO(type):` justification.
@@ -48,7 +52,7 @@ If the owner runs two agents in parallel, one may take the docs track while the 
 - Every step was performed on staging by the agent/author while writing; anything not reproducible is removed or logged as a QUESTION.
 - Concept pages have a worked example with naira amounts; reference pages are generated where §9.6.21 says so.
 - Section `index.mdx` intro + cards render; section FAQ page has ≥ 5 Q&As drawn from the section.
-- `npm run build`, `check:links`, `check:frontmatter` pass; coverage report shows the section's routes covered.
+- `pnpm -F @societyledger/docs build`, `check:links`, `check:frontmatter` pass; coverage report shows the section's routes covered.
 - Reads well on a 390-px-wide phone; no line in a table needs horizontal scroll except reference tables.
 - `ui-registry.md` (new MDX components) and `progress-tracker.md` (feature + coverage table) updated.
 
@@ -58,8 +62,8 @@ If the owner runs two agents in parallel, one may take the docs track while the 
 *Goal: an empty but complete docs site skeleton — every section and page exists as a draft — deployed to a preview URL.*
 
 ### D1.1 Scaffold Fumadocs site in monorepo
-- Create `apps/docs` with the current Fumadocs Next.js template (`npm create fumadocs-app`, Fumadocs MDX content source), workspace name `@societyledger/docs`, dev port 3001, static export, TypeScript strict, ESLint/Prettier; add to Turbo; verify React/Next versions resolve per app (`npm ls react`) without breaking `apps/web`.
-- **DoD:** `npm run dev --workspace=apps/docs` serves `/docs`; `npm run build` produces `out/`; web still builds.
+- Create `apps/docs` with the current Fumadocs Next.js template (`pnpm create fumadocs-app`, Fumadocs MDX content source), workspace name `@societyledger/docs`, dev port 3001, static export, TypeScript strict, ESLint/Prettier; add to Turbo; verify React/Next versions resolve per app (`pnpm why react -r`) without breaking `apps/web`.
+- **DoD:** `pnpm -F @societyledger/docs dev` serves `/docs`; `pnpm -F @societyledger/docs build` produces `out/`; `pnpm -F @societyledger/web build` still passes.
 
 ### D1.2 Docs theme, tokens & layout
 - Apply `ui-tokens.md §14` (Fumadocs theme variables, Manrope, radii), logo, favicon, header links (Open SocietyLedger, Get the app), footer, light/dark, 404 page.
@@ -81,10 +85,10 @@ If the owner runs two agents in parallel, one may take the docs track while the 
 
 ### D1.6 Screenshot pipeline & demo association
 - Seed the staging demo association (documented in `scripts/screenshots/seed-demo.md`, fictional data only); Playwright config with three logged-in roles, desktop + phone viewports, light/dark, WebP output; one sample flow (dashboard).
-- **DoD:** `npm run screenshots -- --section=reports` regenerates images deterministically (hide clocks/relative dates via fixed demo dates).
+- **DoD:** `pnpm -F @societyledger/docs screenshots --section=reports` regenerates images deterministically (hide clocks/relative dates via fixed demo dates).
 
 ### D1.7 CI, preview deploys & hosting
-- GitHub Action (§14.9 of architecture); Netlify site for `apps/docs` with deploy previews (`noindex`); DNS CNAME `docs.societyledger.com.ng` prepared but production publishing gated until D6.4; `gen:reference` and `coverage` scripts wired (reference generator can be a stub until D6.1).
+- GitHub Action (§14.9 of architecture); `apps/docs/Dockerfile` + `nginx/` config; Dokploy **staging** app at `docs-staging.societyledger.com.ng` (`noindex`); Dokploy production app and domain `docs.societyledger.com.ng` created with Traefik priority above the tenant wildcard (architecture §17.3) but kept stopped until D6.4; `gen:reference` and `coverage` scripts wired (reference generator can be a stub until D6.1).
 - **DoD:** PR shows a preview URL and coverage comment; broken link fails CI.
 
 ---
@@ -131,7 +135,7 @@ Migrate `docs/reports/*`.
 - Web changes in `architecture.md §15.3`: header/footer links, `/documentation*` redirects with slug map, sidebar "User manual", `HelpLink` on mapped routes, Help Center card, onboarding link; `packages/shared/src/docs-links.ts`.
 - **DoD:** every key in the link map resolves to a published docs page (test); redirects verified; web lint/type-check pass.
 ### D6.4 Launch
-- Full QA pass (every page clicked on phone + desktop, both themes), zero pending screenshots, zero drafts in production (except mobile-only pages awaiting D7), Lighthouse targets, search test ≥ 90 % top-3, production publish on `docs.societyledger.com.ng`, submit sitemap to Google Search Console & Bing (per `docs/seo/*` guides), announce in-app (owner sends announcement).
+- Full QA pass (every page clicked on phone + desktop, both themes), zero pending screenshots, zero drafts in production (except mobile-only pages awaiting D7), Lighthouse targets, search test ≥ 90 % top-3, start the Dokploy production app on `docs.societyledger.com.ng` (verify the wildcard doesn't capture it), submit sitemap to Google Search Console & Bing (per `docs/seo/*` guides), announce in-app (owner sends announcement).
 - **Milestone DL — docs live.**
 
 ## Docs Phase D7 — Mobile app documentation — 2 features
@@ -139,6 +143,77 @@ Migrate `docs/reports/*`.
 - Publish §9.6.18 pages relevant to members, the mobile-only account pages from D2.3, `mobile-app-faq`; add `PlatformTabs` mobile steps + mobile screenshots (Maestro) to every Member guide page and Getting started pages; store links live.
 ### D7.2 Mobile docs: officer features (after mobile Milestone M3)
 - `officer-tasks-on-the-go`; mobile steps/screenshots for officer pages in Members, Finance, Payments, Meetings, Elections, Welfare, Cooperatives, Communication, Settings where the screen exists on mobile; update `whats-web-only`.
+
+---
+
+## Admin Definition of Done (applies to every admin feature, A1–A3)
+- Universal DoD (above) where relevant (type-check, lint, tests, no hard-coded design values, light/dark).
+- For migration features: a **parity checklist** in the PR listing every control, filter, column, API call and rule on the old web page, each ticked as reproduced (or explained as intentionally dropped and approved).
+- All data fetching goes through `/bff`; no API token in client code (grep for `Authorization` outside `*.server.ts`/route handlers fails review).
+- Destructive actions use `ConfirmDestructive` with a required reason; the reason is visible in the Action log.
+- Loading (skeleton), empty, error (retry) and forbidden states on every data screen.
+- Works at 1280 px and down to 768 px (tablet); phones are not a target but must not break.
+- `ui-registry.md` (Admin section) and `progress-tracker.md` (feature + parity table) updated.
+
+## Admin Phase A1 — Backend, scaffold & shell — 7 features
+*Goal: the API supports a separate admin console and a skeleton admin app is deployed to staging.*
+
+### A1.1 Super Admin inventory & migration map
+- Inventory every Super Admin page, component, hook, store field and branch in `apps/web` (start from `project-overview.md §10.6` and §10.8; grep `SUPER_ADMIN`, `platformRole`, `isPlatformLogin`, `useSuperAdminContext`, `/admin`), and every platform API endpoint they call. Write `docs/admin/migration-inventory.md` (page → components → endpoints → target admin route).
+- Check whether any association already uses a reserved subdomain (§16.5) and record the result.
+- Record how Dokploy currently builds `api` and `web` (Nixpacks/Railpack/Dockerfile) and the production API host in `progress-tracker.md`.
+- **DoD:** inventory reviewed by owner; no code changes.
+
+### A1.2 Backend: platform login, reserved subdomains, CORS, reasons
+- B1 platform login endpoint + `GET /api/admin/auth/me`; B3 reserved subdomains (shared constant in `packages/shared`, API validation and tenant resolution, web signup form validation); B7 required reasons on destructive admin endpoints (backward compatible: optional until A3.1, then required); B8 CORS entries.
+- **DoD:** tests for platform-only login, reserved subdomain rejection, `Origin: admin…` not resolving a tenant; current web Super Admin flow still works (B2 not yet enabled).
+
+### A1.3 Backend: impersonation handoff
+- B4: `ImpersonationHandoff` model + migration, new impersonate response (code), exchange endpoint, sessions list; keep the old JWT-returning behaviour behind a temporary flag `IMPERSONATION_LEGACY_RESPONSE=true` until A3.1 so the current web keeps working.
+- **DoD:** tests: single use, 60 s expiry, wrong association, admin demoted mid-flow, durations > 4 h rejected; audit entries written.
+
+### A1.4 Backend: TOTP 2FA for platform users *(owner may defer — if deferred, mark "skipped (deferred)" and continue)*
+- B5 with `otplib`, encrypted secrets, recovery codes, login challenge; script to reset a platform user's 2FA (`pnpm -F @societyledger/api admin:reset-2fa --email …`).
+- **DoD:** tests for enrol, verify, recovery, regenerate, reset script; secrets never logged.
+
+### A1.5 Scaffold `apps/admin`
+- Next.js (same major as web) with `output: 'standalone'`, Mantine 7, Tailwind (preflight off), TanStack Query v5, Zustand, axios → `/bff`; `bff/session` + `bff/[...path]` route handlers with prefix allow-list; host-only session cookie; `middleware.ts` guard + optional IP allowlist + `noindex`; `robots.ts`; Sentry; Dockerfile (§17.2); Turbo tasks; dev port 3002.
+- **DoD:** login → empty dashboard works against local API; cookie verified host-only; token absent from client bundle and network responses to the browser.
+
+### A1.6 Admin shell, theme & shared components
+- Mantine theme from admin tokens (`ui-tokens.md §15`), AppShell with grouped navigation (§10.6 order) filtered by `lib/permissions.ts`, header (environment badge, impersonation-sessions pill, user menu), `PageHeader`, `DataTable` (server pagination, sorting, column visibility, URL-synced filters), `FilterBar`, `StatCard`, `StatusBadge`, `ConfirmDestructive` + `ReasonField`, `EmptyState`, `ErrorState`, `Forbidden`; login screens X1–X3 styled.
+- **DoD:** components in `ui-registry.md` (Admin); keyboard navigation works across the shell.
+
+### A1.7 Dokploy deployment (staging + production)
+- Dokploy apps `societyledger-admin` (staging on `develop` → `admin-staging.societyledger.com.ng`, production on `main` → `admin.societyledger.com.ng`), env vars (§16.9), internal `API_URL` over the Dokploy network, Traefik priority above the wildcard (§17.3), health check, rollback tested once. Production kept stopped until A3.2.
+- **DoD:** staging admin reachable; `curl -sI` shows admin headers (not the web app's); runbook section in `apps/admin/README.md`.
+
+## Admin Phase A2 — Migrate platform screens — 12 features
+*Each feature moves the listed web pages to the admin app with a parity checklist. The web pages stay live until A3.1.*
+
+### A2.1 Dashboard & analytics — X4, X9
+### A2.2 Associations & association detail — X5, X6 (merges `/admin/associations/[id]` and `/admin/tenants/[id]`: overview, subscription & billing, modules & features, security, activity tabs)
+### A2.3 Tenant operations — X7 (suspend/reactivate, soft delete/restore, permanent delete with typed confirmation, force sign-out)
+### A2.4 User approvals — X8
+### A2.5 Settlements — X10
+### A2.6 Modules catalogue — X11
+### A2.7 Action log & audit log — X12, X13 (with CSV export)
+### A2.8 Platform settings — X14 (merges `/admin/settings` and `/admin/settings/platform`)
+### A2.9 Webhooks & scheduled jobs — X15, X16 (merges duplicate `/admin/cron` and `/admin/cron-jobs` into one Jobs area)
+### A2.10 Blog CMS — X17 (moves the Quill editor component; public `/blog` on the web app is unchanged)
+### A2.11 Help content & support desk — X18, X19 (platform scope only; association-scoped help/support pages in the web app stay)
+### A2.12 Impersonation & my account — X20, X21, plus the impersonation dialog on X6 using the handoff flow; web `/auth/impersonate` exchange page (added to web now, harmless before cutover)
+
+## Admin Phase A3 — Cutover & launch — 2 features
+
+### A3.1 Remove Super Admin from the web app
+- Apply `project-overview.md §10.8` / architecture §16.8: delete routes, components, hooks and branches; `/admin/*` → admin domain redirect; login notice; enable B2 (`PLATFORM_LOGIN_REQUIRED`) and make B7 reasons required; switch off `IMPERSONATION_LEGACY_RESPONSE`.
+- Deploy order (architecture §17.4): API → admin production started → web.
+- **DoD:** grep checks in `project-overview.md §10.10` pass; web type-check/lint/build pass; tenant users' flows smoke-tested (login, dashboard, payments) on staging and production.
+
+### A3.2 Security review & launch
+- Review against §16.10 rules: cookie flags, proxy allow-list, CSP, IP allowlist (if used), 2FA (if built), rate limits on admin login, reasons in logs, `noindex`; Playwright smoke suite green on production; at least one restore-from-backup drill of the Dokploy database documented.
+- **Milestone AL — admin console live at admin.societyledger.com.ng; Super Admin removed from the web app.**
 
 ---
 
@@ -170,7 +245,7 @@ Migrate `docs/reports/*`.
 - **Depends on:** F0.1
 
 ### F0.5 Machine-readable error codes
-- Add `code` to subscription, rbac, auth (tenant mismatch) and tenant middleware error responses (architecture.md §9.4). Messages unchanged.
+- Add `code` to subscription, rbac, auth (tenant mismatch) and tenant middleware error responses (architecture.md §9.4). Messages unchanged. (`PLATFORM_LOGIN_REQUIRED` and `SUBDOMAIN_RESERVED` already exist from the admin track — reuse the same error-code helper.)
 - **DoD:** tests updated; web unaffected (it ignores the new field).
 
 ### F0.6 Web "Open in app" links
@@ -183,9 +258,9 @@ Migrate `docs/reports/*`.
 *Goal: a running app with design system, API client, session plumbing — no product screens yet beyond a component gallery.*
 
 ### F1.1 Scaffold Expo app in monorepo
-- `npx create-expo-app apps/mobile` (Expo Router TS template, SDK 56); workspace name `@societyledger/mobile`; Metro monorepo config; `tsconfig` strict + `@/*` paths; ESLint/Prettier; `app.config.ts` with variants; `eas.json` profiles; bundle IDs & scheme; Sentry plugin; expo-updates; dev client build for iOS + Android.
+- `pnpm create expo-app apps/mobile` (Expo Router TS template, SDK 56; confirm pnpm isolated install works with Metro — see architecture §2); workspace name `@societyledger/mobile`; Metro monorepo config; `tsconfig` strict + `@/*` paths; ESLint/Prettier; `app.config.ts` with variants; `eas.json` profiles; bundle IDs & scheme; Sentry plugin; expo-updates; dev client build for iOS + Android.
 - Turbo: add `dev`, `lint`, `type-check`, `test` for mobile.
-- **DoD:** `npm run dev --workspace=apps/mobile` opens dev client on both platforms; CI-ready scripts.
+- **DoD:** `pnpm -F @societyledger/mobile dev` opens dev client on both platforms; CI-ready scripts.
 
 ### F1.2 Theme, tokens & NativeWind
 - Install NativeWind; `src/theme/global.css` with all CSS variables from `ui-tokens.md` (light + dark); `tailwind.config.js` mapping; `src/theme/tokens.ts` JS mirror; Inter font loading (`expo-font`); `ThemeProvider` with system/light/dark + persistence; status bar & navigation bar colours follow theme.
@@ -229,7 +304,8 @@ Migrate `docs/reports/*`.
 - **DoD:** invalid / cancelled / suspended association states handled.
 
 ### F2.2 Login & account states — A4, A6, A10, A11, A12
-- Login form; error-code routing; verify email OTP + resend cooldown; pending/blocked/web-only screens; store tokens; fetch me; permissions into session.
+- Login form; error-code routing (including `PLATFORM_LOGIN_REQUIRED` → A12, live since admin A3.1); verify email OTP + resend cooldown; pending/blocked/platform-staff screens; store tokens; fetch me; permissions into session.
+- Association-code screen (F2.1) also rejects reserved subdomains using `packages/shared/src/reserved-subdomains.ts`.
 - **Depends on:** F0.3 for refresh (works without it).
 
 ### F2.3 Register, forgot/reset password, accept invite — A5, A7, A8, A9
@@ -385,6 +461,9 @@ Migrate `docs/reports/*`.
 | D5 | 4 | Docs: admin (46 pages) |
 | D6 | 4 | Docs: reference, web integration, launch (DL) |
 | D7 | 2 | Docs: mobile app (after M2 / M3) |
+| A1 | 7 | Admin: backend, scaffold, shell, deploy |
+| A2 | 12 | Admin: migrate 22 platform screens |
+| A3 | 2 | Admin: web cutover & launch (AL) |
 | 0 | 6 | Mobile: backend enablement |
 | 1 | 8 | Foundation |
 | 2 | 9 | Auth & member money (M1 internal build) |
@@ -395,6 +474,6 @@ Migrate `docs/reports/*`.
 | 7 | 5 | Admin & AI |
 | 8 | 2 | Signup & onboarding |
 | 9 | 6 | Hardening & release |
-| **Total** | **95** (30 docs + 65 mobile) | |
+| **Total** | **116** (30 docs + 21 admin + 65 mobile) | |
 
 Follow the Master sequence at the top. Mobile Phase 0 and Phase 1 may also run in parallel with each other only if two agents/sessions work simultaneously.

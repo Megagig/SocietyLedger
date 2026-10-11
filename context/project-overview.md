@@ -1,15 +1,18 @@
-# Project Overview — SocietyLedger Mobile & Documentation Site
+# Project Overview — SocietyLedger Docs, Admin Console & Mobile
 
 > Source of truth for **what** we are building. If a screen, page, feature or behaviour is not described here, it is out of scope until this file is updated. Update this file (don't rewrite it) when scope changes, and record the change in the Change Log at the bottom.
 
-This project has **two deliverables**, built in one monorepo and governed by the same nine context files:
+This project has **three deliverables**, built in one pnpm + Turborepo monorepo, deployed on **Dokploy**, and governed by the same nine context files:
 
 | Deliverable | Folder | Where it lives | Spec |
 |---|---|---|---|
 | **A. Documentation site / user manual** | `apps/docs` | `https://docs.societyledger.com.ng` | §9 |
+| **C. Platform admin console** (Super Admin, split out of the web app) | `apps/admin` | `https://admin.societyledger.com.ng` | §10 |
 | **B. Mobile app (iOS + Android)** | `apps/mobile` | App Store, Google Play | §1–§8 |
 
-The web app (`apps/web`) is finished; the docs site documents it first, then the mobile app as it ships. Both the web app and the mobile app link to the docs site (§9.8).
+The web app (`apps/web`) is finished; the docs site documents it first. The admin console then takes everything Super Admin out of the web app so the tenant app and the platform console are built, secured and deployed separately. The mobile app follows. Both the web app and the mobile app link to the docs site (§9.8); nothing in the tenant web app or the mobile app links to the admin console.
+
+**Platform today (Oct 2026):** pnpm 9 workspaces + Turborepo; `apps/api` (Express + Prisma) and `apps/web` (Next.js) deployed as separate Dokploy applications; PostgreSQL 16 runs as a Dokploy-managed database (migrated from Neon); Redis optional.
 
 ---
 
@@ -19,8 +22,9 @@ The web app (`apps/web`) is finished; the docs site documents it first, then the
 
 **SocietyLedger** is a multi-tenant SaaS for running associations across Africa (Nigeria first): homeowners' associations, cooperatives, town unions, alumni groups, clubs, professional bodies and religious bodies. Each association is a **tenant** identified by a **subdomain** (e.g. `opuogunstate.societyledger.com.ng`). The platform already exists as:
 
-- `apps/api` — Express + Prisma + PostgreSQL API (production at Render, base domain `societyledger.com.ng`)
-- `apps/web` — Next.js 14 web app (Mantine + Tailwind, teal brand)
+- `apps/api` — Express + Prisma + PostgreSQL API (deployed on Dokploy; database is a Dokploy-managed PostgreSQL, migrated from Neon; base domain `societyledger.com.ng`)
+- `apps/web` — Next.js 14 web app (Mantine + Tailwind, teal brand), the tenant app on `*.societyledger.com.ng` (deployed on Dokploy)
+- `apps/admin` — platform admin console (deliverable C, §10) on `admin.societyledger.com.ng`
 
 **SocietyLedger Mobile** (`apps/mobile`) is a native iOS + Android app built with **Expo**, consuming the **same API**. It gives members and officers near-full parity with the web dashboard, designed for phones first: pay dues in two taps, vote from anywhere, check in to meetings, approve payments and loan requests on the go, and get push notifications instead of waiting for SMS.
 
@@ -51,7 +55,7 @@ The web app (`apps/web`) is finished; the docs site documents it first, then the
 | **New association founder** | Someone creating a brand-new association. | Sign up, complete onboarding wizard, invite members. |
 
 ### 2.2 Explicitly NOT for
-- **Platform staff** (`platformRole`: `SUPER_ADMIN`, `SUPPORT_AGENT`, `FINANCE_ADMIN`, `COMPLIANCE_ADMIN`). If one logs in, the app shows a **"Platform administration is web-only"** screen with a Sign out button. No platform admin screens exist in the mobile app.
+- **Platform staff** (`platformRole`: `SUPER_ADMIN`, `SUPPORT_AGENT`, `FINANCE_ADMIN`, `COMPLIANCE_ADMIN`). They use the admin console (§10) at `admin.societyledger.com.ng`. If one tries to log in on mobile, the API answers `PLATFORM_LOGIN_REQUIRED` and the app shows **"Platform staff sign in at admin.societyledger.com.ng"** with a Sign out button. No platform admin screens exist in the mobile app.
 - Public website visitors (marketing pages, blog, public documentation, pricing).
 
 ### 2.3 Access model (how the app decides what a user sees)
@@ -85,7 +89,8 @@ Splash ─► Welcome (carousel, 3 slides) ─► "Get started"
            ├─ EMAIL_NOT_VERIFIED ─► Verify Email (6-digit code)
            ├─ PENDING_APPROVAL   ─► Pending Approval screen
            ├─ ACCOUNT_REJECTED / ACCOUNT_SUSPENDED ─► Account Blocked screen
-           └─ success ─► store tokens in SecureStore ─► (platform role? ─► Web-Only screen)
+           ├─ PLATFORM_LOGIN_REQUIRED ─► Platform staff screen (A12)
+           └─ success ─► store tokens in SecureStore
                       ─► (admin && requiresOnboarding? ─► Onboarding wizard)
                       ─► Enable biometrics prompt (once) ─► Enable notifications prompt (once)
                       ─► Home tab
@@ -155,7 +160,7 @@ Notation: **Route** = Expo Router path under `apps/mobile/app`. **Perm** = permi
 | A9 | Accept Invite | `(auth)/accept-invite.tsx` | Opened from deep link. Shows association + member name from verification, password + confirm. | Activate account | `GET /member-invites/verify`, `POST /member-invites/accept` |
 | A10 | Pending Approval | `(auth)/pending.tsx` | Illustration, explanation, "We'll notify you when an admin approves your account". | Check again · Sign out | `POST /auth/login` (retry) |
 | A11 | Account Blocked | `(auth)/blocked.tsx` | Variant copy for rejected / suspended accounts and suspended / cancelled associations. | Contact support (mailto) · Switch association | — |
-| A12 | Web-Only (platform staff) | `(auth)/web-only.tsx` | "Platform administration is available on the web." | Sign out | — |
+| A12 | Platform staff (admin console only) | `(auth)/web-only.tsx` | Shown on `PLATFORM_LOGIN_REQUIRED`: "Platform staff sign in at admin.societyledger.com.ng." No link button (avoid steering staff credentials through a phone flow); plain text with copy-to-clipboard. | Sign out | — |
 | A13 | Create Association | `(auth)/create-association.tsx` | 2-step form: (1) association name, type, subdomain with live availability + preview URL; (2) admin first/last name, email, phone, password. Terms. | Create | `GET /associations/check-subdomain`, `POST /associations/signup` |
 | A14 | App Lock | `(lock)/unlock.tsx` | Shown on cold start / after 5 min in background when biometrics enabled. Face ID / fingerprint prompt, fallback to device passcode. | Unlock · Sign out | — |
 
@@ -416,7 +421,7 @@ Perm for all: `ledger.view_own` (or `ledger.view`). Cooperative screens addition
 - "User manual" and contextual `?` help links from the mobile app to the docs site (§9.8).
 
 ### 7.2 Out of scope (v1) — do not build, do not stub
-- Any **platform / Super Admin** screen (tenants, modules, analytics, cron, webhooks, blog/docs admin, settlements, impersonation).
+- Any **platform / Super Admin** screen (tenants, modules, analytics, cron, webhooks, blog/docs admin, settlements, impersonation) — these live only in the admin console (§10).
 - Public marketing site, blog, pricing pages **inside the mobile app** (the documentation site is deliverable A — the app only links to it).
 - **In-app purchase or payment of the association's SocietyLedger subscription, plan upgrades/changes, and SMS credit purchases** (App Store / Play billing rules). These remain web-only; the app shows read-only status and a plain-text note.
 - Nomba gateway checkout (Paystack only on mobile).
@@ -432,9 +437,9 @@ Perm for all: `ledger.view_own` (or `ledger.view`). Cooperative screens addition
 - QR self check-in for meetings (no API support yet).
 
 ### 7.3 Scope rules for the agent
-1. If a request is not in §6, §7.1 or §9, stop and ask; do not "helpfully" add it.
+1. If a request is not in §6, §7.1, §9 or §10, stop and ask; do not "helpfully" add it.
 2. If the API lacks an endpoint a screen needs, do **not** invent one in the app. Record it under "Backend gaps" in `progress-tracker.md` and ask.
-3. Backend changes are limited to those listed in `architecture.md §9`.
+3. Backend changes are limited to those listed in `architecture.md §9` (mobile) and `architecture.md §16.6` (admin console).
 
 ---
 
@@ -801,7 +806,7 @@ All outbound links from apps to docs carry `?utm_source=web|mobile&utm_medium=<s
 ### 9.9 In scope / out of scope (docs)
 **In scope:** every page in §9.6; search; dark/light; responsive; screenshots for every task page (web, plus mobile for W+M pages once mobile ships); SEO (metadata, sitemap, robots, Open Graph images, JSON-LD `TechArticle` + `BreadcrumbList`); `llms.txt` / `llms-full.txt`; analytics + page feedback; link checking in CI; preview deploys; the web/mobile links in §9.8; migration of `help-guides/` content; redirects from web `/documentation`.
 
-**Out of scope (v1):** platform/Super Admin documentation; developer/API reference; languages other than English; versioned docs per release (single "current" version, plus release notes); video production (embedding existing videos is allowed); user accounts/comments on docs; an AI chat widget on the docs site; deleting the web's DB-backed documentation CMS (left in place, unlinked, until the owner decides); changing in-app Help article content in the database.
+**Out of scope (v1):** platform/Super Admin documentation; developer/API reference; languages other than English; versioned docs per release (single "current" version, plus release notes); video production (embedding existing videos is allowed); user accounts/comments on docs; an AI chat widget on the docs site; deleting the DB-backed documentation CMS API (not migrated to the admin console, unlinked everywhere, endpoints kept until the owner decides — G6); changing in-app Help article content in the database.
 
 ### 9.10 Docs success criteria
 - Every in-scope web route has at least one docs page that documents it (coverage checklist in `progress-tracker.md` passes).
@@ -812,8 +817,137 @@ All outbound links from apps to docs carry `?utm_source=web|mobile&utm_medium=<s
 
 ---
 
-## 10. Change log
+## 10. Deliverable C — Platform admin console (admin.societyledger.com.ng)
+
+### 10.1 What it is
+A separate Next.js application, `apps/admin`, served only at `https://admin.societyledger.com.ng`, used by SocietyLedger's own staff to run the platform: associations (tenants), subscriptions and billing overrides, modules and features, approvals, analytics, settlements, logs, platform settings, webhooks, cron jobs, the public blog, platform help content and the support desk.
+
+Today these screens live inside the tenant web app under `apps/web/src/app/admin/**` (~13,400 lines across 14 areas) plus Super-Admin branches in the web's sidebar, login redirect, guards and stores. This deliverable **moves them out**, hardens how platform staff sign in and impersonate, and then deletes the Super Admin code from `apps/web`.
+
+### 10.2 Why separate it
+| Problem with Super Admin inside the tenant web app | What the split gives |
+|---|---|
+| Platform staff sign in on a tenant login page; the session cookie is set for `.societyledger.com.ng` and is readable by every tenant subdomain. | Platform staff sign in only at the admin host; the admin session lives in a **host-only** cookie on `admin.societyledger.com.ng` that no tenant subdomain can read. |
+| Super Admin code ships in every tenant's JavaScript bundle and every tenant page carries `platformRole` branches. | Tenant bundle has no platform code; the attack surface and the code paths are smaller. |
+| Admin and tenant releases are coupled; a risky tenant deploy can break platform tools and vice versa. | Independent build, deploy, rollback and scaling on Dokploy. |
+| Super Admins browse tenant data through an `X-Association-Id` context switch inside the tenant UI. | Cross-tenant access only through **explicit, audited, time-limited impersonation** that opens the tenant's own subdomain. |
+| No way to add stricter controls (IP allowlist, 2FA, shorter sessions) without affecting tenants. | Admin-only controls: optional IP allowlist, TOTP 2FA for platform users, 8-hour sessions, `noindex`. |
+
+### 10.3 Who uses it
+| Platform role (`User.platformRole`) | v1 access |
+|---|---|
+| `SUPER_ADMIN` | Everything in §10.6. |
+| `SUPPORT_AGENT`, `FINANCE_ADMIN`, `COMPLIANCE_ADMIN` | The enum exists but the API currently guards platform routes with `SUPER_ADMIN` only. v1: these roles can sign in and see only the sections the API allows them (initially none except Support desk and Help content if those endpoints accept them). A role → section matrix is proposed in §10.7; widening API guards is a **backend gap** for the owner to approve. |
+
+Association users (any user without `platformRole`) can never sign in to the admin console.
+
+### 10.4 Access & security model
+1. **Separate login.** `admin.societyledger.com.ng/login` → admin server route → `POST /api/admin/auth/login` (new). Accepts only users with a `platformRole`. Response token TTL **8 h**, no refresh token.
+2. **TOTP two-factor** (new, recommended — owner can defer): platform users enrol an authenticator app on first login; every login needs a 6-digit code; 10 single-use recovery codes. Enforced by the API, not the UI.
+3. **Host-only session.** The admin Next.js server keeps the API token in an `httpOnly`, `Secure`, `SameSite=Strict` cookie **without a `Domain` attribute** (host-only). Browser code never sees the token: all API calls go through the admin app's own server proxy (`/bff/*`), which attaches `Authorization: Bearer …`.
+4. **Tenant login refuses platform users.** `POST /api/auth/login` returns `403 { code: 'PLATFORM_LOGIN_REQUIRED' }` for users with a `platformRole` (web, mobile). The web login shows "Platform staff sign in at the admin console."
+5. **Reserved subdomains.** `admin`, `docs`, `www`, `api`, `app`, `platform`, `mail`, `status`, `staging`, `preview`, `cdn`, `static`, `help`, `support`, `blog` can never be registered as association subdomains, and tenant resolution ignores them.
+6. **Impersonation handoff** (§10.5.2): the JWT never appears in a URL; a single-use 60-second code is exchanged by the tenant web app.
+7. **Optional IP allowlist** (`ADMIN_IP_ALLOWLIST`) enforced both by the admin app and by the API on `/api/admin/*`, `/api/cron/*`, `/api/webhooks` management routes.
+8. **Every write is logged** in `PlatformActionLog` (existing) with the actor, target and a **reason** that destructive actions require.
+9. `noindex, nofollow` on every page, `robots.txt` disallow all, strict CSP, no third-party analytics.
+
+### 10.5 Core flows
+
+#### 10.5.1 Sign in
+```
+admin.societyledger.com.ng/login ─► email + password ─► POST /bff/session (admin server)
+   ─► POST /api/admin/auth/login
+        ├─ not a platform user / wrong password ─► "Email or password is incorrect" (same message for both)
+        ├─ 2FA not enrolled ─► Enrol screen (QR + secret + confirm code) ─► recovery codes (download/print once)
+        ├─ 2FA enrolled ─► Code screen (6 digits, or "Use a recovery code")
+        └─ success ─► admin server sets host-only cookie ─► Dashboard
+Session ends after 8 h, on Sign out, on password change, or when another Super Admin uses "Force sign-out".
+```
+
+#### 10.5.2 Impersonate an association
+```
+Admin console ─► Association detail ─► "Open as this association" ─► dialog: reason (required) + duration (30 min / 1 h / 4 h max)
+   ─► POST /api/admin/impersonate/:associationId { reason, durationMinutes }
+        └─ returns { handoffCode (single use, 60 s), subdomain }   ← no JWT returned to the browser
+   ─► admin opens new tab: https://<subdomain>.societyledger.com.ng/auth/impersonate?code=<handoffCode>
+   ─► tenant web: POST /api/auth/impersonation/exchange { code } ─► impersonation JWT in the tenant cookie (as today)
+   ─► tenant web shows the amber impersonation banner (existing ContextIndicator): "You're viewing Opuogun State Union as platform staff · ends 14:32 · End now"
+   ─► "End now" ─► POST /api/admin/end-impersonation ─► tenant session cleared ─► tab closes / shows "Impersonation ended"
+Every step is written to PlatformActionLog and AuditLog with the reason.
+```
+
+#### 10.5.3 Suspend, restore or delete a tenant
+Destructive actions (suspend, soft delete, permanent delete, force sign-out, billing credit) open a confirmation dialog that states the consequence, requires a **reason**, and for permanent delete requires typing the association's subdomain. Permanent delete is only possible after a soft delete.
+
+### 10.6 Screen-by-screen specification
+Route = path in `apps/admin/src/app`. "From web" = the existing page to migrate (under `apps/web/src/app`). API endpoints are existing unless marked **new**.
+
+| # | Screen | Route | From web | Content | Key actions | API |
+|---|---|---|---|---|---|---|
+| X1 | Sign in | `/login` | `/auth/login` (platform branch) | Email, password; environment badge (Production / Staging); no sign-up, no "forgot password" self-service (reset by another Super Admin or via email reset limited to platform users) | Sign in | **new** `POST /admin/auth/login` |
+| X2 | Two-factor enrol | `/login/2fa/setup` | — | QR code, manual secret, confirm code, recovery codes shown once | Confirm, Download codes | **new** `POST /admin/auth/2fa/setup`, `/2fa/confirm` |
+| X3 | Two-factor code | `/login/2fa` | — | 6-digit input, "Use a recovery code" | Verify | **new** `POST /admin/auth/2fa/verify` |
+| X4 | Dashboard | `/` | `/admin` | KPIs (associations by status, active subscriptions, MRR if available from analytics, pending approvals, failed webhooks 24 h, cron failures), tier distribution, subscription status, pending approvals list, recent action log | Jump to queues | `GET /admin/stats`, `/admin/analytics/overview`, `/admin/approvals`, `/admin/action-logs?limit=10` |
+| X5 | Associations | `/associations` | `/admin/associations` | Searchable, filterable table (name, subdomain, tier, status, members, created, subscription), saved filters in URL | Open, Suspend, Reactivate | `GET /admin/associations`, `POST …/suspend`, `…/reactivate` |
+| X6 | Association detail | `/associations/[id]` | `/admin/associations/[id]` + `/admin/tenants/[id]` (merged) | Tabs: **Overview** (details, users, members, tier, status, created, deletion info) · **Subscription & billing** (plan, status, cycle, period end; billing actions; active overrides; override history) · **Modules & features** (module management, feature toggles with source: plan / override) · **Security** (force 2FA, password policy, session timeout, IP restrictions) · **Activity** (action log filtered to this tenant) | Open as this association (impersonate), Suspend/Reactivate, Soft delete/Restore, Permanent delete, Force sign-out, Extend trial, Apply credit, Billing override, Revoke override, Module/feature override, Update security | `GET /admin/associations/:id`, `/admin/tenants/:id/status`, `/billing`, `/billing/history`, `/modules`, `POST /admin/tenants/:id/*`, `/admin/associations/:id/override`, `/admin/billing/overrides/:id/revoke` |
+| X7 | Tenant operations | `/tenants` | `/admin/tenants` | Lifecycle-focused list (active, suspended, soft-deleted with restore deadline), bulk-safe actions | Restore, Permanent delete | `GET /admin/tenants` … |
+| X8 | User approvals | `/approvals` | (admin stats card + `/api/admin/approvals`) | Pending association sign-ups/users needing platform approval; bulk approve/reject with reason | Approve, Reject, Bulk | `GET /admin/approvals`, `PATCH /admin/approvals/:userId`, `POST /admin/approvals/bulk` |
+| X9 | Analytics | `/analytics` | `/admin/analytics` | Overview, tier distribution, subscription status, module adoption, churn, revenue; date range | Export CSV (client-side) | `GET /admin/analytics`, `/analytics/overview`, `/module-adoption`, `/churn`, `/revenue` |
+| X10 | Settlements | `/settlements` | `/admin/settlements` | Daily, pending, monthly settlement views for gateway payments | Export | `GET /admin/payment-settlements/daily|pending|monthly` |
+| X11 | Modules & features catalogue | `/modules` | `/admin/modules` | Platform modules and features, which plans include them | — (catalogue read-only in v1 unless endpoints exist) | `GET /admin/modules`, `/admin/features` |
+| X12 | Action log | `/logs/actions` | `/admin/action-logs` | Platform staff actions: actor, action, target, reason, time; filters; stats | Export | `GET /admin/action-logs`, `/stats`, `/export` |
+| X13 | Audit log | `/logs/audit` | `/admin/audit-logs` | Cross-tenant audit events; filters by association, user, type | — | `GET /admin/audit-logs` |
+| X14 | Platform settings | `/settings` | `/admin/settings` + `/admin/settings/platform` (merged) | General settings, trial & billing defaults, feature flags, platform stats | Save (reason) | `GET/PATCH /admin/settings/platform`, `GET /admin/settings/platform/stats` |
+| X15 | Webhooks | `/webhooks`, `/webhooks/events`, `/webhooks/test` | `/admin/webhooks*` | Paystack / custom / all webhook views, event log with status and retries, test sender | Retry, Send test | webhooks management routes |
+| X16 | Scheduled jobs | `/jobs`, `/jobs/[jobId]` | `/admin/cron` + `/admin/cron-jobs` (**two duplicate pages → one**) | System status, subscription stats, job list with last run/next run/status, run history, job config, enable/disable | Run now, Toggle, Edit config | `GET /cron/status`, `/cron/logs`, `/cron/logs/:id`, `GET/PUT /cron/jobs/:jobId/config`, `PATCH …/toggle`, `POST /cron/trial-expiry|renewal-reminders|late-fees|update-overdue` |
+| X17 | Blog | `/blog`, `/blog/posts/new`, `/blog/posts/[id]/edit`, `/blog/categories`, `/blog/tags`, `/blog/comments` | `/admin/blog/**` | Posts list with status, rich editor (existing Quill editor component moves with it), categories, tags, comment moderation | Publish, Schedule, Moderate | `/admin/blog/*` |
+| X18 | Help content | `/help-content` | `/dashboard/settings/help-content` (Super Admin branch) | Platform-wide help articles and FAQs shown in every association's in-app Help Center | Create, Edit, Delete | `/help/articles*`, `/help/faqs*` (platform scope) |
+| X19 | Support desk | `/support`, `/support/[id]` | `/dashboard/settings/support` (Super Admin branch) | All associations' tickets, filters (status, priority, category, association), assign, respond, AI suggested reply | Assign, Respond, Close | `/support/tickets*` (platform scope), `POST /help/ai/suggest-response` |
+| X20 | Impersonation sessions | `/impersonation` | — | Active and recent impersonation sessions (who, which association, reason, started, ends) | End session | **new** `GET /admin/impersonation-sessions`, existing `end-impersonation` |
+| X21 | My account | `/account` | — | Name, email, change password, 2FA (regenerate recovery codes), active admin session | Save | `POST /auth/change-password`, **new** 2FA endpoints |
+| X22 | Not found / no access | `not-found`, `/forbidden` | — | Plain message + back to dashboard | — | — |
+
+**Not migrated:** the DB-backed documentation CMS (`/admin/documentation/**`) — the docs site (§9) replaces it. Its API endpoints remain until the owner decides (G6). The admin console shows no link to it.
+
+### 10.7 Proposed platform-role matrix (needs API changes to enforce — owner approval)
+| Section | SUPER_ADMIN | SUPPORT_AGENT | FINANCE_ADMIN | COMPLIANCE_ADMIN |
+|---|---|---|---|---|
+| Dashboard | ✓ | ✓ (limited) | ✓ | ✓ |
+| Associations (read) | ✓ | ✓ | ✓ | ✓ |
+| Tenant lifecycle, security, modules | ✓ | — | — | — |
+| Billing overrides, credits, settlements, revenue analytics | ✓ | — | ✓ | — |
+| Impersonation | ✓ | ✓ (with reason, 1 h max) | — | — |
+| Support desk, help content | ✓ | ✓ | — | — |
+| Logs (action, audit) | ✓ | — | — | ✓ |
+| Settings, webhooks, jobs, blog | ✓ | — | — | — |
+Until approved, v1 behaves as today: platform routes require `SUPER_ADMIN`.
+
+### 10.8 Changes to the tenant web app (cutover)
+- Delete `apps/web/src/app/admin/**`, `components/admin/SuperAdminDashboardGuard.tsx`, `TenantSelector.tsx`, `components/admin/documentation/**`, the Super Admin block and "Manage Content/Manage Tickets" injection in `Sidebar.tsx`, `hooks/useSuperAdminContext.ts` and the `X-Association-Id` header logic, the `platformRole === 'SUPER_ADMIN'` redirects in `/auth/login` and `/dashboard`, the Super Admin branches in `NotificationBell`, `help/page.tsx`, `usePermissions`, and `/dashboard/debug-permissions`.
+- Keep: `ContextIndicator` impersonation banner (now driven by the exchanged impersonation token), add `/auth/impersonate` exchange page.
+- `next.config.js` redirect: `/admin/:path*` → `https://admin.societyledger.com.ng/:path*` (permanent).
+- `/auth/login` shows a notice on `PLATFORM_LOGIN_REQUIRED`.
+- `apps/web/middleware.ts`: drop `/admin` from protected routes.
+
+### 10.9 In scope / out of scope (admin console)
+**In scope:** every screen in §10.6; separate login with host-only session; TOTP 2FA (recommended, can be deferred by the owner without blocking the split); reserved subdomains; impersonation handoff; optional IP allowlist; Dokploy deployment on `admin.societyledger.com.ng` with staging; removal of Super Admin code from `apps/web`; internal runbook `apps/admin/README.md` (how to deploy, rotate secrets, add a platform user, recover 2FA).
+
+**Out of scope (v1):** a mobile admin app or admin screens in the mobile app; public documentation of admin features (the docs site never covers them); creating/managing platform staff accounts from the UI (no API exists — platform users are created by seed/script; logged as a gap); widening platform-role permissions (§10.7) unless approved; redesigning admin screens beyond the shared shell and tokens (migration keeps behaviour, improves layout only where noted); migrating the DB documentation CMS; SSO/SAML.
+
+### 10.10 Admin success criteria
+- Zero Super Admin code paths remain in `apps/web` (grep for `SUPER_ADMIN`, `platformRole`, `/admin` returns only the login notice and impersonation banner).
+- A platform user cannot obtain a session on any tenant subdomain or in the mobile app except through the impersonation handoff.
+- The admin session cookie is host-only (verified in browser dev tools) and the token never reaches browser JavaScript.
+- Every destructive action has a reason recorded in `PlatformActionLog`.
+- Admin and web deploy independently on Dokploy; rolling back one does not affect the other.
+- All 22 admin screens reach parity with the web pages they replace (checklist in `progress-tracker.md`).
+
+---
+
+## 11. Change log
 | Date | Change | By |
 |---|---|---|
+| 2026-10-11 | Added deliverable C: platform admin console `apps/admin` at admin.societyledger.com.ng (§10), splitting all Super Admin features out of `apps/web`. Recorded the move to pnpm, Dokploy hosting for every app, and Dokploy-managed PostgreSQL (from Neon). | Owner + agent |
 | 2026-10-10 | Added deliverable A: documentation site `apps/docs` at docs.societyledger.com.ng (§9), modelled on docs.businesscopilot.com.ng; docs links from web and mobile. Docs track built before the mobile track. | Owner + agent |
 | 2026-10-10 | Initial version. Scope decisions: near-full parity minus platform admin; `apps/mobile` in monorepo; association-code tenant entry; backend additions: push notifications, mobile payment callback, refresh tokens. | Owner + agent |
