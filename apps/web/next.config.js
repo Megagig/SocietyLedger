@@ -1,9 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Produces a minimal self-contained server bundle (apps/web/.next/standalone)
+  // so the production Docker image doesn't need the full node_modules tree.
+  output: 'standalone',
+
   images: {
     domains: ['localhost'],
   },
-  
+
   // Transpile packages that need it (monorepo support)
   transpilePackages: ['react-quill', 'quill'],
   

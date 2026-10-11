@@ -1,0 +1,122 @@
+# Production stack for Dokploy (Docker Compose project type).
+#
+# Deploy as a single Dokploy "Compose" application pointed at this file.
+# All ${VARS} below are injected by Dokploy's project-level Environment tab —
+# see context/architecture.md / docs/deployment/DOKPLOY_MIGRATION.md for the full list.
+#
+# Dokploy manages Traefik for you; the `dokploy.*` labels below just tell it
+# which domain(s)/port to route to each service. Adjust the domain names to
+# match what you configure in the Dokploy UI (or keep as the source of truth
+# if you prefer managing domains purely via compose labels).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: societyledger-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: societyledger-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: societyledger-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
+      PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY}
+      NOMBA_API_KEY: ${NOMBA_API_KEY}
+      NOMBA_API_SECRET: ${NOMBA_API_SECRET}
+      NOMBA_ACCOUNT_ID: ${NOMBA_ACCOUNT_ID}
+      NOMBA_WEBHOOK_SECRET: ${NOMBA_WEBHOOK_SECRET}
+      NOMBA_BASE_URL: ${NOMBA_BASE_URL}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+    volumes:
+      - api_uploads:/app/apps/api/uploads
+    networks:
+      - internal
+      - dokploy-network
+    labels:
+      - "dokploy.domain=${API_DOMAIN}"
+      - "dokploy.port=4000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+        NEXT_PUBLIC_BASE_DOMAIN: ${NEXT_PUBLIC_BASE_DOMAIN}
+    container_name: societyledger-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+      NEXT_PUBLIC_BASE_DOMAIN: ${NEXT_PUBLIC_BASE_DOMAIN}
+    networks:
+      - dokploy-network
+    labels:
+      # Wildcard rule so every tenant subdomain (e.g. ogunstate.societyledger.com.ng)
+      # and the apex domain both route here. Requires a wildcard TLS cert issued via
+      # DNS-01 (HTTP-01 cannot issue wildcard certs) — see the migration doc.
+      - "traefik.enable=true"
+      - "traefik.http.routers.societyledger-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.societyledger-web.entrypoints=websecure"
+      - "traefik.http.routers.societyledger-web.tls=true"
+      - "traefik.http.routers.societyledger-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.societyledger-web.loadbalancer.server.port=3000"
+
+networks:
+  internal:
+    driver: bridge
+  # Dokploy attaches every app it manages to this shared network so its Traefik
+  # instance can reach them. It already exists on a Dokploy host — do not create it.
+  dokploy-network:
+    external: true
+
+volumes:
+  pgdata:
+  redisdata:
+  api_uploads:

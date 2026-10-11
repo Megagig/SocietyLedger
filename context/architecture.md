@@ -35,7 +35,7 @@
 ## 2. Monorepo placement
 
 ```
-societyledger/                 (Turborepo, npm workspaces)
+societyledger/                 (Turborepo, pnpm workspaces)
 ├── apps/
 │   ├── api/                   existing — receives the backend additions in §9
 │   ├── web/                   existing — "open in app" + docs links/redirects only
@@ -47,7 +47,7 @@ societyledger/                 (Turborepo, npm workspaces)
 └── turbo.json
 ```
 
-- `apps/mobile` is an npm workspace named `@societyledger/mobile`.
+- `apps/mobile` is an pnpm workspace named `@societyledger/mobile`.
 - Metro must be configured for the monorepo (`watchFolders` = repo root, `nodeModulesPaths` = app + root `node_modules`). Expo's `expo/metro-config` monorepo defaults handle this on SDK 52+; verify on scaffold.
 - `packages/shared` currently has stale types (`User.id: string`, while the API returns numbers). **Mobile does not import stale types.** F1.3 adds correct, API-verified types under `packages/shared/src/mobile/` (or fixes the existing ones if the web is not using them — check with `grep` first). Zod validators in `packages/shared/src/validators.ts` may be reused where they match API schemas.
 - Turbo tasks for mobile: `dev` (expo start), `lint`, `type-check`, `test`. Mobile is **not** part of `turbo build` (EAS builds it).
