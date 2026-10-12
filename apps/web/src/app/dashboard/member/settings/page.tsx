@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Container,
@@ -57,7 +57,7 @@ export default function MemberSettingsPage() {
   });
 
   // Update form data when member data is loaded
-  React.useEffect(() => {
+  useEffect(() => {
     if (memberData) {
       setProfileData({
         firstName: memberData.firstName || '',

@@ -3,9 +3,9 @@
 > **Living document.** Updated after every feature ships. A new session reads this first to know exactly where things stand. Build the **next unchecked item in the Master sequence** whose dependencies are checked (order and details in `build-plan.md`). Docs track (D) comes first, then the admin track (A), then the mobile track (F), with D7.x after mobile milestones.
 
 ## Current status
-- **Track / phase:** Docs D1 — not started
-- **Next feature:** D1.1 Scaffold Fumadocs site in monorepo
-- **Last updated:** 2026-10-11 (context files updated: admin console track added; pnpm + Dokploy + Dokploy PostgreSQL recorded; no code written yet)
+- **Track / phase:** Docs D1 — in progress
+- **Next feature:** D1.2 Docs theme, tokens & layout
+- **Last updated:** 2026-10-11 (D1.1 shipped; pre-existing `apps/web` build break fixed same session)
 - **Blockers:** none
 
 ## How to update (after each feature)
@@ -22,7 +22,7 @@ Format for a completed item:
 # Track D — Documentation site (`apps/docs`, docs.societyledger.com.ng)
 
 ## Docs Phase D1 — Foundation
-- [ ] D1.1 Scaffold Fumadocs site in monorepo
+- [x] D1.1 Scaffold Fumadocs site in monorepo — 2026-10-11 — `apps/docs` scaffolded from the current `create-fumadocs-app` static-export template (fumadocs-core/mdx 16.17.1/15.4.7, `fumadocs-ui` aliased to `@fumadocs/base-ui@16.17.1`, Next 16.3.8, React 19.3.0, Tailwind 4). Pinned `typescript@5.9.3` (not the scaffold's default 7.x — `typescript-eslint` caps at `<6.1.0`, which would otherwise break `pnpm lint`) and added `zod@^4.6.6` explicitly (fumadocs-core peers on zod 4.x; left undeclared, pnpm silently hoists the repo's zod 3.x from the API instead). `/` replaced with a client-side redirect to `/docs` (static export has no server to do it any other way); public GitHub links removed from the scaffold (repo is private). `dev`/`build`/`type-check`/`lint` all verified clean; `turbo.json` build outputs and root `.gitignore` extended for `out/`/`.source/`.
 - [ ] D1.2 Docs theme, tokens & layout
 - [ ] D1.3 Information architecture skeleton (all 197 pages as drafts)
 - [ ] D1.4 MDX component kit
@@ -265,7 +265,7 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | G9 | No API to create/manage platform staff accounts or their platform roles | admin | Keep seed/script for v1 (`pnpm -F @societyledger/api …`); add endpoints + X-screen later if wanted | open — script in v1 |
 | G10 | Web currently sets the auth cookie with `COOKIE_DOMAIN` (shared across subdomains) for everyone, including platform users | web/admin | Admin uses its own host-only cookie (§16.3); platform users stop getting tenant cookies at A3.1 (B2). Consider host-only cookies for tenants too (separate decision) | open |
 | G11 | No reserved-subdomain list — an association could register `admin`, `docs`, `api`… | API, web signup, mobile A3 | B3 in A1.2 | approved (A1.2) |
-| G12 | Unknown: how Dokploy builds `api`/`web` today (no Dockerfiles in repo) and the exact production API host | deploy | Record in A1.1; Dockerfile pattern (architecture §17.2) for new apps | open |
+| G12 | ~~Unknown: how Dokploy builds `api`/`web` today~~ — resolved: `apps/api/Dockerfile`, `apps/web/Dockerfile` and `docker-compose.dokploy.yml` already exist on `main` (the "Migrate SocietyLedger from Vercel to Dokploy" commit, b61d388) and are the real source of truth. `architecture.md §17.1`'s "the repo currently has no Dockerfiles" line is stale — written before that commit was accounted for. Still unconfirmed: the exact production API host (`API_DOMAIN` value) | deploy | Fix the stale §17.1 note when next touching that section; confirm `API_DOMAIN`'s real value with the owner | partially resolved |
 | G7 | Docs page feedback has no backend (the API's `DocFeedback` is tied to DB doc page ids) | docs Feedback | GA4 events only in v1; add a slug-based endpoint later if needed | open — GA4 in v1 |
 
 ## Decisions log
@@ -294,6 +294,7 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | 2026-10-11 | **All apps deploy on Dokploy** (api, web, admin, docs; database and optional Redis as Dokploy services); docs hosting changed from Netlify to Dokploy (Nginx static container) | Owner's hosting platform |
 | 2026-10-11 | PostgreSQL 16 runs as a Dokploy-managed database (migrated from Neon); `DATABASE_URL` = `DIRECT_URL` until a pooler is added; daily backups to S3-compatible storage | Owner migrated off Neon |
 | 2026-10-11 | Track order: docs (D) → admin (A) → mobile (F); D and A may run in parallel except D6.3/A3.1 (both edit web) | Admin restructures web + auth before mobile builds on it |
+| 2026-10-11 | Fixed pre-existing `apps/web` build break found while verifying D1.1: `src/app/dashboard/member/settings/page.tsx` was the **only** file in `apps/web` using `import React, { useState } from 'react'` (a default + named import); every other file imports `{ useState }` only. That default `React` binding made `React.ReactNode` resolve structurally differently from the `ReactNode` Mantine 7's compiled `.d.ts` files reference, so every Mantine component in that file's JSX tree failed `TS2786`. Fixed by switching to `import { useEffect, useState } from 'react'` (matching every other file) and removing `useEffect`. Also removed `"ignoreDeprecations": "6.0"` from `apps/web/tsconfig.json` (current TypeScript rejects that value; a second, independently-broken line masked behind the first). Several false leads ruled out along the way, worth not re-trying: pinning `typescript` down to 5.4.5 (no effect — error is independent of the TS minor version), pinning `@types/react`/`@types/react-dom` down to 18.2.x (no effect — `Key = string \| number \| bigint` has been in `@types/react` since at least 18.2.79, nothing to do with a recent bump) | Caught by the D1.1 DoD's "web still passes" check; file was apparently never type-checked after being written (a `next build`/`tsc` run was not part of the original workflow) |
 
 ## Known issues / tech debt
 _(none yet)_

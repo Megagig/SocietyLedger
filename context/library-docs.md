@@ -33,16 +33,18 @@
 | jest-expo, @testing-library/react-native, msw | tests | latest |
 | expo-server-sdk (**api only**) | push sending | latest |
 | **Docs site (`apps/docs`)** | | |
-| fumadocs-core, fumadocs-ui, fumadocs-mdx | docs framework, UI, MDX content source | _latest at D1.1, pinned_ |
-| next, react, react-dom (docs workspace only) | framework | _as required by Fumadocs_ |
-| tailwindcss (+ postcss) (docs workspace only) | styling | _as required by Fumadocs UI_ |
-| lucide-react | icons | latest |
-| @next/third-parties | GA4 | latest |
-| zod | frontmatter schema | 3.x |
-| @playwright/test | screenshots | latest |
-| sharp | WebP conversion in screenshot script | latest |
-| tsx | run scripts | latest |
-| lychee (GitHub Action) | external/internal link check | latest |
+| fumadocs-core, fumadocs-mdx | docs framework, MDX content source | 16.17.1 / 15.4.7 (pinned D1.1) |
+| fumadocs-ui | UI (resolves to the renamed `@fumadocs/base-ui` package at this version — keep the `npm:` alias in `package.json`, don't "fix" the name) | `npm:@fumadocs/base-ui@16.17.1` (pinned D1.1) |
+| next, react, react-dom (docs workspace only) | framework | 16.3.8 / 19.3.0 / 19.3.0 (pinned D1.1, per Fumadocs' current peer requirement `react: ^19.2.0`) |
+| typescript (docs workspace only) | language | **5.9.3, not the newest 5.x+ line** — `create-fumadocs-app`'s template defaults to the latest major regardless of ecosystem support; `typescript-eslint@8.71.1` (pulled in by `eslint-config-next`) caps at `typescript: >=4.8.4 <6.1.0`, so anything past 5.x breaks `pnpm lint`. Re-check this ceiling before ever bumping. |
+| zod (docs workspace only) | frontmatter schema, fumadocs-core peer | **^4.6.6, not 3.x** — fumadocs-core 16.17.1 requires `zod: 4.x.x` as a peer. The API/web use zod 3.x; pnpm's isolated layout keeps these apart, but zod **must** be declared explicitly in `apps/docs/package.json` — leaving it undeclared lets pnpm silently hoist the repo's zod 3.x instead, which satisfies nothing and warns on install. |
+| tailwindcss (+ postcss) (docs workspace only) | styling | 4.3.3 (Tailwind v4 — CSS-first `@theme`, no `tailwind.config.js`; ui-tokens.md §14 mapping must target that model, not the v3 `theme.extend` shape) |
+| lucide-react | icons | ^1.50.0 |
+| @next/third-parties | GA4 | _pin at D1.5_ |
+| @playwright/test | screenshots | _pin at D1.6_ |
+| sharp | WebP conversion in screenshot script | _pin at D1.6_ |
+| tsx | run scripts | _pin at D1.3/D1.6_ |
+| lychee (GitHub Action) | external/internal link check | _pin at D1.7_ |
 | nginx:alpine (docker image) | serve docs static export on Dokploy | stable alpine |
 | **Admin console (`apps/admin`)** | | |
 | next, react, react-dom (admin workspace only) | framework | same versions as `apps/web` at migration |

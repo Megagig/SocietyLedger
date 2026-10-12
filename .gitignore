@@ -29,6 +29,9 @@ out/
 apps/web/.next/
 apps/web/out/
 
+# Fumadocs generated content
+.source/
+
 # Build outputs
 dist/
 build/
