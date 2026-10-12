@@ -14,8 +14,9 @@ import {
 } from 'fumadocs-ui/components/dialog/search';
 import { useStaticSearch } from 'fumadocs-core/search/client';
 import { useI18n } from 'fumadocs-ui/contexts/i18n';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { sections } from '@/scripts/sitemap-data';
+import { trackEvent } from '@/lib/analytics';
 
 export default function DefaultSearchDialog(props: SharedProps) {
   const { locale } = useI18n(); // (optional) for i18n
@@ -24,6 +25,14 @@ export default function DefaultSearchDialog(props: SharedProps) {
     locale,
     tag,
   });
+
+  // docs_search (architecture.md §14.6) — once per completed query, not per keystroke.
+  const lastTracked = useRef<string>('');
+  useEffect(() => {
+    if (!search.data || search.data.query === lastTracked.current) return;
+    lastTracked.current = search.data.query;
+    trackEvent('docs_search', { query: search.data.query, result_count: search.data.items.length });
+  }, [search.data]);
 
   return (
     <SearchDialog {...search} {...props}>

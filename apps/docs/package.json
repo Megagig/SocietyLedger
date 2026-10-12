@@ -9,7 +9,8 @@
     "type-check": "next typegen && tsc --noEmit",
     "lint": "eslint",
     "gen:skeleton": "tsx scripts/gen-skeleton.ts",
-    "check:frontmatter": "tsx scripts/check-frontmatter.ts"
+    "check:frontmatter": "tsx scripts/check-frontmatter.ts",
+    "screenshots": "tsx scripts/screenshots/capture.ts"
   },
   "dependencies": {
     "cn": "^0.4.0",
@@ -23,6 +24,7 @@
     "zod": "^4.6.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/mdx": "^2.0.14",
     "@types/node": "^26.6.4",
@@ -33,6 +35,7 @@
     "gray-matter": "^4.0.3",
     "postcss": "^8.5.28",
     "serve": "^14.2.6",
+    "sharp": "^0.33.5",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"

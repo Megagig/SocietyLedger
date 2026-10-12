@@ -645,7 +645,7 @@ icon: BadgeCheck                                 # optional lucide name for card
 | `NEXT_PUBLIC_APP_URL` | `https://www.societyledger.com.ng` |
 | `NEXT_PUBLIC_GA_ID` | docs GA4 measurement ID |
 | `NEXT_PUBLIC_SHOW_DRAFTS` | `true` in previews only |
-| `DOCS_SCREENSHOT_BASE_URL`, `DOCS_SCREENSHOT_*_PASSWORD` (CI secrets) | staging demo association |
+| `DOCS_SCREENSHOT_BASE_URL`, `DOCS_SCREENSHOT_DEMO_PASSWORD` (CI secrets) | staging demo association. One shared password, not one per role (`DOCS_SCREENSHOT_*_PASSWORD` as originally written here) — `demo-association.seed.ts` gives all three demo logins the same password, so three identical secrets would be redundant (corrected at D1.6) |
 
 ### 14.11 Redirects
 - Inside docs: renamed/moved pages get an entry in `nginx/redirects.conf` (301). Never delete a published URL without a redirect.

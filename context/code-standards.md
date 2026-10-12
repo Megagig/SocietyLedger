@@ -241,7 +241,7 @@ export const memberFinanceApi = {
 ### 17.2 File & naming rules
 - One page = one `.mdx` file; file name = slug in kebab-case, ≤ 5 words, no dates or IDs (`verifying-payment-proofs.mdx`).
 - Section folders match `project-overview.md §9.6` slugs exactly. Never rename a published file without adding a redirect (`public/_redirects`).
-- Images: `public/images/<section>/<page-slug>-<n>.webp` and `-<n>-dark.webp`; diagrams `public/diagrams/<name>.svg`.
+- Images: `public/images/<section>/<page-slug>-<n>.webp` and `-<n>-dark.webp`; diagrams `public/diagrams/<name>.svg`. **Added at D1.6:** when a phone-web capture of the same step exists alongside the desktop one (`architecture.md §14.7`'s `phone-light`/`phone-dark` Playwright projects), its filename adds `-phone` before the theme suffix (`-<n>-phone.webp` / `-<n>-phone-dark.webp`) — the original wording only reserved room for light/dark, not a 4-way desktop/phone × light/dark matrix; this is the capture pipeline's output convention (`scripts/screenshots/capture.spec.ts`), not an invented product behaviour.
 - Frontmatter fields and order exactly as `architecture.md §14.3`.
 
 ### 17.3 Page templates

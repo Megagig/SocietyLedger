@@ -19,6 +19,7 @@
     "migrate:rbac": "tsx scripts/migrate-rbac.ts",
     "migrate:rbac:dry": "tsx scripts/migrate-rbac.ts --dry-run",
     "seed:rbac": "tsx prisma/seeds/rbac-seed.ts",
+    "seed:demo": "tsx prisma/seeds/demo-association.seed.ts",
     "migrate:accounting": "tsx ../../scripts/migrate-to-accounting.ts",
     "rollback:accounting": "tsx ../../scripts/rollback-accounting-sync.ts",
     "check:accounting": "tsx ../../scripts/check-accounting-status.ts",

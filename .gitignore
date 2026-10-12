@@ -51,6 +51,12 @@ lerna-debug.log*
 coverage/
 .nyc_output/
 
+# Playwright (docs screenshot pipeline, D1.6) — storageState is a live session token
+apps/docs/scripts/screenshots/.auth/
+apps/docs/test-results/
+apps/docs/playwright-report/
+apps/docs/blob-report/
+
 # IDEs
 .vscode/
 .idea/
