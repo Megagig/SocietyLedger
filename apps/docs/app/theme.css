@@ -34,6 +34,28 @@
   /* Reused-from-web logo gradient (ui-tokens.md §14.2) — logo use only. */
   --color-docs-logo-from: #14b8a6;
   --color-docs-logo-to: #22c55e;
+
+  /* Docs-specific semantic tokens (ui-tokens.md §14.2), added at D1.4 as the
+     MDX component kit's first consumers. Only the tokens an actual D1.4
+     component uses are added here — §14.2/§14.3/§14.4 entries with no
+     consumer yet (hero-bg, the layout-width tokens, the full typography
+     scale) are left for the feature that first needs them. */
+  --docs-callout-note-bg: #e7eefc;
+  --docs-callout-note-border: #2554aa;
+  --docs-callout-tip-bg: #e4f5eb;
+  --docs-callout-tip-border: #16804a;
+  --docs-callout-warning-bg: #ffede1;
+  --docs-callout-warning-border: #c2410c;
+  --docs-callout-danger-bg: #fee8e6;
+  --docs-callout-danger-border: #b42318;
+  --docs-screenshot-frame: #dde5e3;
+  --docs-marker-bg: #c8962e;
+  --docs-marker-fg: #13211f;
+  --docs-badge-web-bg: #eef7f5;
+  --docs-badge-web-fg: #0b5c53;
+  --docs-badge-mobile-bg: #f7ebcf;
+  --docs-badge-mobile-fg: #755510;
+  --docs-applies-bg: #edf2f0;
 }
 
 .dark {
@@ -60,6 +82,23 @@
 
   --color-docs-logo-from: #2dd4bf;
   --color-docs-logo-to: #4ade80;
+
+  --docs-callout-note-bg: #142242;
+  --docs-callout-note-border: #7da5f0;
+  --docs-callout-tip-bg: #103321;
+  --docs-callout-tip-border: #4ac780;
+  --docs-callout-warning-bg: #3d200e;
+  --docs-callout-warning-border: #fb923c;
+  --docs-callout-danger-bg: #421411;
+  --docs-callout-danger-border: #f87166;
+  --docs-screenshot-frame: #25403c;
+  --docs-marker-bg: #e3c27a;
+  --docs-marker-fg: #0c1716;
+  --docs-badge-web-bg: #0e342f;
+  --docs-badge-web-fg: #a8d7ce;
+  --docs-badge-mobile-bg: #3a2d11;
+  --docs-badge-mobile-fg: #e3c27a;
+  --docs-applies-bg: #122120;
 }
 
 /*
@@ -89,6 +128,21 @@
     var(--color-docs-logo-from),
     var(--color-docs-logo-to)
   );
+}
+
+/* Typography (ui-tokens.md §14.3) — only the two sizes a D1.4 component
+   needs (captions, badges/markers); the rest of the reading scale is a
+   page-chrome concern, not touched by this feature. */
+@utility docs-text-small {
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+  font-weight: 500;
+}
+
+@utility docs-text-micro {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
 }
 
 @utility docs-logo-text {

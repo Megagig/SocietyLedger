@@ -11,6 +11,12 @@ import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getPageImageUrl, getPageMarkdownUrl } from '@/lib/shared';
+import { DocsPageProvider } from '@/lib/docs-page-context';
+import { AppliesTo } from '@/components/mdx/applies-to';
+import { CardGrid, Card } from '@/components/mdx/card-grid';
+import { Related } from '@/components/mdx/related';
+import { Feedback } from '@/components/mdx/feedback';
+import { LastUpdated } from '@/components/mdx/last-updated';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -19,6 +25,25 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
 
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
+  const showAppliesTo = page.data.type !== 'overview' && page.data.type !== 'faq';
+
+  const related = page.data.related
+    .map((href) => {
+      const entry = source.getPageByHref(href);
+      return entry
+        ? { title: entry.page.data.title, description: entry.page.data.description, href }
+        : null;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
+  const childPages =
+    page.data.type === 'overview'
+      ? source.getPages().filter((candidate) => {
+          if (candidate.url === page.url) return false;
+          const rest = candidate.url.slice(page.url.length);
+          return candidate.url.startsWith(page.url) && rest.startsWith('/') && !rest.slice(1).includes('/');
+        })
+      : [];
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
@@ -27,14 +52,34 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       <div className="flex flex-row gap-2 items-center border-b pb-6">
         <MarkdownCopyButton markdownUrl={markdownUrl} />
       </div>
-      <DocsBody>
-        <MDX
-          components={getMDXComponents({
-            // this allows you to link to other pages with relative file paths
-            a: createRelativeLink(source, page),
-          })}
-        />
-      </DocsBody>
+      <DocsPageProvider
+        data={{
+          audience: page.data.audience,
+          platforms: page.data.platforms,
+          permission: page.data.permission,
+          module: page.data.module,
+        }}
+      >
+        {showAppliesTo && <AppliesTo />}
+        <DocsBody>
+          <MDX
+            components={getMDXComponents({
+              // this allows you to link to other pages with relative file paths
+              a: createRelativeLink(source, page),
+            })}
+          />
+          {childPages.length > 0 && (
+            <CardGrid>
+              {childPages.map((child) => (
+                <Card key={child.url} title={child.data.title} description={child.data.description} href={child.url} />
+              ))}
+            </CardGrid>
+          )}
+        </DocsBody>
+      </DocsPageProvider>
+      <Related items={related} />
+      <Feedback slug={page.url} />
+      <LastUpdated date={page.data.lastVerified} />
     </DocsPage>
   );
 }

@@ -1,0 +1,99 @@
+---
+title: "Component kitchen sink"
+description: "Internal page demonstrating every registered MDX component (D1.4) — not part of the public sitemap."
+type: reference
+audience: [all]
+platforms: [web, mobile]
+permission: PAYMENT_VERIFY
+module: payments
+status: draft
+---
+
+## AppliesTo
+
+<AppliesTo />
+
+## PermissionNote / PlanNote
+
+<PermissionNote />
+<PlanNote />
+
+## Callout
+
+<Callout type="note" title="Note">This is a note callout.</Callout>
+<Callout type="tip">This is a tip callout, no title.</Callout>
+<Callout type="warning" title="Warning">This is a warning callout.</Callout>
+<Callout type="danger" title="Danger">This is a danger callout.</Callout>
+
+## Steps
+
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Levies", "New campaign"]} />.</Step>
+<Step>Select <UiLabel>Save member</UiLabel>.</Step>
+</Steps>
+
+## MenuPath and UiLabel
+
+Select <UiLabel>Verify payment</UiLabel> under <MenuPath items={["Payments", "Verification"]} />.
+
+## PlatformBadge
+
+<PlatformBadge platform="web" /> <PlatformBadge platform="mobile" />
+
+## StatusChip
+
+<StatusChip status="paid" /> <StatusChip status="pending" /> <StatusChip status="overdue" /> <StatusChip status="draft" /> <StatusChip status="scheduled" />
+
+## RoleTabs
+
+<RoleTabs roles={["Members", "Treasurers & admins"]}>
+<RoleTab>Members see a simplified balance view.</RoleTab>
+<RoleTab>Treasurers see every member's balance.</RoleTab>
+</RoleTabs>
+
+## PlatformTabs
+
+<PlatformTabs>
+<PlatformTab>Go to **Finance → Levies**.</PlatformTab>
+<PlatformTab>Open **Manage → Finance → Levies**.</PlatformTab>
+</PlatformTabs>
+
+## CardGrid
+
+<CardGrid>
+<Card title="Recording a payment" description="Record a payment a member made." href="/docs/finance/recording-a-payment" />
+<Card title="Levy campaigns" description="Run a levy campaign." href="/docs/finance/levy-campaigns" />
+</CardGrid>
+
+## Faq
+
+<Faq>
+<FaqItem question="Why can't I see the Finance menu?">You need the Finance permission — ask an admin to grant it.</FaqItem>
+<FaqItem question="Can I undo a deleted transaction?">Yes, for 30 seconds via the undo toast.</FaqItem>
+</Faq>
+
+## Glossary
+
+A <Glossary definition="Minimum attendance required for a meeting's decisions to be valid.">quorum</Glossary> is needed before voting opens.
+
+## Diagram
+
+<Diagram alt="Money flows from a charge to a payment to the member ledger." caption="How money moves">
+<svg viewBox="0 0 300 60" xmlns="http://www.w3.org/2000/svg" className="h-16">
+  <text x="10" y="35" fill="currentColor">Charge → Payment → Ledger</text>
+</svg>
+</Diagram>
+
+## VideoEmbed
+
+<VideoEmbed youtubeId="dQw4w9WgXcQ" title="Sample video" />
+
+## Screenshot
+
+<Screenshot pending="Proof detail with Verify and Reject buttons" />
+<Screenshot
+  src="/images/payments/verifying-payment-proofs-1.webp"
+  alt="Payment proof detail showing the receipt image and the Verify payment and Reject buttons"
+  markers={[{ n: 1, x: 72, y: 88 }]}
+  caption="The proof detail view"
+/>

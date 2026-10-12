@@ -9,6 +9,8 @@ const config = {
   trailingSlash: false,
   images: {
     unoptimized: true,
+    // VideoEmbed's click-to-load thumbnail (D1.4) — not an API/app domain.
+    remotePatterns: [{ hostname: 'i.ytimg.com' }],
   },
 };
 

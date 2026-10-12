@@ -36,6 +36,26 @@ Rules:
 | Logo | docs | Docs layout | `components/layout/logo.tsx` | D1.2 (2026-10-12) |
 | Footer | docs | Docs layout | `components/layout/footer.tsx` | D1.2 (2026-10-12) |
 | NotFound | docs | Docs layout | `app/not-found.tsx` | D1.2 (2026-10-12) |
+| AppliesTo | docs | MDX | `components/mdx/applies-to.tsx` | D1.4 (2026-10-12) |
+| Callout | docs | MDX | `components/mdx/callout.tsx` | D1.4 (2026-10-12) |
+| Steps / Step | docs | MDX | `fumadocs-ui/components/steps` (re-exported) | D1.4 (2026-10-12) |
+| Screenshot | docs | MDX | `components/mdx/screenshot.tsx` | D1.4 (2026-10-12) |
+| MenuPath | docs | MDX | `components/mdx/menu-path.tsx` | D1.4 (2026-10-12) |
+| UiLabel | docs | MDX | `components/mdx/ui-label.tsx` | D1.4 (2026-10-12) |
+| PlatformBadge | docs | MDX | `components/mdx/platform-badge.tsx` | D1.4 (2026-10-12) |
+| PermissionNote | docs | MDX | `components/mdx/permission-note.tsx` | D1.4 (2026-10-12) |
+| PlanNote | docs | MDX | `components/mdx/plan-note.tsx` | D1.4 (2026-10-12) |
+| RoleTabs / RoleTab | docs | MDX | `components/mdx/role-tabs.tsx` | D1.4 (2026-10-12) |
+| PlatformTabs / PlatformTab | docs | MDX | `components/mdx/platform-tabs.tsx` | D1.4 (2026-10-12) |
+| StatusChip | docs | MDX | `components/mdx/status-chip.tsx` | D1.4 (2026-10-12) |
+| CardGrid / Card | docs | MDX | `components/mdx/card-grid.tsx` | D1.4 (2026-10-12) |
+| Faq / FaqItem | docs | MDX | `components/mdx/faq.tsx` | D1.4 (2026-10-12) |
+| Glossary | docs | MDX | `components/mdx/glossary.tsx` | D1.4 (2026-10-12) |
+| Diagram | docs | MDX | `components/mdx/diagram.tsx` | D1.4 (2026-10-12) |
+| VideoEmbed | docs | MDX | `components/mdx/video-embed.tsx` | D1.4 (2026-10-12) |
+| Related | docs | MDX | `components/mdx/related.tsx` | D1.4 (2026-10-12) |
+| Feedback | docs | MDX | `components/mdx/feedback.tsx` | D1.4 (2026-10-12) |
+| LastUpdated | docs | MDX | `components/mdx/last-updated.tsx` | D1.4 (2026-10-12) |
 | _(first admin entries with A1.5/A1.6; first mobile entries with F1.4)_ | | | | |
 
 ---
@@ -108,7 +128,225 @@ _(none yet — e.g. "Money row = ListItem + Money + StatusChip", "Approval detai
 - **Notes:** client component (`'use client'`) because it calls `useSearchContext()`; confirmed it still prerenders correctly to static `out/404.html` under `output: 'export'`.
 
 ## Docs MDX components (`components/mdx`)
-_(none yet — expected from D1.4: AppliesTo, Callout, Steps/Step, Screenshot, MenuPath, UiLabel, PlatformBadge, PermissionNote, PlanNote, RoleTabs, PlatformTabs, StatusChip, CardGrid, Faq, Glossary, Diagram, VideoEmbed, Related)_
+All registered in `components/mdx.tsx`'s `getMDXComponents()`, per `code-standards.md §17.4`'s allow-list. Demo of every one: `content/docs/_kitchen-sink.mdx` (`status: draft`, so hidden from the production sidebar — view with `NEXT_PUBLIC_SHOW_DRAFTS=true`).
+
+### AppliesTo
+- **Surface:** docs
+- **Path:** `components/mdx/applies-to.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Audience chips · platform badges · module/permission notes, auto-rendered from the page's frontmatter (`ui-rules.md §11.4`).
+- **Props:** none — reads `useDocsPageData()` (`lib/docs-page-context.tsx`).
+- **Tokens used:** `--docs-applies-bg`, `docs-text-small`.
+- **Used in:** every task/concept/reference/platform page, inserted by `app/docs/[[...slug]]/page.tsx` right after the description — never written in MDX by hand. Omitted on `overview`/`faq` pages.
+- **Example:** (not authored in MDX — automatic)
+- **Notes:** Client component (needs `useContext`); the page route passes only the plain, serializable frontmatter fields into `<DocsPageProvider>` (`audience`, `platforms`, `permission`, `module`) — never the full Fumadocs `page.data`, which also carries the compiled MDX body function and isn't serializable across the client boundary (hit this exact error during D1.4, fixed by narrowing the context's type).
+
+### PermissionNote / PlanNote
+- **Surface:** docs
+- **Path:** `components/mdx/permission-note.tsx`, `components/mdx/plan-note.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** "You need the **X** permission." / "Available on plans that include **Y**." — one sentence each, from the same frontmatter context as `AppliesTo`. Render nothing if the page isn't gated.
+- **Props:** none.
+- **Used in:** `code-standards.md §17.3`'s task-page template, inside "Before you start".
+- **Example:**
+  ```mdx
+  ## Before you start
+  <PermissionNote />
+  ```
+- **Notes:** Plain-language lookups (`lib/permission-labels.ts`, `lib/module-labels.ts`) are sparse by design — filled in as pages reference a permission/module during authoring; falls back to a humanized version of the key. Reconciled against the real permission list at D6.1 (`scripts/gen-reference.ts`).
+
+### Callout
+- **Surface:** docs
+- **Path:** `components/mdx/callout.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Left 4-px rule + icon in the type colour on its soft background (`ui-rules.md §11.5`).
+- **Props:** `type?: 'note' | 'tip' | 'warning' | 'danger'` (default `note`) · `title?: ReactNode` · `children`.
+- **Tokens used:** `--docs-callout-<type>-bg` / `-border`.
+- **Used in:** any page, max 2 per page, never at the very top (authoring convention, not enforced).
+- **Example:**
+  ```mdx
+  <Callout type="warning" title="Before you continue">Voiding a transaction can't be undone after 30 seconds.</Callout>
+  ```
+- **Notes:** Built from scratch rather than wrapping Fumadocs' own `Callout` — its type enum (`info`/`warn`/`error`/`success`/`idea`) doesn't match ours, and it reads `--color-fd-*` vars, not the dedicated `--docs-callout-*` pairs `ui-tokens.md §14.2` defines for exactly this component.
+
+### Steps / Step
+- **Surface:** docs
+- **Path:** re-exported from `fumadocs-ui/components/steps` as-is (no wrapper file).
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Numbered circles for a real sequence of actions (`ui-rules.md §11.5`).
+- **Example:**
+  ```mdx
+  <Steps>
+  <Step>Go to <MenuPath items={["Finance", "Levies"]} />.</Step>
+  <Step>Select <UiLabel>New campaign</UiLabel>.</Step>
+  </Steps>
+  ```
+- **Notes:** Not wrapped — Fumadocs' own `.fd-step` marker colour is `--color-fd-primary`, which `ui-tokens.md §14.2` sets to the exact same hex as `--docs-step-marker` in both themes (same ledger-green token, two names for the same use). Re-skinning it would be pure duplication.
+
+### Screenshot
+- **Surface:** docs
+- **Path:** `components/mdx/screenshot.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Light/dark image pair, click-to-zoom, numbered markers, `pending` placeholder before the real capture exists (`ui-rules.md §11.5`, `architecture.md §14.7`).
+- **Props:** `pending?: string` (placeholder mode) · `src?: string` · `alt?: string` · `markers?: { n: number; x: number; y: number }[]` (percentages) · `caption?: ReactNode` · `variant?: 'desktop' | 'phone'` (default `desktop`; sets the default `width`/`height` to the real capture sizes from `architecture.md §14.7` — 1280×800 / 390×844 — and centres phone screenshots at max 360 px).
+- **Tokens used:** `--docs-screenshot-frame`, `--docs-marker-bg` / `-fg`.
+- **Used in:** every task page, at least once.
+- **Example:**
+  ```mdx
+  <Screenshot src="/images/payments/verifying-payment-proofs-1.webp" alt="Payment proof detail showing the receipt image and the Verify payment and Reject buttons" markers={[{ n: 1, x: 72, y: 88 }]} />
+  ```
+- **Notes:** Dark variant filename is derived from `src` (inserts `-dark` before the extension) — never pass it separately. Wraps Fumadocs' `ImageZoom` (not a raw `<img>`, per `code-standards.md §17.4`); zoom/Esc-to-close behaviour is inherited from `react-medium-image-zoom`, not reimplemented. The `pending`-vs-`src`/`alt` split isn't a discriminated union at the type level (destructuring didn't narrow it cleanly) — checked at runtime, with a dev-only `console.error` if neither is given.
+
+### MenuPath
+- **Surface:** docs
+- **Path:** `components/mdx/menu-path.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Bold segments joined by a chevron icon, not a typed "→" glyph; wraps on phones (`ui-rules.md §11.5`).
+- **Props:** `items: string[]`.
+- **Example:** `<MenuPath items={["Finance", "Levies", "New campaign"]} />` → **Finance** › **Levies** › **New campaign**
+
+### UiLabel
+- **Surface:** docs
+- **Path:** `components/mdx/ui-label.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Bold text, no box/border — reads like the words on the button, not a keyboard key (`ui-rules.md §11.5`).
+- **Props:** `children`.
+- **Example:** `Select <UiLabel>Save member</UiLabel>.`
+
+### PlatformBadge
+- **Surface:** docs
+- **Path:** `components/mdx/platform-badge.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** *Web* / *Mobile* pill badge.
+- **Props:** `platform: 'web' | 'mobile'`.
+- **Tokens used:** `--docs-badge-web-bg` / `-fg`, `--docs-badge-mobile-bg` / `-fg`, `docs-text-micro`.
+- **Used in:** `AppliesTo` (one per frontmatter `platforms` entry); also usable standalone.
+
+### RoleTabs / RoleTab
+- **Surface:** docs
+- **Path:** `components/mdx/role-tabs.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Tabs per role ("Members", "Treasurers & admins") — only when content truly differs (`ui-rules.md §11.5`).
+- **Props:** `roles: string[]` on `<RoleTabs>`; one `<RoleTab>` child per role, in order.
+- **Example:**
+  ```mdx
+  <RoleTabs roles={["Members", "Treasurers & admins"]}>
+  <RoleTab>Members see a simplified balance view.</RoleTab>
+  <RoleTab>Treasurers see every member's balance.</RoleTab>
+  </RoleTabs>
+  ```
+- **Notes:** Thin rename over Fumadocs' `Tabs`/`Tab` in "simple items" mode. No persistence — each `RoleTabs` instance is independent (unlike `PlatformTabs`).
+
+### PlatformTabs / PlatformTab
+- **Surface:** docs
+- **Path:** `components/mdx/platform-tabs.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Tabs "Web" / "Mobile"; remembers the reader's choice across pages; default = device type (`ui-rules.md §11.5`).
+- **Props:** one `<PlatformTab>` child per platform, in the order Web, Mobile.
+- **Example:**
+  ```mdx
+  <PlatformTabs>
+  <PlatformTab>Go to **Finance → Levies**.</PlatformTab>
+  <PlatformTab>Open **Manage → Finance → Levies**.</PlatformTab>
+  </PlatformTabs>
+  ```
+- **Notes:** Uses Fumadocs' built-in `groupId`+`persist` on the underlying `Tabs` (shares one localStorage-backed value across every `PlatformTabs` instance site-wide) — but only passes `persist={true}` after a feature-detect write/read/remove succeeds, since Fumadocs' own implementation calls `localStorage` directly with no try/catch (`ui-rules.md §11.5` explicitly asks for the try/catch; Fumadocs' `sessionStorage` call for `groupId` without `persist` still isn't wrapped — accepted as a smaller residual risk in Fumadocs' own well-tested code, not something worth forking the library over). Default tab follows `matchMedia('(pointer: coarse)')`.
+
+### StatusChip
+- **Surface:** docs
+- **Path:** `components/mdx/status-chip.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Same status → colour mapping as the mobile app, with text (`ui-rules.md §11.5`).
+- **Props:** `status: string` · `label?: string` (defaults to `status` verbatim).
+- **Tokens used:** `--color-fd-success` / `-warning` / `-error` / `-info` / `-muted-foreground` (added at D1.2 for Fumadocs' own Callout, reused here for the same 5-tone semantics as `ui-tokens.md §1.4`).
+- **Example:** `<StatusChip status="overdue" />`
+- **Notes:** Tone lookup lives in `lib/status-tone.ts` (single source, mirrors `ui-tokens.md §1.4` exactly). Background is `color-mix(in oklab, <tone> 16%, transparent)` with full-saturation tone text — not a pre-vetted AA pair from `ui-tokens.md` like the platform badges; worth a real contrast check in a later accessibility pass.
+
+### CardGrid / Card
+- **Surface:** docs
+- **Path:** `components/mdx/card-grid.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** 2 columns desktop, 1 on phones; hover border → primary, no lift/shadow (`ui-rules.md §11.5`).
+- **Props:** `Card`: `icon?`, `title`, `description?`, `href?`, `external?` (same as Fumadocs' own).
+- **Example:**
+  ```mdx
+  <CardGrid>
+  <Card title="Recording a payment" description="Record a payment a member made." href="/docs/finance/recording-a-payment" />
+  </CardGrid>
+  ```
+- **Notes:** Thin rename of Fumadocs' `Cards`/`Card` — their default styling already matches the spec. Also used automatically (not hand-authored) on `overview`-type pages: `app/docs/[[...slug]]/page.tsx` renders one `<CardGrid>` of the page's direct child pages after the MDX body, fulfilling `code-standards.md §17.3`'s "all pages (auto CardGrid)" overview template clause.
+
+### Faq / FaqItem
+- **Surface:** docs
+- **Path:** `components/mdx/faq.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Accordion; question in 600 weight; each item deep-linkable (`ui-rules.md §11.5`).
+- **Props:** `FaqItem`: `question: string` (slugified into the accordion item's `id`).
+- **Example:**
+  ```mdx
+  <Faq>
+  <FaqItem question="Why can't I see the Finance menu?">You need the Finance permission.</FaqItem>
+  </Faq>
+  ```
+- **Notes:** Wraps Fumadocs' `Accordions`/`Accordion`. `code-standards.md §17.3`'s FAQ-*page* template (plain H2 per question, for SEO/heading-anchor browsing) still stands for the 9 troubleshooting-faq pages at D6.2 — this component is for Q&A blocks inside other pages (e.g. a section overview) that want the collapsed treatment; authors choose per page.
+
+### Glossary
+- **Surface:** docs
+- **Path:** `components/mdx/glossary.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Inline term tooltip.
+- **Props:** `definition: string` · `children` (the term itself).
+- **Example:** `A <Glossary definition="Minimum attendance required for a meeting's decisions to be valid.">quorum</Glossary> is needed before voting opens.`
+- **Notes:** Definition is supplied at the point of use, not looked up from a shared registry — `core-concepts/glossary` (D2.2) is prose, not structured data, and nothing yet needs a term→definition store. Revisit if that changes. Click-to-toggle disclosure (not true hover-tooltip) — keyboard-operable (Enter/Space to open, Escape or blur to close), a deliberately simpler pattern than a full WAI-ARIA tooltip given the scope.
+
+### Diagram
+- **Surface:** docs
+- **Path:** `components/mdx/diagram.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** SVG wrapper with caption + collapsed text alternative (`ui-rules.md §11.5`/§11.8).
+- **Props:** `alt: string` (required — also the text alternative content) · `caption?: ReactNode` · `children` (hand-authored inline SVG).
+- **Example:**
+  ```mdx
+  <Diagram alt="Money flows from a charge to a payment to the member ledger." caption="How money moves">
+  <svg>…</svg>
+  </Diagram>
+  ```
+- **Notes:** Authors write the SVG using `currentColor`/CSS variables so it works in both themes (`ui-rules.md §11.5`) — this component only supplies the frame, caption and the "Describe this diagram" `<details>` disclosure.
+
+### VideoEmbed
+- **Surface:** docs
+- **Path:** `components/mdx/video-embed.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Lazy, privacy-enhanced video embed — a click-to-load facade, so the iframe (and its cookies/JS) never loads until the reader opts in.
+- **Props:** `youtubeId: string` · `title: string`.
+- **Example:** `<VideoEmbed youtubeId="dQw4w9WgXcQ" title="Taking attendance on your phone" />`
+- **Notes:** Even after loading, uses `youtube-nocookie.com`. Thumbnail is `next/image` from `i.ytimg.com` (added to `next.config.mjs`'s `images.remotePatterns`), not a raw `<img>`.
+
+### Related
+- **Surface:** docs
+- **Path:** `components/mdx/related.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** Up to 3 related cards, from frontmatter (`ui-rules.md §11.4`).
+- **Props:** `items: { title: string; description?: string; href: string }[]`.
+- **Used in:** inserted automatically by `app/docs/[[...slug]]/page.tsx` (resolves each frontmatter `related` URL via `source.getPageByHref`) — never written in MDX by hand.
+- **Notes:** Presentational only; the page route does the lookup since it has `source` and this component doesn't.
+
+### Feedback
+- **Surface:** docs
+- **Path:** `components/mdx/feedback.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** "Was this page helpful?" Yes/No, optional 280-char comment on No (`ui-rules.md §11.5`, `architecture.md §14.8`).
+- **Props:** `slug: string` (the page URL, for the GA4 event).
+- **Used in:** inserted automatically by the page route, after the MDX body.
+- **Notes:** Dispatches through `lib/analytics.ts`'s `trackEvent()`, a no-op stub until D1.5 wires up `NEXT_PUBLIC_GA_ID`/consent-mode `gtag` — this component won't need to change then. Comment textarea has a visually-hidden `<label>` (placeholder text alone isn't an accessible label).
+
+### LastUpdated
+- **Surface:** docs
+- **Path:** `components/mdx/last-updated.tsx`
+- **Added / changed:** D1.4 (2026-10-12)
+- **Purpose:** "Last updated <date>" from frontmatter `lastVerified` (`architecture.md §14.3`).
+- **Props:** `date?: string`.
+- **Notes:** Renders nothing if `lastVerified` is absent. `architecture.md §14.3`'s "falls back to git commit date" clause is intentionally not implemented yet — every real page sets `lastVerified` when written (`code-standards.md §17.5`), so the fallback only covers a hand-edited page that skipped that step; shelling out to `git log` for all 197 (currently all-draft, all-unverified) pages on every build isn't worth the build-time cost before a concrete page needs it.
 
 ## Docs page patterns
 _(none yet — e.g. "Task page = purpose · Before you start · Steps + Screenshot · What happens next · Related", "Lifecycle concept = Diagram + status table + task links")_

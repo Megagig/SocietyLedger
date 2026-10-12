@@ -73,6 +73,7 @@ function writeIfMissing(filePath: string, content: string, label: string) {
 }
 
 expectedFiles.add('index.mdx'); // root /docs page, created at D1.1, fixed by hand at D1.3
+expectedFiles.add('_kitchen-sink.mdx'); // D1.4 component demo — not a §9.6 page, hand-maintained
 
 for (const section of sections) {
   const nonIndexSlugs = section.pages.filter((p) => p.slug !== 'index').map((p) => p.slug);
