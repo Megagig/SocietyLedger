@@ -1,0 +1,15 @@
+{
+  "title": "Communication",
+  "icon": "MessageSquare",
+  "pages": [
+    "announcements",
+    "in-app-notifications",
+    "email",
+    "sending-sms",
+    "sms-campaigns",
+    "sms-templates",
+    "sms-history",
+    "buying-sms-credits",
+    "reminder-schedules"
+  ]
+}

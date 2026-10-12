@@ -1,0 +1,14 @@
+{
+  "title": "Elections & polls",
+  "icon": "Vote",
+  "pages": [
+    "how-elections-work",
+    "creating-an-election",
+    "nominations-and-candidates",
+    "running-the-vote",
+    "publishing-results",
+    "voter-eligibility-and-turnout",
+    "creating-a-poll",
+    "poll-results"
+  ]
+}

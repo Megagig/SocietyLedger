@@ -1,0 +1,14 @@
+{
+  "title": "Core concepts",
+  "icon": "BookOpen",
+  "pages": [
+    "your-association",
+    "members-and-user-accounts",
+    "roles-and-permissions",
+    "plans-and-modules",
+    "money-in-societyledger",
+    "the-member-ledger",
+    "notifications-and-channels",
+    "glossary"
+  ]
+}

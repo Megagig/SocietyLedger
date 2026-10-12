@@ -1,0 +1,12 @@
+{
+  "title": "Welfare",
+  "icon": "HeartHandshake",
+  "pages": [
+    "welfare-funds",
+    "recording-contributions",
+    "eligibility",
+    "payout-requests",
+    "bereavement-support",
+    "disbursing-payouts"
+  ]
+}

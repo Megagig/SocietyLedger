@@ -1,0 +1,11 @@
+{
+  "title": "AI assistant",
+  "icon": "Bot",
+  "pages": [
+    "asking-questions",
+    "smart-reminders",
+    "ai-reports",
+    "document-questions",
+    "limits-and-privacy"
+  ]
+}

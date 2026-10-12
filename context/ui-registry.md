@@ -113,6 +113,13 @@ _(none yet — expected from D1.4: AppliesTo, Callout, Steps/Step, Screenshot, M
 ## Docs page patterns
 _(none yet — e.g. "Task page = purpose · Before you start · Steps + Screenshot · What happens next · Related", "Lifecycle concept = Diagram + status table + task links")_
 
+## Docs content tooling (D1.3)
+Not reusable UI components, but conventions every docs content author relies on from D1.3 onward:
+- **Frontmatter schema:** `apps/docs/lib/docs-schema.ts` (zod, extends Fumadocs' `pageSchema`). Fields and order per `architecture.md §14.3`. `pnpm -F @societyledger/docs check:frontmatter` validates every page against it.
+- **Icon field (`meta.json` / frontmatter `icon`):** must be an exact `lucide-react` export name (PascalCase) — resolved automatically via `lucideIconsPlugin()`, no icon map to maintain. Some names from older Lucide releases don't exist in the installed `lucide-react@1.50` (e.g. `BarChart3` → `ChartColumn`, `BookMarked` → `Bookmark`, `HelpCircle` → `CircleQuestionMark`); check with `node -e "console.log(!!require('lucide-react').icons.<Name>)"` before using a new one.
+- **Sitemap source of truth:** `apps/docs/scripts/sitemap-data.ts` mirrors `project-overview.md §9.6` (21 sections, 197 pages) as typed data. `pnpm -F @societyledger/docs gen:skeleton` writes `meta.json`/`.mdx` stubs from it, never overwriting an existing file, and reports drift between the data file and `content/docs/**` on disk.
+- **Draft visibility:** `status: draft` pages are hidden from the sidebar via `getVisiblePageTree()` (`lib/source.ts`) unless `NEXT_PUBLIC_SHOW_DRAFTS=true`. Search/sitemap/`generateStaticParams` draft exclusion is separate and lands at D1.5 — don't assume a draft page is unreachable by direct URL yet.
+
 ---
 
 # Admin console (`apps/admin`)

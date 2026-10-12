@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "serve out",
     "type-check": "next typegen && tsc --noEmit",
-    "lint": "eslint"
+    "lint": "eslint",
+    "gen:skeleton": "tsx scripts/gen-skeleton.ts",
+    "check:frontmatter": "tsx scripts/check-frontmatter.ts"
   },
   "dependencies": {
     "cn": "^0.4.0",
@@ -28,9 +30,11 @@
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.3.8",
+    "gray-matter": "^4.0.3",
     "postcss": "^8.5.28",
     "serve": "^14.2.6",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }

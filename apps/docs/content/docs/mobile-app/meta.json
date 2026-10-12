@@ -1,0 +1,15 @@
+{
+  "title": "Mobile app",
+  "icon": "Smartphone",
+  "pages": [
+    "getting-the-app",
+    "signing-in-on-mobile",
+    "finding-your-way-around",
+    "paying-on-mobile",
+    "push-notifications",
+    "officer-tasks-on-the-go",
+    "offline-and-saved-data",
+    "whats-web-only",
+    "updating-the-app"
+  ]
+}

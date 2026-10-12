@@ -1,0 +1,13 @@
+{
+  "title": "Meetings & attendance",
+  "icon": "CalendarDays",
+  "pages": [
+    "scheduling-a-meeting",
+    "building-an-agenda",
+    "taking-attendance",
+    "minutes",
+    "attendance-history",
+    "cancelling-or-postponing",
+    "meeting-reminders"
+  ]
+}

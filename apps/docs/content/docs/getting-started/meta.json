@@ -1,0 +1,12 @@
+{
+  "title": "Getting started",
+  "icon": "Rocket",
+  "pages": [
+    "create-your-association",
+    "onboarding-wizard",
+    "your-first-week",
+    "joining-as-a-member",
+    "signing-in",
+    "install-the-mobile-app"
+  ]
+}

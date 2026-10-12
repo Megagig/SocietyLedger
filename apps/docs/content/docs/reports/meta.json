@@ -1,0 +1,16 @@
+{
+  "title": "Reports & exports",
+  "icon": "ChartColumn",
+  "pages": [
+    "finding-the-report-you-need",
+    "association-dashboard",
+    "financial-summary",
+    "member-balances",
+    "aging-analysis",
+    "collection-rate",
+    "income-by-category",
+    "exporting-reports",
+    "custom-exports",
+    "export-history"
+  ]
+}

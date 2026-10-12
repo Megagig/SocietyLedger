@@ -1,0 +1,19 @@
+{
+  "title": "Finance",
+  "icon": "Wallet",
+  "pages": [
+    "finance-overview",
+    "financial-categories",
+    "creating-charges",
+    "setting-up-dues",
+    "recording-a-payment",
+    "editing-voiding-and-deleting",
+    "levy-campaigns",
+    "donations-and-causes",
+    "penalties-and-late-fees",
+    "waiving-a-penalty",
+    "overdue-and-reminders",
+    "member-ledgers",
+    "transaction-statuses"
+  ]
+}

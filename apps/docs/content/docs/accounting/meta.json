@@ -1,0 +1,11 @@
+{
+  "title": "Accounting",
+  "icon": "Calculator",
+  "pages": [
+    "what-happens-automatically",
+    "accounting-dashboard",
+    "income-statement-at-a-glance",
+    "balance-sheet-at-a-glance",
+    "budgets"
+  ]
+}

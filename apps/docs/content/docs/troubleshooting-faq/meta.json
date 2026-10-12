@@ -1,0 +1,15 @@
+{
+  "title": "Troubleshooting & FAQ",
+  "icon": "CircleQuestionMark",
+  "pages": [
+    "account-and-login-faq",
+    "payments-faq",
+    "finance-faq",
+    "members-faq",
+    "governance-faq",
+    "cooperatives-welfare-faq",
+    "communication-faq",
+    "billing-faq",
+    "mobile-app-faq"
+  ]
+}

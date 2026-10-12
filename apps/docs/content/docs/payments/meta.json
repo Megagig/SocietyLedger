@@ -1,0 +1,14 @@
+{
+  "title": "Payments & reconciliation",
+  "icon": "Banknote",
+  "pages": [
+    "how-members-pay",
+    "online-payments-with-paystack",
+    "association-bank-accounts",
+    "verifying-payment-proofs",
+    "recording-bank-transfers",
+    "importing-a-bank-statement",
+    "matching-and-reconciliation",
+    "reconciliation-history"
+  ]
+}

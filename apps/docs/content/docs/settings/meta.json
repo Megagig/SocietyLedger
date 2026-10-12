@@ -1,0 +1,19 @@
+{
+  "title": "Settings, users & roles",
+  "icon": "Settings",
+  "pages": [
+    "association-profile",
+    "financial-settings",
+    "payment-settings",
+    "notification-settings",
+    "members-and-access",
+    "managing-users",
+    "custom-roles",
+    "assigning-roles",
+    "audit-log",
+    "data-and-privacy",
+    "integrations",
+    "accounting-integration",
+    "help-content"
+  ]
+}

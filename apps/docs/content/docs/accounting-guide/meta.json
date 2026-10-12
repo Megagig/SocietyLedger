@@ -1,0 +1,15 @@
+{
+  "title": "Accounting guide",
+  "icon": "Bookmark",
+  "pages": [
+    "chart-of-accounts",
+    "how-transactions-post",
+    "journal-entries",
+    "income-statement",
+    "balance-sheet",
+    "cash-flow",
+    "budgets-and-variance",
+    "accounting-periods",
+    "sync-status-and-errors"
+  ]
+}

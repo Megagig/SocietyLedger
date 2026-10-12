@@ -1,0 +1,21 @@
+{
+  "title": "Member guide",
+  "icon": "User",
+  "pages": [
+    "your-dashboard",
+    "what-you-owe",
+    "paying-online",
+    "paying-by-bank-transfer",
+    "your-statement",
+    "dues-levies-and-penalties",
+    "making-a-donation",
+    "payment-history-and-receipts",
+    "your-profile",
+    "meetings-and-attendance",
+    "voting",
+    "welfare",
+    "savings-and-loans",
+    "notification-preferences",
+    "getting-help"
+  ]
+}

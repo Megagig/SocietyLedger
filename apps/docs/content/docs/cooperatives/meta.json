@@ -1,0 +1,14 @@
+{
+  "title": "Cooperatives",
+  "icon": "PiggyBank",
+  "pages": [
+    "savings-accounts",
+    "deposits-and-withdrawals",
+    "loan-products",
+    "applying-for-a-loan",
+    "guarantors",
+    "reviewing-and-disbursing-loans",
+    "repayments-and-schedules",
+    "member-cooperative-profile"
+  ]
+}

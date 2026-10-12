@@ -587,7 +587,7 @@ apps/docs/
 ```
 
 ### 14.3 Content model (frontmatter)
-Defined once in `source.config.ts` with zod; the build fails if a page doesn't match.
+Defined once in `apps/docs/lib/docs-schema.ts` with zod (re-exported from `lib/source.ts`, where `defineDocs` is called); the build fails if a page doesn't match. **Not** a `source.config.ts` — this Fumadocs version's `defineDocs` (`fumadocs-mdx/macro`) is a compile-time macro with no fixed config-file convention, so there's no file-path contract to honour (corrected at D1.3; confirmed by reading the installed `fumadocs-mdx@15.4.7` source, the same way the `@fumadocs/base-ui` rename was confirmed at D1.1).
 ```yaml
 ---
 title: Verifying payment proofs                  # sentence case, ≤ 60 chars

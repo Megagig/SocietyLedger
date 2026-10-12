@@ -1,0 +1,15 @@
+{
+  "title": "Members",
+  "icon": "Users",
+  "pages": [
+    "your-member-list",
+    "adding-a-member",
+    "editing-and-disabling",
+    "categories-and-statuses",
+    "inviting-members-to-log-in",
+    "self-registration-and-approvals",
+    "importing-members",
+    "the-member-profile",
+    "exporting-members"
+  ]
+}

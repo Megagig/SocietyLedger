@@ -1,0 +1,13 @@
+{
+  "title": "Plan & billing",
+  "icon": "CreditCard",
+  "pages": [
+    "plans-and-whats-included",
+    "free-trial",
+    "subscribing-and-paying",
+    "changing-your-plan",
+    "cancelling-and-reactivating",
+    "billing-history",
+    "when-a-subscription-ends"
+  ]
+}

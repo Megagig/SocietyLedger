@@ -1,0 +1,9 @@
+{
+  "title": "Help & support",
+  "icon": "LifeBuoy",
+  "pages": [
+    "in-app-help-center",
+    "support-tickets",
+    "contacting-support"
+  ]
+}

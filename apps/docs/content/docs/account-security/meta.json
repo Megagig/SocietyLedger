@@ -1,0 +1,14 @@
+{
+  "title": "Account & security",
+  "icon": "ShieldCheck",
+  "pages": [
+    "signing-in-and-out",
+    "verifying-your-email",
+    "resetting-your-password",
+    "changing-your-password",
+    "account-approval-status",
+    "signed-in-devices",
+    "app-lock-and-biometrics",
+    "switching-associations"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Reference",
+  "icon": "Library",
+  "pages": [
+    "permissions",
+    "statuses",
+    "payment-methods",
+    "modules-by-plan",
+    "release-notes"
+  ]
+}
