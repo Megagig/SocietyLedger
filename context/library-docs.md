@@ -222,8 +222,8 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 - `next/font/google` for Manrope (`variable: '--font-sans'`, `display: 'swap'`).
 
 ## Search (Fumadocs built-in)
-- Use the static mode so the index is a file in `out/` and search runs in the browser. Follow the current Fumadocs search docs at D1.5 (the static implementation changed in mid-2026; don't copy older Orama snippets).
-- Index fields: title, description, headings, content, plus `keywords` (synonyms). Tag by section for grouped results.
+- Static mode (`createFromSource(source, {...}).staticGET` in `app/api/search/route.ts`) — the index is exported as a file in `out/api/search`, search runs client-side via `useStaticSearch` (`fumadocs-core/search/client`). Confirmed at D1.5 by reading the installed `fumadocs-core@16.17.1` types: this engine (`Options<C> extends AdvancedOptions`) has no literal `keywords` field on its index — only `content`/`tags`/`breadcrumbs`/`url`/etc. (`SharedIndex`). Synonyms are instead folded into `structuredData.contents` as extra, hidden, matchable entries (`lib/search-synonyms.ts` + `buildIndex` in the route) — same outcome, different mechanism than what was assumed pre-installation.
+- Section grouping: each index entry gets `tag: page.slugs[0]` (its section) via `buildIndex`; the client renders Fumadocs' built-in `<TagsList>`/`<TagsListItem>` (`fumadocs-ui/components/dialog/search`) to filter by it, driven by `useStaticSearch({ tag })`.
 
 ## Playwright (screenshot pipeline)
 - `scripts/screenshots/capture.config.ts` defines projects: `desktop-light`, `desktop-dark`, `phone-light`, `phone-dark` (viewports 1280×800 / 390×844, `colorScheme`). Auth per role via `storageState` files created in a setup project (never committed).

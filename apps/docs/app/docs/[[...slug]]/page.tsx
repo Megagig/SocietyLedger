@@ -10,13 +10,15 @@ import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { getPageImageUrl, getPageMarkdownUrl } from '@/lib/shared';
+import { getPageImageUrl, getPageMarkdownUrl, siteUrl } from '@/lib/shared';
 import { DocsPageProvider } from '@/lib/docs-page-context';
 import { AppliesTo } from '@/components/mdx/applies-to';
 import { CardGrid, Card } from '@/components/mdx/card-grid';
 import { Related } from '@/components/mdx/related';
 import { Feedback } from '@/components/mdx/feedback';
 import { LastUpdated } from '@/components/mdx/last-updated';
+import { JsonLd } from '@/components/json-ld';
+import { breadcrumbsFor } from '@/lib/breadcrumbs';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -45,8 +47,32 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         })
       : [];
 
+  const breadcrumbs = breadcrumbsFor(page);
+
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'TechArticle',
+          headline: page.data.title,
+          description: page.data.description,
+          url: `${siteUrl}${page.url}`,
+          ...(page.data.lastVerified ? { dateModified: page.data.lastVerified } : {}),
+        }}
+      />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: breadcrumbs.map((item, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: item.name,
+            item: item.url,
+          })),
+        }}
+      />
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <div className="flex flex-row gap-2 items-center border-b pb-6">
@@ -96,6 +122,9 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: {
+      canonical: `${siteUrl}${page.url}`,
+    },
     openGraph: {
       images: getPageImageUrl(page).url,
     },

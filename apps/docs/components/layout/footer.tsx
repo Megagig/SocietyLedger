@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { appUrl, docsRoute } from '@/lib/shared';
+import { withUtm } from '@/lib/utm';
 
 export function Footer() {
   return (
@@ -10,7 +11,7 @@ export function Footer() {
           Documentation
         </Link>{' '}
         ·{' '}
-        <a href={appUrl} target="_blank" rel="noopener" className="hover:text-fd-foreground">
+        <a href={withUtm(appUrl, 'footer')} target="_blank" rel="noopener" className="hover:text-fd-foreground">
           Open SocietyLedger
         </a>
       </p>

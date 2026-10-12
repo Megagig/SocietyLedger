@@ -18,4 +18,6 @@ export const docsFrontmatterSchema = pageSchema.extend({
   related: z.array(z.string()).default([]),
   status: z.enum(['draft', 'review', 'published']),
   lastVerified: z.iso.date().optional(),
+  /** Extra search terms folded into the page's hidden search content (D1.5) — see `lib/search-synonyms.ts`. */
+  keywords: z.array(z.string()).optional(),
 });

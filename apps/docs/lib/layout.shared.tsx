@@ -1,6 +1,7 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { Logo } from '@/components/layout/logo';
 import { appUrl } from './shared';
+import { withUtm } from './utm';
 
 export function baseOptions(): BaseLayoutProps {
   return {
@@ -11,7 +12,7 @@ export function baseOptions(): BaseLayoutProps {
     links: [
       {
         text: 'Open SocietyLedger',
-        url: appUrl,
+        url: withUtm(appUrl, 'header'),
         external: true,
       },
     ],
