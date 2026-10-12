@@ -33,7 +33,10 @@ Rules:
 ## Index
 | Component | Surface | Category | Path | Since |
 |---|---|---|---|---|
-| _(empty — first docs entries arrive with D1.2/D1.4; first admin entries with A1.5/A1.6; first mobile entries with F1.4)_ | | | | |
+| Logo | docs | Docs layout | `components/layout/logo.tsx` | D1.2 (2026-10-12) |
+| Footer | docs | Docs layout | `components/layout/footer.tsx` | D1.2 (2026-10-12) |
+| NotFound | docs | Docs layout | `app/not-found.tsx` | D1.2 (2026-10-12) |
+| _(first admin entries with A1.5/A1.6; first mobile entries with F1.4)_ | | | | |
 
 ---
 
@@ -65,7 +68,44 @@ _(none yet — e.g. "Money row = ListItem + Money + StatusChip", "Approval detai
 # Docs site (`apps/docs`)
 
 ## Docs layout (`components/layout`)
-_(none yet — expected from D1.2/D1.5: Header links, Footer, Feedback, LastUpdated, home hero)_
+
+### Logo
+- **Surface:** docs
+- **Path:** `components/layout/logo.tsx`
+- **Added / changed:** D1.2 (2026-10-12)
+- **Purpose:** Nav wordmark — icon-in-gradient-box + gradient-clip "SocietyLedger" text, used as `nav.title` in `lib/layout.shared.tsx`.
+- **Props:** none.
+- **Tokens used:** `docs-logo-icon-bg`, `docs-logo-text` (custom `@utility`s in `app/theme.css`, driven by `--color-docs-logo-from/-to`).
+- **Used in:** every docs page (root nav, via `baseOptions()`).
+- **Example:**
+  ```tsx
+  <Logo />
+  ```
+- **Notes:** deliberately reuses `apps/web`'s existing teal→green gradient brand (owner's call, D1.2) instead of the ledger+brass system the rest of `ui-tokens.md §14` assumes — see `ui-tokens.md §14.2`'s note on `--color-docs-logo-from/-to`. Icon is `lucide-react`'s `Users` (docs' icon set), not `@tabler/icons-react`'s `IconUsers` (web's).
+
+### Footer
+- **Surface:** docs
+- **Path:** `components/layout/footer.tsx`
+- **Added / changed:** D1.2 (2026-10-12)
+- **Purpose:** Slim bottom bar on every page: copyright, link to `/docs`, link to the web app.
+- **Props:** none.
+- **Tokens used:** `border-fd-border`, `text-fd-muted-foreground`, `text-fd-foreground`.
+- **Used in:** `app/layout.tsx` (root layout, rendered after `{children}`).
+- **Example:**
+  ```tsx
+  <Footer />
+  ```
+- **Notes:** content is intentionally minimal — `ui-rules.md §11` doesn't fully spec a footer composition yet; extend at D6.3 if more links are needed.
+
+### NotFound (`app/not-found.tsx`)
+- **Surface:** docs
+- **Path:** `app/not-found.tsx`
+- **Added / changed:** D1.2 (2026-10-12)
+- **Purpose:** Site-wide 404 — message, a button that opens the existing Fumadocs search dialog (`useSearchContext().setOpenSearch(true)`, reused rather than rebuilt), and a link back to `/docs`.
+- **Props:** none (Next.js file convention).
+- **Tokens used:** `text-fd-*`, `border-fd-border`, `bg-fd-secondary`/`bg-fd-accent`.
+- **Used in:** any unmatched route.
+- **Notes:** client component (`'use client'`) because it calls `useSearchContext()`; confirmed it still prerenders correctly to static `out/404.html` under `output: 'export'`.
 
 ## Docs MDX components (`components/mdx`)
 _(none yet — expected from D1.4: AppliesTo, Callout, Steps/Step, Screenshot, MenuPath, UiLabel, PlatformBadge, PermissionNote, PlanNote, RoleTabs, PlatformTabs, StatusChip, CardGrid, Faq, Glossary, Diagram, VideoEmbed, Related)_

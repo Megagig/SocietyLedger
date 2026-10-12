@@ -1,6 +1,7 @@
 import { createGetUrl } from 'fumadocs-core/source';
 
 export const appName = 'SocietyLedger Docs';
+export const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.societyledger.com.ng';
 export const docsRoute = '/docs';
 export const docsImageRoute = '/og/docs';
 export const docsContentRoute = '/llms.mdx/docs';

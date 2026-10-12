@@ -31,7 +31,7 @@
 - `apps/web` is unaffected except for two "Open in app" links (F0.6) and the docs links/redirects (D6.3, §15).
 - `apps/docs` is a **static site** (no API calls, no auth) deployed to `docs.societyledger.com.ng`; it only links out to the web app.
 - `apps/admin` is the platform console at `admin.societyledger.com.ng` (§16). It talks to the same API through its own server-side proxy; nothing in `apps/web` or `apps/mobile` links to it.
-- Every app is a separate **Dokploy** application (§17).
+- All apps run as services of **one Dokploy Compose application** (`docker-compose.dokploy.yml`, one git-triggered stack), not as separate Dokploy Applications — see §17.1.
 
 ---
 
@@ -222,7 +222,7 @@ Request lifecycle:
 ## 6. API contract (what the mobile client relies on)
 
 ### 6.1 Base & headers
-- Base URL from `EXPO_PUBLIC_API_URL` (production API domain on Dokploy — confirm the exact host, expected `https://api.societyledger.com.ng`; `http://<LAN-IP>:4000` dev). All paths start `/api`.
+- Base URL from `EXPO_PUBLIC_API_URL` (production API domain on Dokploy: `https://api.societyledger.com.ng`, confirmed; `http://<LAN-IP>:4000` dev). All paths start `/api`.
 - Headers on every request after tenant selection: `X-Tenant: <subdomain>`; after login: `Authorization: Bearer <accessToken>`; always `X-Client: mobile`, `X-App-Version: <version>+<build>`.
 - No cookies. Mobile never reads or relies on the `token` cookie. Requests have no `Origin`, which the API's CORS already allows.
 
@@ -865,17 +865,17 @@ API additions: `PLATFORM_TOKEN_EXPIRY=8h`, `TOTP_ENCRYPTION_KEY` (32-byte base64
 ## 17. Deployment — Dokploy (all apps)
 
 ### 17.1 Topology
-| Dokploy service | Source | Build | Domain(s) | Notes |
-|---|---|---|---|---|
-| `societyledger-db` | Dokploy **PostgreSQL 16** database | — | internal only | Migrated from Neon. `DATABASE_URL` and `DIRECT_URL` both point here (no pooler); keep `directUrl` in `schema.prisma` so a pooler (PgBouncer) can be added later without code changes. Scheduled backups to S3-compatible storage (Dokploy backups), daily, 14-day retention; monthly restore test. |
-| `societyledger-redis` (optional) | Dokploy Redis | — | internal only | `REDIS_URL`; API runs without it. |
-| `societyledger-api` | git `apps/api` | Dockerfile (`turbo prune @societyledger/api --docker` → pnpm install → `prisma generate` → `tsc`); pre-deploy/start runs `prisma migrate deploy` | `api.societyledger.com.ng` (confirm) | Port 4000; `trust proxy` set for Traefik. Persistent volume for `uploads/` (or move uploads to object storage later). |
-| `societyledger-web` | git `apps/web` | Dockerfile (`turbo prune @societyledger/web --docker`, Next standalone) | `societyledger.com.ng`, `www.societyledger.com.ng`, **wildcard** `*.societyledger.com.ng` | Wildcard needs a **DNS-01** certificate (Traefik certresolver with the DNS provider's API token) — HTTP-01 can't issue wildcards. |
-| `societyledger-admin` | git `apps/admin` | Dockerfile (Next standalone) | `admin.societyledger.com.ng` | Explicit Traefik priority above the wildcard (§17.3). |
-| `societyledger-docs` | git `apps/docs` | Dockerfile (pnpm build → `nginx:alpine`) | `docs.societyledger.com.ng` | Explicit priority above the wildcard. |
-| Staging copies | same repos, `develop` branch | same | `*-staging` hosts or a separate staging server | Staging database separate from production; demo association seeded here (docs screenshots). |
+**Everything deploys as one Dokploy "Compose" application**, defined in root `docker-compose.dokploy.yml` (one project, one git-triggered deploy for the whole stack) — not one Dokploy Application per app. This is already live for `api` and `web` (shipped in the "Migrate SocietyLedger from Vercel to Dokploy" commit, `b61d388`); `admin` and `docs` are added as **new services in the same compose file**, not as separate Dokploy Applications, when their respective build phases (A1.7, D1.7) are reached. `library-docs.md`'s "each app = one Dokploy Application" wording predates this and is reconciled at D1.7, not before.
 
-> The repo currently has no Dockerfiles — Dokploy may be building with Nixpacks/Railpack. Before adding Dockerfiles, record the current Dokploy build type per app in `progress-tracker.md` and keep what works; the Dockerfile pattern below is the target for new apps (admin, docs) and an optional upgrade for api/web.
+| Compose service | Source | Build | Domain(s) | Notes |
+|---|---|---|---|---|
+| `postgres` (`societyledger-db`) | Dokploy **PostgreSQL 16** container in the same compose stack | — | internal only | Migrated from Neon. `DATABASE_URL` and `DIRECT_URL` both point here (no pooler); keep `directUrl` in `schema.prisma` so a pooler (PgBouncer) can be added later without code changes. Scheduled backups to S3-compatible storage (Dokploy backups), daily, 14-day retention; monthly restore test. |
+| `redis` (`societyledger-redis`) | Redis container in the same compose stack | — | internal only | `REDIS_URL`; API runs without it. |
+| `api` (`societyledger-api`) | `apps/api/Dockerfile` (exists; `context: .`, built by the `api` service in `docker-compose.dokploy.yml`) | `turbo prune @societyledger/api --docker` → pnpm install → `prisma generate` → `tsc`; pre-deploy/start runs `prisma migrate deploy` | `api.societyledger.com.ng` (confirmed) | Port 4000; `trust proxy` set for Traefik. Dokploy's own `dokploy.domain`/`dokploy.port` labels route it today (not a Traefik router rule) — see §17.3 before adding `admin`/`docs`, which do need explicit router priority. Persistent volume for `uploads/` (or move uploads to object storage later). |
+| `web` (`societyledger-web`) | `apps/web/Dockerfile` (exists; same pattern) | `turbo prune @societyledger/web --docker`, Next standalone | `societyledger.com.ng`, `www.societyledger.com.ng`, **wildcard** `*.societyledger.com.ng` | Wildcard needs a **DNS-01** certificate (Traefik certresolver with the DNS provider's API token) — HTTP-01 can't issue wildcards. Traefik rule has **no explicit priority** set today — a latent bug once `admin`/`docs` are added (§17.3); fix when either lands. |
+| `admin` (`societyledger-admin`) — **not yet added** | git `apps/admin` | Dockerfile (Next standalone), added as a new service in `docker-compose.dokploy.yml` at A1.7 | `admin.societyledger.com.ng` | Explicit Traefik priority above the wildcard (§17.3). |
+| `docs` (`societyledger-docs`) — **not yet added** | git `apps/docs` | Dockerfile (pnpm build → `nginx:alpine`), added as a new service in `docker-compose.dokploy.yml` at D1.7 | `docs.societyledger.com.ng` | Explicit priority above the wildcard. |
+| Staging | same compose file, `develop` branch | same | `*-staging` hosts or a separate staging server | Staging database separate from production; demo association seeded here (docs screenshots). |
 
 ### 17.2 Dockerfile pattern (pnpm + Turborepo monorepo)
 ```dockerfile
@@ -901,12 +901,12 @@ USER node
 EXPOSE 3002
 CMD ["node", "apps/admin/server.js"]
 ```
-For docs the runner is `nginx:alpine` copying `apps/docs/out` and `apps/docs/nginx/*.conf`. Use Dokploy "Build path / Dockerfile path" pointing at the app's Dockerfile with the **repo root as context** (pruning needs the whole workspace).
+For docs the runner is `nginx:alpine` copying `apps/docs/out` and `apps/docs/nginx/*.conf`. Add the new service to root `docker-compose.dokploy.yml` with `build.context: .` and `build.dockerfile: apps/<app>/Dockerfile` (the **repo root as context**, matching the existing `api`/`web` service blocks — pruning needs the whole workspace), not a separate Dokploy "Dockerfile" Application.
 
 ### 17.3 Traefik routing gotcha (wildcard vs specific hosts)
-The tenant wildcard (`*.societyledger.com.ng` → web) can capture `admin.` and `docs.` requests. Traefik orders routers by rule length unless `priority` is set, so **set explicit priorities**: admin and docs routers `priority=100`, API `priority=100`, web wildcard `priority=1`. In Dokploy, add the labels in the app's advanced Traefik config (or the domain's custom config). Verify after every domain change: `curl -sI https://admin.societyledger.com.ng | grep -i x-robots-tag` should show the admin's `noindex` header, not the web app's response.
+The tenant wildcard (`*.societyledger.com.ng` → `web`, via a Traefik router rule) can capture `admin.` and `docs.` requests once those services exist. Traefik orders routers by rule length unless `priority` is set, so **set explicit priorities**: `admin` and `docs` routers `priority=100`, web wildcard `priority=1`. (`api` currently routes via Dokploy's own `dokploy.domain`/`dokploy.port` labels rather than a Traefik router rule, so it isn't affected by this ordering — confirm that still holds once `admin`/`docs` are added.) Add the `traefik.http.routers.<service>.priority` label under that service's `labels:` block in `docker-compose.dokploy.yml` — there is no per-app Dokploy config to edit separately, it's one compose file. Verify after every domain change: `curl -sI https://admin.societyledger.com.ng | grep -i x-robots-tag` should show the admin's `noindex` header, not the web app's response.
 
 ### 17.4 Releases & rollback
-- Each app deploys independently from `main` via Dokploy's git auto-deploy; keep previous images for one-click rollback.
-- Database migrations run only from the API service (`prisma migrate deploy`) and must be backward compatible with the previous API version (expand → migrate → contract) so either app can roll back.
-- Order for track A cutover: API (B1–B8, backward compatible) → admin app live → web cutover (deletes Super Admin, adds redirect) → API removes the old platform-login branch last.
+- All services deploy together as **one Dokploy Compose stack** triggered from a single branch (`main` for production, `develop` for staging) — there is no independent per-app git auto-deploy. Dokploy keeps the previous compose deploy for one-click rollback of the whole stack.
+- Database migrations run only from the `api` service (`prisma migrate deploy`) and must be backward compatible with the previous API version (expand → migrate → contract) so a stack rollback doesn't break against newer data.
+- Order for track A cutover (within the same compose deploy, or as sequential deploys if the owner prefers staging each step): API (B1–B8, backward compatible) → admin app live → web cutover (deletes Super Admin, adds redirect) → API removes the old platform-login branch last.

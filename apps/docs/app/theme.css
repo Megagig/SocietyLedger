@@ -1,0 +1,102 @@
+/*
+ * SocietyLedger brand overrides for Fumadocs UI (@fumadocs/base-ui 16.17.1).
+ * Values from context/ui-tokens.md §14.1/§14.4. Imported at the end of
+ * global.css so these plain :root/.dark rules win over the package's own
+ * @theme-registered defaults on source order (equal specificity).
+ *
+ * Dark mode is next-themes with attribute: "class" (confirmed by reading
+ * node_modules/@fumadocs/base-ui/dist/provider/base.js) — not a
+ * prefers-color-scheme media query.
+ */
+
+:root {
+  --color-fd-background: #f5f8f7;
+  --color-fd-foreground: #13211f;
+  --color-fd-muted: #edf2f0;
+  --color-fd-muted-foreground: #5e706c;
+  --color-fd-card: #ffffff;
+  --color-fd-card-foreground: #13211f;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #13211f;
+  --color-fd-border: #dde5e3;
+  --color-fd-primary: #0b5c53;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: #eef7f5;
+  --color-fd-secondary-foreground: #0b5c53;
+  --color-fd-accent: #eef7f5;
+  --color-fd-accent-foreground: #0b5c53;
+  --color-fd-ring: #178678;
+  --color-fd-success: #16804a;
+  --color-fd-warning: #c2410c;
+  --color-fd-error: #b42318;
+  --color-fd-info: #2554aa;
+
+  /* Reused-from-web logo gradient (ui-tokens.md §14.2) — logo use only. */
+  --color-docs-logo-from: #14b8a6;
+  --color-docs-logo-to: #22c55e;
+}
+
+.dark {
+  --color-fd-background: #0c1716;
+  --color-fd-foreground: #e8f0ee;
+  --color-fd-muted: #091211;
+  --color-fd-muted-foreground: #9ab0ac;
+  --color-fd-card: #122120;
+  --color-fd-card-foreground: #e8f0ee;
+  --color-fd-popover: #1a2d2b;
+  --color-fd-popover-foreground: #e8f0ee;
+  --color-fd-border: #25403c;
+  --color-fd-primary: #3ca294;
+  --color-fd-primary-foreground: #0c1716;
+  --color-fd-secondary: #0e342f;
+  --color-fd-secondary-foreground: #a8d7ce;
+  --color-fd-accent: #0e342f;
+  --color-fd-accent-foreground: #a8d7ce;
+  --color-fd-ring: #6fbdb0;
+  --color-fd-success: #4ac780;
+  --color-fd-warning: #fb923c;
+  --color-fd-error: #f87166;
+  --color-fd-info: #7da5f0;
+
+  --color-docs-logo-from: #2dd4bf;
+  --color-docs-logo-to: #4ade80;
+}
+
+/*
+ * neutral.css ships `.dark #nd-sidebar { --color-fd-muted: ...; ... }` with an
+ * ID selector, which out-specificities our plain `.dark` rule above for those
+ * three properties on the sidebar specifically. Re-assert them here so the
+ * sidebar matches the rest of the dark theme instead of neutral.css's defaults.
+ */
+.dark #nd-sidebar {
+  --color-fd-muted: #091211;
+  --color-fd-secondary: #0e342f;
+  --color-fd-muted-foreground: #9ab0ac;
+}
+
+@theme {
+  /* Retunes every rounded-sm/-md/-lg utility sitewide, including Fumadocs' own
+     component markup, to ui-tokens.md §14.4's docs radius scale. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+/* Nav logo (Logo.tsx) — token-driven equivalent of apps/web's gradient mark. */
+@utility docs-logo-icon-bg {
+  background-image: linear-gradient(
+    135deg,
+    var(--color-docs-logo-from),
+    var(--color-docs-logo-to)
+  );
+}
+
+@utility docs-logo-text {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-docs-logo-from),
+    var(--color-docs-logo-to)
+  );
+  background-clip: text;
+  color: transparent;
+}

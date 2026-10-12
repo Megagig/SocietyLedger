@@ -400,6 +400,7 @@ Fumadocs UI reads `--color-fd-*` variables (names per the Fumadocs version pinne
 | `--docs-applies-bg` | `#EDF2F0` | `#122120` | "Applies to" box |
 | `--docs-code-bg` | `#EDF2F0` | `#091211` | Inline code / code blocks |
 | `--docs-hero-bg` | `#0A4842` | `#0A4842` | `/docs` home hero band (passbook green, with ruled lines at 7 % white) |
+| `--color-docs-logo-from` / `-to` | `#14B8A6` / `#22C55E` | `#2DD4BF` / `#4ADE80` | Nav logo icon-box gradient + wordmark gradient-clip. **Exception, D1.2:** deliberately reuses `apps/web`'s existing teal→green brand gradient (owner's choice: match the live product now rather than the ledger+brass system the rest of §14 assumes) instead of introducing a new mark. Logo use only — never for any other docs element. |
 
 Callout text always uses `--color-fd-foreground`; the coloured `-border` values are the 4-px left rule and icon only (decorative). Badge and marker text pairs pass AA (mobile badge `#755510` on `#F7EBCF`; marker `#13211F` on brass 6.2:1).
 
