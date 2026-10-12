@@ -107,6 +107,44 @@ services:
       - "traefik.http.routers.societyledger-web.tls=true"
       - "traefik.http.routers.societyledger-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.societyledger-web.loadbalancer.server.port=3000"
+      # Below docs' priority (100) — without this, Traefik's rule-length tiebreak
+      # could let this wildcard capture docs.${BASE_DOMAIN}, since HostRegexp also
+      # matches it. Fixed at D1.7, when docs (the first service needing explicit
+      # priority) actually landed — architecture.md §17.3 flagged this gap when web
+      # shipped, before admin/docs existed to need it.
+      - "traefik.http.routers.societyledger-web.priority=1"
+
+  docs:
+    build:
+      context: .
+      dockerfile: apps/docs/Dockerfile
+      args:
+        # Bare NEXT_PUBLIC_* names, matching web's own convention above (it
+        # doesn't prefix its build args either) — no collision risk, these
+        # three names belong to docs alone.
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID}
+        NEXT_PUBLIC_SHOW_DRAFTS: ${NEXT_PUBLIC_SHOW_DRAFTS}
+    container_name: societyledger-docs
+    restart: unless-stopped
+    environment:
+      # Set to "noindex, nofollow" on the staging deployment's Dokploy environment
+      # variables only — leave unset here so production (this same compose file,
+      # deployed separately for the `main` branch) sends no header at all.
+      ROBOTS_TAG: ${DOCS_ROBOTS_TAG}
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.societyledger-docs.rule=Host(`${DOCS_DOMAIN}`)"
+      - "traefik.http.routers.societyledger-docs.entrypoints=websecure"
+      - "traefik.http.routers.societyledger-docs.tls=true"
+      - "traefik.http.routers.societyledger-docs.tls.certresolver=letsencrypt"
+      # Above the web wildcard (priority 1) so docs.${BASE_DOMAIN} resolves here,
+      # not to web's HostRegexp tenant-subdomain rule (architecture.md §17.3).
+      - "traefik.http.routers.societyledger-docs.priority=100"
+      - "traefik.http.services.societyledger-docs.loadbalancer.server.port=80"
 
 networks:
   internal:

@@ -374,6 +374,12 @@ Not reusable UI components; `scripts/screenshots/` conventions every future flow
 - **Runner:** `scripts/screenshots/capture.spec.ts` (the actual Playwright test, generic over every flow) + `capture.ts` (the `pnpm -F @societyledger/docs screenshots [--section=<name>]` CLI wrapper authors actually invoke).
 - **Filename convention extension:** `code-standards.md §17.2` gained a `-phone` marker for when a phone-web capture coexists with the desktop one — the original wording only reserved room for a light/dark suffix, not a 4-way desktop/phone × light/dark matrix.
 
+## Docs CI & hosting (D1.7) — Docs Phase D1 complete
+Not reusable UI components; the pieces behind `build-plan.md`'s D1.7 bullet, which closes out Docs Phase D1 (7/7).
+- **Hosting:** `apps/docs/Dockerfile` + `apps/docs/nginx/default.conf.template`, added as a new `docs` service in root `docker-compose.dokploy.yml` (one Compose stack, same model `api`/`web` already use) — **actually built and run locally** with real `docker build`/`docker run`, not just written. Two real bugs fixed in the process (see `library-docs.md`'s Dokploy section): a `turbo prune` cross-package `tsconfig.json extends` gap, and an nginx template `envsubst` crash on an absent (not just empty) env var.
+- **CI:** `.github/workflows/docs.yml` — install → `gen:reference` → fail-on-uncommitted-diff → type-check → lint → build → `check:links` → `check:frontmatter` → coverage PR comment (`architecture.md §14.9`). Validated with `actionlint` (zero issues).
+- **New scripts:** `scripts/gen-reference.ts` (stub until D6.1), `scripts/coverage.ts` (per-section published/draft/review table + a `covers`-frontmatter web-route-coverage proxy), `scripts/check-links.ts` (regex-based internal link check against the known-URL set from `sitemap-data.ts` — not full MDX parsing, so a `href={variable}` built from a JS expression won't be caught).
+
 ---
 
 # Admin console (`apps/admin`)

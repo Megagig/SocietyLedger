@@ -270,11 +270,15 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 - Recovery codes: 10 × 10-char base32, stored as bcrypt hashes, single use.
 
 ## Dokploy (deployment)
-- Each app = one Dokploy **Application** from the GitHub repo; build type Dockerfile (repo root context) for new apps; env vars in the app's Environment tab; domains in Domains tab with HTTPS (Let's Encrypt); wildcard tenant domain uses a DNS-01 cert resolver.
+- **Corrected at D1.7** (deliberately deferred since D1.2, per the decisions log — now that `docs` is actually added as a compose service): **not** one Dokploy Application per app. Everything deploys as **one Dokploy "Compose" application**, `docker-compose.dokploy.yml` at the repo root — `api`/`web` already live this way; `docs` was added as a new service in that same file at D1.7, not a separate Dokploy Application. Full topology in `architecture.md §17.1`.
 - Internal service-to-service calls (admin → API) use the Dokploy network hostname instead of the public URL.
-- Database: Dokploy PostgreSQL service; backups configured in Dokploy (S3 destination); connection string stored only in API env.
-- Preview/staging: separate Dokploy apps on `develop` (or Dokploy preview deployments if enabled) with `-staging` hosts.
-- Always set Traefik router priority for specific hosts above the wildcard (architecture §17.3).
+- Database: Dokploy PostgreSQL service in the same compose stack; backups configured in Dokploy (S3 destination); connection string stored only in API env.
+- Preview/staging: the **same** compose file, deployed as a separate Dokploy Compose project tracking `develop` (own env var values, e.g. `DOCS_ROBOTS_TAG=noindex, nofollow` for docs' staging deployment only) — not a different file.
+- Always set Traefik router priority for specific hosts above the wildcard (`architecture.md §17.3`) — `docs` and (later) `admin` need `priority=100`; `web`'s wildcard needs `priority=1` (this was a latent gap since `web` shipped alone with no explicit priority at all — fixed at D1.7 when `docs` actually needed it).
+- **`apps/docs`'s Dockerfile gotchas (found at D1.7 by actually running `docker build`/`docker run`, not assumed):**
+  - `turbo prune --docker`'s pruned output only includes files it can trace through the **workspace dependency graph** — a plain relative-path `"extends": "../../tsconfig.base.json"` in a package's `tsconfig.json` isn't a dependency edge turbo tracks, so the file is silently missing from `out/full/` and the build fails with "doesn't resolve correctly". Fix: an explicit `COPY tsconfig.base.json ./tsconfig.base.json` in the builder stage, after both pruner/installer copies (same category of issue `apps/web/Dockerfile` already has a comment about, for its own cross-package `prisma/schema.prisma` reference — check every package whose config reaches outside its own directory via a relative path before assuming `turbo prune` carried it along).
+  - `nginx:1.27-alpine`'s templating entrypoint (`envsubst` over `/etc/nginx/templates/*.template`) only replaces a `${VAR}` token if `VAR` is **set** in the container's environment — merely absent (not even empty-string) leaves the token in the generated config verbatim, and nginx then fails to start trying to parse it as its own variable syntax. Always `ENV VAR=""` in the Dockerfile for any templated var, so the image is safe to run standalone (`docker run` with no `-e`), not just via the compose file that happens to always set it (even to `""`).
+  - `add_header X-Robots-Tag "${ROBOTS_TAG}" always;` with an empty value correctly **omits** the header entirely (documented nginx `add_header` behaviour) — don't build separate "has value" / "no value" config branches for this.
 
 ## pnpm
 - `packageManager` pinned in root `package.json`; enable via `corepack enable`.

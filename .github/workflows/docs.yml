@@ -1,0 +1,95 @@
+name: Docs CI
+
+# architecture.md §14.9: install → gen:reference (fails if generated files
+# changed but weren't committed) → type-check → lint → build → check:links
+# → check:frontmatter → coverage report as a PR comment.
+#
+# The preview-URL half of D1.7's DoD ("PR shows a preview URL and coverage
+# comment") is Dokploy's own PR-preview-deployment feature, if/when the
+# owner enables it for the GitHub provider (architecture.md §14.9) — not
+# something this workflow does.
+
+on:
+  pull_request:
+    paths:
+      - "apps/docs/**"
+      - "context/**"
+      - ".github/workflows/docs.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate reference pages (stub until D6.1)
+        run: pnpm --filter @societyledger/docs run gen:reference
+
+      - name: Fail if generated files changed but weren't committed
+        run: git diff --exit-code -- apps/docs/content/docs/reference
+
+      - name: Type-check
+        run: pnpm --filter @societyledger/docs run type-check
+
+      - name: Lint
+        run: pnpm --filter @societyledger/docs run lint
+
+      - name: Build
+        run: pnpm --filter @societyledger/docs run build
+
+      - name: Check internal links
+        run: pnpm --filter @societyledger/docs run check:links
+
+      - name: Check frontmatter
+        run: pnpm --filter @societyledger/docs run check:frontmatter
+
+      - name: Coverage report
+        run: pnpm --filter @societyledger/docs run coverage > /tmp/coverage.md
+
+      - name: Comment coverage on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/coverage.md', 'utf8');
+            const marker = '<!-- docs-coverage-comment -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body.includes(marker));
+
+            const commentBody = `${marker}\n${body}`;
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody,
+              });
+            }

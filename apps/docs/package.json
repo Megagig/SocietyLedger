@@ -9,7 +9,10 @@
     "type-check": "next typegen && tsc --noEmit",
     "lint": "eslint",
     "gen:skeleton": "tsx scripts/gen-skeleton.ts",
+    "gen:reference": "tsx scripts/gen-reference.ts",
     "check:frontmatter": "tsx scripts/check-frontmatter.ts",
+    "check:links": "tsx scripts/check-links.ts",
+    "coverage": "tsx scripts/coverage.ts",
     "screenshots": "tsx scripts/screenshots/capture.ts"
   },
   "dependencies": {
