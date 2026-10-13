@@ -1117,7 +1117,7 @@ export const cooperativesService = {
     const guarantors = await prisma.loanGuarantor.findMany({
       where: {
         associationId,
-        guarantorMember: { userId: memberId },
+        guarantorMemberId: memberId,
         status: 'PENDING',
       },
       include: {

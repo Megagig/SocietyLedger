@@ -1,17 +1,36 @@
 ---
 title: "Paying online with card or bank (Paystack)"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Select what you owe, choose a payment method, and record your payment."
 type: task
 audience: ["member"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/my-finances/pay", "M3", "M5"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/member-guide/what-you-owe", "/docs/member-guide/paying-by-bank-transfer", "/docs/member-guide/payment-history-and-receipts"]
 ---
+
+Pay what you owe — dues, levies or penalties — in a few steps, and get a receipt you can see in your payment history straight away.
 
 ## Before you start
 
-## Steps
+You need the **view your own payments** permission, which every member has by default.
+
+<Callout type="warning" title="Pay only after you've actually paid">
+Selecting an item and choosing **Pay** records it as paid straight away — there's no separate card charge or bank confirmation step on the web today. Only confirm a payment once the money has actually left your account; a true in-app card checkout and bank-transfer verification are planned for the mobile app.
+</Callout>
+
+## Pay what you owe
+
+<Steps>
+<Step>Go to <MenuPath items={["My Finances", "Pay"]} /> (or select **Make Payment** from your dashboard).</Step>
+<Step>Tick the items you want to pay — dues, levies or penalties each appear as a separate line with their amount.</Step>
+<Step>Choose a **Payment Method** (Bank Transfer, Cash, Card Payment or POS) and optionally add a **Reference**, such as your transfer reference number.</Step>
+<Step>Select **Pay ₦&#123;total&#125;**.</Step>
+</Steps>
+
+<Screenshot src="/images/member-guide/paying-online-1.webp" alt="Make Payment page with one Monthly Dues item selected, Bank Transfer as the payment method, and a reference entered" />
 
 ## What happens next
 
-## Related
+You'll see a confirmation message, and the item disappears from your outstanding list straight away. It shows up immediately in your [payment history](/docs/member-guide/payment-history-and-receipts) with a receipt number.
