@@ -1,17 +1,32 @@
 ---
 title: "Setting up financial categories"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Create the dues, levy, donation and penalty categories everything else is charged against."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/finance/categories", "FN6"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/creating-charges", "/docs/finance/setting-up-dues"]
 ---
+
+Every charge in SocietyLedger belongs to a category — set these up first, before charging anyone.
 
 ## Before you start
 
-## Steps
+You need the **create categories** permission, which Administrators and Treasurers have by default.
+
+## Create a category
+
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Categories"]} />, then select **Add Category**.</Step>
+<Step>Enter a **Name** and choose a **Type**: Due, Levy, Donation or Penalty.</Step>
+<Step>Set an **Amount** if the category always charges the same amount, and a **Frequency** if it recurs.</Step>
+<Step>Select **Save**.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/financial-categories-1.webp" alt="Add Category form with Name, Type, Amount and Frequency fields, Type set to Due" />
 
 ## What happens next
 
-## Related
+The category appears in the list immediately and becomes available wherever you charge members — [single or bulk charges](/docs/finance/creating-charges), [recurring dues](/docs/finance/setting-up-dues), [levy campaigns](/docs/finance/levy-campaigns), [donations](/docs/finance/donations-and-causes), and [penalty rules](/docs/finance/penalties-and-late-fees).

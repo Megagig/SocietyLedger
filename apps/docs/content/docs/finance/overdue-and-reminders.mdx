@@ -1,17 +1,38 @@
 ---
 title: "Following up overdue members"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "See who owes money past their due date, and send them a reminder."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/finance/overdue", "/dashboard/finance/reminders", "FN12"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/penalties-and-late-fees", "/docs/finance/editing-voiding-and-deleting"]
 ---
 
-## Before you start
+Two related screens help you chase overdue payments: a list of what's overdue, and a way to remind the members who owe it.
 
-## Steps
+## See who's overdue
+
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Overdue"]} />.</Step>
+<Step>Check the stat bar for total overdue transactions, outstanding amount, members affected and how old the oldest one is.</Step>
+<Step>Sort by due date, amount or when the charge was created, and filter by category.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/overdue-and-reminders-1.webp" alt="Overdue Management page listing overdue transactions with member, category, balance and days overdue columns" />
+
+## Send reminders
+
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Reminders"]} />.</Step>
+<Step>Filter to **Overdue Only** if you just want the most urgent members.</Step>
+<Step>Select the members to remind, or **Select All**.</Step>
+<Step>Select **Send Reminders**.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/overdue-and-reminders-2.webp" alt="Payment Reminders page listing members with outstanding balances, each showing their transaction count and a Select All option" />
 
 ## What happens next
 
-## Related
+Reminders go out to each selected member through their available channels — nothing changes about their charges, it's a nudge, not an action on the transaction itself.

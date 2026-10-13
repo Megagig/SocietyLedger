@@ -1,17 +1,47 @@
 ---
 title: "Editing, voiding or deleting a transaction (and undo)"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Fix a mistake on a charge — which option you get depends on whether it's been paid."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["FN3"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/recording-a-payment", "/docs/finance/transaction-statuses"]
 ---
+
+Made a mistake on a charge? What you can do about it depends on whether anything has been paid against it yet.
 
 ## Before you start
 
-## Steps
+You need the **edit transactions** permission, which Administrators and Treasurers have by default.
+
+## If nothing has been paid yet
+
+<Steps>
+<Step>Open the transaction and select **Edit Transaction**.</Step>
+<Step>Change the member, category, amount, due date or notes.</Step>
+<Step>Enter a reason for the edit (at least 5 characters) and save.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/editing-voiding-and-deleting-1.webp" alt="Transaction detail page for an unpaid transaction, with Edit Transaction and Record Payment buttons" />
+
+An **EDITED** badge appears on the transaction afterward — select **View History** to see exactly what changed, when, and why.
+
+You can also select **Delete Transaction** instead, if the charge should never have existed. Deleting is a real removal, but you have 30 seconds to undo it from the confirmation toast before it's final.
+
+## If it's been paid or partially paid
+
+Editing and deleting aren't available once money has moved — select **Void & Replace** instead.
+
+<Steps>
+<Step>Select **Void & Replace** on the transaction.</Step>
+<Step>Enter a reason (at least 10 characters) and the corrected details.</Step>
+<Step>Submit.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/editing-voiding-and-deleting-2.webp" alt="Void and Replace modal with a warning about voiding the transaction and a reason field" />
 
 ## What happens next
 
-## Related
+The original transaction gets a **VOIDED** badge (with your reason visible on hover) and a new, corrected transaction is created and linked to it — nothing about the original record disappears, it's just superseded.

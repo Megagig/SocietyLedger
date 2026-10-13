@@ -1,17 +1,36 @@
 ---
 title: "Charging members: single and bulk"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Charge one member, or many at once, for any category."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/finance/transactions/create", "FN4"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/financial-categories", "/docs/finance/setting-up-dues"]
 ---
+
+Record a new charge — a due, levy, donation request or penalty — for one member or a group at once.
 
 ## Before you start
 
-## Steps
+You need the **create transactions** permission, which Administrators and Treasurers have by default. [Set up a category](/docs/finance/financial-categories) first if the one you need doesn't exist yet.
+
+## Charge a single member
+
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Transactions"]} />, then select **Record Transaction**.</Step>
+<Step>Choose the **Category** — the amount fills in automatically if the category has a fixed amount.</Step>
+<Step>Select the **Member**, set a **Due Date**, and adjust the amount if needed.</Step>
+<Step>Select **Create Transaction**.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/creating-charges-1.webp" alt="Record Transaction page with Single Transaction and Bulk Assignment tabs, and a category selected showing its amount" />
+
+## Charge several members at once
+
+Switch to **Bulk Assignment** instead of Single Transaction, then select every member who should get the charge before submitting — one transaction is created per member, all with the same category, amount and due date.
 
 ## What happens next
 
-## Related
+Each new charge appears on the member's account immediately as <StatusChip status="pending" />, and in [Transactions](/docs/finance/editing-voiding-and-deleting) for you to track.
