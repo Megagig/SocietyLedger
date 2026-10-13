@@ -1,17 +1,33 @@
 ---
 title: "Recording and verifying bank transfers"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Record a bank transfer a member sent, with their proof attached if they have one."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["/dashboard/payments/nigerian/transfers*", "PY4", "PY5", "PY6"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/payments/bank-transfers/new", "PY4", "PY5", "PY6"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/payments/association-bank-accounts", "/docs/payments/verifying-payment-proofs"]
 ---
+
+Record a transfer as soon as you see it land in your bank account, with the member's proof attached if they sent you one.
 
 ## Before you start
 
-## Steps
+You need the **record payments** permission, which Administrators and Treasurers have by default.
+
+## Record a transfer
+
+<Steps>
+<Step>Go to <MenuPath items={["Payments", "Bank Transfers", "New"]} />.</Step>
+<Step>Select the **Member** if you know who sent it, and the **Receiving Bank Account** it landed in.</Step>
+<Step>Enter the **Sender Bank Name**, **Amount** and **Reference Number** — the sender's account details and a narration are optional.</Step>
+<Step>Attach the member's **Payment Proof** if they sent you one.</Step>
+<Step>Select **Record Transfer**.</Step>
+</Steps>
+
+<Screenshot src="/images/payments/recording-bank-transfers-1.webp" alt="Record Bank Transfer form with Member, Receiving Bank Account, Sender Bank Name, Amount, Reference Number fields and a Payment Proof upload" />
 
 ## What happens next
 
-## Related
+The transfer is logged for reconciliation, and if a proof was attached, it joins the queue in [Verifying payment proofs](/docs/payments/verifying-payment-proofs).

@@ -1,17 +1,43 @@
 ---
 title: "Online payments with Paystack"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Enable card payments, and send a member to a real checkout from their charge."
 type: task
 audience: ["officer"]
 platforms: ["web"]
 covers: ["/dashboard/settings/payments", "/dashboard/finance/payments/verify"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/payments/how-members-pay", "/docs/finance/recording-a-payment"]
 ---
+
+Card payments go through Paystack or Nomba, initiated by an officer from the member's own charge.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission to change which channels are enabled, which Administrators have by default.
+
+<Callout type="note" title="Settled through the platform account">
+Card payments settle to your association within 24 hours, with a 2% processing fee deducted — there's no separate Paystack account to configure per association.
+</Callout>
+
+## Enable card payments
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Payments"]} />.</Step>
+<Step>Make sure **Card (Paystack)** is ticked under **Payment Channels**.</Step>
+<Step>Save your changes.</Step>
+</Steps>
+
+<Screenshot src="/images/payments/online-payments-with-paystack-1.webp" alt="Payments & Billing Settings page with Payment Channels checkboxes including Card (Paystack), and Default Settings below" />
+
+## Take a card payment
+
+<Steps>
+<Step>Open the member's charge from [Transactions](/docs/finance/editing-voiding-and-deleting).</Step>
+<Step>Choose **Paystack** or **Nomba**, then select **Pay ₦&#123;amount&#125;**.</Step>
+<Step>This redirects to the gateway's real checkout page to complete the card payment.</Step>
+</Steps>
 
 ## What happens next
 
-## Related
+After paying, you land back on a verification page showing whether it succeeded, with a receipt number if so — the charge updates to <StatusChip status="paid" /> automatically.

@@ -4,8 +4,8 @@
 
 ## Current status
 - **Track / phase:** Docs D3 — Members & money, in progress
-- **Next feature:** D3.4 Payments & reconciliation (9 pages)
-- **Last updated:** 2026-10-13 (D3.3 complete — all 14 Finance pages published)
+- **Next feature:** D3.5 Reports & exports (11 pages)
+- **Last updated:** 2026-10-13 (D3.4 complete — all 9 Payments & reconciliation pages published)
 - **Blockers:** none
 
 ## How to update (after each feature)
@@ -64,7 +64,13 @@ Format for a completed item:
   - **Confirmed, not a new bug**: `/dashboard/finance/transactions`'s status/type/category filters are pure client-side `useState` with no `useSearchParams()` — a `?status=paid` URL has no effect; the filters only work through the actual dropdowns. Not member/officer-facing (no visible broken behavior, since nobody deep-links into this page with query params today) — not logged as a gap, just a note for whoever next scripts against this page.
   - Backend gap G21 logged below for the unreachable waiver UI.
 
-- [ ] D3.4 Payments & reconciliation (9 pages)
+- [x] D3.4 Payments & reconciliation (9 pages) — 2026-10-13 — All 9 pages `published`: `index` (sibling `payments.mdx`), `how-members-pay`, `online-payments-with-paystack`, `association-bank-accounts`, `verifying-payment-proofs`, `recording-bank-transfers`, `importing-a-bank-statement`, `matching-and-reconciliation`, `reconciliation-history`. Verified against the local stack as `admin@demo.com` — added a real bank account (live), and discovered a real discrepancy between two parallel implementations of the same feature along the way.
+  - **Real finding — the sitemap's own `/dashboard/payments/nigerian/transfers/new` page has a genuine bug and can never be used**: its "Receiving Bank Account" dropdown is permanently stuck on "Loading bank accounts..." because the component imports `useEffect` but never calls it — `loadBankAccounts()` is defined but never invoked on mount, confirmed by reading the whole file. The dropdown stays `disabled` forever, so the required field can never be set and the form can never submit. The **older, parallel** `/dashboard/payments/bank-transfers/new` page (same `nigerianPaymentsApi` client, same backend) works correctly and also has the proof-upload field the sitemap expected under a separate page — `recording-bank-transfers.mdx`'s `covers` was corrected to point at the working page instead.
+  - **Real finding — the app has two complete, independently-built UIs for the same bank-transfer/reconciliation feature set**, both live in the sidebar ("Payment Management" vs "Nigerian Payments ✓" — the literal checkmark and a `// FORCE RENDER` comment in `Sidebar.tsx` suggest the newer one was meant to replace the older, but didn't fully). Only the older pages (`/dashboard/payments/bank-transfers*`) support proof upload; only the newer ones (`/dashboard/payments/nigerian/*`) have the dashboard, statement import and reconciliation screens the sitemap describes. The docs now route readers to whichever one actually has the real, working screen for each task, crossing between the two where needed.
+  - **A real, working Paystack/Nomba checkout exists for officers** (`components/finance/PaymentButton.tsx`, found while verifying `online-payments-with-paystack.mdx`) — selecting **Pay** on a transaction calls the real `/api/payments/paystack/initialize` endpoint and does a full-page `window.location.href` redirect to the gateway's real checkout. This is a materially different, more complete picture than D3.1's finding that *members* have no verified payment path — officers do, via this button. Documented from the real source; the live external redirect itself didn't complete in this local session's test click (plausibly a sandboxed-network limitation, not confirmed as a product bug) — logged as an open question rather than asserted either way.
+  - The Payment Verification Queue (`verifying-payment-proofs.mdx`) and the Statement Import / Reconciliation screens all showed genuine empty states this session (no backlog existed to click through) — their real structure (filters, stats, quick actions) was verified and documented from both the live empty-state screenshot and the source, honestly noting nothing was in queue to approve/reject live.
+  - Backend gap G23 logged below for the broken "Nigerian Payments" transfer form; G24 for the Paystack redirect question.
+
 - [ ] D3.5 Reports & exports (11 pages)
 
 ## Docs Phase D4 — Community & services
@@ -100,7 +106,7 @@ Format for a completed item:
 | Member guide | 16 | 16 | 14 | 0 |
 | Members | 10 | 10 | 7 | 0 |
 | Finance | 14 | 14 | 13 | 0 |
-| Payments & reconciliation | 9 | 0 | 0 | 0 |
+| Payments & reconciliation | 9 | 9 | 8 | 0 |
 | Accounting + guide | 15 | 0 | 0 | 0 |
 | Reports & exports | 11 | 0 | 0 | 0 |
 | Meetings | 8 | 0 | 0 | 0 |
@@ -115,9 +121,9 @@ Format for a completed item:
 | Help & support | 3 | 0 | 0 | 0 |
 | Troubleshooting & FAQ | 9 | 0 | 0 | 0 |
 | Reference | 5 | 0 | 0 | 0 |
-| **Total** | **197** | **60** | **43** | **0** |
+| **Total** | **197** | **69** | **51** | **0** |
 
-Web route coverage (from `scripts/coverage.ts`): 44 / 107 referenced routes (published pages only).
+Web route coverage (from `scripts/coverage.ts`): 52 / 107 referenced routes (published pages only).
 
 ## Docs questions (unresolved content questions)
 | # | Page | Question | Asked | Answer / status |
@@ -271,7 +277,7 @@ Web route coverage (from `scripts/coverage.ts`): 44 / 107 referenced routes (pub
 - [ ] F9.5 Store readiness
 - [ ] F9.6 Production release
 
-**Totals:** Docs 13 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
+**Totals:** Docs 14 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
 
 ---
 
@@ -301,6 +307,8 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | G20 | Member IDs are formatted inconsistently between the demo seed and the real application code: `demo-association.seed.ts` generates `MEM-0001` (with a dash), but `members.controller.ts`'s `create`/`bulkImport` generate `` `MEM${count}` `` → `MEM0061` (no dash) for every member added through the real UI/API. Cosmetic only, found at D3.2 creating a live test member; not fixed | member ID display everywhere | Decide on one format and make the seed match the real code (or vice versa) | open |
 | G21 | **Waiving a penalty is unreachable from the UI** — `PenaltyWaiver`, the `/api/finance/advanced/penalties/:id/waive` endpoint, and a full waiver modal (`handleWaivePenalty`, `showWaiverModal` state) all exist in `apps/web/.../finance/penalties/page.tsx`, but nothing in that file ever calls `setSelectedTransaction` with a real value or `setShowWaiverModal(true)` — there's no button anywhere that opens it. Confirmed by reading the whole component, not assumed. Found at D3.3 writing `waiving-a-penalty.mdx` | Penalties page, Waivers tab | Add the missing trigger (likely a "Waive" action per applied penalty, probably needing a new "Applied Penalties" list the page doesn't currently have) | open |
 | G22 | **The Finance Overview dashboard's "Outstanding" stat is wrong** — shows a large negative number (`₦-2,563,500`) that real activity only makes more negative, not less. Confirmed independently wrong by cross-checking the Transactions page's own stats bar (`₦491,500`, correct — matches the Reminders page's identical total computed separately). Ran every sync/rebuild action available on the Member Ledger page first, in case it was the same root cause as G18 — it isn't; the figure stayed wrong. Found at D3.3 writing `finance-overview.mdx`, which now tells officers to use Transactions instead | `/dashboard/finance/overview`, `/api/finance/dashboard` | Root-cause the dashboard's outstanding calculation (likely a sign error or double-counting, separate from the ledger-sync issue in G18) | open |
+| G23 | **`/dashboard/payments/nigerian/transfers/new` can never be used** — its "Receiving Bank Account" field is a `<Select>` that stays permanently disabled on "Loading bank accounts..." because `CreateBankTransferPage` imports `useEffect` but never calls it; `loadBankAccounts()` exists but is never invoked on mount. Confirmed by reading the whole file, then confirmed live (the dropdown never becomes interactive no matter how long you wait). The older, parallel `/dashboard/payments/bank-transfers/new` page — same `nigerianPaymentsApi` client, same backend — works correctly and was used instead for `recording-bank-transfers.mdx`. Both pages are live in the sidebar today ("Payment Management" and "Nigerian Payments ✓") | `/dashboard/payments/nigerian/transfers/new` | Add the missing `useEffect(() => { loadBankAccounts(); }, [])` call (a one-line fix), or retire this page in favour of the working older one — whichever the owner intends as canonical | open |
+| G24 | **Unconfirmed: does the real officer Paystack/Nomba checkout (`components/finance/PaymentButton.tsx`) complete end-to-end?** The code is unambiguous — selecting Pay calls the real `/api/payments/paystack/initialize` endpoint and does a full-page redirect to the gateway's live checkout. A live test click in this local session did not redirect within several seconds (stayed on the same transaction page, no visible error captured). Not logged as a confirmed bug — plausibly a sandboxed-network limitation in this environment (no real route to Paystack's API) rather than a product defect, but not independently verified either way | officer "Pay" button on `/dashboard/finance/transactions/[id]` | Re-test from an environment with real outbound network access, or check server logs for the actual `/api/payments/paystack/initialize` response during a live attempt | open — unresolved question, not a confirmed bug |
 | G19 | `/dashboard/member/my-meetings` and `/dashboard/member/my-voting` are **static placeholder pages** — no `useEffect`, no fetch, no API call of any kind; "No upcoming meetings scheduled", "No attendance records yet", "No active elections", and every stat ("0") are hardcoded JSX, not conditionally rendered. Confirmed by reading both page components directly. Real meeting/election data exists and is reachable via the API (`/api/meetings/upcoming` returns a real scheduled meeting) — these two screens simply were never wired up to it. Found at D3.1; `meetings-and-attendance.mdx`/`voting.mdx` changed from `type: task` to `type: concept` and describe the intended behaviour with a "still rolling out" callout, since there are no real steps to perform yet | `/dashboard/member/my-meetings`, `/dashboard/member/my-voting` | Wire both pages to their real endpoints (`/api/meetings/upcoming`, `/api/voting/active`, plus an attendance-history and voting-history endpoint if those don't exist yet) | open |
 
 ## Decisions log
@@ -359,6 +367,8 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | 2026-10-13 | `the-member-profile.mdx` retitled from "The member profile: finance, attendance, cooperative" to "The member profile" | The real `/dashboard/members/[id]` page never had attendance or cooperative sections — the sitemap's title oversold a page that only ever showed personal/membership info and a financial summary |
 | 2026-10-13 | D3.3's `waiving-a-penalty.mdx` written as a "no button exists yet" page rather than inventing steps, after confirming by reading the whole `penalties/page.tsx` component that the waiver modal is never actually triggered anywhere | Same principle as the D3.1 guarantor-requests finding and the D3.2 self-registration-approval finding: when a capability demonstrably isn't reachable from the UI, say so plainly rather than describing a feature that doesn't work |
 | 2026-10-13 | `finance-overview.mdx` keeps the Overview page and its real Quick Actions/Recent Payments content, but explicitly tells officers not to trust its Outstanding stat (G22) and to use Transactions instead, rather than omitting the page's own stat card from the screenshot/description | The stat card is real and visible on a real screenshot — hiding it from the writeup would be less honest than describing it and flagging it, especially since an officer will see it regardless of what the docs say |
+| 2026-10-13 | D3.4's `recording-bank-transfers.mdx` documents `/dashboard/payments/bank-transfers/new` (the older, parallel page) instead of `/dashboard/payments/nigerian/transfers/new` (the one the sitemap's `covers` note names), after confirming the newer page has a real, confirmed bug (G23) that makes it unusable, while the older one works and also has the proof-upload field the sitemap expected elsewhere | Same precedent as D3.1's guarantor-requests gap and D2's recurring route corrections: when the sitemap's named source doesn't work, document the real one that does rather than describing steps that can't be performed |
+| 2026-10-13 | D3.4's officer Paystack/Nomba checkout (`PaymentButton.tsx`) is documented from source as real and working (clear, unambiguous redirect code), with an explicit note that the live external redirect itself wasn't confirmed in this session (G24) — not written as either a confirmed success or a confirmed bug | The code is genuinely unambiguous about what it's supposed to do; a failed live click in a sandboxed session isn't strong enough evidence to call it broken, but isn't strong enough to call it verified either — the honest middle ground is to say what the code does and flag what wasn't confirmed |
 
 ## Known issues / tech debt
 - `apps/web/src/utils/domain.ts`'s `getBaseDomain()` hardcodes `'localhost:3000'` whenever `window.location.hostname === 'localhost'`, ignoring `NEXT_PUBLIC_BASE_DOMAIN` and the real port. Only surfaces in local dev on a non-default port (e.g. the signup success screen's "Your association URL" showed the wrong port during D2.1 verification); production is unaffected since `hostname` is never literally `localhost` there. Not fixed — out of scope for a docs feature.
