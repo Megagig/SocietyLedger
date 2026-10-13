@@ -1,17 +1,33 @@
 ---
 title: "Financial summary report"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Income, collection rate and a category breakdown for any period, compared to the one before."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/reports/financial-summary", "RP2"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/reports/exporting-reports", "/docs/reports/income-by-category"]
 ---
+
+Your income, how much of it you actually collected, and how this period compares to the last one.
 
 ## Before you start
 
-## Steps
+You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default.
+
+## Read the report
+
+<Steps>
+<Step>Go to <MenuPath items={["Reports", "Financial Summary"]} />.</Step>
+<Step>Pick a **Period** — the report defaults to this month.</Step>
+<Step>Toggle **Include period comparison** to see it against the previous period.</Step>
+</Steps>
+
+<Screenshot src="/images/reports/financial-summary-1.webp" alt="Financial Summary Report showing Total Income, Total Expected, Total Collected and Collection Rate, a period comparison chart, and a category breakdown table" />
+
+**Total Income**, **Total Expected**, **Total Collected** and **Collection Rate** summarise the period; **Income by Category** and **Category Breakdown** show where it came from.
 
 ## What happens next
 
-## Related
+Select **Export PDF** or **Export Excel** to download it — see [Exporting to PDF and Excel](/docs/reports/exporting-reports).

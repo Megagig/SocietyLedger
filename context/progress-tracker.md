@@ -3,9 +3,9 @@
 > **Living document.** Updated after every feature ships. A new session reads this first to know exactly where things stand. Build the **next unchecked item in the Master sequence** whose dependencies are checked (order and details in `build-plan.md`). Docs track (D) comes first, then the admin track (A), then the mobile track (F), with D7.x after mobile milestones.
 
 ## Current status
-- **Track / phase:** Docs D3 — Members & money, in progress
-- **Next feature:** D3.5 Reports & exports (11 pages)
-- **Last updated:** 2026-10-13 (D3.4 complete — all 9 Payments & reconciliation pages published)
+- **Track / phase:** Docs D4 — Community & services, starting
+- **Next feature:** D4.1 Meetings (8 pages) — **Docs Phase D3 is complete.**
+- **Last updated:** 2026-10-13 (D3.5 complete — all 11 Reports & exports pages published, Docs Phase D3 now fully shipped)
 - **Blockers:** none
 
 ## How to update (after each feature)
@@ -71,7 +71,9 @@ Format for a completed item:
   - The Payment Verification Queue (`verifying-payment-proofs.mdx`) and the Statement Import / Reconciliation screens all showed genuine empty states this session (no backlog existed to click through) — their real structure (filters, stats, quick actions) was verified and documented from both the live empty-state screenshot and the source, honestly noting nothing was in queue to approve/reject live.
   - Backend gap G23 logged below for the broken "Nigerian Payments" transfer form; G24 for the Paystack redirect question.
 
-- [ ] D3.5 Reports & exports (11 pages)
+- [x] D3.5 Reports & exports (11 pages) — 2026-10-13 — All 11 pages `published`: `index` (sibling `reports.mdx`), `finding-the-report-you-need`, `association-dashboard`, `financial-summary`, `member-balances`, `aging-analysis`, `collection-rate`, `income-by-category`, `exporting-reports`, `custom-exports`, `export-history`. **Docs Phase D3 (Members & money) is now fully complete — all 5 features (D3.1–D3.5) shipped.** Verified against the local stack as `admin@demo.com` — every report, chart and export screen loaded with real data (this feature's migration sources, `docs/reports/Phase-5-Reporting-System.md` and `Phase-10-Export-System.md`, were accurate implementation summaries and held up well against the live app, unlike several aspirational `help-guides/*` sources earlier in D3). Corrected one `covers` route (`income-by-category.mdx` → the real `/dashboard/reports/by-category`, not a literal "income-by-category" URL).
+  - **Security-relevant finding, not published in the docs — see G25 below and flagged directly to the owner.** None of the six export endpoints (`exports.routes.ts`: financial-pdf, financial-excel, member-statement, members-excel, custom-members-excel, custom-report-excel) or the history/download routes have any `requirePermission` check — only `authMiddleware`. Confirmed live: `member@demo.com`'s own token successfully generated and would have been able to download a full all-members Excel export (names, emails, balances) via a direct API call, despite the `member` role never being granted `exports.members`. The `exports.*` RBAC permissions exist and are assigned correctly in `rbac-seed.ts` — they're just never checked. `exporting-reports.mdx`/`custom-exports.mdx`/`export-history.mdx` describe the real screens and steps for officers as normal, without drawing attention to this gap in a public document.
+  - Also noted, minor: the Association Dashboard's own "Collection Rate" quick-stat (17.8%) didn't match the dedicated Collection Rate report's figure (86.5%) for what should be the same period — not deeply investigated, flagged in `association-dashboard.mdx` with a pointer to the dedicated report for the reliable number.
 
 ## Docs Phase D4 — Community & services
 - [ ] D4.1 Meetings (8 pages)
@@ -108,7 +110,7 @@ Format for a completed item:
 | Finance | 14 | 14 | 13 | 0 |
 | Payments & reconciliation | 9 | 9 | 8 | 0 |
 | Accounting + guide | 15 | 0 | 0 | 0 |
-| Reports & exports | 11 | 0 | 0 | 0 |
+| Reports & exports | 11 | 11 | 9 | 0 |
 | Meetings | 8 | 0 | 0 | 0 |
 | Elections & polls | 9 | 0 | 0 | 0 |
 | Welfare | 7 | 0 | 0 | 0 |
@@ -121,9 +123,9 @@ Format for a completed item:
 | Help & support | 3 | 0 | 0 | 0 |
 | Troubleshooting & FAQ | 9 | 0 | 0 | 0 |
 | Reference | 5 | 0 | 0 | 0 |
-| **Total** | **197** | **69** | **51** | **0** |
+| **Total** | **197** | **80** | **60** | **0** |
 
-Web route coverage (from `scripts/coverage.ts`): 52 / 107 referenced routes (published pages only).
+Web route coverage (from `scripts/coverage.ts`): 60 / 111 referenced routes (published pages only).
 
 ## Docs questions (unresolved content questions)
 | # | Page | Question | Asked | Answer / status |
@@ -277,7 +279,7 @@ Web route coverage (from `scripts/coverage.ts`): 52 / 107 referenced routes (pub
 - [ ] F9.5 Store readiness
 - [ ] F9.6 Production release
 
-**Totals:** Docs 14 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
+**Totals:** Docs 15 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
 
 ---
 
@@ -309,6 +311,7 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | G22 | **The Finance Overview dashboard's "Outstanding" stat is wrong** — shows a large negative number (`₦-2,563,500`) that real activity only makes more negative, not less. Confirmed independently wrong by cross-checking the Transactions page's own stats bar (`₦491,500`, correct — matches the Reminders page's identical total computed separately). Ran every sync/rebuild action available on the Member Ledger page first, in case it was the same root cause as G18 — it isn't; the figure stayed wrong. Found at D3.3 writing `finance-overview.mdx`, which now tells officers to use Transactions instead | `/dashboard/finance/overview`, `/api/finance/dashboard` | Root-cause the dashboard's outstanding calculation (likely a sign error or double-counting, separate from the ledger-sync issue in G18) | open |
 | G23 | **`/dashboard/payments/nigerian/transfers/new` can never be used** — its "Receiving Bank Account" field is a `<Select>` that stays permanently disabled on "Loading bank accounts..." because `CreateBankTransferPage` imports `useEffect` but never calls it; `loadBankAccounts()` exists but is never invoked on mount. Confirmed by reading the whole file, then confirmed live (the dropdown never becomes interactive no matter how long you wait). The older, parallel `/dashboard/payments/bank-transfers/new` page — same `nigerianPaymentsApi` client, same backend — works correctly and was used instead for `recording-bank-transfers.mdx`. Both pages are live in the sidebar today ("Payment Management" and "Nigerian Payments ✓") | `/dashboard/payments/nigerian/transfers/new` | Add the missing `useEffect(() => { loadBankAccounts(); }, [])` call (a one-line fix), or retire this page in favour of the working older one — whichever the owner intends as canonical | open |
 | G24 | **Unconfirmed: does the real officer Paystack/Nomba checkout (`components/finance/PaymentButton.tsx`) complete end-to-end?** The code is unambiguous — selecting Pay calls the real `/api/payments/paystack/initialize` endpoint and does a full-page redirect to the gateway's live checkout. A live test click in this local session did not redirect within several seconds (stayed on the same transaction page, no visible error captured). Not logged as a confirmed bug — plausibly a sandboxed-network limitation in this environment (no real route to Paystack's API) rather than a product defect, but not independently verified either way | officer "Pay" button on `/dashboard/finance/transactions/[id]` | Re-test from an environment with real outbound network access, or check server logs for the actual `/api/payments/paystack/initialize` response during a live attempt | open — unresolved question, not a confirmed bug |
+| **G25** | **⚠️ SECURITY — none of the export endpoints enforce RBAC.** `apps/api/src/modules/exports/exports.routes.ts` applies only `authMiddleware` to every route — `financial-pdf`, `financial-excel`, `member-statement/:memberId`, `members-excel`, `custom-members-excel`, `custom-report-excel`, `history`, `download/:id` all have zero `requirePermission` call. Confirmed live at D3.5: a `member@demo.com` token (no `exports.*` permission in `rbac-seed.ts`'s `member` array) successfully called `POST /exports/members-excel` and received a real completed export — the full member list (names, emails, balances) that only Admins/Treasurers/Financial Secretaries are supposed to be able to pull. The `exports.financial`/`exports.members`/`exports.view_history` permissions exist and are seeded correctly for officer roles — they're simply never checked against. **Not documented in the published docs** (would be irresponsible to publicize) — flagged here and directly to the owner instead | every `/api/exports/*` route; any member of any association today | Add `requirePermission`/`requireAnyPermission` checks matching the existing `exports.*` permission keys to every route in `exports.routes.ts`, same pattern already used in `reports.routes.ts` | **open — real, live-confirmed access-control gap, recommend prioritising over other gaps in this log** |
 | G19 | `/dashboard/member/my-meetings` and `/dashboard/member/my-voting` are **static placeholder pages** — no `useEffect`, no fetch, no API call of any kind; "No upcoming meetings scheduled", "No attendance records yet", "No active elections", and every stat ("0") are hardcoded JSX, not conditionally rendered. Confirmed by reading both page components directly. Real meeting/election data exists and is reachable via the API (`/api/meetings/upcoming` returns a real scheduled meeting) — these two screens simply were never wired up to it. Found at D3.1; `meetings-and-attendance.mdx`/`voting.mdx` changed from `type: task` to `type: concept` and describe the intended behaviour with a "still rolling out" callout, since there are no real steps to perform yet | `/dashboard/member/my-meetings`, `/dashboard/member/my-voting` | Wire both pages to their real endpoints (`/api/meetings/upcoming`, `/api/voting/active`, plus an attendance-history and voting-history endpoint if those don't exist yet) | open |
 
 ## Decisions log
@@ -369,6 +372,7 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | 2026-10-13 | `finance-overview.mdx` keeps the Overview page and its real Quick Actions/Recent Payments content, but explicitly tells officers not to trust its Outstanding stat (G22) and to use Transactions instead, rather than omitting the page's own stat card from the screenshot/description | The stat card is real and visible on a real screenshot — hiding it from the writeup would be less honest than describing it and flagging it, especially since an officer will see it regardless of what the docs say |
 | 2026-10-13 | D3.4's `recording-bank-transfers.mdx` documents `/dashboard/payments/bank-transfers/new` (the older, parallel page) instead of `/dashboard/payments/nigerian/transfers/new` (the one the sitemap's `covers` note names), after confirming the newer page has a real, confirmed bug (G23) that makes it unusable, while the older one works and also has the proof-upload field the sitemap expected elsewhere | Same precedent as D3.1's guarantor-requests gap and D2's recurring route corrections: when the sitemap's named source doesn't work, document the real one that does rather than describing steps that can't be performed |
 | 2026-10-13 | D3.4's officer Paystack/Nomba checkout (`PaymentButton.tsx`) is documented from source as real and working (clear, unambiguous redirect code), with an explicit note that the live external redirect itself wasn't confirmed in this session (G24) — not written as either a confirmed success or a confirmed bug | The code is genuinely unambiguous about what it's supposed to do; a failed live click in a sandboxed session isn't strong enough evidence to call it broken, but isn't strong enough to call it verified either — the honest middle ground is to say what the code does and flag what wasn't confirmed |
+| 2026-10-13 | D3.5's missing-RBAC finding on every export endpoint (G25) is logged in `progress-tracker.md` and raised directly with the owner, but deliberately **not** mentioned anywhere in the published `exporting-reports.mdx`/`custom-exports.mdx`/`export-history.mdx` pages | Unlike this session's other findings (broken buttons, wrong permission descriptions), this one is a live, exploitable access-control gap — publishing "by the way, any member can export everyone's data" in a public manual would hand that fact to anyone reading, not just the owner |
 
 ## Known issues / tech debt
 - `apps/web/src/utils/domain.ts`'s `getBaseDomain()` hardcodes `'localhost:3000'` whenever `window.location.hostname === 'localhost'`, ignoring `NEXT_PUBLIC_BASE_DOMAIN` and the real port. Only surfaces in local dev on a non-default port (e.g. the signup success screen's "Your association URL" showed the wrong port during D2.1 verification); production is unaffected since `hostname` is never literally `localhost` there. Not fixed — out of scope for a docs feature.

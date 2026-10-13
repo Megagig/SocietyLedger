@@ -1,17 +1,33 @@
 ---
 title: "Income by category"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Drill into any single category — dues, levies, donations or penalties — on its own."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["RP6"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/reports/by-category", "RP6"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/reports/collection-rate", "/docs/finance/financial-categories"]
 ---
+
+See one category's numbers on their own — how much was expected, collected, and what status every charge in it is in.
 
 ## Before you start
 
-## Steps
+You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default.
+
+## Read the report
+
+<Steps>
+<Step>Go to <MenuPath items={["Reports", "By Category"]} />.</Step>
+<Step>Pick a **Period**, and optionally filter by category **Type** (Due, Levy, Donation, Penalty).</Step>
+<Step>Select a category from the chart or list to see its full breakdown.</Step>
+</Steps>
+
+<Screenshot src="/images/reports/income-by-category-1.webp" alt="Category-wise Analysis showing a pie chart of expected amount by category, and a detail panel for Monthly Dues with Expected, Collected, Rate and a Transaction Status breakdown" />
+
+Selecting a category shows its **Collection Progress** and a **Transaction Status** breakdown — how many charges in it are paid, pending, overdue, partial or waived.
 
 ## What happens next
 
-## Related
+Use this alongside [financial categories](/docs/finance/financial-categories) if a category's numbers look off — it's reading from the same charges you set up there.
