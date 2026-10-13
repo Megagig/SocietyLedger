@@ -4,8 +4,8 @@
 
 ## Current status
 - **Track / phase:** Docs D2 — Start & concepts, in progress
-- **Next feature:** D2.3 Account & security
-- **Last updated:** 2026-10-13 (D2.2 complete — all 8 Core concepts pages published)
+- **Next feature:** D3.1 Member guide (16 pages) — **Docs Phase D2 is complete.**
+- **Last updated:** 2026-10-13 (D2.3 complete — 6/8 Account & security pages published, 2 mobile-only stay draft until D7.1)
 - **Blockers:** none
 
 ## How to update (after each feature)
@@ -39,7 +39,10 @@ Format for a completed item:
   - **Module/plan gating is not actually enforced anywhere today**: `requireModule()` middleware defaults to `shadow` mode (logs only, never blocks) via `FEATURE_FLAG_MODE`, which isn't set in any env file including the Dokploy compose — and the frontend has zero handling of the `MODULE_DISABLED` error code. The "Enterprise"/"Pro"/"Beta" badges seen in the sidebar (`AdminSidebar.tsx`) are hardcoded per nav item, not computed from the association's actual plan — so `plans-and-modules.mdx` is deliberately worded to describe the badge as a hint, without claiming it blocks anything (because it currently doesn't).
   - "Push" notifications don't exist yet (mobile-only, not built) — title/content changed from the sitemap's "in-app, email, SMS and push" to "in-app, email and SMS", with a note that push arrives with the mobile app.
   - Notification preferences (`notifications.controller.ts`) are stored in an **in-memory `Map`**, not a database table — real for the user in a normal session, but lost on every server restart. Not disclosed to end users (not their concern), but logged as a Backend gap below.
-- [ ] D2.3 Account & security (8 pages; 2 mobile-only stay draft until D7.1)
+- [x] D2.3 Account & security — 2026-10-13 — 6 of 8 pages `published` (`signing-in-and-out`, `verifying-your-email`, `resetting-your-password`, `changing-your-password`, `account-approval-status`, `switching-associations`); 2 stay `draft` (`signed-in-devices`, `app-lock-and-biometrics` — mobile-only, until D7.1). **Docs Phase D2 (Start & concepts) is now complete: all 3 features shipped.** Verified against the local stack as in D2.1/D2.2 — real login, logout (a two-step confirm-modal flow, easy to click the wrong element automatically), forgot/reset-password (grabbed the real reset token from the dev-only log, confirmed the new password logs in), and change-password (grabbed from `/dashboard/member/my-profile`, confirmed the new password logs in) were all click-tested end to end. Two sitemap corrections found by checking the real source instead of assuming it:
+  - `changing-your-password`'s real location is `/dashboard/member/my-profile` (a "Change Password" button opening a modal), **not** `/dashboard/member/settings` as the sitemap's covers note claimed — that page has no password field at all. `covers` updated to the real route.
+  - Login failure modes are more specific than the sitemap's generic "pending, rejected or suspended" — the API returns four distinct codes (`EMAIL_NOT_VERIFIED`, `PENDING_APPROVAL`, `ACCOUNT_REJECTED`, `ACCOUNT_SUSPENDED`), and "suspended" is actually two different things: an individual account deactivated after previously working, or the *whole association* suspended by a platform admin (`tenant.middleware.ts`, a 403 before the login check even runs) — different people to contact for each. `account-approval-status.mdx` distinguishes all four.
+  - Found (not fixed, logged below): `/dashboard/member/my-profile` fires a real, reproducible "Member profile not found" error toast (twice) for the `member@demo.com` test account on every page load, unrelated to the password-change feature itself (which works correctly regardless).
 
 ## Docs Phase D3 — Members & money
 - [ ] D3.1 Member guide (16 pages)
@@ -77,7 +80,7 @@ Format for a completed item:
 |---|---|---|---|---|
 | Introduction & Getting started | 7 | 6 | 5 | 0 |
 | Core concepts | 8 | 8 | 0 | 0 |
-| Account & security | 8 | 0 | 0 | 0 |
+| Account & security | 8 | 6 | 4 | 0 |
 | Member guide | 16 | 0 | 0 | 0 |
 | Members | 10 | 0 | 0 | 0 |
 | Finance | 14 | 0 | 0 | 0 |
@@ -96,9 +99,9 @@ Format for a completed item:
 | Help & support | 3 | 0 | 0 | 0 |
 | Troubleshooting & FAQ | 9 | 0 | 0 | 0 |
 | Reference | 5 | 0 | 0 | 0 |
-| **Total** | **197** | **14** | **5** | **0** |
+| **Total** | **197** | **20** | **9** | **0** |
 
-Web route coverage (from `scripts/coverage.ts`): 5 / 107 referenced routes (published pages only).
+Web route coverage (from `scripts/coverage.ts`): 10 / 108 referenced routes (published pages only).
 
 ## Docs questions (unresolved content questions)
 | # | Page | Question | Asked | Answer / status |
@@ -252,7 +255,7 @@ Web route coverage (from `scripts/coverage.ts`): 5 / 107 referenced routes (publ
 - [ ] F9.5 Store readiness
 - [ ] F9.6 Production release
 
-**Totals:** Docs 9 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
+**Totals:** Docs 10 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
 
 ---
 
@@ -275,6 +278,7 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | G7 | Docs page feedback has no backend (the API's `DocFeedback` is tied to DB doc page ids) | docs Feedback | GA4 events only in v1; add a slug-based endpoint later if needed | open — GA4 in v1 |
 | G13 | `requireModule()` middleware (module/plan gating) defaults to `shadow` mode — logs but never blocks — and `FEATURE_FLAG_MODE=enforce` isn't set in any env file, including `docker-compose.dokploy.yml`. The frontend also has zero handling of the `MODULE_DISABLED` error code. Found at D2.2 while verifying "what not on your plan looks like" for `plans-and-modules.mdx` | all module-gated screens | Decide whether/when to flip to `enforce` in production, and build the frontend's locked/upgrade state before doing so | open |
 | G14 | Notification preferences (`notifications.controller.ts`'s `getPreferences`/`updatePreferences`) are stored in an in-memory `Map` (`preferencesStore`), not a database table or Redis — lost on every server restart/redeploy, not shared across instances if the API ever scales horizontally. Found at D2.2 while verifying `notifications-and-channels.mdx` | notification preferences screen | Add a real `NotificationPreference` Prisma model | open |
+| G15 | `/dashboard/member/my-profile` fires a real "Member profile not found" error toast (twice, on every load) for at least the `member@demo.com` seeded account — some unrelated fetch on page load 404s even though the member record and profile both clearly exist and load fine otherwise. The page's own actual features (view profile, change password) work correctly regardless. Found at D2.3 while verifying `changing-your-password.mdx`; not root-caused (many `members`/`member-finance`/`cooperatives` controllers return this exact message, so the specific failing call wasn't isolated) | `/dashboard/member/my-profile` | Root-cause which fetch is 404ing and why | open |
 
 ## Decisions log
 | Date | Decision | Why |
