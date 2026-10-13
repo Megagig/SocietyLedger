@@ -5,8 +5,8 @@ type: task
 audience: ["member"]
 platforms: ["web"]
 covers: ["/auth/activate", "/auth/register", "A5", "A9", "A10"]
-status: review
-lastVerified: "2026-10-12"
+status: published
+lastVerified: "2026-10-13"
 related: ["/docs/getting-started/signing-in", "/docs/account-security/account-approval-status"]
 ---
 
@@ -18,13 +18,17 @@ You need your association's web address (for example, `yourassociation.societyle
 
 ## If you were invited by email
 
-{/* QUESTION: this section is written from reading the member-invites route/controller source (POST /api/member-invites/invite, GET/POST /auth/activate), not a live click-through — the admin Members screen needed to send a real invite hit a permissions error during this session (see progress-tracker.md Known issues) that was only root-caused after this page was drafted. Re-verify on staging before trusting the exact steps/labels below. */}
+An officer who already added you as a member can send you an invite to activate your own login.
 
 <Steps>
-<Step>Open the invitation email and select the activation link. It opens your association's **Activate your account** page.</Step>
-<Step>Choose a **Password** and confirm it.</Step>
+<Step>Open the invitation email and select the activation link. It opens your association's **Activate your member account** page, showing your name and member ID.</Step>
+<Step>Choose a **Create Password** and **Confirm Password**.</Step>
 <Step>Select **Activate Account**.</Step>
 </Steps>
+
+<Screenshot src="/images/getting-started/joining-as-a-member-2.webp" alt="Activate your member account page showing the member's name, member ID, email, and Create Password / Confirm Password fields" />
+
+Your account is active right away — select **Sign In** and you're in, no waiting and no email code needed.
 
 <Callout type="note">Invitation links expire after a few days. If yours has expired, ask the officer who invited you to resend it.</Callout>
 
@@ -40,8 +44,10 @@ Some associations let anyone with the web address create their own account, inst
 
 <Screenshot src="/images/getting-started/joining-as-a-member-1.webp" alt="Create your member account form with First Name, Last Name, Email Address, Password and Confirm Password fields" />
 
+Unlike an invite, a self-registered account isn't active immediately: you'll verify your email with a 6-digit code, then wait for a SocietyLedger platform admin to approve the account — see [Pending, rejected or suspended accounts](/docs/account-security/account-approval-status).
+
 <Callout type="note">If self-registration isn't offered on your association's sign-in page, ask an officer to invite you instead.</Callout>
 
 ## What happens next
 
-Either way, you'll need to verify your email with a 6-digit code, then wait for your account to be approved — see [Pending, rejected or suspended accounts](/docs/account-security/account-approval-status). Once approved, [sign in](/docs/getting-started/signing-in) with your association's web address.
+Once you're in — immediately if you were invited, or once approved if you registered yourself — [sign in](/docs/getting-started/signing-in) with your association's web address.
