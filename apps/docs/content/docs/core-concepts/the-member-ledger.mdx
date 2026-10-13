@@ -1,14 +1,54 @@
 ---
 title: "The member ledger and statements"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "How debits and credits build up a member's running balance, and what a statement shows."
 type: concept
 audience: ["all"]
 platforms: ["web", "mobile"]
-status: draft
+covers: ["MemberFinancialLedger model (entryType, runningBalance)"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/core-concepts/money-in-societyledger", "/docs/member-guide/your-statement"]
 ---
+
+Every member has a running ledger — a record of everything charged to them and everything they've paid, in order, with a balance after each entry.
 
 ## How it works
 
+Each ledger entry is one of three types:
+
+- **Debit** — something added to what a member owes: a charge like dues, a levy, or a penalty.
+- **Credit** — something that reduces it: a payment, a refund, or a waiver.
+- **Adjustment** — a manual correction by an officer.
+
+<Diagram alt="A running balance starting at zero: a debit of 5000 for dues raises it to 5000 owed, a credit of 2000 for a payment lowers it to 3000 owed, and a further credit of 3000 brings it to zero." caption="A member's running balance after each entry">
+<svg viewBox="0 0 640 160" xmlns="http://www.w3.org/2000/svg" className="h-40 w-full max-w-xl">
+  <text x="10" y="20" fill="currentColor" fontSize="12" fontWeight="600">Entry</text>
+  <text x="630" y="20" fill="currentColor" fontSize="12" fontWeight="600" textAnchor="end">Balance owed</text>
+  <line x1="0" y1="28" x2="640" y2="28" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+
+  <text x="10" y="55" fill="currentColor" fontSize="13">Debit — Monthly dues</text>
+  <text x="630" y="55" fill="currentColor" fontSize="13" textAnchor="end">₦5,000</text>
+
+  <text x="10" y="85" fill="currentColor" fontSize="13">Credit — Payment received</text>
+  <text x="630" y="85" fill="currentColor" fontSize="13" textAnchor="end">₦3,000</text>
+
+  <text x="10" y="115" fill="currentColor" fontSize="13">Credit — Payment received</text>
+  <text x="630" y="115" fill="currentColor" fontSize="13" textAnchor="end">₦0</text>
+
+  <line x1="0" y1="128" x2="640" y2="128" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+  <text x="10" y="150" fill="currentColor" fontSize="13" fontWeight="600">Fully paid</text>
+</svg>
+</Diagram>
+
+Entries are always in date order, each with the balance owed right after it — so you can see exactly when and why the balance changed, not just what it is today.
+
+A member's **statement** is this ledger filtered to a period (a month, a year, or a custom range) — the same entries, with an opening and closing balance for that period.
+
 ## Why it matters
 
+Because every charge and payment is its own entry, a member's balance is never just a single number you have to trust — you can always trace it back to the exact charges and payments that produced it. This is also what a member sees when they check what they owe.
+
 ## What you can do
+
+- [Your statement](/docs/member-guide/your-statement) — read and download your own ledger.
+- [How money is tracked](/docs/core-concepts/money-in-societyledger) — where these entries come from.

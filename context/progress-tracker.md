@@ -4,8 +4,8 @@
 
 ## Current status
 - **Track / phase:** Docs D2 — Start & concepts, in progress
-- **Next feature:** D2.2 Core concepts & glossary
-- **Last updated:** 2026-10-13 (D2.1 complete — 6/7 pages published, `install-the-mobile-app` stays draft until D7.1; Q1 resolved)
+- **Next feature:** D2.3 Account & security
+- **Last updated:** 2026-10-13 (D2.2 complete — all 8 Core concepts pages published)
 - **Blockers:** none
 
 ## How to update (after each feature)
@@ -33,7 +33,12 @@ Format for a completed item:
 ## Docs Phase D2 — Start & concepts
 - [x] D2.1 Introduction & Getting started — 2026-10-13 — 6 of 7 pages `published` (`index`, `getting-started`, `create-your-association`, `onboarding-wizard`, `joining-as-a-member`, `signing-in`, `your-first-week`); 1 stays `draft` (`install-the-mobile-app`, until D7.1, no mobile app exists yet — same precedent as D2.3's two mobile-only pages). Verified against a local docker-compose stack treated as staging for this session (see Decisions log) — a fresh founder signup, the full 5-step onboarding wizard, self-registration into the seeded demo association, sign-in, and (resolving Q1 in a follow-up pass) a real admin-sent member invite through `/auth/activate` were all actually clicked through with Playwright (no interactive browser tool was available; `@playwright/test`, already a devDependency from D1.6, drove a real headless Chromium instead — `serviceWorkers: 'block'` needed in the browser context to stop a dev-mode PWA service-worker reload loop from destabilizing automated navigation). Real screenshots captured and converted to `.webp` for all 6 pages. **Discovered and documented two real product behaviors that weren't in the original covers notes:** (1) every new account — founder or self-registered member — needs both email verification *and* SocietyLedger platform-admin approval before they can sign in (enforced, not just UI copy — confirmed via `is_active`/`approval_status` in the database); (2) an **invited** member skips both of those — activation is immediate, no code and no approval wait, since an officer already vouched for them by adding them as a member first. Both are now in `create-your-association.mdx` and `joining-as-a-member.mdx`. Also fixed a real bug in `app/docs/[[...slug]]/page.tsx`: the overview-page auto `CardGrid` listed *every* child page via `source.getPages()` regardless of `status`, so `install-the-mobile-app` would have shown as a browsable card next to its 5 published siblings — exported `isVisible()` from `lib/source.ts` (previously module-private, already used for sidebar filtering) and reused it in the child-page filter.
   - **Q1 resolution:** the admin Members page's "Failed to fetch members" turned out to be the already-logged RBAC permissions gap (`seed:rbac` hadn't been run after the demo association was created). After that fix, the invite UI worked as designed — the earlier gap was environment-only, not a product bug. Found along the way: none of the demo association's 60 seeded members have an email on file, so none were invitable; patched one directly in the DB (`chinwe.danjuma@...`) to exercise the flow. Also noticed (not fixed, same class as the known `getBaseDomain()` issue): `member-invites.service.ts`'s activation URL is hardcoded to `:3000` rather than reading `FRONTEND_URL`.
-- [ ] D2.2 Core concepts & glossary (8 pages)
+- [x] D2.2 Core concepts & glossary — 2026-10-13 — All 8 pages `published`: `your-association`, `members-and-user-accounts`, `roles-and-permissions`, `plans-and-modules`, `money-in-societyledger`, `the-member-ledger`, `notifications-and-channels`, `glossary`. This section has no index page (same as D1.3 noted — `§9.6` lists none). Written from reading the real Prisma schema and backend source directly (project-overview §9.7 step 1) rather than clicking through screens — these are concept/reference pages, not click-through tasks, so there was nothing to perform on staging; the two SVG money-flow / member-ledger diagrams `build-plan.md` calls for were hand-authored (`currentColor`-only, no hardcoded hex) and screenshotted in both themes via the local static export (`npx serve` + Playwright) to confirm they render correctly — both clean. Several corrections to the sitemap's own covers notes, found by reading the schema instead of assuming it:
+  - Real `Transaction.status` values are `pending/paid/overdue/waived/partial` — the sitemap's covers note said "paid/partial/unpaid/overdue" (no `pending`, had a `unpaid` that doesn't exist, missed `waived`). Used the real ones.
+  - Real platform module names (from `platform-modules.seed.ts`) are things like "Financial Ledger", "Cooperatives & Loans", "AI Integration" — the sitemap's informal list ("ledger, levies, donations, penalties...") conflates sub-features with top-level modules. Used the real module list.
+  - **Module/plan gating is not actually enforced anywhere today**: `requireModule()` middleware defaults to `shadow` mode (logs only, never blocks) via `FEATURE_FLAG_MODE`, which isn't set in any env file including the Dokploy compose — and the frontend has zero handling of the `MODULE_DISABLED` error code. The "Enterprise"/"Pro"/"Beta" badges seen in the sidebar (`AdminSidebar.tsx`) are hardcoded per nav item, not computed from the association's actual plan — so `plans-and-modules.mdx` is deliberately worded to describe the badge as a hint, without claiming it blocks anything (because it currently doesn't).
+  - "Push" notifications don't exist yet (mobile-only, not built) — title/content changed from the sitemap's "in-app, email, SMS and push" to "in-app, email and SMS", with a note that push arrives with the mobile app.
+  - Notification preferences (`notifications.controller.ts`) are stored in an **in-memory `Map`**, not a database table — real for the user in a normal session, but lost on every server restart. Not disclosed to end users (not their concern), but logged as a Backend gap below.
 - [ ] D2.3 Account & security (8 pages; 2 mobile-only stay draft until D7.1)
 
 ## Docs Phase D3 — Members & money
@@ -71,7 +76,7 @@ Format for a completed item:
 | Section | Pages | Published | Screenshots done | Pending questions |
 |---|---|---|---|---|
 | Introduction & Getting started | 7 | 6 | 5 | 0 |
-| Core concepts | 8 | 0 | 0 | 0 |
+| Core concepts | 8 | 8 | 0 | 0 |
 | Account & security | 8 | 0 | 0 | 0 |
 | Member guide | 16 | 0 | 0 | 0 |
 | Members | 10 | 0 | 0 | 0 |
@@ -91,7 +96,7 @@ Format for a completed item:
 | Help & support | 3 | 0 | 0 | 0 |
 | Troubleshooting & FAQ | 9 | 0 | 0 | 0 |
 | Reference | 5 | 0 | 0 | 0 |
-| **Total** | **197** | **6** | **5** | **0** |
+| **Total** | **197** | **14** | **5** | **0** |
 
 Web route coverage (from `scripts/coverage.ts`): 5 / 107 referenced routes (published pages only).
 
@@ -247,7 +252,7 @@ Web route coverage (from `scripts/coverage.ts`): 5 / 107 referenced routes (publ
 - [ ] F9.5 Store readiness
 - [ ] F9.6 Production release
 
-**Totals:** Docs 8 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
+**Totals:** Docs 9 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
 
 ---
 
@@ -268,6 +273,8 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | G11 | No reserved-subdomain list — an association could register `admin`, `docs`, `api`… | API, web signup, mobile A3 | B3 in A1.2 | approved (A1.2) |
 | G12 | ~~Unknown: how Dokploy builds `api`/`web` today~~ — resolved: `apps/api/Dockerfile`, `apps/web/Dockerfile` and `docker-compose.dokploy.yml` already exist on `main` (the "Migrate SocietyLedger from Vercel to Dokploy" commit, b61d388) and are the real source of truth — **one Dokploy Compose application**, not one Dokploy Application per app. `architecture.md §17.1`/§17.2/§17.3/§17.4 and §1 corrected to match (2026-10-12). `API_DOMAIN` confirmed by owner: `https://api.societyledger.com.ng`. `library-docs.md`'s "each app = one Dokploy Application" wording still predates this — owner explicitly deferred correcting it to D1.7 (when `docs` is actually added as a compose service) rather than now | deploy | None — reconcile `library-docs.md`'s wording at D1.7 | resolved (architecture.md); `library-docs.md` wording deferred to D1.7 by owner |
 | G7 | Docs page feedback has no backend (the API's `DocFeedback` is tied to DB doc page ids) | docs Feedback | GA4 events only in v1; add a slug-based endpoint later if needed | open — GA4 in v1 |
+| G13 | `requireModule()` middleware (module/plan gating) defaults to `shadow` mode — logs but never blocks — and `FEATURE_FLAG_MODE=enforce` isn't set in any env file, including `docker-compose.dokploy.yml`. The frontend also has zero handling of the `MODULE_DISABLED` error code. Found at D2.2 while verifying "what not on your plan looks like" for `plans-and-modules.mdx` | all module-gated screens | Decide whether/when to flip to `enforce` in production, and build the frontend's locked/upgrade state before doing so | open |
+| G14 | Notification preferences (`notifications.controller.ts`'s `getPreferences`/`updatePreferences`) are stored in an in-memory `Map` (`preferencesStore`), not a database table or Redis — lost on every server restart/redeploy, not shared across instances if the API ever scales horizontally. Found at D2.2 while verifying `notifications-and-channels.mdx` | notification preferences screen | Add a real `NotificationPreference` Prisma model | open |
 
 ## Decisions log
 | Date | Decision | Why |

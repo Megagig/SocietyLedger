@@ -1,14 +1,35 @@
 ---
 title: "Roles & what each person can see"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "How roles decide what each person can do, and why your menu only shows what you have permission for."
 type: concept
 audience: ["admin"]
 platforms: ["web", "mobile"]
-status: draft
+covers: ["Role/Permission/RolePermission models", "RBAC system & custom roles"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/getting-started/onboarding-wizard", "/docs/settings/custom-roles"]
 ---
+
+What you can see and do in SocietyLedger depends entirely on your role — there's no separate "settings" to unlock features, your menu simply shows what your role allows.
 
 ## How it works
 
+Every association starts with four built-in **system roles**:
+
+- **Admin** — full access to everything.
+- **Treasurer** — manages finances and payments.
+- **Financial Secretary** — records transactions and dues.
+- **Member** — sees only their own information.
+
+System roles can't be deleted or renamed, but an admin can create **custom roles** with their own exact mix of permissions — useful for a role like "Communications Officer" that doesn't fit the built-in ones.
+
+Underneath, every permission is a specific capability — things like viewing members, creating transactions, or exporting reports. A role is just a named set of these. When you sign in, SocietyLedger checks your role's permissions and builds your menu from only what you're allowed to see; a menu item you don't have permission for doesn't appear at all, rather than appearing disabled.
+
 ## Why it matters
 
+This is why two officers in the same association can see completely different menus — a treasurer sees Finance and Reports, while a financial secretary sees transaction entry but not role management. If you can't see something you expect to, it's almost always a permission your role doesn't have, not a bug.
+
 ## What you can do
+
+- [Finishing the setup wizard](/docs/getting-started/onboarding-wizard) — invite officers with a role during setup.
+- [Custom roles](/docs/settings/custom-roles) — build a role with exactly the permissions you need.

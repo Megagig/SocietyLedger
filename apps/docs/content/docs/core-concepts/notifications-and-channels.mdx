@@ -1,14 +1,37 @@
 ---
-title: "Notifications: in-app, email, SMS and push"
-description: "Content pending — see context/build-plan.md for scheduling."
+title: "Notifications: in-app, email and SMS"
+description: "Which channel SocietyLedger uses for each kind of notification, and how to set your own preferences."
 type: concept
 audience: ["all"]
-platforms: ["web", "mobile"]
-status: draft
+platforms: ["web"]
+covers: ["Notification model", "/api/notifications/preferences"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/member-guide/notification-preferences"]
 ---
+
+SocietyLedger can reach you three ways today: inside the app, by email, or by SMS — each notification category has its own setting for which of these it uses.
 
 ## How it works
 
+Notifications fall into a few categories, each with its own email / SMS / in-app toggle:
+
+- **Payment due** — a charge is coming up or overdue.
+- **Payment received** — a payment was recorded against your account.
+- **Approval** — your account or a request was approved (or needs review).
+- **Announcement** — a message from your association.
+- **System** — everything else (password resets, security alerts).
+
+You can turn any channel on or off per category from your notification preferences, and set **quiet hours** — a time range (for example 10pm–8am) during which SocietyLedger holds off sending anything but in-app notifications.
+
+SMS is sent from your association's own **SMS credit balance**, topped up by an admin — if it runs out, SMS notifications pause until it's topped up again, but email and in-app continue as normal.
+
+<Callout type="note">Push notifications (to your phone, even when the app isn't open) arrive with the mobile app.</Callout>
+
 ## Why it matters
 
+Not every notification needs to interrupt you the same way — a payment confirmation might only need an in-app note, while an overdue payment might be worth an SMS. Setting these per category, rather than all-or-nothing, means you only get interrupted for what actually matters to you.
+
 ## What you can do
+
+- [Choosing which notifications you get](/docs/member-guide/notification-preferences) — set your channels and quiet hours.
