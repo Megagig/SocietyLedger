@@ -1,17 +1,36 @@
 ---
 title: "Setting up welfare funds"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Create a welfare fund, choose its type, and set contribution and eligibility rules."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/welfare/social-funds", "WF2"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/welfare/recording-contributions", "/docs/welfare/eligibility"]
 ---
+
+Create a welfare fund — Bereavement, Medical, Education, Emergency, Maternity, Wedding, or General — and set the rules for who can draw on it and when.
 
 ## Before you start
 
-## Steps
+You need the **Administrator**, **Treasurer** or **Financial Secretary** role.
+
+## Create a fund
+
+<Steps>
+<Step>Go to <MenuPath items={["Welfare", "Social Funds"]} /> and select **Create Fund**.</Step>
+<Step>Enter a **Fund Name**, optional **Description**, and choose a **Fund Type**.</Step>
+<Step>Optionally set a **Target Balance**, **Monthly Contribution**, and **Minimum Contribution**.</Step>
+<Step>Set a **Maximum Payout** to cap how much a single request can ask for.</Step>
+<Step>Set a **Waiting Period (Days)** and **Min. Contribution Months** — how long a member must belong, and how many months they must have contributed, before they're eligible to request support.</Step>
+<Step>Select **Create Fund**.</Step>
+</Steps>
+
+<Screenshot src="/images/welfare/welfare-funds-2.webp" alt="Create Welfare Fund modal with fund name, description, type, target balance and waiting period fields" />
 
 ## What happens next
 
-## Related
+The fund appears on the Welfare dashboard and the Social Funds list with a ₦0 balance, **Active** status, and 0 contributors. It starts collecting real contributions once you [record one](/docs/welfare/recording-contributions).
+
+<Screenshot src="/images/welfare/welfare-funds-1.webp" alt="Social & Welfare Funds list showing a Bereavement Support Fund card with its balance and contributor count, and Edit/Delete buttons" />

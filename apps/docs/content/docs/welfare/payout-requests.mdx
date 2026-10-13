@@ -1,17 +1,36 @@
 ---
 title: "Handling support requests"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Review a member's welfare request and approve or reject it."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/welfare/requests", "WF4"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/welfare/eligibility", "/docs/welfare/disbursing-payouts"]
 ---
+
+Review a member's welfare request, approve it at the requested amount or a different one, or reject it with a reason.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** or **Treasurer** role.
+
+## Review a request
+
+<Steps>
+<Step>Go to <MenuPath items={["Welfare", "Requests"]} />.</Step>
+<Step>Select the eye icon on a **Pending** request to open its full details — member, fund, type, amount and reason.</Step>
+<Step>To approve, select **Approve** — adjust the **Approved Amount** first if you're granting less than requested.</Step>
+<Step>To reject, enter a **Rejection Reason**, then select **Reject**.</Step>
+</Steps>
+
+<Screenshot src="/images/welfare/payout-requests-1.webp" alt="Request Details panel for request WPR000002, showing member, fund, type, amount, reason, and an editable Approved Amount field" />
+
+<Callout type="note" title="A faster path for the common case">
+The checkmark and cross icons directly on the requests list approve at the full requested amount, or open a quick text prompt for a rejection reason — useful when you don't need to adjust the amount.
+</Callout>
 
 ## What happens next
 
-## Related
+An approved request moves to **Approved** and waits for [disbursement](/docs/welfare/disbursing-payouts). A rejected request shows **Rejected** with your reason, visible to the member who requested it.

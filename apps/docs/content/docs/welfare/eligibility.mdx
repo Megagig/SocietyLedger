@@ -1,15 +1,34 @@
 ---
 title: "Who is eligible for support"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Three rules decide whether a member can request from a fund — checked live when they apply."
 type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/welfare/eligibility"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/welfare/welfare-funds", "/docs/welfare/payout-requests"]
 ---
+
+Eligibility isn't a separate screen — it's checked live, right where a member requests support, against the rules you set when [creating the fund](/docs/welfare/welfare-funds).
 
 ## How it works
 
+A member is eligible for a fund when all three are true:
+
+1. **Waiting period** — they've belonged to the association for at least the fund's **Waiting Period (Days)**.
+2. **Minimum contributions** — they've contributed in at least the fund's **Min. Contribution Months** (unique calendar months, not a running total).
+3. **No open request** — they don't already have a pending or approved request on the same fund.
+
+When a member selects a fund on the Request Support form, a green **"You are eligible for this fund"** or red **"✗ [reason]"** message appears immediately, and **Submit Request** stays disabled until they are.
+
+<Screenshot src="/images/welfare/eligibility-1.webp" alt="Request Welfare Support form with a fund selected and a green 'You are eligible for this fund' message beneath the dropdown" />
+
 ## Why it matters
 
+A fund with **Waiting Period** and **Min. Contribution Months** both set to 0 (the default) has no real restriction — anyone can request from it immediately. Set these deliberately for funds where you want members to contribute first.
+
 ## What you can do
+
+- [Setting up welfare funds](/docs/welfare/welfare-funds) — where these rules are set.
+- [Handling support requests](/docs/welfare/payout-requests) — what happens after an eligible member submits one.
