@@ -1,17 +1,33 @@
 ---
 title: "Importing members from a spreadsheet"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Bulk-adding many members at once — currently a request to support, not a self-service screen."
 type: task
 audience: ["officer"]
 platforms: ["web"]
 covers: ["POST /members/bulk"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/members/adding-a-member"]
 ---
+
+Moving many members in at once — when you're switching to SocietyLedger from a spreadsheet, for example — currently needs SocietyLedger support, not a self-service upload.
+
+<Callout type="warning" title="No upload screen yet">
+There's no screen in your dashboard to upload a spreadsheet of members. The underlying bulk-import capability exists, but only as something SocietyLedger support can run on your behalf — there's no file-parsing step either, so even support needs your data already broken into individual fields (first name, last name, email, phone, category) rather than a raw file.
+</Callout>
 
 ## Before you start
 
-## Steps
+If you only have a handful of members to add, it's faster to [add them one at a time](/docs/members/adding-a-member) than to wait on a bulk import.
+
+## Request a bulk import
+
+<Steps>
+<Step>Prepare your member list with at least a first and last name for each person, plus email, phone and category where you have them.</Step>
+<Step>Contact SocietyLedger support with your list.</Step>
+<Step>Support checks for existing members with the same email first — anyone already in your association is skipped automatically, not duplicated.</Step>
+</Steps>
 
 ## What happens next
 
-## Related
+Each new member gets a member ID assigned automatically, the same as adding one by hand. None of them get a login until you separately [invite them](/docs/members/inviting-members-to-log-in).

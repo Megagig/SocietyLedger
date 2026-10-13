@@ -4,8 +4,8 @@
 
 ## Current status
 - **Track / phase:** Docs D3 — Members & money, in progress
-- **Next feature:** D3.2 Members — officers (10 pages)
-- **Last updated:** 2026-10-13 (D3.1 complete — all 16 Member guide pages published)
+- **Next feature:** D3.3 Finance (14 pages)
+- **Last updated:** 2026-10-13 (D3.2 complete — all 10 Members (officers) pages published)
 - **Blockers:** none
 
 ## How to update (after each feature)
@@ -51,7 +51,12 @@ Format for a completed item:
   - **Two real backend bugs found and fixed** in `cooperatives.service.ts`/`cooperatives.controller.ts`'s `getPendingGuarantorRequests` (confirmed broken for every association, not just demo data): (1) filtered `guarantorMember: { userId: memberId }` when the controller passes a **Member** id, not a **User** id — fixed to `guarantorMemberId: memberId`; (2) returned `data: requests` (a flat array) when the frontend reads `result.data.requests` — fixed to `data: { requests }`. A **third** bug in the same feature was found but **not fixed** — see G16.
   - 5 new Backend/Known-issue gaps logged below (G16–G19 plus Known issues) — the largest since D2.2.
 
-- [ ] D3.2 Members — officers (10 pages)
+- [x] D3.2 Members — officers (10 pages) — 2026-10-13 — All 10 pages `published`: `index` (sibling `members.mdx`), `your-member-list`, `adding-a-member`, `editing-and-disabling`, `categories-and-statuses`, `inviting-members-to-log-in`, `self-registration-and-approvals`, `importing-members`, `the-member-profile`, `exporting-members`. Verified against the local stack as `admin@demo.com` — created a real member (Chiamaka Nwosu, MEM0061) live, viewed her real profile, edited her status to Inactive, then deleted her (confirmed as a real soft-delete — see below) — not just read from source. `help-guides/members/README.md` (the migration source) turned out to be meaningfully wrong on permissions (see below) and was corrected, not trusted.
+  - **Real, useful finding:** deleting a member is a **soft delete** — `members.controller.ts`'s `delete()` sets `status: 'terminated'` and keeps the row; it's blocked entirely if the member has pending/overdue transactions. The UI's own confirm dialog ("cannot be undone") undersells this — `editing-and-disabling.mdx` describes the real, more reassuring behavior instead.
+  - **Sitemap/help-guide corrections found by reading the real code, not assumed:** (1) the old `help-guides/members/README.md` claims Treasurers and Financial Secretaries have "View and Add" access — the real RBAC seed (`rbac-seed.ts`) gives both roles `members.view`/`members.view_all` only; every create/edit/disable/bulk-import action is Administrator-only. `adding-a-member.mdx`/`editing-and-disabling.mdx`/`importing-members.mdx` all reflect the real, narrower permission. (2) `the-member-profile.mdx`'s title/scope ("finance, attendance, cooperative") oversold the real `/dashboard/members/[id]` page, which only shows personal/membership info and a financial summary — no attendance or cooperative data at all; retitled to "The member profile" with a note pointing elsewhere for those. (3) `/dashboard/members/[id]/edit` (the stub's `covers` route) turned out to be correct this time — confirmed by directly finding the file, after D2's recurring pattern of sitemap route inaccuracies made it worth checking rather than assuming either way.
+  - **Two real gaps found and documented honestly, not fixed:** `self-registration-and-approvals.mdx` — the self-signup/require-approval settings are real and configurable, but there's still no tenant-level screen for an officer to actually approve a pending self-registration (same gap already logged from D1/D2, re-confirmed here, not a new find). `importing-members.mdx` — there's no spreadsheet upload screen at all, and the underlying `POST /members/bulk` endpoint doesn't parse files either (it expects pre-structured JSON) — written as "ask support" rather than a self-service task.
+  - Backend gap G20 logged below for the member-ID format inconsistency found along the way.
+
 - [ ] D3.3 Finance (14 pages)
 - [ ] D3.4 Payments & reconciliation (9 pages)
 - [ ] D3.5 Reports & exports (11 pages)
@@ -87,7 +92,7 @@ Format for a completed item:
 | Core concepts | 8 | 8 | 0 | 0 |
 | Account & security | 8 | 6 | 4 | 0 |
 | Member guide | 16 | 16 | 14 | 0 |
-| Members | 10 | 0 | 0 | 0 |
+| Members | 10 | 10 | 7 | 0 |
 | Finance | 14 | 0 | 0 | 0 |
 | Payments & reconciliation | 9 | 0 | 0 | 0 |
 | Accounting + guide | 15 | 0 | 0 | 0 |
@@ -104,9 +109,9 @@ Format for a completed item:
 | Help & support | 3 | 0 | 0 | 0 |
 | Troubleshooting & FAQ | 9 | 0 | 0 | 0 |
 | Reference | 5 | 0 | 0 | 0 |
-| **Total** | **197** | **36** | **23** | **0** |
+| **Total** | **197** | **46** | **30** | **0** |
 
-Web route coverage (from `scripts/coverage.ts`): 25 / 107 referenced routes (published pages only).
+Web route coverage (from `scripts/coverage.ts`): 33 / 107 referenced routes (published pages only).
 
 ## Docs questions (unresolved content questions)
 | # | Page | Question | Asked | Answer / status |
@@ -260,7 +265,7 @@ Web route coverage (from `scripts/coverage.ts`): 25 / 107 referenced routes (pub
 - [ ] F9.5 Store readiness
 - [ ] F9.6 Production release
 
-**Totals:** Docs 11 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
+**Totals:** Docs 12 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
 
 ---
 
@@ -287,6 +292,7 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | G16 | **The `member` role has no self-service permission for voting, welfare or cooperatives anywhere in the system** — `/api/voting/active`, `/api/welfare/dashboard`, `/api/cooperatives/my-profile` all require the same broad, officer-level keys (`members.view`, `ledger.view`, `ledger.create`) used to view *all* members/ledgers, with no `_own`-scoped equivalent of the kind that already exists for finance (`ledger.view_own`, `payments.view_own`). Found at D3.1 verifying `savings-and-loans.mdx`/`welfare.mdx`/`voting.mdx` — confirmed by direct `403` responses from a real `member` token. Worked around *for the demo association only* (3 `RolePermission` rows added directly, `rbac-seed.ts` untouched) so these pages could be documented against real, working screens — not shipped anywhere else. **Separately, even with that workaround, `getPendingGuarantorRequests` (cooperatives) still crashes the frontend on a populated list** (`Cannot read properties of undefined (reading 'member')` — `GuarantorsPage` assumes `request.loanApplication.member`, but `formatLoanGuarantorResponse` never includes `loanApplication` at all). Two *other* bugs in this same function were found and fixed this session (wrong filter field — `guarantorMember.userId` instead of `guarantorMemberId`; wrong response wrapper — flat array instead of `{ requests }`) — this third one needs a dedicated response shape for this one endpoint, not a one-line fix, so it was left as-is. The Guarantor Requests screen has likely never worked end-to-end for any association | voting, welfare, cooperatives self-service; Guarantor Requests screen specifically | Design proper `_own`-scoped permissions for these 3 modules and widen the real `member` role template with them (product decision, not a docs fix); separately, give `getPendingGuarantorRequests` its own response shape with `loanApplication`/applicant details so the frontend doesn't crash | open |
 | G17 | **Members have no way to pay via real Paystack checkout or submit a bank-transfer proof for officer verification on the web today.** `/dashboard/my-finances/pay`'s payment-method dropdown (Bank Transfer/Cash/Card/POS) is cosmetic — `POST /api/members/me/pay` marks the transaction `paid` immediately regardless of method, with no Paystack redirect, no card charge, no proof attachment, and no officer confirmation step; it's a self-declaration, confirmed instantly by the member themselves. The real Paystack `initialize`/`verify` and the bank-transfer-proof endpoints both require officer-only permissions (`payments.view`/`payments.manual_create`), unreachable from a `member` token. Confirmed by reading `member-finance.controller.ts`'s `processPayment` and by a real live payment (`PAY000647`) that completed with zero verification. Found and confirmed with the owner at D3.1 — `paying-online.mdx`/`paying-by-bank-transfer.mdx` document this real behaviour with a warning callout rather than the Paystack/proof-upload flow the original build-plan description assumed; true Paystack checkout and proof upload are mobile-track features (F2.8/F2.9), not yet built | member payment pages (web) | Owner's call whether the unverified self-declare flow is acceptable long-term for web, or should be gated the same way the mobile flows will be | open — documented as current behaviour |
 | G18 | **The member financial ledger (`/dashboard/my-finances/ledger`, `MemberFinancialLedger` table) is never populated** — confirmed by a real live payment that completed successfully (appeared immediately in Payment History) but left the Ledger page showing "No transactions yet" / ₦0 across every stat. Whatever writes `Transaction`/`Payment` rows (both the demo seed and the live `processPayment` self-service endpoint) never also posts to `MemberFinancialLedger`. Found at D3.1 verifying `your-statement.mdx` — documented honestly with a callout pointing to Payment History instead | `/dashboard/my-finances/ledger`, `your-statement.mdx` | Root-cause whether anything in the codebase ever posts to `MemberFinancialLedger`, or whether it's entirely unwired | open |
+| G20 | Member IDs are formatted inconsistently between the demo seed and the real application code: `demo-association.seed.ts` generates `MEM-0001` (with a dash), but `members.controller.ts`'s `create`/`bulkImport` generate `` `MEM${count}` `` → `MEM0061` (no dash) for every member added through the real UI/API. Cosmetic only, found at D3.2 creating a live test member; not fixed | member ID display everywhere | Decide on one format and make the seed match the real code (or vice versa) | open |
 | G19 | `/dashboard/member/my-meetings` and `/dashboard/member/my-voting` are **static placeholder pages** — no `useEffect`, no fetch, no API call of any kind; "No upcoming meetings scheduled", "No attendance records yet", "No active elections", and every stat ("0") are hardcoded JSX, not conditionally rendered. Confirmed by reading both page components directly. Real meeting/election data exists and is reachable via the API (`/api/meetings/upcoming` returns a real scheduled meeting) — these two screens simply were never wired up to it. Found at D3.1; `meetings-and-attendance.mdx`/`voting.mdx` changed from `type: task` to `type: concept` and describe the intended behaviour with a "still rolling out" callout, since there are no real steps to perform yet | `/dashboard/member/my-meetings`, `/dashboard/member/my-voting` | Wire both pages to their real endpoints (`/api/meetings/upcoming`, `/api/voting/active`, plus an attendance-history and voting-history endpoint if those don't exist yet) | open |
 
 ## Decisions log
@@ -341,6 +347,8 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | 2026-10-13 | Two bugs in `cooperatives.service.ts`/`.controller.ts`'s `getPendingGuarantorRequests` fixed directly (wrong filter field; wrong response wrapper) — a third, deeper bug (missing `loanApplication` in the formatted response, crashing the frontend) left unfixed, logged as G16 | The first two were one-line, obviously-correct fixes confirmed by curl before and after, same class as other small real-bug fixes this session (D2.1's `isVisible()` fix, the two demo-seed bugs at D1.6). The third would mean designing a new response shape for a feature that's apparently never been tested end-to-end — a real feature fix, not a docs-session-scoped change |
 | 2026-10-13 | `paying-online.mdx`/`paying-by-bank-transfer.mdx` kept as two separate pages per the original sitemap, each documenting the real self-declare payment behaviour (G17) with a warning callout, rather than merged into one page or blocked pending a product decision | Owner's explicit choice among three options presented after the Paystack/proof-upload gap was found |
 | 2026-10-13 | `meetings-and-attendance.mdx` and `voting.mdx` changed from `type: task` to `type: concept` in-flight, since both underlying screens (G19) are static placeholders with no real steps a member can currently perform | Matches the actual page template rules (`code-standards.md §17.3`) — a task page needs real steps to perform on staging; neither screen has any |
+| 2026-10-13 | D3.2's `help-guides/members/README.md` migration source was treated as a rough starting point, not trusted — its claim that Treasurers/Financial Secretaries can "View and Add" members turned out to be wrong (real RBAC: view-only). Permissions in every D3.2 page are stated per the real `rbac-seed.ts`, not the old help-guide | `project-overview.md §9.7`'s own rule: "the code is the truth" — migrated material gets rewritten, not copied, whenever it conflicts with what the code actually does |
+| 2026-10-13 | `the-member-profile.mdx` retitled from "The member profile: finance, attendance, cooperative" to "The member profile" | The real `/dashboard/members/[id]` page never had attendance or cooperative sections — the sitemap's title oversold a page that only ever showed personal/membership info and a financial summary |
 
 ## Known issues / tech debt
 - `apps/web/src/utils/domain.ts`'s `getBaseDomain()` hardcodes `'localhost:3000'` whenever `window.location.hostname === 'localhost'`, ignoring `NEXT_PUBLIC_BASE_DOMAIN` and the real port. Only surfaces in local dev on a non-default port (e.g. the signup success screen's "Your association URL" showed the wrong port during D2.1 verification); production is unaffected since `hostname` is never literally `localhost` there. Not fixed — out of scope for a docs feature.

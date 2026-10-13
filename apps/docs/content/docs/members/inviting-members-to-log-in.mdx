@@ -1,17 +1,32 @@
 ---
 title: "Inviting members to log in"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Send login invitations to members who have an email on file but no account yet."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/members/invite", "MG4"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/members/adding-a-member", "/docs/account-security/account-approval-status"]
 ---
+
+Invite members with an email on file to set their own password and sign in — no approval wait, since you've already vouched for them by adding them as a member.
 
 ## Before you start
 
-## Steps
+You need the **add members** permission, which only Administrators have by default. The member needs an **email address** on their record first — add or edit it if it's missing.
+
+## Send an invitation
+
+<Steps>
+<Step>Go to <MenuPath items={["Members", "Invite Members"]} />.</Step>
+<Step>Only members with an email who haven't logged in yet are listed. Search to narrow it down.</Step>
+<Step>Tick the members to invite, or select all.</Step>
+<Step>Select **Send Invites**.</Step>
+</Steps>
+
+<Screenshot src="/images/members/inviting-members-to-log-in-1.webp" alt="Invite Members page listing a member with Not Invited login status, with a checkbox and Send Invites button" />
 
 ## What happens next
 
-## Related
+Each invited member gets an email with a link to set their password and sign in immediately — unlike self-registration, an invited member skips email verification and approval entirely. Their login status changes to **Invited**, then **Active** once they finish.

@@ -1,17 +1,37 @@
 ---
 title: "Self-registration and approving accounts"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Let members register themselves, and configure whether they need approval first."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/settings/members-access", "/dashboard/settings/users", "MG5"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/getting-started/joining-as-a-member", "/docs/account-security/account-approval-status"]
 ---
+
+Decide whether people can register themselves into your association, and what happens before they can sign in.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default.
+
+## Configure self-registration
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Members Access"]} />.</Step>
+<Step>Turn **Allow Self-Signup** on to let people register themselves without an invite.</Step>
+<Step>Turn **Require Admin Approval** on if new self-registrations should wait for approval before they can sign in, and **Require Email Verification** to make them confirm their email first.</Step>
+<Step>Set the **Default Role for New Members** and whether **Member ID**s are generated automatically.</Step>
+<Step>Save your changes.</Step>
+</Steps>
+
+<Screenshot src="/images/members/self-registration-and-approvals-1.webp" alt="Members Access Settings page with Allow Self-Signup, Require Admin Approval, Require Email Verification toggles, Default Role selector, and Member ID settings" />
+
+<Callout type="warning" title="No approval screen yet">
+There's currently no screen in your own dashboard to review and approve a pending self-registration — only a platform-level screen that SocietyLedger staff use. If you turn on **Require Admin Approval**, contact SocietyLedger support to approve pending members in the meantime.
+</Callout>
 
 ## What happens next
 
-## Related
+A self-registered member who needs approval can't sign in until that review happens; one who was [invited directly](/docs/members/inviting-members-to-log-in) skips approval entirely, since an officer already added them.
