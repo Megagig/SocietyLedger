@@ -111,6 +111,28 @@ async function main() {
   });
   console.log(`🏢 Association ready: ${association.name} (id=${association.id}, subdomain=${association.subdomain})`);
 
+  // Mark onboarding as already finished — without this, every login (any
+  // role) gets redirected to /onboarding instead of the dashboard, since
+  // nothing else in this seed creates the OnboardingProgress row the app
+  // checks. A real association reaches this state by finishing or
+  // skipping the wizard; this fixture starts there directly.
+  await prisma.onboardingProgress.upsert({
+    where: { associationId: association.id },
+    update: {},
+    create: {
+      associationId: association.id,
+      currentStep: 5,
+      completedSteps: [1, 2, 3, 4, 5],
+      profileCompleted: true,
+      teamInvited: true,
+      membersImported: true,
+      financeConfigured: true,
+      onboardingComplete: true,
+      completedAt: utc('2026-01-01'),
+    },
+  });
+  console.log('✅ Onboarding marked complete (so logins land on the dashboard, not the wizard)');
+
   // --- Login users (one per demo role) ----------------------------------
   async function ensureUser(email: string, role: string) {
     const existing = await prisma.user.findFirst({ where: { email, associationId: association.id } });
@@ -124,6 +146,7 @@ async function main() {
         role,
         associationId: association.id,
         isActive: true,
+        emailVerified: true,
         userApproval: { create: { approvalStatus: 'approved' } },
       },
     });
@@ -324,8 +347,8 @@ async function main() {
       title: '2026 Annual General Meeting',
       meetingType: MeetingType.AGM,
       status: MeetingStatus.COMPLETED,
-      startTime: utc('2026-06-14T10:00:00'),
-      endTime: utc('2026-06-14T12:30:00'),
+      startTime: new Date('2026-06-14T10:00:00Z'),
+      endTime: new Date('2026-06-14T12:30:00Z'),
       createdBy: adminUser.id,
     },
   });
@@ -335,7 +358,7 @@ async function main() {
       title: 'Quarterly General Meeting — Q4 2026',
       meetingType: MeetingType.REGULAR,
       status: MeetingStatus.SCHEDULED,
-      startTime: utc('2026-11-15T10:00:00'),
+      startTime: new Date('2026-11-15T10:00:00Z'),
       createdBy: adminUser.id,
     },
   });

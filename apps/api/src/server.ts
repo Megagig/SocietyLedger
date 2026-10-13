@@ -79,13 +79,24 @@ const corsOptions = {
 
     // Allow any subdomain of localhost:3000 (e.g., demo.localhost:3000)
     const localhostPattern = /^http:\/\/([a-z0-9-]+\.)?localhost:3000$/i;
-    
+
+    // DEV-ONLY: also allow any subdomain on any localhost port, so a second
+    // local web instance on a non-default port (e.g. a separate docs
+    // verification stack) still works with tenant subdomains. Never runs
+    // outside development.
+    const devLocalhostAnyPortPattern = /^http:\/\/([a-z0-9-]+\.)?localhost:\d+$/i;
+
     // Allow any subdomain of production domain (e.g., opuogunstate.societyledger.com.ng)
     // This pattern now also matches www.societyledger.com.ng
     const productionPattern = /^https:\/\/(www\.)?([a-z0-9-]+\.)?societyledger\.com\.ng$/i;
-    
+
     // Check if origin is in allowed list or matches subdomain pattern
-    if (allowedOrigins.includes(origin) || localhostPattern.test(origin) || productionPattern.test(origin)) {
+    if (
+      allowedOrigins.includes(origin) ||
+      localhostPattern.test(origin) ||
+      (process.env.NODE_ENV === 'development' && devLocalhostAnyPortPattern.test(origin)) ||
+      productionPattern.test(origin)
+    ) {
       callback(null, true);
     } else {
       callback(new Error(`Origin ${origin} not allowed by CORS`));

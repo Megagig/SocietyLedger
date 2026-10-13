@@ -1,4 +1,4 @@
-import { source } from '@/lib/source';
+import { source, isVisible } from '@/lib/source';
 import {
   DocsBody,
   DocsDescription,
@@ -42,6 +42,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
     page.data.type === 'overview'
       ? source.getPages().filter((candidate) => {
           if (candidate.url === page.url) return false;
+          if (!isVisible(candidate.url)) return false;
           const rest = candidate.url.slice(page.url.length);
           return candidate.url.startsWith(page.url) && rest.startsWith('/') && !rest.slice(1).includes('/');
         })
