@@ -279,9 +279,9 @@ export default function PollDetailPage() {
         {poll.options && poll.options.length > 0 ? (
           <div className="space-y-3">
             {poll.options.map((option) => {
-              const optionResult = results?.options?.find(o => o.option.id === option.id);
-              const percentage = optionResult?.percentage || 0;
-              const responseCount = optionResult?.responseCount || 0;
+              const optionResult = results?.options?.find(o => o.optionId === option.id);
+              const percentage = optionResult?.votePercentage || 0;
+              const responseCount = optionResult?.voteCount || 0;
               const isSelected = selectedOptions.includes(option.id);
               const showResults = poll.status !== 'DRAFT' && (poll.status !== 'ACTIVE' || hasResponded);
 
@@ -314,7 +314,7 @@ export default function PollDetailPage() {
                           {isSelected && <IconCheck size={14} className="text-white" />}
                         </div>
                       )}
-                      <span className="font-medium text-gray-900 dark:text-white">{option.text}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{option.optionText}</span>
                     </div>
                     {showResults && (
                       <div className="flex items-center gap-2 text-sm">

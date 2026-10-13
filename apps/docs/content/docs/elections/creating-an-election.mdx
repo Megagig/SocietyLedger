@@ -1,17 +1,35 @@
 ---
 title: "Creating an election and its positions"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Set up a new election and the positions being contested, in one guided flow."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/governance/elections/new", "GV8"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/elections/how-elections-work", "/docs/elections/nominations-and-candidates"]
 ---
+
+Create a new election and the positions being contested, as a single two-step form.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** role. Decide your nomination and voting windows before you start — see [How an election runs](/docs/elections/how-elections-work) for why these can't be changed once set.
+
+## Create the election
+
+<Steps>
+<Step>Go to <MenuPath items={["Governance", "Elections"]} /> and select **New Election**.</Step>
+<Step>Enter a **Title**, optional **Description**, and choose an **Election Type** — General, By-Election or Referendum.</Step>
+<Step>Set **Nomination Start/End Date** (optional) and **Voting Start/End Date** (required).</Step>
+<Step>Choose whether voting is **Anonymous** and whether members can **Abstain**, then select **Continue to Positions**.</Step>
+<Step>Add each position being contested — a **title** (e.g. "Treasurer"), optional description, and how many winners/candidates it allows.</Step>
+<Step>Select **Save Positions**, or **Skip for Now** to add positions later from the election's own page.</Step>
+</Steps>
+
+<Screenshot src="/images/elections/creating-an-election-1.webp" alt="Create New Election step 1 form with title, description, type, nomination and voting date fields" />
+<Screenshot src="/images/elections/creating-an-election-2.webp" alt="Create New Election step 2 form with two positions added, each showing title, description, max winners and min candidates fields" />
 
 ## What happens next
 
-## Related
+The election is created in **Draft**. Nobody sees it until you select **Open Nominations** — see [Nominations, self-nomination and approving candidates](/docs/elections/nominations-and-candidates).

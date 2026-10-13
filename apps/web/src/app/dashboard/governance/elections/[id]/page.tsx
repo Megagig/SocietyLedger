@@ -103,7 +103,7 @@ export default function ElectionDetailPage() {
   });
 
   const election = electionData?.data;
-  const candidates = candidatesData?.data?.candidates || [];
+  const candidates = candidatesData?.data || [];
   const voterStatus = voterStatusData?.data;
 
   // Status action mutations

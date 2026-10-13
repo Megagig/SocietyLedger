@@ -48,12 +48,12 @@ export default function NewPollPage() {
       title,
       description: description || undefined,
       pollType,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
+      startDate: startDate ? new Date(startDate).toISOString() : undefined,
+      endDate: endDate ? new Date(endDate).toISOString() : undefined,
       isAnonymous,
       allowMultipleResponses,
       maxSelections: pollType === 'MULTIPLE_CHOICE' ? maxSelections : undefined,
-      options: validOptions,
+      options: validOptions.map((text, index) => ({ optionText: text, orderNumber: index })),
     });
   };
 

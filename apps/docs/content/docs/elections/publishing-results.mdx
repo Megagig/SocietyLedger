@@ -1,17 +1,34 @@
 ---
 title: "Publishing results"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Mark an election's results as official — vote counts aren't visible in the app yet."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["GV9", "C8"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/elections/running-the-vote"]
 ---
+
+Once voting closes, publish the results to mark the election as officially decided.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** role. Voting must be **Closed** first — see [Opening and closing voting](/docs/elections/running-the-vote).
+
+## Publish results
+
+<Steps>
+<Step>Open the election from <MenuPath items={["Governance", "Elections"]} />.</Step>
+<Step>Select **Publish Results**.</Step>
+</Steps>
+
+<Screenshot src="/images/elections/publishing-results-1.webp" alt="Election page showing Results Published status after publishing, with the candidate list still visible" />
+
+<Callout type="warning" title="Vote counts aren't shown anywhere yet">
+Publishing results changes the election's status to **Results Published**, but there's currently no screen — not even this one — that shows how many votes each candidate received or who won. The votes are counted and stored correctly; announce results to your members outside the app for now (a notice, an announcement, or at your AGM) until a results view is added.
+</Callout>
 
 ## What happens next
 
-## Related
+The election's status becomes **Results Published**, and it stays available in your elections list as a historical record.

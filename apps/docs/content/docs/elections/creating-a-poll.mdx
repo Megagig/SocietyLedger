@@ -1,17 +1,34 @@
 ---
 title: "Creating a quick poll"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Ask members a yes/no, single-choice or multiple-choice question."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/governance/polls/new", "GV10"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/elections/poll-results"]
 ---
+
+Create a poll for a quick decision — a venue change, a meeting time, anything that doesn't need a full election.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** role.
+
+## Create the poll
+
+<Steps>
+<Step>Go to <MenuPath items={["Governance", "Polls"]} /> and select **New Poll**.</Step>
+<Step>Enter the **Poll Question** and an optional description.</Step>
+<Step>Choose a **Poll Type** — Single Choice, Multiple Choice, Yes/No, or Ranked Choice. Yes/No fills in its two options automatically.</Step>
+<Step>For other types, enter each **Option** — select **Add Option** for more.</Step>
+<Step>Set the **Start Date** and **End Date**.</Step>
+<Step>Choose whether responses are **Anonymous** and whether members can **change their response**, then select **Create Poll**.</Step>
+</Steps>
+
+<Screenshot src="/images/elections/creating-a-poll-1.webp" alt="Create New Poll form with a Yes/No question, pre-filled Yes and No options, and start/end date fields" />
 
 ## What happens next
 
-## Related
+The poll is created in **Draft**. Select **Start Poll** on its page when you're ready for members to respond — see [Poll results](/docs/elections/poll-results) for what members and officers see while it's running.
