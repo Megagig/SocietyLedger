@@ -1,17 +1,38 @@
 ---
 title: "Scheduling a meeting"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Set the date, type, location and quorum for a new meeting."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/governance/meetings/create", "GV2"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/meetings/building-an-agenda", "/docs/meetings/taking-attendance"]
 ---
+
+Schedule a regular meeting, an AGM, or an emergency meeting, and set where and when it happens.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** role — scheduling, editing and cancelling meetings is Administrator-only today, regardless of any other officer role a member holds. An association that wants to delegate this to a Secretary can create a [custom role](/docs/settings/custom-roles) with the same permission.
+
+## Schedule the meeting
+
+<Steps>
+<Step>Go to <MenuPath items={["Governance", "Meetings"]} /> and select **Schedule Meeting**.</Step>
+<Step>Enter a **Meeting Title** and choose a **Meeting Type** — Regular, Emergency, AGM, EGM, Committee or Special.</Step>
+<Step>Optionally set **Quorum Required** — the minimum number of members who must attend for the meeting to count as valid.</Step>
+<Step>Set the **Date** and **Start Time** — **End Time** is optional.</Step>
+<Step>Add a **Physical Location**, a **Virtual Meeting Link**, or both.</Step>
+<Step>Select **Schedule Meeting**.</Step>
+</Steps>
+
+<Screenshot src="/images/meetings/scheduling-a-meeting-1.webp" alt="Schedule New Meeting form with title, type, quorum, date, time and location fields filled in" />
+
+<Callout type="note" title="Add the agenda while you're here">
+The form on this page also has an **Agenda Items** section — see [Building the agenda](/docs/meetings/building-an-agenda) to fill it in before you save, or add items later from the meeting's own page.
+</Callout>
 
 ## What happens next
 
-## Related
+The meeting appears as **Scheduled** for every member of the association, with an in-app notification and an email sent to everyone. It stays **Scheduled** until you cancel it or a reminder fires 24 hours beforehand — there's currently no way to mark a meeting as held or completed from this screen; see [Cancelling or postponing a meeting](/docs/meetings/cancelling-or-postponing) if plans change.

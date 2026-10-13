@@ -1,17 +1,39 @@
 ---
 title: "Cancelling or postponing a meeting"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Cancel a scheduled meeting with a reason — and what to do if you're just moving the date."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["GV2"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/meetings/scheduling-a-meeting"]
 ---
+
+Cancel a meeting that scheduled but won't go ahead, with a reason that's recorded and shared with every member.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** role. Only a **Scheduled** meeting can be cancelled.
+
+<Callout type="danger" title="Cancelling can't be undone">
+Once a meeting is cancelled, there's no way to reopen it from the interface. If you're moving the date rather than calling it off entirely, see the postponing note below before you cancel.
+</Callout>
+
+## Cancel a meeting
+
+<Steps>
+<Step>Open the meeting from <MenuPath items={["Governance", "Meetings"]} /> and select **Cancel**.</Step>
+<Step>Enter a **reason for cancellation** — this is required.</Step>
+<Step>Select **Cancel Meeting** to confirm, or **Keep Meeting** to back out.</Step>
+</Steps>
+
+<Screenshot src="/images/meetings/cancelling-or-postponing-1.webp" alt="Cancel Meeting confirmation dialog with a required reason field, and Keep Meeting / Cancel Meeting buttons" />
+
+<Callout type="note" title="There's no separate 'postpone' action">
+Cancelling is the only option — there's no button that moves a meeting to a new date while keeping its agenda and invitees. To postpone, cancel the original with a reason like "rescheduling to [new date]," then [schedule a new meeting](/docs/meetings/scheduling-a-meeting) with the same agenda for the new date.
+</Callout>
 
 ## What happens next
 
-## Related
+The meeting shows as **Cancelled** with your reason, and every member gets an in-app notification and an email. Its agenda and any attendance already taken stay attached to the cancelled meeting as a record.

@@ -1,17 +1,36 @@
 ---
 title: "Taking attendance (on a laptop or phone)"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Mark who was present, late, absent or excused — and see quorum update live."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/governance/meetings/[id]", "GV4"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/meetings/scheduling-a-meeting", "/docs/meetings/attendance-history"]
 ---
+
+Mark attendance for a meeting's members, one at a time or all at once. The page works on a phone's browser, so you can take attendance from the floor of the meeting itself.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** role to initialize and mark attendance. There's no requirement that the meeting be in any particular state first — attendance can be taken on a scheduled meeting at any time, before, during or after it happens.
+
+## Take attendance
+
+<Steps>
+<Step>Open the meeting from <MenuPath items={["Governance", "Meetings"]} /> and select the **Attendance** tab.</Step>
+<Step>The first time, select **Initialize Attendance** to create a **Pending** record for every active member.</Step>
+<Step>For each member, use the status dropdown to mark them **Present**, **Late**, **Absent** or **Apology**.</Step>
+<Step>Select **Mark All Present** to set everyone still **Pending** to Present in one action, then adjust the exceptions individually.</Step>
+</Steps>
+
+<Screenshot src="/images/meetings/taking-attendance-1.webp" alt="Attendance List for a meeting with members marked Present, Late and Apology via status dropdowns, and a Mark All Present button" />
+
+<Callout type="note" title="Check-in time and notes aren't set from this screen">
+The attendance table has Check-in Time and Notes columns, but there's no field on this page to enter them — they stay blank unless set some other way.
+</Callout>
 
 ## What happens next
 
-## Related
+Each member gets a notification that their attendance was recorded. If the meeting has a **Quorum Required**, the Details tab shows whether quorum has been met based on everyone marked Present or Late. The numbers also feed [Attendance history](/docs/meetings/attendance-history).
