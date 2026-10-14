@@ -1,18 +1,46 @@
 ---
 title: "Asking questions about your association's finances"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Two ways to ask: a conversational assistant, and a natural-language data query."
 type: task
 audience: ["admin"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 module: ai
 covers: ["/dashboard/ai/assistant", "/dashboard/ai/query", "AI1"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/ai/limits-and-privacy", "/docs/ai/ai-reports"]
 ---
+
+Two related but distinct tools: the **AI Assistant** answers finance questions conversationally, and **Natural Language Data Query** turns a plain-English question into an actual data lookup.
 
 ## Before you start
 
-## Steps
+You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default.
+
+## Ask the AI Assistant
+
+<Steps>
+<Step>Go to <MenuPath items={["AI Assistant"]} />.</Step>
+<Step>Type a question in plain English — for example, "How much did we collect in dues this month?" — and select send.</Step>
+<Step>The assistant explains the answer in a normal sentence, not just a number.</Step>
+</Steps>
+
+<Screenshot src="/images/ai/asking-questions-1.webp" alt="AI Assistant chat interface with a question input and conversational responses" />
+
+## Query your data directly
+
+<Steps>
+<Step>Go to <MenuPath items={["AI Assistant", "Natural Language Query"]} />.</Step>
+<Step>Type a request like "Show me all active members" and select send.</Step>
+<Step>Results come back as actual data — a list or table — not a written explanation.</Step>
+</Steps>
+
+<Callout type="note" title="Which one to use">
+Ask the **Assistant** when you want an explanation ("why does this look low"); use **Natural Language Query** when you want a list or number back directly ("which members haven't paid this month").
+</Callout>
 
 ## What happens next
+
+Every question counts against your daily AI usage limit — see [AI usage limits and data privacy](/docs/ai/limits-and-privacy).
 
 ## Related
