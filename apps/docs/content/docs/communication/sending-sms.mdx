@@ -1,17 +1,34 @@
 ---
 title: "Sending an SMS"
-description: "Content pending — see context/build-plan.md for scheduling."
-type: task
+description: "What the SMS dashboard shows today, and why actually sending one currently fails."
+type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["/dashboard/communication/sms", "CM3"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/communications", "/dashboard/communications/quick-send"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/sms-campaigns", "/docs/communication/buying-sms-credits"]
 ---
 
-## Before you start
+SocietyLedger has a full SMS module — a dashboard, Quick Send, campaigns, templates and history — reachable from <MenuPath items={["Communication", "SMS Dashboard"]} />. The dashboard itself loads correctly.
 
-## Steps
+## How it works
 
-## What happens next
+<Callout type="danger" title="Quick Send currently fails every time">
+Opening <MenuPath items={["Communication", "Quick Send SMS"]} />, picking a recipient and a message, and selecting **Send Message** always fails with a validation error. The page sends each recipient as `{ type, value }`, but the API expects a plain phone number or member ID string — so the request is rejected before anything is sent. This isn't occasional; every attempt fails the same way, confirmed directly against the API. It's logged for a fix in a later phase; there's currently no way to send an SMS from this screen.
+</Callout>
 
-## Related
+<Screenshot src="/images/communication/sms-dashboard-1.webp" alt="SMS Dashboard showing 0 credits remaining, 0 messages sent, and Quick Actions for Send, Create Campaign and View History" />
+
+The dashboard shows your SMS credit balance, messages sent/delivered/failed, and active campaigns — all of which read correctly.
+
+## Why it matters
+
+Even if the data-format problem above is fixed, sending still needs **SMS credits** — see [Buying SMS credits](/docs/communication/buying-sms-credits), which has its own problems — and a live connection to the SMS provider (Termii), which isn't configured in this environment. Budget for both before relying on SMS.
+
+## What you can do
+
+<Screenshot src="/images/communication/sending-sms-1.webp" alt="Quick Send page with a recipient selector and message composer" />
+
+- [View message history](/docs/communication/sms-history) — this part works.
+- [SMS campaigns](/docs/communication/sms-campaigns) — has the same sending problem, plus one of its own.

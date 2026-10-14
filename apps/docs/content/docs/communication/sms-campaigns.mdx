@@ -1,17 +1,35 @@
 ---
 title: "SMS campaigns"
-description: "Content pending — see context/build-plan.md for scheduling."
-type: task
+description: "Bulk SMS to groups of members — currently broken in two separate ways."
+type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["/dashboard/communication/sms/campaigns", "CM4"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/communications/campaigns", "/dashboard/communications/campaigns/new"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/sending-sms", "/docs/communication/sms-templates"]
 ---
 
-## Before you start
+A campaign sends one message to a group of members — everyone, a category, or a hand-picked list — instead of one recipient at a time.
 
-## Steps
+## How it works
 
-## What happens next
+<MenuPath items={["Communication", "SMS Campaigns"]} /> lists existing campaigns, and **New Campaign** opens the builder: a name, a recipient type (All Members, By Category, By Status, or Custom Selection), an optional schedule date, and a message.
 
-## Related
+<Screenshot src="/images/communication/sms-campaigns-1.webp" alt="SMS Campaigns list, currently empty, with a New Campaign button" />
+
+<Callout type="danger" title="Two confirmed, separate problems">
+1. **Unless you choose "Custom Selection," there's nowhere to type a message.** Picking All Members, By Category or By Status replaces the whole message composer with a one-line description — the message box simply isn't there. Confirmed directly in the page: the composer only renders for Custom Selection.
+2. **Creating a campaign fails validation regardless of recipient type.** The recipient types this page sends (`all`, `category`, `status`, `custom`) don't match what the API accepts (`ALL_MEMBERS`, `MEMBER_CATEGORY`, `SELECTED_MEMBERS`, and others) — every create attempt is rejected, confirmed directly against the API.
+
+Both are logged for a fix in a later phase. There's currently no way to create a working campaign from this screen.
+</Callout>
+
+## Why it matters
+
+Campaigns are the only way to message a group rather than one member at a time — until this is fixed, use [Sending an announcement](/docs/communication/announcements) for group messages instead (it reaches the in-app centre and, optionally, email).
+
+## What you can do
+
+- [Sending an announcement](/docs/communication/announcements) — the working alternative for reaching a group today.
+- [SMS templates](/docs/communication/sms-templates)
