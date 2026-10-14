@@ -338,7 +338,7 @@ export const accountingController = {
 
       return res.status(200).json({
         success: true,
-        message: `Journal entry ${action}d successfully`,
+        message: `Journal entry ${action === 'reject' ? 'rejected' : 'approved'} successfully`,
         data: entry,
       });
     } catch (error: any) {

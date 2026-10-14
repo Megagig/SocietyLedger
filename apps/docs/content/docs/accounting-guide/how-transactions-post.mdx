@@ -1,14 +1,67 @@
 ---
 title: "How charges and payments post to accounts"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Which accounts a synced Finance transaction actually debits and credits."
 type: concept
 audience: ["officer"]
 platforms: ["web"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting/what-happens-automatically", "/docs/accounting-guide/journal-entries"]
 ---
+
+When a Finance transaction is synced, Accounting picks its debit and credit accounts automatically, based on the transaction's category type.
 
 ## How it works
 
+<Diagram alt="A Finance transaction, when synced, becomes a journal entry with a debit to a receivable or bank account and a matching credit to an income account, then posts to the ledger." caption="A synced transaction, start to finish">
+<svg viewBox="0 0 980 150" xmlns="http://www.w3.org/2000/svg" className="h-40 w-full max-w-4xl">
+  <rect x="10" y="40" width="190" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
+  <text x="105" y="65" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Finance transaction</text>
+  <text x="105" y="83" textAnchor="middle" fill="currentColor" fontSize="12">(e.g. a due)</text>
+
+  <rect x="256" y="40" width="190" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
+  <text x="351" y="65" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Sync Now</text>
+  <text x="351" y="83" textAnchor="middle" fill="currentColor" fontSize="12">(manual)</text>
+
+  <rect x="502" y="40" width="190" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
+  <text x="597" y="65" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Journal entry</text>
+  <text x="597" y="83" textAnchor="middle" fill="currentColor" fontSize="12">debit + credit lines</text>
+
+  <rect x="748" y="40" width="222" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
+  <text x="859" y="65" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Posted</text>
+  <text x="859" y="83" textAnchor="middle" fill="currentColor" fontSize="12">reflected in statements</text>
+
+  <defs>
+    <marker id="arrow-ht" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="currentColor" />
+    </marker>
+  </defs>
+  <line x1="202" y1="70" x2="253" y2="70" stroke="currentColor" strokeWidth="2" markerEnd="url(#arrow-ht)" />
+  <line x1="448" y1="70" x2="499" y2="70" stroke="currentColor" strokeWidth="2" markerEnd="url(#arrow-ht)" />
+  <line x1="694" y1="70" x2="745" y2="70" stroke="currentColor" strokeWidth="2" markerEnd="url(#arrow-ht)" />
+</svg>
+</Diagram>
+
+A synced transaction's category type decides which two accounts it touches:
+
+| Category type | Debit | Credit |
+|---|---|---|
+| Due | 1121 — Member Dues Receivable | 4110 — Membership Dues |
+| Levy | 1122 — Levy Receivable | 4200 — Levy Income |
+| Donation | 1112 — Bank Account - Operating | 4300 — Donation Income |
+| Penalty | 1121 — Member Dues Receivable | 4400 — Penalty Income |
+
+Worked example: a ₦5,000 due, once synced, posts as a debit of ₦5,000 to **Member Dues Receivable** and a credit of ₦5,000 to **Membership Dues** — the entry is created already **Posted**, skipping the draft/approval steps a manually-entered journal entry goes through.
+
+<Callout type="note" title="Receivable, not cash, until a payment is recorded">
+Syncing a transaction records what's *owed*, not cash received — it debits a receivable account. A separate payment against that transaction, once synced, is what moves the amount into a bank account.
+</Callout>
+
 ## Why it matters
 
+This is why a due can increase your income statement's revenue before a single naira actually arrives — the receivable side of the entry recognises the income once the charge exists, the same way the real README's own account-mapping table describes it.
+
 ## What you can do
+
+- [What happens automatically when money moves](/docs/accounting/what-happens-automatically) — why this requires a manual **Sync Now**, not nothing.
+- [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) — the equivalent workflow for anything you enter by hand.

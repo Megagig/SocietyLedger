@@ -1,15 +1,44 @@
 ---
 title: "Income statement in depth"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Revenue and expenses by account, for any period, with a comparison to the one before."
 type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/accounting/income-statement"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting/income-statement-at-a-glance", "/docs/accounting-guide/journal-entries"]
 ---
+
+The full income statement breaks revenue and expenses down by individual account, not just the totals shown on the dashboard.
 
 ## How it works
 
+<Steps>
+<Step>Go to <MenuPath items={["Accounting", "Income Statement"]} />.</Step>
+<Step>Pick a **Period** — This Month, Last Month, This Quarter, This Year, or a custom range.</Step>
+<Step>Toggle **Include Comparison** to see the same accounts for the period before.</Step>
+<Step>Select <UiLabel>Generate Report</UiLabel>.</Step>
+</Steps>
+
+<Screenshot src="/images/accounting-guide/income-statement-1.webp" alt="Income Statement report with revenue and expense accounts, Net Income total, and a period comparison column" />
+
+Worked example, for October 2026 with one posted entry so far:
+
+| Account | This period | Last period | Change |
+|---|---|---|---|
+| Revenue — Membership Dues | ₦50,000 | ₦0 | +₦50,000 |
+| **Total Revenue** | **₦50,000** | **₦0** | +₦50,000 |
+| Total Expenses | ₦0 | ₦0 | — |
+| **Net Income** | **₦50,000** | **₦0** | +₦50,000 |
+
+Only **Posted** entries are included — a draft or pending entry for the same amount wouldn't move these numbers yet.
+
 ## Why it matters
 
+The per-account breakdown is what shows *where* income or expense came from, not just whether the period was profitable — useful for spotting a category that's unexpectedly empty, which usually means unsynced activity rather than no activity.
+
 ## What you can do
+
+- [Your income statement at a glance](/docs/accounting/income-statement-at-a-glance) — the summary version.
+- [Balance sheet in depth](/docs/accounting-guide/balance-sheet) — what this period's net income does to your equity.

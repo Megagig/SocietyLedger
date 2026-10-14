@@ -1,17 +1,44 @@
 ---
 title: "Budgets, approval and variance"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Create a budget, move it to Active, and read how actual spending compares."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/accounting/budgets"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting/budgets", "/docs/accounting-guide/journal-entries"]
 ---
+
+A budget only tracks variance once it's Active — creating one is just the first of three steps.
 
 ## Before you start
 
-## Steps
+You need the **manage finances** permission to create a budget; approving and activating it needs **approve payments** (Administrators and Treasurers by default).
+
+## Create, approve and activate a budget
+
+<Steps>
+<Step>Go to <MenuPath items={["Accounting", "Budgets"]} /> and select <UiLabel>New Budget</UiLabel>.</Step>
+<Step>Set a **Name**, **Fiscal Year**, **Start Date** and **End Date**.</Step>
+<Step>Select <UiLabel>+ Add Item</UiLabel> for each account you want to budget, picking the **Account** and an **Annual Amount** — for example, ₦1,200,000 for Membership Dues.</Step>
+<Step>Select <UiLabel>Create Budget</UiLabel>. It starts as **Draft**.</Step>
+<Step>Open the budget and select <UiLabel>Approve</UiLabel>, then <UiLabel>Activate</UiLabel>. Activating closes any other budget already Active for the same fiscal year.</Step>
+</Steps>
+
+<Screenshot src="/images/accounting-guide/budgets-and-variance-1.webp" alt="Budgets list showing a 2026 Annual Budget with its fiscal year, period, total budget and Active status, and a New Budget button" />
+
+## Read the variance report
+
+<Steps>
+<Step>Select <UiLabel>View Variance</UiLabel> on any budget.</Step>
+<Step>Each account shows **Budget Amount**, **Actual Amount**, **Variance** and a status of **Under**, **On Track** or **Over**.</Step>
+</Steps>
+
+Worked example, partway through the year: a ₦1,200,000 annual budget for Membership Dues against ₦50,000 posted so far shows a variance of ₦1,150,000 and a status of **Under** — expected this early in the year, not necessarily a problem.
 
 ## What happens next
+
+Variance recalculates every time you open it — there's nothing to refresh or re-save. It only reflects **posted** journal entries, same as every other statement in this module.
 
 ## Related

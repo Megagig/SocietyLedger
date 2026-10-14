@@ -1,15 +1,44 @@
 ---
 title: "Balance sheet in depth"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Assets, liabilities and equity as of any date, broken down by account."
 type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/accounting/balance-sheet"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting/balance-sheet-at-a-glance", "/docs/accounting-guide/cash-flow"]
 ---
+
+The full balance sheet lists every account that has a balance, grouped under Assets, Liabilities and Equity.
 
 ## How it works
 
+<Steps>
+<Step>Go to <MenuPath items={["Accounting", "Balance Sheet"]} />.</Step>
+<Step>Pick an **As of Date** — it defaults to today.</Step>
+</Steps>
+
+<Screenshot src="/images/accounting-guide/balance-sheet-1.webp" alt="Balance Sheet report showing Assets, Liabilities and Equity sections with a green Balanced indicator" />
+
+Worked example, as of today, with one posted ₦50,000 dues entry:
+
+| Section | Account | Amount |
+|---|---|---|
+| Current Assets | Member Dues Receivable | ₦50,000 |
+| **Total Assets** | | **₦50,000** |
+| Current Liabilities | — | ₦0 |
+| **Total Liabilities** | | **₦0** |
+| Equity | Retained Earnings | ₦50,000 |
+| **Total Equity** | | **₦50,000** |
+
+**Retained Earnings** is calculated, not posted directly — it's what carries your accumulated net income from past periods into equity.
+
 ## Why it matters
 
+A balance sheet that doesn't balance (Assets ≠ Liabilities + Equity) means something was posted outside the normal double-entry flow — this should never happen through the journal entry and sync workflows alone, so treat it as a bug rather than something to correct manually.
+
 ## What you can do
+
+- [Your balance sheet at a glance](/docs/accounting/balance-sheet-at-a-glance) — the summary version.
+- [Cash flow statement](/docs/accounting-guide/cash-flow) — how much of this balance sheet's assets are actually cash, and where it moved from.

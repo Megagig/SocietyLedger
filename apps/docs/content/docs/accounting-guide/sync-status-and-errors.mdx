@@ -1,17 +1,41 @@
 ---
 title: "Sync status and fixing sync errors"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Read the sync numbers correctly, and know which modules can't sync yet no matter what you click."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/accounting/sync/*"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting/what-happens-automatically", "/docs/accounting-guide/journal-entries"]
 ---
+
+Sync status tells you how much of your financial activity has actually reached Accounting — and for two of the three modules it tracks, the honest answer is "none of it, and nothing you click will change that yet."
 
 ## Before you start
 
-## Steps
+You need the **manage settings** permission — this screen lives under Settings, not Accounting itself.
+
+## Check and fix sync status
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Accounting Integration"]} />.</Step>
+<Step>**Overall Sync Status** shows Total Records, Synced, Unsynced and an overall Sync Rate across every module.</Step>
+<Step>Under **Finance Module**, each of Transactions and Payments has its own **Sync Now** button — select it to sync everything currently unsynced for that type, up to 100 records per click. Repeat if Unsynced is still above 0 after it finishes.</Step>
+<Step>**Welfare Module** and **Cooperatives Module** show the same Total / Synced / Unsynced breakdown, but have no **Sync Now** button — see the callout below for why.</Step>
+<Step>If **Recent Sync Errors** appears, each row names the record and the error returned when syncing it failed.</Step>
+</Steps>
+
+<Screenshot src="/images/accounting-guide/sync-status-and-errors-1.webp" alt="Accounting Integration page showing Overall Sync Status, Finance Module sync rates with Sync Now buttons, and Welfare and Cooperatives modules with no sync button" />
+
+<Callout type="warning" title="Welfare and Cooperatives can't be synced at all yet">
+Only Finance transactions and payments can ever be synced — there's no **Sync Now** button for Welfare or Cooperatives because the feature to sync them doesn't exist yet, not because there's nothing to sync. Their 0% sync rate will never move.
+</Callout>
+
+A sync error is rare in practice — the most common cause is syncing before the chart of accounts has been initialized, which is why [setting up the chart of accounts](/docs/accounting-guide/chart-of-accounts) has to come first. If you see "Required accounts not found," that's what happened; initialize the standard accounts (or re-add whichever one was removed) and try **Sync Now** again.
 
 ## What happens next
+
+A successful sync posts a journal entry per record immediately — there's no approval step for synced entries, unlike one you create by hand. See [How charges and payments post to accounts](/docs/accounting-guide/how-transactions-post) for which accounts it uses.
 
 ## Related
