@@ -1,17 +1,43 @@
 ---
 title: "Cancelling and reactivating"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Cancel without losing the rest of a paid period, and undo it before that period ends."
 type: task
 audience: ["admin"]
 platforms: ["web"]
 covers: ["cancel", "reactivate"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/plan-billing/when-a-subscription-ends"]
 ---
+
+Cancelling doesn't end your subscription right away — it stops it from renewing at the end of the period you've already paid for.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default. Cancelling and reactivating only work on an **Active** (or **Past Due**) subscription — there's nothing to cancel during a trial, since a trial isn't a paid period yet.
+
+## Cancel your subscription
+
+<Steps>
+<Step>Go to <MenuPath items={["Subscription"]} />.</Step>
+<Step>Select <UiLabel>Cancel Subscription</UiLabel> and confirm.</Step>
+</Steps>
+
+## Reactivate before the period ends
+
+<Steps>
+<Step>Go back to <MenuPath items={["Subscription"]} /> any time before your current period ends.</Step>
+<Step>Select <UiLabel>Reactivate Subscription</UiLabel>.</Step>
+</Steps>
+
+<Screenshot src="/images/plan-billing/billing-history-1.webp" alt="Subscription page with plan details and a Cancel Subscription button" />
+
+<Callout type="note" title="Reactivating only works before the period actually ends">
+Cancelling just flags the subscription not to renew — your plan keeps working until the period you already paid for finishes. Reactivating simply clears that flag. Once the period actually ends, there's no "undo" — see [What happens when a subscription ends](/docs/plan-billing/when-a-subscription-ends).
+</Callout>
 
 ## What happens next
+
+A cancelled subscription keeps working normally until its current period ends, then follows the same path as any other lapsed subscription.
 
 ## Related

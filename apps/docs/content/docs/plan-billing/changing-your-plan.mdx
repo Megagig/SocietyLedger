@@ -1,17 +1,37 @@
 ---
 title: "Upgrading or downgrading"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Upgrades charge a prorated amount immediately; downgrades apply immediately too, despite the message."
 type: task
 audience: ["admin"]
 platforms: ["web"]
 covers: ["change-plan"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/plan-billing/plans-and-whats-included", "/docs/plan-billing/billing-history"]
 ---
+
+An upgrade charges you a prorated top-up right away; a downgrade changes your plan immediately too, even though SocietyLedger tells you otherwise.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default.
+
+## Change your plan
+
+<Steps>
+<Step>Go to <MenuPath items={["Subscription", "Plans"]} /> and select a different plan.</Step>
+<Step>**Upgrading** — SocietyLedger calculates a prorated amount for the rest of your current period and takes you to a real payment page to pay it immediately.</Step>
+<Step>**Downgrading** — SocietyLedger shows a message saying the change is "scheduled" for your current period's end date, with no payment required.</Step>
+</Steps>
+
+<Screenshot src="/images/plan-billing/plans-and-whats-included-1.webp" alt="Choose Your Plan page used for both subscribing and changing plans" />
+
+<Callout type="danger" title="A downgrade is not actually scheduled — it applies immediately">
+Confirmed live: right after downgrading, the subscription's plan had already changed — not at the stated future date. The "scheduled for [date]" message describes what was intended, not what the code does; there's no field anywhere that defers a plan change, so a downgrade takes effect the moment you confirm it, same as an upgrade.
+</Callout>
 
 ## What happens next
+
+An upgrade's new plan applies once payment is verified. A downgrade's new plan applies immediately, regardless of what the confirmation message says — plan for that if your association was relying on keeping a higher plan's features until the message's stated date.
 
 ## Related

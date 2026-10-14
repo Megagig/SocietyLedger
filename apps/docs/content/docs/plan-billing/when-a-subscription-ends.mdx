@@ -1,14 +1,28 @@
 ---
 title: "What happens when a subscription ends"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "No grace period exists yet, and today, nothing actually restricts what you can do either way."
 type: concept
 audience: ["admin"]
 platforms: ["web"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/plan-billing/cancelling-and-reactivating", "/docs/core-concepts/plans-and-modules"]
 ---
+
+In most billing systems, a lapsed subscription moves through a grace period before anything is restricted. SocietyLedger doesn't have that step yet — and right now, access doesn't change either way.
 
 ## How it works
 
+A scheduled daily check marks a subscription **Expired** the moment its current period ends — there's no past-due or grace window first, despite a status built for one existing in the system. Once marked **Expired**, the subscription page shows exactly what it shows for an association that has never subscribed at all: no subscription found.
+
+<Callout type="danger" title="Nothing currently depends on this status">
+Whether your account can access a module — Accounting, Cooperatives, or any plan-gated feature — is checked by a separate system that currently runs in "log only" mode: it writes a note that a module would be blocked, but never actually blocks it. Confirmed directly: an association with **no subscription at all** still has full access to every Enterprise-tier module. An expired, cancelled or never-started subscription has no practical effect on what your association can do today.
+</Callout>
+
 ## Why it matters
 
+Don't rely on expiring a subscription as a way to restrict access, and don't assume an upgrade is required to use a module your plan doesn't technically include — enforcement isn't switched on yet. Treat your subscription status as a billing record for now, not an access control.
+
 ## What you can do
+
+Keep paying on schedule regardless — this is expected to change, and your payment history and plan selection are both tracked accurately either way. See [Cancelling and reactivating](/docs/plan-billing/cancelling-and-reactivating) if you want to stop a renewal cleanly.
