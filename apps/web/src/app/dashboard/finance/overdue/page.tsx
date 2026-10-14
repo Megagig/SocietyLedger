@@ -8,6 +8,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 import { 
   AlertTriangle, Clock, DollarSign, Users, 
   CheckCircle, XCircle, Eye, RefreshCw
@@ -240,13 +241,16 @@ export default function OverduePage() {
           </p>
         </div>
         
-        <button
-          onClick={fetchOverdue}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <HelpLink />
+          <button
+            onClick={fetchOverdue}
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error && (

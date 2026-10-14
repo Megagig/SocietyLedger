@@ -27,6 +27,7 @@ import {
   type BankAccount,
 } from '@/lib/api/nigerian-payments';
 import api from '@/lib/axios';
+import { HelpLink } from '@/components/docs/HelpLink';
 import { notifications } from '@mantine/notifications';
 
 interface Member {
@@ -162,12 +163,15 @@ export default function RecordTransferPage() {
           <LoadingOverlay visible={loading} />
 
           <Stack gap="lg">
-            <div>
-              <Title order={2}>Record Bank Transfer</Title>
-              <Text size="sm" c="dimmed">
-                Record a bank transfer received from a member
-              </Text>
-            </div>
+            <Group justify="space-between" align="flex-start">
+              <div>
+                <Title order={2}>Record Bank Transfer</Title>
+                <Text size="sm" c="dimmed">
+                  Record a bank transfer received from a member
+                </Text>
+              </div>
+              <HelpLink />
+            </Group>
 
             <Alert icon={<AlertCircle size={16} />} color="blue">
               Record bank transfers to track payments and reconcile with transactions

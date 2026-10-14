@@ -1,9 +1,34 @@
 ---
 title: "Communication & SMS FAQ"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Common questions about SMS campaigns, credits, and notification channels."
 type: faq
 audience: ["all"]
 platforms: ["web", "mobile"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/sending-sms", "/docs/communication/announcements"]
 ---
 
+## I topped up SMS credits — why wasn't I actually charged?
+
+Today, submitting the top-up form adds the credits to your balance immediately regardless of payment method, without taking a real payment. Don't rely on it for billing purposes — contact SocietyLedger support for SMS credit purchases instead. See [Buying SMS credits](/docs/communication/buying-sms-credits).
+
+## Why can't I create a working SMS campaign?
+
+Creating a campaign currently fails, and the message box only appears if you choose Custom Selection as the recipient type. Use an announcement to reach a group of members instead until this is fixed; see [SMS campaigns](/docs/communication/sms-campaigns) and [Sending an announcement](/docs/communication/announcements).
+
+## What's the difference between an announcement and an SMS campaign?
+
+An announcement reaches the in-app notification centre and, optionally, email — and works reliably today. A campaign is meant to send bulk SMS to a group, but isn't currently usable; see [Sending an announcement](/docs/communication/announcements) and [SMS campaigns](/docs/communication/sms-campaigns).
+
+## Can I use placeholders like the member's name in an SMS?
+
+Yes — templates support variables such as the member's name or the amount owed, which get filled in per recipient. See [SMS templates](/docs/communication/sms-templates).
+
+## How do I check whether an SMS actually got delivered?
+
+Each message's delivery status is tracked and visible in your SMS history. See [SMS history](/docs/communication/sms-history).
+
+## If I turn off SMS notifications for a category, will I really stop getting them?
+
+Not today — notification preference toggles and quiet hours save correctly but don't currently affect which notifications actually go out; every category still sends through every channel. See [Choosing which notifications you get](/docs/member-guide/notification-preferences).

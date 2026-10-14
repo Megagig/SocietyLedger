@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { IconUsers, IconBrandFacebook, IconBrandInstagram, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconPhone, IconMail, IconBrandWhatsapp } from '@tabler/icons-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { docsUrl } from '@/lib/docs';
 
 export default function Footer() {
   const { trackSocialClick } = useAnalytics();
@@ -89,9 +90,14 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/documentation" className="text-gray-400 hover:text-teal-400 transition-colors">
+                <a
+                  href={docsUrl('/docs', 'web_footer')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-teal-400 transition-colors"
+                >
                   Documentation
-                </Link>
+                </a>
               </li>
               <li>
                 <Link href="/blog" className="text-gray-400 hover:text-teal-400 transition-colors">

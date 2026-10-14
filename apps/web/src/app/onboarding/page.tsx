@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
+import { docsUrl } from '@/lib/docs';
 
 interface OnboardingStatus {
   onboarding: {
@@ -230,6 +231,17 @@ function OnboardingContent() {
           >
             {isRerunMode ? 'Import Members' : currentStep === 1 ? 'Get Started' : 'Continue Setup'}
           </button>
+        </div>
+
+        <div className="text-center mt-6">
+          <a
+            href={docsUrl('/docs/getting-started/onboarding-wizard', 'web_onboarding')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+          >
+            Need help? See the setup guide
+          </a>
         </div>
       </div>
     </div>

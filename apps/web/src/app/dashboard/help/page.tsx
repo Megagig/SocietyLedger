@@ -25,11 +25,13 @@ import {
   IconMessageCircle,
   IconSparkles,
   IconPencil,
+  IconBook2,
 } from '@tabler/icons-react';
 import { getHelpCenter, searchArticles, HelpArticle, FAQItem, QuickAction } from '@/lib/api/help';
 import { getOpenTicketCount } from '@/lib/api/support';
 import { AIChatbot } from '@/components/help/AIChatbot';
 import { useAuthStore } from '@/store/authStore';
+import { docsUrl } from '@/lib/docs';
 
 // Icon mapping for quick actions
 const iconMap: Record<string, React.ReactNode> = {
@@ -368,6 +370,27 @@ export default function HelpPage() {
               <IconMessageCircle size={18} />
               Start Chat
             </button>
+          </div>
+
+          {/* User Manual Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                <IconBook2 size={20} className="text-teal-600 dark:text-teal-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">User Manual</h3>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">The full SocietyLedger guide</p>
+              </div>
+            </div>
+            <a
+              href={docsUrl('/docs', 'web_help_center')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full block text-center bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-medium py-2 px-4 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors"
+            >
+              Read the full user manual
+            </a>
           </div>
 
           {/* Browse by Category */}

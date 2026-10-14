@@ -13,17 +13,26 @@ The web app is finished, so the documentation site ships **first**. The admin co
 | 4 | **Docs Phase D4** — Community & services | D4.1 – D4.5 |
 | 5 | **Docs Phase D5** — Admin | D5.1 – D5.4 |
 | 6 | **Docs Phase D6** — Reference, integration & launch | D6.1 – D6.4 → **Milestone DL: docs live** |
-| 7 | **Admin Phase A1** — Backend, scaffold & shell | A1.1 – A1.7 |
-| 8 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
-| 9 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
-| 10 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
-| 11 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
-| 12 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
-| 13 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
-| 14 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
-| 15 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
+| 7 | **Remediation Phase R0** — Decisions needed | R0.1 – R0.6 (owner decisions; nothing else in Track R starts until these are made) |
+| 8 | **Remediation Phase R1** — Security, financial integrity & tooling | R1.1 – R1.6 |
+| 9 | **Remediation Phase R2** — Governance core functionality | R2.1 – R2.7 |
+| 10 | **Remediation Phase R3** — Communication & notifications | R3.1 – R3.6 |
+| 11 | **Remediation Phase R4** — Settings & billing correctness | R4.1 – R4.5 |
+| 12 | **Remediation Phase R5** — Accounting completeness | R5.1 – R5.5 |
+| 13 | **Remediation Phase R6** — Remaining functional gaps & hygiene | R6.1 – R6.16 → **Milestone RL: gap log clear** |
+| 14 | **Admin Phase A1** — Backend, scaffold & shell | A1.1 – A1.7 |
+| 15 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
+| 16 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
+| 17 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
+| 18 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
+| 19 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
+| 20 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
+| 21 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
+| 22 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
 
-If the owner runs agents in parallel: the docs track (D) and the admin track (A) touch different apps and may run side by side, **except** D6.3 and A3.1 both edit `apps/web` — do them one after the other, D6.3 first. The mobile track starts after Milestone AL (mobile login relies on `PLATFORM_LOGIN_REQUIRED` and reserved subdomains). Each track goes strictly in order, and D7.x waits for its mobile milestone.
+**The owner has explicitly asked that Track R (gap remediation) run to completion — every gap resolved, declined, or deferred with a recorded reason — before Admin Phase A1 begins** (2026-10-14). This supersedes the earlier "D and A may run in parallel" note below for this point in the sequence: nothing in Track A starts until Track R's Milestone RL.
+
+If the owner runs agents in parallel within a track: Track R's phases touch `apps/api` and `apps/web` throughout, so do not run R-phases concurrently with each other (later phases may touch files earlier phases already changed) — strictly sequential, R0 → R1 → … → R6. Once Track R reaches Milestone RL, the original parallelism note applies again: the admin track (A) and the (now-finished) docs track don't overlap, so there's nothing left to parallelize there, but **D6.3 and A3.1 both editing `apps/web` is moot** since D6.3 already shipped before Track R started. The mobile track starts after Milestone AL (mobile login relies on `PLATFORM_LOGIN_REQUIRED` and reserved subdomains). Each track goes strictly in order, and D7.x waits for its mobile milestone.
 
 ## How to run a feature
 1. Read `progress-tracker.md` → find the next unchecked feature in the Master sequence.
@@ -143,6 +152,102 @@ Migrate `docs/reports/*`.
 - Publish §9.6.18 pages relevant to members, the mobile-only account pages from D2.3, `mobile-app-faq`; add `PlatformTabs` mobile steps + mobile screenshots (Maestro) to every Member guide page and Getting started pages; store links live.
 ### D7.2 Mobile docs: officer features (after mobile Milestone M3)
 - `officer-tasks-on-the-go`; mobile steps/screenshots for officer pages in Members, Finance, Payments, Meetings, Elections, Welfare, Cooperatives, Communication, Settings where the screen exists on mobile; update `whats-web-only`.
+
+---
+
+# Track R — Gap Remediation (owner-requested, 2026-10-14)
+
+> Every open gap logged in `progress-tracker.md`'s Backend gaps table (G1–G72, minus the ones already closed, accepted for v1, or already sequenced into Admin/Mobile work — see the exclusion note at the end of this section) organized into phases, ordered **security/financial integrity first, then functional dead-ends, then settings/billing correctness, then accounting completeness, then everything else**. Each phase is strictly sequential (R0 → R6) and touches `apps/api`/`apps/web` outside the mobile/admin scope architecture.md's rule #14 otherwise restricts — the owner has explicitly approved that for this track. **Track R must reach Milestone RL before Admin Phase A1 begins.**
+
+## Remediation Definition of Done (applies to every feature, R0–R6)
+- Read the named gap(s) in `progress-tracker.md`'s Backend gaps table first — each already has the confirmed root cause, affected screens/routes, and a proposed fix; implement that fix (or the decision reached in R0 for gaps that reference one).
+- Verify live against the local stack the same way every gap was originally found (direct API calls and/or a real click-through as the right role), not just by reading code.
+- Update the gap's **Status** column in `progress-tracker.md` to `resolved` (with the date and a one-line note of what changed) — or `declined`/`deferred` with the reason, if that's what's decided. Never leave a Track R gap `open` once its phase is marked done.
+- `type-check`, lint and existing tests pass for every package touched (R1.1 fixes `apps/api`'s currently-broken `type-check` first, specifically so the rest of Track R can rely on it).
+- No new gap introduced silently — if a fix surfaces a new issue, log it as a new G-number rather than leaving it undocumented.
+
+## Remediation Phase R0 — Decisions needed
+*Nothing else in Track R starts until these are resolved — several later phases' scope depends on the answers.*
+### R0.1 Module/plan gating enforcement (G13)
+Decide whether/when to flip `FEATURE_FLAG_MODE` to `enforce`, and whether the frontend's locked/upgrade state ships before or alongside that flip.
+### R0.2 Member self-service permission scope (G16)
+Design real `_own`-scoped permissions for voting/welfare/cooperatives, or formally accept the current broad officer-level grants as intentional for v1.
+### R0.3 Member payment verification model (G17)
+Decide whether the web's unverified self-declare payment flow is acceptable long-term, or should be gated now rather than waiting on mobile's real Paystack/proof-upload flow.
+### R0.4 Behavioral settings scope (G53)
+Per category (Financial, Payment, Notification, Members & Access, Data & Privacy, Integrations) — decide whether to wire real enforcement, or be upfront that the category is a roadmap/preferences page today.
+### R0.5 SMS implementation direction (G38)
+Delete the orphaned `/dashboard/communication/sms/*` pages, or rewrite the linked `/dashboard/communications/*` pages (and `lib/api/sms.ts`) to match the real API. This decision sets R3's actual scope.
+### R0.6 Tenant-level self-registration approval (G65)
+Decide whether an association admin should get their own approval screen for self-registered members, or whether platform-only approval is intentional for this version.
+- **DoD:** every decision above recorded in `progress-tracker.md`'s Decisions log with the owner's choice and reasoning; R1–R6 below updated if a decision changes a phase's scope.
+
+## Remediation Phase R1 — Security, financial integrity & tooling
+### R1.1 Fix `apps/api`'s broken `type-check` (G69)
+Annotate the exported `Router` type in each of the ~38 route files that currently fail `TS2742` once `ignoreDeprecations`/`moduleResolution` are corrected — do this first so every later Track R fix in `apps/api` can be verified with a working `type-check`.
+### R1.2 RBAC on export endpoints (G25)
+### R1.3 Real authorization for meeting minutes & attendance (G26 — absorbs G3)
+### R1.4 Real payment gate on SMS credit top-up (G41)
+### R1.5 Accounting integration: real auto-sync or honest banner (G45)
+### R1.6 Enforce the self-signup setting (G52)
+- **DoD:** each gap's proposed fix implemented and verified live (a real unauthorized request correctly rejected, a real payment correctly required, etc.) — these are the gaps most likely to be user-facing security or money problems, so no partial fixes.
+
+## Remediation Phase R2 — Governance core functionality
+### R2.1 Fix the Start Voting dead end (G28)
+### R2.2 Build a candidate-management screen (G29)
+### R2.3 Build an election results view (G30)
+### R2.4 Meeting edit, lifecycle transitions & agenda editing (G27)
+### R2.5 Election/poll edit links (G31)
+### R2.6 Voter eligibility & turnout display (G32)
+### R2.7 Wire up member my-meetings/my-voting (G19)
+- **DoD:** a real election can be created, have candidates added and approved, go to voting, close, and show results — end to end, with no direct API call needed at any step.
+
+## Remediation Phase R3 — Communication & notifications
+*Scope depends on R0.5's decision.*
+### R3.1 Consolidate the SMS implementation per R0.5 (G38)
+### R3.2 Fix SMS write-action payload shapes (G39)
+### R3.3 Fix the campaign message box for every recipient type (G40)
+### R3.4 Real email + scheduled job for payment reminders (G43)
+### R3.5 Remove the duplicate orphaned announcement page (G44)
+### R3.6 Real enforcement for notification preferences (G14, G42 — same root cause)
+- **DoD:** a real SMS campaign can be created and sent to each recipient type; a member who turns off a notification channel actually stops receiving it on that channel.
+
+## Remediation Phase R4 — Settings & billing correctness
+### R4.1 Plan downgrade: real deferred-change mechanism or honest messaging (G54)
+### R4.2 PAST_DUE grace period or remove the dead status (G55)
+### R4.3 Trial "no card required" claim vs. reality (G56)
+### R4.4 Tenant-scoped audit log endpoint (G51)
+### R4.5 Member ID format consistency (G20)
+- **DoD:** each gap's proposed fix implemented; `settings/audit-logs` works for a real tenant Administrator; the Plans page's copy matches what checkout actually does.
+
+## Remediation Phase R5 — Accounting completeness
+### R5.1 Welfare & Cooperatives accounting sync (G46)
+### R5.2 Accounting periods: open/close/lock (G47)
+### R5.3 Consolidate the double-posting sync paths (G48)
+### R5.4 Delete the dead duplicate sync controller (G49)
+### R5.5 Fail loudly on an unmapped category type (G50)
+- **DoD:** a Welfare contribution and a Cooperative loan repayment both reach a real journal entry the same way a Finance transaction does; syncing the same record twice never double-posts.
+
+## Remediation Phase R6 — Remaining functional gaps & hygiene
+### R6.1 Member profile 404 toast (G15)
+### R6.2 Ledger itemised entries never populated post-sync (G18)
+### R6.3 Waive-penalty UI trigger (G21)
+### R6.4 Outstanding-balance figures wrong in two places (G22, G70 — check for a shared root cause before fixing separately)
+### R6.5 Nigerian bank-transfer page missing `useEffect` call (G23)
+### R6.6 Welfare fund deep-link ignored (G33)
+### R6.7 Bereavement request: dedicated form fields (G34)
+### R6.8 Savings account detail dead link (G35)
+### R6.9 Loan `nextPaymentDate` null (G36)
+### R6.10 Unified officer cooperative-profile screen (G37)
+### R6.11 Permission/payment-method data hygiene (G57, G58)
+### R6.12 Docs CMS slug redirect map (G59 — needs a live `DocPage` inventory)
+### R6.13 `apps/web` ESLint configuration (G60)
+### R6.14 Hardcoded local-dev URLs (G64, G72)
+### R6.15 Seed-ordering real fix & RBAC cache invalidation (G66, G67)
+### R6.16 Support email consistency & penalty "null" text (G68, G71)
+- **DoD:** every gap above resolved, declined or deferred with a reason — this closes out the Backend gaps table down to only genuinely future/v2 items. **Milestone RL: gap log clear.**
+
+**Excluded from Track R** (already closed, accepted for v1, or already correctly sequenced into a later track — not re-done here): G2 (F1.3), G4 (approved for F0.5), G5 (won't do), G6 (resolved — D6.3 shipped the redirect), G7 (GA4 accepted for v1), G8/G9/G10/G11 (Admin Phase A1/A3 scope), G12 (resolved), G61–G63 (D6.4 owner/infrastructure handoff, not engineering work).
 
 ---
 

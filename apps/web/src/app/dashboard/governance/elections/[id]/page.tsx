@@ -36,6 +36,7 @@ import {
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
 import { Text } from '@mantine/core';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 // Helper functions
 const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -237,6 +238,7 @@ export default function ElectionDetailPage() {
         
         {/* Action Buttons based on status */}
         <div className="flex gap-2">
+          <HelpLink />
           {election.status === 'DRAFT' && (
             <>
               <Link

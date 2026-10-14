@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -100,9 +101,12 @@ export default function DashboardPage() {
     <>
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          Dashboard
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+            Dashboard
+          </h1>
+          <HelpLink />
+        </div>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here's your overview</p>
       </div>
 
@@ -368,9 +372,12 @@ function EmptyDashboard() {
   return (
     <>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          Dashboard
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+            Dashboard
+          </h1>
+          <HelpLink />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">Welcome! Let's get started</p>
       </div>
 

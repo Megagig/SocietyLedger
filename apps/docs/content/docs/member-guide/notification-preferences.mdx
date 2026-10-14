@@ -1,12 +1,12 @@
 ---
 title: "Choosing which notifications you get"
-description: "Pick which events notify you, by email, SMS or in-app, and set quiet hours."
+description: "Pick which events notify you, by email, SMS or in-app — though these toggles don't act on anything yet."
 type: task
 audience: ["member"]
 platforms: ["web"]
 covers: ["/dashboard/notifications/preferences", "N2"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-14"
 related: ["/docs/core-concepts/notifications-and-channels"]
 ---
 
@@ -26,6 +26,10 @@ You need the **view notifications** permission, which every member has by defaul
 
 <Screenshot src="/images/member-guide/notification-preferences-1.webp" alt="Notification Preferences page listing notification types with Email, SMS and In-App toggles, and a Quiet Hours section with start and end time fields" />
 
+<Callout type="danger" title="These toggles don't change anything yet">
+Your choices save and this screen correctly shows them back to you, but nothing that actually sends a notification anywhere in SocietyLedger checks them yet — confirmed by reading every notification sender in the codebase. You'll keep getting every notification through every channel regardless of what you turn off here, and quiet hours aren't respected either. Preferences are also stored in server memory rather than a database, so they're lost on every server restart.
+</Callout>
+
 ## What happens next
 
-Your choices take effect immediately — the next matching event only notifies you through the channels you've left on.
+Your choices are saved, but — as the callout above explains — they don't change which notifications you actually receive today.

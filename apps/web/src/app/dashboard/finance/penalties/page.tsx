@@ -8,6 +8,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 import { 
   Gavel, Plus, Edit, Trash2, AlertTriangle,
   Clock, CheckCircle, Search, Settings, History, XCircle, TrendingUp
@@ -458,6 +459,7 @@ export default function PenaltiesPage() {
         </div>
         
         <div className="flex flex-wrap gap-2">
+          <HelpLink />
           <Can permission={PERMISSIONS.FINANCE_APPROVE}>
             <button
               onClick={handleApplyLateFees}

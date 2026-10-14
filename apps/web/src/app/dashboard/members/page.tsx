@@ -10,6 +10,7 @@ import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { Search, Plus, Edit, Trash2, Eye, UserPlus } from 'lucide-react';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function MembersPage() {
   const router = useRouter();
@@ -121,6 +122,7 @@ export default function MembersPage() {
         </div>
         
         <div className="flex items-center gap-2">
+          <HelpLink />
           <Can permission={PERMISSIONS.MEMBER_CREATE}>
             <button
               onClick={() => router.push('/dashboard/members/invite')}

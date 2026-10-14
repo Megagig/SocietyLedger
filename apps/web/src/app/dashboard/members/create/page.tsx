@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
 import { getTenantHeaders } from '@/utils/tenant';
 import { ArrowLeft, Save } from 'lucide-react';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function CreateMemberPage() {
   const router = useRouter();
@@ -106,9 +107,12 @@ export default function CreateMemberPage() {
           Back
         </button>
         
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Add New Member
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Add New Member
+          </h1>
+          <HelpLink />
+        </div>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
           Fill in the member information below
         </p>

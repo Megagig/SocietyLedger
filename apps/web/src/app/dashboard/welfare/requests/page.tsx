@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
+import { HelpLink } from '@/components/docs/HelpLink';
 import {
   IconHeart, IconPlus, IconCheck, IconX, IconCash,
   IconEye, IconFilter, IconAlertTriangle
@@ -187,15 +188,18 @@ export default function PayoutRequestsPage() {
             Request and manage welfare support payouts
           </p>
         </div>
-        {canRequest && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto"
-          >
-            <IconPlus size={18} />
-            Request Support
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <HelpLink />
+          {canRequest && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto"
+            >
+              <IconPlus size={18} />
+              Request Support
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

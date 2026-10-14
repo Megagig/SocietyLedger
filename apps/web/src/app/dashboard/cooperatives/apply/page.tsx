@@ -10,6 +10,7 @@ import {
 import { getLoanProducts, createLoanApplication, getMyCooperativeProfile } from '@/lib/api/cooperatives';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface LoanProduct {
   id: number;
@@ -195,6 +196,7 @@ export default function ApplyForLoanPage() {
           </h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Complete the form to submit your loan application</p>
         </div>
+        <HelpLink />
       </div>
 
       {/* Eligibility Info */}

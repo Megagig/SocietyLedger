@@ -8,6 +8,7 @@ import { getTenantHeaders } from '@/utils/tenant';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
 import { Text } from '@mantine/core';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function SubscriptionPage() {
   const router = useRouter();
@@ -163,9 +164,12 @@ export default function SubscriptionPage() {
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-          Subscription Details
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            Subscription Details
+          </h1>
+          <HelpLink />
+        </div>
         <button
           onClick={() => router.push('/dashboard/subscription/plans')}
           className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium text-sm sm:text-base"
