@@ -1,15 +1,29 @@
 ---
 title: "Accounting periods and closing"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "What an accounting period is meant to do, and why there's nothing to set up yet."
 type: concept
 audience: ["officer"]
 platforms: ["web"]
 covers: ["AccountingPeriod"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting-guide/journal-entries"]
 ---
+
+In most accounting systems, a period you close or lock stops new entries from being backdated into it. SocietyLedger has the underlying data model for this, but no screen or action to use it yet.
 
 ## How it works
 
+<Callout type="note" title="Not available today">
+There's no page to open, close or lock a period, and no option anywhere in Accounting that checks whether a period is open before letting you post an entry. Every journal entry can be dated into any past or future period, closed or not, because nothing enforces a period's status.
+</Callout>
+
+If this changes in a future release, the concept is: a period (typically a month or a fiscal year) starts **Open**, moves to **Closed** once your books for it are final, and can be **Locked** to prevent even an administrator from reopening it.
+
 ## Why it matters
 
+Until period locking exists, your only real safeguard against an old journal entry being backdated into a period you consider "closed" is reviewing recent entries yourself — see [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) for the approval step that at least ensures a second person saw it first.
+
 ## What you can do
+
+- [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) — the approval workflow that applies regardless of date.

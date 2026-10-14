@@ -35,7 +35,7 @@ export const source = loader({
 
 const showDrafts = process.env.NEXT_PUBLIC_SHOW_DRAFTS === 'true';
 
-function isVisible(url: string): boolean {
+export function isVisible(url: string): boolean {
   if (showDrafts) return true;
   const entry = source.getPageByHref(url);
   return entry?.page.data.status !== 'draft';

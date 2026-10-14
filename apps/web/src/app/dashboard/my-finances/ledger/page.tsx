@@ -9,6 +9,7 @@ import {
   IconAdjustments, IconDownload, IconCalendar, IconFilter, IconRefresh
 } from '@tabler/icons-react';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 import {
   getMyLedgerSummary, getMyLedgerEntries, getMyStatement, exportMyStatement,
   LedgerSummary, LedgerEntry, LedgerStatement
@@ -181,14 +182,17 @@ export default function MyLedgerPage() {
             Complete history of all your financial activity
           </p>
         </div>
-        <button
-          onClick={handleExportPDF}
-          disabled={isExporting}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
-        >
-          <IconDownload size={18} />
-          {isExporting ? 'Exporting...' : 'Export PDF'}
-        </button>
+        <div className="flex items-center gap-2">
+          <HelpLink />
+          <button
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+          >
+            <IconDownload size={18} />
+            {isExporting ? 'Exporting...' : 'Export PDF'}
+          </button>
+        </div>
       </div>
 
       {/* Balance Card */}

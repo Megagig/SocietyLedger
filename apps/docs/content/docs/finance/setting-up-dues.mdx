@@ -1,17 +1,33 @@
 ---
 title: "Setting up recurring dues"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Generate dues charges for every member at once from a dues category."
 type: task
 audience: ["officer"]
 platforms: ["web"]
 covers: ["/dashboard/finance/dues"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/financial-categories", "/docs/finance/creating-charges"]
 ---
+
+Due Generation turns a dues category into real charges for the members you choose — the quickest way to bill everyone for the month at once.
 
 ## Before you start
 
-## Steps
+You need a **Due**-type category already set up — see [Setting up financial categories](/docs/finance/financial-categories).
+
+## Generate dues
+
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Dues"]} />.</Step>
+<Step>Choose a **Due Category**. Its usual amount fills in automatically — override it under **Amount** if this round is different.</Step>
+<Step>Set a **Due Date** and any **Notes**.</Step>
+<Step>Filter members by status if needed, then **Select All** or tick individual members.</Step>
+<Step>Check the **Summary** — selected members, amount per member, total — then select **Generate Dues**.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/setting-up-dues-1.webp" alt="Due Generation page with a Due Category selected, Amount and Due Date fields, a Summary panel, and a member selection list" />
 
 ## What happens next
 
-## Related
+One charge is created per selected member, each showing as <StatusChip status="pending" /> until paid or overdue — the same as [charging members individually](/docs/finance/creating-charges), just for everyone at once.

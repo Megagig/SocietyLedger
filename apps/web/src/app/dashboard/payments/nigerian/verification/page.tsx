@@ -30,6 +30,7 @@ import {
   IconSearch
 } from '@tabler/icons-react';
 import nigerianPaymentsApi, { PaymentProof } from '@/lib/api/nigerian-payments';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function PaymentVerificationQueue() {
   const router = useRouter();
@@ -157,7 +158,10 @@ export default function PaymentVerificationQueue() {
   return (
     <div className="p-6">
       <Group justify="space-between" mb="md">
-        <Title order={2}>Payment Verification Queue</Title>
+        <Group gap="xs">
+          <Title order={2}>Payment Verification Queue</Title>
+          <HelpLink />
+        </Group>
         <Button onClick={loadProofs} variant="subtle" leftSection={<IconRefresh size={18} />}>
           Refresh
         </Button>

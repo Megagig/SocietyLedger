@@ -1,17 +1,37 @@
 ---
 title: "Sending an announcement"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Broadcast a message to every member in your association at once."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["/dashboard/communication/announcements/new", "CM2"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/communication/announcements"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/in-app-notifications", "/docs/communication/email"]
 ---
+
+An announcement reaches every active member at once — it lands in each member's notification centre, and can also go out by email.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** role — announcements aren't available to other officer roles.
+
+## Send an announcement
+
+<Steps>
+<Step>Go to <MenuPath items={["Communication", "Announcements"]} />.</Step>
+<Step>Enter a **Title** (up to 200 characters) and your **Message** (up to 2,000 characters).</Step>
+<Step>Pick a **Priority** — Info, Warning or Urgent. This only changes the colour of the preview; it doesn't change delivery.</Step>
+<Step>Tick **Also send via email** if you want members to receive it in their inbox too, not just in-app.</Step>
+<Step>Select **Send Announcement**.</Step>
+</Steps>
+
+<Screenshot src="/images/communication/announcements-1.webp" alt="Send Announcement form with a title, message, priority selector set to Info, and the send-via-email checkbox" />
 
 ## What happens next
 
-## Related
+Every active member gets a new notification (title prefixed with 📢) in their [notifications centre](/docs/communication/in-app-notifications). If you ticked **Also send via email**, each member with an email on file also gets it by email. The announcement is recorded in the audit log with the recipient count.
+
+<Callout type="note" title="A second, unused version of this page exists">
+There's a duplicate "Create Announcement" screen built with a different look, but nothing in the app links to it — the sidebar and every other page point to the one described here. Both would send the same announcement if you found your way to the other one, so this isn't something you need to worry about day to day.
+</Callout>

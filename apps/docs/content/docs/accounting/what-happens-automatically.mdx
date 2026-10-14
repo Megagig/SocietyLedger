@@ -1,15 +1,39 @@
 ---
 title: "What happens automatically when money moves"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "What syncs to accounting on its own, and what you still have to sync yourself."
 type: concept
 audience: ["officer"]
 platforms: ["web"]
 covers: ["/dashboard/settings/accounting-integration"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting-guide/sync-status-and-errors", "/docs/accounting-guide/chart-of-accounts"]
 ---
+
+Less syncs automatically than you'd expect — right now, only Finance module activity can be synced at all, and even that needs a manual step.
 
 ## How it works
 
+Say a member pays their ₦5,000 monthly dues in Finance. That payment does **not** appear in Accounting on its own — nothing in the codebase creates a journal entry automatically when a transaction or payment is recorded. The only way it reaches Accounting is a manual **Sync Now** action at <MenuPath items={["Settings", "Accounting Integration"]} />, which finds every not-yet-synced transaction and payment and posts a journal entry for each one.
+
+<Callout type="warning" title="The sync page's own banner overstates this">
+Settings → Accounting Integration currently says *"All new financial transactions are automatically synced to the accounting module."* That isn't what happens today — every sync is a manual **Sync Now** click (or a backlog of unsynced records waiting for one). Treat **Sync Now** as something you need to visit, not something you can forget about.
+</Callout>
+
+Welfare contributions and payouts, and cooperative savings, loans and repayments, go further: there's no sync path for them at all yet, manual or automatic. The sync status page shows their numbers stuck at 0% because nothing exists to move them — not because nobody has clicked a button.
+
+| Activity | Syncs to accounting? |
+|---|---|
+| Finance transactions and payments | Yes — manually, via **Sync Now** |
+| Welfare contributions and payouts | Not yet |
+| Cooperative savings, loans and repayments | Not yet |
+
 ## Why it matters
 
+If you set up your chart of accounts and never visit Settings → Accounting Integration, your income statement and balance sheet will keep showing ₦0 no matter how much real activity happens elsewhere in the app. Make **Sync Now** a routine step, not a one-time setup task — see [Sync status and fixing sync errors](/docs/accounting-guide/sync-status-and-errors).
+
 ## What you can do
+
+- [The chart of accounts](/docs/accounting-guide/chart-of-accounts) — set this up first.
+- [Sync status and fixing sync errors](/docs/accounting-guide/sync-status-and-errors) — where **Sync Now** actually lives.
+- [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) — for anything you need to record by hand instead.

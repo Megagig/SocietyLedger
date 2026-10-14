@@ -8,6 +8,7 @@ import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { BulkEditModal } from '@/components/finance/BulkEditModal';
+import { HelpLink } from '@/components/docs/HelpLink';
 import { 
   Search, Plus, Eye, Trash2, CheckSquare, Square,
   CheckCircle, Clock, AlertTriangle, XCircle, Calendar, Info, Edit3
@@ -388,15 +389,18 @@ export default function TransactionsPage() {
           </p>
         </div>
         
-        <Can permission={PERMISSIONS.TRANSACTION_CREATE}>
-          <button
-            onClick={() => router.push('/dashboard/finance/transactions/create')}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
-          >
-            <Plus className="w-4 h-4" />
-            Record Transaction
-          </button>
-        </Can>
+        <div className="flex items-center gap-2">
+          <HelpLink />
+          <Can permission={PERMISSIONS.TRANSACTION_CREATE}>
+            <button
+              onClick={() => router.push('/dashboard/finance/transactions/create')}
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Record Transaction
+            </button>
+          </Can>
+        </div>
       </div>
 
       {/* Stats Cards */}

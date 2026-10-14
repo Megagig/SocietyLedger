@@ -1,14 +1,36 @@
 ---
 title: "Members and login accounts"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Why being a member and having a login are two different things, and what the three login statuses mean."
 type: concept
 audience: ["admin"]
 platforms: ["web", "mobile"]
-status: draft
+covers: ["Member model (memberId, loginStatus)", "User model"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/getting-started/joining-as-a-member", "/docs/members/inviting-members-to-log-in"]
 ---
+
+Being a member of your association and having a login to SocietyLedger are two separate things — a member doesn't need a login to be tracked in your records.
 
 ## How it works
 
+Every member has a **member record**: name, contact details, a **member ID** (like `MEM-0001`), category and status. An officer can add this record — with dues, a ledger, attendance — long before that person ever signs in anywhere.
+
+A member's **login status** tracks whether they can sign in:
+
+<Steps>
+<Step><StatusChip status="draft" label="No login" /> — the member exists in your records, but has no SocietyLedger account yet.</Step>
+<Step><StatusChip status="pending" label="Invited" /> — an officer sent them an activation link, but they haven't set a password yet.</Step>
+<Step><StatusChip status="active" label="Active" /> — they've set a password (or self-registered and been approved) and can sign in.</Step>
+</Steps>
+
+Once a member activates their login, their member record and their login account are linked — so what they see when they sign in is their own data.
+
 ## Why it matters
 
+This separation is what makes it possible to track dues and attendance for a member before they've ever touched SocietyLedger — useful when you're bringing in your existing member list. It's also why removing someone's login doesn't delete their history: their member record and its financial history stay intact.
+
 ## What you can do
+
+- [Joining your association as a member](/docs/getting-started/joining-as-a-member) — the two ways a member gets a login.
+- [Inviting members to log in](/docs/members/inviting-members-to-log-in) — send an activation link to an existing member record.

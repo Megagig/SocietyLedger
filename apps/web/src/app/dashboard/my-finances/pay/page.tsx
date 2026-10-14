@@ -6,6 +6,7 @@ import { Select, Textarea, Button, Checkbox, Badge } from '@mantine/core';
 import { IconCreditCard, IconBuildingBank, IconCheck, IconArrowLeft } from '@tabler/icons-react';
 import { apiGet, apiPost } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface OutstandingItem {
   id: number;
@@ -135,6 +136,7 @@ export default function MakePaymentPage() {
           </h1>
           <p className="text-gray-600 dark:text-gray-400">Select items to pay and complete your payment</p>
         </div>
+        <HelpLink />
       </div>
 
       {outstandingItems.length === 0 ? (

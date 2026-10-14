@@ -23,6 +23,7 @@ export interface SavingsAccountResponse {
   id: number;
   memberId: number;
   memberName: string;
+  member: { id: number; firstName: string; lastName: string; membershipId: string } | null;
   accountNumber: string;
   accountType: SavingsAccountType;
   balance: Decimal;
@@ -138,8 +139,10 @@ export interface LoanApplicationResponse {
   applicationNumber: string;
   memberId: number;
   memberName: string;
+  member: { id: number; firstName: string; lastName: string; membershipId: string } | null;
   loanProductId: number;
   loanProductName: string;
+  loanProduct: { id: number; name: string } | null;
   amount: Decimal;
   tenureMonths: number;
   interestRate: Decimal;
@@ -197,6 +200,20 @@ export interface LoanGuarantorResponse {
 
 export type GuarantorStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'RELEASED';
 
+export interface PendingGuarantorRequestResponse {
+  id: number;
+  status: GuarantorStatus;
+  guaranteedAmount: Decimal;
+  createdAt: Date;
+  loanApplication: {
+    id: number;
+    amount: Decimal;
+    purpose: string;
+    member: { firstName: string; lastName: string; membershipId: string };
+    loanProduct: { name: string };
+  };
+}
+
 // ==========================================
 // ACTIVE LOAN TYPES
 // ==========================================
@@ -207,8 +224,10 @@ export interface LoanResponse {
   applicationId: number;
   memberId: number;
   memberName: string;
+  member: { id: number; firstName: string; lastName: string; membershipId: string } | null;
   loanProductId: number;
   loanProductName: string;
+  loanProduct: { id: number; name: string } | null;
   principalAmount: Decimal;
   interestRate: Decimal;
   interestType: InterestType;

@@ -1,17 +1,31 @@
 ---
 title: "Buying SMS credits"
-description: "Content pending — see context/build-plan.md for scheduling."
-type: task
+description: "Sending an SMS costs credits — topping up currently doesn't go through a real payment."
+type: concept
 audience: ["officer"]
 platforms: ["web"]
-covers: ["/dashboard/communication/sms/credits"]
-status: draft
+covers: ["/dashboard/communications/reports"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/sending-sms"]
 ---
 
-## Before you start
+Each SMS segment costs 1 credit. Your balance is shown on the SMS dashboard and on the Reports page.
 
-## Steps
+## How it works
 
-## What happens next
+Selecting **Top Up Credits** on the SMS dashboard takes you to <MenuPath items={["Communication", "SMS Reports"]} />, which shows your balance and usage, and has a top-up form: an amount and a payment method (Paystack or Bank Transfer).
 
-## Related
+<Screenshot src="/images/communication/buying-sms-credits-1.webp" alt="SMS Reports page with a credit balance card, usage stats, and a top-up amount and payment method form" />
+
+<Callout type="danger" title="Top-up doesn't actually charge anything yet">
+Submitting the top-up form adds the credits to your balance immediately, regardless of which payment method you pick — no payment is actually taken. This needs to be wired to a real payment gateway before it can be trusted; until then, contact SocietyLedger support for SMS credit purchases rather than relying on this form.
+</Callout>
+
+## Why it matters
+
+Don't rely on the in-app top-up for billing purposes while this is unresolved — track any credits added through it separately until a real payment gate is in place.
+
+## What you can do
+
+- [Sending an SMS](/docs/communication/sending-sms)

@@ -8,6 +8,7 @@ import { IconPlus, IconSearch, IconFileAnalytics, IconEye, IconCurrencyNaira } f
 import { getLoanApplications, createLoanApplication, getLoanProducts } from '@/lib/api/cooperatives';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface LoanApplication {
   id: number;
@@ -16,13 +17,13 @@ interface LoanApplication {
   tenureMonths: number;
   purpose: string;
   status: string;
-  createdAt: string;
+  appliedAt: string;
   member: { id: number; firstName: string; lastName: string; membershipId: string };
   loanProduct: { id: number; name: string };
 }
 
 interface LoanProduct { id: number; name: string; minAmount: string; maxAmount: string; minTenureMonths: number; maxTenureMonths: number; requiresGuarantor: boolean; minGuarantors: number; }
-interface Member { id: number; firstName: string; lastName: string; membershipId: string; }
+interface Member { id: number; firstName: string; lastName: string; memberId: string; }
 
 export default function ApplicationsPage() {
   const router = useRouter();
@@ -129,9 +130,12 @@ export default function ApplicationsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">Loan Applications</h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Review and process loan applications</p>
         </div>
-        <button onClick={openCreate} className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto">
-          <IconPlus size={20} />New Application
-        </button>
+        <div className="flex items-center gap-2">
+          <HelpLink />
+          <button onClick={openCreate} className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto">
+            <IconPlus size={20} />New Application
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -191,7 +195,7 @@ export default function ApplicationsPage() {
                 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
                   <span className="text-xs text-gray-500">
-                    Applied: {formatDate(app.createdAt)}
+                    Applied: {formatDate(app.appliedAt)}
                   </span>
                   <button
                     onClick={(e) => {
@@ -231,7 +235,7 @@ export default function ApplicationsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg"><IconFileAnalytics className="text-blue-600" size={20} /></div>
-                        <div><span className="font-mono text-sm">{app.applicationNumber}</span><p className="text-xs text-gray-500">{formatDate(app.createdAt)}</p></div>
+                        <div><span className="font-mono text-sm">{app.applicationNumber}</span><p className="text-xs text-gray-500">{formatDate(app.appliedAt)}</p></div>
                       </div>
                     </td>
                     <td className="px-6 py-4"><p className="font-medium text-gray-900 dark:text-white">{app.member.firstName} {app.member.lastName}</p><p className="text-sm text-gray-500">{app.member.membershipId}</p></td>
@@ -264,7 +268,7 @@ export default function ApplicationsPage() {
           <NumberInput label="Tenure (months)" value={formData.tenureMonths ? parseInt(formData.tenureMonths) : ''} onChange={(v) => setFormData({ ...formData, tenureMonths: v?.toString() || '' })} min={selectedProduct?.minTenureMonths || 1} max={selectedProduct?.maxTenureMonths || 60} required />
           <Textarea label="Purpose" placeholder="Describe the purpose of this loan" value={formData.purpose} onChange={(e) => setFormData({ ...formData, purpose: e.target.value })} required />
           {selectedProduct?.requiresGuarantor && (
-            <MultiSelect label={`Guarantors (min ${selectedProduct.minGuarantors})`} placeholder="Select guarantors" data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.membershipId})` }))} value={formData.guarantorIds} onChange={(v) => setFormData({ ...formData, guarantorIds: v })} searchable />
+            <MultiSelect label={`Guarantors (min ${selectedProduct.minGuarantors})`} placeholder="Select guarantors" data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.memberId})` }))} value={formData.guarantorIds} onChange={(v) => setFormData({ ...formData, guarantorIds: v })} searchable />
           )}
           <Textarea label="Collateral Description (Optional)" placeholder="Describe any collateral for this loan" value={formData.collateralDescription} onChange={(e) => setFormData({ ...formData, collateralDescription: e.target.value })} />
           <div className="flex justify-end gap-3 pt-4">

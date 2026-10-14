@@ -1,15 +1,29 @@
 ---
 title: "The audit log"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "What this page is meant to show, and why it currently can't show it to you."
 type: concept
 audience: ["admin"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/settings/audit-logs", "ST9"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/settings/assigning-roles"]
 ---
+
+The Audit Log page is meant to be a filterable feed of changes made in your association — role changes, settings edits, and similar actions — with who made them and when.
 
 ## How it works
 
+<Callout type="danger" title="This page doesn't work for association administrators today">
+Opening <MenuPath items={["Settings", "Audit Log"]} /> always fails with a "Platform access denied" error, for every association Administrator, Treasurer or Financial Secretary — confirmed live. The page's only data call is wired to a platform-level endpoint that requires SocietyLedger's own Super Admin role, not any association-level permission; no tenant-scoped audit log endpoint exists in the API at all. The backend does write real audit records when settings change — the problem is purely that nothing lets you read them back at this level.
+</Callout>
+
+The `audit.view`/`audit.export` permissions Administrators and Treasurers hold by default aren't checked by anything real either — they exist in the permission list but gate no actual route.
+
 ## Why it matters
 
+Changes to settings, roles and other association configuration are genuinely logged in the database, so the information this page would show does exist — there's just no way to see it as an association admin today.
+
 ## What you can do
+
+For now, settings and role changes you've made are visible from where you made them (the Settings pages themselves reflect the current state), just not as a historical, who-changed-what feed.

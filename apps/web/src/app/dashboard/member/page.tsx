@@ -10,6 +10,7 @@ import {
   IconArrowRight,
 } from '@tabler/icons-react';
 import Link from 'next/link';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function MemberDashboardPage() {
   const { user } = useAuthStore();
@@ -18,9 +19,12 @@ export default function MemberDashboardPage() {
     <>
       {/* Header - matches admin dashboard */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          My Dashboard
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+            My Dashboard
+          </h1>
+          <HelpLink />
+        </div>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Welcome back, {user?.email?.split('@')[0] || 'Member'}!
         </p>

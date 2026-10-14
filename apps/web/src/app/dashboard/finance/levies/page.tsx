@@ -8,6 +8,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 import { 
   DollarSign, Users, Calendar, Target, Plus, Edit, Trash2,
   TrendingUp, Clock, CheckCircle, AlertCircle, Eye, Rocket
@@ -252,6 +253,7 @@ export default function LeviesPage() {
         </div>
         
         <div className="flex gap-2">
+          <HelpLink />
           <Can permission={PERMISSIONS.FINANCE_CREATE}>
             <button
               onClick={() => setShowCampaignModal(true)}

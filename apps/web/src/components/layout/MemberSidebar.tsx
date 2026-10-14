@@ -31,9 +31,12 @@ import {
   IconSettings,
   IconChevronDown,
   IconHistory,
+  IconBook2,
+  IconExternalLink,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { docsUrl } from '@/lib/docs';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
 
@@ -446,11 +449,24 @@ export function MemberSidebar() {
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 space-y-2 bg-white/50 dark:bg-gray-900/50">
+          <a
+            href={docsUrl('/docs/member-guide', 'web_sidebar')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-gray-700 dark:text-gray-200 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-all duration-200"
+          >
+            <span className="flex items-center gap-3 font-medium">
+              <IconBook2 size={20} />
+              User manual
+            </span>
+            <IconExternalLink size={16} />
+          </a>
+
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>
             <ThemeToggle />
           </div>
-          
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 font-medium"

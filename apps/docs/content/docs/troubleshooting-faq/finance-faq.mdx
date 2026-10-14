@@ -1,9 +1,34 @@
 ---
 title: "Finance FAQ"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Common questions about transaction statuses, penalties, and the accounting sync."
 type: faq
 audience: ["all"]
 platforms: ["web", "mobile"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/finance/transaction-statuses", "/docs/accounting/what-happens-automatically"]
 ---
 
+## What do the different transaction statuses mean?
+
+A transaction can be pending, paid, overdue, partially paid, or waived, and each means something different for what the member still owes. See [Transaction statuses](/docs/finance/transaction-statuses) for the full list.
+
+## I already paid, but the transaction still shows as overdue — why?
+
+This is usually a timing issue rather than a lost payment — check that the payment was actually recorded against the right transaction, and see [Following up overdue members](/docs/finance/overdue-and-reminders) for how the overdue list is built.
+
+## Can I undo a transaction I entered by mistake?
+
+You can void a transaction to reverse it without deleting the record, which keeps a clean audit trail. See [Editing, voiding and deleting transactions](/docs/finance/editing-voiding-and-deleting) for which option fits your situation.
+
+## I need to waive a penalty for a member — where's the button?
+
+There currently isn't one — the Penalties page has a Waivers tab ready to show the history, but no control anywhere actually waives a penalty yet. Contact SocietyLedger support with the member, amount and reason in the meantime; see [Waiving a penalty](/docs/finance/waiving-a-penalty).
+
+## The Outstanding figure on the Finance Overview looks wrong — which number should I trust?
+
+Don't trust the Outstanding stat on the Finance Overview page — it can show a negative, meaningless number. Use the Transactions page's own stats bar instead, which is correct; see [Understanding the finance overview](/docs/finance/finance-overview).
+
+## Why does Accounting still show ₦0 even though we've recorded real activity in Finance?
+
+Finance activity doesn't post to Accounting on its own — you need to visit Settings → Accounting Integration and select Sync Now, even though that page's own banner currently claims syncing is automatic. See [What happens automatically when money moves](/docs/accounting/what-happens-automatically).

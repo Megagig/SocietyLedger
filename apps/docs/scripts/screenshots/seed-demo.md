@@ -40,10 +40,21 @@ at the moment it's viewed.
 
 ## Running it
 
+Run the base seed **first**, then this one — in that order:
+
 ```bash
 # Against whichever database apps/api's DATABASE_URL currently points to.
-pnpm -F @societyledger/api seed:demo
+pnpm -F @societyledger/api db:seed    # base data: plans, RBAC, platform modules, super admin (must be id=1)
+pnpm -F @societyledger/api seed:demo  # this association, on top
 ```
+
+`db:seed`'s super-admin step is `prisma.user.upsert({ where: { id: 1 }, ... })` —
+on a fresh database it creates `megagigdev@gmail.com` as the platform super
+admin. If `seed:demo` runs first, it takes `id: 1` for `admin@demo.com`
+instead, and the base seed's upsert then just grants *that* tenant admin
+`platformRole: SUPER_ADMIN` rather than creating the real platform account —
+no error, just a quietly wrong account. Found by running both for real
+against a local database for the first time (2026-10-12).
 
 Idempotent for the association and the three login users (safe to re-run
 without duplicating those). **Not** idempotent for the bulk data — members,
@@ -73,10 +84,20 @@ depends on one.
 
 ## Status
 
-**Unverified** — written against the real `schema.prisma` field names and
-type-checked against the generated `@prisma/client` types (zero errors),
-but never actually run against a database. Run it yourself and read the
-console output before trusting it; if a `prisma.<model>.create` call fails,
-the model names and required fields above should get you most of the way
-to the fix, but Prisma unique-constraint or FK-ordering issues can only
-surface at runtime, not at the type level.
+**Verified** — run for real against a local database at D2.1 (2026-10-12).
+Two bugs found and fixed:
+
+- The two `Meeting.create()` calls passed a date-*and*-time string (e.g.
+  `'2026-06-14T10:00:00'`) through the `utc()` helper, which appends its
+  own `T00:00:00.000Z` — every other call site passes a date-only string,
+  so this produced a malformed, invalid `Date`. Fixed by constructing
+  those three timestamps directly (`new Date('2026-06-14T10:00:00Z')`)
+  instead of routing them through `utc()`.
+- `ensureUser()` set `isActive: true` and an `approved` `userApproval`,
+  but never `emailVerified: true`. Login requires email verification, so
+  **none of the three demo logins could actually sign in** — a real
+  blocker for the Playwright capture pipeline, not just a cosmetic gap.
+  Fixed by setting `emailVerified: true` in `ensureUser()`. If you seeded
+  before this fix, patch the existing rows directly rather than
+  reseeding (the bulk data isn't idempotent):
+  `UPDATE users SET email_verified = true WHERE email IN ('admin@demo.com','treasurer@demo.com','member@demo.com');`

@@ -17,6 +17,7 @@ import { reportsApi } from '@/lib/api/reports';
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState<{
@@ -114,9 +115,12 @@ export default function ReportsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          Reports & Analytics
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+            Reports & Analytics
+          </h1>
+          <HelpLink />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">
           Generate comprehensive financial and member reports
         </p>

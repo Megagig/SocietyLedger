@@ -1,17 +1,33 @@
 ---
 title: "Managing user accounts"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "See everyone with login access and the roles assigned to them."
 type: task
 audience: ["admin"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/settings/users", "ST7"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/settings/assigning-roles", "/docs/settings/custom-roles"]
 ---
+
+The Users page lists everyone with a login account and the role or roles currently assigned to them — it's also where you assign and remove roles, covered in [Assigning and removing roles](/docs/settings/assigning-roles).
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default to assign or remove a role; viewing the list needs only **view settings**.
+
+## View users
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Users"]} />.</Step>
+<Step>Each row shows the user's name, email, platform role (if any) and a badge for each association role they hold.</Step>
+<Step>Search or filter the list to find a specific user.</Step>
+</Steps>
+
+<Screenshot src="/images/settings/managing-users-1.webp" alt="User Role Management page listing users with their role badges" />
 
 ## What happens next
+
+To add someone new, see [Inviting members to log in](/docs/members/inviting-members-to-log-in) — this page only manages roles for accounts that already exist. There's no way to deactivate a login from here; see [Editing or disabling a member](/docs/members/editing-and-disabling) for disabling the underlying member record instead.
 
 ## Related

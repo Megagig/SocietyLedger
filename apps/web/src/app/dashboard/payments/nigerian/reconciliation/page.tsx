@@ -23,6 +23,7 @@ import {
   IconSearch
 } from '@tabler/icons-react';
 import nigerianPaymentsApi, { Reconciliation, UnmatchedDashboard } from '@/lib/api/nigerian-payments';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function ReconciliationDashboard() {
   const router = useRouter();
@@ -91,7 +92,10 @@ export default function ReconciliationDashboard() {
   return (
     <div className="p-6">
       <Group justify="space-between" mb="md">
-        <Title order={2}>Payment Reconciliation</Title>
+        <Group gap="xs">
+          <Title order={2}>Payment Reconciliation</Title>
+          <HelpLink />
+        </Group>
         <Button
           leftSection={<IconRefresh size={20} />}
           onClick={loadDashboard}

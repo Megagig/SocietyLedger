@@ -1,10 +1,29 @@
 ---
 title: "Transaction and payment statuses"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "What each transaction status and badge means."
 type: reference
 audience: ["officer"]
-platforms: ["web", "mobile"]
-status: draft
+platforms: ["web"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/editing-voiding-and-deleting"]
 ---
 
-## Reference
+Every charge has one status, plus badges that can appear alongside it once it's been edited or voided.
+
+## Status
+
+| Status | Meaning |
+|---|---|
+| Pending | Not yet due, nothing paid. |
+| Overdue | Past its due date, nothing paid. |
+| Partial | Some paid, balance remaining. |
+| Paid | Fully paid. |
+| Waived | Closed by an officer without full payment, never counted as outstanding again. |
+
+## Badges
+
+| Badge | Meaning |
+|---|---|
+| EDITED | The transaction's details were changed after it was created — select **View History** for what changed, when and why. |
+| VOIDED | The transaction was voided and replaced with a corrected one — hover for the void reason. |

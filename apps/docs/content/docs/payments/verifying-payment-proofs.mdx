@@ -1,17 +1,35 @@
 ---
 title: "Verifying payment proofs"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Review a bank transfer proof against your bank statement and approve or reject it."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/payments/nigerian/verification", "PY2", "PY3"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/payments/recording-bank-transfers", "/docs/payments/matching-and-reconciliation"]
 ---
+
+When a transfer has a proof attached — a screenshot or receipt of the sender's transfer — check it here before confirming the payment.
 
 ## Before you start
 
-## Steps
+You need the **view payments** permission, which Administrators and Treasurers have by default.
+
+## Review a proof
+
+<Steps>
+<Step>Go to <MenuPath items={["Payments", "Nigerian", "Verification"]} />.</Step>
+<Step>Filter by status if you have a backlog, and open a proof to review it against your bank statement.</Step>
+<Step>Select **Verify** if it matches, or **Reject** with a reason if it doesn't.</Step>
+</Steps>
+
+<Screenshot src="/images/payments/verifying-payment-proofs-1.webp" alt="Payment Verification Queue showing Pending, Verified, Rejected and Total counts, currently empty" />
+
+<Callout type="note" title="Proofs are attached when a transfer is recorded">
+A proof reaches this queue when an officer attaches one while [recording a bank transfer](/docs/payments/recording-bank-transfers) — there's no separate member-facing upload yet.
+</Callout>
 
 ## What happens next
 
-## Related
+A verified proof confirms the transfer; a rejected one notifies whoever submitted it, with your reason.

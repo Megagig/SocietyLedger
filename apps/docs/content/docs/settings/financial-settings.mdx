@@ -1,17 +1,37 @@
 ---
 title: "Financial settings"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Grace periods, late fees and partial payments — saved here, but not yet applied automatically anywhere."
 type: task
 audience: ["admin"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/settings/financial", "ST3"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/finance/penalties-and-late-fees"]
 ---
+
+Financial settings store your association's default grace period, late-fee policy and payment-approval rules.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default.
+
+## Update financial settings
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Financial Settings"]} />.</Step>
+<Step>Set **Grace Period (Days)**, toggle **Enable Late Fees** and set a **Late Fee Type** (Fixed or Percentage) and amount, toggle **Enable Partial Payments** and **Require Payment Approval**.</Step>
+<Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
+</Steps>
+
+<Screenshot src="/images/settings/financial-settings-1.webp" alt="Financial Settings page with grace period, late fee type and amount, and partial payment toggles" />
+
+<Callout type="warning" title="Nothing currently reads these values">
+These settings save correctly, but no part of the system — penalty application, payment processing, dues creation — looks them up. Applying a late fee today is a separate, manual action on each individual penalty (see [Penalties and automatic late fees](/docs/finance/penalties-and-late-fees)), not something this page automates yet.
+</Callout>
 
 ## What happens next
+
+Nothing changes elsewhere in the app yet — see the callout above.
 
 ## Related

@@ -10,6 +10,7 @@ import {
 import { getLoanProducts, createLoanApplication, getMyCooperativeProfile } from '@/lib/api/cooperatives';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface LoanProduct {
   id: number;
@@ -30,7 +31,7 @@ interface Member {
   id: number;
   firstName: string;
   lastName: string;
-  membershipId: string;
+  memberId: string;
 }
 
 interface LoanEligibility {
@@ -195,6 +196,7 @@ export default function ApplyForLoanPage() {
           </h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Complete the form to submit your loan application</p>
         </div>
+        <HelpLink />
       </div>
 
       {/* Eligibility Info */}
@@ -342,7 +344,7 @@ export default function ApplyForLoanPage() {
                   <MultiSelect
                     label={`Select Guarantors (minimum ${selectedProduct.minGuarantors})`}
                     placeholder="Choose members to guarantee your loan"
-                    data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.membershipId})` }))}
+                    data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.memberId})` }))}
                     value={formData.guarantorIds}
                     onChange={(v) => setFormData({ ...formData, guarantorIds: v })}
                     searchable

@@ -8,6 +8,7 @@ import { Can, usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import { apiGet, apiPost, apiPut, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 import { 
   Shield, Plus, Edit, Trash2, Users, ChevronRight, 
   Lock, Settings, Search, Check, X 
@@ -264,16 +265,19 @@ export default function RolesPage() {
             Manage user roles and their permissions
           </p>
         </div>
-        
-        <Can permission={PERMISSIONS.SETTINGS_EDIT}>
-          <button
-            onClick={startCreating}
-            className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
-          >
-            <Plus className="w-4 h-4" />
-            Create Role
-          </button>
-        </Can>
+
+        <div className="flex items-center gap-2">
+          <HelpLink />
+          <Can permission={PERMISSIONS.SETTINGS_EDIT}>
+            <button
+              onClick={startCreating}
+              className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Create Role
+            </button>
+          </Can>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">

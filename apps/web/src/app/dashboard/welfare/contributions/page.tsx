@@ -389,7 +389,7 @@ function RecordContributionModal({
         fundId: Number(formData.fundId),
         memberId: Number(formData.memberId),
         amount: Number(formData.amount),
-        contributionDate: formData.contributionDate,
+        contributionDate: new Date(formData.contributionDate).toISOString(),
         paymentMethod: formData.paymentMethod,
         reference: formData.reference || undefined,
         notes: formData.notes || undefined,

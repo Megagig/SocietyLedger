@@ -16,6 +16,7 @@ import {
   Attendance,
   AttendanceStatus,
 } from '@/lib/api/meetings';
+import { HelpLink } from '@/components/docs/HelpLink';
 import {
   IconArrowLeft,
   IconEdit,
@@ -239,6 +240,7 @@ export default function MeetingDetailPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <HelpLink />
           {meeting.status === 'SCHEDULED' && (
             <>
               <button

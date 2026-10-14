@@ -117,11 +117,9 @@ export interface Poll {
 export interface PollOption {
   id: number;
   pollId: number;
-  text: string;
-  displayOrder: number;
-  _count?: {
-    responses: number;
-  };
+  optionText: string;
+  orderNumber: number;
+  voteCount?: number;
 }
 
 export interface PollResponse {
@@ -161,14 +159,19 @@ export interface ElectionResults {
 }
 
 export interface PollResults {
-  poll: Poll;
+  pollId: number;
+  pollTitle: string;
+  pollType: PollType;
+  status: PollStatus;
   options: Array<{
-    option: PollOption;
-    responseCount: number;
-    percentage: number;
+    optionId: number;
+    optionText: string;
+    voteCount: number;
+    votePercentage: number;
   }>;
   totalResponses: number;
-  uniqueRespondents: number;
+  totalVotes: number;
+  hasResponded: boolean;
 }
 
 export interface VoterStatus {
@@ -513,7 +516,7 @@ export async function createPoll(data: {
   isAnonymous?: boolean;
   allowMultipleResponses?: boolean;
   maxSelections?: number;
-  options?: string[];
+  options?: { optionText: string; orderNumber?: number }[];
 }) {
   const response = await apiPost(`${API_URL}/api/voting/polls`, data);
   if (!response.ok) {

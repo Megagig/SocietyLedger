@@ -90,7 +90,7 @@ export default function SMSCampaignsPage() {
         message: formData.message,
         templateId: formData.templateId ? parseInt(formData.templateId) : undefined,
         recipientType: formData.recipientType,
-        scheduledAt: formData.scheduledAt || undefined,
+        scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt).toISOString() : undefined,
       });
       
       setShowCreate(false);

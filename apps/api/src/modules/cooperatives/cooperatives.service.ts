@@ -10,6 +10,7 @@ import {
   LoanApplicationInput,
   LoanApplicationResponse,
   LoanGuarantorResponse,
+  PendingGuarantorRequestResponse,
   LoanResponse,
   LoanRepaymentInput,
   LoanRepaymentResponse,
@@ -211,7 +212,7 @@ export const cooperativesService = {
         notes: data.notes,
       },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
       },
     });
 
@@ -255,7 +256,7 @@ export const cooperativesService = {
       prisma.savingsAccount.findMany({
         where: whereClause,
         include: {
-          member: { select: { firstName: true, lastName: true } },
+          member: { select: { firstName: true, lastName: true, memberId: true } },
         },
         orderBy: { [options.sortBy || 'openedAt']: options.sortOrder || 'desc' },
         skip,
@@ -286,7 +287,7 @@ export const cooperativesService = {
     const account = await prisma.savingsAccount.findFirst({
       where: { id: accountId, associationId },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
       },
     });
 
@@ -681,7 +682,7 @@ export const cooperativesService = {
         collateralValue: data.collateralValue ? new Decimal(data.collateralValue) : null,
       },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
         loanProduct: { select: { name: true } },
         guarantors: {
           include: {
@@ -709,7 +710,7 @@ export const cooperativesService = {
     const updatedApplication = await prisma.loanApplication.findUnique({
       where: { id: application.id },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
         loanProduct: { select: { name: true } },
         guarantors: {
           include: {
@@ -767,7 +768,7 @@ export const cooperativesService = {
       prisma.loanApplication.findMany({
         where: whereClause,
         include: {
-          member: { select: { firstName: true, lastName: true } },
+          member: { select: { firstName: true, lastName: true, memberId: true } },
           loanProduct: { select: { name: true } },
           guarantors: {
             include: {
@@ -804,7 +805,7 @@ export const cooperativesService = {
     const application = await prisma.loanApplication.findFirst({
       where: { id: applicationId, associationId },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
         loanProduct: { select: { name: true } },
         guarantors: {
           include: {
@@ -900,7 +901,7 @@ export const cooperativesService = {
       where: { id: applicationId, associationId, status: 'APPROVED' },
       include: {
         loanProduct: true,
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
       },
     });
 
@@ -1051,7 +1052,7 @@ export const cooperativesService = {
       where: {
         id: guarantorId,
         associationId,
-        guarantorMember: { userId: memberId },
+        guarantorMemberId: memberId,
         status: 'PENDING',
       },
       include: {
@@ -1113,24 +1114,40 @@ export const cooperativesService = {
   async getPendingGuarantorRequests(
     associationId: number,
     memberId: number
-  ): Promise<LoanGuarantorResponse[]> {
+  ): Promise<PendingGuarantorRequestResponse[]> {
     const guarantors = await prisma.loanGuarantor.findMany({
       where: {
         associationId,
-        guarantorMember: { userId: memberId },
+        guarantorMemberId: memberId,
         status: 'PENDING',
       },
       include: {
-        guarantorMember: { select: { firstName: true, lastName: true } },
         loanApplication: {
           include: {
-            member: { select: { firstName: true, lastName: true } },
+            member: { select: { firstName: true, lastName: true, memberId: true } },
+            loanProduct: { select: { name: true } },
           },
         },
       },
     });
 
-    return guarantors.map(g => this.formatLoanGuarantorResponse(g));
+    return guarantors.map(g => ({
+      id: g.id,
+      status: g.status,
+      guaranteedAmount: g.guaranteeAmount,
+      createdAt: g.createdAt,
+      loanApplication: {
+        id: g.loanApplication.id,
+        amount: g.loanApplication.amount,
+        purpose: g.loanApplication.purpose,
+        member: {
+          firstName: g.loanApplication.member.firstName,
+          lastName: g.loanApplication.member.lastName,
+          membershipId: g.loanApplication.member.memberId,
+        },
+        loanProduct: { name: g.loanApplication.loanProduct.name },
+      },
+    }));
   },
 
   // ==========================================
@@ -1174,7 +1191,7 @@ export const cooperativesService = {
       prisma.loan.findMany({
         where: whereClause,
         include: {
-          member: { select: { firstName: true, lastName: true } },
+          member: { select: { firstName: true, lastName: true, memberId: true } },
           loanProduct: { select: { name: true } },
           repaymentSchedule: { orderBy: { installmentNumber: 'asc' } },
         },
@@ -1204,7 +1221,7 @@ export const cooperativesService = {
     const loan = await prisma.loan.findFirst({
       where: { id: loanId, associationId },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
         loanProduct: { select: { name: true } },
         repaymentSchedule: { orderBy: { installmentNumber: 'asc' } },
       },
@@ -1544,7 +1561,7 @@ export const cooperativesService = {
       prisma.loanApplication.findMany({
         where: { associationId },
         include: {
-          member: { select: { firstName: true, lastName: true } },
+          member: { select: { firstName: true, lastName: true, memberId: true } },
           loanProduct: { select: { name: true } },
           guarantors: {
             include: { guarantorMember: { select: { firstName: true, lastName: true } } },
@@ -1614,14 +1631,14 @@ export const cooperativesService = {
     // Get savings accounts
     const savingsAccounts = await prisma.savingsAccount.findMany({
       where: { memberId, associationId },
-      include: { member: { select: { firstName: true, lastName: true } } },
+      include: { member: { select: { firstName: true, lastName: true, memberId: true } } },
     });
 
     // Get active loans
     const loans = await prisma.loan.findMany({
       where: { memberId, associationId, status: { in: ['ACTIVE', 'OVERDUE'] } },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true } },
         loanProduct: { select: { name: true } },
         repaymentSchedule: { orderBy: { installmentNumber: 'asc' } },
       },
@@ -1750,6 +1767,14 @@ export const cooperativesService = {
       memberName: account.member
         ? `${account.member.firstName} ${account.member.lastName}`
         : '',
+      member: account.member
+        ? {
+            id: account.memberId,
+            firstName: account.member.firstName,
+            lastName: account.member.lastName,
+            membershipId: account.member.memberId,
+          }
+        : null,
       accountNumber: account.accountNumber,
       accountType: account.accountType,
       balance: account.balance,
@@ -1815,8 +1840,19 @@ export const cooperativesService = {
       memberName: application.member
         ? `${application.member.firstName} ${application.member.lastName}`
         : '',
+      member: application.member
+        ? {
+            id: application.memberId,
+            firstName: application.member.firstName,
+            lastName: application.member.lastName,
+            membershipId: application.member.memberId,
+          }
+        : null,
       loanProductId: application.loanProductId,
       loanProductName: application.loanProduct?.name || '',
+      loanProduct: application.loanProduct
+        ? { id: application.loanProductId, name: application.loanProduct.name }
+        : null,
       amount: application.amount,
       tenureMonths: application.tenureMonths,
       interestRate: application.interestRate,
@@ -1867,8 +1903,19 @@ export const cooperativesService = {
       memberName: loan.member
         ? `${loan.member.firstName} ${loan.member.lastName}`
         : '',
+      member: loan.member
+        ? {
+            id: loan.memberId,
+            firstName: loan.member.firstName,
+            lastName: loan.member.lastName,
+            membershipId: loan.member.memberId,
+          }
+        : null,
       loanProductId: loan.loanProductId,
       loanProductName: loan.loanProduct?.name || '',
+      loanProduct: loan.loanProduct
+        ? { id: loan.loanProductId, name: loan.loanProduct.name }
+        : null,
       principalAmount: loan.principalAmount,
       interestRate: loan.interestRate,
       interestType: loan.interestType,

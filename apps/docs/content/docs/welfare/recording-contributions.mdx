@@ -1,17 +1,43 @@
 ---
 title: "Recording and confirming contributions"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Log a member's welfare contribution, then confirm it so it counts toward the fund."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/welfare/contributions", "WF3"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/welfare/welfare-funds", "/docs/welfare/eligibility"]
 ---
+
+Record a member's welfare contribution, then confirm it — a contribution only adds to the fund's balance once confirmed.
 
 ## Before you start
 
-## Steps
+You need the **Administrator**, **Treasurer** or **Financial Secretary** role to record a contribution. Confirming one needs the **Administrator** or **Treasurer** role.
+
+## Record a contribution
+
+<Steps>
+<Step>Go to <MenuPath items={["Welfare", "Contributions"]} /> and select **Record Contribution**.</Step>
+<Step>Choose the **Welfare Fund** and the **Member**.</Step>
+<Step>Enter the **Amount**, **Contribution Date** and **Payment Method**.</Step>
+<Step>Optionally add a **Reference** and **Notes**, then select **Record Contribution**.</Step>
+</Steps>
+
+<Screenshot src="/images/welfare/recording-contributions-1.webp" alt="Record Contribution modal with fund, member, amount, contribution date and payment method fields" />
+
+## Confirm it
+
+A recorded contribution starts as **Pending** and doesn't count toward the fund's balance yet.
+
+<Steps>
+<Step>On the Contributions list, find the **Pending** row.</Step>
+<Step>Select the green checkmark to **Confirm**, or the red cross to **Reject**.</Step>
+</Steps>
+
+<Screenshot src="/images/welfare/recording-contributions-2.webp" alt="Welfare Contributions list with a confirmed contribution showing Chiamaka Nwosu, Medical Emergency Fund, ₦5,000, Confirmed status" />
 
 ## What happens next
 
-## Related
+Once confirmed, the amount is added to the fund's balance immediately, and the member's contribution history for that fund updates — this feeds directly into [eligibility](/docs/welfare/eligibility) for future requests.

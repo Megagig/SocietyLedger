@@ -1,17 +1,35 @@
 ---
 title: "Setting up loan products"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Configure a loan type with its own amount limits, interest and guarantor rules."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/cooperatives/loan-products", "CP3"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/cooperatives/applying-for-a-loan"]
 ---
+
+Create a loan product — a named loan type with its own amount range, interest rate and guarantor requirement — before members can apply for it.
 
 ## Before you start
 
-## Steps
+You need the **Administrator**, **Treasurer** or **Financial Secretary** role.
+
+## Create a loan product
+
+<Steps>
+<Step>Go to <MenuPath items={["Cooperatives", "Loan Products"]} /> and select **New Product**.</Step>
+<Step>Enter a **Product Name** and optional **Description**.</Step>
+<Step>Set **Minimum** and **Maximum Amount**, and the **Interest Rate** — Flat or Reducing Balance.</Step>
+<Step>Set **Min** and **Max Tenure** in months.</Step>
+<Step>Optionally set a **Processing Fee**, **Late Fee** and **Grace Period**.</Step>
+<Step>Turn on **Requires Guarantor** if applicable, and set **Minimum Guarantors**.</Step>
+<Step>Select **Create Product**.</Step>
+</Steps>
+
+<Screenshot src="/images/cooperatives/loan-products-1.webp" alt="Create loan product form with Product Name, Description, Minimum and Maximum Amount, and Interest Rate fields filled in" />
 
 ## What happens next
 
-## Related
+The product appears in your Loan Products list and immediately becomes available for members to select on [Applying for a loan](/docs/cooperatives/applying-for-a-loan). Deactivate a product instead of deleting it once members have applied against it.

@@ -1,17 +1,38 @@
 ---
 title: "Data and privacy: exporting your data"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Retention and privacy preferences, plus a real export of every settings category."
 type: task
 audience: ["admin"]
 platforms: ["web"]
 covers: ["/dashboard/settings/data-privacy"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/settings/financial-settings"]
 ---
+
+Data & Privacy settings record your retention preferences, and this is also where you can export every settings category as a single file.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default to change settings; **view settings** is enough to export.
+
+## Update data and privacy settings
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Data & Privacy"]} />.</Step>
+<Step>Set **Data Retention (Months)**, and toggle **Soft Delete**, **Anonymize Inactive Members**, **Allow Data Export** and **GDPR Compliant**.</Step>
+<Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
+<Step>With **Allow Data Export** on, select <UiLabel>Export All Settings</UiLabel> to download your current configuration as a JSON file.</Step>
+</Steps>
+
+<Screenshot src="/images/settings/data-and-privacy-1.webp" alt="Data & Privacy Settings page with retention, soft delete, anonymization and export toggles" />
+
+<Callout type="warning" title="The retention and privacy toggles aren't enforced">
+Like the other preference-style settings pages, nothing in the system currently reads **Data Retention**, **Anonymize Inactive Members** or **GDPR Compliant** — no scheduled process acts on a retention period, and inactive members are never automatically anonymized. **Export All Settings** does work, and genuinely downloads your current configuration across every category.
+</Callout>
 
 ## What happens next
+
+Nothing in your actual data changes based on the retention or privacy toggles. Use **Export All Settings** to back up your configuration before making large changes.
 
 ## Related

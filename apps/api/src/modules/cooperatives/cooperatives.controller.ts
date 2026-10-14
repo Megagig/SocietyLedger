@@ -546,7 +546,7 @@ export const cooperativesController = {
       });
 
       if (!member) {
-        return res.status(200).json({ success: true, data: [] });
+        return res.status(200).json({ success: true, data: { requests: [] } });
       }
 
       const requests = await cooperativesService.getPendingGuarantorRequests(
@@ -556,7 +556,7 @@ export const cooperativesController = {
 
       return res.status(200).json({
         success: true,
-        data: requests,
+        data: { requests },
       });
     } catch (error) {
       console.error('Error getting pending guarantor requests:', error);

@@ -1,17 +1,45 @@
 ---
 title: "Creating custom roles"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Build a role with exactly the permissions it needs, beyond the five built-in roles."
 type: task
 audience: ["admin"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/settings/roles", "ST8"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/settings/assigning-roles", "/docs/core-concepts/roles-and-permissions"]
 ---
+
+Beyond the five built-in roles (Admin, Treasurer, Financial Secretary, Secretary, Member), you can build a custom role with any combination of permissions — useful for a position like an Events Coordinator who needs more than a Member but less than full Admin.
 
 ## Before you start
 
-## Steps
+You need the **manage roles** permission, which only Administrators have by default.
+
+## Create a role
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Roles & Permissions"]} /> and select <UiLabel>Create Role</UiLabel>.</Step>
+<Step>Enter a **Name** and optional **Description**.</Step>
+<Step>Select every permission the role needs — permissions are grouped by category (Members, Finance/Ledger, Settings, and so on).</Step>
+<Step>Select <UiLabel>Create Role</UiLabel> to save it.</Step>
+</Steps>
+
+<Screenshot src="/images/settings/custom-roles-1.webp" alt="Create New Role panel with name, description, and grouped permission checkboxes" />
+
+## Edit or delete a role
+
+<Steps>
+<Step>Select a role from the list, then select <UiLabel>Edit Role</UiLabel> to change its name, description or permissions.</Step>
+<Step>Select <UiLabel>Delete Role</UiLabel> to remove a custom role entirely.</Step>
+</Steps>
+
+<Callout type="note" title="System roles are protected">
+Admin, Treasurer, Financial Secretary, Secretary and Member can't be edited or deleted — only roles you create yourself can. A role also can't be deleted while anyone still holds it; remove it from everyone first (see [Assigning and removing roles](/docs/settings/assigning-roles)).
+</Callout>
 
 ## What happens next
+
+A new role is immediately available to assign to any user — see [Assigning and removing roles](/docs/settings/assigning-roles).
 
 ## Related

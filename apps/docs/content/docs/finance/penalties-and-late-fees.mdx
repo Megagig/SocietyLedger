@@ -1,17 +1,36 @@
 ---
 title: "Penalties and automatic late fees"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Set up a rule that charges a late fee automatically when a due goes unpaid."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/finance/penalties", "FN11"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/waiving-a-penalty", "/docs/finance/overdue-and-reminders"]
 ---
+
+A late fee rule applies a penalty automatically once a charge is overdue — you don't have to catch and charge each one by hand.
 
 ## Before you start
 
-## Steps
+You need the **create categories** permission, which Administrators and Treasurers have by default.
+
+## Set up a late fee rule
+
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Penalties"]} />, then select **New Rule**.</Step>
+<Step>Name it, and set a **Grace Period** (days after the due date before a fee applies).</Step>
+<Step>Choose a **Fee Type** — a fixed amount or a percentage of the balance — and the fee itself.</Step>
+<Step>Save.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/penalties-and-late-fees-1.webp" alt="Penalties page with Penalty Types, Late Fee Rules and Waivers tabs, and an active Late Payment Fee rule" />
+
+## Apply fees to existing overdue charges
+
+New rules only affect charges going forward automatically — for anything already overdue, select **Apply Late Fees** to run the rule against every qualifying charge right now.
 
 ## What happens next
 
-## Related
+Each affected member gets a new penalty charge, separate from the due that caused it, shown on their account as a **Late Payment Fee** — see [Your dues, levies and penalties](/docs/member-guide/dues-levies-and-penalties) for how it looks to them.

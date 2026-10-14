@@ -1,15 +1,42 @@
 ---
 title: "The notifications centre"
-description: "Content pending — see context/build-plan.md for scheduling."
-type: concept
-audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["/dashboard/notifications", "N1"]
-status: draft
+description: "Where you see payment, approval, system and announcement alerts."
+type: task
+audience: ["officer", "member"]
+platforms: ["web"]
+covers: ["/dashboard/notifications", "/dashboard/notifications/preferences"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/announcements"]
 ---
 
-## How it works
+Every account — officer or member — has a notifications centre. It's where payment-due reminders, payment-received confirmations, approval alerts, system messages and announcements all land.
 
-## Why it matters
+## Before you start
 
-## What you can do
+Nothing special — every signed-in user has their own notifications.
+
+## Use the notifications centre
+
+<Steps>
+<Step>Go to <MenuPath items={["Notifications", "Notifications Center"]} />.</Step>
+<Step>Use **Search**, the **Type** filter (Payment Due, Payment Received, System, Approval, Announcement) or the date range to narrow the list.</Step>
+<Step>Select **Mark read** on a notification, or **Mark all read** to clear everything at once.</Step>
+<Step>Select **Delete** to remove a notification, or tick several with the checkboxes and use the bulk actions bar that appears.</Step>
+</Steps>
+
+<Screenshot src="/images/communication/in-app-notifications-1.webp" alt="Notifications centre with a mix of system, payment and approval notifications, one unread" />
+
+## What happens next
+
+Unread notifications show a teal highlight; the count badge in the sidebar drops as you mark things read.
+
+## Notification preferences
+
+<MenuPath items={["Notifications", "Preferences"]} /> lets you toggle Email / SMS / In-App per notification type, and set quiet hours.
+
+<Callout type="warning" title="Preferences don't do anything yet">
+These toggles save successfully and the page confirms it — but nothing anywhere in SocietyLedger actually checks your saved preferences before sending a notification. Every notification still goes out in-app regardless of what you've turned off, and the saved settings are kept in the server's memory rather than the database, so they're also wiped the next time the server restarts. Treat this page as not yet functional.
+</Callout>
+
+<Screenshot src="/images/communication/notification-preferences-1.webp" alt="Notification Preferences page with per-type Email, SMS and In-App toggles and a Quiet Hours section" />

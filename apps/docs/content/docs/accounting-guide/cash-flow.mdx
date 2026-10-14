@@ -1,15 +1,43 @@
 ---
 title: "Cash flow statement"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Where cash actually moved, grouped into operating, investing and financing activity."
 type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/accounting/cash-flow"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting-guide/balance-sheet", "/docs/accounting-guide/income-statement"]
 ---
+
+The cash flow statement tracks cash specifically — separate from income, which can include amounts still owed rather than collected.
 
 ## How it works
 
+<Steps>
+<Step>Go to <MenuPath items={["Accounting", "Cash Flow"]} />.</Step>
+<Step>Pick a **Period**.</Step>
+</Steps>
+
+<Screenshot src="/images/accounting-guide/cash-flow-1.webp" alt="Cash Flow report with Operating, Investing and Financing sections and a beginning-to-ending cash summary" />
+
+Worked example: the same ₦50,000 dues entry from [How charges and payments post to accounts](/docs/accounting-guide/how-transactions-post) only debited a **receivable** account, not a bank account — so it moves the income statement but not cash flow:
+
+| | Amount |
+|---|---|
+| Operating Activities — Net Cash | ₦0 |
+| Investing Activities — Net Cash | ₦0 |
+| Financing Activities — Net Cash | ₦0 |
+| Beginning Cash Balance | ₦0 |
+| **Ending Cash Balance** | **₦0** |
+
+Cash only moves here once the matching **payment** is recorded and synced — a due being posted is a promise to pay, not cash in hand.
+
 ## Why it matters
 
+This is the statement that catches the gap between "we recorded ₦1.2M in dues this year" and "we actually have ₦1.2M in the bank" — a healthy income statement with a flat cash flow statement usually means a lot of uncollected receivables.
+
 ## What you can do
+
+- [Balance sheet in depth](/docs/accounting-guide/balance-sheet) — your current receivables and bank balances.
+- [What happens automatically when money moves](/docs/accounting/what-happens-automatically) — when a payment (not just a due) actually syncs.

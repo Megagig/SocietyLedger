@@ -1,17 +1,31 @@
 ---
 title: "Matching payments and reconciling"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Match your imported bank statement against recorded payments, automatically or by hand."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/payments/nigerian/reconciliation"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/payments/importing-a-bank-statement", "/docs/payments/reconciliation-history"]
 ---
+
+Reconciliation ties each line in your bank statement to a recorded payment — automatically where it can, by hand where it can't.
 
 ## Before you start
 
-## Steps
+[Import a bank statement](/docs/payments/importing-a-bank-statement) first — there's nothing to match against without one.
+
+## Reconcile
+
+<Steps>
+<Step>Go to <MenuPath items={["Payments", "Nigerian", "Reconciliation"]} />.</Step>
+<Step>Select **Run Auto-Match** to match statement entries to payments automatically wherever the amount and reference line up.</Step>
+<Step>Select **View Unmatched Entries** for anything auto-match couldn't resolve, and match those by hand.</Step>
+</Steps>
+
+<Screenshot src="/images/payments/matching-and-reconciliation-1.webp" alt="Payment Reconciliation page with Unmatched Payments and Unmatched Amount stats, and Auto-Match, Manual Reconciliation and Import Statement quick actions" />
 
 ## What happens next
 
-## Related
+Each confirmed match is recorded, and the full set shows up in [Reconciliation history](/docs/payments/reconciliation-history).

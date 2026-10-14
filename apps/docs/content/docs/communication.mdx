@@ -1,12 +1,25 @@
 ---
 title: "Communication"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Reach your members — in-app notifications, announcements, and SMS."
 type: overview
 audience: ["officer"]
-platforms: ["web", "mobile"]
-status: draft
+platforms: ["web"]
+status: published
+lastVerified: "2026-10-14"
 ---
 
+SocietyLedger gives every member an in-app notification inbox, lets officers broadcast announcements, and includes a full SMS module for one-off messages and bulk campaigns.
+
+<Callout type="warning" title="The SMS section has real, confirmed problems right now">
+The SMS dashboard, templates list and message history all load correctly. But **every action that sends something — Quick Send, creating a campaign, creating a template — currently fails** with a validation error the moment you submit it, because the page you reach from the sidebar sends a different data shape than the API expects. This isn't a one-off: it affects every SMS write action in the reachable UI. See the individual pages below for what's actually usable today, and [Sending an SMS](/docs/communication/sending-sms) for the full picture.
+</Callout>
+
 ## Start here
+
+<CardGrid>
+<Card title="Sending an announcement" description="Broadcast a message to every member at once." href="/docs/communication/announcements" />
+<Card title="The notifications centre" description="Where members see payment, approval and system alerts." href="/docs/communication/in-app-notifications" />
+<Card title="Sending an SMS" description="What SMS can do today, and what's currently broken." href="/docs/communication/sending-sms" />
+</CardGrid>
 
 ## All pages

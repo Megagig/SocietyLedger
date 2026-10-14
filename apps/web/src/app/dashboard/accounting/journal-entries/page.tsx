@@ -39,6 +39,7 @@ import {
 } from '@tabler/icons-react';
 import { accountingApi, ChartOfAccount, JournalEntry, JournalEntryLine } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -243,9 +244,12 @@ export default function JournalEntriesPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          Journal Entries
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+            Journal Entries
+          </h1>
+          <HelpLink />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">
           Record and manage accounting journal entries
         </p>

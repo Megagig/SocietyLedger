@@ -16,8 +16,8 @@ interface Loan {
   principalAmount: string;
   outstandingBalance: string;
   status: string;
-  disbursementDate: string;
-  nextRepaymentDate?: string;
+  disbursedAt: string;
+  nextPaymentDate?: string;
   member: { id: number; firstName: string; lastName: string; membershipId: string };
   loanProduct: { name: string };
 }
@@ -196,7 +196,7 @@ export default function LoansPage() {
                 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
                   <span className="text-xs text-gray-500">
-                    Disbursed: {formatDate(loan.disbursementDate)}
+                    Disbursed: {formatDate(loan.disbursedAt)}
                   </span>
                   <div className="flex gap-2">
                     {loan.status === 'ACTIVE' && (
@@ -247,7 +247,7 @@ export default function LoansPage() {
                         </div>
                         <div>
                           <span className="font-mono text-sm">{loan.loanNumber}</span>
-                          <p className="text-xs text-gray-500">{formatDate(loan.disbursementDate)}</p>
+                          <p className="text-xs text-gray-500">{formatDate(loan.disbursedAt)}</p>
                         </div>
                       </div>
                     </td>

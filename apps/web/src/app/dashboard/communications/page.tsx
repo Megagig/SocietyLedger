@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { smsApi, SMSDashboard } from '@/lib/api/sms';
 import { SMSBalanceCard } from '@/components/communications/SMSBalanceCard';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function CommunicationsDashboard() {
   const router = useRouter();
@@ -60,10 +61,13 @@ export default function CommunicationsDashboard() {
       <Stack gap="xl">
         {/* Header */}
         <Group justify="space-between" align="center">
-          <div>
-            <Title order={2}>Communications</Title>
-            <Text c="dimmed">Send SMS messages and manage campaigns</Text>
-          </div>
+          <Group gap="xs">
+            <div>
+              <Title order={2}>Communications</Title>
+              <Text c="dimmed">Send SMS messages and manage campaigns</Text>
+            </div>
+            <HelpLink />
+          </Group>
           <Button
             leftSection={<IconSend size={18} />}
             rightSection={<IconArrowRight size={18} />}

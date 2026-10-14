@@ -1,15 +1,36 @@
 ---
 title: "Automatic meeting reminders"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Members get reminded automatically 24 hours before a meeting starts."
 type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["jobs/meeting-jobs.ts"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/meetings/scheduling-a-meeting"]
 ---
+
+Once a meeting is scheduled, no further action is needed to remind members — it happens on its own.
 
 ## How it works
 
+| Event | Who's notified | How |
+|---|---|---|
+| A meeting is scheduled | Every active member | In-app notification, immediately |
+| 24 hours before start | Every active member with an email | In-app notification and email |
+| A meeting is cancelled | Every active member with an email | In-app notification and email |
+
+A background check runs every hour looking for scheduled meetings starting within the next 24 hours that haven't had a reminder sent yet. Each qualifying meeting gets exactly one reminder — it's marked as sent so it doesn't go out twice, even if the hourly check runs again before the meeting starts.
+
 ## Why it matters
 
+Reminders only go out for meetings that are still **Scheduled** — a meeting that's cancelled before the 24-hour mark never triggers one, so members aren't reminded about a meeting that isn't happening.
+
+<Callout type="note" title="Reminders depend on a current email address">
+A member without an email on file still gets the in-app notification, but not the email reminder — keep member contact details current if reminders matter to your association.
+</Callout>
+
 ## What you can do
+
+- There's nothing to configure — reminders are automatic for every scheduled meeting.
+- [Scheduling a meeting](/docs/meetings/scheduling-a-meeting) — set the date and time reminders are timed from.

@@ -1,17 +1,32 @@
 ---
 title: "SMS templates"
-description: "Content pending — see context/build-plan.md for scheduling."
-type: task
+description: "Reusable message templates with placeholders — viewing works, creating currently fails."
+type: concept
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["CM5"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/communications/templates"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/sending-sms", "/docs/communication/sms-campaigns"]
 ---
 
-## Before you start
+Templates let you write a reusable message with placeholders — `{{name}}`, `{{amount}}` — once, and reuse it in Quick Send or a campaign.
 
-## Steps
+## How it works
 
-## What happens next
+<MenuPath items={["Communication", "SMS Templates"]} /> lists templates by category and lets you filter them. This part works and loads correctly.
 
-## Related
+<Screenshot src="/images/communication/sms-templates-1.webp" alt="SMS Templates page, currently empty, with a category filter and New Template button" />
+
+<Callout type="danger" title="Creating a template currently fails">
+Filling in **New Template** and saving fails with a validation error every time — the form sends the message under the field name `message`, but the API expects `content`. Confirmed directly against the API; it's logged for a fix in a later phase.
+</Callout>
+
+## Why it matters
+
+Until this is fixed, write out each SMS message by hand rather than relying on a saved template.
+
+## What you can do
+
+- [SMS campaigns](/docs/communication/sms-campaigns)
+- [Sending an SMS](/docs/communication/sending-sms)

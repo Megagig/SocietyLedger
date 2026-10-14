@@ -6,6 +6,7 @@ import { ArrowLeft, Send, UserPlus, X, AlertCircle, CheckCircle } from 'lucide-r
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost } from '@/utils/api';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface Member {
   id: number;
@@ -160,6 +161,7 @@ export default function InviteMembersPage() {
             </p>
           </div>
         </div>
+        <HelpLink />
       </div>
 
       {/* Results */}

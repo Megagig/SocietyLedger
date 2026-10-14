@@ -1,15 +1,35 @@
 ---
-title: "Automatic payment reminders"
-description: "Content pending — see context/build-plan.md for scheduling."
+title: "Payment reminders"
+description: "Send a reminder to members with outstanding balances — a manual action, and it doesn't actually email yet."
 type: concept
 audience: ["officer"]
 platforms: ["web"]
 covers: ["/dashboard/finance/reminders"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/announcements"]
 ---
+
+Officers can pick members with outstanding or overdue balances and send them a reminder.
 
 ## How it works
 
+<MenuPath items={["Finance", "Reminders"]} /> lists every member with a pending or overdue transaction, with totals and an overdue count. Select one or more members, then **Send Reminders**, optionally with a custom message added on top of the standard reminder.
+
+<Screenshot src="/images/communication/reminder-schedules-1.webp" alt="Payment Reminders page listing members with outstanding balances, a Send Reminders button, and summary stats" />
+
+<Callout type="danger" title="Sending a reminder doesn't email anyone">
+Selecting members and sending shows a success screen with "sent" counts — but no email is actually sent. The server only logs the reminder to its own console and records it in the audit log; a member with an outstanding balance receives nothing. This is logged for a fix in a later phase — right now, the only way to actually remind a member is a direct conversation, or an [announcement](/docs/communication/announcements) if the group is broad enough.
+</Callout>
+
+<Callout type="note" title="This is manual, not scheduled">
+Despite the name, there's no automatic or recurring reminder — an officer has to open this page and send reminders themselves each time.
+</Callout>
+
 ## Why it matters
 
+Until sending is fixed, don't rely on this page's "Sent" count as confirmation that a member was actually notified.
+
 ## What you can do
+
+- [Sending an announcement](/docs/communication/announcements)

@@ -1,17 +1,31 @@
 ---
 title: "Importing a bank statement"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Upload a CSV of your bank statement so SocietyLedger can match it against recorded payments."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/payments/nigerian/statements", "PY8"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/payments/matching-and-reconciliation"]
 ---
+
+Importing your bank statement is what reconciliation matches against — do this before running auto-match.
 
 ## Before you start
 
-## Steps
+You need the **create finance records** permission, which Administrators and Treasurers have by default. Export your statement from your bank as a CSV first.
+
+## Import a statement
+
+<Steps>
+<Step>Go to <MenuPath items={["Payments", "Nigerian", "Statements"]} />.</Step>
+<Step>Select **Download Template** if you need the expected column layout.</Step>
+<Step>Select **Upload Statement** and choose your CSV file.</Step>
+</Steps>
+
+<Screenshot src="/images/payments/importing-a-bank-statement-1.webp" alt="Import Bank Statements page with Download Template and Upload Statement options, and an empty Import History" />
 
 ## What happens next
 
-## Related
+The import appears in **Import History**, and its entries become available for [matching and reconciliation](/docs/payments/matching-and-reconciliation) — select **View Statement Entries** to see each line.

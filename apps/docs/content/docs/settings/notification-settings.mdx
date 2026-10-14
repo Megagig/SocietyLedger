@@ -1,17 +1,37 @@
 ---
 title: "Association notification settings"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Default reminder timing and channels — recorded, but not yet acted on by anything that sends reminders."
 type: task
 audience: ["admin"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/settings/notifications", "ST5"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/finance/overdue-and-reminders"]
 ---
+
+Notification settings record your preferred reminder schedule, channels and sender name at the association level.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default.
+
+## Update notification settings
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Notification Settings"]} />.</Step>
+<Step>Toggle **Email Enabled** and **SMS Enabled**, set **Payment Reminder Days** (how many days before a due date to remind), an **Overdue Reminder Frequency**, and a **Sender Name**.</Step>
+<Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
+</Steps>
+
+<Screenshot src="/images/settings/notification-settings-1.webp" alt="Notification Settings page with email and SMS toggles, payment reminder days, overdue frequency, and sender name fields" />
+
+<Callout type="warning" title="Nothing currently reads these values">
+These settings save correctly but nothing reads them — payment reminders are a manual action with no real send behind them regardless of what's configured here (see [Following up overdue members](/docs/finance/overdue-and-reminders)), and there's no scheduled job anywhere that would act on a reminder schedule even if one were set.
+</Callout>
 
 ## What happens next
+
+Nothing changes elsewhere in the app yet — see the callout above.
 
 ## Related

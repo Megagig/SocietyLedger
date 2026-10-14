@@ -30,7 +30,7 @@ interface Member {
   id: number;
   firstName: string;
   lastName: string;
-  membershipId: string;
+  memberId: string;
 }
 
 export default function SavingsPage() {
@@ -413,7 +413,7 @@ export default function SavingsPage() {
           <Select
             label="Member"
             placeholder="Select member"
-            data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.membershipId})` }))}
+            data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.memberId})` }))}
             value={formData.memberId}
             onChange={(v) => setFormData({ ...formData, memberId: v || '' })}
             searchable

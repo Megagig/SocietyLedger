@@ -1,17 +1,35 @@
 ---
 title: "Approving and paying out support"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Mark an approved request as paid, once you've actually sent the money."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["WF4"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/welfare/payout-requests"]
 ---
+
+Once a request is **Approved**, disburse it to record that the member has actually been paid — see [Handling support requests](/docs/welfare/payout-requests) for the approval step itself.
 
 ## Before you start
 
-## Steps
+You need the **Administrator** or **Treasurer** role. Pay the member first, outside the app — disbursing here only records that it happened.
+
+<Callout type="danger" title="Disbursing can't be undone">
+Once a request shows **Disbursed**, there's no way to reverse it from the interface. Only disburse once you've confirmed the money actually moved.
+</Callout>
+
+## Disburse an approved request
+
+<Steps>
+<Step>On the Requests list, find the **Approved** request and select the cash icon.</Step>
+<Step>A prompt asks for the **disbursement method** — enter `cash`, `bank_transfer`, or however you paid.</Step>
+<Step>Confirm the prompt.</Step>
+</Steps>
+
+<Screenshot src="/images/welfare/disbursing-payouts-1.webp" alt="Payout Requests list with a request showing Disbursed status, and a Success toast confirming Payout disbursed successfully" />
 
 ## What happens next
 
-## Related
+The request shows **Disbursed**, and the fund's balance decreases by the approved amount — the Welfare dashboard's **Total Payouts** figure updates to match.

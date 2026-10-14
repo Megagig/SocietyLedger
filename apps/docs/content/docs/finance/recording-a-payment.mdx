@@ -1,17 +1,40 @@
 ---
 title: "Recording a payment a member made"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Confirm a payment against a charge and update the member's balance."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["FN5", "/dashboard/finance/transactions/[id]"]
-status: draft
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/editing-voiding-and-deleting", "/docs/finance/overdue-and-reminders"]
 ---
+
+When a member pays by cash, bank transfer or any method outside the app, record it against their charge so their balance updates.
 
 ## Before you start
 
-## Steps
+You need the **record payments** permission, which Administrators and Treasurers have by default.
+
+<Callout type="danger" title="Only confirm a real payment">
+Recording a payment updates the member's balance immediately and can't be easily undone — only do this once you've actually received the money.
+</Callout>
+
+## Record a payment
+
+<Steps>
+<Step>Open the charge from [Transactions](/docs/finance/editing-voiding-and-deleting) or the member's profile.</Step>
+<Step>Select **Record Payment**.</Step>
+<Step>Enter the **Amount Paid** — less than the full balance records a partial payment — the **Payment Date**, and **Payment Method**.</Step>
+<Step>Select **Record Payment** to confirm.</Step>
+</Steps>
+
+<Screenshot src="/images/finance/recording-a-payment-1.webp" alt="Record Payment modal on a transaction's detail page with Amount Paid, Payment Date and Payment Method fields" />
+
+<Callout type="note" title="Online payments go through the platform account">
+Card and bank transfer payments made in-app are settled to your association within 24 hours, with a 2% processing fee deducted — full split-payment integration is planned but not live yet.
+</Callout>
 
 ## What happens next
 
-## Related
+The charge moves to <StatusChip status="partial" /> or <StatusChip status="paid" /> depending on how much was paid, a receipt is generated, and it appears in the member's own payment history right away.

@@ -1,16 +1,35 @@
 ---
 title: "Verifying your email"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Enter the 6-digit code sent to your email, or request a new one if it's expired."
 type: task
 audience: ["all"]
-platforms: ["web", "mobile"]
-status: draft
+platforms: ["web"]
+covers: ["/auth/verify-email", "A3", "A4", "A6"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/getting-started/create-your-association", "/docs/getting-started/joining-as-a-member"]
 ---
+
+Whenever you sign up — creating an association or self-registering as a member — SocietyLedger emails you a 6-digit code to confirm the address is really yours.
 
 ## Before you start
 
-## Steps
+You need the email you signed up with open, or ready to check.
+
+## Verify your email
+
+<Steps>
+<Step>Open the verification email and find the 6-digit code.</Step>
+<Step>Enter it into the 6 boxes on the **Verify Your Email** page.</Step>
+<Step>Select **Verify Email**.</Step>
+</Steps>
+
+<Screenshot src="/images/account-security/verifying-your-email-1.webp" alt="Verify Your Email page showing an Invalid verification code error message above the six-digit code entry" />
+
+If the code is wrong, you'll see **Invalid verification code** and can try again. If it's expired, select **Resend verification code** to get a new one — the page confirms with "A new verification code has been sent to your email."
 
 ## What happens next
 
-## Related
+Once verified, a member who registered themselves still needs to wait for admin approval — see [Pending, rejected or suspended accounts](/docs/account-security/account-approval-status). A founder's association is also created at this point, pending the same approval.
+
+<Callout type="note">If you try to re-verify an email that's already confirmed, you'll see "Email is already verified" instead.</Callout>

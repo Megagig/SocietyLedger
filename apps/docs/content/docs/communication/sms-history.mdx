@@ -1,17 +1,30 @@
 ---
 title: "SMS history and delivery status"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Every SMS the association has sent, with its delivery status."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["CM6"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/communications/history"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/communication/sending-sms"]
 ---
+
+Every SMS sent — one-off or part of a campaign — is recorded here with its delivery status.
 
 ## Before you start
 
-## Steps
+You need SMS permissions on your officer role (Administrator has them by default).
+
+## View message history
+
+<Steps>
+<Step>Go to <MenuPath items={["Communication", "SMS History"]} />.</Step>
+<Step>Filter by **Status** — Pending, Sent, Delivered, Failed or Rejected.</Step>
+</Steps>
+
+<Screenshot src="/images/communication/sms-history-1.webp" alt="SMS message history, currently empty, with a status filter" />
 
 ## What happens next
 
-## Related
+Each row shows the recipient, message, type (single or bulk) and status, with any delivery error shown underneath a failed message. Nothing has been sent yet in this environment — see [Sending an SMS](/docs/communication/sending-sms) for why — so this list is currently empty, but the page itself works correctly.

@@ -7,13 +7,14 @@ import { Button, Container } from '@mantine/core';
 import { IconUsers, IconLogin, IconMenu2, IconX } from '@tabler/icons-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { docsUrl } from '@/lib/docs';
 
 const navItems = [
   { label: 'Features', href: '/features' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/about' },
   { label: 'Blog', href: '/blog' },
-  { label: 'Docs', href: '/documentation' },
+  { label: 'Docs', href: docsUrl('/docs', 'web_header'), external: true },
   { label: 'Contact', href: '/contact' },
 ];
 
@@ -47,8 +48,10 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
+                target={item.external ? '_blank' : undefined}
+                rel={item.external ? 'noopener noreferrer' : undefined}
                 className={`px-4 py-2.5 rounded-lg text-[15px] font-semibold transition-all duration-200 no-underline ${
-                  isActive(item.href)
+                  !item.external && isActive(item.href)
                     ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
                     : 'text-gray-700 dark:text-gray-200 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-gray-100/80 dark:hover:bg-gray-800/80'
                 }`}
@@ -103,9 +106,11 @@ export default function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  target={item.external ? '_blank' : undefined}
+                  rel={item.external ? 'noopener noreferrer' : undefined}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`px-4 py-3.5 rounded-lg text-base font-semibold transition-colors no-underline ${
-                    isActive(item.href)
+                    !item.external && isActive(item.href)
                       ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400'
                       : 'text-gray-700 dark:text-gray-200 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}

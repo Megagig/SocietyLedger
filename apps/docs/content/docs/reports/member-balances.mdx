@@ -1,17 +1,32 @@
 ---
 title: "Member balances report"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Every member's outstanding balance, sorted and searchable."
 type: task
 audience: ["officer"]
-platforms: ["web", "mobile"]
-covers: ["RP3"]
-status: draft
+platforms: ["web"]
+covers: ["/dashboard/reports/member-balances", "RP3"]
+status: published
+lastVerified: "2026-10-13"
+related: ["/docs/finance/member-ledgers", "/docs/reports/aging-analysis"]
 ---
+
+See every member's dues, payments and remaining balance in one sortable list.
 
 ## Before you start
 
-## Steps
+You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default.
+
+## Read the report
+
+<Steps>
+<Step>Go to <MenuPath items={["Reports", "Member Balances"]} />.</Step>
+<Step>Search by name, or sort by balance, dues or last payment.</Step>
+</Steps>
+
+<Screenshot src="/images/reports/member-balances-1.webp" alt="Member Balances Report with Total Members, Total Outstanding and Members with Overdue stats, and a table of members with their dues, paid amount and balance" />
+
+**Total Outstanding** and **Members with Overdue** summarise the whole association; each row shows one member's dues, what they've paid, their balance, and when they last paid.
 
 ## What happens next
 
-## Related
+Select **Export Excel** to download the full list — see [Exporting to PDF and Excel](/docs/reports/exporting-reports).

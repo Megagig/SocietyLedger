@@ -31,7 +31,7 @@ export const updateAccountSchema = z.object({
 
 export const accountQuerySchema = z.object({
   type: accountTypeSchema.optional(),
-  isActive: z.string().optional().transform(val => val === 'true'),
+  isActive: z.string().optional().transform(val => val === undefined ? undefined : val === 'true'),
   includeBalances: z.string().optional().transform(val => val === 'true'),
   hierarchical: z.string().optional().transform(val => val === 'true'),
 });

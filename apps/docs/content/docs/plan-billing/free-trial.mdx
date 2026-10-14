@@ -1,15 +1,32 @@
 ---
 title: "Your free trial"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "14 days on any plan — though starting one takes you to a real payment page first."
 type: concept
 audience: ["admin"]
 platforms: ["web"]
 covers: ["subscription-jobs.ts"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/plan-billing/subscribing-and-paying"]
 ---
+
+Every plan includes a 14-day trial from the moment you choose it.
 
 ## How it works
 
+Selecting a plan on the Plans page starts a 14-day trial immediately — your subscription's status becomes **Trialing**, with a trial end date 14 days out.
+
+<Callout type="danger" title="The “no credit card required” claim isn't accurate today">
+The Plans page states *"All plans include a 14-day free trial. No credit card required."* In practice, the only way to start a trial is the **Pay ₦[amount]** button on checkout, which redirects straight to a real Paystack or Nomba payment page for the full plan price — confirmed by reading the checkout flow, which has no trial-only option that skips payment. The trial itself does genuinely begin in the background regardless of whether that payment ever completes, but there's no way to reach it without being sent to a real checkout page first.
+</Callout>
+
+Three days before your trial ends, SocietyLedger emails the association's admin a warning; once it ends, a scheduled check marks the subscription **Expired** and sends a second email.
+
 ## Why it matters
 
+Budget time to either complete a payment or decide against the plan before your 14 days run out — there's no manual "extend my trial" option.
+
 ## What you can do
+
+- [Subscribing and paying](/docs/plan-billing/subscribing-and-paying) — the trial-starting flow in full.
+- [What happens when a subscription ends](/docs/plan-billing/when-a-subscription-ends) — what **Expired** actually means in practice.

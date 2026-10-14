@@ -41,6 +41,11 @@ export async function sendVerificationEmail(
   code: string,
   associationName?: string
 ): Promise<void> {
+  // DEV-ONLY: print the plain code so it can be read without an inbox during
+  // local docs verification walkthroughs. Never runs outside development.
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEV] Verification code for ${email}: ${code}`);
+  }
   await sendEmail({
     to: email,
     subject: 'Verify Your Email - SocietyLedger',
@@ -71,6 +76,12 @@ export async function sendPasswordResetEmail(
     resetUrl = `http://${subdomain}.localhost:3000/auth/reset-password?token=${resetToken}`;
   } else {
     resetUrl = `${baseUrl}/auth/reset-password?token=${resetToken}`;
+  }
+
+  // DEV-ONLY: print the reset URL so it can be followed without an inbox
+  // during local docs verification walkthroughs. Never runs outside development.
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEV] Password reset URL for ${email}: ${resetUrl}`);
   }
 
   await sendEmail({

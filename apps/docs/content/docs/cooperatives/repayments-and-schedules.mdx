@@ -1,15 +1,34 @@
 ---
 title: "Repayments and repayment schedules"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Officers record repayments against a loan; members see their own progress."
 type: concept
 audience: ["officer", "member"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/cooperatives/loans", "CP5", "M18"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/cooperatives/reviewing-and-disbursing-loans"]
 ---
+
+Once a loan is disbursed, it has an outstanding balance that goes down as repayments are recorded against it.
 
 ## How it works
 
+<RoleTabs roles={["Officers", "Members"]}>
+<RoleTab>
+From <MenuPath items={["Cooperatives", "Loans"]} />, select the cash icon on an active loan to **Record Loan Repayment** — enter the **Amount**, a **Payment Method**, and an optional reference. The loan's **Outstanding** balance updates immediately.
+
+<Screenshot src="/images/cooperatives/repayments-and-schedules-1.webp" alt="Record Loan Repayment modal showing the loan's outstanding balance and an Amount field" />
+</RoleTab>
+<RoleTab>
+Under <MenuPath items={["Cooperatives", "My Loans"]} />, each loan shows a **Repayment Progress** bar, how much you've paid against the total, and the **Maturity Date**. This view is read-only — repayments are recorded by an officer.
+</RoleTab>
+</RoleTabs>
+
 ## Why it matters
 
+Only officers can record repayments — there's no self-service "pay my loan" action for members on this screen. If a member pays outside the app (bank transfer, cash), it only reflects here once an officer records it.
+
 ## What you can do
+
+- [Reviewing, approving and disbursing loans](/docs/cooperatives/reviewing-and-disbursing-loans) — how a loan gets to this stage.
