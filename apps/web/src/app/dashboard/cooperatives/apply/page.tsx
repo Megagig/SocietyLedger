@@ -30,7 +30,7 @@ interface Member {
   id: number;
   firstName: string;
   lastName: string;
-  membershipId: string;
+  memberId: string;
 }
 
 interface LoanEligibility {
@@ -342,7 +342,7 @@ export default function ApplyForLoanPage() {
                   <MultiSelect
                     label={`Select Guarantors (minimum ${selectedProduct.minGuarantors})`}
                     placeholder="Choose members to guarantee your loan"
-                    data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.membershipId})` }))}
+                    data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.memberId})` }))}
                     value={formData.guarantorIds}
                     onChange={(v) => setFormData({ ...formData, guarantorIds: v })}
                     searchable
