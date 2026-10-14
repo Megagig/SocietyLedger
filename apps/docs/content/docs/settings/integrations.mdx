@@ -1,15 +1,35 @@
 ---
 title: "Integrations"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Where Paystack, Nomba, SMS and API access toggles live, and what actually controls them."
 type: concept
 audience: ["admin"]
 platforms: ["web"]
 covers: ["/dashboard/settings/integrations"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/settings/payment-settings"]
 ---
+
+Integrations settings record whether Paystack, Nomba, an SMS provider and API access are switched on, and hold the public-facing key for Paystack.
 
 ## How it works
 
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Integrations"]} />.</Step>
+<Step>Toggle **Paystack** and enter a **Public Key** if you have one; toggle **Nomba**; choose an **SMS Provider**; toggle **API Access**.</Step>
+<Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
+</Steps>
+
+<Screenshot src="/images/settings/integrations-1.webp" alt="Integrations Settings page with Paystack, Nomba, SMS provider and API access toggles" />
+
+<Callout type="warning" title="These toggles don't control whether a gateway actually works">
+Whether Paystack checkout is available is controlled by server-level configuration (an API key set at deployment), not this page's **Paystack** toggle or the public key entered here — confirmed by tracing the real payment flow, which never reads this setting. Treat this page as a record of intent rather than a functional switch for now.
+</Callout>
+
 ## Why it matters
 
+If online payments or SMS aren't working, the fix is server configuration, not this page — toggling something here won't turn a gateway on or off.
+
 ## What you can do
+
+See [Payment settings](/docs/settings/payment-settings) for the related (also currently cosmetic) payment-channel preferences.

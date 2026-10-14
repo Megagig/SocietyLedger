@@ -1,17 +1,33 @@
 ---
 title: "Accounting integration settings"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "The one place to sync Finance activity into Accounting, and see what hasn't synced yet."
 type: task
 audience: ["admin"]
 platforms: ["web"]
 covers: ["/dashboard/settings/accounting-integration"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/accounting-guide/sync-status-and-errors", "/docs/accounting/what-happens-automatically"]
 ---
+
+This page lives under Settings, not Accounting — it's where you trigger **Sync Now** and check what's reached Accounting so far. See [Sync status and fixing sync errors](/docs/accounting-guide/sync-status-and-errors) for how to read the numbers; this page covers getting to and using the screen itself.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default.
+
+## Sync and check status
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Accounting Integration"]} />.</Step>
+<Step>Check **Overall Sync Status** for the total, synced and unsynced record counts across every module.</Step>
+<Step>Under **Finance Module**, select <UiLabel>Sync Now</UiLabel> next to Transactions or Payments to sync up to 100 unsynced records of that type. Repeat if the unsynced count is still above 0 afterward.</Step>
+</Steps>
+
+<Screenshot src="/images/accounting-guide/sync-status-and-errors-1.webp" alt="Accounting Integration settings page with Overall Sync Status and Finance Module Sync Now buttons" />
 
 ## What happens next
+
+Synced records post immediately as journal entries in Accounting — see [What happens automatically when money moves](/docs/accounting/what-happens-automatically) for what still needs this manual step, and why Welfare and Cooperatives activity can't be synced here at all yet.
 
 ## Related

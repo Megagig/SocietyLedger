@@ -67,7 +67,7 @@ export class RBACController {
             }
           },
           _count: {
-            select: { userRoles: true }
+            select: { userRoles: { where: { isActive: true } } }
           }
         },
         orderBy: [{ isSystemRole: 'desc' }, { name: 'asc' }]
@@ -381,7 +381,7 @@ export class RBACController {
           associationId
         },
         include: {
-          _count: { select: { userRoles: true } }
+          _count: { select: { userRoles: { where: { isActive: true } } } }
         }
       });
 

@@ -1,17 +1,40 @@
 ---
 title: "Members & access settings"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Self-registration, approval, invite expiry and member ID rules — none of which the system currently enforces."
 type: task
 audience: ["admin"]
-platforms: ["web", "mobile"]
+platforms: ["web"]
 covers: ["/dashboard/settings/members-access", "ST6"]
-status: draft
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/members/inviting-members-to-log-in", "/docs/members/self-registration-and-approvals"]
 ---
+
+Members & Access settings record how you'd like new people to join your association — but as of this version, every toggle on this page is a preference, not an enforced rule.
 
 ## Before you start
 
-## Steps
+You need the **edit settings** permission, which only Administrators have by default.
+
+## Update members & access settings
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Members & Access"]} />.</Step>
+<Step>Toggle **Allow Self-Signup**, **Require Admin Approval** and **Require Email Verification**.</Step>
+<Step>Set a **Default Role for New Members** and toggle **Allow Multiple Roles**.</Step>
+<Step>Set **Invite Expiry (Hours)**.</Step>
+<Step>Toggle **Auto-Generate Member IDs** and set a **Member ID Prefix**.</Step>
+<Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
+</Steps>
+
+<Screenshot src="/images/members/self-registration-and-approvals-1.webp" alt="Members & Access Settings page with self-registration, role, invite and member ID sections" />
+
+<Callout type="danger" title="None of these settings are enforced today">
+Every toggle on this page saves but is never read anywhere else in the system — confirmed by tracing each field through the entire API. The one with real consequence: **turning off Allow Self-Signup does not stop anyone from registering** — the public registration endpoint accepts new sign-ups on your association's subdomain regardless of this setting. New registrations do always require approval and email verification in practice (both are hardcoded, not optional) — but that's incidental, not because this page configured it. Invite links expire on a fixed schedule unrelated to the hours set here, and member IDs are generated in a fixed format regardless of the prefix or auto-generate toggle.
+</Callout>
 
 ## What happens next
+
+Nothing changes elsewhere in the app based on what you set here — see the callout above. For actually bringing someone onto the association today, see [Inviting members to log in](/docs/members/inviting-members-to-log-in).
 
 ## Related

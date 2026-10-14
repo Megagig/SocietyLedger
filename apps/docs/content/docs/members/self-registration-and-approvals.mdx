@@ -6,32 +6,29 @@ audience: ["officer"]
 platforms: ["web"]
 covers: ["/dashboard/settings/members-access", "/dashboard/settings/users", "MG5"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/getting-started/joining-as-a-member", "/docs/account-security/account-approval-status"]
+lastVerified: "2026-10-14"
+related: ["/docs/getting-started/joining-as-a-member", "/docs/account-security/account-approval-status", "/docs/settings/members-and-access"]
 ---
 
-Decide whether people can register themselves into your association, and what happens before they can sign in.
+People can already register themselves into your association today — this page covers what that looks like, and what the related settings actually control.
 
 ## Before you start
 
-You need the **edit settings** permission, which only Administrators have by default.
+You need the **edit settings** permission, which only Administrators have by default, to change the settings below (though they currently have no effect — see the callout).
 
-## Configure self-registration
+## Self-registration today
 
 <Steps>
-<Step>Go to <MenuPath items={["Settings", "Members Access"]} />.</Step>
-<Step>Turn **Allow Self-Signup** on to let people register themselves without an invite.</Step>
-<Step>Turn **Require Admin Approval** on if new self-registrations should wait for approval before they can sign in, and **Require Email Verification** to make them confirm their email first.</Step>
-<Step>Set the **Default Role for New Members** and whether **Member ID**s are generated automatically.</Step>
-<Step>Save your changes.</Step>
+<Step>Anyone who reaches your association's subdomain can register themselves from the login page's sign-up link — there's no setting that turns this off.</Step>
+<Step>Every self-registered account requires approval and email verification before it can sign in, regardless of what any toggle says.</Step>
 </Steps>
 
 <Screenshot src="/images/members/self-registration-and-approvals-1.webp" alt="Members Access Settings page with Allow Self-Signup, Require Admin Approval, Require Email Verification toggles, Default Role selector, and Member ID settings" />
 
-<Callout type="warning" title="No approval screen yet">
-There's currently no screen in your own dashboard to review and approve a pending self-registration — only a platform-level screen that SocietyLedger staff use. If you turn on **Require Admin Approval**, contact SocietyLedger support to approve pending members in the meantime.
+<Callout type="danger" title="Allow Self-Signup doesn't control this, and there's no approval screen yet">
+Self-registration is always open on your subdomain no matter how **Allow Self-Signup** is set — confirmed by tracing the setting through the API, it's never checked. Approval and email verification happen for every self-registration regardless of the other two toggles too. There's also no screen in your own dashboard yet to review a pending registration — only a platform-level screen SocietyLedger staff use, so contact support to approve one in the meantime. See [Members & access settings](/docs/settings/members-and-access) for the rest of this settings page's fields, none of which are enforced yet either.
 </Callout>
 
 ## What happens next
 
-A self-registered member who needs approval can't sign in until that review happens; one who was [invited directly](/docs/members/inviting-members-to-log-in) skips approval entirely, since an officer already added them.
+A self-registered member can't sign in until SocietyLedger support approves them; one who was [invited directly](/docs/members/inviting-members-to-log-in) skips that wait entirely, since an officer already added them.

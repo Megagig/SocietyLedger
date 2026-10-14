@@ -1,17 +1,44 @@
 ---
 title: "Assigning and removing roles"
-description: "Content pending — see context/build-plan.md for scheduling."
+description: "Give a user a role, or take one away — done from the Users page, not the Roles page."
 type: task
 audience: ["admin"]
-platforms: ["web", "mobile"]
-covers: ["ST8"]
-status: draft
+platforms: ["web"]
+covers: ["ST8", "/dashboard/settings/users"]
+status: published
+lastVerified: "2026-10-14"
+related: ["/docs/settings/managing-users", "/docs/settings/custom-roles"]
 ---
+
+Role assignment happens on the Users page, alongside the role badges you see in [Managing user accounts](/docs/settings/managing-users) — not on the Roles & Permissions page itself.
 
 ## Before you start
 
-## Steps
+You need the **manage roles** permission, which only Administrators have by default.
+
+## Assign a role
+
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Users"]} />.</Step>
+<Step>Find the user and select <UiLabel>Assign Role</UiLabel>.</Step>
+<Step>Choose any built-in or custom role from the list and confirm.</Step>
+</Steps>
+
+## Remove a role
+
+<Steps>
+<Step>On the same user's row, select the **×** on the role badge you want to remove.</Step>
+<Step>Confirm **Remove** in the dialog that appears.</Step>
+</Steps>
+
+<Screenshot src="/images/settings/assigning-roles-1.webp" alt="A user's role badges on the Users page, each with a remove control, and an Assign Role action" />
+
+<Callout type="note" title="A role change takes effect immediately">
+The affected user may need to log out and back in to see every change, since their permission list is loaded at login.
+</Callout>
 
 ## What happens next
+
+The user's permissions change right away — what they can see and do in the app reflects their new role set on their next action, or after they re-authenticate.
 
 ## Related
