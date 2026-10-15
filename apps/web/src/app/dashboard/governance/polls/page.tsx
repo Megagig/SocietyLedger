@@ -46,7 +46,7 @@ function TypeBadge({ type }: { type: PollType }) {
   const typeConfig: Record<PollType, { color: string; label: string }> = {
     SINGLE_CHOICE: { color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', label: 'Single Choice' },
     MULTIPLE_CHOICE: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', label: 'Multiple Choice' },
-    RANKED_CHOICE: { color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', label: 'Ranked Choice' },
+    RATING: { color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', label: 'Rating' },
     YES_NO: { color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', label: 'Yes/No' },
   };
 
@@ -154,7 +154,7 @@ export default function PollsListPage() {
               <option value="">All Types</option>
               <option value="SINGLE_CHOICE">Single Choice</option>
               <option value="MULTIPLE_CHOICE">Multiple Choice</option>
-              <option value="RANKED_CHOICE">Ranked Choice</option>
+              <option value="RATING">Rating</option>
               <option value="YES_NO">Yes/No</option>
             </select>
           </div>

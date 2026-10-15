@@ -306,6 +306,38 @@ const PERMISSION_REGISTRY = [
     module: "Notifications",
     examples: ["POST /api/notifications/announcements", "Create announcement"]
   },
+  // Voting & Elections (R0.2/G16 — real _own-scoped permissions, replacing
+  // the broad members.view reuse that blocked every member from voting)
+  {
+    key: "elections.view_own",
+    description: "View elections and own candidacy/voting status.",
+    module: "Voting",
+    examples: ["GET /api/voting/elections/:id", "GET /api/voting/elections/:id/voter-status"]
+  },
+  {
+    key: "elections.nominate_own",
+    description: "Self-nominate as a candidate in an election.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/self-nominate"]
+  },
+  {
+    key: "elections.vote_own",
+    description: "Cast a vote in an election.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/vote"]
+  },
+  {
+    key: "polls.view_own",
+    description: "View polls and their results.",
+    module: "Voting",
+    examples: ["GET /api/voting/polls/:id", "GET /api/voting/polls/:id/results"]
+  },
+  {
+    key: "polls.vote_own",
+    description: "Respond to a poll.",
+    module: "Voting",
+    examples: ["POST /api/voting/polls/:id/respond"]
+  },
   // Meetings
   {
     key: "meetings.manage_minutes",
@@ -370,6 +402,7 @@ const ROLE_PERMISSION_MAPPING = {
     "notifications.view", "notifications.send",
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
+    "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     "system.cron.view", "system.cron.trigger"
   ],
   treasurer: [
@@ -381,6 +414,7 @@ const ROLE_PERMISSION_MAPPING = {
     "reports.generate", "reports.export", "reports.financial_summary",
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
+    "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     "communication.sms.view",
     "notifications.view",
     "settings.view"
@@ -393,6 +427,7 @@ const ROLE_PERMISSION_MAPPING = {
     "reports.generate", "reports.export", "reports.financial_summary",
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
+    "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     "communication.sms.view",
     "notifications.view",
     "settings.view"
@@ -404,7 +439,8 @@ const ROLE_PERMISSION_MAPPING = {
     "payments.nigerian.view",
     "reports.generate",
     "notifications.view",
-    "exports.view_history"
+    "exports.view_history",
+    "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own"
   ]
 };
 

@@ -217,7 +217,22 @@ export const meetingsService = {
 
   // ==================== AGENDA ITEMS ====================
 
-  async addAgendaItem(meetingId: number, data: CreateAgendaItemInput) {
+  // G77 (found at R2.4, 2026-10-15): none of this module's agenda/attendance
+  // methods verified associationId at all — any authenticated officer could
+  // read/write ANY association's meeting sub-resources by guessing/iterating
+  // meetingId/agendaId, a cross-tenant gap in the same class as G25/G26.
+  // Fixed here for agenda items (what R2.4 builds UI for); markAttendance/
+  // bulkMarkAttendance/getAttendanceStats/getMeetingAttendance still need the
+  // same fix — see G77's full note in progress-tracker.md.
+  async assertMeetingInAssociation(associationId: number, meetingId: number) {
+    const meeting = await prisma.meeting.findFirst({ where: { id: meetingId, associationId } });
+    if (!meeting) {
+      throw new Error('Meeting not found');
+    }
+  },
+
+  async addAgendaItem(associationId: number, meetingId: number, data: CreateAgendaItemInput) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
     return prisma.meetingAgenda.create({
       data: {
         meetingId,
@@ -230,7 +245,12 @@ export const meetingsService = {
     });
   },
 
-  async updateAgendaItem(agendaId: number, data: UpdateAgendaItemInput) {
+  async updateAgendaItem(associationId: number, meetingId: number, agendaId: number, data: UpdateAgendaItemInput) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
+    const agendaItem = await prisma.meetingAgenda.findFirst({ where: { id: agendaId, meetingId } });
+    if (!agendaItem) {
+      throw new Error('Agenda item not found');
+    }
     return prisma.meetingAgenda.update({
       where: { id: agendaId },
       data: {
@@ -243,11 +263,22 @@ export const meetingsService = {
     });
   },
 
-  async deleteAgendaItem(agendaId: number) {
+  async deleteAgendaItem(associationId: number, meetingId: number, agendaId: number) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
+    const agendaItem = await prisma.meetingAgenda.findFirst({ where: { id: agendaId, meetingId } });
+    if (!agendaItem) {
+      throw new Error('Agenda item not found');
+    }
     return prisma.meetingAgenda.delete({ where: { id: agendaId } });
   },
 
-  async reorderAgendaItems(meetingId: number, items: { id: number; orderNumber: number }[]) {
+  async reorderAgendaItems(associationId: number, meetingId: number, items: { id: number; orderNumber: number }[]) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
+    const ids = items.map((i) => i.id);
+    const owned = await prisma.meetingAgenda.findMany({ where: { id: { in: ids }, meetingId } });
+    if (owned.length !== ids.length) {
+      throw new Error('One or more agenda items not found on this meeting');
+    }
     const updates = items.map((item) =>
       prisma.meetingAgenda.update({
         where: { id: item.id },

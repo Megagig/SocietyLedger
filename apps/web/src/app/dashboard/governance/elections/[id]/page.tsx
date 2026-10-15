@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { 
-  IconArrowLeft, 
-  IconEdit, 
-  IconUsers, 
+import {
+  IconArrowLeft,
+  IconEdit,
+  IconUsers,
   IconCalendarEvent,
   IconChecklist,
   IconPlayerPlay,
@@ -16,10 +16,11 @@ import {
   IconX,
   IconPlus,
   IconUserPlus,
-  IconChartBar
+  IconChartBar,
+  IconUserMinus
 } from '@tabler/icons-react';
-import { 
-  getElection, 
+import {
+  getElection,
   getCandidates,
   startNominations,
   closeNominations,
@@ -29,13 +30,19 @@ import {
   cancelElection,
   castVote,
   getVoterStatus,
+  registerCandidate,
+  selfNominate,
+  approveCandidate,
+  withdrawCandidate,
+  addPosition,
   Election,
   Candidate,
   ElectionStatus
 } from '@/lib/api/voting';
+import { membersApi, Member } from '@/lib/api/members';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
-import { Text } from '@mantine/core';
+import { Text, Modal, Select, Textarea, Button } from '@mantine/core';
 import { HelpLink } from '@/components/docs/HelpLink';
 
 // Helper functions
@@ -47,7 +54,6 @@ function StatusBadge({ status }: { status: ElectionStatus }) {
   const statusConfig: Record<ElectionStatus, { color: string; label: string }> = {
     DRAFT: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', label: 'Draft' },
     NOMINATIONS_OPEN: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Nominations Open' },
-    NOMINATIONS_CLOSED: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', label: 'Nominations Closed' },
     VOTING_OPEN: { color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', label: 'Voting Open' },
     VOTING_CLOSED: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', label: 'Voting Closed' },
     RESULTS_PUBLISHED: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', label: 'Results Published' },
@@ -85,6 +91,12 @@ export default function ElectionDetailPage() {
   const queryClient = useQueryClient();
   const electionId = parseInt(params.id as string);
   const [selectedVotes, setSelectedVotes] = useState<Record<number, number | 'abstain'>>({});
+  const [addCandidateFor, setAddCandidateFor] = useState<number | null>(null); // positionId
+  const [addCandidateMemberId, setAddCandidateMemberId] = useState<string | null>(null);
+  const [manifesto, setManifesto] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
+  const [rejectingCandidateId, setRejectingCandidateId] = useState<number | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const { data: electionData, isLoading } = useQuery({
     queryKey: ['election', electionId],
@@ -97,10 +109,19 @@ export default function ElectionDetailPage() {
     enabled: !!electionId,
   });
 
+  // Fetched for any status (not just VOTING_OPEN) so we know the viewer's own
+  // memberId — needed to show "Withdraw" only on the viewer's own candidacy
+  // (withdrawCandidate() is self-service only, scoped by the caller's memberId).
   const { data: voterStatusData } = useQuery({
     queryKey: ['voter-status', electionId],
     queryFn: () => getVoterStatus(electionId),
-    enabled: !!electionId && electionData?.data?.status === 'VOTING_OPEN',
+    enabled: !!electionId,
+  });
+
+  const { data: membersData } = useQuery({
+    queryKey: ['members-for-candidate', memberSearch],
+    queryFn: () => membersApi.getMembers({ search: memberSearch, status: 'active', limit: 20 }),
+    enabled: addCandidateFor !== null,
   });
 
   const election = electionData?.data;
@@ -163,8 +184,8 @@ export default function ElectionDetailPage() {
   });
 
   const castVoteMutation = useMutation({
-    mutationFn: ({ positionId, candidateId, isAbstain }: { positionId: number; candidateId?: number; isAbstain?: boolean }) =>
-      castVote(electionId, { positionId, candidateId, isAbstain }),
+    mutationFn: ({ positionId, candidateId, isAbstention }: { positionId: number; candidateId?: number; isAbstention?: boolean }) =>
+      castVote(electionId, { positionId, candidateId, isAbstention }),
     onSuccess: () => {
       toast.success('Vote cast successfully!');
       queryClient.invalidateQueries({ queryKey: ['voter-status', electionId] });
@@ -181,8 +202,75 @@ export default function ElectionDetailPage() {
     castVoteMutation.mutate({
       positionId,
       candidateId: vote === 'abstain' ? undefined : vote,
-      isAbstain: vote === 'abstain',
+      isAbstention: vote === 'abstain',
     });
+  };
+
+  // R2.2/G29: candidate management — officer add, member self-nominate,
+  // approve/reject, withdraw. All backed by endpoints that already existed
+  // but were never called from any component.
+  const closeCandidateModal = () => {
+    setAddCandidateFor(null);
+    setAddCandidateMemberId(null);
+    setManifesto('');
+    setMemberSearch('');
+  };
+
+  const registerCandidateMutation = useMutation({
+    mutationFn: ({ positionId, memberId }: { positionId: number; memberId: number }) =>
+      registerCandidate(electionId, { positionId, memberId, manifesto: manifesto || undefined }),
+    onSuccess: () => {
+      toast.success('Candidate added');
+      queryClient.invalidateQueries({ queryKey: ['election-candidates', electionId] });
+      closeCandidateModal();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const selfNominateMutation = useMutation({
+    mutationFn: (positionId: number) => selfNominate(electionId, { positionId, manifesto: manifesto || undefined }),
+    onSuccess: () => {
+      toast.success('You have been nominated — awaiting officer approval');
+      queryClient.invalidateQueries({ queryKey: ['election-candidates', electionId] });
+      closeCandidateModal();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const approveCandidateMutation = useMutation({
+    mutationFn: ({ candidateId, status, rejectionReason: reason }: { candidateId: number; status: 'APPROVED' | 'REJECTED'; rejectionReason?: string }) =>
+      approveCandidate(candidateId, { status, rejectionReason: reason }),
+    onSuccess: (_, variables) => {
+      toast.success(variables.status === 'APPROVED' ? 'Candidate approved' : 'Candidate rejected');
+      queryClient.invalidateQueries({ queryKey: ['election-candidates', electionId] });
+      setRejectingCandidateId(null);
+      setRejectionReason('');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const withdrawCandidateMutation = useMutation({
+    mutationFn: (candidateId: number) => withdrawCandidate(candidateId),
+    onSuccess: () => {
+      toast.success('Candidacy withdrawn');
+      queryClient.invalidateQueries({ queryKey: ['election-candidates', electionId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const addPositionMutation = useMutation({
+    mutationFn: (data: { title: string; maxCandidates: number }) => addPosition(electionId, data),
+    onSuccess: () => {
+      toast.success('Position added');
+      queryClient.invalidateQueries({ queryKey: ['election', electionId] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const handleAddPosition = () => {
+    const title = window.prompt('Position title (e.g., President)');
+    if (!title?.trim()) return;
+    addPositionMutation.mutate({ title: title.trim(), maxCandidates: 1 });
   };
 
   if (isLoading) {
@@ -213,6 +301,7 @@ export default function ElectionDetailPage() {
     }
     candidatesByPosition[candidate.positionId].push(candidate);
   });
+  const approvedCandidateCount = candidates.filter((c: Candidate) => c.status === 'APPROVED').length;
 
   return (
     <div className="space-y-6">
@@ -256,27 +345,44 @@ export default function ElectionDetailPage() {
                 <IconPlayerPlay size={18} />
                 Open Nominations
               </button>
+              {/* G28: startVoting() already accepts DRAFT (post-close-nominations) as
+                  well as NOMINATIONS_OPEN — the backend never produces a real
+                  NOMINATIONS_CLOSED status, so show Start Voting here once there's
+                  at least one approved candidate, instead of waiting for a status
+                  that can never occur. */}
+              {approvedCandidateCount > 0 && (
+                <button
+                  onClick={() => startVotingMutation.mutate()}
+                  disabled={startVotingMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  <IconChecklist size={18} />
+                  Start Voting
+                </button>
+              )}
             </>
           )}
           {election.status === 'NOMINATIONS_OPEN' && (
-            <button
-              onClick={() => closeNominationsMutation.mutate()}
-              disabled={closeNominationsMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-            >
-              <IconPlayerStop size={18} />
-              Close Nominations
-            </button>
-          )}
-          {election.status === 'NOMINATIONS_CLOSED' && (
-            <button
-              onClick={() => startVotingMutation.mutate()}
-              disabled={startVotingMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              <IconChecklist size={18} />
-              Start Voting
-            </button>
+            <>
+              <button
+                onClick={() => closeNominationsMutation.mutate()}
+                disabled={closeNominationsMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+              >
+                <IconPlayerStop size={18} />
+                Close Nominations
+              </button>
+              {approvedCandidateCount > 0 && (
+                <button
+                  onClick={() => startVotingMutation.mutate()}
+                  disabled={startVotingMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  <IconChecklist size={18} />
+                  Start Voting
+                </button>
+              )}
+            </>
           )}
           {election.status === 'VOTING_OPEN' && (
             <button
@@ -361,10 +467,31 @@ export default function ElectionDetailPage() {
             {election.isAnonymous && (
               <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Anonymous</span>
             )}
-            {election.allowAbstain && (
+            {election.allowAbstention && (
               <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Allow Abstain</span>
             )}
           </div>
+        </div>
+        {/* R2.6/G32: turnout — eligibleVoterCount/totalVotesCast/quorumPercentage
+            were always returned by GET /elections/:id, just never rendered. */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 mb-2">
+            <IconUsers size={20} />
+            <span className="text-sm font-medium">Turnout</span>
+          </div>
+          <p className="text-gray-900 dark:text-white">
+            {election.totalVotesCast} of {election.eligibleVoterCount} eligible members voted
+            {election.eligibleVoterCount > 0 && (
+              <span className="text-gray-500 dark:text-gray-400">
+                {' '}({Math.round((election.totalVotesCast / election.eligibleVoterCount) * 100)}%)
+              </span>
+            )}
+          </p>
+          {election.requiresQuorum && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Quorum required: {election.quorumPercentage}%
+            </p>
+          )}
         </div>
       </div>
 
@@ -372,14 +499,15 @@ export default function ElectionDetailPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Positions & Candidates</h2>
-          {(election.status === 'DRAFT' || election.status === 'NOMINATIONS_OPEN') && (
-            <Link
-              href={`/dashboard/governance/elections/${electionId}/candidates/add`}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+          {election.status === 'DRAFT' && (
+            <button
+              onClick={handleAddPosition}
+              disabled={addPositionMutation.isPending}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
             >
-              <IconUserPlus size={16} />
-              Add Candidate
-            </Link>
+              <IconPlus size={16} />
+              Add Position
+            </button>
           )}
         </div>
 
@@ -389,6 +517,10 @@ export default function ElectionDetailPage() {
               const positionCandidates = candidatesByPosition[position.id] || [];
               const hasVoted = voterStatus?.votedPositions?.includes(position.id);
               
+              const myCandidacy = positionCandidates.find(
+                (c) => c.memberId === voterStatus?.memberId && c.status !== 'WITHDRAWN' && c.status !== 'REJECTED'
+              );
+
               return (
                 <div key={position.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
@@ -398,9 +530,32 @@ export default function ElectionDetailPage() {
                         <p className="text-sm text-gray-600 dark:text-gray-400">{position.description}</p>
                       )}
                     </div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {positionCandidates.filter(c => c.status === 'APPROVED').length} candidates
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {positionCandidates.filter(c => c.status === 'APPROVED').length} candidates
+                      </span>
+                      {(election.status === 'DRAFT' || election.status === 'NOMINATIONS_OPEN') && (
+                        <>
+                          <button
+                            onClick={() => setAddCandidateFor(position.id)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700"
+                          >
+                            <IconUserPlus size={14} />
+                            Add Candidate
+                          </button>
+                          {!myCandidacy && (
+                            <button
+                              onClick={() => selfNominateMutation.mutate(position.id)}
+                              disabled={selfNominateMutation.isPending}
+                              className="flex items-center gap-1 px-2 py-1 text-xs border border-teal-600 text-teal-600 rounded hover:bg-teal-50 dark:hover:bg-teal-900/20 disabled:opacity-50"
+                            >
+                              <IconUserPlus size={14} />
+                              Nominate Yourself
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {positionCandidates.length > 0 ? (
@@ -440,12 +595,55 @@ export default function ElectionDetailPage() {
                               )}
                             </div>
                           </div>
-                          <CandidateStatusBadge status={candidate.status} />
+                          <div className="flex items-center gap-2">
+                            <CandidateStatusBadge status={candidate.status} />
+                            {candidate.status === 'PENDING' && (election.status === 'DRAFT' || election.status === 'NOMINATIONS_OPEN') && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    approveCandidateMutation.mutate({ candidateId: candidate.id, status: 'APPROVED' });
+                                  }}
+                                  disabled={approveCandidateMutation.isPending}
+                                  title="Approve"
+                                  className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded disabled:opacity-50"
+                                >
+                                  <IconCheck size={16} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRejectingCandidateId(candidate.id);
+                                  }}
+                                  title="Reject"
+                                  className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                >
+                                  <IconX size={16} />
+                                </button>
+                              </>
+                            )}
+                            {candidate.memberId === voterStatus?.memberId &&
+                              candidate.status !== 'WITHDRAWN' &&
+                              candidate.status !== 'REJECTED' &&
+                              (election.status === 'DRAFT' || election.status === 'NOMINATIONS_OPEN') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    withdrawCandidateMutation.mutate(candidate.id);
+                                  }}
+                                  disabled={withdrawCandidateMutation.isPending}
+                                  title="Withdraw my candidacy"
+                                  className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-50"
+                                >
+                                  <IconUserMinus size={16} />
+                                </button>
+                              )}
+                          </div>
                         </div>
                       ))}
                       
                       {/* Abstain option */}
-                      {election.status === 'VOTING_OPEN' && election.allowAbstain && !hasVoted && (
+                      {election.status === 'VOTING_OPEN' && election.allowAbstention && !hasVoted && (
                         <div
                           className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:border-gray-400 ${
                             selectedVotes[position.id] === 'abstain'
@@ -490,17 +688,98 @@ export default function ElectionDetailPage() {
             <IconUsers size={48} className="mx-auto mb-4 text-gray-400" />
             <p className="text-gray-600 dark:text-gray-400 mb-4">No positions added yet</p>
             {election.status === 'DRAFT' && (
-              <Link
-                href={`/dashboard/governance/elections/${electionId}/positions/add`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
+              <button
+                onClick={handleAddPosition}
+                disabled={addPositionMutation.isPending}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
               >
                 <IconPlus size={18} />
-                Add Positions
-              </Link>
+                Add Position
+              </button>
             )}
           </div>
         )}
       </div>
+
+      {/* Add Candidate modal (officer action) */}
+      <Modal
+        opened={addCandidateFor !== null}
+        onClose={closeCandidateModal}
+        title="Add Candidate"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Member"
+            placeholder="Search for a member..."
+            searchable
+            searchValue={memberSearch}
+            onSearchChange={setMemberSearch}
+            data={(membersData?.members || []).map((m: Member) => ({
+              value: String(m.id),
+              label: `${m.firstName} ${m.lastName} (${m.memberId})`,
+            }))}
+            value={addCandidateMemberId}
+            onChange={setAddCandidateMemberId}
+          />
+          <Textarea
+            label="Manifesto (optional)"
+            value={manifesto}
+            onChange={(e) => setManifesto(e.target.value)}
+            rows={3}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="default" onClick={closeCandidateModal}>Cancel</Button>
+            <Button
+              disabled={!addCandidateMemberId || registerCandidateMutation.isPending}
+              onClick={() => {
+                if (!addCandidateFor || !addCandidateMemberId) return;
+                registerCandidateMutation.mutate({
+                  positionId: addCandidateFor,
+                  memberId: parseInt(addCandidateMemberId),
+                });
+              }}
+            >
+              Add Candidate
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reject candidate modal */}
+      <Modal
+        opened={rejectingCandidateId !== null}
+        onClose={() => { setRejectingCandidateId(null); setRejectionReason(''); }}
+        title="Reject Candidate"
+      >
+        <div className="space-y-4">
+          <Textarea
+            label="Rejection reason"
+            required
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            rows={3}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="default" onClick={() => { setRejectingCandidateId(null); setRejectionReason(''); }}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              disabled={!rejectionReason.trim() || approveCandidateMutation.isPending}
+              onClick={() => {
+                if (!rejectingCandidateId) return;
+                approveCandidateMutation.mutate({
+                  candidateId: rejectingCandidateId,
+                  status: 'REJECTED',
+                  rejectionReason: rejectionReason.trim(),
+                });
+              }}
+            >
+              Reject Candidate
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

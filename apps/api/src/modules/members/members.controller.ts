@@ -689,7 +689,7 @@ export const memberController = {
   async getMe(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      const userEmail = req.user?.email;
+      const userId = req.user?.id;
 
       if (!associationId) {
         return res.status(400).json({
@@ -698,18 +698,20 @@ export const memberController = {
         });
       }
 
-      if (!userEmail) {
+      if (!userId) {
         return res.status(400).json({
           success: false,
-          message: 'User email is required',
+          message: 'User ID is required',
         });
       }
 
-      // Find member by email and association
+      // G15 (found at R2.7, 2026-10-15): this used to match on
+      // Member.email === User.email, but Member.email is frequently null/
+      // different from the login email — the real link is Member.userId.
       const member = await prisma.member.findFirst({
         where: {
           associationId,
-          email: userEmail,
+          userId,
         },
       });
 
@@ -737,7 +739,7 @@ export const memberController = {
   async updateMe(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      const userEmail = req.user?.email;
+      const userId = req.user?.id;
 
       if (!associationId) {
         return res.status(400).json({
@@ -746,21 +748,21 @@ export const memberController = {
         });
       }
 
-      if (!userEmail) {
+      if (!userId) {
         return res.status(400).json({
           success: false,
-          message: 'User email is required',
+          message: 'User ID is required',
         });
       }
 
       // Validate request body
       const validatedData = updateMemberSchema.parse(req.body);
 
-      // Find member by email and association
+      // G15: see getMe() above — match on Member.userId, not Member.email.
       const existingMember = await prisma.member.findFirst({
         where: {
           associationId,
-          email: userEmail,
+          userId,
         },
       });
 

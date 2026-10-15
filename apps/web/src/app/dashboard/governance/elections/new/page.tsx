@@ -12,8 +12,6 @@ interface PositionInput {
   title: string;
   description: string;
   maxCandidates: number;
-  minCandidates: number;
-  displayOrder?: number;
 }
 
 export default function NewElectionPage() {
@@ -31,11 +29,11 @@ export default function NewElectionPage() {
   const [votingStartDate, setVotingStartDate] = useState('');
   const [votingEndDate, setVotingEndDate] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [allowAbstain, setAllowAbstain] = useState(true);
-  
+  const [allowAbstention, setAllowAbstention] = useState(true);
+
   // Positions state
   const [positions, setPositions] = useState<PositionInput[]>([
-    { title: '', description: '', maxCandidates: 1, minCandidates: 1 }
+    { title: '', description: '', maxCandidates: 1 }
   ]);
 
   const createElectionMutation = useMutation({
@@ -51,7 +49,7 @@ export default function NewElectionPage() {
   });
 
   const addPositionMutation = useMutation({
-    mutationFn: ({ electionId, position }: { electionId: number; position: PositionInput }) =>
+    mutationFn: ({ electionId, position }: { electionId: number; position: PositionInput & { orderNumber: number } }) =>
       addPosition(electionId, position),
     onError: (error: Error) => {
       toast.error(error.message);
@@ -66,10 +64,10 @@ export default function NewElectionPage() {
       electionType,
       nominationStartDate: nominationStartDate ? new Date(nominationStartDate).toISOString() : undefined,
       nominationEndDate: nominationEndDate ? new Date(nominationEndDate).toISOString() : undefined,
-      votingStartDate: votingStartDate ? new Date(votingStartDate).toISOString() : undefined,
-      votingEndDate: votingEndDate ? new Date(votingEndDate).toISOString() : undefined,
+      votingStartDate: new Date(votingStartDate).toISOString(),
+      votingEndDate: new Date(votingEndDate).toISOString(),
       isAnonymous,
-      allowAbstain,
+      allowAbstention,
     });
   };
 
@@ -86,7 +84,7 @@ export default function NewElectionPage() {
       for (let i = 0; i < validPositions.length; i++) {
         await addPositionMutation.mutateAsync({
           electionId,
-          position: { ...validPositions[i], displayOrder: i + 1 },
+          position: { ...validPositions[i], orderNumber: i + 1 },
         });
       }
       toast.success('Positions added successfully!');
@@ -98,7 +96,7 @@ export default function NewElectionPage() {
   };
 
   const addPositionRow = () => {
-    setPositions([...positions, { title: '', description: '', maxCandidates: 1, minCandidates: 1 }]);
+    setPositions([...positions, { title: '', description: '', maxCandidates: 1 }]);
   };
 
   const removePositionRow = (index: number) => {
@@ -177,8 +175,9 @@ export default function NewElectionPage() {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
             >
               <option value="GENERAL">General Election</option>
-              <option value="BY_ELECTION">By-Election</option>
-              <option value="REFERENDUM">Referendum</option>
+              <option value="EXECUTIVE">Executive Committee</option>
+              <option value="COMMITTEE">Committee Member</option>
+              <option value="SPECIAL">Special Purpose</option>
             </select>
           </div>
 
@@ -210,23 +209,25 @@ export default function NewElectionPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Voting Start Date
+                Voting Start Date *
               </label>
               <input
                 type="datetime-local"
                 value={votingStartDate}
                 onChange={(e) => setVotingStartDate(e.target.value)}
+                required
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Voting End Date
+                Voting End Date *
               </label>
               <input
                 type="datetime-local"
                 value={votingEndDate}
                 onChange={(e) => setVotingEndDate(e.target.value)}
+                required
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -245,8 +246,8 @@ export default function NewElectionPage() {
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
-                checked={allowAbstain}
-                onChange={(e) => setAllowAbstain(e.target.checked)}
+                checked={allowAbstention}
+                onChange={(e) => setAllowAbstention(e.target.checked)}
                 className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">Allow abstaining from voting</span>
@@ -325,16 +326,6 @@ export default function NewElectionPage() {
                       min={1}
                       value={position.maxCandidates}
                       onChange={(e) => updatePosition(index, 'maxCandidates', parseInt(e.target.value) || 1)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Min Candidates Required</label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={position.minCandidates}
-                      onChange={(e) => updatePosition(index, 'minCandidates', parseInt(e.target.value) || 1)}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
                     />
                   </div>

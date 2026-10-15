@@ -186,13 +186,13 @@ export const PERMISSIONS = {
   AI_USAGE_VIEW: 'audit.view',
   
   // Voting & Elections
-  ELECTION_VIEW: 'members.view',
+  ELECTION_VIEW: 'elections.view_own',
   ELECTION_MANAGE: 'members.create',
-  ELECTION_NOMINATE: 'members.view',
-  ELECTION_VOTE: 'members.view',
-  POLL_VIEW: 'members.view',
+  ELECTION_NOMINATE: 'elections.nominate_own',
+  ELECTION_VOTE: 'elections.vote_own',
+  POLL_VIEW: 'polls.view_own',
   POLL_MANAGE: 'members.create',
-  POLL_VOTE: 'members.view',
+  POLL_VOTE: 'polls.vote_own',
   
   // Help & Support (Phase 21)
   HELP_VIEW: 'help.view',
