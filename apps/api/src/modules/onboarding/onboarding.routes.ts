@@ -3,7 +3,7 @@ import { OnboardingController } from './onboarding.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requireAssociationRole } from '../../middleware/rbac';
 
-const router = Router();
+const router: Router = Router();
 const controller = new OnboardingController();
 
 // All routes require authentication

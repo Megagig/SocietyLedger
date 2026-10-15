@@ -16,6 +16,9 @@ import { TenantManagementService } from '../../services/tenant-management.servic
 import { ModuleFeatureService } from '../../services/module-feature.service';
 import { BillingOverrideService } from '../../services/billing-override.service';
 import { PlatformActionLogService } from '../../services/platform-action-log.service';
+import { SMSService } from '../sms/sms.service';
+
+const smsService = new SMSService();
 
 // Validation schemas
 const suspendSchema = z.object({
@@ -82,6 +85,11 @@ const extendTrialSchema = z.object({
 
 const applyCreditSchema = z.object({
   amount: z.number().positive(),
+  reason: z.string().min(1, 'Reason is required'),
+});
+
+const topUpSmsCreditsSchema = z.object({
+  amount: z.number().positive('Amount must be positive'),
   reason: z.string().min(1, 'Reason is required'),
 });
 
@@ -785,6 +793,58 @@ export class PlatformAdminController {
       });
     } catch (error) {
       console.error('Apply credit error:', error instanceof Error ? error.message : String(error));
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      if (error instanceof Error) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Manually grant SMS credits to an association (platform-only).
+   * Replaces the old tenant-reachable POST /sms/credits/topup (G41) — real
+   * purchases go through /sms/credits/purchase's Paystack flow; this is for
+   * support staff manually crediting an association, with a required reason.
+   */
+  async topUpSmsCredits(req: AuthRequest, res: Response) {
+    try {
+      const associationId = Number(req.params.associationId);
+      const actorId = req.user?.id;
+      const actorRole = req.user?.platformRole ?? 'SUPER_ADMIN';
+
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const { amount, reason } = topUpSmsCreditsSchema.parse(req.body);
+
+      const balance = await smsService.topUpCredits(
+        associationId,
+        amount,
+        `PLATFORM-GRANT-${actorId}-${Date.now()}`,
+        reason
+      );
+
+      await PlatformActionLogService.log({
+        actorId,
+        actorRole: String(actorRole),
+        actionType: 'sms_credits.manual_grant',
+        targetType: 'association',
+        associationId,
+        afterState: { amount, balance },
+        reason,
+      });
+
+      return res.json({
+        success: true,
+        message: `${amount} SMS credits granted`,
+        data: balance,
+      });
+    } catch (error) {
+      console.error('Top up SMS credits error:', error instanceof Error ? error.message : String(error));
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }

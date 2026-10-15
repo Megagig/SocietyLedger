@@ -4,6 +4,7 @@ import prisma from '../../lib/prisma';
 import { hashPassword, verifyPassword, generateToken } from '../../lib/auth';
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
+import { SettingsService } from '../settings/settings.service';
 import {
   createUserWithVerification,
   verifyEmailCode,
@@ -270,6 +271,17 @@ export class AuthController {
         res.status(400).json({
           success: false,
           message: 'Missing tenant context. Please access via your association subdomain.',
+        });
+        return;
+      }
+
+      // G52: self-signup must actually be gated by the association's own setting
+      const selfSignupEnabled = await SettingsService.getSetting(tenantId, 'members_access', 'selfSignupEnabled');
+      if (!selfSignupEnabled) {
+        res.status(403).json({
+          success: false,
+          code: 'SELF_SIGNUP_DISABLED',
+          message: 'Self-registration is not enabled for this association. Please contact an administrator for an invite.',
         });
         return;
       }

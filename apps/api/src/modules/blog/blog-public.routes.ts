@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { BlogController } from './blog.controller';
 
-const router = Router();
+const router: Router = Router();
 const ctrl = new BlogController();
 
 // ============================================

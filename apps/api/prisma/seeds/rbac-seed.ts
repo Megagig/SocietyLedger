@@ -306,6 +306,19 @@ const PERMISSION_REGISTRY = [
     module: "Notifications",
     examples: ["POST /api/notifications/announcements", "Create announcement"]
   },
+  // Meetings
+  {
+    key: "meetings.manage_minutes",
+    description: "Create, edit and approve official meeting minutes.",
+    module: "Meetings",
+    examples: ["POST /api/meetings/:id/minutes", "POST /api/meetings/:id/minutes/approve"]
+  },
+  {
+    key: "meetings.manage_attendance",
+    description: "Initialize and mark meeting attendance.",
+    module: "Meetings",
+    examples: ["POST /api/meetings/:id/attendance/initialize", "POST /api/meetings/:id/attendance"]
+  },
   // Exports
   {
     key: "exports.financial",
@@ -356,16 +369,18 @@ const ROLE_PERMISSION_MAPPING = {
     "communication.sms.view", "communication.sms.send", "communication.sms.campaign", "communication.sms.template",
     "notifications.view", "notifications.send",
     "exports.financial", "exports.members", "exports.view_history",
+    "meetings.manage_minutes", "meetings.manage_attendance",
     "system.cron.view", "system.cron.trigger"
   ],
   treasurer: [
     "members.view", "members.view_all",
-    "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export", 
+    "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
     "ledger.view_member_statement",
     "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
     "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.verify", "payments.nigerian.reconcile", "payments.nigerian.import",
     "reports.generate", "reports.export", "reports.financial_summary",
     "exports.financial", "exports.members", "exports.view_history",
+    "meetings.manage_minutes", "meetings.manage_attendance",
     "communication.sms.view",
     "notifications.view",
     "settings.view"
@@ -377,6 +392,7 @@ const ROLE_PERMISSION_MAPPING = {
     "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.reconcile", "payments.nigerian.import",
     "reports.generate", "reports.export", "reports.financial_summary",
     "exports.financial", "exports.members", "exports.view_history",
+    "meetings.manage_minutes", "meetings.manage_attendance",
     "communication.sms.view",
     "notifications.view",
     "settings.view"

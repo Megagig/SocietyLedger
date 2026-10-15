@@ -170,17 +170,23 @@ Migrate `docs/reports/*`.
 *Nothing else in Track R starts until these are resolved — several later phases' scope depends on the answers.*
 ### R0.1 Module/plan gating enforcement (G13)
 Decide whether/when to flip `FEATURE_FLAG_MODE` to `enforce`, and whether the frontend's locked/upgrade state ships before or alongside that flip.
+**Decided (2026-10-15):** build the frontend's locked/upgrade state first (handle `MODULE_DISABLED`/`FEATURE_DISABLED`, using the existing `upgradeRequired` flag already returned by `module-feature.middleware.ts`), verify it live, *then* set `FEATURE_FLAG_MODE=enforce`. Enforcement itself is already fully built — this is sequencing only, so no tenant hits a raw unhandled 403 the moment it ships.
 ### R0.2 Member self-service permission scope (G16)
 Design real `_own`-scoped permissions for voting/welfare/cooperatives, or formally accept the current broad officer-level grants as intentional for v1.
+**Decided (2026-10-15):** design real `_own`-scoped permissions — e.g. `voting.vote_own`, `welfare.view_own`, `cooperatives.view_own` — added to the member role template, matching the existing `ledger.view_own`/`payments.view_own`/`members.view_own` pattern. Update the real routes (`/api/voting/active`, `/api/welfare/dashboard`, `/api/cooperatives/my-profile`, plus `ELECTION_VOTE`/`ELECTION_NOMINATE`/`POLL_VIEW`/`POLL_VOTE`) to accept the new keys instead of the broad officer-level ones.
 ### R0.3 Member payment verification model (G17)
 Decide whether the web's unverified self-declare payment flow is acceptable long-term, or should be gated now rather than waiting on mobile's real Paystack/proof-upload flow.
+**Decided (2026-10-15):** gate it now with a real two-step flow — a member submits a payment method plus an **uploaded screenshot/bank-receipt**, and the transaction stays `pending` until an officer reviews and approves it; only then does it show as paid on the member's own dashboard. An officer recording a payment directly (no member upload) is unaffected and still posts immediately. **Reuse the proof-upload infrastructure already built for Nigerian bank transfers** (`apps/api/src/modules/nigerian-payments/nigerian-payments.routes.ts`: `multer` disk storage → `POST /proofs` member upload → `POST /proofs/:id/verify` officer action) applied to `member-finance.controller.ts`'s `processPayment` path, rather than building new upload plumbing.
 ### R0.4 Behavioral settings scope (G53)
 Per category (Financial, Payment, Notification, Members & Access, Data & Privacy, Integrations) — decide whether to wire real enforcement, or be upfront that the category is a roadmap/preferences page today.
+**Decided (2026-10-15):** wire real enforcement for all six categories — this is substantially more work than R4 budgets for, so it gets its own block, **R4.6**, added after R4's existing 5 items rather than folded into them (see Phase R4 below).
 ### R0.5 SMS implementation direction (G38)
 Delete the orphaned `/dashboard/communication/sms/*` pages, or rewrite the linked `/dashboard/communications/*` pages (and `lib/api/sms.ts`) to match the real API. This decision sets R3's actual scope.
+**Decided (2026-10-15):** rewrite the linked `/dashboard/communications/*` pages to match the real API — port the orphaned set's working Paystack top-up into it (fixing G41), fix the payload shapes (G39) and the message-box bug (G40) in the same pass — then delete the orphaned `/dashboard/communication/sms/*` set. One correct implementation survives; see R3.1.
 ### R0.6 Tenant-level self-registration approval (G65)
 Decide whether an association admin should get their own approval screen for self-registered members, or whether platform-only approval is intentional for this version.
-- **DoD:** every decision above recorded in `progress-tracker.md`'s Decisions log with the owner's choice and reasoning; R1–R6 below updated if a decision changes a phase's scope.
+**Decided (2026-10-15):** build a tenant-scoped approval screen (e.g. `/dashboard/settings/pending-approvals` + a matching endpoint scoped to the caller's own `associationId`) so an association's own admin can approve/reject its own self-registered members, reusing the existing `approvalStatus` field already on the member model — rather than leaving approval platform-Super-Admin-only.
+- **DoD:** every decision above recorded in `progress-tracker.md`'s Decisions log with the owner's choice and reasoning; R1–R6 below updated if a decision changes a phase's scope. **All six decided 2026-10-15 — R0 complete.**
 
 ## Remediation Phase R1 — Security, financial integrity & tooling
 ### R1.1 Fix `apps/api`'s broken `type-check` (G69)
@@ -203,8 +209,9 @@ Annotate the exported `Router` type in each of the ~38 route files that currentl
 - **DoD:** a real election can be created, have candidates added and approved, go to voting, close, and show results — end to end, with no direct API call needed at any step.
 
 ## Remediation Phase R3 — Communication & notifications
-*Scope depends on R0.5's decision.*
-### R3.1 Consolidate the SMS implementation per R0.5 (G38)
+*Scope set by R0.5's decision: rewrite + delete orphaned.*
+### R3.1 Rewrite the linked SMS pages to match the real API, then delete the orphaned set (G38)
+Rewrite `/dashboard/communications/*` (and `lib/api/sms.ts`) to call the real API correctly, porting over the orphaned `/dashboard/communication/sms/*` set's working Paystack top-up flow in the process. Delete the orphaned set once the linked pages are verified to cover everything it had. This single pass also closes R3.2 and R1.4/R3's SMS-credit portion as a side effect — implement them together, not as separate follow-on fixes.
 ### R3.2 Fix SMS write-action payload shapes (G39)
 ### R3.3 Fix the campaign message box for every recipient type (G40)
 ### R3.4 Real email + scheduled job for payment reminders (G43)
@@ -219,6 +226,22 @@ Annotate the exported `Router` type in each of the ~38 route files that currentl
 ### R4.4 Tenant-scoped audit log endpoint (G51)
 ### R4.5 Member ID format consistency (G20)
 - **DoD:** each gap's proposed fix implemented; `settings/audit-logs` works for a real tenant Administrator; the Plans page's copy matches what checkout actually does.
+
+### R4.6 Behavioral settings enforcement (G53) — *new block, owner-decided R0.4, 2026-10-15*
+*Wires real enforcement for every settings field confirmed cosmetic at D5.2, except G52 (already fixed in R1.6) and anything R3.6 already covers (per-member notification-channel preferences — distinct from this block's association-level notification settings).*
+#### R4.6.1 Financial Settings enforcement
+`defaultGracePeriodDays`, `enableLateFees`, `lateFeeType`, `lateFeeAmount`, `requirePaymentApproval`, `enablePartialPayments` — wire each into the real penalty/payment-approval code paths; fix or remove the page's own false "changes apply going forward" banner to match whatever's actually true once wired.
+#### R4.6.2 Payment Settings enforcement
+`enabledChannels`, `defaultPaymentMethod`, `manualPaymentApprovalRequired`, `receiptAutoGenerate` — wire into the real payment-method selection/validation and receipt-generation code paths.
+#### R4.6.3 Notification Settings enforcement
+`paymentReminderDays`, `overdueReminderFrequency`, `senderName`, `emailEnabled`/`smsEnabled` — association-level notification config, wired into R3.4's real reminder job and whatever sends outbound email/SMS under the association's name. (Per-member channel opt-out is R3.6, not this item.)
+#### R4.6.4 Members & Access enforcement
+`defaultRole`, `allowMultipleRoles`, `inviteExpiryHours` (replacing the fixed `INVITE_TOKEN_EXPIRY_HOURS` constant), `memberIdAutoGenerate`, `memberIdPrefix` — **check for a shared root cause with G20/R4.5 before fixing separately**, since both touch member-ID generation.
+#### R4.6.5 Data & Privacy enforcement
+`dataRetentionMonths`, `anonymizeInactiveMembers`, `gdprCompliant` — wire into a real retention/anonymization job where feasible; where a field genuinely can't be enforced within this block (e.g. a pure compliance declaration), relabel it honestly in the UI rather than leaving it silently inert.
+#### R4.6.6 Integrations enforcement
+`paystackEnabled`, `nombaEnabled`, `smsProvider`, `apiAccessEnabled` — gate the real gateway/provider selection and API-access code paths on these flags (noting real Paystack availability is server-config-only, per the original G53 finding).
+- **DoD:** each field above either genuinely changes behavior (confirmed live, field by field, the same way G53 was originally found to be cosmetic) or is relabeled in the product as not-yet-enforced — no field left silently inert and undocumented.
 
 ## Remediation Phase R5 — Accounting completeness
 ### R5.1 Welfare & Cooperatives accounting sync (G46)

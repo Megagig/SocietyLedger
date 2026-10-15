@@ -1,5 +1,6 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { accountingIntegrationService } from '../../../services/accounting-integration.service';
 
 // ============================================
 // PENALTY SERVICE (TASK-ADV-005, TASK-ADV-006, TASK-ADV-007)
@@ -430,6 +431,24 @@ export const penaltiesService = {
           where: { id: txn.id },
           data: { status: 'overdue' },
         });
+      }
+
+      // G45: auto-applied penalties create a Transaction directly, bypassing
+      // finance.controller.ts's sync hook — wire it here so penalties sync
+      // the same way manually-created transactions already do.
+      try {
+        const fullPenaltyTxn = await prisma.transaction.findUnique({
+          where: { id: penaltyTxn.id },
+          include: {
+            member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+            category: { select: { id: true, name: true, type: true } },
+          },
+        });
+        if (fullPenaltyTxn) {
+          await accountingIntegrationService.onTransactionCreated(fullPenaltyTxn, userId);
+        }
+      } catch (syncError) {
+        console.error(`Accounting sync failed for penalty transaction ${penaltyTxn.id} (non-critical):`, syncError);
       }
 
       results.push({

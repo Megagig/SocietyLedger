@@ -10,7 +10,7 @@ import { nombaWebhookHandler } from './nomba.webhook';
 import { authMiddleware } from '../../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../../middleware/tenant.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * Initialize payment

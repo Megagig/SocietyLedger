@@ -4,7 +4,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePlatformRole, requireAssociationRole } from '../../middleware/rbac';
 import { PlatformRole } from '@prisma/client';
 
-const router = Router();
+const router: Router = Router();
 const ctrl = new AssociationsController();
 
 // Public

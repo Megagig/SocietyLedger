@@ -7,7 +7,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePlatformRole } from '../../middleware/rbac';
 import { PlatformRole } from '@prisma/client';
 
-const router = Router();
+const router: Router = Router();
 const ctrl = new AdminController();
 const platformCtrl = new PlatformAdminController();
 const settlementsCtrl = new PaymentSettlementsController();
@@ -71,6 +71,9 @@ router.post('/tenants/:associationId/billing/override', (req, res) => platformCt
 router.post('/tenants/:associationId/billing/extend-trial', (req, res) => platformCtrl.extendTrial(req as any, res));
 router.post('/tenants/:associationId/billing/apply-credit', (req, res) => platformCtrl.applyCredit(req as any, res));
 router.post('/billing/overrides/:overrideId/revoke', (req, res) => platformCtrl.revokeBillingOverride(req as any, res));
+
+// SMS Credits (manual grant, replaces the old tenant-reachable topup — G41)
+router.post('/associations/:associationId/sms-credits/topup', (req, res) => platformCtrl.topUpSmsCredits(req as any, res));
 
 // Platform Action Logs (Phase 19.3)
 router.get('/action-logs', (req, res) => platformCtrl.getActionLogs(req as any, res));

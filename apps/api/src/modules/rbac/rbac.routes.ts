@@ -4,7 +4,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const router = Router();
+const router: Router = Router();
 
 // All routes require authentication
 router.use(authMiddleware);

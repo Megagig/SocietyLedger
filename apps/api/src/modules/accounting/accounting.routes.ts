@@ -5,7 +5,7 @@ import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { requireModule } from '../../middleware/module-feature.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth middleware to all routes
 // Note: Tenant context comes from authenticated user's associationId (set by authMiddleware)

@@ -9,7 +9,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);

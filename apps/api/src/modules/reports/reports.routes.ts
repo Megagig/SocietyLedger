@@ -6,7 +6,7 @@ import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { requireModule } from '../../middleware/module-feature.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth and tenant middleware to all routes
 router.use(authMiddleware);

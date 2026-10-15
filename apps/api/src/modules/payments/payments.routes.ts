@@ -2,7 +2,7 @@ import { Router } from 'express';
 import paystackRoutes from './paystack/paystack.routes';
 import nombaRoutes from './nomba/nomba.routes';
 
-const router = Router();
+const router: Router = Router();
 
 // Mount Paystack routes
 router.use('/paystack', paystackRoutes);

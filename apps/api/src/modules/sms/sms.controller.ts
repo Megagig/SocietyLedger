@@ -12,7 +12,6 @@ import {
   updateCampaignSchema,
   createTemplateSchema,
   updateTemplateSchema,
-  topUpCreditsSchema,
   listMessagesQuerySchema,
   listCampaignsQuerySchema,
   listTemplatesQuerySchema,
@@ -531,48 +530,8 @@ export const smsController = {
     }
   },
 
-  async topUpCredits(req: Request, res: Response) {
-    try {
-      const associationId = req.user?.associationId;
-      const userId = req.user?.id;
-
-      if (!associationId || !userId) {
-        return res.status(400).json({ success: false, message: 'Association ID is required' });
-      }
-
-      const validatedData = topUpCreditsSchema.parse(req.body);
-      const balance = await smsService.topUpCredits(
-        associationId,
-        validatedData.amount,
-        validatedData.reference,
-        validatedData.description
-      );
-
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId,
-          action: 'CREATE',
-          tableName: 'sms_credit_transactions',
-          recordId: 0,
-          newValues: { type: 'PURCHASE', amount: validatedData.amount },
-        },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Credits topped up successfully',
-        data: balance,
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      console.error('Error topping up credits:', error);
-      const message = error instanceof Error ? error.message : 'Failed to top up credits';
-      return res.status(500).json({ success: false, message });
-    }
-  },
+  // topUpCredits removed (G41) — see sms.routes.ts; the real manual-grant
+  // path is now PlatformAdminController.topUpSmsCredits (platform-only).
 
   async getCreditHistory(req: Request, res: Response) {
     try {

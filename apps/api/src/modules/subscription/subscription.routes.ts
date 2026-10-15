@@ -3,7 +3,7 @@ import { subscriptionController } from './subscription.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // Public route - verify payment (no auth required as user might be redirected from Paystack)
 router.get('/verify/:reference', subscriptionController.verifyPayment);

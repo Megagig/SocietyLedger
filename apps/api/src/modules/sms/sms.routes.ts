@@ -10,7 +10,7 @@ import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { requireModule } from '../../middleware/module-feature.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
@@ -223,15 +223,10 @@ router.get(
   smsController.verifyPurchase
 );
 
-/**
- * Top up SMS credits
- * POST /api/sms/credits/topup
- */
-router.post(
-  '/credits/topup',
-  requirePermission(PERMISSIONS.SMS_CREDIT_MANAGE),
-  smsController.topUpCredits
-);
+// POST /credits/topup removed (G41) — granted free credits with zero payment
+// verification. Manual grants now go through the platform-only
+// POST /admin/associations/:associationId/sms-credits/topup; real purchases
+// use /credits/purchase + /credits/verify below.
 
 /**
  * Get SMS credit transaction history

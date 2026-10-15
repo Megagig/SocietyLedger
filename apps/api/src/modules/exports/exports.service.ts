@@ -117,6 +117,7 @@ export const exportsService = {
       limit?: number;
       type?: string;
       format?: string;
+      userId?: number;
     } = {}
   ) {
     const page = options.page || 1;
@@ -126,6 +127,7 @@ export const exportsService = {
     const whereClause: any = { associationId };
     if (options.type) whereClause.type = options.type;
     if (options.format) whereClause.format = options.format;
+    if (options.userId) whereClause.userId = options.userId;
 
     const [exports, totalCount] = await Promise.all([
       prisma.exportHistory.findMany({

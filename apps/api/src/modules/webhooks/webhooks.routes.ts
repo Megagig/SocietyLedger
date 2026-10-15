@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { verifyPaystackSignature } from '../../lib/paystack';
 
-const router = Router();
+const router: Router = Router();
 
 // Paystack webhook endpoint
 router.post('/paystack', async (req: Request, res: Response) => {

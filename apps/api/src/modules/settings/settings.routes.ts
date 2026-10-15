@@ -12,7 +12,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const router = Router();
+const router: Router = Router();
 
 // Configure multer for logo uploads (memory storage for processing)
 const logoUpload = multer({

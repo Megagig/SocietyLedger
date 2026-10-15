@@ -30,7 +30,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const router = Router();
+const router: Router = Router();
 
 // ============================================
 // PUBLIC ENDPOINTS (No Auth Required)

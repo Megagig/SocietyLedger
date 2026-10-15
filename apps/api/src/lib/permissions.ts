@@ -137,8 +137,8 @@ export const PERMISSIONS = {
   MEETING_CREATE: 'members.create',
   MEETING_EDIT: 'members.edit',
   MEETING_DELETE: 'members.disable',
-  MEETING_ATTENDANCE: 'members.view_own',
-  MEETING_MINUTES: 'members.view_own',
+  MEETING_ATTENDANCE: 'meetings.manage_attendance',
+  MEETING_MINUTES: 'meetings.manage_minutes',
   
   // Welfare & Social Funds
   WELFARE_VIEW: 'ledger.view',

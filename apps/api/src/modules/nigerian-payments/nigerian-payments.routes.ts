@@ -11,7 +11,7 @@ import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const router = Router();
+const router: Router = Router();
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
