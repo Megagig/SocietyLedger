@@ -118,14 +118,14 @@ export default function NotificationsSettingsPage() {
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3">Message Templates</h3>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Link
-            href="/dashboard/communication/sms/templates"
+            href="/dashboard/communications/templates"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-sm font-medium"
           >
             SMS Templates
             <ExternalLink className="w-4 h-4" />
           </Link>
           <Link
-            href="/dashboard/communication/sms"
+            href="/dashboard/communications"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
           >
             SMS Dashboard

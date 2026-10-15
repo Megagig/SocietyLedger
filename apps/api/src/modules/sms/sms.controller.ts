@@ -632,7 +632,7 @@ export const smsController = {
         email: user.email,
         amount: amountInKobo,
         reference,
-        callback_url: `${process.env.FRONTEND_URL}/dashboard/communication/sms/credits/verify?reference=${reference}`,
+        callback_url: `${process.env.FRONTEND_URL}/dashboard/communications/credits/verify?reference=${reference}`,
         metadata: {
           associationId,
           userId,

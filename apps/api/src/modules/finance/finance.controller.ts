@@ -6,6 +6,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
+import { sendEmail } from '../../lib/email';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -2263,13 +2264,35 @@ export const financeController = {
             return sum.plus(new Decimal(txn.amount).minus(paid));
           }, new Decimal(0));
 
-          // In production, send actual email here
-          // For now, we'll log and record the reminder
-          console.log(`📧 [REMINDER] Sending payment reminder to ${member.email}`);
-          console.log(`   Association: ${association?.name}`);
-          console.log(`   Outstanding: ₦${totalOutstanding.toNumber().toLocaleString()}`);
-          console.log(`   Transactions: ${memberTxns.length}`);
-          if (message) console.log(`   Custom message: ${message}`);
+          // G43: real email per transaction — each has its own category/due
+          // date, so one reminder per transaction matches the existing
+          // payment-reminder/payment-overdue templates' fields correctly
+          // rather than forcing several transactions into one summary email.
+          for (const txn of memberTxns) {
+            const paid = txn.payments.reduce((p, pay) => p.plus(pay.amountPaid), new Decimal(0));
+            const txnOutstanding = new Decimal(txn.amount).minus(paid);
+            const daysUntilDue = txn.dueDate
+              ? Math.ceil((txn.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+              : 0;
+
+            await sendEmail({
+              to: member.email!,
+              subject: daysUntilDue < 0
+                ? `Overdue: ${txn.category.name} payment for ${association?.name}`
+                : `Payment Reminder: ${txn.category.name} for ${association?.name}`,
+              template: daysUntilDue < 0 ? 'payment-overdue' : 'payment-reminder',
+              data: {
+                memberName: `${member.firstName} ${member.lastName}`,
+                associationName: association?.name,
+                categoryName: txn.category.name,
+                amount: txnOutstanding.toNumber(),
+                dueDate: txn.dueDate ? txn.dueDate.toLocaleDateString('en-NG') : 'N/A',
+                daysUntilDue,
+                daysOverdue: daysUntilDue < 0 ? Math.abs(daysUntilDue) : undefined,
+                ...(message && { customMessage: message }),
+              },
+            });
+          }
 
           // Record reminder in audit log
           await prisma.auditLog.create({

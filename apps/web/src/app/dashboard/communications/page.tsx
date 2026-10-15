@@ -17,16 +17,21 @@ import {
 import { IconMessage, IconSend, IconClock, IconAlertCircle, IconArrowRight } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { smsApi, SMSDashboard } from '@/lib/api/sms';
+import { smsApi, SMSDashboardStats } from '@/lib/api/sms';
 import { SMSBalanceCard } from '@/components/communications/SMSBalanceCard';
 import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function CommunicationsDashboard() {
   const router = useRouter();
 
-  const { data: dashboard, isLoading, error } = useQuery<SMSDashboard>({
+  const { data: dashboard, isLoading, error } = useQuery<SMSDashboardStats>({
     queryKey: ['sms-dashboard'],
     queryFn: () => smsApi.getDashboard(),
+  });
+
+  const { data: balance } = useQuery({
+    queryKey: ['sms-credit-balance'],
+    queryFn: () => smsApi.getBalance(),
   });
 
   if (isLoading) {
@@ -80,21 +85,17 @@ export default function CommunicationsDashboard() {
 
         <SimpleGrid cols={{ base: 1, md: 2, lg: 4 }}>
           {/* SMS Balance Card */}
-          {dashboard && (
+          {balance && (
             <SMSBalanceCard
-              balance={{
-                totalCredits: dashboard?.totalCredits || 0,
-                creditsUsed: dashboard?.creditsUsedThisMonth || 0,
-                creditsRemaining: dashboard?.creditsRemaining || 0,
-              }}
-              onTopup={() => router.push('/dashboard/communications/reports')}
+              balance={balance}
+              onTopup={() => router.push('/dashboard/communications/credits')}
             />
           )}
 
           {/* Messages Sent */}
           <StatCard
             label="Messages Sent"
-            value={dashboard?.sent || 0}
+            value={dashboard?.totalMessagesSent || 0}
             icon={<IconMessage size={24} color="blue" />}
             color="blue"
           />
@@ -102,7 +103,7 @@ export default function CommunicationsDashboard() {
           {/* Delivered */}
           <StatCard
             label="Delivered"
-            value={dashboard?.delivered || 0}
+            value={dashboard?.totalMessagesDelivered || 0}
             icon={<IconSend size={24} color="green" />}
             color="green"
           />
@@ -110,7 +111,7 @@ export default function CommunicationsDashboard() {
           {/* Failed */}
           <StatCard
             label="Failed"
-            value={dashboard?.failed || 0}
+            value={dashboard?.totalMessagesFailed || 0}
             icon={<IconAlertCircle size={24} color="red" />}
             color="red"
           />
@@ -162,12 +163,6 @@ export default function CommunicationsDashboard() {
           </SimpleGrid>
         </div>
 
-        {/* Recent Activity */}
-        {dashboard && dashboard.pending && dashboard.pending > 0 && (
-          <Alert icon={<IconClock size={16} />} color="blue" title="Pending Messages">
-            You have {dashboard.pending} messages pending delivery. Check the history page for details.
-          </Alert>
-        )}
       </Stack>
     </Container>
   );

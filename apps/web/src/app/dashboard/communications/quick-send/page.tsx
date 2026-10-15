@@ -94,10 +94,7 @@ export default function QuickSendPage() {
     }
 
     const requestData: SendSMSRequest = {
-      recipients: recipients.map(r => ({
-        type: r.type,
-        value: typeof r.value === 'number' ? r.value.toString() : r.value,
-      })),
+      recipients: recipients.map(r => String(r.value)),
       message: message.trim(),
       ...(selectedTemplate && { templateId: selectedTemplate.id }),
     };

@@ -139,9 +139,9 @@ export default function CampaignDetailPage() {
     );
   }
 
-  const canStart = campaign.status === 'draft' || campaign.status === 'scheduled';
-  const canCancel = campaign.status === 'draft' || campaign.status === 'scheduled' || campaign.status === 'in_progress';
-  const canDelete = campaign.status === 'draft' || campaign.status === 'cancelled' || campaign.status === 'failed';
+  const canStart = campaign.status === 'DRAFT' || campaign.status === 'SCHEDULED';
+  const canCancel = campaign.status === 'DRAFT' || campaign.status === 'SCHEDULED' || campaign.status === 'IN_PROGRESS';
+  const canDelete = campaign.status === 'DRAFT' || campaign.status === 'CANCELLED' || campaign.status === 'FAILED';
 
   return (
     <Container size="xl" py="xl">
@@ -211,11 +211,11 @@ export default function CampaignDetailPage() {
                   {new Date(campaign.createdAt).toLocaleString()}
                 </Text>
               </div>
-              {campaign.scheduledFor && (
+              {campaign.scheduledAt && (
                 <div>
                   <Text size="sm" c="dimmed">Scheduled For</Text>
                   <Text fw={500}>
-                    {new Date(campaign.scheduledFor).toLocaleString()}
+                    {new Date(campaign.scheduledAt).toLocaleString()}
                   </Text>
                 </div>
               )}
@@ -243,7 +243,7 @@ export default function CampaignDetailPage() {
 
             <Group>
               <Badge size="lg" variant="light">
-                {campaign.recipientCount.toLocaleString()} Recipients
+                {campaign.totalRecipients.toLocaleString()} Recipients
               </Badge>
               <Badge size="lg" variant="light">
                 {campaign.sentCount.toLocaleString()} Sent
@@ -259,26 +259,26 @@ export default function CampaignDetailPage() {
         </Card>
 
         {/* Progress */}
-        {(campaign.status === 'in_progress' || campaign.status === 'completed') && (
+        {(campaign.status === 'IN_PROGRESS' || campaign.status === 'COMPLETED') && (
           <Card padding="lg" radius="md" withBorder>
             <Title order={3} mb="md">Campaign Progress</Title>
             <CampaignProgress
               sent={campaign.sentCount}
               delivered={campaign.deliveredCount}
               failed={campaign.failedCount}
-              total={campaign.recipientCount}
+              total={campaign.totalRecipients}
             />
           </Card>
         )}
 
         {/* Info */}
-        {campaign.status === 'draft' && (
+        {campaign.status === 'DRAFT' && (
           <Alert color="blue" variant="light">
             This campaign is a draft. Click "Start Campaign" to begin sending messages.
           </Alert>
         )}
 
-        {campaign.status === 'scheduled' && (
+        {campaign.status === 'SCHEDULED' && (
           <Alert color="cyan" variant="light">
             This campaign is scheduled. Messages will be sent at the scheduled time.
           </Alert>

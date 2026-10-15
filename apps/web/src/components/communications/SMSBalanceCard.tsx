@@ -11,8 +11,8 @@ interface SMSBalanceCardProps {
 }
 
 export function SMSBalanceCard({ balance, onTopup, loading }: SMSBalanceCardProps) {
-  const usagePercentage = balance.totalCredits > 0 
-    ? ((balance.creditsUsed / balance.totalCredits) * 100).toFixed(1)
+  const usagePercentage = balance.totalPurchased > 0
+    ? ((balance.totalUsed / balance.totalPurchased) * 100).toFixed(1)
     : '0';
 
   return (
@@ -21,20 +21,20 @@ export function SMSBalanceCard({ balance, onTopup, loading }: SMSBalanceCardProp
         <Group justify="space-between" align="center">
           <Title order={3}>SMS Credits</Title>
           <Badge variant="light" color="blue" size="lg">
-            {balance?.creditsRemaining?.toLocaleString() || '0'} remaining
+            {balance?.balance?.toLocaleString() || '0'} remaining
           </Badge>
         </Group>
 
         <Stack gap="xs">
           <Group justify="space-between">
-            <Text size="sm" c="dimmed">Total Credits</Text>
-            <Text fw={500}>{balance?.totalCredits?.toLocaleString() || '0'}</Text>
+            <Text size="sm" c="dimmed">Total Purchased</Text>
+            <Text fw={500}>{balance?.totalPurchased?.toLocaleString() || '0'}</Text>
           </Group>
 
           <Group justify="space-between">
-            <Text size="sm" c="dimmed">Used This Month</Text>
+            <Text size="sm" c="dimmed">Total Used</Text>
             <Text fw={500} c="orange">
-              {balance?.creditsUsed?.toLocaleString() || '0'}
+              {balance?.totalUsed?.toLocaleString() || '0'}
             </Text>
           </Group>
 
@@ -46,11 +46,11 @@ export function SMSBalanceCard({ balance, onTopup, loading }: SMSBalanceCardProp
             </Group>
           </Group>
 
-          {balance.lastTopupAt && (
+          {balance.lastTopUpAt && (
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Last Top-up</Text>
               <Text size="sm">
-                {balance?.lastTopupAt ? new Date(balance.lastTopupAt).toLocaleDateString() : 'N/A'}
+                {new Date(balance.lastTopUpAt).toLocaleDateString()}
               </Text>
             </Group>
           )}

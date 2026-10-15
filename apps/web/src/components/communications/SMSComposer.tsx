@@ -73,7 +73,7 @@ export function SMSComposer({
   // Update preview when template is selected
   useEffect(() => {
     if (selectedTemplate) {
-      setPreview(selectedTemplate.message);
+      setPreview(selectedTemplate.content);
     } else {
       setPreview(message);
     }
@@ -84,7 +84,7 @@ export function SMSComposer({
       const template = templates.find(t => t.id === parseInt(templateId));
       if (template) {
         onTemplateSelect(template);
-        onMessageChange(template.message);
+        onMessageChange(template.content);
       }
     }
   };
@@ -196,7 +196,7 @@ export function SMSComposer({
                 style={{ cursor: 'pointer' }}
                 onClick={() => handleVariableInsert(variable)}
               >
-                {'{' + variable + '}'}
+                {'{{' + variable + '}}'}
               </Badge>
             ))}
           </Group>

@@ -9,6 +9,7 @@ import { tenantMiddleware } from './middleware/tenant.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
+import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
 import { standardRateLimit, authRateLimit, sessionRateLimit } from './middleware/rate-limit.middleware';
@@ -237,6 +238,7 @@ if (process.env.NODE_ENV !== 'test') {
         // Start cron jobs
         startSubscriptionJobs();
         startMeetingJobs();
+        startPaymentReminderJobs();
       });
     })
     .catch((err) => {
@@ -252,6 +254,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGTERM received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopPaymentReminderJobs();
     await closeRedisConnection();
     process.exit(0);
   });
@@ -260,6 +263,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGINT received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopPaymentReminderJobs();
     await closeRedisConnection();
     process.exit(0);
   });

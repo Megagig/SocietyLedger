@@ -2,7 +2,7 @@
 
 import { Modal, Stack, Group, Badge, Text, Title, Button, Card, CopyButton, Alert } from '@mantine/core';
 import { IconCopy, IconCheck, IconX, IconClock, IconAlertCircle } from '@tabler/icons-react';
-import { SMSMessage } from '@/lib/api/sms';
+import { SMSMessage, SMSStatus } from '@/lib/api/sms';
 
 interface MessageDetailModalProps {
   message: SMSMessage;
@@ -11,28 +11,30 @@ interface MessageDetailModalProps {
 }
 
 export function MessageDetailModal({ message, opened, onClose }: MessageDetailModalProps) {
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: SMSStatus) => {
     switch (status) {
-      case 'delivered':
+      case 'DELIVERED':
         return 'green';
-      case 'sent':
+      case 'SENT':
         return 'blue';
-      case 'failed':
+      case 'FAILED':
+      case 'REJECTED':
         return 'red';
-      case 'pending':
+      case 'PENDING':
         return 'yellow';
       default:
         return 'gray';
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: SMSStatus) => {
     switch (status) {
-      case 'delivered':
+      case 'DELIVERED':
         return <IconCheck size={16} />;
-      case 'sent':
+      case 'SENT':
         return <IconClock size={16} />;
-      case 'failed':
+      case 'FAILED':
+      case 'REJECTED':
         return <IconAlertCircle size={16} />;
       default:
         return <IconClock size={16} />;
@@ -59,14 +61,14 @@ export function MessageDetailModal({ message, opened, onClose }: MessageDetailMo
           <Stack gap="sm">
             <Group>
               <Text size="sm" c="dimmed">Recipient</Text>
-              <Text fw={500}>{message.recipientName || message.recipient}</Text>
+              <Text fw={500}>{message.recipientName || message.recipientPhone}</Text>
             </Group>
             <Group>
               <Text size="sm" c="dimmed">Phone Number</Text>
               <Text fw={500} style={{ fontFamily: 'monospace' }}>
-                {message.recipient}
+                {message.recipientPhone}
               </Text>
-              <CopyButton value={message.recipient}>
+              <CopyButton value={message.recipientPhone}>
                 {({ copied, copy }) => (
                   <Button
                     size="xs"
@@ -108,7 +110,7 @@ export function MessageDetailModal({ message, opened, onClose }: MessageDetailMo
           <Stack gap="sm">
             <Group>
               <Text size="sm" c="dimmed">Sent At</Text>
-              <Text fw={500}>{new Date(message.sentAt).toLocaleString()}</Text>
+              <Text fw={500}>{message.sentAt ? new Date(message.sentAt).toLocaleString() : 'Not sent yet'}</Text>
             </Group>
 
             {message.deliveredAt && (
@@ -120,18 +122,13 @@ export function MessageDetailModal({ message, opened, onClose }: MessageDetailMo
 
             <Group>
               <Text size="sm" c="dimmed">Campaign</Text>
-              <Text fw={500}>{message.campaignId ? `#${message.campaignId}` : 'N/A'}</Text>
-            </Group>
-
-            <Group>
-              <Text size="sm" c="dimmed">Template</Text>
-              <Text fw={500}>{message.templateId ? `#${message.templateId}` : 'N/A'}</Text>
+              <Text fw={500}>{message.campaign ? message.campaign.name : 'N/A'}</Text>
             </Group>
           </Stack>
         </Card>
 
         {/* Error Message */}
-        {message.status === 'failed' && message.errorMessage && (
+        {(message.status === 'FAILED' || message.status === 'REJECTED') && message.errorMessage && (
           <Alert icon={<IconAlertCircle size={16} />} color="red" title="Delivery Failed">
             <Text size="sm">{message.errorMessage}</Text>
           </Alert>
