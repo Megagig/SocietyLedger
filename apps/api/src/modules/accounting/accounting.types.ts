@@ -10,6 +10,28 @@ export type NormalBalance = 'DEBIT' | 'CREDIT';
 export type JournalEntryStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'POSTED' | 'VOIDED';
 export type BudgetStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'ACTIVE' | 'CLOSED';
 export type PeriodStatus = 'OPEN' | 'CLOSED' | 'LOCKED';
+export type PeriodType = 'month' | 'quarter' | 'year';
+
+// Accounting Periods
+export interface AccountingPeriodInput {
+  name: string;
+  periodType: PeriodType;
+  startDate: Date | string;
+  endDate: Date | string;
+}
+
+export interface AccountingPeriodResponse {
+  id: number;
+  name: string;
+  periodType: PeriodType;
+  startDate: Date;
+  endDate: Date;
+  status: PeriodStatus;
+  closedBy: number | null;
+  closedByEmail: string | null;
+  closedAt: Date | null;
+  createdAt: Date;
+}
 
 // Chart of Accounts
 export interface ChartOfAccountInput {

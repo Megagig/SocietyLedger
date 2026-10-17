@@ -48,12 +48,15 @@ export interface Subscription {
   trialEnd: Date | string | null;
   paystackCustomerCode: string | null;
   paystackSubscriptionCode: string | null;
+  pendingPlanId: number | null;
+  pendingBillingCycle: BillingCycle | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
 
 export interface SubscriptionWithPlan extends Subscription {
   plan: PlanWithFeatures;
+  pendingPlan?: Plan | null;
   payments?: any[]; // Payment history
 }
 

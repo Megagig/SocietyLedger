@@ -4,6 +4,7 @@ import { PaystackService } from './paystack.service';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { SettingsService } from '../../settings/settings.service';
 
 // Validation schemas
 const initializePaymentSchema = z.object({
@@ -28,6 +29,18 @@ export const paystackController = {
       }
 
       const validatedData = initializePaymentSchema.parse(req.body);
+
+      // R4.6/G53: Integrations Settings' paystackEnabled was saved but
+      // never read — this is the real decision point (a member paying
+      // dues online), unlike subscription billing which is between the
+      // association and the platform and stays always-available.
+      const paystackEnabled = await SettingsService.getSetting(associationId, 'integrations', 'paystackEnabled');
+      if (paystackEnabled === false) {
+        return res.status(400).json({
+          success: false,
+          message: 'Online payment via Paystack is not enabled for this association',
+        });
+      }
 
       // Get transaction with member details
       const transaction = await prisma.transaction.findFirst({

@@ -8,10 +8,12 @@ interface PricingCardProps {
   plan: PlanWithFeatures;
   billingCycle: BillingCycle;
   onSelectPlan: (planId: number, billingCycle: BillingCycle) => void;
+  onStartTrial?: (planId: number) => void;
   isLoading?: boolean;
+  isTrialLoading?: boolean;
 }
 
-export default function PricingCard({ plan, billingCycle, onSelectPlan, isLoading }: PricingCardProps) {
+export default function PricingCard({ plan, billingCycle, onSelectPlan, onStartTrial, isLoading, isTrialLoading }: PricingCardProps) {
   const price = billingCycle === 'MONTHLY' 
     ? Number(plan.priceMonthly) 
     : Number(plan.priceAnnual);
@@ -102,11 +104,23 @@ export default function PricingCard({ plan, billingCycle, onSelectPlan, isLoadin
 
       <button
         onClick={() => onSelectPlan(plan.id, billingCycle)}
-        disabled={isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+        disabled={isLoading || isTrialLoading}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? 'Processing...' : 'Choose Plan'}
       </button>
+
+      {onStartTrial && (
+        <button
+          onClick={() => onStartTrial(plan.id)}
+          disabled={isLoading || isTrialLoading}
+          className="w-full text-blue-600 dark:text-blue-400 hover:underline font-medium py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+        >
+          {isTrialLoading ? 'Starting trial...' : 'Start 14-day free trial — no card required'}
+        </button>
+      )}
+
+      {!onStartTrial && <div className="mb-6" />}
 
       <ul className="space-y-3">
         {getFeatureList().map((feature, index) => (

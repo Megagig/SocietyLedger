@@ -299,11 +299,17 @@ export class AuthController {
         return;
       }
 
+      // R4.6/G53: Members & Access Settings' defaultRole was saved but
+      // never read — self-registered users always got the 'member' literal
+      // regardless of what the association configured.
+      const defaultRole = await SettingsService.getSetting(tenantId, 'members_access', 'defaultRole');
+
       // Create user with verification code
       const { user, verificationCode } = await createUserWithVerification({
         email,
         password,
         associationId: tenantId,
+        role: defaultRole || undefined,
         firstName,
         lastName,
       });

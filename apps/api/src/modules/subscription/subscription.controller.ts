@@ -60,9 +60,18 @@ export const subscriptionController = {
         });
       }
 
+      // G54: surface the pending downgrade (if any) so the UI can keep
+      // showing it was scheduled, not just at the moment changePlan() ran
+      let pendingPlan = null;
+      if (subscription.pendingPlanId) {
+        pendingPlan = await prisma.plan.findUnique({
+          where: { id: subscription.pendingPlanId },
+        });
+      }
+
       return res.status(200).json({
         success: true,
-        data: subscription,
+        data: { ...subscription, pendingPlan },
       });
     } catch (error) {
       console.error('Error fetching subscription:', error);
@@ -184,6 +193,87 @@ export const subscriptionController = {
       return res.status(500).json({
         success: false,
         message: 'Failed to initialize payment',
+      });
+    }
+  },
+
+  // G56: start a 14-day trial with no gateway redirect at all — the Plans
+  // page promise ("No credit card required") previously had no path that
+  // actually skipped payment; initializePayment's own TRIALING-row creation
+  // always preceded a forced redirect to Paystack/Nomba.
+  async startTrial(req: Request, res: Response) {
+    try {
+      const { planId } = req.body;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association ID is required',
+        });
+      }
+
+      if (!planId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Plan ID is required',
+        });
+      }
+
+      const plan = await prisma.plan.findUnique({
+        where: { id: parseInt(planId) },
+      });
+
+      if (!plan || !plan.isActive) {
+        return res.status(404).json({
+          success: false,
+          message: 'Plan not found or inactive',
+        });
+      }
+
+      // Same scoping initializePayment already uses for "does a subscription
+      // already exist" — one free trial per association, not per plan.
+      const existingSubscription = await prisma.subscription.findFirst({
+        where: {
+          associationId,
+          status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] },
+        },
+      });
+
+      if (existingSubscription) {
+        return res.status(400).json({
+          success: false,
+          message: 'A trial or subscription already exists for this association',
+        });
+      }
+
+      const trialDays = 14;
+      const now = new Date();
+      const trialEnd = new Date(now);
+      trialEnd.setDate(trialEnd.getDate() + trialDays);
+
+      const subscription = await prisma.subscription.create({
+        data: {
+          associationId,
+          planId: plan.id,
+          status: 'TRIALING',
+          billingCycle: 'MONTHLY',
+          trialEndsAt: trialEnd,
+          currentPeriodStart: now,
+          currentPeriodEnd: trialEnd,
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Your 14-day free trial has started',
+        data: subscription,
+      });
+    } catch (error) {
+      console.error('Error starting trial:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to start trial',
       });
     }
   },
@@ -386,7 +476,21 @@ export const subscriptionController = {
 
     // Calculate new period dates
     const subscription = paymentHistory.subscription;
-    const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
+
+    // Review fix (R4.1 follow-up): a plan-change upgrade's Paystack
+    // metadata was never read here, so "upgrade" never actually switched
+    // the plan — and separately, a stale pendingPlanId from an earlier
+    // deferred downgrade was never cleared when a real change completed.
+    // Both are fixed together: an upgrade confirmation applies the real
+    // plan and billing cycle, and always clears any pending deferred one.
+    const paystackMetadata = verification.data.metadata as Record<string, any> | undefined;
+    const isPlanChange = paystackMetadata?.type === 'plan_change' && paystackMetadata.newPlanId;
+    const effectivePlanId = isPlanChange ? Number(paystackMetadata!.newPlanId) : subscription.planId;
+    const effectiveBillingCycle = isPlanChange && paystackMetadata!.billingCycle
+      ? paystackMetadata!.billingCycle
+      : subscription.billingCycle;
+
+    const periodMonths = effectiveBillingCycle === 'MONTHLY' ? 1 : 12;
     const currentDate = new Date();
     const periodEnd = new Date(currentDate);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
@@ -405,9 +509,15 @@ export const subscriptionController = {
         where: { id: subscription.id },
         data: {
           status: 'ACTIVE',
+          planId: effectivePlanId,
+          billingCycle: effectiveBillingCycle,
           currentPeriodStart: currentDate,
           currentPeriodEnd: periodEnd,
           renewalDate: periodEnd,
+          // Only an actual plan-change confirmation supersedes a pending
+          // deferred change — a plain renewal on the current plan must
+          // leave an existing pending downgrade exactly as scheduled.
+          ...(isPlanChange ? { pendingPlanId: null, pendingBillingCycle: null } : {}),
         },
       }),
       prisma.association.update({
@@ -429,9 +539,10 @@ export const subscriptionController = {
             amount: PaystackService.koboToNaira(verification.data.amount),
             provider: 'paystack',
             subscriptionId: subscription.id,
-            planId: subscription.planId,
-            billingCycle: subscription.billingCycle,
+            planId: effectivePlanId,
+            billingCycle: effectiveBillingCycle,
             periodEnd: periodEnd.toISOString(),
+            ...(isPlanChange ? { planChangeFromPlanId: subscription.planId } : {}),
           },
         },
       }),
@@ -439,16 +550,19 @@ export const subscriptionController = {
 
     console.log(`✅ [VERIFY] Paystack subscription payment verified successfully`);
 
-    const association = await prisma.association.findUnique({
-      where: { id: subscription.associationId },
-      select: { subdomain: true, name: true },
-    });
+    const [association, updatedSubscription] = await Promise.all([
+      prisma.association.findUnique({
+        where: { id: subscription.associationId },
+        select: { subdomain: true, name: true },
+      }),
+      prisma.subscription.findUnique({ where: { id: subscription.id }, include: { plan: true } }),
+    ]);
 
     return res.status(200).json({
       success: true,
       message: 'Payment verified successfully',
       data: {
-        subscription,
+        subscription: updatedSubscription,
         payment: verification.data,
         subdomain: association?.subdomain,
         associationName: association?.name,
@@ -503,7 +617,20 @@ export const subscriptionController = {
 
     // Calculate new period dates
     const subscription = paymentHistory.subscription;
-    const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
+
+    // Review fix (R4.1 follow-up): same reasoning as verifyPaystackPayment
+    // — apply a real plan-change confirmation's new plan/cycle for real,
+    // and only then clear any pending deferred change. Not currently
+    // reachable (changePlan's upgrade branch only ever initializes
+    // Paystack), kept symmetric in case Nomba upgrades are added later.
+    const nombaMetadata = (nombaVerification.data as any)?.metadata as Record<string, any> | undefined;
+    const isPlanChange = nombaMetadata?.type === 'plan_change' && nombaMetadata.newPlanId;
+    const effectivePlanId = isPlanChange ? Number(nombaMetadata!.newPlanId) : subscription.planId;
+    const effectiveBillingCycle = isPlanChange && nombaMetadata!.billingCycle
+      ? nombaMetadata!.billingCycle
+      : subscription.billingCycle;
+
+    const periodMonths = effectiveBillingCycle === 'MONTHLY' ? 1 : 12;
     const currentDate = new Date();
     const periodEnd = new Date(currentDate);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
@@ -524,9 +651,12 @@ export const subscriptionController = {
         where: { id: subscription.id },
         data: {
           status: 'ACTIVE',
+          planId: effectivePlanId,
+          billingCycle: effectiveBillingCycle,
           currentPeriodStart: currentDate,
           currentPeriodEnd: periodEnd,
           renewalDate: periodEnd,
+          ...(isPlanChange ? { pendingPlanId: null, pendingBillingCycle: null } : {}),
         },
       }),
       prisma.association.update({
@@ -548,9 +678,10 @@ export const subscriptionController = {
             amount: amountInNaira,
             provider: 'nomba',
             subscriptionId: subscription.id,
-            planId: subscription.planId,
-            billingCycle: subscription.billingCycle,
+            planId: effectivePlanId,
+            billingCycle: effectiveBillingCycle,
             periodEnd: periodEnd.toISOString(),
+            ...(isPlanChange ? { planChangeFromPlanId: subscription.planId } : {}),
           },
         },
       }),
@@ -558,16 +689,19 @@ export const subscriptionController = {
 
     console.log(`✅ [VERIFY] Nomba subscription payment verified successfully`);
 
-    const association = await prisma.association.findUnique({
-      where: { id: subscription.associationId },
-      select: { subdomain: true, name: true },
-    });
+    const [association, updatedSubscription] = await Promise.all([
+      prisma.association.findUnique({
+        where: { id: subscription.associationId },
+        select: { subdomain: true, name: true },
+      }),
+      prisma.subscription.findUnique({ where: { id: subscription.id }, include: { plan: true } }),
+    ]);
 
     return res.status(200).json({
       success: true,
       message: 'Payment verified successfully',
       data: {
-        subscription,
+        subscription: updatedSubscription,
         subdomain: association?.subdomain,
         associationName: association?.name,
       },
@@ -719,6 +853,22 @@ export const subscriptionController = {
         });
       }
 
+      // G54: requesting the current (already-active) plan while a downgrade
+      // is pending cancels that pending change instead of erroring out —
+      // otherwise a deferred downgrade would have no way back.
+      if (currentSubscription.pendingPlanId && currentSubscription.planId === newPlanId) {
+        await prisma.subscription.update({
+          where: { id: currentSubscription.id },
+          data: { pendingPlanId: null, pendingBillingCycle: null },
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: 'Pending plan change cancelled — you will stay on your current plan',
+          data: { changeType: 'cancelled', requiresPayment: false },
+        });
+      }
+
       // Check if it's the same plan
       if (currentSubscription.planId === newPlanId && currentSubscription.billingCycle === (billingCycle || currentSubscription.billingCycle)) {
         return res.status(400).json({
@@ -810,13 +960,15 @@ export const subscriptionController = {
           });
         }
       } else {
-        // Downgrade - apply at period end (no immediate payment)
+        // Downgrade - deferred: planId/billingCycle stay as-is until
+        // checkSubscriptionRenewal's pending-change sweep applies these at
+        // currentPeriodEnd (G54 — this used to apply immediately despite
+        // the success message below claiming otherwise).
         await prisma.subscription.update({
           where: { id: currentSubscription.id },
           data: {
-            planId: newPlanId,
-            billingCycle: newBillingCycle,
-            // Will take effect at current period end
+            pendingPlanId: newPlanId,
+            pendingBillingCycle: newBillingCycle,
           },
         });
 

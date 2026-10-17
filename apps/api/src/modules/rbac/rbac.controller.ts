@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { RBACService as RBACServiceCore } from '../../services/rbac.service';
 import { PrismaClient, PlatformRole } from '@prisma/client';
+import { SettingsService } from '../settings/settings.service';
 
 const prisma = new PrismaClient();
 
@@ -474,6 +475,18 @@ export class RBACController {
         return res.status(404).json({
           success: false,
           message: 'Role not found'
+        });
+      }
+
+      // R4.6/G53: Members & Access Settings' allowMultipleRoles was saved
+      // but never read — assignRole always stacked roles regardless. When
+      // off (the default), assigning a new role retires any other active
+      // one for this user instead of leaving both active.
+      const allowMultipleRoles = await SettingsService.getSetting(associationId, 'members_access', 'allowMultipleRoles');
+      if (!allowMultipleRoles) {
+        await prisma.userRole.updateMany({
+          where: { userId, associationId, roleId: { not: roleId }, isActive: true },
+          data: { isActive: false },
         });
       }
 

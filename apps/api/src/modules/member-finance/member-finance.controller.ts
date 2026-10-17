@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
+import { SettingsService } from '../settings/settings.service';
 
 // Validation schemas
 const paymentSchema = z.object({
@@ -902,7 +903,8 @@ export const memberFinanceController = {
           memberIdNumber = parseInt(match[1], 10) + 1;
         }
       }
-      const memberId = `MEM${memberIdNumber.toString().padStart(4, '0')}`;
+      const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
+      const memberId = `${memberIdPrefix}${memberIdNumber.toString().padStart(4, '0')}`;
 
       const newMember = await prisma.member.create({
         data: {

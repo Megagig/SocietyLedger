@@ -11,11 +11,26 @@ export default function PlansPage() {
   const [plans, setPlans] = useState<PlanWithFeatures[]>([]);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('MONTHLY');
   const [loadingPlanId, setLoadingPlanId] = useState<number | null>(null);
+  const [trialLoadingPlanId, setTrialLoadingPlanId] = useState<number | null>(null);
+  const [hasSubscription, setHasSubscription] = useState(true); // assume yes until confirmed otherwise, so the trial CTA doesn't flash in for existing subscribers
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchPlans();
+    checkExistingSubscription();
   }, []);
+
+  const checkExistingSubscription = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions/current`, {
+        credentials: 'include',
+        headers: getTenantHeaders(),
+      });
+      setHasSubscription(response.ok);
+    } catch {
+      setHasSubscription(true);
+    }
+  };
 
   const fetchPlans = async () => {
     try {
@@ -39,6 +54,33 @@ export default function PlansPage() {
   const handleSelectPlan = async (planId: number, cycle: BillingCycle) => {
     // Redirect to checkout page with plan details
     router.push(`/dashboard/subscription/checkout?planId=${planId}&billingCycle=${cycle}`);
+  };
+
+  const handleStartTrial = async (planId: number) => {
+    setError('');
+    setTrialLoadingPlanId(planId);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subscriptions/start-trial`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getTenantHeaders(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ planId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to start trial');
+      }
+
+      router.push('/dashboard/subscription?trialStarted=1');
+    } catch (err: any) {
+      setError(err.message || 'Failed to start trial');
+      setTrialLoadingPlanId(null);
+    }
   };
 
   return (
@@ -98,7 +140,9 @@ export default function PlansPage() {
                 plan={plan}
                 billingCycle={billingCycle}
                 onSelectPlan={handleSelectPlan}
+                onStartTrial={hasSubscription ? undefined : handleStartTrial}
                 isLoading={loadingPlanId === plan.id}
+                isTrialLoading={trialLoadingPlanId === plan.id}
               />
             ))}
           </div>

@@ -80,6 +80,17 @@ router.get(
 );
 
 /**
+ * Audit Log Route (G51)
+ */
+
+// GET /api/settings/audit-logs - tenant-scoped audit log listing
+router.get(
+  '/audit-logs',
+  requirePermission(PERMISSIONS.AUDIT_VIEW),
+  SettingsController.getAuditLogs
+);
+
+/**
  * Category-based Settings Routes
  * 
  * Permission mapping:

@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
 import { penaltiesService } from '../finance/advanced/penalties.service';
+import { SettingsService } from '../settings/settings.service';
 
 // ============================================
 // LATE FEES CRON JOB (TASK-ADV-006)
@@ -47,7 +48,10 @@ export async function processLateFees(): Promise<{
       },
     });
 
-    // Filter to only associations with active penalty rules
+    // Filter to associations with either an active penalty rule, or (R4.6/
+    // G53) Financial Settings' enableLateFees on — applyLateFees() falls
+    // back to a settings-derived rule in that case, but only gets the
+    // chance to if it's actually called.
     const associationsWithRules: AssociationWithAdmin[] = [];
     for (const assoc of associations) {
       const hasRules = await prisma.penaltyRule.count({
@@ -58,6 +62,12 @@ export async function processLateFees(): Promise<{
         },
       });
       if (hasRules > 0) {
+        associationsWithRules.push(assoc);
+        continue;
+      }
+
+      const enableLateFees = await SettingsService.getSetting(assoc.id, 'financial', 'enableLateFees');
+      if (enableLateFees) {
         associationsWithRules.push(assoc);
       }
     }

@@ -17,6 +17,7 @@ import {
   listTemplatesQuerySchema,
 } from './sms.validation';
 import { prisma } from '../../lib/prisma';
+import { SettingsService } from '../settings/settings.service';
 
 const smsService = new SMSService();
 
@@ -56,6 +57,15 @@ export const smsController = {
 
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      // R4.6/G53 review fix: check here (not just inside the service) so a
+      // disabled provider surfaces as a real 400, not a 500 from the
+      // generic catch block below — same pattern as the Paystack/Nomba
+      // enabled-channel checks.
+      const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
+      if (smsProvider === 'none') {
+        return res.status(400).json({ success: false, message: 'SMS sending is disabled for this association' });
       }
 
       const validatedData = quickSMSSchema.parse(req.body);
@@ -191,6 +201,12 @@ export const smsController = {
 
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      // R4.6/G53 review fix: same 400-not-500 reasoning as sendQuickSMS above
+      const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
+      if (smsProvider === 'none') {
+        return res.status(400).json({ success: false, message: 'SMS sending is disabled for this association' });
       }
 
       const stats = await smsService.startCampaign(associationId, parseInt(id));

@@ -1,6 +1,7 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { SettingsService } from '../../settings/settings.service';
 
 // ============================================
 // PENALTY SERVICE (TASK-ADV-005, TASK-ADV-006, TASK-ADV-007)
@@ -315,13 +316,31 @@ export const penaltiesService = {
     const now = new Date();
 
     // Get active late payment rules
-    const rules = await prisma.penaltyRule.findMany({
+    let rules = await prisma.penaltyRule.findMany({
       where: {
         associationId,
         isActive: true,
         triggerType: 'late_payment',
       },
     });
+
+    // R4.6/G53: Financial Settings' enableLateFees/lateFeeType/lateFeeAmount/
+    // defaultGracePeriodDays were saved but never read by anything — fall
+    // back to a real general rule derived from them when no officer-defined
+    // PenaltyRule exists yet, so the setting actually does something.
+    if (rules.length === 0) {
+      const financialSettings = await SettingsService.getSettings(associationId, 'financial');
+      if (financialSettings.enableLateFees) {
+        const generalRule = await this.createRule(associationId, userId, {
+          name: 'Default Late Fee (from Financial Settings)',
+          triggerType: 'late_payment',
+          gracePeriodDays: financialSettings.defaultGracePeriodDays ?? 7,
+          feeType: financialSettings.lateFeeType ?? 'fixed',
+          feeAmount: financialSettings.lateFeeAmount ?? 0,
+        });
+        rules = [generalRule];
+      }
+    }
 
     if (rules.length === 0) {
       return { applied: 0, totalAmount: 0 };

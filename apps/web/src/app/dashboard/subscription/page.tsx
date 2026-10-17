@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { SubscriptionWithPlan } from '@/types/subscription';
 import { CreditCard, Calendar, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { getTenantHeaders } from '@/utils/tenant';
@@ -12,6 +12,7 @@ import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function SubscriptionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [subscription, setSubscription] = useState<SubscriptionWithPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -19,6 +20,11 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     fetchSubscription();
+
+    if (searchParams.get('trialStarted') === '1') {
+      toast.success('Your 14-day free trial has started — no payment needed until it ends.');
+      router.replace('/dashboard/subscription');
+    }
   }, []);
 
   const fetchSubscription = async () => {
@@ -231,6 +237,16 @@ export default function SubscriptionPage() {
             <p className="text-sm sm:text-base text-yellow-800 dark:text-yellow-200">
               Your subscription will be cancelled on{' '}
               {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+            </p>
+          </div>
+        )}
+
+        {subscription.pendingPlan && (
+          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm sm:text-base text-blue-800 dark:text-blue-200">
+              Switching to <strong>{subscription.pendingPlan.name}</strong> on{' '}
+              {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Choose your current plan
+              again on the Change Plan page to cancel this.
             </p>
           </div>
         )}

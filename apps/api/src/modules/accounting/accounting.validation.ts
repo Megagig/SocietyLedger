@@ -140,3 +140,16 @@ export const budgetVarianceQuerySchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
 });
+
+// Accounting Periods
+export const periodTypeSchema = z.enum(['month', 'quarter', 'year']);
+
+export const createPeriodSchema = z.object({
+  name: z.string().min(1).max(100),
+  periodType: periodTypeSchema,
+  startDate: z.string().datetime().or(z.date()),
+  endDate: z.string().datetime().or(z.date()),
+}).refine(
+  data => new Date(data.endDate) > new Date(data.startDate),
+  { message: 'endDate must be after startDate' }
+);

@@ -76,15 +76,15 @@ function buildMemberSeeds(): MemberSeed[] {
   // (same fictional names code-standards.md §17.1 uses in docs prose
   // examples), so screenshots and written examples agree with each other.
   const named: MemberSeed[] = [
-    { memberId: 'MEM-0001', firstName: 'Adaeze', lastName: 'Okafor', category: 'executive' }, // admin
-    { memberId: 'MEM-0002', firstName: 'Tunde', lastName: 'Bakare', category: 'executive' }, // treasurer
-    { memberId: 'MEM-0003', firstName: 'Ngozi', lastName: 'Eze', category: 'regular' }, // member
+    { memberId: 'MEM0001', firstName: 'Adaeze', lastName: 'Okafor', category: 'executive' }, // admin
+    { memberId: 'MEM0002', firstName: 'Tunde', lastName: 'Bakare', category: 'executive' }, // treasurer
+    { memberId: 'MEM0003', firstName: 'Ngozi', lastName: 'Eze', category: 'regular' }, // member
   ];
 
   const generated: MemberSeed[] = Array.from({ length: 57 }, (_, i) => {
     const index = i + 3; // continue the sequence after the 3 named personas
     return {
-      memberId: `MEM-${String(index + 1).padStart(4, '0')}`,
+      memberId: `MEM${String(index + 1).padStart(4, '0')}`,
       firstName: firstNames[i % firstNames.length],
       lastName: lastNames[(i * 7 + 3) % lastNames.length],
       category: i < 2 ? 'executive' : 'regular', // 2 more officers (election candidates)

@@ -21,6 +21,9 @@ router.get('/current', subscriptionController.getCurrentSubscription);
 // Initialize subscription payment
 router.post('/initialize', subscriptionController.initializePayment);
 
+// Start a free trial with no payment step (G56)
+router.post('/start-trial', subscriptionController.startTrial);
+
 // Cancel subscription (mark for cancellation at period end)
 router.post('/cancel', subscriptionController.cancelSubscription);
 

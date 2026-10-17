@@ -564,6 +564,8 @@ model Subscription {
   currentPeriodEnd   DateTime           @map("current_period_end")
   cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
   renewalDate        DateTime?          @map("renewal_date")
+  pendingPlanId      Int?               @map("pending_plan_id")
+  pendingBillingCycle BillingCycle?     @map("pending_billing_cycle")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
   payments           PaymentHistory[]

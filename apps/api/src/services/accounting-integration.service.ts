@@ -84,7 +84,11 @@ export const accountingIntegrationService = {
     sourceId: number
   ) {
     try {
-      // Create journal entry with APPROVED status for auto-sync
+      // Create journal entry with APPROVED status for auto-sync. createJournalEntry itself
+      // enforces the accounting-period check (shared with the manual-entry path) — a closed/
+      // locked period throws here, gets caught below, logged via logSyncFailure, and re-thrown;
+      // every onX... caller already swallows that non-critically, so the underlying business
+      // action (recording a payment, etc.) is never blocked by an accounting period.
       const entry = await accountingService.createJournalEntry(
         associationId,
         userId,
@@ -113,7 +117,7 @@ export const accountingIntegrationService = {
       
       return entry;
     } catch (error) {
-      await this.logSyncFailure(associationId, sourceTable, sourceId, error);
+      await this.logSyncFailure(associationId, userId, sourceTable, sourceId, error);
       throw error;
     }
   },
@@ -183,15 +187,16 @@ export const accountingIntegrationService = {
   /**
    * Log sync failure for troubleshooting
    */
-  async logSyncFailure(associationId: number, tableName: string, recordId: number, error: any) {
+  async logSyncFailure(associationId: number, userId: number, tableName: string, recordId: number, error: any) {
     try {
       console.error(`❌ Accounting sync failed for ${tableName}:${recordId}:`, error);
-      
-      // Log to audit table with correct associationId
+
+      // Log to audit table with correct associationId and a real userId —
+      // userId: 0 has no matching User row and always violated the FK silently (G89)
       await prisma.auditLog.create({
         data: {
-          associationId, // Use the actual associationId, not 0
-          userId: 0,
+          associationId,
+          userId,
           action: 'ACCOUNTING_SYNC_FAILED',
           tableName,
           recordId,
@@ -231,8 +236,12 @@ export const accountingIntegrationService = {
       };
       
       const categoryType = transaction.category?.type || 'due';
-      const mapping = accountMappings[categoryType] || accountMappings.due;
-      
+      const mapping = accountMappings[categoryType];
+
+      if (!mapping) {
+        throw new Error(`No account mapping defined for category type "${categoryType}" — add one before using this category`);
+      }
+
       const debitAccount = await this.findAccount(transaction.associationId, mapping.debitCode);
       const creditAccount = await this.findAccount(transaction.associationId, mapping.creditCode);
       
@@ -268,8 +277,11 @@ export const accountingIntegrationService = {
         transaction.id
       );
     } catch (error) {
+      // Re-thrown (not swallowed) so a bulk-sync caller can report this as a real failure
+      // instead of a false "synced" — every real-time call site already wraps this in its
+      // own try/catch, so the underlying business action is still never blocked by this.
       console.error('Failed to sync transaction to accounting:', error);
-      // Don't throw - allow transaction creation to succeed
+      throw error;
     }
   },
   
@@ -325,7 +337,7 @@ export const accountingIntegrationService = {
       );
     } catch (error) {
       console.error('Failed to sync payment to accounting:', error);
-      // Don't throw - allow payment recording to succeed
+      throw error;
     }
   },
   
@@ -379,6 +391,7 @@ export const accountingIntegrationService = {
       );
     } catch (error) {
       console.error('Failed to sync welfare contribution to accounting:', error);
+      throw error;
     }
   },
   
@@ -430,6 +443,7 @@ export const accountingIntegrationService = {
       );
     } catch (error) {
       console.error('Failed to sync welfare payout to accounting:', error);
+      throw error;
     }
   },
   
@@ -483,6 +497,7 @@ export const accountingIntegrationService = {
       );
     } catch (error) {
       console.error('Failed to sync savings deposit to accounting:', error);
+      throw error;
     }
   },
   
@@ -532,6 +547,7 @@ export const accountingIntegrationService = {
       );
     } catch (error) {
       console.error('Failed to sync savings withdrawal to accounting:', error);
+      throw error;
     }
   },
   
@@ -581,6 +597,7 @@ export const accountingIntegrationService = {
       );
     } catch (error) {
       console.error('Failed to sync loan disbursement to accounting:', error);
+      throw error;
     }
   },
   
@@ -644,6 +661,7 @@ export const accountingIntegrationService = {
       );
     } catch (error) {
       console.error('Failed to sync loan repayment to accounting:', error);
+      throw error;
     }
   },
 };

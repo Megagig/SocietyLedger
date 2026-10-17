@@ -7,6 +7,8 @@ import { cacheInvalidationService } from '../../services/cache-invalidation.serv
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { sendEmail } from '../../lib/email';
+import { SettingsService } from '../settings/settings.service';
+import { dispatchNotification } from '../../services/notification-preferences.service';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -1680,6 +1682,19 @@ export const financeController = {
         return res.status(404).json({ success: false, message: 'Transaction not found' });
       }
 
+      // R4.6/G53: Payment Settings' enabledChannels was saved but never
+      // read — reject a method the association hasn't enabled.
+      if (validatedData.paymentMethod) {
+        const paymentSettings = await SettingsService.getSettings(associationId, 'payments');
+        const enabledChannels: string[] = paymentSettings.enabledChannels || [];
+        if (enabledChannels.length > 0 && !enabledChannels.includes(validatedData.paymentMethod)) {
+          return res.status(400).json({
+            success: false,
+            message: `Payment method "${validatedData.paymentMethod}" is not enabled for this association`,
+          });
+        }
+      }
+
       // Calculate current paid amount
       const currentPaid = transaction.payments.reduce(
         (sum, p) => sum.plus(p.amountPaid),
@@ -1692,6 +1707,19 @@ export const financeController = {
           success: false,
           message: 'Transaction is already fully paid',
         });
+      }
+
+      // R4.6/G53: Financial Settings' enablePartialPayments was saved but
+      // never read — reject an amount that doesn't fully settle the
+      // balance when the association has disabled partial payments.
+      if (new Decimal(validatedData.amountPaid).lessThan(balance)) {
+        const financialSettings = await SettingsService.getSettings(associationId, 'financial');
+        if (financialSettings.enablePartialPayments === false) {
+          return res.status(400).json({
+            success: false,
+            message: 'Partial payments are not enabled for this association. The full balance must be paid.',
+          });
+        }
       }
 
       if (new Decimal(validatedData.amountPaid).greaterThan(balance)) {
@@ -1747,26 +1775,63 @@ export const financeController = {
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onPaymentChange(associationId);
 
-      // Accounting integration: Sync payment to accounting module
-      try {
-        // Fetch full payment with transaction relations for accounting sync
-        const fullPayment = await prisma.payment.findUnique({
-          where: { id: payment.id },
-          include: {
-            transaction: {
-              include: {
-                member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-                category: { select: { id: true, name: true, type: true } },
-              },
+      // Fetch full payment with transaction relations for accounting sync + receipt email
+      const fullPayment = await prisma.payment.findUnique({
+        where: { id: payment.id },
+        include: {
+          transaction: {
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true, userId: true } },
+              category: { select: { id: true, name: true, type: true } },
             },
           },
-        });
+        },
+      });
+
+      // Accounting integration: Sync payment to accounting module
+      try {
         if (fullPayment) {
           await accountingIntegrationService.onPaymentRecorded(fullPayment, req.user!.id);
         }
       } catch (syncError) {
         console.error('Accounting sync failed (non-critical):', syncError);
         // Don't throw - payment recording succeeded
+      }
+
+      // R4.6/G53: Payment Settings' receiptAutoGenerate was saved but never
+      // read by anything — gate the (previously orphaned) 'payment-receipt'
+      // email template on it instead of leaving it unsent unconditionally.
+      try {
+        const receiptAutoGenerate = await SettingsService.getSetting(associationId, 'payments', 'receiptAutoGenerate');
+        const memberUserId = fullPayment?.transaction.member?.userId;
+        if (receiptAutoGenerate !== false && memberUserId) {
+          const association = await prisma.association.findUnique({
+            where: { id: associationId },
+            select: { name: true },
+          });
+
+          await dispatchNotification({
+            associationId,
+            userId: memberUserId,
+            title: 'Payment Received',
+            message: `Your payment of ₦${validatedData.amountPaid.toLocaleString()} has been received and confirmed.`,
+            kind: 'payment_received',
+            sendEmail: true,
+            emailSubject: 'Payment Receipt',
+            emailTemplate: 'payment-receipt',
+            emailData: {
+              memberName: `${fullPayment!.transaction.member!.firstName} ${fullPayment!.transaction.member!.lastName}`,
+              receiptNumber,
+              amount: validatedData.amountPaid,
+              categoryName: fullPayment!.transaction.category?.name || 'Payment',
+              paymentMethod: validatedData.paymentMethod || 'N/A',
+              paymentDate: new Date().toLocaleDateString(),
+              associationName: association?.name || 'Your Association',
+            },
+          });
+        }
+      } catch (receiptError) {
+        console.error('Receipt email failed (non-critical):', receiptError);
       }
 
       return res.status(201).json({
@@ -2227,6 +2292,10 @@ export const financeController = {
         select: { name: true },
       });
 
+      // R4.6/G53: Notification Settings' senderName was saved but never read
+      const notificationSettings = await SettingsService.getSettings(associationId, 'notifications');
+      const senderName: string | undefined = notificationSettings.senderName;
+
       // Group transactions by member for consolidated reminders
       const memberTransactions: Record<number, typeof transactions> = {};
       transactions.forEach(txn => {
@@ -2281,6 +2350,7 @@ export const financeController = {
                 ? `Overdue: ${txn.category.name} payment for ${association?.name}`
                 : `Payment Reminder: ${txn.category.name} for ${association?.name}`,
               template: daysUntilDue < 0 ? 'payment-overdue' : 'payment-reminder',
+              fromName: senderName,
               data: {
                 memberName: `${member.firstName} ${member.lastName}`,
                 associationName: association?.name,

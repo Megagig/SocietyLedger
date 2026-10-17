@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { accountingController } from './accounting.controller';
+import { accountingPeriodsController } from './accounting-periods.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
@@ -303,23 +304,107 @@ router.post(
 );
 
 /**
- * Sync a transaction to accounting
- * POST /api/accounting/sync/transaction/:id
+ * Bulk sync unsynced welfare contributions
+ * POST /api/accounting/sync/welfare-contributions/bulk
  */
 router.post(
-  '/sync/transaction/:id',
+  '/sync/welfare-contributions/bulk',
   requirePermission(PERMISSIONS.FINANCE_CREATE),
-  accountingController.syncTransaction
+  accountingController.bulkSyncWelfareContributions
 );
 
 /**
- * Sync a payment to accounting
- * POST /api/accounting/sync/payment/:id
+ * Bulk sync unsynced welfare payouts
+ * POST /api/accounting/sync/welfare-payouts/bulk
  */
 router.post(
-  '/sync/payment/:id',
+  '/sync/welfare-payouts/bulk',
   requirePermission(PERMISSIONS.FINANCE_CREATE),
-  accountingController.syncPayment
+  accountingController.bulkSyncWelfarePayouts
+);
+
+/**
+ * Bulk sync unsynced cooperative savings transactions
+ * POST /api/accounting/sync/savings-transactions/bulk
+ */
+router.post(
+  '/sync/savings-transactions/bulk',
+  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  accountingController.bulkSyncSavingsTransactions
+);
+
+/**
+ * Bulk sync unsynced loans
+ * POST /api/accounting/sync/loans/bulk
+ */
+router.post(
+  '/sync/loans/bulk',
+  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  accountingController.bulkSyncLoans
+);
+
+/**
+ * Bulk sync unsynced loan repayments
+ * POST /api/accounting/sync/loan-repayments/bulk
+ */
+router.post(
+  '/sync/loan-repayments/bulk',
+  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  accountingController.bulkSyncLoanRepayments
+);
+
+// ==========================================
+// ACCOUNTING PERIODS ROUTES (R5.2)
+// ==========================================
+
+/**
+ * List accounting periods
+ * GET /api/accounting/periods
+ */
+router.get(
+  '/periods',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  accountingPeriodsController.listPeriods
+);
+
+/**
+ * Create an accounting period
+ * POST /api/accounting/periods
+ */
+router.post(
+  '/periods',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  accountingPeriodsController.createPeriod
+);
+
+/**
+ * Close an OPEN period
+ * POST /api/accounting/periods/:id/close
+ */
+router.post(
+  '/periods/:id/close',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  accountingPeriodsController.closePeriod
+);
+
+/**
+ * Reopen a CLOSED period
+ * POST /api/accounting/periods/:id/reopen
+ */
+router.post(
+  '/periods/:id/reopen',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  accountingPeriodsController.reopenPeriod
+);
+
+/**
+ * Permanently lock a CLOSED period
+ * POST /api/accounting/periods/:id/lock
+ */
+router.post(
+  '/periods/:id/lock',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  accountingPeriodsController.lockPeriod
 );
 
 // ==========================================

@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 // Phase 12: Cache invalidation
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
+import { SettingsService } from '../settings/settings.service';
 
 // Validation schemas
 const createMemberSchema = z.object({
@@ -270,9 +271,11 @@ export const memberController = {
       // Validate request body
       const validatedData = createMemberSchema.parse(req.body);
 
-      // Generate member ID
+      // Generate member ID — R4.6/G53: Members & Access Settings'
+      // memberIdPrefix was saved but never read; 'MEM' stays the fallback.
       const memberCount = await prisma.member.count({ where: { associationId } });
-      const memberId = `MEM${String(memberCount + 1).padStart(4, '0')}`;
+      const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
+      const memberId = `${memberIdPrefix}${String(memberCount + 1).padStart(4, '0')}`;
 
       // Check if email already exists
       if (validatedData.email) {
@@ -590,6 +593,7 @@ export const memberController = {
 
       // Get current member count for ID generation
       let memberCount = await prisma.member.count({ where: { associationId } });
+      const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
 
       const results = {
         created: 0,
@@ -618,7 +622,7 @@ export const memberController = {
 
           // Generate member ID
           memberCount++;
-          const memberId = `MEM${String(memberCount).padStart(4, '0')}`;
+          const memberId = `${memberIdPrefix}${String(memberCount).padStart(4, '0')}`;
 
           // Validate category
           const validCategories = ['regular', 'executive', 'honorary', 'student'];
