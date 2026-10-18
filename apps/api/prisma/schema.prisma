@@ -111,6 +111,9 @@ model Association {
   // Phase 22: Hybrid Super Admin Architecture
   isPlatformAssociation Boolean @default(false) @map("is_platform_association")
 
+  // A1.3 — Impersonation handoff back-relation
+  impersonationHandoffs ImpersonationHandoff[]
+
   @@index([deletedAt])
   @@index([isPlatformAssociation])
   @@map("associations")
@@ -197,6 +200,15 @@ model User {
   blogComments    BlogComment[] @relation("BlogCommentAuthor")
   docPages        DocPage[]     @relation("DocPageAuthor")
   docFeedback     DocFeedback[]  @relation("DocFeedbackUser")
+
+  // A1.3 — Impersonation handoff
+  impersonationHandoffs ImpersonationHandoff[]
+
+  // A1.4 — TOTP 2FA for platform users (stored only on platform-role users)
+  totpSecretEnc   String?   @map("totp_secret_enc")
+  totpEnabledAt   DateTime? @map("totp_enabled_at")
+  recoveryCodes   RecoveryCode[]
+  loginChallenges AdminLoginChallenge[]
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -3038,19 +3050,68 @@ model DocFeedback {
   id        Int      @id @default(autoincrement())
   pageId    Int
   page      DocPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  
+
   isHelpful Boolean
   comment   String?  @db.Text
-  
+
   // Authenticated user (optional)
   userId    Int?
   user      User?    @relation("DocFeedbackUser", fields: [userId], references: [id])
-  
+
   // Anonymous feedback
   email     String?
-  
+
   createdAt DateTime @default(now()) @map("created_at")
-  
+
   @@map("doc_feedback")
   @@index([pageId])
+}
+
+// ============================================================
+// A1.3 — Impersonation handoff (B4)
+// One-time 60s code so the admin console never passes a JWT in a URL
+// ============================================================
+model ImpersonationHandoff {
+  id              Int       @id @default(autoincrement())
+  codeHash        String    @unique @map("code_hash")
+  adminUserId     Int       @map("admin_user_id")
+  adminUser       User      @relation(fields: [adminUserId], references: [id])
+  associationId   Int       @map("association_id")
+  association     Association @relation(fields: [associationId], references: [id])
+  reason          String
+  durationMinutes Int       @default(240) @map("duration_minutes")
+  expiresAt       DateTime  @map("expires_at")
+  usedAt          DateTime? @map("used_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+  @@map("impersonation_handoffs")
+}
+
+// ============================================================
+// A1.4 — TOTP 2FA for platform users (B5)
+// ============================================================
+model RecoveryCode {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("recovery_codes")
+}
+
+model AdminLoginChallenge {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime  @map("expires_at")
+  usedAt      DateTime? @map("used_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("admin_login_challenges")
 }

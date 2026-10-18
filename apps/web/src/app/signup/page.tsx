@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { API_ROUTES } from '@/utils/constants';
 import { getDisplayDomain, getSubdomainUrl } from '@/utils/domain';
+import { RESERVED_SUBDOMAINS } from '@societyledger/shared';
 
 interface SignupForm {
   // Association details
@@ -56,6 +57,11 @@ export default function AssociationSignupPage() {
       return;
     }
 
+    if (RESERVED_SUBDOMAINS.includes(subdomain as string)) {
+      setSubdomainAvailable(false);
+      return;
+    }
+
     setCheckingSubdomain(true);
     try {
       const res = await fetch(`${API_ROUTES.ASSOCIATIONS.CHECK_SUBDOMAIN}?subdomain=${subdomain}`);
@@ -88,6 +94,12 @@ export default function AssociationSignupPage() {
 
     if (formData.subdomain.length < 2) {
       setError('Subdomain must be at least 2 characters');
+      setLoading(false);
+      return;
+    }
+
+    if (RESERVED_SUBDOMAINS.includes(formData.subdomain as string)) {
+      setError('That subdomain is reserved. Please choose a different one.');
       setLoading(false);
       return;
     }

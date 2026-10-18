@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { AssociationStatus, AssociationTier, BillingCycle, SubscriptionStatus } from '@prisma/client';
 import { ROLE_PERMISSION_MAPPING } from '../../lib/role-permission-mapping';
+import { RESERVED_SUBDOMAINS } from '@societyledger/shared';
 
 const createSchema = z.object({
   name: z.string().min(2),
@@ -119,6 +120,10 @@ export class AssociationsController {
       const subdomain = String(req.query.subdomain || '').toLowerCase();
       if (!subdomain) return res.status(400).json({ success: false, message: 'subdomain is required' });
 
+      if (RESERVED_SUBDOMAINS.includes(subdomain as string)) {
+        return res.status(409).json({ success: false, message: 'Subdomain is reserved', code: 'SUBDOMAIN_RESERVED' });
+      }
+
       const association = await prisma.association.findUnique({ 
         where: { subdomain },
         select: {
@@ -152,6 +157,13 @@ export class AssociationsController {
   async signup(req: Request, res: Response) {
     try {
       const input = signupSchema.parse(req.body);
+
+      if (
+        RESERVED_SUBDOMAINS.includes(input.association.subdomain as string) ||
+        RESERVED_SUBDOMAINS.includes(input.association.slug as string)
+      ) {
+        return res.status(409).json({ success: false, message: 'Subdomain is reserved', code: 'SUBDOMAIN_RESERVED' });
+      }
 
       const conflict = await prisma.association.findFirst({
         where: {

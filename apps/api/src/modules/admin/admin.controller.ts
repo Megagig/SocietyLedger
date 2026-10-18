@@ -1,14 +1,22 @@
 import { Response } from 'express';
 import { z } from 'zod';
+import { randomBytes, createHash } from 'crypto';
 import prisma from '../../lib/prisma';
 import { generateToken, TokenPayload } from '../../lib/auth';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.service';
 import { logImpersonationAction, getImpersonationDuration, formatImpersonationDuration } from '../../utils/audit-helpers';
 
+const BASE_DOMAIN = process.env.BASE_DOMAIN || 'societyledger.com.ng';
+
 const approvalSchema = z.object({
   status: z.enum(['approved', 'rejected']),
   rejectionReason: z.string().optional(),
+});
+
+const impersonateSchema = z.object({
+  reason: z.string().min(1, 'Reason is required'),
+  durationMinutes: z.number().int().min(1).max(240).default(240),
 });
 
 const associationActionSchema = z.object({
@@ -39,51 +47,76 @@ export class AdminController {
       }
 
       const association = await prisma.association.findUnique({ where: { id: targetAssociationId } });
-      
       if (!association) {
         return res.status(404).json({ success: false, message: 'Association not found' });
       }
 
-      // Log impersonation action with enhanced context
+      // Legacy path: IMPERSONATION_LEGACY_RESPONSE=true keeps old JWT-in-response
+      // behavior until A3.1 cutover. Remove after web cutover.
+      if (process.env.IMPERSONATION_LEGACY_RESPONSE === 'true') {
+        await logImpersonationAction(req, 'IMPERSONATE', targetAssociationId, {
+          targetAssociationName: association.name,
+          targetSubdomain: association.subdomain,
+        });
+        const payload: TokenPayload = {
+          id: superAdmin.id,
+          email: superAdmin.email,
+          role: 'admin',
+          associationId: targetAssociationId,
+          platformRole: superAdmin.platformRole,
+          isImpersonating: true,
+          originalAssociationId: superAdmin.associationId ?? undefined,
+          impersonationTimestamp: Date.now(),
+        };
+        const token = generateToken(payload, { isImpersonation: true });
+        return res.json({
+          success: true,
+          data: {
+            token,
+            association: { id: association.id, name: association.name, subdomain: association.subdomain },
+            impersonation: { isImpersonating: true, originalAssociationId: superAdmin.associationId, startedAt: new Date().toISOString() },
+          },
+          message: 'Impersonation token generated.',
+        });
+      }
+
+      // B4: Handoff code path (default from A1.3 onwards)
+      const { reason, durationMinutes } = impersonateSchema.parse(req.body);
+
+      const handoffCode = randomBytes(32).toString('hex');
+      const codeHash = createHash('sha256').update(handoffCode).digest('hex');
+      const expiresAt = new Date(Date.now() + 60_000); // 60 seconds
+
+      await prisma.impersonationHandoff.create({
+        data: {
+          codeHash,
+          adminUserId: superAdmin.id,
+          associationId: targetAssociationId,
+          reason,
+          durationMinutes,
+          expiresAt,
+        },
+      });
+
       await logImpersonationAction(req, 'IMPERSONATE', targetAssociationId, {
         targetAssociationName: association.name,
         targetSubdomain: association.subdomain,
+        reason,
+        durationMinutes,
       });
-
-      // Phase 22: Enhanced token payload with impersonation tracking
-      const payload: TokenPayload = {
-        id: superAdmin.id,
-        email: superAdmin.email,
-        role: 'admin',
-        associationId: targetAssociationId,
-        platformRole: superAdmin.platformRole,
-        // NEW: Impersonation tracking fields
-        isImpersonating: true,
-        originalAssociationId: superAdmin.associationId ?? undefined,
-        impersonationTimestamp: Date.now(),
-      };
-
-      // Generate token with impersonation-specific expiry
-      const token = generateToken(payload, { isImpersonation: true });
 
       return res.json({
         success: true,
         data: {
-          token,
-          association: { 
-            id: association.id, 
-            name: association.name, 
-            subdomain: association.subdomain,
-          },
-          impersonation: {
-            isImpersonating: true,
-            originalAssociationId: superAdmin.associationId,
-            startedAt: new Date().toISOString(),
-          },
+          handoffCode,
+          subdomain: association.subdomain,
+          expiresAt: expiresAt.toISOString(),
         },
-        message: 'Impersonation token generated.',
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+      }
       console.error('Impersonate error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
@@ -833,6 +866,40 @@ export class AdminController {
           errors: error.errors,
         });
       }
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async listImpersonationSessions(req: AuthRequest, res: Response) {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 50, 200);
+      const offset = Number(req.query.offset) || 0;
+
+      const [items, total] = await Promise.all([
+        prisma.impersonationHandoff.findMany({
+          take: limit,
+          skip: offset,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            reason: true,
+            durationMinutes: true,
+            expiresAt: true,
+            usedAt: true,
+            createdAt: true,
+            adminUser: { select: { id: true, email: true } },
+            association: { select: { id: true, name: true, subdomain: true } },
+          },
+        }),
+        prisma.impersonationHandoff.count(),
+      ]);
+
+      return res.json({
+        success: true,
+        data: { items, pagination: { total, limit, offset } },
+      });
+    } catch (error) {
+      console.error('List impersonation sessions error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
