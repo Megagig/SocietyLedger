@@ -33,7 +33,8 @@ RUN pnpm --filter @societyledger/api run db:generate
 # pre-existing type errors elsewhere in the codebase (unrelated to this Docker build) —
 # it only exits non-zero. Tolerate that, but fail the build if the entry point is
 # genuinely missing (a real compile failure, not just a type-check complaint).
-RUN pnpm --filter @societyledger/api run build:prod; test -f apps/api/dist/server.js
+RUN pnpm --filter @societyledger/api run build:prod || true
+RUN test -f apps/api/dist/server.js
 
 # ---- Runtime image ----
 FROM node:20-alpine AS runner
