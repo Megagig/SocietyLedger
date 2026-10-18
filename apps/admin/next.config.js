@@ -20,12 +20,12 @@ const nextConfig = {
       headers: [
         // Block all indexing — admin console must never appear in search results
         { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
-        // Basic CSP — tightened further in A1.6
+        // CSP — unsafe-eval removed; unsafe-inline required by Next.js SSR hydration
         {
           key: 'Content-Security-Policy',
           value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob:",

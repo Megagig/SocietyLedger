@@ -137,7 +137,7 @@ export function Sidebar() {
     );
   };
 
-  const checkPermission = (permission: string | string[] | undefined, roleRequired?: string, hideForSuperAdmin?: boolean): boolean => {
+  const checkPermission = (permission: string | string[] | undefined, roleRequired?: string, _hideForSuperAdmin?: boolean): boolean => {
     // Wait for client-side mount and store hydration before showing permission-gated items
     // This prevents hydration mismatch between server and client
     if (!isMounted || !_hasHydrated) {
@@ -146,16 +146,8 @@ export function Sidebar() {
       return false;
     }
     
-    // Check if item should be hidden for Super Admin
-    if (hideForSuperAdmin && user?.platformRole === 'SUPER_ADMIN') {
-      return false;
-    }
-    
     if (!permission && !roleRequired) return true;
-    
-    // Super admin has access to everything (except items explicitly hidden)
-    if (user?.platformRole === 'SUPER_ADMIN') return true;
-    
+
     // Admin role has access to all features including SMS/Communications
     // This ensures admins can see all menu items regardless of specific permissions
     if (user?.role === 'admin') {
@@ -809,96 +801,6 @@ export function Sidebar() {
     },
   ];
 
-  // Add super admin specific items
-  if (user?.platformRole === 'SUPER_ADMIN') {
-    // Find Help & Support menu and add admin items
-    const helpMenu = navItems.find(item => item.label === 'Help & Support');
-    if (helpMenu && helpMenu.children) {
-      helpMenu.children.push(
-        {
-          label: 'Manage Content',
-          icon: <IconSettings size={18} />,
-          href: '/dashboard/settings/help-content',
-        },
-        {
-          label: 'Manage Tickets',
-          icon: <IconClipboardCheck size={18} />,
-          href: '/dashboard/settings/support',
-        }
-      );
-    }
-
-    navItems.unshift({
-      label: 'Super Admin',
-      icon: <IconBadge size={20} />,
-      children: [
-        {
-          label: 'Dashboard',
-          icon: <IconLayoutDashboard size={18} />,
-          href: '/admin',
-        },
-        {
-          label: 'Associations',
-          icon: <IconBuildingCommunity size={18} />,
-          href: '/admin/associations',
-        },
-        {
-          label: 'Tenant Management',
-          icon: <IconUsers size={18} />,
-          href: '/admin/tenants',
-        },
-        {
-          label: 'Platform Analytics',
-          icon: <IconChartBar size={18} />,
-          href: '/admin/analytics',
-        },
-        {
-          label: 'Action Logs',
-          icon: <IconHistory size={18} />,
-          href: '/admin/action-logs',
-        },
-        {
-          label: 'Modules & Features',
-          icon: <IconChecklist size={18} />,
-          href: '/admin/modules',
-        },
-        {
-          label: 'Settings',
-          icon: <IconSettings size={18} />,
-          href: '/admin/settings',
-        },
-        {
-          label: 'Webhooks',
-          icon: <IconWebhook size={18} />,
-          href: '/admin/webhooks',
-        },
-        {
-          label: 'Cron Jobs',
-          icon: <IconRobot size={18} />,
-          href: '/admin/cron-jobs',
-        },
-      ],
-    });
-
-    // Add CMS section for Super Admin
-    navItems.push({
-      label: 'CMS',
-      icon: <IconArticle size={20} />,
-      children: [
-        {
-          label: 'Blog',
-          icon: <IconArticle size={18} />,
-          href: '/admin/blog',
-        },
-        {
-          label: 'Documentation',
-          icon: <IconBook size={18} />,
-          href: '/admin/documentation',
-        },
-      ],
-    });
-  }
-
   const isActive = (href?: string) => {
     if (!href) return false;
     return pathname === href || pathname.startsWith(href + '/');
@@ -974,7 +876,7 @@ export function Sidebar() {
                 {user?.association?.name || 'SocietyLedger'}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user?.platformRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Association Portal'}
+                {'Association Portal'}
               </p>
             </div>
           </Link>

@@ -14,27 +14,20 @@ import { useRouter } from 'next/navigation';
  */
 export function ContextIndicator() {
   const router = useRouter();
-  const { 
-    user, 
-    isImpersonating, 
-    impersonatedAssociation, 
-    endImpersonation 
+  const {
+    isImpersonating,
+    impersonatedAssociation,
+    endImpersonation
   } = useAuthStore();
-
-  // Only show for Super Admins
-  if (user?.platformRole !== 'SUPER_ADMIN') {
-    return null;
-  }
 
   const handleEndImpersonation = async () => {
     const success = await endImpersonation();
     if (success) {
-      // Redirect to admin dashboard after ending impersonation
       router.push('/admin');
     }
   };
 
-  // Impersonation mode - prominent amber banner
+  // Show amber banner when impersonating
   if (isImpersonating && impersonatedAssociation) {
     return (
       <div className="sticky top-0 z-50 bg-amber-500 text-white px-4 py-2 text-sm flex items-center justify-between shadow-md">

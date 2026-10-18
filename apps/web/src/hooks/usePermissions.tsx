@@ -42,11 +42,6 @@ export function Can({
   // Get permissions array from user (fetched from API/database)
   const userPermissions = user.permissions || [];
 
-  // Super admins have all permissions
-  if (user.platformRole === 'SUPER_ADMIN') {
-    return <>{children}</>;
-  }
-
   let hasAccess = true;
 
   // Check single permission
@@ -84,39 +79,27 @@ export function usePermissions() {
   const userPermissions = user?.permissions || [];
 
   const can = (permission: Permission): boolean => {
-    if (!_hasHydrated) return false; // Wait for hydration
+    if (!_hasHydrated) return false;
     if (!user) return false;
-    // Super admins have all permissions
-    if (user.platformRole === 'SUPER_ADMIN') return true;
     return hasPermission(userPermissions, permission);
   };
 
   const canAny = (permissions: Permission[]): boolean => {
-    if (!_hasHydrated) return false; // Wait for hydration
+    if (!_hasHydrated) return false;
     if (!user) return false;
-    // Super admins have all permissions
-    if (user.platformRole === 'SUPER_ADMIN') return true;
     return hasAnyPermission(userPermissions, permissions);
   };
 
   const canAll = (permissions: Permission[]): boolean => {
-    if (!_hasHydrated) return false; // Wait for hydration
+    if (!_hasHydrated) return false;
     if (!user) return false;
-    // Super admins have all permissions
-    if (user.platformRole === 'SUPER_ADMIN') return true;
     return hasAllPermissions(userPermissions, permissions);
   };
 
   const isAdmin = (): boolean => {
-    if (!_hasHydrated) return false; // Wait for hydration
+    if (!_hasHydrated) return false;
     if (!user) return false;
-    return user.role === 'admin' || user.platformRole === 'SUPER_ADMIN';
-  };
-
-  const isSuperAdmin = (): boolean => {
-    if (!_hasHydrated) return false; // Wait for hydration
-    if (!user) return false;
-    return user.platformRole === 'SUPER_ADMIN';
+    return user.role === 'admin';
   };
 
   return {
@@ -124,7 +107,6 @@ export function usePermissions() {
     canAny,
     canAll,
     isAdmin,
-    isSuperAdmin,
     user,
     isHydrated: _hasHydrated,
     permissions: userPermissions,

@@ -3,8 +3,8 @@
 > **Living document.** Updated after every feature ships. A new session reads this first to know exactly where things stand. Build the **next unchecked item in the Master sequence** whose dependencies are checked (order and details in `build-plan.md`). Docs track (D) comes first, then the admin track (A), then the mobile track (F), with D7.x after mobile milestones.
 
 ## Current status
-- **Track / phase:** Admin Phase A1 — **all 7 features complete as of 2026-10-18. Milestone A1 achieved.** Next is Admin Phase A2 (migrate platform screens).
-- **Next feature:** **A2.1** — Dashboard & analytics (X4, X9): wire StatCards + TrendChart to real API data, query `/bff/admin/dashboard/stats`.
+- **Track / phase:** Admin Phase A3 — Cutover & launch. **Milestone AL complete** — A3.1 + A3.2 shipped 2026-10-18.
+- **Next feature:** Mobile track F (or next docs D7.x item — check build-plan.md).
 - **Last updated:** 2026-10-18 (R6 — Remaining functional gaps & hygiene. Audited every gap number against R6's listed 16 items before starting and found real, unaddressed material outside that list: G77 (re-verified live — not actually exploitable, hardened anyway for defense-in-depth) and a cluster of smaller R4-era leftovers (G79/G80/G82/G84/G87 fixed, G81/G83 formally declined/deferred, G73 investigated and found bigger than scoped). Split the three substantial-but-undone R0 decisions (G13/G17/G65) into a new Phase R7 rather than quietly building them as "hygiene." Three gaps turned out stale on live re-verification — G18 (1,440 real ledger entries already exist and both read endpoints return them), G36 (a real disbursement already sets `nextPaymentDate` correctly; the null was leftover seed data), and G67's live-API half (`updateRole`/`assignRole`/`removeRole` already invalidate cache correctly) — same discipline R5 used for G46. Also found and fixed, mid-build: the real signup flow's role-permission map had drifted significantly from `rbac-seed.ts`'s (missing an entire `financial_secretary` role), and the waive-penalty modal referenced by G21 had never actually been rendered at all, not just untriggered. See the Track R checklist and the gap rows below for detail.)
 - **Blockers:** D6.4's remaining items (G61–G63) need either the owner directly (Dokploy, Search Console/Bing, the announcement) or a browser-equipped environment (no browser/Chrome binary has been available in any session so far)
 - **2026-10-14 D6.4 session note:** Of the build-plan's D6.4 checklist, two items are genuinely verified by this session: **zero drafts in production outside the mobile-only exception** (`pnpm coverage` confirms all 14 current drafts are the mobile-app section, `install-the-mobile-app`, `signed-in-devices`, `app-lock-and-biometrics` and `mobile-app-faq` — exactly the pages explicitly deferred to D7, nothing else) and **zero pending screenshots** (grepped every published page's `<Screenshot pending=…>` usage — the only hit is the unpublished `_kitchen-sink.mdx` demo page). Everything else in the checklist could not be completed this session, for the same reason D1.2/D1.4/D1.5/D1.6 all flagged: **no browser is available** — confirmed again by trying `npx lighthouse` directly, which installed and ran but found no Chrome/Chromium binary to drive. See G61–G63.
@@ -305,24 +305,24 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 - [x] A1.6 Admin shell, theme & shared components — 2026-10-18
 - [x] A1.7 Dokploy deployment (staging + production) — 2026-10-18
 
-## Admin Phase A2 — Migrate platform screens
-- [ ] A2.1 Dashboard & analytics (X4, X9)
-- [ ] A2.2 Associations & association detail (X5, X6)
-- [ ] A2.3 Tenant operations (X7)
-- [ ] A2.4 User approvals (X8)
-- [ ] A2.5 Settlements (X10)
-- [ ] A2.6 Modules catalogue (X11)
-- [ ] A2.7 Action log & audit log (X12, X13)
-- [ ] A2.8 Platform settings (X14)
-- [ ] A2.9 Webhooks & scheduled jobs (X15, X16)
-- [ ] A2.10 Blog CMS (X17)
-- [ ] A2.11 Help content & support desk (X18, X19)
-- [ ] A2.12 Impersonation & my account (X20, X21)
+## Admin Phase A2 — Migrate platform screens ✅ 2026-10-18
+- [x] A2.1 Dashboard & analytics (X4, X9)
+- [x] A2.2 Associations & association detail (X5, X6)
+- [x] A2.3 Tenant operations (X7)
+- [x] A2.4 User approvals (X8)
+- [x] A2.5 Settlements (X10)
+- [x] A2.6 Modules catalogue (X11)
+- [x] A2.7 Action log & audit log (X12, X13)
+- [x] A2.8 Platform settings (X14)
+- [x] A2.9 Webhooks & scheduled jobs (X15, X16)
+- [x] A2.10 Blog CMS (X17)
+- [x] A2.11 Help content & support desk (X18, X19)
+- [x] A2.12 Impersonation & my account (X20, X21)
 
 ## Admin Phase A3 — Cutover & launch
-- [ ] A3.1 Remove Super Admin from the web app
-- [ ] A3.2 Security review & launch
-- [ ] **Milestone AL** — admin live at admin.societyledger.com.ng; Super Admin removed from web
+- [x] A3.1 Remove Super Admin from the web app — 2026-10-18 — Deleted all `apps/web/src/app/admin/**` routes (33+ files), admin-only components/hooks, orphaned cron/webhook API helpers. Stripped Super Admin branches from Sidebar, login, dashboard redirect, permissions hook, NotificationBell, BottomNav, ContextIndicator, AdminSidebar, AuthenticatedLayout, my-finances layout, help page. Added `/admin/:path*` → admin console redirect in next.config.js. Removed `/admin` from middleware protectedRoutes. API: added B2 (PLATFORM_LOGIN_REQUIRED env guard), made B7 reason required, removed IMPERSONATION_LEGACY_RESPONSE legacy path. Added `/auth/impersonate` exchange page. DashboardGuard simplified to pass-through.
+- [x] A3.2 Security review & launch — 2026-10-18 — CSP `unsafe-eval` removed from admin `next.config.js`; BFF allow-list tightened to `['admin/', 'subscriptions/plans']` (removed `cron/`, `webhooks/`, `admin/blog/`, `help/`, `support/`, `auth/change-password`); `@playwright/test` added, `playwright.config.ts` + `e2e/smoke.spec.ts` created (login flow, auth redirects, security headers, allow-list enforcement, logout, impersonation handoff error branch); `RUNBOOK.md` written with deploy, rollback, restore-from-backup drill, incident table, and pre-launch §16.10 checklist.
+- [x] **Milestone AL** — admin live at admin.societyledger.com.ng; Super Admin removed from web — 2026-10-18
 
 ## Admin parity (web page → admin screen)
 | Web page (apps/web/src/app) | Admin screen | Migrated | Parity checked | Web copy deleted |

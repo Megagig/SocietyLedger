@@ -37,7 +37,7 @@ interface Role {
 }
 
 export default function UsersRolesPage() {
-  const { isAdmin, isSuperAdmin } = usePermissions();
+  const { isAdmin } = usePermissions();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
