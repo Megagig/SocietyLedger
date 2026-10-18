@@ -1,0 +1,41 @@
+/* Admin console semantic CSS variables (§15.2) */
+/* These are the ONLY colour values permitted in admin components */
+
+:root,
+[data-mantine-color-scheme='light'] {
+  --admin-chrome-bg: #0a4842;
+  --admin-chrome-fg: #e8f0ee;
+  --admin-chrome-fg-muted: #a8d7ce;
+  --admin-chrome-active-bg: #0e7064;
+  --admin-chrome-active-marker: #e3c27a;
+  --admin-page-bg: #f5f8f7;
+  --admin-surface: #ffffff;
+  --admin-border: #dde5e3;
+  --admin-row-hover: #eef7f5;
+  --admin-env-prod-bg: #fee8e6;
+  --admin-env-prod-fg: #b42318;
+  --admin-env-staging-bg: #e7eefc;
+  --admin-env-staging-fg: #2554aa;
+  --admin-impersonation-bg: #ffede1;
+  --admin-impersonation-fg: #c2410c;
+  --admin-danger-zone-border: #b42318;
+}
+
+[data-mantine-color-scheme='dark'] {
+  --admin-chrome-bg: #091211;
+  --admin-chrome-fg: #e8f0ee;
+  --admin-chrome-fg-muted: #9ab0ac;
+  --admin-chrome-active-bg: #122120;
+  --admin-chrome-active-marker: #e3c27a;
+  --admin-page-bg: #0c1716;
+  --admin-surface: #122120;
+  --admin-border: #25403c;
+  --admin-row-hover: #1a2d2b;
+  --admin-env-prod-bg: #421411;
+  --admin-env-prod-fg: #f87166;
+  --admin-env-staging-bg: #142242;
+  --admin-env-staging-fg: #7da5f0;
+  --admin-impersonation-bg: #3d200e;
+  --admin-impersonation-fg: #fb923c;
+  --admin-danger-zone-border: #f87166;
+}

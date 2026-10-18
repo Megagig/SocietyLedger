@@ -56,7 +56,19 @@ Rules:
 | Related | docs | MDX | `components/mdx/related.tsx` | D1.4 (2026-10-12) |
 | Feedback | docs | MDX | `components/mdx/feedback.tsx` | D1.4 (2026-10-12) |
 | LastUpdated | docs | MDX | `components/mdx/last-updated.tsx` | D1.4 (2026-10-12) |
-| _(first admin entries with A1.5/A1.6; first mobile entries with F1.4)_ | | | | |
+| AdminAppShell | admin | Shell | `src/components/AppShell.tsx` | A1.6 (2026-10-18) |
+| PageHeader | admin | Shell | `src/components/PageHeader.tsx` | A1.6 (2026-10-18) |
+| EnvBadge | admin | Shell | `src/components/EnvBadge.tsx` | A1.6 (2026-10-18) |
+| DataTable | admin | Data | `src/components/DataTable.tsx` | A1.6 (2026-10-18) |
+| FilterBar | admin | Data | `src/components/FilterBar.tsx` | A1.6 (2026-10-18) |
+| StatCard | admin | Data | `src/components/StatCard.tsx` | A1.6 (2026-10-18) |
+| StatusBadge | admin | Data | `src/components/StatusBadge.tsx` | A1.6 (2026-10-18) |
+| EmptyState | admin | State | `src/components/EmptyState.tsx` | A1.6 (2026-10-18) |
+| ErrorState | admin | State | `src/components/ErrorState.tsx` | A1.6 (2026-10-18) |
+| Forbidden | admin | State | `src/components/Forbidden.tsx` | A1.6 (2026-10-18) |
+| ReasonField | admin | Action | `src/components/ReasonField.tsx` | A1.6 (2026-10-18) |
+| ConfirmDestructive | admin | Action | `src/components/ConfirmDestructive.tsx` | A1.6 (2026-10-18) |
+| _(first mobile entries with F1.4)_ | | | | |
 
 ---
 
@@ -384,17 +396,127 @@ Not reusable UI components; the pieces behind `build-plan.md`'s D1.7 bullet, whi
 
 # Admin console (`apps/admin`)
 
-## Admin shell & layout (`src/components/layout`)
-_(none yet — expected from A1.6: AppShell, NavGroup, TopBar, EnvBadge, ImpersonationPill, UserMenu, PageHeader)_
+## Admin shell & layout (`src/components`)
+
+### AdminAppShell
+- **Surface:** admin
+- **Path:** `src/components/AppShell.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Root console chrome — dark-green 248px nav, 56px top bar; active item gets brass left-border marker.
+- **Props:** `children: React.ReactNode`
+- **Tokens used:** `--admin-chrome-bg`, `--admin-chrome-fg`, `--admin-chrome-fg-muted`, `--admin-chrome-active-bg`, `--admin-chrome-active-marker`
+- **Used in:** `(console)/layout.tsx` (wraps every authenticated console page)
+- **Notes:** Collapses to hamburger below Mantine `sm` breakpoint. Nav items hardcoded (17 items, X4–X21 + Account).
+
+### PageHeader
+- **Surface:** admin
+- **Path:** `src/components/PageHeader.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** H2 title + optional description + optional right-side actions row; appears at the top of every console page.
+- **Props:** `title: string` · `description?: string` · `actions?: ReactNode`
+- **Tokens used:** Mantine heading scale (h2)
+- **Used in:** every console page (X4–X21)
+- **Example:**
+  ```tsx
+  <PageHeader title="Associations" description="All registered tenants" actions={<Button>New</Button>} />
+  ```
+
+### EnvBadge
+- **Surface:** admin
+- **Path:** `src/components/EnvBadge.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Inline PROD / STAGING pill — reads `NEXT_PUBLIC_ENV` by default.
+- **Props:** `env?: string` (override)
+- **Tokens used:** `--admin-env-prod-bg`, `--admin-env-prod-fg`, `--admin-env-staging-bg`, `--admin-env-staging-fg`
+- **Used in:** TopBar area (X4+), impersonation banner (A2+)
 
 ## Admin data components (`src/components`)
-_(none yet — expected from A1.6: DataTable, FilterBar, StatCard, StatusBadge, EmptyState, ErrorState, Forbidden, charts/TrendChart, charts/BarBreakdown, charts/DonutBreakdown)_
+
+### DataTable
+- **Surface:** admin
+- **Path:** `src/components/DataTable.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Generic typed table — columns config, hover highlight, skeleton loading, empty state row.
+- **Props:** `columns: Column<T>[]` · `rows: T[]` · `rowKey: (row: T) => string | number` · `loading?: boolean` · `emptyMessage?: string`
+- **Tokens used:** `--admin-row-hover`, `--admin-border`, `--admin-surface`
+- **Used in:** every list screen (X5 associations, X7 platform users, X8 settlements, X13 action logs, X14 audit logs, X15 webhooks, X16 cron jobs, X17 blog, X18 help content, X19 support)
+- **Example:**
+  ```tsx
+  <DataTable columns={cols} rows={data} rowKey={(r) => r.id} loading={isLoading} />
+  ```
+
+### FilterBar
+- **Surface:** admin
+- **Path:** `src/components/FilterBar.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Search input + optional Select filters + "Clear" button; sits above DataTable on list screens.
+- **Props:** `search?` · `onSearchChange?` · `searchPlaceholder?` · `filters?: FilterDefinition[]` · `onReset?` · `hasActiveFilters?`
+- **Used in:** list screens that support filtering (X5, X7, X8, X13, X14, X19)
+
+### StatCard
+- **Surface:** admin
+- **Path:** `src/components/StatCard.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** KPI tile — label, large number, optional icon, optional trend line.
+- **Props:** `label: string` · `value: string | number` · `icon?: ReactNode` · `trend?: string` · `trendPositive?: boolean`
+- **Tokens used:** `--admin-surface`, `--admin-border`
+- **Used in:** X4 Dashboard, X9 Analytics
+
+### StatusBadge
+- **Surface:** admin
+- **Path:** `src/components/StatusBadge.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Mantine Badge that maps status strings to colours (ACTIVE=green, SUSPENDED=orange, CANCELLED/PAST_DUE=red, etc).
+- **Props:** `status: string` · `size?: 'xs' | 'sm' | 'md'`
+- **Used in:** DataTable cells on X5, X7, X8
+
+### EmptyState
+- **Surface:** admin
+- **Path:** `src/components/EmptyState.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Centred icon + title + description + optional CTA when a list is empty.
+- **Props:** `title?` · `description?` · `icon?` · `action?: ReactNode`
+- **Used in:** DataTable empty slot or standalone on filtered-to-zero screens
+
+### ErrorState
+- **Surface:** admin
+- **Path:** `src/components/ErrorState.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Centred error icon + message + optional retry button for fetch failures.
+- **Props:** `title?` · `message?` · `onRetry?`
+- **Used in:** any async data panel that fails to load
+
+### Forbidden
+- **Surface:** admin
+- **Path:** `src/components/Forbidden.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** "Access Denied" state for pages where the user's platformRole doesn't grant access.
+- **Props:** `message?`
+- **Used in:** any console screen behind a platformRole check
 
 ## Admin action components
-_(none yet — expected from A1.6/A2.12: ConfirmDestructive, ReasonField, ImpersonationDialog, DangerZone)_
+
+### ReasonField
+- **Surface:** admin
+- **Path:** `src/components/ReasonField.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** `Textarea` for capturing a required reason before a destructive action.
+- **Props:** `value: string` · `onChange: (v: string) => void` · `required?` · `label?`
+- **Used in:** ConfirmDestructive (embedded), DangerZone forms (A2+)
+
+### ConfirmDestructive
+- **Surface:** admin
+- **Path:** `src/components/ConfirmDestructive.tsx`
+- **Added / changed:** A1.6 (2026-10-18)
+- **Purpose:** Modal with ReasonField + optional exact-value confirmation input (e.g. type the subdomain to delete) for permanent destructive actions. §16.10 rule 6.
+- **Props:** `opened` · `onClose` · `onConfirm(reason)` · `title` · `description` · `confirmValue?` · `confirmLabel?` · `loading?`
+- **Used in:** X5 suspend/cancel association, X14 permanent delete, X19 close support ticket
+- **Notes:** Submit requires non-empty reason AND (if `confirmValue` set) exact match. Never auto-dismiss on success — caller closes after mutation settles.
 
 ## Admin page patterns
-_(none yet — e.g. "List page = PageHeader + FilterBar + DataTable", "Detail page = breadcrumb + PageHeader + Tabs (URL-synced) + DangerZone last")_
+- **List page:** `PageHeader` (title + create button) → `FilterBar` → `DataTable` (with `StatusBadge` in status column)
+- **Detail page:** breadcrumb → `PageHeader` → Tabs (URL-synced with `searchParams`) → `DangerZone` section last (A2+)
+- **Destructive action:** hover row → action button → `ConfirmDestructive` modal → mutation → notification
 
 ---
 

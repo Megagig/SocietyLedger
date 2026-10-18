@@ -1,4 +1,5 @@
 import { Association, AssociationStatus } from '@prisma/client';
+import { RESERVED_SUBDOMAINS } from '@societyledger/shared';
 import prisma from './prisma';
 
 const TENANT_HEADER = 'x-tenant';
@@ -29,7 +30,8 @@ export function extractSubdomain(host?: string | null): string | null {
     const parts = hostname.split('.');
     if (parts.length >= 2) {
       const sub = parts[0];
-      return sub !== 'www' ? sub : null;
+      if (sub === 'www' || RESERVED_SUBDOMAINS.includes(sub)) return null;
+      return sub;
     }
   }
 
@@ -42,6 +44,7 @@ export function extractSubdomain(host?: string | null): string | null {
 
   const [sub] = parts;
   if (sub === 'www') return null;
+  if (RESERVED_SUBDOMAINS.includes(sub as string)) return null;
   return sub;
 }
 

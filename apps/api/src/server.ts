@@ -55,6 +55,7 @@ import blogPublicRoutes from './modules/blog/blog-public.routes';
 import blogAdminRoutes from './modules/blog/blog-admin.routes';
 import documentationPublicRoutes from './modules/documentation/documentation-public.routes';
 import documentationAdminRoutes from './modules/documentation/documentation-admin.routes';
+import adminAuthRoutes from './modules/admin/admin-auth.routes';
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -74,9 +75,13 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
+      'http://localhost:3002', // Admin console (dev)
       'https://www.societyledger.com.ng', // Main production frontend
       'https://societyledger.com.ng', // Production frontend without www
+      'https://admin.societyledger.com.ng', // Admin console (production) — B8 explicit entry
+      'https://admin-staging.societyledger.com.ng', // Admin console (staging) — B8 explicit entry
       process.env.FRONTEND_URL,
+      process.env.ADMIN_URL,
     ].filter(Boolean);
 
     // Allow any subdomain of localhost:3000 (e.g., demo.localhost:3000)
@@ -145,6 +150,9 @@ app.use('/api/docs', documentationPublicRoutes);
 app.use('/api/admin/blog', blogAdminRoutes);
 app.use('/api/admin/docs', documentationAdminRoutes);
 
+// Platform auth routes — must be before tenantMiddleware (no tenant context needed)
+app.use('/api/admin/auth', adminAuthRoutes);
+
 // Tenant middleware for all other routes
 app.use(tenantMiddleware);
 
@@ -170,6 +178,7 @@ app.use('/api/auth/me', sessionRateLimit);
 // Sensitive auth endpoints (login, register, password reset) - 10 req/min
 app.use('/api/auth/login', authRateLimit);
 app.use('/api/auth/register', authRateLimit);
+app.use('/api/admin/auth/login', authRateLimit);
 app.use('/api/auth/forgot-password', authRateLimit);
 app.use('/api/auth/reset-password', authRateLimit);
 // Standard rate limit for all other API routes - 100 req/min

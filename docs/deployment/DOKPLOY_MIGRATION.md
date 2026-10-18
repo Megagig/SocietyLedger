@@ -13,8 +13,10 @@ Assumes Dokploy is already installed and running on your VPS.
 | `redis`    | `redis:7-alpine`              | (new — was optional)   |
 | `api`      | built from `apps/api/Dockerfile` | Render               |
 | `web`      | built from `apps/web/Dockerfile` (Next.js standalone) | Netlify |
+| `admin`    | built from `apps/admin/Dockerfile` (Next.js standalone) | (new in A1.7) |
+| `docs`     | built from `apps/docs/Dockerfile` (Next.js static export) | Netlify |
 
-All four run as one Dokploy "Compose" project, on Dokploy's shared `dokploy-network` so its Traefik instance can route to `api` and `web`.
+All services run as one Dokploy "Compose" project on Dokploy's shared `dokploy-network` so Traefik can route to each. `api` and `admin` are additionally on the `internal` bridge network so the admin BFF can reach the API at `http://societyledger-api:4000` without going through the public internet.
 
 ## 1. DNS
 
@@ -55,7 +57,72 @@ The `api` container's entrypoint ([`apps/api/docker-entrypoint.sh`](../../apps/a
 2. Flip the DNS records from step 1 to the Dokploy server IP.
 3. Once propagated and verified, decommission Render, Netlify, and the Neon project — not before, in case of rollback.
 
-## 5. Known limitations to revisit later
+## 5. Admin console setup (added A1.7)
+
+### DNS
+
+Add an `A` record for `admin.societyledger.com.ng` pointing to the Dokploy server IP (same target as `api`). The wildcard record `*` already covers subdomains, but an explicit record for `admin` avoids relying on the wildcard:
+
+| Type | Name    | Value                 |
+|------|---------|-----------------------|
+| A    | `admin` | `<dokploy-server-ip>` |
+
+### Environment variables (new in A1.7)
+
+In the Dokploy project's **Environment** tab add:
+
+```
+# API extras
+ADMIN_URL=https://admin.societyledger.com.ng
+PLATFORM_TOKEN_EXPIRY=8h
+TOTP_ENCRYPTION_KEY=<64 hex chars — openssl rand -hex 32>
+
+# Admin console
+ADMIN_DOMAIN=admin.societyledger.com.ng
+NEXT_PUBLIC_ADMIN_HOST=https://admin.societyledger.com.ng
+NEXT_PUBLIC_ENV=production
+ADMIN_IP_ALLOWLIST=
+```
+
+The `TOTP_ENCRYPTION_KEY` is the AES-256-GCM key used to encrypt TOTP secrets at rest in Postgres. Generate once; rotation requires re-encryption of all stored secrets (script to be added in A2+).
+
+### First-time admin user
+
+After deploying, promote an existing user to platform admin via `psql` (or the Prisma Studio Dokploy extension):
+
+```sql
+UPDATE "User"
+SET platform_role = 'SUPER_ADMIN'
+WHERE email = 'your@email.com';
+```
+
+Then log in at `https://admin.societyledger.com.ng`. On first login, if 2FA is not yet set up, you will be prompted to enrol. Save the recovery codes in your password manager.
+
+### Emergency TOTP reset
+
+If locked out of 2FA, SSH to the server and run:
+
+```sh
+docker exec societyledger-api npx tsx scripts/reset-totp.ts your@email.com
+```
+
+This nulls the TOTP secret and all recovery codes for that user, allowing plain password login on the next attempt.
+
+### Staging deployment
+
+To deploy a staging instance pointing at the `develop` branch, create a second Dokploy "Compose" project with these overrides in its environment:
+
+```
+ADMIN_DOMAIN=admin-staging.societyledger.com.ng
+NEXT_PUBLIC_ADMIN_HOST=https://admin-staging.societyledger.com.ng
+NEXT_PUBLIC_ENV=staging
+ADMIN_IP_ALLOWLIST=<your-office-IP>   # restrict staging to known IPs
+PLATFORM_TOKEN_EXPIRY=2h              # shorter for staging
+```
+
+The `EnvBadge` in the top-bar chrome will show **STAGING** (blue) in the staging instance and **PROD** (red) in production — a quick visual signal that prevents accidental destructive actions on production when a staging tab is open nearby.
+
+## 7. Known limitations to revisit later
 
 - **Uploads**: `apps/api` writes payment-proof/logo uploads to a local `uploads/` directory, mounted here as the `api_uploads` named volume. This works for a single `api` replica (Dokploy's default) but won't survive scaling to multiple replicas or a host migration without the volume moving too. Fine for now; move to S3/Cloudinary-style object storage before scaling `api` horizontally.
 - **Backups**: `pgdata` and `redisdata` are plain Docker named volumes. Set up Dokploy's scheduled backups (or your own `pg_dump` cron) for `pgdata` — Neon's automatic point-in-time backups no longer apply once you're off it.

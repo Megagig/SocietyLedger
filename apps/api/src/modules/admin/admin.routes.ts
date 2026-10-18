@@ -27,6 +27,7 @@ router.post('/associations/:associationId/suspend', (req, res) => ctrl.suspendAs
 router.post('/associations/:associationId/reactivate', (req, res) => ctrl.reactivateAssociation(req as any, res));
 router.post('/impersonate/:associationId', (req, res) => ctrl.impersonate(req as any, res));
 router.post('/end-impersonation', (req, res) => ctrl.endImpersonation(req as any, res));
+router.get('/impersonation-sessions', (req, res) => ctrl.listImpersonationSessions(req as any, res));
 
 // User approval management
 router.get('/approvals', (req, res) => ctrl.listPendingApprovals(req as any, res));

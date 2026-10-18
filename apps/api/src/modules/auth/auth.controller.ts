@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import { createHash } from 'crypto';
 import prisma from '../../lib/prisma';
-import { hashPassword, verifyPassword, generateToken } from '../../lib/auth';
+import { hashPassword, verifyPassword, generateToken, TokenPayload } from '../../lib/auth';
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
 import { SettingsService } from '../settings/settings.service';
@@ -749,6 +750,83 @@ export class AuthController {
         success: false,
         message: 'Failed to change password',
       });
+    }
+  }
+
+  async exchangeImpersonationCode(req: Request, res: Response): Promise<void> {
+    try {
+      const { code } = z.object({ code: z.string().min(1) }).parse(req.body);
+
+      const codeHash = createHash('sha256').update(code).digest('hex');
+
+      const handoff = await prisma.impersonationHandoff.findUnique({
+        where: { codeHash },
+        include: {
+          adminUser: { select: { id: true, email: true, platformRole: true } },
+          association: { select: { id: true, name: true, subdomain: true, status: true } },
+        },
+      });
+
+      if (!handoff) {
+        res.status(404).json({ success: false, message: 'Invalid or expired impersonation code' });
+        return;
+      }
+      if (handoff.usedAt) {
+        res.status(409).json({ success: false, message: 'Impersonation code already used' });
+        return;
+      }
+      if (handoff.expiresAt < new Date()) {
+        res.status(410).json({ success: false, message: 'Impersonation code has expired' });
+        return;
+      }
+      if (!handoff.adminUser.platformRole) {
+        res.status(403).json({ success: false, message: 'Impersonating user no longer has platform access' });
+        return;
+      }
+      if (handoff.association.status === 'CANCELLED') {
+        res.status(403).json({ success: false, message: 'Association is not active' });
+        return;
+      }
+
+      await prisma.impersonationHandoff.update({
+        where: { id: handoff.id },
+        data: { usedAt: new Date() },
+      });
+
+      const expiresIn = Math.min(handoff.durationMinutes, 240) * 60 * 1000;
+      const payload: TokenPayload = {
+        id: handoff.adminUser.id,
+        email: handoff.adminUser.email,
+        role: 'admin',
+        associationId: handoff.associationId,
+        platformRole: handoff.adminUser.platformRole!,
+        isImpersonating: true,
+        originalAssociationId: handoff.adminUserId,
+        impersonationTimestamp: Date.now(),
+      };
+
+      const jwt = await import('jsonwebtoken');
+      const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+      const token = jwt.default.sign(payload, JWT_SECRET, { expiresIn: Math.floor(expiresIn / 1000) });
+
+      res.json({
+        success: true,
+        data: {
+          token,
+          association: {
+            id: handoff.association.id,
+            name: handoff.association.name,
+            subdomain: handoff.association.subdomain,
+          },
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+        return;
+      }
+      console.error('Exchange impersonation code error:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
 }

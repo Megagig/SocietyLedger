@@ -22,4 +22,7 @@ router.post('/reset-password', (req, res) => authController.resetPassword(req, r
 router.get('/me', authMiddleware, (req, res) => authController.me(req, res));
 router.post('/change-password', authMiddleware, (req, res) => authController.changePassword(req, res));
 
+// Impersonation handoff exchange (B4) — tenant-optional
+router.post('/impersonation/exchange', (req, res) => authController.exchangeImpersonationCode(req, res));
+
 export default router;

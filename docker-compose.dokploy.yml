@@ -69,6 +69,12 @@ services:
       NOMBA_WEBHOOK_SECRET: ${NOMBA_WEBHOOK_SECRET}
       NOMBA_BASE_URL: ${NOMBA_BASE_URL}
       RESEND_API_KEY: ${RESEND_API_KEY}
+      BASE_DOMAIN: ${BASE_DOMAIN}
+      ADMIN_URL: ${ADMIN_URL}
+      PLATFORM_TOKEN_EXPIRY: ${PLATFORM_TOKEN_EXPIRY:-8h}
+      # AES-256-GCM key for TOTP secret encryption — generate with:
+      # openssl rand -hex 32
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
     volumes:
       - api_uploads:/app/apps/api/uploads
     networks:
@@ -113,6 +119,48 @@ services:
       # priority) actually landed — architecture.md §17.3 flagged this gap when web
       # shipped, before admin/docs existed to need it.
       - "traefik.http.routers.societyledger-web.priority=1"
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_ADMIN_HOST: ${NEXT_PUBLIC_ADMIN_HOST}
+        NEXT_PUBLIC_ENV: ${NEXT_PUBLIC_ENV:-production}
+    container_name: societyledger-admin
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      # Server-side only — the BFF uses this to reach the API internally
+      API_URL: http://societyledger-api:4000
+      BASE_DOMAIN: ${BASE_DOMAIN}
+      NEXT_PUBLIC_ADMIN_HOST: ${NEXT_PUBLIC_ADMIN_HOST}
+      NEXT_PUBLIC_ENV: ${NEXT_PUBLIC_ENV:-production}
+      # Optional IP allowlist (comma-separated) — leave empty to disable
+      ADMIN_IP_ALLOWLIST: ${ADMIN_IP_ALLOWLIST:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/bff/session || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      # Needs internal so the BFF can reach societyledger-api without going
+      # through the public internet (API_URL = http://societyledger-api:4000)
+      - internal
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.societyledger-admin.rule=Host(`${ADMIN_DOMAIN}`)"
+      - "traefik.http.routers.societyledger-admin.entrypoints=websecure"
+      - "traefik.http.routers.societyledger-admin.tls=true"
+      - "traefik.http.routers.societyledger-admin.tls.certresolver=letsencrypt"
+      # Priority 100 — same as docs; both beat the web wildcard (priority 1) so
+      # admin.${BASE_DOMAIN} routes here, not to the tenant-subdomain HostRegexp.
+      - "traefik.http.routers.societyledger-admin.priority=100"
+      - "traefik.http.services.societyledger-admin.loadbalancer.server.port=3002"
 
   docs:
     build:
