@@ -24,8 +24,7 @@ export function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuthStore();
 
-  // Don't fetch notifications for super admins without association context
-  const canFetchNotifications = user?.associationId || (user?.platformRole !== 'SUPER_ADMIN');
+  const canFetchNotifications = !!user?.associationId;
 
   useEffect(() => {
     if (canFetchNotifications) {
@@ -155,22 +154,6 @@ export function NotificationBell() {
     if (days < 7) return `${days}d ago`;
     return date.toLocaleDateString();
   };
-
-  // Don't render for super admins without association context
-  if (!hasAssociation && user?.platformRole === 'SUPER_ADMIN') {
-    return (
-      <div className="relative">
-        <button
-          className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors opacity-50 cursor-not-allowed"
-          aria-label="Notifications unavailable"
-          title="Notifications require association context"
-          disabled
-        >
-          <IconBell size={24} className="text-gray-400 dark:text-gray-500" />
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="relative" ref={dropdownRef}>

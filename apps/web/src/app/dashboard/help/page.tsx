@@ -30,7 +30,6 @@ import {
 import { getHelpCenter, searchArticles, HelpArticle, FAQItem, QuickAction } from '@/lib/api/help';
 import { getOpenTicketCount } from '@/lib/api/support';
 import { AIChatbot } from '@/components/help/AIChatbot';
-import { useAuthStore } from '@/store/authStore';
 import { docsUrl } from '@/lib/docs';
 
 // Icon mapping for quick actions
@@ -65,9 +64,6 @@ export default function HelpPage() {
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Must call hooks at the top, before any conditional returns
-  const { user } = useAuthStore();
-  const canManageContent = user?.platformRole === 'SUPER_ADMIN';
 
   useEffect(() => {
     loadHelpCenter();
@@ -147,15 +143,6 @@ export default function HelpPage() {
             Find answers, browse articles, or create a support ticket
           </p>
         </div>
-        {canManageContent && (
-          <Link
-            href="/dashboard/settings/help-content"
-            className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors"
-          >
-            <IconPencil size={18} />
-            Manage Content
-          </Link>
-        )}
       </div>
 
       {/* Search Bar */}

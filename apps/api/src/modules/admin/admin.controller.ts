@@ -20,7 +20,7 @@ const impersonateSchema = z.object({
 });
 
 const associationActionSchema = z.object({
-  reason: z.string().optional(),
+  reason: z.string().min(1, 'Reason is required'),
 });
 
 const searchSchema = z.object({
@@ -51,36 +51,7 @@ export class AdminController {
         return res.status(404).json({ success: false, message: 'Association not found' });
       }
 
-      // Legacy path: IMPERSONATION_LEGACY_RESPONSE=true keeps old JWT-in-response
-      // behavior until A3.1 cutover. Remove after web cutover.
-      if (process.env.IMPERSONATION_LEGACY_RESPONSE === 'true') {
-        await logImpersonationAction(req, 'IMPERSONATE', targetAssociationId, {
-          targetAssociationName: association.name,
-          targetSubdomain: association.subdomain,
-        });
-        const payload: TokenPayload = {
-          id: superAdmin.id,
-          email: superAdmin.email,
-          role: 'admin',
-          associationId: targetAssociationId,
-          platformRole: superAdmin.platformRole,
-          isImpersonating: true,
-          originalAssociationId: superAdmin.associationId ?? undefined,
-          impersonationTimestamp: Date.now(),
-        };
-        const token = generateToken(payload, { isImpersonation: true });
-        return res.json({
-          success: true,
-          data: {
-            token,
-            association: { id: association.id, name: association.name, subdomain: association.subdomain },
-            impersonation: { isImpersonating: true, originalAssociationId: superAdmin.associationId, startedAt: new Date().toISOString() },
-          },
-          message: 'Impersonation token generated.',
-        });
-      }
-
-      // B4: Handoff code path (default from A1.3 onwards)
+      // B4: Handoff code path
       const { reason, durationMinutes } = impersonateSchema.parse(req.body);
 
       const handoffCode = randomBytes(32).toString('hex');

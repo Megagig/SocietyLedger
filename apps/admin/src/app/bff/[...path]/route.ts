@@ -3,14 +3,9 @@ import { getSessionToken } from '@/lib/session.server';
 import { API_URL } from '@/lib/env';
 
 // Only these API prefixes may be forwarded — everything else is 404
+// admin/ covers all platform admin endpoints; subscriptions/plans for plan picker
 const ALLOW_LIST = [
   'admin/',
-  'cron/',
-  'webhooks/',
-  'admin/blog/',
-  'help/',
-  'support/',
-  'auth/change-password',
   'subscriptions/plans',
 ];
 

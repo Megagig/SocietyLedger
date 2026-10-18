@@ -31,7 +31,6 @@ export function BottomNav({ onMenuClick, notificationCount = 0 }: BottomNavProps
 
   const checkPermission = (permission?: string): boolean => {
     if (!permission) return true;
-    if (user?.platformRole === 'SUPER_ADMIN') return true;
     const userPermissions = user?.permissions || [];
     return hasPermission(userPermissions, permission as any);
   };

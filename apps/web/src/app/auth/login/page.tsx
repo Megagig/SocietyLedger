@@ -37,24 +37,22 @@ export default function LoginPage() {
 
     try {
       const success = await login(formData);
-      
+
       if (success) {
-        // Get the updated user state to check onboarding status
         const { user } = useAuthStore.getState();
-        
-        // Super admin goes to admin dashboard
-        if (user?.platformRole === 'SUPER_ADMIN') {
-          router.push('/admin');
-        }
-        // Redirect to onboarding if required for association admins
-        else if (user?.requiresOnboarding && user?.role === 'admin' && !user?.platformRole) {
+        if (user?.requiresOnboarding && user?.role === 'admin' && !user?.platformRole) {
           router.push('/onboarding');
         } else {
           router.push('/dashboard');
         }
       }
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'An error occurred');
+      const message = err instanceof Error ? err.message : 'An error occurred';
+      if (message.includes('PLATFORM_LOGIN_REQUIRED') || message.includes('admin console')) {
+        setLocalError('Platform administrators must log in via admin.societyledger.com.ng');
+      } else {
+        setLocalError(message);
+      }
     }
   };
 

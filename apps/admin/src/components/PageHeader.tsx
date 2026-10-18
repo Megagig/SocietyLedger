@@ -4,8 +4,8 @@ import { Group, Title, Text, Stack } from '@mantine/core';
 import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
-  title: string;
-  description?: string;
+  title: ReactNode;
+  description?: ReactNode;
   actions?: ReactNode;
 }
 
