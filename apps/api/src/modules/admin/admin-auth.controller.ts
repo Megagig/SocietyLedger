@@ -25,7 +25,7 @@ export class AdminAuthController {
           platformRole: true,
           role: true,
           associationId: true,
-          isEmailVerified: true,
+          emailVerified: true,
         },
       });
 
@@ -40,7 +40,7 @@ export class AdminAuthController {
         return;
       }
 
-      if (!user.isEmailVerified) {
+      if (!user.emailVerified) {
         res.status(403).json({ success: false, message: 'Email not verified', code: 'EMAIL_NOT_VERIFIED' });
         return;
       }
@@ -105,7 +105,7 @@ export class AdminAuthController {
           platformRole: true,
           role: true,
           associationId: true,
-          isEmailVerified: true,
+          emailVerified: true,
         },
       });
 

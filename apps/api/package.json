@@ -26,6 +26,7 @@
     "debug:accounting": "tsx ../../scripts/debug-association-accounting.ts"
   },
   "dependencies": {
+    "@societyledger/shared": "workspace:*",
     "@prisma/client": "^5.0.0",
     "@types/bcryptjs": "^2.4.0",
     "@types/cookie-parser": "^1.4.6",

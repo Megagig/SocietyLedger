@@ -29,6 +29,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow impersonation handoff exchange — tenant context is set from the token after exchange
+    if (req.path.startsWith('/api/auth/impersonation/exchange')) {
+      return next();
+    }
+
     // Allow subscription verify endpoint without tenant (user redirected from Paystack)
     if (req.path.startsWith('/api/subscriptions/verify/')) {
       return next();
