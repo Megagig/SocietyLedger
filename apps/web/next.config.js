@@ -12,6 +12,13 @@ const nextConfig = {
   // so the production Docker image doesn't need the full node_modules tree.
   output: 'standalone',
 
+  // Lint is enforced at the pre-commit and CI stage. Keeping it out of the
+  // production build prevents pre-existing violations in unchanged files from
+  // blocking a deploy whenever the Docker layer cache is invalidated.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   images: {
     domains: ['localhost'],
   },
