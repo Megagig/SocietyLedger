@@ -117,6 +117,15 @@ export class AuthController {
         
         if (user) {
           isPlatformLogin = true;
+          // B2: Platform admins must authenticate via the admin console, not tenant subdomains.
+          if (process.env.PLATFORM_LOGIN_REQUIRED === 'true') {
+            res.status(401).json({
+              success: false,
+              message: 'Platform administrators must log in via the admin console.',
+              code: 'PLATFORM_LOGIN_REQUIRED',
+            });
+            return;
+          }
         }
       }
 

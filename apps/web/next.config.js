@@ -39,12 +39,19 @@ const nextConfig = {
   // and G59 in progress-tracker.md for why.
   async redirects() {
     const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL || 'https://docs.societyledger.com.ng';
+    const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.societyledger.com.ng';
     const slugRedirects = Object.entries(DOCS_SLUG_REDIRECT_MAP).map(([slug, destinationPath]) => ({
       source: `/documentation/${slug}`,
       destination: `${docsUrl}${destinationPath}`,
       permanent: true,
     }));
     return [
+      // A3.1: all /admin/* traffic → dedicated admin console
+      {
+        source: '/admin/:path*',
+        destination: `${adminUrl}/:path*`,
+        permanent: false,
+      },
       ...slugRedirects,
       {
         source: '/documentation/search',

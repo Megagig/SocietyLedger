@@ -17,12 +17,6 @@ export default function DashboardPage() {
     if (!_hasHydrated) return; // Wait for auth store to hydrate
 
     if (user) {
-      // Super Admin → Platform admin dashboard
-      if (user.platformRole === 'SUPER_ADMIN') {
-        router.replace('/admin');
-        return;
-      }
-
       // Regular Admin/Treasurer/Financial Secretary → Stay here (admin dashboard)
       if (user.role === 'admin' || user.role === 'treasurer' || user.role === 'financial_secretary') {
         // Show admin dashboard (current page)

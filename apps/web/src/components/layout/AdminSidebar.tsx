@@ -108,20 +108,14 @@ export function AdminSidebar() {
     );
   };
 
-  const checkPermission = (permission: string | string[] | undefined, roleRequired?: string, hideForSuperAdmin?: boolean): boolean => {
+  const checkPermission = (permission: string | string[] | undefined, roleRequired?: string, _hideForSuperAdmin?: boolean): boolean => {
     if (!isMounted || !_hasHydrated) {
       if (!permission && !roleRequired) return true;
       return false;
     }
-    
-    if (hideForSuperAdmin && user?.platformRole === 'SUPER_ADMIN') {
-      return false;
-    }
-    
+
     if (!permission && !roleRequired) return true;
-    
-    if (user?.platformRole === 'SUPER_ADMIN') return true;
-    
+
     if (roleRequired && user?.role !== roleRequired) {
       return false;
     }

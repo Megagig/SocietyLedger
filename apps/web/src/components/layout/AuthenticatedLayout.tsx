@@ -11,7 +11,6 @@ import { RoleIndicator } from '@/components/layout/RoleIndicator';
 import { ContextIndicator } from '@/components/layout/ContextIndicator';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
-import { SuperAdminContextBanner } from '@/components/admin';
 import { ModuleLockedModal } from '@/components/layout/ModuleLockedModal';
 import { Loader } from '@mantine/core';
 
@@ -42,9 +41,6 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     if (!isChecking && isAuthenticated && user) {
       // Skip if already on onboarding pages
       if (pathname.startsWith('/onboarding')) return;
-      
-      // Note: Super Admins can now access /dashboard routes with selected association context
-      // The SuperAdminDashboardGuard component handles showing the tenant selector
       
       // Redirect admins who haven't completed onboarding (exclude super admins)
       if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
@@ -79,12 +75,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     if (pathname.startsWith('/dashboard/admin')) {
       return <AdminSidebar />;
     }
-    
-    // Super Admin routes → Keep existing Sidebar (unchanged)
-    if (pathname.startsWith('/admin')) {
-      return <Sidebar />;
-    }
-    
+
     // Default dashboard routes → Use AdminSidebar for admins, MemberSidebar for members
     if (pathname.startsWith('/dashboard')) {
       // Check user role
@@ -111,9 +102,6 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
         
         {/* Phase 23: Role Indicator Badge */}
         <RoleIndicator />
-        
-        {/* Super Admin Context Banner */}
-        <SuperAdminContextBanner />
         
         {/* Top Bar with Notification Bell */}
         <div className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 px-4 sm:px-6 lg:px-8 py-3">

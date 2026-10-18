@@ -40,7 +40,7 @@ export function middleware(request: NextRequest) {
     }
 
     // Protected routes that require authentication
-    const protectedRoutes = ['/dashboard', '/admin'];
+    const protectedRoutes = ['/dashboard'];
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
     // Check if accessing protected route
