@@ -11,6 +11,9 @@ const DEFAULT_TOKEN_EXPIRY: StringValue = '7d';
 // Impersonation token expiry (configurable via env)
 const IMPERSONATION_TOKEN_EXPIRY: StringValue = (process.env.IMPERSONATION_EXPIRY || '4h') as StringValue;
 
+// Platform admin token expiry — shorter than tenant tokens, configurable
+const PLATFORM_TOKEN_EXPIRY: StringValue = (process.env.PLATFORM_TOKEN_EXPIRY || '8h') as StringValue;
+
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
   return bcrypt.hash(password, saltRounds);
@@ -67,6 +70,11 @@ export function generateToken(
     : DEFAULT_TOKEN_EXPIRY;
     
   const signOptions: SignOptions = { expiresIn };
+  return jwt.sign(payload, JWT_SECRET, signOptions);
+}
+
+export function generatePlatformToken(payload: TokenPayload): string {
+  const signOptions: SignOptions = { expiresIn: PLATFORM_TOKEN_EXPIRY };
   return jwt.sign(payload, JWT_SECRET, signOptions);
 }
 
