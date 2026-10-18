@@ -36,7 +36,7 @@ const navItems = [
   { label: 'Webhooks', href: '/webhooks', icon: IconWebhook },
   { label: 'Jobs', href: '/jobs', icon: IconClock },
   { label: 'Blog', href: '/blog', icon: IconArticle },
-  { label: 'Help Content', href: '/help-content', icon: IconHelp },
+  { label: 'Help Content', href: '/help', icon: IconHelp },
   { label: 'Support', href: '/support', icon: IconHeadset },
   { label: 'Impersonation', href: '/impersonation', icon: IconShieldCheck },
   { label: 'Account', href: '/account', icon: IconUser },
