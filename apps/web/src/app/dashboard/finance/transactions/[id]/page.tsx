@@ -61,7 +61,23 @@ export default function TransactionDetailPage() {
 
   useEffect(() => {
     fetchTransaction();
+    fetchDefaultPaymentMethod();
   }, [params.id]);
+
+  const fetchDefaultPaymentMethod = async () => {
+    try {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/payments`);
+      if (response.ok) {
+        const data = await response.json();
+        const defaultMethod = data.data?.defaultPaymentMethod;
+        if (defaultMethod) {
+          setPaymentData((prev) => ({ ...prev, paymentMethod: defaultMethod }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching default payment method:', err);
+    }
+  };
 
   const fetchTransaction = async () => {
     setIsLoading(true);

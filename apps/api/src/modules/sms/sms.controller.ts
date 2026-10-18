@@ -12,12 +12,12 @@ import {
   updateCampaignSchema,
   createTemplateSchema,
   updateTemplateSchema,
-  topUpCreditsSchema,
   listMessagesQuerySchema,
   listCampaignsQuerySchema,
   listTemplatesQuerySchema,
 } from './sms.validation';
 import { prisma } from '../../lib/prisma';
+import { SettingsService } from '../settings/settings.service';
 
 const smsService = new SMSService();
 
@@ -57,6 +57,15 @@ export const smsController = {
 
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      // R4.6/G53 review fix: check here (not just inside the service) so a
+      // disabled provider surfaces as a real 400, not a 500 from the
+      // generic catch block below — same pattern as the Paystack/Nomba
+      // enabled-channel checks.
+      const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
+      if (smsProvider === 'none') {
+        return res.status(400).json({ success: false, message: 'SMS sending is disabled for this association' });
       }
 
       const validatedData = quickSMSSchema.parse(req.body);
@@ -192,6 +201,12 @@ export const smsController = {
 
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      // R4.6/G53 review fix: same 400-not-500 reasoning as sendQuickSMS above
+      const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
+      if (smsProvider === 'none') {
+        return res.status(400).json({ success: false, message: 'SMS sending is disabled for this association' });
       }
 
       const stats = await smsService.startCampaign(associationId, parseInt(id));
@@ -531,48 +546,8 @@ export const smsController = {
     }
   },
 
-  async topUpCredits(req: Request, res: Response) {
-    try {
-      const associationId = req.user?.associationId;
-      const userId = req.user?.id;
-
-      if (!associationId || !userId) {
-        return res.status(400).json({ success: false, message: 'Association ID is required' });
-      }
-
-      const validatedData = topUpCreditsSchema.parse(req.body);
-      const balance = await smsService.topUpCredits(
-        associationId,
-        validatedData.amount,
-        validatedData.reference,
-        validatedData.description
-      );
-
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId,
-          action: 'CREATE',
-          tableName: 'sms_credit_transactions',
-          recordId: 0,
-          newValues: { type: 'PURCHASE', amount: validatedData.amount },
-        },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Credits topped up successfully',
-        data: balance,
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      console.error('Error topping up credits:', error);
-      const message = error instanceof Error ? error.message : 'Failed to top up credits';
-      return res.status(500).json({ success: false, message });
-    }
-  },
+  // topUpCredits removed (G41) — see sms.routes.ts; the real manual-grant
+  // path is now PlatformAdminController.topUpSmsCredits (platform-only).
 
   async getCreditHistory(req: Request, res: Response) {
     try {
@@ -673,7 +648,7 @@ export const smsController = {
         email: user.email,
         amount: amountInKobo,
         reference,
-        callback_url: `${process.env.FRONTEND_URL}/dashboard/communication/sms/credits/verify?reference=${reference}`,
+        callback_url: `${process.env.FRONTEND_URL}/dashboard/communications/credits/verify?reference=${reference}`,
         metadata: {
           associationId,
           userId,

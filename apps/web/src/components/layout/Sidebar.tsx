@@ -8,6 +8,7 @@ import {
   IconLayoutDashboard,
   IconUsers,
   IconCurrencyNaira,
+  IconCalendarStats,
   IconReceipt,
   IconChartBar,
   IconHeart,
@@ -50,6 +51,7 @@ import {
   IconBook,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
+import api from '@/lib/axios';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { docsUrl } from '@/lib/docs';
@@ -65,6 +67,7 @@ interface NavItem {
   hideForSuperAdmin?: boolean; // Hide for Super Admin users
   comingSoon?: boolean;
   badge?: string;
+  moduleCode?: string; // G13: when set, the badge reflects the association's real plan instead of the hardcoded string below
   children?: NavItem[];
 }
 
@@ -72,6 +75,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
+  const [disabledModules, setDisabledModules] = useState<Set<string>>(new Set());
   const pathname = usePathname();
   const { user, logout, _hasHydrated } = useAuthStore();
 
@@ -79,6 +83,27 @@ export function Sidebar() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // G13: real plan-driven badges instead of hardcoded "Enterprise"/"Beta" strings —
+  // only items with a moduleCode get a computed badge; everything else keeps its
+  // static one unchanged.
+  useEffect(() => {
+    const fetchModuleStatus = async () => {
+      try {
+        const response = await api.get('/modules/mine');
+        const modules: { code: string; isEnabled: boolean }[] = response.data?.data?.modules || [];
+        setDisabledModules(new Set(modules.filter((m) => !m.isEnabled).map((m) => m.code)));
+      } catch (err) {
+        console.error('Failed to fetch module status:', err);
+      }
+    };
+    fetchModuleStatus();
+  }, []);
+
+  const getBadge = (item: NavItem): string | undefined => {
+    if (!item.moduleCode) return item.badge;
+    return disabledModules.has(item.moduleCode) ? 'Locked' : undefined;
+  };
 
   // Auto-expand Finance section if on Nigerian Payments page
   useEffect(() => {
@@ -295,6 +320,14 @@ export function Sidebar() {
           href: '/dashboard/payments',
         },
         {
+          // R7.2 (G17): this screen existed but was linked from nowhere in the app —
+          // it's the officer-side review step the member proof-upload flow depends on.
+          label: 'Payment Verification',
+          icon: <IconClipboardCheck size={18} />,
+          href: '/dashboard/payments/verification',
+          permission: PERMISSIONS.PAYMENT_CONFIRM,
+        },
+        {
           // FORCE RENDER - Nigerian Payments Dashboard
           label: 'Nigerian Payments ✓',
           icon: <IconBuildingBank size={18} />,
@@ -341,6 +374,11 @@ export function Sidebar() {
           label: 'Budgets',
           icon: <IconCurrencyNaira size={18} />,
           href: '/dashboard/accounting/budgets',
+        },
+        {
+          label: 'Accounting Periods',
+          icon: <IconCalendarStats size={18} />,
+          href: '/dashboard/accounting/periods',
         },
       ],
     },
@@ -464,6 +502,7 @@ export function Sidebar() {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
       badge: 'Enterprise',
+      moduleCode: 'cooperatives',
       permission: PERMISSIONS.COOPERATIVE_VIEW,
       children: [
         {
@@ -599,6 +638,7 @@ export function Sidebar() {
       label: 'AI Assistant',
       icon: <IconRobot size={20} />,
       badge: 'Beta',
+      moduleCode: 'ai',
       permission: PERMISSIONS.AI_VIEW,
       children: [
         {
@@ -672,6 +712,13 @@ export function Sidebar() {
           icon: <IconUsers size={18} />,
           href: '/dashboard/settings/members-access',
           permission: PERMISSIONS.SETTINGS_EDIT,
+        },
+        {
+          // R7.3 (G65): tenant approval queue for self-registered members
+          label: 'Pending Approvals',
+          icon: <IconClipboardCheck size={18} />,
+          href: '/dashboard/settings/pending-approvals',
+          permission: PERMISSIONS.MEMBER_EDIT_ALL,
         },
         {
           label: 'Financial Settings',
@@ -1057,9 +1104,9 @@ export function Sidebar() {
                       {item.icon}
                       <span className="font-medium">{item.label}</span>
                     </div>
-                    {(item.comingSoon || item.badge) && (
+                    {(item.comingSoon || getBadge(item)) && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                        {item.badge || 'Soon'}
+                        {getBadge(item) || 'Soon'}
                       </span>
                     )}
                   </Link>

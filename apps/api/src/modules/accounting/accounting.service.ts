@@ -16,6 +16,7 @@ import {
   STANDARD_CHART_OF_ACCOUNTS,
 } from './accounting.types';
 import { getDateRange } from '../reports/reports.service';
+import { accountingPeriodsService } from './accounting-periods.service';
 
 // ============================================
 // HELPER FUNCTIONS
@@ -26,13 +27,20 @@ import { getDateRange } from '../reports/reports.service';
  */
 async function generateEntryNumber(associationId: number): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.journalEntry.count({
+  // Based on the highest existing suffix, not a row count — a count-based "next number"
+  // collides with an already-used number the moment any entry for the year is ever
+  // deleted (G90), since the count drops but the highest number already issued doesn't.
+  const latest = await prisma.journalEntry.findFirst({
     where: {
       associationId,
       entryNumber: { startsWith: `JE-${year}-` },
     },
+    orderBy: { entryNumber: 'desc' },
+    select: { entryNumber: true },
   });
-  return `JE-${year}-${String(count + 1).padStart(5, '0')}`;
+
+  const latestSuffix = latest ? parseInt(latest.entryNumber.split('-')[2], 10) || 0 : 0;
+  return `JE-${year}-${String(latestSuffix + 1).padStart(5, '0')}`;
 }
 
 /**
@@ -369,6 +377,8 @@ export const accountingService = {
     userId: number,
     data: JournalEntryInput
   ): Promise<JournalEntryResponse> {
+    await accountingPeriodsService.assertDateIsPostable(associationId, new Date(data.entryDate));
+
     const entryNumber = await generateEntryNumber(associationId);
 
     // Validate all accounts exist and belong to association
@@ -527,6 +537,10 @@ export const accountingService = {
 
     if (entry.status !== 'DRAFT') {
       throw new Error('Can only update draft entries');
+    }
+
+    if (data.entryDate) {
+      await accountingPeriodsService.assertDateIsPostable(associationId, new Date(data.entryDate));
     }
 
     const updateData: any = {};
@@ -1338,198 +1352,6 @@ export const accountingService = {
         notes: item.notes,
       })),
     };
-  },
-
-
-  // ==========================================
-  // TASK-ACC-008: Auto-sync Transactions
-  // ==========================================
-
-  /**
-   * Create journal entry from a financial transaction
-   */
-  async syncTransactionToAccounting(
-    associationId: number,
-    transactionId: number,
-    userId: number
-  ): Promise<JournalEntryResponse> {
-    const transaction = await prisma.transaction.findFirst({
-      where: { id: transactionId, associationId },
-      include: {
-        category: true,
-        member: true,
-        payments: true,
-      },
-    });
-
-    if (!transaction) {
-      throw new Error('Transaction not found');
-    }
-
-    // Check if already synced
-    const existingEntry = await prisma.journalEntry.findFirst({
-      where: {
-        associationId,
-        sourceType: 'auto_sync',
-        sourceId: transactionId,
-      },
-    });
-
-    if (existingEntry) {
-      throw new Error('Transaction already synced to accounting');
-    }
-
-    // Determine accounts based on transaction type
-    const accountMappings: Record<string, { debitCode: string; creditCode: string }> = {
-      due: { debitCode: '1121', creditCode: '4110' }, // Dues Receivable -> Membership Dues
-      levy: { debitCode: '1122', creditCode: '4200' }, // Levy Receivable -> Levy Income
-      donation: { debitCode: '1112', creditCode: '4300' }, // Bank -> Donation Income
-      penalty: { debitCode: '1121', creditCode: '4400' }, // Receivable -> Penalty Income
-    };
-
-    const mapping = accountMappings[transaction.category.type] || accountMappings.due;
-
-    // Find accounts
-    const debitAccount = await prisma.chartOfAccount.findFirst({
-      where: { associationId, code: mapping.debitCode, isActive: true },
-    });
-
-    const creditAccount = await prisma.chartOfAccount.findFirst({
-      where: { associationId, code: mapping.creditCode, isActive: true },
-    });
-
-    if (!debitAccount || !creditAccount) {
-      throw new Error('Required accounts not found. Please initialize chart of accounts first.');
-    }
-
-    const entryNumber = await generateEntryNumber(associationId);
-    const amount = new Decimal(transaction.amount);
-
-    const entry = await prisma.journalEntry.create({
-      data: {
-        associationId,
-        entryNumber,
-        entryDate: transaction.createdAt,
-        description: `${transaction.category.name} - ${transaction.member.firstName} ${transaction.member.lastName}`,
-        reference: transaction.referenceNumber,
-        sourceType: 'auto_sync',
-        sourceId: transactionId,
-        status: 'POSTED', // Auto-synced entries are posted immediately
-        totalDebit: amount,
-        totalCredit: amount,
-        createdBy: userId,
-        postedAt: new Date(),
-        lines: {
-          create: [
-            {
-              accountId: debitAccount.id,
-              debitAmount: amount,
-              creditAmount: new Decimal(0),
-              description: `${transaction.category.type} receivable`,
-            },
-            {
-              accountId: creditAccount.id,
-              debitAmount: new Decimal(0),
-              creditAmount: amount,
-              description: `${transaction.category.type} income`,
-            },
-          ],
-        },
-      },
-      include: {
-        lines: {
-          include: {
-            account: { select: { code: true, name: true } },
-          },
-        },
-      },
-    });
-
-    return this.formatJournalEntryResponse(entry);
-  },
-
-  /**
-   * Sync payment to accounting (when payment is received)
-   */
-  async syncPaymentToAccounting(
-    associationId: number,
-    paymentId: number,
-    userId: number
-  ): Promise<JournalEntryResponse> {
-    const payment = await prisma.payment.findFirst({
-      where: { id: paymentId, associationId },
-      include: {
-        transaction: {
-          include: {
-            category: true,
-            member: true,
-          },
-        },
-      },
-    });
-
-    if (!payment) {
-      throw new Error('Payment not found');
-    }
-
-    // Find accounts
-    const cashAccount = await prisma.chartOfAccount.findFirst({
-      where: { associationId, code: '1112', isActive: true }, // Bank Account - Operating
-    });
-
-    const receivableCode = payment.transaction.category.type === 'levy' ? '1122' : '1121';
-    const receivableAccount = await prisma.chartOfAccount.findFirst({
-      where: { associationId, code: receivableCode, isActive: true },
-    });
-
-    if (!cashAccount || !receivableAccount) {
-      throw new Error('Required accounts not found');
-    }
-
-    const entryNumber = await generateEntryNumber(associationId);
-    const amount = new Decimal(payment.amountPaid);
-
-    const entry = await prisma.journalEntry.create({
-      data: {
-        associationId,
-        entryNumber,
-        entryDate: payment.paymentDate,
-        description: `Payment received - ${payment.transaction.member.firstName} ${payment.transaction.member.lastName}`,
-        reference: payment.receiptNumber,
-        sourceType: 'auto_sync',
-        sourceId: paymentId,
-        status: 'POSTED',
-        totalDebit: amount,
-        totalCredit: amount,
-        createdBy: userId,
-        postedAt: new Date(),
-        lines: {
-          create: [
-            {
-              accountId: cashAccount.id,
-              debitAmount: amount,
-              creditAmount: new Decimal(0),
-              description: 'Cash received',
-            },
-            {
-              accountId: receivableAccount.id,
-              debitAmount: new Decimal(0),
-              creditAmount: amount,
-              description: 'Receivable cleared',
-            },
-          ],
-        },
-      },
-      include: {
-        lines: {
-          include: {
-            account: { select: { code: true, name: true } },
-          },
-        },
-      },
-    });
-
-    return this.formatJournalEntryResponse(entry);
   },
 
   // ==========================================

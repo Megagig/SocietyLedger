@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
+import { ROLE_PERMISSION_MAPPING } from '../../src/lib/role-permission-mapping';
 
 // Load environment variables from .env file
 config({ path: resolve(__dirname, '../../.env') });
@@ -306,6 +307,51 @@ const PERMISSION_REGISTRY = [
     module: "Notifications",
     examples: ["POST /api/notifications/announcements", "Create announcement"]
   },
+  // Voting & Elections (R0.2/G16 — real _own-scoped permissions, replacing
+  // the broad members.view reuse that blocked every member from voting)
+  {
+    key: "elections.view_own",
+    description: "View elections and own candidacy/voting status.",
+    module: "Voting",
+    examples: ["GET /api/voting/elections/:id", "GET /api/voting/elections/:id/voter-status"]
+  },
+  {
+    key: "elections.nominate_own",
+    description: "Self-nominate as a candidate in an election.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/self-nominate"]
+  },
+  {
+    key: "elections.vote_own",
+    description: "Cast a vote in an election.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/vote"]
+  },
+  {
+    key: "polls.view_own",
+    description: "View polls and their results.",
+    module: "Voting",
+    examples: ["GET /api/voting/polls/:id", "GET /api/voting/polls/:id/results"]
+  },
+  {
+    key: "polls.vote_own",
+    description: "Respond to a poll.",
+    module: "Voting",
+    examples: ["POST /api/voting/polls/:id/respond"]
+  },
+  // Meetings
+  {
+    key: "meetings.manage_minutes",
+    description: "Create, edit and approve official meeting minutes.",
+    module: "Meetings",
+    examples: ["POST /api/meetings/:id/minutes", "POST /api/meetings/:id/minutes/approve"]
+  },
+  {
+    key: "meetings.manage_attendance",
+    description: "Initialize and mark meeting attendance.",
+    module: "Meetings",
+    examples: ["POST /api/meetings/:id/attendance/initialize", "POST /api/meetings/:id/attendance"]
+  },
   // Exports
   {
     key: "exports.financial",
@@ -340,57 +386,9 @@ const PERMISSION_REGISTRY = [
   }
 ];
 
-// Map existing hardcoded roles to new permission keys
-const ROLE_PERMISSION_MAPPING = {
-  admin: [
-    "members.view", "members.view_all", "members.view_own", "members.create", "members.edit", "members.edit_all", "members.edit_own",
-    "members.disable", "members.bulk_import", "members.manage_roles",
-    "ledger.view", "ledger.view_all", "ledger.view_own", "ledger.create", "ledger.edit", "ledger.reverse", 
-    "ledger.export", "ledger.view_member_statement",
-    "payments.view", "payments.view_all", "payments.view_own", "payments.manual_create", "payments.approve", "payments.delete",
-    "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.verify", "payments.nigerian.reconcile", "payments.nigerian.import",
-    "reports.generate", "reports.export", "reports.financial_summary",
-    "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
-    "settings.view", "settings.edit", "settings.billing", "settings.integrations",
-    "audit.view", "audit.export",
-    "communication.sms.view", "communication.sms.send", "communication.sms.campaign", "communication.sms.template",
-    "notifications.view", "notifications.send",
-    "exports.financial", "exports.members", "exports.view_history",
-    "system.cron.view", "system.cron.trigger"
-  ],
-  treasurer: [
-    "members.view", "members.view_all",
-    "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export", 
-    "ledger.view_member_statement",
-    "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
-    "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.verify", "payments.nigerian.reconcile", "payments.nigerian.import",
-    "reports.generate", "reports.export", "reports.financial_summary",
-    "exports.financial", "exports.members", "exports.view_history",
-    "communication.sms.view",
-    "notifications.view",
-    "settings.view"
-  ],
-  financial_secretary: [
-    "members.view", "members.view_all",
-    "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
-    "payments.view", "payments.view_all", "payments.manual_create",
-    "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.reconcile", "payments.nigerian.import",
-    "reports.generate", "reports.export", "reports.financial_summary",
-    "exports.financial", "exports.members", "exports.view_history",
-    "communication.sms.view",
-    "notifications.view",
-    "settings.view"
-  ],
-  member: [
-    "members.view_own", "members.edit_own",
-    "ledger.view_own",
-    "payments.view_own",
-    "payments.nigerian.view",
-    "reports.generate",
-    "notifications.view",
-    "exports.view_history"
-  ]
-};
+// ROLE_PERMISSION_MAPPING moved to src/lib/role-permission-mapping.ts (G66) so
+// associations.controller.ts's signup() can share the identical mapping instead of
+// maintaining its own drifted copy.
 
 export async function seedRBACSystem() {
   console.log('🔐 Seeding RBAC System...');

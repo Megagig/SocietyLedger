@@ -9,6 +9,7 @@ import { tenantMiddleware } from './middleware/tenant.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
+import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
 import { standardRateLimit, authRateLimit, sessionRateLimit } from './middleware/rate-limit.middleware';
@@ -45,6 +46,7 @@ import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
 import rbacRoutes from './modules/rbac/rbac.routes';
 import settingsRoutes from './modules/settings/settings.routes';
+import modulesRoutes from './modules/modules/modules.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import helpRoutes from './modules/help/help.routes';
 import aiHelpRoutes from './modules/help/ai-help.routes';
@@ -200,6 +202,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/voting', votingRoutes);
 app.use('/api/rbac', rbacRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/modules', modulesRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/help', helpRoutes);
 app.use('/api/help/ai', aiHelpRoutes);
@@ -237,6 +240,7 @@ if (process.env.NODE_ENV !== 'test') {
         // Start cron jobs
         startSubscriptionJobs();
         startMeetingJobs();
+        startPaymentReminderJobs();
       });
     })
     .catch((err) => {
@@ -252,6 +256,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGTERM received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopPaymentReminderJobs();
     await closeRedisConnection();
     process.exit(0);
   });
@@ -260,6 +265,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGINT received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopPaymentReminderJobs();
     await closeRedisConnection();
     process.exit(0);
   });

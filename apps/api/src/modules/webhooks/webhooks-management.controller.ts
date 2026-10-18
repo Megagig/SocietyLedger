@@ -11,7 +11,7 @@ import {
   getWebhookEventTypes
 } from './webhooks.service';
 
-const router = Router();
+const router: Router = Router();
 
 // GET /api/webhooks/stats - Get webhook statistics
 router.get('/stats', async (req: Request, res: Response) => {

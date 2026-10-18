@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Container,
   Title,
@@ -9,21 +8,23 @@ import {
   Card,
   SimpleGrid,
   Text,
-  NumberInput,
   Button,
-  Select,
   Badge,
-  Alert,
 } from '@mantine/core';
 import { IconChartBar, IconCreditCard, IconRefresh, IconArrowUp } from '@tabler/icons-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { notifications } from '@mantine/notifications';
-import { smsApi, SMSCreditBalance, SMSCreditTransaction, TopupCreditsRequest } from '@/lib/api/sms';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { smsApi, SMSCreditBalance, SMSCreditTransaction } from '@/lib/api/sms';
 import { SMSBalanceCard } from '@/components/communications/SMSBalanceCard';
 
+// G39/G76: the previous version of this page used fields that never
+// existed on SMSCreditBalance/SMSCreditTransaction (totalCredits,
+// creditsUsed, creditsRemaining, balanceAfter, lowercase transaction
+// types) and had its own fake "Top Up" form posting to the endpoint
+// removed in R1.4 (G41). Real purchases now go through /credits
+// (ported from the orphaned set at R3.1) — this page is balance + history.
 export default function SMSReportsPage() {
-  const [topupAmount, setTopupAmount] = useState<number | undefined>(undefined);
-  const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'bank_transfer'>('paystack');
+  const router = useRouter();
 
   const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useQuery<SMSCreditBalance>({
     queryKey: ['sms-credits-balance'],
@@ -37,47 +38,6 @@ export default function SMSReportsPage() {
 
   const transactions = historyData?.transactions || [];
 
-  const topupMutation = useMutation({
-    mutationFn: (data: TopupCreditsRequest) => smsApi.topupCredits(data),
-    onSuccess: () => {
-      notifications.show({
-        title: 'Credits Added',
-        message: `Successfully added ${topupAmount} SMS credits`,
-        color: 'green',
-      });
-      refetchBalance();
-      refetchHistory();
-      setTopupAmount(undefined);
-    },
-    onError: (error: any) => {
-      notifications.show({
-        title: 'Failed to Add Credits',
-        message: error.response?.data?.message || 'An error occurred',
-        color: 'red',
-      });
-    },
-  });
-
-  const handleTopup = () => {
-    if (!topupAmount || topupAmount <= 0) {
-      notifications.show({
-        title: 'Invalid Amount',
-        message: 'Please enter a valid amount',
-        color: 'yellow',
-      });
-      return;
-    }
-
-    topupMutation.mutate({
-      amount: topupAmount,
-      paymentMethod,
-    });
-  };
-
-  const usagePercentage = balance
-    ? ((balance.creditsUsed / balance.totalCredits) * 100).toFixed(1)
-    : '0';
-
   const thisMonthTransactions = transactions.filter((t: SMSCreditTransaction) => {
     const transactionDate = new Date(t.createdAt);
     const now = new Date();
@@ -88,11 +48,11 @@ export default function SMSReportsPage() {
   });
 
   const thisMonthUsage = thisMonthTransactions
-    .filter((t: SMSCreditTransaction) => t.type === 'usage')
+    .filter((t: SMSCreditTransaction) => t.type === 'USAGE')
     .reduce((sum: number, t: SMSCreditTransaction) => sum + t.amount, 0);
 
   const thisMonthPurchased = thisMonthTransactions
-    .filter((t: SMSCreditTransaction) => t.type === 'purchase')
+    .filter((t: SMSCreditTransaction) => t.type === 'PURCHASE')
     .reduce((sum: number, t: SMSCreditTransaction) => sum + t.amount, 0);
 
   return (
@@ -120,29 +80,23 @@ export default function SMSReportsPage() {
         {balance && (
           <SMSBalanceCard
             balance={balance}
-            onTopup={() => setTopupAmount(1000)}
+            onTopup={() => router.push('/dashboard/communications/credits')}
           />
         )}
 
         {/* Quick Stats */}
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
           <StatCard
-            label="Total Credits"
-            value={balance?.totalCredits || 0}
-            icon={<IconCreditCard size={24} color="blue" />}
-            color="blue"
-          />
-          <StatCard
-            label="Credits Used"
-            value={balance?.creditsUsed || 0}
-            icon={<IconChartBar size={24} color="orange" />}
-            color="orange"
-          />
-          <StatCard
-            label="Credits Remaining"
-            value={balance?.creditsRemaining || 0}
+            label="Current Balance"
+            value={balance?.balance || 0}
             icon={<IconCreditCard size={24} color="green" />}
             color="green"
+          />
+          <StatCard
+            label="Total Purchased"
+            value={balance?.totalPurchased || 0}
+            icon={<IconArrowUp size={24} color="cyan" />}
+            color="cyan"
           />
           <StatCard
             label="This Month Usage"
@@ -153,62 +107,25 @@ export default function SMSReportsPage() {
           <StatCard
             label="This Month Purchased"
             value={thisMonthPurchased}
-            icon={<IconArrowUp size={24} color="cyan" />}
-            color="cyan"
+            icon={<IconArrowUp size={24} color="orange" />}
+            color="orange"
           />
         </SimpleGrid>
 
-        {/* Top Up */}
+        {/* Buy More Credits */}
         <Card padding="lg" radius="md" withBorder>
-          <Title order={3} mb="md">Top Up SMS Credits</Title>
-          <Stack gap="md">
-            <Group>
-              <NumberInput
-                label="Amount"
-                placeholder="Enter amount"
-                value={topupAmount}
-                onChange={(value) => setTopupAmount(value as number)}
-                min={100}
-                step={100}
-                required
-                style={{ flex: 1 }}
-              />
-              <Select
-                label="Payment Method"
-                placeholder="Select payment method"
-                data={[
-                  { value: 'paystack', label: 'Paystack (Card)' },
-                  { value: 'bank_transfer', label: 'Bank Transfer' },
-                ]}
-                value={paymentMethod}
-                onChange={(value) => setPaymentMethod(value as any)}
-                style={{ width: 200 }}
-              />
-            </Group>
-
-            <Alert color="blue" variant="light">
-              <Text size="sm">
-                Minimum top-up amount: 100 credits. Each SMS segment costs 1 credit.
-              </Text>
-            </Alert>
-
-            <Group justify="flex-end">
-              <Button
-                variant="light"
-                onClick={() => setTopupAmount(undefined)}
-              >
-                Cancel
-              </Button>
-              <Button
-                leftSection={<IconArrowUp size={18} />}
-                onClick={handleTopup}
-                loading={topupMutation.isPending}
-                disabled={!topupAmount || topupAmount <= 0}
-              >
-                Top Up
-              </Button>
-            </Group>
-          </Stack>
+          <Group justify="space-between" align="center">
+            <div>
+              <Title order={4} mb={4}>Need More Credits?</Title>
+              <Text size="sm" c="dimmed">Purchase SMS credits securely via Paystack.</Text>
+            </div>
+            <Button
+              leftSection={<IconCreditCard size={18} />}
+              onClick={() => router.push('/dashboard/communications/credits')}
+            >
+              Buy Credits
+            </Button>
+          </Group>
         </Card>
 
         {/* Transaction History */}
@@ -233,27 +150,29 @@ export default function SMSReportsPage() {
                   key={transaction.id}
                   justify="space-between"
                   p="md"
-                  bg={transaction.type === 'purchase' ? 'green.0' : 'red.0'}
+                  bg={transaction.type === 'PURCHASE' || transaction.type === 'BONUS' ? 'green.0' : 'red.0'}
                   style={{ borderRadius: 8 }}
                 >
                   <Stack gap="xs">
                     <Group>
-                      <Text fw={500}>{transaction.type.toUpperCase()}</Text>
+                      <Text fw={500}>{transaction.type}</Text>
                       <Text size="sm" c="dimmed">
                         {new Date(transaction.createdAt).toLocaleString()}
                       </Text>
                     </Group>
                     <Text size="lg" fw={600}>
-                      {transaction.type === 'purchase' ? '+' : '-'}
+                      {transaction.type === 'PURCHASE' || transaction.type === 'BONUS' ? '+' : '-'}
                       {transaction.amount.toLocaleString()} credits
                     </Text>
                   </Stack>
-                  <Badge
-                    variant={transaction.type === 'purchase' ? 'filled' : 'light'}
-                    color={transaction.type === 'purchase' ? 'green' : 'red'}
-                  >
-                    {transaction.description}
-                  </Badge>
+                  {transaction.description && (
+                    <Badge
+                      variant={transaction.type === 'PURCHASE' ? 'filled' : 'light'}
+                      color={transaction.type === 'PURCHASE' || transaction.type === 'BONUS' ? 'green' : 'red'}
+                    >
+                      {transaction.description}
+                    </Badge>
+                  )}
                 </Group>
               ))}
             </Stack>
@@ -266,9 +185,6 @@ export default function SMSReportsPage() {
           <Stack gap="sm">
             <Text size="sm" c="dimmed">
               • Monitor your credit usage regularly to avoid running out
-            </Text>
-            <Text size="sm" c="dimmed">
-              • Purchase credits in bulk for better rates (contact support for volume discounts)
             </Text>
             <Text size="sm" c="dimmed">
               • Use templates to reduce message composition time

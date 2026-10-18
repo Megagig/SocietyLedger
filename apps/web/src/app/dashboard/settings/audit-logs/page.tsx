@@ -63,7 +63,7 @@ export default function AuditLogsPage() {
       if (actionFilter) params.append('action', actionFilter);
       if (tableFilter) params.append('tableName', tableFilter);
       
-      const response = await api.get(`/admin/audit-logs?${params}`);
+      const response = await api.get(`/settings/audit-logs?${params}`);
       return response.data.data as AuditLogsResponse;
     },
   });

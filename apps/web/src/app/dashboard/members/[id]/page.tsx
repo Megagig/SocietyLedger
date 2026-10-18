@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar, User, DollarSign } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar, User, DollarSign, PiggyBank } from 'lucide-react';
 import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -197,6 +197,13 @@ export default function MemberDetailPage() {
 
         {/* Action Buttons - Full width on mobile */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => router.push(`/dashboard/cooperatives/members/${memberId}`)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+          >
+            <PiggyBank className="w-4 h-4" />
+            <span>Cooperative Profile</span>
+          </button>
           <Can permission={PERMISSIONS.MEMBER_EDIT}>
             <button
               onClick={() => router.push(`/dashboard/members/${memberId}/edit`)}
@@ -206,7 +213,7 @@ export default function MemberDetailPage() {
               <span>Edit</span>
             </button>
           </Can>
-          
+
           <Can permission={PERMISSIONS.MEMBER_DELETE}>
             <button
               onClick={handleDelete}

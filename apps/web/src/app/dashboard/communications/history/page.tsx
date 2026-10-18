@@ -21,13 +21,15 @@ import {
 import { IconDots, IconRefresh, IconFilter } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { smsApi, SMSMessage } from '@/lib/api/sms';
+import { smsApi, SMSMessage, SMSStatus } from '@/lib/api/sms';
+import { MessageDetailModal } from '@/components/communications/MessageDetailModal';
 
 export default function MessagesHistoryPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<SMSStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewingMessage, setViewingMessage] = useState<SMSMessage | null>(null);
 
   const { data: messagesData, isLoading, refetch } = useQuery({
     queryKey: ['sms-messages', page, statusFilter, searchQuery],
@@ -46,20 +48,20 @@ export default function MessagesHistoryPage() {
     refetch();
   };
 
-  const handleViewMessage = (id: number) => {
-    // Open message detail modal
-    console.log('View message:', id);
+  const handleViewMessage = (message: SMSMessage) => {
+    setViewingMessage(message);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: SMSStatus) => {
     switch (status) {
-      case 'delivered':
+      case 'DELIVERED':
         return 'green';
-      case 'sent':
+      case 'SENT':
         return 'blue';
-      case 'failed':
+      case 'FAILED':
+      case 'REJECTED':
         return 'red';
-      case 'pending':
+      case 'PENDING':
         return 'yellow';
       default:
         return 'gray';
@@ -68,21 +70,21 @@ export default function MessagesHistoryPage() {
 
   const rows = messages.map((message: SMSMessage) => (
     <Table.Tr key={message.id}>
-      <Table.Td>{message.recipientName || message.recipient}</Table.Td>
+      <Table.Td>{message.recipientName || message.recipientPhone}</Table.Td>
       <Table.Td>
         <Badge color={getStatusColor(message.status)} variant="filled">
-          {message.status.toUpperCase()}
+          {message.status}
         </Badge>
       </Table.Td>
       <Table.Td>{message.message}</Table.Td>
       <Table.Td>{message.segments}</Table.Td>
-      <Table.Td>{message.cost} credits</Table.Td>
+      <Table.Td>{message.cost ?? 0} credits</Table.Td>
       <Table.Td>
-        {new Date(message.sentAt).toLocaleString()}
+        {message.sentAt ? new Date(message.sentAt).toLocaleString() : '-'}
       </Table.Td>
-      {message.deliveredAt && (
-        <Table.Td>{new Date(message.deliveredAt).toLocaleString()}</Table.Td>
-      )}
+      <Table.Td>
+        {message.deliveredAt ? new Date(message.deliveredAt).toLocaleString() : '-'}
+      </Table.Td>
       <Table.Td>
         <Menu shadow="md" width={200}>
           <Menu.Target>
@@ -92,7 +94,7 @@ export default function MessagesHistoryPage() {
           </Menu.Target>
 
           <Menu.Dropdown>
-            <Menu.Item onClick={() => handleViewMessage(message.id)}>
+            <Menu.Item onClick={() => handleViewMessage(message)}>
               View Details
             </Menu.Item>
           </Menu.Dropdown>
@@ -143,13 +145,14 @@ export default function MessagesHistoryPage() {
             <Select
               placeholder="Filter by status"
               data={[
-                { value: 'delivered', label: 'Delivered' },
-                { value: 'sent', label: 'Sent' },
-                { value: 'failed', label: 'Failed' },
-                { value: 'pending', label: 'Pending' },
+                { value: 'DELIVERED', label: 'Delivered' },
+                { value: 'SENT', label: 'Sent' },
+                { value: 'FAILED', label: 'Failed' },
+                { value: 'REJECTED', label: 'Rejected' },
+                { value: 'PENDING', label: 'Pending' },
               ]}
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={(v) => setStatusFilter(v as SMSStatus | null)}
               clearable
               style={{ width: 200 }}
             />
@@ -204,6 +207,14 @@ export default function MessagesHistoryPage() {
           </Group>
         )}
       </Stack>
+
+      {viewingMessage && (
+        <MessageDetailModal
+          message={viewingMessage}
+          opened={!!viewingMessage}
+          onClose={() => setViewingMessage(null)}
+        />
+      )}
     </Container>
   );
 }

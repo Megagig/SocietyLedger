@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
 import { sendEmail } from '../lib/email';
+import { channelAllowed, getPreferences } from '../services/notification-preferences.service';
 
 /**
  * Cron Jobs for Meeting Management
@@ -29,11 +30,21 @@ async function createMeetingNotifications(
 
     if (users.length === 0) return 0;
 
-    // Create notifications for all users
+    // R3.6/G14/G42: respect each recipient's real in-app preference for
+    // this notification type instead of broadcasting unconditionally.
+    const eligibleUserIds: number[] = [];
+    for (const user of users) {
+      const pref = await getPreferences(associationId, user.id);
+      if (channelAllowed(pref, type, 'inApp')) {
+        eligibleUserIds.push(user.id);
+      }
+    }
+    if (eligibleUserIds.length === 0) return 0;
+
     const result = await prisma.notification.createMany({
-      data: users.map(user => ({
+      data: eligibleUserIds.map(userId => ({
         associationId,
-        userId: user.id,
+        userId,
         title,
         message,
         type,
@@ -73,6 +84,12 @@ async function sendMeetingReminderEmails(
 
     for (const user of users) {
       if (user.email) {
+        // R3.6/G14/G42: meeting reminders are dispatched as 'announcement'
+        // notifications (see the call site below) — gate on that same
+        // category's email preference, not an unconditional send.
+        const pref = await getPreferences(associationId, user.id);
+        if (!channelAllowed(pref, 'announcement', 'email')) continue;
+
         try {
           await sendEmail({
             to: user.email,
@@ -276,12 +293,17 @@ export async function notifyMeetingCancelled(
     // Send cancellation emails
     const users = await prisma.user.findMany({
       where: { associationId, isActive: true, email: { not: '' } },
-      select: { email: true },
+      select: { id: true, email: true },
     });
 
     let emailsSent = 0;
     for (const user of users) {
       if (user.email) {
+        // R3.6/G14/G42: gate on the same 'announcement' email preference
+        // used for the in-app notification above.
+        const pref = await getPreferences(associationId, user.id);
+        if (!channelAllowed(pref, 'announcement', 'email')) continue;
+
         try {
           await sendEmail({
             to: user.email,

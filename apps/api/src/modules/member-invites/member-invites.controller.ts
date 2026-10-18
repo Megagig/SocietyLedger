@@ -94,7 +94,8 @@ export const memberInviteController = {
             token,
             `${invite.member.firstName} ${invite.member.lastName}`,
             invite.association.name,
-            invite.association.subdomain
+            invite.association.subdomain,
+            invite.inviteTokenExpiresAt
           );
         } catch (emailError) {
           console.error('Failed to send invite email:', emailError);
@@ -186,7 +187,8 @@ export const memberInviteController = {
                 token,
                 `${invite.member.firstName} ${invite.member.lastName}`,
                 invite.association.name,
-                invite.association.subdomain
+                invite.association.subdomain,
+                invite.inviteTokenExpiresAt
               );
             } catch (emailError) {
               console.error(`Failed to send invite email for member ${memberId}:`, emailError);
@@ -399,7 +401,8 @@ export const memberInviteController = {
             token,
             `${invite.member.firstName} ${invite.member.lastName}`,
             invite.association.name,
-            invite.association.subdomain
+            invite.association.subdomain,
+            invite.inviteTokenExpiresAt
           );
         } catch (emailError) {
           console.error('Failed to send invite email:', emailError);

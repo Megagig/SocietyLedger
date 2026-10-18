@@ -112,8 +112,8 @@ export default function SubscriptionSuccessPage() {
         <div className="mt-8 text-center">
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             Need help? Contact our support team at{' '}
-            <a href="mailto:support@societyledger.com" className="text-blue-600 dark:text-blue-400 hover:underline">
-              support@societyledger.com
+            <a href="mailto:support@societyledger.com.ng" className="text-blue-600 dark:text-blue-400 hover:underline">
+              support@societyledger.com.ng
             </a>
           </p>
         </div>

@@ -58,6 +58,19 @@ export default function SocialFundsPage() {
     fetchFunds();
   }, [search, filterType, filterStatus, pagination.page]);
 
+  // Scroll to and highlight a specific fund when deep-linked via ?fundId=
+  useEffect(() => {
+    const fundId = searchParams.get('fundId');
+    if (!fundId || funds.length === 0) return;
+    const el = document.getElementById(`fund-${fundId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-teal-500');
+      const timeout = setTimeout(() => el.classList.remove('ring-2', 'ring-teal-500'), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [searchParams, funds]);
+
   const fetchFunds = async () => {
     try {
       setIsLoading(true);
@@ -214,6 +227,7 @@ export default function SocialFundsPage() {
             return (
               <div
                 key={fund.id}
+                id={`fund-${fund.id}`}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow"
               >
                 <div className="p-4 sm:p-6">

@@ -49,7 +49,11 @@ export function requireModule(moduleCode: string) {
             error: 'MODULE_DISABLED',
             message: `The ${status.name} module is not available for your plan.`,
             module: moduleCode,
-            upgradeRequired: status.source === 'plan',
+            // Upgrading helps unless this specific tenant was overridden off — a
+            // plan-sourced OR default-fallback block is always plan-related (G13:
+            // previously only 'plan' counted, so a default-fallback block told the
+            // frontend "don't bother showing Upgrade" even though it's exactly the fix)
+            upgradeRequired: status.source !== 'tenant_override',
           });
           return;
         }
@@ -102,7 +106,7 @@ export function requireFeature(featureCode: string) {
             message: `The ${status.name} feature is not available for your plan.`,
             feature: featureCode,
             module: status.moduleCode,
-            upgradeRequired: status.source === 'plan',
+            upgradeRequired: status.source !== 'tenant_override',
           });
           return;
         }

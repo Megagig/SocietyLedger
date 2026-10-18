@@ -18,6 +18,11 @@ model Association {
   logo                       String?
   primaryColor               String?                     @map("primary_color")
   subscriptionExpiresAt      DateTime?                   @map("subscription_expires_at")
+  // G79: tracks whether this association has EVER started a trial, independent of which
+  // Subscription row/plan it was against — initializePayment/startTrial's own "does a
+  // subscription already exist" check only looked at currently-active statuses, so an
+  // expired/cancelled association could get a second free trial just by picking a new plan.
+  hasEverTrialed             Boolean                     @default(false) @map("has_ever_trialed")
   // Phase 19: Platform Admin - Soft Delete
   deletedAt                  DateTime?                   @map("deleted_at")
   deletedBy                  Int?                        @map("deleted_by")
@@ -36,6 +41,7 @@ model Association {
   memberInvites              MemberInvite[]
   members                    Member[]
   notifications              Notification[]
+  notificationPreferences    NotificationPreference[]
   paymentGatewayTransactions PaymentGatewayTransaction[]
   payments                   Payment[]
   settings                   Settings[]
@@ -132,6 +138,7 @@ model User {
   sentMemberInvites             MemberInvite[]         @relation("MemberInvitedBy")
   member                        Member?
   notifications                 Notification[]
+  notificationPreferences       NotificationPreference[]
   confirmedPayments             Payment[]              @relation("PaymentConfirmedBy")
   settingsUpdates               Settings[]             @relation("SettingsUpdatedBy")
   createdTransactions           Transaction[]          @relation("TransactionCreatedBy")
@@ -330,6 +337,10 @@ model Transaction {
   createdAt           DateTime                    @default(now()) @map("created_at")
   updatedAt           DateTime                    @updatedAt @map("updated_at")
   
+  // R3.4/G43: tracks when the last automated payment reminder was sent, so
+  // the daily job doesn't re-send the same reminder more than once per day.
+  lastReminderSentAt  DateTime?                   @map("last_reminder_sent_at")
+
   // Edit and void tracking
   isVoided            Boolean                     @default(false) @map("is_voided")
   voidReason          String?                     @map("void_reason")
@@ -457,6 +468,44 @@ model Notification {
   @@map("notifications")
 }
 
+// R3.6/G14/G42: replaces the in-memory Map that previously backed
+// notification preferences — lost on every restart, and nothing ever read
+// it to gate a real send. One row per user per association.
+model NotificationPreference {
+  id                    Int         @id @default(autoincrement())
+  associationId         Int         @map("association_id")
+  userId                Int         @map("user_id")
+  emailEnabled          Boolean     @default(true) @map("email_enabled")
+  smsEnabled            Boolean     @default(false) @map("sms_enabled")
+  inAppEnabled          Boolean     @default(true) @map("in_app_enabled")
+  paymentDueEmail       Boolean     @default(true) @map("payment_due_email")
+  paymentDueSMS         Boolean     @default(false) @map("payment_due_sms")
+  paymentDueInApp       Boolean     @default(true) @map("payment_due_in_app")
+  paymentReceivedEmail  Boolean     @default(true) @map("payment_received_email")
+  paymentReceivedSMS    Boolean     @default(false) @map("payment_received_sms")
+  paymentReceivedInApp  Boolean     @default(true) @map("payment_received_in_app")
+  systemEmail           Boolean     @default(true) @map("system_email")
+  systemSMS             Boolean     @default(false) @map("system_sms")
+  systemInApp           Boolean     @default(true) @map("system_in_app")
+  approvalEmail         Boolean     @default(true) @map("approval_email")
+  approvalSMS           Boolean     @default(false) @map("approval_sms")
+  approvalInApp         Boolean     @default(true) @map("approval_in_app")
+  announcementEmail     Boolean     @default(true) @map("announcement_email")
+  announcementSMS       Boolean     @default(false) @map("announcement_sms")
+  announcementInApp     Boolean     @default(true) @map("announcement_in_app")
+  quietHoursEnabled     Boolean     @default(false) @map("quiet_hours_enabled")
+  quietHoursStart       String      @default("22:00") @map("quiet_hours_start")
+  quietHoursEnd         String      @default("08:00") @map("quiet_hours_end")
+  quietHoursTimezone    String      @default("UTC") @map("quiet_hours_timezone")
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+  association           Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([associationId, userId])
+  @@map("notification_preferences")
+}
+
 model Settings {
   id            Int         @id @default(autoincrement())
   associationId Int         @map("association_id")
@@ -520,6 +569,8 @@ model Subscription {
   currentPeriodEnd   DateTime           @map("current_period_end")
   cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
   renewalDate        DateTime?          @map("renewal_date")
+  pendingPlanId      Int?               @map("pending_plan_id")
+  pendingBillingCycle BillingCycle?     @map("pending_billing_cycle")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
   payments           PaymentHistory[]
@@ -1093,12 +1144,23 @@ model PaymentProof {
   id              Int                @id @default(autoincrement())
   associationId   Int                @map("association_id")
   transactionId   Int?               @map("transaction_id")
+  // R7.2 (G17): a member can declare one payment covering several outstanding
+  // transactions at once (the existing /me/pay UI already supports multi-select) —
+  // transactionId alone can't represent that, so the member-declare flow uses this
+  // instead. transactionId stays as-is for the pre-existing single-transaction
+  // officer/bank-transfer-reconciliation use case.
+  transactionIds  Int[]              @default([]) @map("transaction_ids")
   bankTransferId  Int?               @map("bank_transfer_id")
   memberId        Int                @map("member_id")
-  filename        String
-  filepath        String
-  fileSize        Int                @map("file_size")
-  mimeType        String             @map("mime_type")
+  // R7.2 (G17): nullable — a Cash/Card/POS self-declared payment has no file, only a
+  // written declaration (declarationNote). Exactly one of (filename set) or
+  // (declarationNote set) is required; enforced in application code, not the DB.
+  filename        String?
+  filepath        String?
+  fileSize        Int?               @map("file_size")
+  mimeType        String?            @map("mime_type")
+  declarationNote String?            @map("declaration_note") @db.Text
+  paymentMethod   String?            @map("payment_method")
   status          PaymentProofStatus @default(PENDING)
   uploadedAt      DateTime           @default(now()) @map("uploaded_at")
   verifiedBy      Int?               @map("verified_by")

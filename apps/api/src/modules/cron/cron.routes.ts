@@ -6,7 +6,7 @@ import { prisma } from '../../lib/prisma';
 import { sendEmail } from '../../lib/email';
 import { processLateFees, updateOverdueStatus } from './late-fees.cron';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth middleware and require Super Admin platform role for all routes
 router.use(authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]));

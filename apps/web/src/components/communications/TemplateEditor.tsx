@@ -14,32 +14,33 @@ import {
   Box,
 } from '@mantine/core';
 import { IconVariable, IconTemplate, IconCheck, IconX } from '@tabler/icons-react';
-import { SMSTemplate } from '@/lib/api/sms';
+import { SMSTemplate, SMSTemplateCategory, CreateTemplateRequest } from '@/lib/api/sms';
 
 interface TemplateEditorProps {
   template?: SMSTemplate;
-  onSave: (template: { name: string; category: string; message: string }) => void;
+  onSave: (template: CreateTemplateRequest) => void;
   onCancel?: () => void;
   loading?: boolean;
 }
 
-const TEMPLATE_CATEGORIES = [
-  'General',
-  'Payment Reminder',
-  'Meeting',
-  'Dues',
-  'Levy',
-  'Welfare',
-  'Election',
-  'Custom',
-] as const;
+// Values must match the real SMSTemplateCategory enum; labels are display-only.
+const TEMPLATE_CATEGORIES: { value: SMSTemplateCategory; label: string }[] = [
+  { value: 'GENERAL', label: 'General' },
+  { value: 'PAYMENT_REMINDER', label: 'Payment Reminder' },
+  { value: 'MEETING', label: 'Meeting' },
+  { value: 'DUES', label: 'Dues' },
+  { value: 'LEVY', label: 'Levy' },
+  { value: 'WELFARE', label: 'Welfare' },
+  { value: 'ELECTION', label: 'Election' },
+  { value: 'CUSTOM', label: 'Custom' },
+];
 
 export function TemplateEditor({ template, onSave, onCancel, loading = false }: TemplateEditorProps) {
   const [name, setName] = useState(template?.name || '');
-  const [category, setCategory] = useState(template?.category || 'General');
-  const [message, setMessage] = useState(template?.message || '');
+  const [category, setCategory] = useState<SMSTemplateCategory>(template?.category || 'GENERAL');
+  const [message, setMessage] = useState(template?.content || '');
 
-  // Extract variables from message
+  // Placeholders use {{name}} — matches apps/api's applyMessageTemplate() exactly.
   const variables = message.match(/\{\{(\w+)\}\}/g)?.map(v => v.slice(2, -2)) || [];
 
   const handleSave = () => {
@@ -54,7 +55,8 @@ export function TemplateEditor({ template, onSave, onCancel, loading = false }: 
     onSave({
       name: name.trim(),
       category,
-      message: message.trim(),
+      content: message.trim(),
+      placeholders: Array.from(new Set(variables)),
     });
   };
 
@@ -62,7 +64,7 @@ export function TemplateEditor({ template, onSave, onCancel, loading = false }: 
     const textarea = document.getElementById('template-message-textarea') as HTMLTextAreaElement;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const newText = `{${variable}}`;
+    const newText = `{{${variable}}}`;
 
     const updatedMessage =
       message.substring(0, start) + newText + message.substring(end);
@@ -104,7 +106,7 @@ export function TemplateEditor({ template, onSave, onCancel, loading = false }: 
           placeholder="Select category"
           data={TEMPLATE_CATEGORIES}
           value={category}
-          onChange={(value) => setCategory(value as any)}
+          onChange={(value) => setCategory((value as SMSTemplateCategory) || 'GENERAL')}
           size="md"
         />
 
@@ -122,7 +124,7 @@ export function TemplateEditor({ template, onSave, onCancel, loading = false }: 
             id="template-message-textarea"
             value={message}
             onChange={(e) => setMessage(e.currentTarget.value)}
-            placeholder="Type your message here... Use {name}, {amount}, {due_date} as variables"
+            placeholder="Type your message here... Use {{name}}, {{amount}}, {{due_date}} as variables"
             minRows={6}
             maxRows={12}
             autosize
@@ -142,7 +144,7 @@ export function TemplateEditor({ template, onSave, onCancel, loading = false }: 
                 style={{ cursor: 'pointer' }}
                 onClick={() => handleVariableInsert(variable)}
               >
-                {`{${variable}}`}
+                {`{{${variable}}}`}
               </Badge>
             ))}
           </Group>

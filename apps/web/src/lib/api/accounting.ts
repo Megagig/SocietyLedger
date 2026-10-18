@@ -77,6 +77,19 @@ export interface BudgetItem {
   notes: string | null;
 }
 
+export interface AccountingPeriod {
+  id: number;
+  name: string;
+  periodType: 'month' | 'quarter' | 'year';
+  startDate: string;
+  endDate: string;
+  status: 'OPEN' | 'CLOSED' | 'LOCKED';
+  closedBy: number | null;
+  closedByEmail: string | null;
+  closedAt: string | null;
+  createdAt: string;
+}
+
 export interface AccountBalance {
   accountId: number;
   accountCode: string;
@@ -353,16 +366,31 @@ export const accountingApi = {
   },
 
   // ==========================================
-  // Sync
+  // Accounting Periods
   // ==========================================
 
-  async syncTransaction(transactionId: number) {
-    const response = await api.post(`${API_URL}/api/accounting/sync/transaction/${transactionId}`);
+  async getPeriods() {
+    const response = await api.get(`${API_URL}/api/accounting/periods`);
     return response.data;
   },
 
-  async syncPayment(paymentId: number) {
-    const response = await api.post(`${API_URL}/api/accounting/sync/payment/${paymentId}`);
+  async createPeriod(data: { name: string; periodType: 'month' | 'quarter' | 'year'; startDate: string; endDate: string }) {
+    const response = await api.post(`${API_URL}/api/accounting/periods`, data);
+    return response.data;
+  },
+
+  async closePeriod(id: number) {
+    const response = await api.post(`${API_URL}/api/accounting/periods/${id}/close`);
+    return response.data;
+  },
+
+  async reopenPeriod(id: number) {
+    const response = await api.post(`${API_URL}/api/accounting/periods/${id}/reopen`);
+    return response.data;
+  },
+
+  async lockPeriod(id: number) {
+    const response = await api.post(`${API_URL}/api/accounting/periods/${id}/lock`);
     return response.data;
   },
 

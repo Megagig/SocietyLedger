@@ -7,6 +7,21 @@ import {
   getExportHistorySchema,
 } from './exports.validation';
 import * as fs from 'fs';
+import { RBACService } from '../../services/rbac.service';
+import { PERMISSIONS } from '../../lib/permissions';
+
+// Holding only exports.view_history (and not exports.financial/exports.members) scopes
+// history/download to exports the user themselves triggered, not the whole association's.
+async function canSeeAllExports(req: Request): Promise<boolean> {
+  return RBACService.hasAnyPermission(
+    {
+      userId: req.user!.id,
+      associationId: req.user!.associationId ?? null,
+      platformRole: req.user!.platformRole ?? null,
+    },
+    [PERMISSIONS.EXPORT_FINANCIAL, PERMISSIONS.EXPORT_MEMBERS]
+  );
+}
 
 // ============================================
 // EXPORT CONTROLLER
@@ -312,6 +327,9 @@ export const exportsController = {
       if (limit) options.limit = parseInt(limit);
       if (type) options.type = type;
       if (format) options.format = format;
+      if (!(await canSeeAllExports(req))) {
+        options.userId = req.user!.id;
+      }
 
       const result = await exportsService.getExportHistory(associationId, options);
 
@@ -345,6 +363,13 @@ export const exportsController = {
       }
 
       const exportRecord = await exportsService.getExportById(exportId, associationId);
+
+      if (!(await canSeeAllExports(req)) && exportRecord.userId !== req.user!.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to download this export',
+        });
+      }
 
       // Set headers for file download
       const contentType =

@@ -21,13 +21,13 @@ import {
 import { IconPlus, IconDots, IconRefresh, IconFilter } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { smsApi, SMSCampaign } from '@/lib/api/sms';
+import { smsApi, SMSCampaign, SMSCampaignStatus } from '@/lib/api/sms';
 import { CampaignStatusBadge } from '@/components/communications/CampaignStatusBadge';
 
 export default function CampaignsListPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<SMSCampaignStatus | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: campaignsData, isLoading, refetch } = useQuery({
@@ -88,12 +88,12 @@ export default function CampaignsListPage() {
       <Table.Td>
         <CampaignStatusBadge status={campaign.status} />
       </Table.Td>
-      <Table.Td>{campaign.recipientCount.toLocaleString()}</Table.Td>
+      <Table.Td>{campaign.totalRecipients.toLocaleString()}</Table.Td>
       <Table.Td>{campaign.sentCount.toLocaleString()}</Table.Td>
       <Table.Td>{campaign.deliveredCount.toLocaleString()}</Table.Td>
       <Table.Td>
-        {campaign.scheduledFor
-          ? new Date(campaign.scheduledFor).toLocaleDateString()
+        {campaign.scheduledAt
+          ? new Date(campaign.scheduledAt).toLocaleDateString()
           : '-'}
       </Table.Td>
       <Table.Td>
@@ -111,17 +111,17 @@ export default function CampaignsListPage() {
             <Menu.Item onClick={() => handleViewCampaign(campaign.id)}>
               View Details
             </Menu.Item>
-            {campaign.status === 'draft' && (
+            {campaign.status === 'DRAFT' && (
               <Menu.Item onClick={() => handleStartCampaign(campaign.id)}>
                 Start Campaign
               </Menu.Item>
             )}
-            {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
+            {(campaign.status === 'DRAFT' || campaign.status === 'SCHEDULED') && (
               <Menu.Item onClick={() => handleCancelCampaign(campaign.id)}>
                 Cancel Campaign
               </Menu.Item>
             )}
-            {campaign.status === 'draft' && (
+            {campaign.status === 'DRAFT' && (
               <Menu.Item
                 color="red"
                 onClick={() => handleDeleteCampaign(campaign.id)}
@@ -181,15 +181,15 @@ export default function CampaignsListPage() {
             <Select
               placeholder="Filter by status"
               data={[
-                { value: 'draft', label: 'Draft' },
-                { value: 'scheduled', label: 'Scheduled' },
-                { value: 'in_progress', label: 'In Progress' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'cancelled', label: 'Cancelled' },
-                { value: 'failed', label: 'Failed' },
+                { value: 'DRAFT', label: 'Draft' },
+                { value: 'SCHEDULED', label: 'Scheduled' },
+                { value: 'IN_PROGRESS', label: 'In Progress' },
+                { value: 'COMPLETED', label: 'Completed' },
+                { value: 'CANCELLED', label: 'Cancelled' },
+                { value: 'FAILED', label: 'Failed' },
               ]}
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={(v) => setStatusFilter(v as SMSCampaignStatus | null)}
               clearable
               style={{ width: 200 }}
             />

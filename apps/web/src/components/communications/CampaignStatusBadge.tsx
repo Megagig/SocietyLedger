@@ -2,40 +2,41 @@
 
 import { Badge, BadgeProps } from '@mantine/core';
 import { IconClock, IconSend, IconCheck, IconX, IconAlertCircle } from '@tabler/icons-react';
+import { SMSCampaignStatus } from '@/lib/api/sms';
 
 interface CampaignStatusBadgeProps extends Omit<BadgeProps, 'color' | 'leftSection'> {
-  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'failed';
+  status: SMSCampaignStatus;
 }
 
 export function CampaignStatusBadge({ status, ...props }: CampaignStatusBadgeProps) {
-  const statusConfig = {
-    draft: {
-      color: 'gray' as const,
+  const statusConfig: Record<SMSCampaignStatus, { color: BadgeProps['color']; label: string; icon: React.ReactNode }> = {
+    DRAFT: {
+      color: 'gray',
       label: 'Draft',
       icon: <IconClock size={12} />,
     },
-    scheduled: {
-      color: 'blue' as const,
+    SCHEDULED: {
+      color: 'blue',
       label: 'Scheduled',
       icon: <IconClock size={12} />,
     },
-    in_progress: {
-      color: 'cyan' as const,
+    IN_PROGRESS: {
+      color: 'cyan',
       label: 'In Progress',
       icon: <IconSend size={12} />,
     },
-    completed: {
-      color: 'green' as const,
+    COMPLETED: {
+      color: 'green',
       label: 'Completed',
       icon: <IconCheck size={12} />,
     },
-    cancelled: {
-      color: 'orange' as const,
+    CANCELLED: {
+      color: 'orange',
       label: 'Cancelled',
       icon: <IconX size={12} />,
     },
-    failed: {
-      color: 'red' as const,
+    FAILED: {
+      color: 'red',
       label: 'Failed',
       icon: <IconAlertCircle size={12} />,
     },

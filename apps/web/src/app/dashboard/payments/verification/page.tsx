@@ -57,8 +57,8 @@ export default function VerificationPage() {
     <Stack align="center" gap="lg" py="xl">
       <Card withBorder padding="xl" w="100%" maw={600}>
         <Stack align="center" gap="md">
-          <div style={{ padding: '1rem', borderRadius: '50%', backgroundColor: '#fee2e2' }}>
-            <X size={48} color="#dc2626" />
+          <div style={{ padding: '1rem', borderRadius: '50%', backgroundColor: 'var(--mantine-color-red-1)' }}>
+            <X size={48} color="var(--mantine-color-red-6)" />
           </div>
           <Title order={2} ta="center">Access Denied</Title>
           <Text size="sm" c="dimmed" ta="center">
@@ -85,8 +85,8 @@ export default function VerificationPage() {
         nigerianPaymentsApi.getBankTransfers({ status: 'PENDING', limit: 100 }),
       ]);
 
-      setPaymentProofs(proofsRes.data || []);
-      setTotal(proofsRes.total || 0);
+      setPaymentProofs(proofsRes.proofs || []);
+      setTotal(proofsRes.pagination?.totalCount || 0);
       setBankTransfers(transfersRes.data || []);
     } catch (error: any) {
       console.error('Error loading data:', error);
@@ -114,8 +114,9 @@ export default function VerificationPage() {
       setSubmitting(true);
 
       await nigerianPaymentsApi.verifyPaymentProof(selectedProof.id, {
-        verified: action === 'APPROVED',
+        status: action,
         rejectionReason: action === 'REJECTED' ? values.rejectionReason : undefined,
+        notes: values.notes || undefined,
       });
 
       notifications.show({
@@ -210,54 +211,60 @@ export default function VerificationPage() {
                       <Table.Tr>
                         <Table.Th>Uploaded</Table.Th>
                         <Table.Th>Member</Table.Th>
-                        <Table.Th>Transaction</Table.Th>
-                        <Table.Th>File</Table.Th>
+                        <Table.Th>Method</Table.Th>
+                        <Table.Th>Transaction(s)</Table.Th>
+                        <Table.Th>Evidence</Table.Th>
                         <Table.Th>Actions</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {paymentProofs.map((proof) => (
+                      {paymentProofs.map((proof) => {
+                        const ids = proof.transactionIds?.length > 0 ? proof.transactionIds : (proof.transactionId ? [proof.transactionId] : []);
+                        return (
                         <Table.Tr key={proof.id}>
                           <Table.Td>
                             {new Date(proof.uploadedAt).toLocaleDateString()}
                           </Table.Td>
                           <Table.Td>
-                            {proof.memberId ? (
-                              <div>
-                                <Text size="sm" fw={500}>
-                                  Member ID: {proof.memberId}
-                                </Text>
-                              </div>
+                            {proof.member ? (
+                              <Text size="sm" fw={500}>
+                                {proof.member.firstName} {proof.member.lastName} ({proof.member.memberId})
+                              </Text>
                             ) : (
                               'N/A'
                             )}
                           </Table.Td>
                           <Table.Td>
-                            {proof.transactionId ? (
-                              <div>
-                                <Text size="sm" fw={500}>
-                                  Transaction ID: {proof.transactionId}
-                                </Text>
-                              </div>
+                            <Text size="sm" className="capitalize">{proof.paymentMethod?.replace('_', ' ') || '—'}</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            {ids.length > 0 ? (
+                              <Text size="sm" fw={500}>
+                                {ids.length} item{ids.length > 1 ? 's' : ''} (#{ids.join(', #')})
+                              </Text>
                             ) : (
                               'N/A'
                             )}
                           </Table.Td>
                           <Table.Td>
-                            <Group gap="xs">
-                              <Text size="sm">{proof.fileName}</Text>
-                              <ActionIcon
-                                size="sm"
-                                variant="light"
-                                onClick={() => {
-                                  setSelectedProof(proof);
-                                  setVerifyModal(true);
-                                  setAction('APPROVED');
-                                }}
-                              >
-                                <Eye size={14} />
-                              </ActionIcon>
-                            </Group>
+                            {proof.filename ? (
+                              <Group gap="xs">
+                                <Text size="sm">{proof.filename}</Text>
+                                <ActionIcon
+                                  size="sm"
+                                  variant="light"
+                                  component="a"
+                                  href={`${process.env.NEXT_PUBLIC_API_URL}/${proof.filepath?.replace(/\\/g, '/')}`}
+                                  target="_blank"
+                                >
+                                  <Eye size={14} />
+                                </ActionIcon>
+                              </Group>
+                            ) : (
+                              <Text size="sm" c="dimmed" lineClamp={2} maw={240}>
+                                {proof.declarationNote || 'No evidence provided'}
+                              </Text>
+                            )}
                           </Table.Td>
                           <Table.Td>
                             <Group gap="xs">
@@ -281,7 +288,8 @@ export default function VerificationPage() {
                             </Group>
                           </Table.Td>
                         </Table.Tr>
-                      ))}
+                        );
+                      })}
                     </Table.Tbody>
                   </Table>
 
@@ -364,13 +372,13 @@ export default function VerificationPage() {
             <form onSubmit={form.onSubmit(handleVerify)}>
               <Stack>
                 {/* Proof Preview */}
-                {selectedProof.fileUrl && selectedProof.fileUrl.includes('image') && (
+                {selectedProof.filename && selectedProof.mimeType?.includes('image') && (
                   <div>
                     <Text size="sm" fw={500} mb="xs">
                       Payment Proof
                     </Text>
                     <Image
-                      src={`/api/payments/nigerian/proofs/${selectedProof.id}/file`}
+                      src={`${process.env.NEXT_PUBLIC_API_URL}/${selectedProof.filepath?.replace(/\\/g, '/')}`}
                       alt="Payment proof"
                       radius="md"
                       fit="contain"
@@ -385,22 +393,45 @@ export default function VerificationPage() {
                     Details
                   </Text>
                   <Stack gap="xs">
-                    {selectedProof.memberId && (
+                    {selectedProof.member && (
                       <Group justify="space-between">
                         <Text size="sm" c="dimmed">
-                          Member ID
+                          Member
                         </Text>
                         <Text size="sm">
-                          {selectedProof.memberId}
+                          {selectedProof.member.firstName} {selectedProof.member.lastName} ({selectedProof.member.memberId})
                         </Text>
                       </Group>
                     )}
                     <Group justify="space-between">
                       <Text size="sm" c="dimmed">
-                        File
+                        Method
                       </Text>
-                      <Text size="sm">{selectedProof.fileName}</Text>
+                      <Text size="sm" className="capitalize">{selectedProof.paymentMethod?.replace('_', ' ') || '—'}</Text>
                     </Group>
+                    <Group justify="space-between">
+                      <Text size="sm" c="dimmed">
+                        Transaction(s)
+                      </Text>
+                      <Text size="sm">
+                        {(selectedProof.transactionIds?.length > 0 ? selectedProof.transactionIds : selectedProof.transactionId ? [selectedProof.transactionId] : []).join(', ') || 'N/A'}
+                      </Text>
+                    </Group>
+                    {selectedProof.filename ? (
+                      <Group justify="space-between">
+                        <Text size="sm" c="dimmed">
+                          File
+                        </Text>
+                        <Text size="sm">{selectedProof.filename}</Text>
+                      </Group>
+                    ) : (
+                      <div>
+                        <Text size="sm" c="dimmed" mb={4}>
+                          Declaration
+                        </Text>
+                        <Text size="sm">{selectedProof.declarationNote}</Text>
+                      </div>
+                    )}
                     <Group justify="space-between">
                       <Text size="sm" c="dimmed">
                         Uploaded

@@ -4,7 +4,7 @@ import { requirePlatformRole } from '../../middleware/rbac';
 import { PlatformRole } from '@prisma/client';
 import webhooksManagementRouter from './webhooks-management.controller';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply authentication middleware and require Super Admin platform role for all routes
 router.use(authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]));

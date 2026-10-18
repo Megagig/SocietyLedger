@@ -2,269 +2,261 @@ import api from '../axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-// Types
-export interface SMSDashboard {
-  sent: number;
-  delivered: number;
-  failed: number;
-  pending: number;
-  deliveryRate: number;
-  totalCredits: number;
-  creditsUsedThisMonth: number;
-  creditsRemaining: number;
-}
+// Types — mirror apps/api/src/modules/sms/sms.types.ts and schema.prisma's
+// real enums exactly. The previous version of this file was never
+// reconciled against the real backend (G39/G76-class drift, found at R3).
+
+export type SMSStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'FAILED' | 'REJECTED';
+export type SMSCampaignStatus = 'DRAFT' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+export type SMSRecipientType = 'ALL_MEMBERS' | 'SELECTED_MEMBERS' | 'MEMBER_CATEGORY' | 'CUSTOM_NUMBERS' | 'OWING_MEMBERS' | 'PAID_MEMBERS';
+export type SMSTemplateCategory = 'GENERAL' | 'PAYMENT_REMINDER' | 'MEETING' | 'DUES' | 'LEVY' | 'WELFARE' | 'ELECTION' | 'CUSTOM';
+export type SMSCreditTransactionType = 'PURCHASE' | 'USAGE' | 'REFUND' | 'BONUS' | 'ADJUSTMENT';
 
 export interface SMSMessage {
   id: number;
-  recipient: string;
-  recipientName?: string;
+  recipientPhone: string;
+  recipientName: string | null;
+  memberId: number | null;
   message: string;
-  status: 'pending' | 'sent' | 'delivered' | 'failed';
+  messageType: 'SINGLE' | 'BULK' | 'AUTOMATED';
+  status: SMSStatus;
+  termiiMessageId: string | null;
   segments: number;
-  cost: number;
-  sentAt: string;
-  deliveredAt?: string;
-  errorMessage?: string;
-  campaignId?: number;
-  templateId?: number;
+  cost: number | null;
+  errorMessage: string | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  createdAt: string;
+  campaign?: { name: string } | null;
+}
+
+export interface RecipientFilter {
+  memberIds?: number[];
+  categories?: string[];
+  statuses?: string[];
+  customNumbers?: string[];
+  owingMinAmount?: number;
 }
 
 export interface SMSCampaign {
   id: number;
   name: string;
   message: string;
-  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'failed';
-  recipientCount: number;
+  templateId: number | null;
+  recipientType: SMSRecipientType;
+  recipientFilter: RecipientFilter | null;
+  totalRecipients: number;
   sentCount: number;
   deliveredCount: number;
   failedCount: number;
-  scheduledFor?: string;
-  startedAt?: string;
-  completedAt?: string;
+  status: SMSCampaignStatus;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdBy: number;
   createdAt: string;
   updatedAt: string;
+  template?: { name: string } | null;
 }
 
 export interface SMSTemplate {
   id: number;
   name: string;
-  category: string;
-  message: string;
-  variables: string[];
+  content: string;
+  category: SMSTemplateCategory;
+  placeholders: string[];
+  isActive: boolean;
   usageCount: number;
+  createdBy: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface SMSCreditBalance {
-  totalCredits: number;
-  creditsUsed: number;
-  creditsRemaining: number;
-  lastTopupAt?: string;
-  lastTopupAmount?: number;
+  balance: number;
+  totalPurchased: number;
+  totalUsed: number;
+  lastTopUpAt: string | null;
 }
 
 export interface SMSCreditTransaction {
   id: number;
-  type: 'purchase' | 'usage' | 'refund';
+  type: SMSCreditTransactionType;
   amount: number;
-  balanceAfter: number;
-  description: string;
+  description: string | null;
+  reference: string | null;
+  campaignId: number | null;
   createdAt: string;
 }
 
+export interface SMSDashboardStats {
+  totalMessagesSent: number;
+  totalMessagesDelivered: number;
+  totalMessagesFailed: number;
+  deliveryRate: number;
+  totalCampaigns: number;
+  activeCampaigns: number;
+  totalTemplates: number;
+  creditBalance: number;
+  recentMessages: SMSMessage[];
+  recentCampaigns: SMSCampaign[];
+  messagesByDay: Array<{ date: string; sent: number; delivered: number; failed: number }>;
+}
+
+export interface PaginatedResult<T> {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface SendSMSRequest {
-  recipients: Array<{
-    type: 'member' | 'phone';
-    value: string | number;
-  }>;
+  recipients: string[]; // phone numbers or member IDs, as plain strings
   message: string;
+  useTemplate?: boolean;
   templateId?: number;
-  scheduleAt?: string;
+  templateData?: Record<string, string | number>;
+}
+
+export interface QuickSMSResult {
+  totalSent: number;
+  totalFailed: number;
+  messages: Array<{ phone: string; success: boolean; messageId?: string; error?: string }>;
+  creditsUsed: number;
+  remainingCredits: number;
 }
 
 export interface CreateCampaignRequest {
   name: string;
   message: string;
-  recipientType: 'all' | 'category' | 'status' | 'custom';
-  recipientValue?: string;
-  recipientIds?: number[];
-  phoneNumbers?: string[];
-  scheduleAt?: string;
+  templateId?: number;
+  recipientType: SMSRecipientType;
+  recipientFilter?: RecipientFilter;
+  scheduledAt?: string;
 }
 
 export interface CreateTemplateRequest {
   name: string;
-  category: string;
-  message: string;
-}
-
-export interface TopupCreditsRequest {
-  amount: number;
-  paymentMethod: 'paystack' | 'bank_transfer';
+  content: string;
+  category: SMSTemplateCategory;
+  placeholders?: string[];
 }
 
 export const smsApi = {
-  /**
-   * Get SMS dashboard statistics
-   */
-  async getDashboard(): Promise<SMSDashboard> {
+  async getDashboard(): Promise<SMSDashboardStats> {
     const response = await api.get(`${API_URL}/api/sms/dashboard`);
     return response.data.data;
   },
 
-  /**
-   * Send quick SMS
-   */
-  async sendSMS(data: SendSMSRequest) {
+  async sendSMS(data: SendSMSRequest): Promise<QuickSMSResult> {
     const response = await api.post(`${API_URL}/api/sms/send`, data);
     return response.data.data;
   },
 
-  /**
-   * Get all campaigns
-   */
-  async getCampaigns(params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  }) {
+  async getCampaigns(params?: { page?: number; limit?: number; status?: SMSCampaignStatus }) {
     const response = await api.get(`${API_URL}/api/sms/campaigns`, { params });
-    return response.data.data;
+    return response.data.data as { campaigns: SMSCampaign[] } & PaginatedResult<SMSCampaign>;
   },
 
-  /**
-   * Create new campaign
-   */
-  async createCampaign(data: CreateCampaignRequest) {
+  async createCampaign(data: CreateCampaignRequest): Promise<SMSCampaign> {
     const response = await api.post(`${API_URL}/api/sms/campaigns`, data);
     return response.data.data;
   },
 
-  /**
-   * Get campaign by ID
-   */
-  async getCampaign(id: number): Promise<SMSCampaign> {
+  async getCampaign(id: number): Promise<SMSCampaign & { _count: { messages: number } }> {
     const response = await api.get(`${API_URL}/api/sms/campaigns/${id}`);
     return response.data.data;
   },
 
-  /**
-   * Start campaign
-   */
   async startCampaign(id: number) {
     const response = await api.post(`${API_URL}/api/sms/campaigns/${id}/start`);
     return response.data.data;
   },
 
-  /**
-   * Cancel campaign
-   */
   async cancelCampaign(id: number) {
     const response = await api.post(`${API_URL}/api/sms/campaigns/${id}/cancel`);
     return response.data.data;
   },
 
-  /**
-   * Delete draft campaign
-   */
   async deleteCampaign(id: number) {
     const response = await api.delete(`${API_URL}/api/sms/campaigns/${id}`);
     return response.data.data;
   },
 
-  /**
-   * Get all templates
-   */
-  async getTemplates(params?: {
-    page?: number;
-    limit?: number;
-    category?: string;
-  }) {
+  async getTemplates(params?: { page?: number; limit?: number; category?: SMSTemplateCategory; isActive?: boolean }) {
     const response = await api.get(`${API_URL}/api/sms/templates`, { params });
-    return response.data.data;
+    return response.data.data as { templates: SMSTemplate[] } & PaginatedResult<SMSTemplate>;
   },
 
-  /**
-   * Create new template
-   */
-  async createTemplate(data: CreateTemplateRequest) {
+  async createTemplate(data: CreateTemplateRequest): Promise<SMSTemplate> {
     const response = await api.post(`${API_URL}/api/sms/templates`, data);
     return response.data.data;
   },
 
-  /**
-   * Get template by ID
-   */
   async getTemplate(id: number): Promise<SMSTemplate> {
     const response = await api.get(`${API_URL}/api/sms/templates/${id}`);
     return response.data.data;
   },
 
-  /**
-   * Update template
-   */
-  async updateTemplate(id: number, data: Partial<CreateTemplateRequest>) {
+  async updateTemplate(id: number, data: Partial<CreateTemplateRequest> & { isActive?: boolean }) {
     const response = await api.put(`${API_URL}/api/sms/templates/${id}`, data);
     return response.data.data;
   },
 
-  /**
-   * Delete template
-   */
   async deleteTemplate(id: number) {
     const response = await api.delete(`${API_URL}/api/sms/templates/${id}`);
     return response.data.data;
   },
 
-  /**
-   * Get message history
-   */
   async getMessages(params?: {
     page?: number;
     limit?: number;
-    status?: string;
+    status?: SMSStatus;
+    campaignId?: number;
     startDate?: string;
     endDate?: string;
-    recipient?: string;
   }) {
     const response = await api.get(`${API_URL}/api/sms/messages`, { params });
-    return response.data.data;
+    return response.data.data as { messages: SMSMessage[] } & PaginatedResult<SMSMessage>;
   },
 
-  /**
-   * Get message by ID
-   */
   async getMessage(id: number): Promise<SMSMessage> {
     const response = await api.get(`${API_URL}/api/sms/messages/${id}`);
     return response.data.data;
   },
 
-  /**
-   * Get SMS credit balance
-   */
   async getBalance(): Promise<SMSCreditBalance> {
     const response = await api.get(`${API_URL}/api/sms/credits/balance`);
     return response.data.data;
   },
 
   /**
-   * Top up SMS credits
+   * Real Paystack purchase flow — ported from the orphaned
+   * /dashboard/communication/sms/* set at R3.1 (G38). The old /credits/topup
+   * (free-grant, G41) was removed entirely in R1.4; this is the only real
+   * way to add credits from the tenant side now.
    */
-  async topupCredits(data: TopupCreditsRequest) {
-    const response = await api.post(`${API_URL}/api/sms/credits/topup`, data);
+  async purchaseCredits(data: { credits: number; packageId: string }): Promise<{
+    authorizationUrl: string;
+    accessCode: string;
+    credits: number;
+  }> {
+    const response = await api.post(`${API_URL}/api/sms/credits/purchase`, data);
     return response.data.data;
   },
 
-  /**
-   * Get credit transaction history
-   */
-  async getCreditHistory(params?: {
-    page?: number;
-    limit?: number;
-    type?: string;
-  }) {
-    const response = await api.get(`${API_URL}/api/sms/credits/history`, { params });
+  async verifyPurchase(reference: string): Promise<{
+    status: 'success' | 'failed';
+    reference: string;
+    credits: number;
+    amount: number;
+  }> {
+    const response = await api.get(`${API_URL}/api/sms/credits/verify/${reference}`);
     return response.data.data;
+  },
+
+  async getCreditHistory(params?: { page?: number; limit?: number }) {
+    const response = await api.get(`${API_URL}/api/sms/credits/history`, { params });
+    return response.data.data as { transactions: SMSCreditTransaction[] } & PaginatedResult<SMSCreditTransaction>;
   },
 };

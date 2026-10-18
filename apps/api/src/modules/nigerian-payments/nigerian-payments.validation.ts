@@ -76,13 +76,29 @@ export const confirmReconciliationSchema = z.object({
 });
 
 // Payment Proof Validation
+// R7.2 (G17): extended for the member self-declare flow — multipart form fields arrive
+// as strings, so numeric/array fields are coerced/parsed here rather than assumed typed.
 export const uploadPaymentProofSchema = z.object({
-  transactionId: z.number().int().positive().optional(),
-  bankTransferId: z.number().int().positive().optional(),
+  transactionId: z.coerce.number().int().positive().optional(),
+  bankTransferId: z.coerce.number().int().positive().optional(),
+  // JSON-encoded array of transaction IDs, e.g. '[12,13]' — a member can declare one
+  // payment covering several outstanding items, same as the existing /me/pay UI.
+  transactionIds: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed.map((n) => Number(n)) : undefined;
+    } catch {
+      return undefined;
+    }
+  }),
+  paymentMethod: z.enum(['bank_transfer', 'cash', 'card', 'mobile_money', 'cheque', 'other']).optional(),
+  // Required instead of a file for Cash/Card/POS/etc — who was paid, when, circumstances.
+  declarationNote: z.string().min(20, 'Please describe the payment in more detail (at least 20 characters)').optional(),
   notes: z.string().optional(),
 }).refine(
-  (data) => data.transactionId || data.bankTransferId,
-  { message: 'Either transactionId or bankTransferId is required' }
+  (data) => data.transactionId || data.bankTransferId || (data.transactionIds && data.transactionIds.length > 0),
+  { message: 'transactionId, transactionIds, or bankTransferId is required' }
 );
 
 export const verifyPaymentProofSchema = z.object({

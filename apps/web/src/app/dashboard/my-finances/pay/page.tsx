@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Select, Textarea, Button, Checkbox, Badge } from '@mantine/core';
-import { IconCreditCard, IconBuildingBank, IconCheck, IconArrowLeft } from '@tabler/icons-react';
-import { apiGet, apiPost } from '@/utils/api';
+import { Select, Textarea, Button, Checkbox, Badge, FileInput, Alert } from '@mantine/core';
+import { IconCreditCard, IconBuildingBank, IconCheck, IconArrowLeft, IconUpload, IconInfoCircle } from '@tabler/icons-react';
+import { apiGet, apiPost, apiPostFormData } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { HelpLink } from '@/components/docs/HelpLink';
 
@@ -18,20 +18,39 @@ interface OutstandingItem {
   campaign?: { name: string };
 }
 
+interface BankAccount {
+  id: number;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  isDefault: boolean;
+}
+
+// R7.2 (G17): lowercase values matching the canonical 6-value set the backend
+// actually validates against (member-finance.controller.ts's memberPaymentMethodSchema).
+const PAYMENT_METHODS = [
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card Payment' },
+  { value: 'mobile_money', label: 'Mobile Money / POS' },
+];
+
 export default function MakePaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedId = searchParams.get('transactionId');
-  
+
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
+  const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
   const [reference, setReference] = useState('');
-  const [notes, setNotes] = useState('');
+  const [declarationNote, setDeclarationNote] = useState('');
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
-  useEffect(() => { fetchOutstanding(); }, []);
+  useEffect(() => { fetchOutstanding(); fetchBankAccounts(); }, []);
 
   useEffect(() => {
     if (preselectedId && outstandingItems.length > 0) {
@@ -48,15 +67,27 @@ export default function MakePaymentPage() {
       if (!response.ok) throw new Error('Failed to fetch outstanding items');
       const result = await response.json();
       setOutstandingItems(result.data.items || []);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load outstanding items');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchBankAccounts = async () => {
+    try {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/me/bank-accounts`);
+      if (response.ok) {
+        const result = await response.json();
+        setBankAccounts(result.data.accounts || []);
+      }
+    } catch {
+      // bank accounts are optional — page still functions without them
+    }
+  };
+
   const toggleItem = (id: number) => {
-    setSelectedItems(prev => 
+    setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -75,30 +106,54 @@ export default function MakePaymentPage() {
       .reduce((sum, item) => sum + item.balance, 0);
   };
 
+  const isBankTransfer = paymentMethod === 'bank_transfer';
+
   const handlePayment = async () => {
     if (selectedItems.length === 0) {
       toast.error('Please select at least one item to pay');
       return;
     }
-    
+
+    if (isBankTransfer && !proofFile) {
+      toast.error('Please upload a receipt or screenshot of the transfer');
+      return;
+    }
+
+    if (!isBankTransfer && declarationNote.trim().length < 20) {
+      toast.error('Please describe the payment in more detail (at least 20 characters) — who it was paid to, when, and the circumstances');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const response = await apiPost(`${process.env.NEXT_PUBLIC_API_URL}/api/members/me/pay`, {
-        transactionIds: selectedItems,
-        paymentMethod,
-        reference: reference || undefined,
-        notes: notes || undefined
-      });
-      
+      let response: Response;
+
+      if (isBankTransfer) {
+        const formData = new FormData();
+        formData.append('transactionIds', JSON.stringify(selectedItems));
+        formData.append('paymentMethod', paymentMethod);
+        if (reference) formData.append('notes', reference);
+        formData.append('file', proofFile as File);
+
+        response = await apiPostFormData(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/nigerian/proofs`, formData);
+      } else {
+        response = await apiPost(`${process.env.NEXT_PUBLIC_API_URL}/api/members/me/pay`, {
+          transactionIds: selectedItems,
+          paymentMethod,
+          declarationNote,
+          reference: reference || undefined,
+        });
+      }
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Payment failed');
+        throw new Error(error.message || 'Submission failed');
       }
-      
-      toast.success('Payment recorded successfully!');
+
+      toast.success('Submitted for verification — it will show as paid once an officer reviews it.');
       router.push('/dashboard/my-finances/payments');
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Submission failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -134,7 +189,7 @@ export default function MakePaymentPage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
             Make Payment
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Select items to pay and complete your payment</p>
+          <p className="text-gray-600 dark:text-gray-400">Select items to pay, then submit evidence for an officer to verify</p>
         </div>
         <HelpLink />
       </div>
@@ -202,7 +257,7 @@ export default function MakePaymentPage() {
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-4">
               <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Payment Summary</h2>
-              
+
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Items Selected</span>
@@ -217,30 +272,55 @@ export default function MakePaymentPage() {
               <div className="space-y-4">
                 <Select
                   label="Payment Method"
-                  data={[
-                    { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-                    { value: 'CASH', label: 'Cash' },
-                    { value: 'CARD', label: 'Card Payment' },
-                    { value: 'POS', label: 'POS' }
-                  ]}
+                  data={PAYMENT_METHODS}
                   value={paymentMethod}
-                  onChange={(v) => setPaymentMethod(v || 'BANK_TRANSFER')}
+                  onChange={(v) => setPaymentMethod(v || 'bank_transfer')}
                   leftSection={<IconBuildingBank size={16} />}
                 />
 
-                <Textarea
-                  label="Reference (Optional)"
-                  placeholder="Transaction reference or receipt number"
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                />
+                {isBankTransfer ? (
+                  <>
+                    {bankAccounts.length > 0 && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm">
+                        <p className="font-medium text-blue-900 dark:text-blue-200 mb-2">Transfer to:</p>
+                        {bankAccounts.map((acc) => (
+                          <div key={acc.id} className="mb-2 last:mb-0">
+                            <p className="text-blue-800 dark:text-blue-300">{acc.bankName}</p>
+                            <p className="text-blue-800 dark:text-blue-300 font-mono">{acc.accountNumber}</p>
+                            <p className="text-blue-700 dark:text-blue-400 text-xs">{acc.accountName}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                <Textarea
-                  label="Notes (Optional)"
-                  placeholder="Any additional notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
+                    <FileInput
+                      label="Upload Receipt / Screenshot"
+                      placeholder="Select a file"
+                      accept="image/jpeg,image/png,image/gif,application/pdf"
+                      leftSection={<IconUpload size={16} />}
+                      value={proofFile}
+                      onChange={setProofFile}
+                      required
+                    />
+
+                    <Textarea
+                      label="Reference (Optional)"
+                      placeholder="Transaction reference or receipt number"
+                      value={reference}
+                      onChange={(e) => setReference(e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <Textarea
+                    label="Payment Declaration"
+                    description="Who was paid, when, and the circumstances (e.g. a witness if paid in person)"
+                    placeholder="e.g. Paid ₦5,000 cash to Treasurer Mrs. Adaeze at the October meeting on 12 Oct 2026, witnessed by..."
+                    value={declarationNote}
+                    onChange={(e) => setDeclarationNote(e.target.value)}
+                    minRows={4}
+                    required
+                  />
+                )}
 
                 <Button
                   fullWidth
@@ -251,12 +331,12 @@ export default function MakePaymentPage() {
                   disabled={selectedItems.length === 0}
                   leftSection={<IconCreditCard size={20} />}
                 >
-                  Pay {formatCurrency(getTotalSelected())}
+                  Submit {formatCurrency(getTotalSelected())} for Verification
                 </Button>
 
-                <p className="text-xs text-gray-500 text-center">
-                  By clicking Pay, you confirm that you have made this payment
-                </p>
+                <Alert icon={<IconInfoCircle size={16} />} color="gray" variant="light">
+                  This won't show as paid until an officer reviews and approves what you submit.
+                </Alert>
               </div>
             </div>
           </div>

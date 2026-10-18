@@ -196,8 +196,11 @@ export const checkSubscriptionRenewal = cron.schedule('0 2 * * *', async () => {
       }
     }
 
-    // Find expired subscriptions
-    const expiredSubscriptions = await prisma.subscription.findMany({
+    // Find subscriptions whose period has ended — G55: these now move to
+    // PAST_DUE for a real grace period instead of jumping straight to
+    // EXPIRED. checkPastDueSubscriptions below expires them for real after
+    // 3 more days with no payment.
+    const pastDueSubscriptions = await prisma.subscription.findMany({
       where: {
         status: 'ACTIVE',
         currentPeriodEnd: {
@@ -216,19 +219,86 @@ export const checkSubscriptionRenewal = cron.schedule('0 2 * * *', async () => {
       },
     });
 
-    // Update expired subscriptions to EXPIRED status
-    if (expiredSubscriptions.length > 0) {
-      const expiredIds = expiredSubscriptions.map(s => s.id);
-      
+    // Move them into PAST_DUE status
+    if (pastDueSubscriptions.length > 0) {
+      const pastDueIds = pastDueSubscriptions.map(s => s.id);
+
       await prisma.subscription.updateMany({
-        where: { id: { in: expiredIds } },
+        where: { id: { in: pastDueIds } },
+        data: { status: 'PAST_DUE' },
+      });
+
+      console.log(`Marked ${pastDueSubscriptions.length} subscriptions past due`);
+
+      // Send past-due emails (grace period warning, not a hard expiry)
+      for (const subscription of pastDueSubscriptions) {
+        const adminUser = subscription.association.users[0];
+        if (adminUser && adminUser.email) {
+          try {
+            await sendEmail({
+              to: adminUser.email,
+              subject: 'Payment overdue — your subscription is past due',
+              template: 'subscription-past-due',
+              data: {
+                associationName: subscription.association.name,
+                renewUrl: `${process.env.APP_URL}/dashboard/subscription/plans`,
+              },
+            });
+
+            console.log(`Sent past-due email to ${adminUser.email}`);
+          } catch (emailError) {
+            console.error(`Failed to send past-due email to ${adminUser.email}:`, emailError);
+          }
+        }
+      }
+    }
+
+    console.log(`[CRON] Renewal check complete. Reminded: ${expiringSubscriptions.length}, Past due: ${pastDueSubscriptions.length}`);
+  } catch (error) {
+    console.error('[CRON] Error checking subscription renewal:', error);
+  }
+});
+
+// Check for past due subscriptions - Runs every 6 hours
+export const checkPastDueSubscriptions = cron.schedule('0 */6 * * *', async () => {
+  console.log('[CRON] Checking for past due subscriptions...');
+
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+    // Find past due subscriptions whose grace period (3 days, set by
+    // checkSubscriptionRenewal) has run out
+    const pastDueSubscriptions = await prisma.subscription.findMany({
+      where: {
+        status: 'PAST_DUE',
+        currentPeriodEnd: {
+          lt: threeDaysAgo,
+        },
+      },
+      include: {
+        association: {
+          include: {
+            users: {
+              where: { role: 'admin' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    if (pastDueSubscriptions.length > 0) {
+      // Suspend past due subscriptions for real now that the grace period is over
+      const pastDueIds = pastDueSubscriptions.map(s => s.id);
+
+      await prisma.subscription.updateMany({
+        where: { id: { in: pastDueIds } },
         data: { status: 'EXPIRED' },
       });
 
-      console.log(`Expired ${expiredSubscriptions.length} subscriptions`);
+      console.log(`Expired ${pastDueSubscriptions.length} past-due subscriptions (grace period over)`);
 
-      // Send subscription expired emails
-      for (const subscription of expiredSubscriptions) {
+      for (const subscription of pastDueSubscriptions) {
         const adminUser = subscription.association.users[0];
         if (adminUser && adminUser.email) {
           try {
@@ -241,7 +311,7 @@ export const checkSubscriptionRenewal = cron.schedule('0 2 * * *', async () => {
                 renewUrl: `${process.env.APP_URL}/dashboard/subscription/plans`,
               },
             });
-            
+
             console.log(`Sent subscription expired email to ${adminUser.email}`);
           } catch (emailError) {
             console.error(`Failed to send subscription expired email to ${adminUser.email}:`, emailError);
@@ -249,43 +319,44 @@ export const checkSubscriptionRenewal = cron.schedule('0 2 * * *', async () => {
         }
       }
     }
-
-    console.log(`[CRON] Renewal check complete. Reminded: ${expiringSubscriptions.length}, Expired: ${expiredSubscriptions.length}`);
   } catch (error) {
-    console.error('[CRON] Error checking subscription renewal:', error);
+    console.error('[CRON] Error checking past due subscriptions:', error);
   }
 });
 
-// Check for past due subscriptions - Runs every 6 hours
-export const checkPastDueSubscriptions = cron.schedule('0 */6 * * *', async () => {
-  console.log('[CRON] Checking for past due subscriptions...');
-  
+// Apply plan changes deferred by a downgrade (G54) once the current paid
+// period actually ends — Runs daily at 1:45 AM, just before the renewal check
+export const applyPendingPlanChanges = cron.schedule('45 1 * * *', async () => {
+  console.log('[CRON] Applying pending plan changes...');
+
   try {
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-    
-    // Find past due subscriptions older than 3 days
-    const pastDueSubscriptions = await prisma.subscription.findMany({
+    const now = new Date();
+
+    const dueChanges = await prisma.subscription.findMany({
       where: {
-        status: 'PAST_DUE',
-        currentPeriodEnd: {
-          lt: threeDaysAgo,
-        },
+        pendingPlanId: { not: null },
+        currentPeriodEnd: { lte: now },
       },
     });
 
-    if (pastDueSubscriptions.length > 0) {
-      // Suspend past due subscriptions
-      const pastDueIds = pastDueSubscriptions.map(s => s.id);
-      
-      await prisma.subscription.updateMany({
-        where: { id: { in: pastDueIds } },
-        data: { status: 'EXPIRED' },
+    for (const subscription of dueChanges) {
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          planId: subscription.pendingPlanId!,
+          billingCycle: subscription.pendingBillingCycle ?? subscription.billingCycle,
+          pendingPlanId: null,
+          pendingBillingCycle: null,
+        },
       });
+      console.log(`Applied pending plan change for subscription ${subscription.id}`);
+    }
 
-      console.log(`Suspended ${pastDueSubscriptions.length} past due subscriptions`);
+    if (dueChanges.length > 0) {
+      console.log(`[CRON] Applied ${dueChanges.length} pending plan change(s)`);
     }
   } catch (error) {
-    console.error('[CRON] Error checking past due subscriptions:', error);
+    console.error('[CRON] Error applying pending plan changes:', error);
   }
 });
 
@@ -293,6 +364,7 @@ export const checkPastDueSubscriptions = cron.schedule('0 */6 * * *', async () =
 export function startSubscriptionJobs() {
   console.log('Starting subscription cron jobs...');
   checkTrialExpiry.start();
+  applyPendingPlanChanges.start();
   checkSubscriptionRenewal.start();
   checkPastDueSubscriptions.start();
   console.log('✓ All subscription cron jobs started');
@@ -302,6 +374,7 @@ export function startSubscriptionJobs() {
 export function stopSubscriptionJobs() {
   console.log('Stopping subscription cron jobs...');
   checkTrialExpiry.stop();
+  applyPendingPlanChanges.stop();
   checkSubscriptionRenewal.stop();
   checkPastDueSubscriptions.stop();
   console.log('✓ All subscription cron jobs stopped');

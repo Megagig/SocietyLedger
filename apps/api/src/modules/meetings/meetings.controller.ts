@@ -152,7 +152,7 @@ export const meetingsController = {
       }
 
       // Get attendance stats
-      const attendanceStats = await meetingsService.getAttendanceStats(meetingId);
+      const attendanceStats = await meetingsService.getAttendanceStats(associationId, meetingId);
 
       return res.status(200).json({
         success: true,
@@ -368,7 +368,7 @@ export const meetingsController = {
       }
 
       const validatedData = createAgendaItemSchema.parse(req.body);
-      const agendaItem = await meetingsService.addAgendaItem(meetingId, validatedData);
+      const agendaItem = await meetingsService.addAgendaItem(associationId, meetingId, validatedData);
 
       return res.status(201).json({
         success: true,
@@ -393,10 +393,16 @@ export const meetingsController = {
 
   async updateAgendaItem(req: Request, res: Response) {
     try {
+      const associationId = req.user?.associationId;
+      const meetingId = parseInt(req.params.id);
       const agendaId = parseInt(req.params.agendaId);
 
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
       const validatedData = updateAgendaItemSchema.parse(req.body);
-      const agendaItem = await meetingsService.updateAgendaItem(agendaId, validatedData);
+      const agendaItem = await meetingsService.updateAgendaItem(associationId, meetingId, agendaId, validatedData);
 
       return res.status(200).json({
         success: true,
@@ -411,6 +417,9 @@ export const meetingsController = {
           errors: error.errors,
         });
       }
+      if (error instanceof Error && error.message.includes('not found')) {
+        return res.status(404).json({ success: false, message: error.message });
+      }
       console.error('Error updating agenda item:', error);
       return res.status(500).json({
         success: false,
@@ -421,15 +430,24 @@ export const meetingsController = {
 
   async deleteAgendaItem(req: Request, res: Response) {
     try {
+      const associationId = req.user?.associationId;
+      const meetingId = parseInt(req.params.id);
       const agendaId = parseInt(req.params.agendaId);
 
-      await meetingsService.deleteAgendaItem(agendaId);
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      await meetingsService.deleteAgendaItem(associationId, meetingId, agendaId);
 
       return res.status(200).json({
         success: true,
         message: 'Agenda item deleted successfully',
       });
     } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        return res.status(404).json({ success: false, message: error.message });
+      }
       console.error('Error deleting agenda item:', error);
       return res.status(500).json({
         success: false,
@@ -500,7 +518,7 @@ export const meetingsController = {
       }
 
       const validatedData = markAttendanceSchema.parse(req.body);
-      const attendance = await meetingsService.markAttendance(meetingId, userId, validatedData);
+      const attendance = await meetingsService.markAttendance(associationId, meetingId, userId, validatedData);
 
       // Get member's user ID to send notification
       const member = await prisma.member.findUnique({
@@ -561,7 +579,7 @@ export const meetingsController = {
       }
 
       const { attendances } = bulkMarkAttendanceSchema.parse(req.body);
-      const results = await meetingsService.bulkMarkAttendance(meetingId, userId, attendances);
+      const results = await meetingsService.bulkMarkAttendance(associationId, meetingId, userId, attendances);
 
       return res.status(200).json({
         success: true,
@@ -606,8 +624,8 @@ export const meetingsController = {
       }
 
       const [attendance, stats] = await Promise.all([
-        meetingsService.getMeetingAttendance(meetingId),
-        meetingsService.getAttendanceStats(meetingId),
+        meetingsService.getMeetingAttendance(associationId, meetingId),
+        meetingsService.getAttendanceStats(associationId, meetingId),
       ]);
 
       return res.status(200).json({

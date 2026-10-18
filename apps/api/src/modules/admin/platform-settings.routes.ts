@@ -10,7 +10,7 @@ import { PlatformSettingsController } from './platform-settings.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requireSuperAdmin } from '../../middleware/rbac';
 
-const router = Router();
+const router: Router = Router();
 
 // All routes require authentication and super admin role
 router.use(authMiddleware);

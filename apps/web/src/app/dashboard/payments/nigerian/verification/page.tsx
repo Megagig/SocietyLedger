@@ -60,21 +60,9 @@ export default function PaymentVerificationQueue() {
         limit: pageSize,
         status: statusFilter || undefined,
       });
-      
-      // Handle different response structures
-      if (Array.isArray(response)) {
-        // Response is directly an array
-        setProofs(response);
-        setTotal(response.length);
-      } else if (response && typeof response === 'object' && 'data' in response) {
-        // Response has a data property
-        setProofs(Array.isArray(response.data) ? response.data : []);
-        setTotal(response.total || 0);
-      } else {
-        // Fallback
-        setProofs([]);
-        setTotal(0);
-      }
+
+      setProofs(response.proofs || []);
+      setTotal(response.pagination?.totalCount || 0);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load payment proofs');
       setProofs([]);
@@ -103,7 +91,7 @@ export default function PaymentVerificationQueue() {
     
     try {
       await nigerianPaymentsApi.verifyPaymentProof(selectedProof.id, {
-        verified: true,
+        status: 'APPROVED',
       });
       setShowVerifyModal(false);
       setSelectedProof(null);
@@ -127,7 +115,7 @@ export default function PaymentVerificationQueue() {
     
     try {
       await nigerianPaymentsApi.verifyPaymentProof(selectedProof.id, {
-        verified: false,
+        status: 'REJECTED',
         rejectionReason: rejectReason,
       });
       setShowRejectModal(false);
@@ -143,7 +131,7 @@ export default function PaymentVerificationQueue() {
   
   const statusOptions = [
     { value: 'PENDING', label: 'Pending' },
-    { value: 'VERIFIED', label: 'Verified' },
+    { value: 'APPROVED', label: 'Approved' },
     { value: 'REJECTED', label: 'Rejected' },
   ];
   
@@ -200,9 +188,9 @@ export default function PaymentVerificationQueue() {
         <Card shadow="sm" padding="lg" withBorder>
           <Stack align="center" gap="xs">
             <Text size="xl" fw={700} c="green">
-              {proofs?.filter(p => p.status === 'VERIFIED').length || 0}
+              {proofs?.filter(p => p.status === 'APPROVED').length || 0}
             </Text>
-            <Text size="sm" c="dimmed">Verified</Text>
+            <Text size="sm" c="dimmed">Approved</Text>
           </Stack>
         </Card>
         <Card shadow="sm" padding="lg" withBorder>
@@ -237,7 +225,8 @@ export default function PaymentVerificationQueue() {
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>File</Table.Th>
+                  <Table.Th>Method</Table.Th>
+                  <Table.Th>Evidence</Table.Th>
                   <Table.Th>Uploaded</Table.Th>
                   <Table.Th>Status</Table.Th>
                   <Table.Th>Actions</Table.Th>
@@ -247,15 +236,26 @@ export default function PaymentVerificationQueue() {
                 {proofs && proofs.map((proof) => (
                   <Table.Tr key={proof.id}>
                     <Table.Td>
-                      <Text size="sm" fw={500}>{proof.fileName}</Text>
-                      <Text size="xs" c="dimmed">({Math.round(proof.fileSize / 1024)} KB)</Text>
+                      <Text size="sm" className="capitalize">{proof.paymentMethod?.replace('_', ' ') || '—'}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      {proof.filename ? (
+                        <>
+                          <Text size="sm" fw={500}>{proof.filename}</Text>
+                          {proof.fileSize != null && (
+                            <Text size="xs" c="dimmed">({Math.round(proof.fileSize / 1024)} KB)</Text>
+                          )}
+                        </>
+                      ) : (
+                        <Text size="xs" c="dimmed" lineClamp={2} maw={220}>{proof.declarationNote}</Text>
+                      )}
                     </Table.Td>
                     <Table.Td>{new Date(proof.uploadedAt).toLocaleDateString()}</Table.Td>
                     <Table.Td>
                       <Badge
                         color={
                           proof.status === 'PENDING' ? 'yellow' :
-                          proof.status === 'VERIFIED' ? 'green' : 'red'
+                          proof.status === 'APPROVED' ? 'green' : 'red'
                         }
                       >
                         {proof.status}
@@ -292,21 +292,52 @@ export default function PaymentVerificationQueue() {
           size="lg"
         >
           <Stack gap="md">
+            {selectedProof.member && (
+              <Group gap="sm">
+                <Text size="sm" c="dimmed">Member:</Text>
+                <Text fw={500}>{selectedProof.member.firstName} {selectedProof.member.lastName} ({selectedProof.member.memberId})</Text>
+              </Group>
+            )}
             <Group gap="sm">
-              <Text size="sm" c="dimmed">File:</Text>
-              <Text fw={500}>{selectedProof.fileName}</Text>
+              <Text size="sm" c="dimmed">Method:</Text>
+              <Text fw={500} className="capitalize">{selectedProof.paymentMethod?.replace('_', ' ') || '—'}</Text>
             </Group>
+            <Group gap="sm">
+              <Text size="sm" c="dimmed">Transaction(s):</Text>
+              <Text fw={500}>
+                {(selectedProof.transactionIds?.length > 0 ? selectedProof.transactionIds : selectedProof.transactionId ? [selectedProof.transactionId] : []).join(', ') || 'N/A'}
+              </Text>
+            </Group>
+            {selectedProof.filename ? (
+              <Group gap="sm">
+                <Text size="sm" c="dimmed">File:</Text>
+                <Text
+                  fw={500}
+                  component="a"
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/${selectedProof.filepath?.replace(/\\/g, '/')}`}
+                  target="_blank"
+                  className="underline"
+                >
+                  {selectedProof.filename}
+                </Text>
+              </Group>
+            ) : (
+              <div>
+                <Text size="sm" c="dimmed" mb={4}>Declaration:</Text>
+                <Text>{selectedProof.declarationNote}</Text>
+              </div>
+            )}
             <Group gap="sm">
               <Text size="sm" c="dimmed">Uploaded:</Text>
               <Text>{new Date(selectedProof.uploadedAt).toLocaleString()}</Text>
             </Group>
             <Group gap="sm">
               <Text size="sm" c="dimmed">Status:</Text>
-              <Badge color={selectedProof.status === 'PENDING' ? 'yellow' : selectedProof.status === 'VERIFIED' ? 'green' : 'red'}>
+              <Badge color={selectedProof.status === 'PENDING' ? 'yellow' : selectedProof.status === 'APPROVED' ? 'green' : 'red'}>
                 {selectedProof.status}
               </Badge>
             </Group>
-            
+
             {selectedProof.status === 'PENDING' && (
               <Group gap="sm" mt="md">
                 <Button color="green" onClick={handleVerify} fullWidth leftSection={<IconCheck size={18} />}>

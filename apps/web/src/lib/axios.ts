@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getTenantHeaders } from '@/utils/tenant';
+import { useModuleLockStore } from '@/store/moduleLockStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -50,5 +51,21 @@ api.interceptors.request.use((config) => {
   
   return config;
 });
+
+// G13: surface a locked-module/feature response as a real upgrade prompt instead of
+// letting it fall through as a generic failed request.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const code = error?.response?.data?.error;
+    if (code === 'MODULE_DISABLED' || code === 'FEATURE_DISABLED' || code === 'MODULES_DISABLED' || code === 'NO_MODULE_AVAILABLE') {
+      useModuleLockStore.getState().open(
+        error.response.data.message || 'This feature is not available on your current plan.',
+        Boolean(error.response.data.upgradeRequired)
+      );
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

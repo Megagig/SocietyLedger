@@ -4,7 +4,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePlatformRole } from '../../middleware/rbac';
 import { PlatformRole } from '@prisma/client';
 
-const router = Router();
+const router: Router = Router();
 const ctrl = new BlogController();
 
 // ============================================

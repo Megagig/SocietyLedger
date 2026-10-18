@@ -3,6 +3,7 @@ import { prisma } from '../../../lib/prisma';
 import { PaystackService } from './paystack.service';
 import { PaystackWebhookEvent } from './paystack.types';
 import { Decimal } from '@prisma/client/runtime/library';
+import { accountingIntegrationService } from '../../../services/accounting-integration.service';
 
 /**
  * Handle Paystack webhook events
@@ -192,6 +193,28 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
     console.log(`   Receipt: ${receiptNumber}`);
     console.log(`   Transaction Status: ${newStatus}`);
     console.log(`   Member: ${transaction.member.firstName} ${transaction.member.lastName}`);
+
+    // G45: a real Paystack-confirmed payment never synced to accounting at
+    // all — the only onPaymentRecorded callers were finance.controller.ts's
+    // manual-record paths. Wire it here too.
+    try {
+      const fullPayment = await prisma.payment.findUnique({
+        where: { receiptNumber },
+        include: {
+          transaction: {
+            include: {
+              member: { select: { id: true, firstName: true, lastName: true } },
+              category: { select: { id: true, name: true, type: true } },
+            },
+          },
+        },
+      });
+      if (fullPayment) {
+        await accountingIntegrationService.onPaymentRecorded(fullPayment, 1);
+      }
+    } catch (syncError) {
+      console.error('Accounting sync failed for Paystack webhook payment (non-critical):', syncError);
+    }
 
     // TODO: Send payment confirmation email to member
     // TODO: Send notification to association admins

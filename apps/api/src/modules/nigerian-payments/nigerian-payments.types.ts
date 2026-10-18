@@ -105,11 +105,15 @@ export interface AutoMatchResult {
 // Payment Proof Types
 export interface PaymentProofInput {
   transactionId?: number;
+  transactionIds?: number[];
   bankTransferId?: number;
-  filename: string;
-  filepath: string;
-  fileSize: number;
-  mimeType: string;
+  paymentMethod?: string;
+  // Exactly one of (filename set) or (declarationNote set) — enforced in the controller.
+  filename?: string;
+  filepath?: string;
+  fileSize?: number;
+  mimeType?: string;
+  declarationNote?: string;
   notes?: string;
 }
 

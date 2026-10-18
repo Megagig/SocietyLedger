@@ -137,8 +137,8 @@ export const PERMISSIONS = {
   MEETING_CREATE: 'members.create',
   MEETING_EDIT: 'members.edit',
   MEETING_DELETE: 'members.disable',
-  MEETING_ATTENDANCE: 'members.view_own',
-  MEETING_MINUTES: 'members.view_own',
+  MEETING_ATTENDANCE: 'meetings.manage_attendance',
+  MEETING_MINUTES: 'meetings.manage_minutes',
   
   // Welfare & Social Funds
   WELFARE_VIEW: 'ledger.view',
@@ -186,13 +186,13 @@ export const PERMISSIONS = {
   AI_USAGE_VIEW: 'audit.view',
   
   // Voting & Elections
-  ELECTION_VIEW: 'members.view',
+  ELECTION_VIEW: 'elections.view_own',
   ELECTION_MANAGE: 'members.create',
-  ELECTION_NOMINATE: 'members.view',
-  ELECTION_VOTE: 'members.view',
-  POLL_VIEW: 'members.view',
+  ELECTION_NOMINATE: 'elections.nominate_own',
+  ELECTION_VOTE: 'elections.vote_own',
+  POLL_VIEW: 'polls.view_own',
   POLL_MANAGE: 'members.create',
-  POLL_VOTE: 'members.view',
+  POLL_VOTE: 'polls.vote_own',
   
   // Help & Support (Phase 21)
   HELP_VIEW: 'help.view',
@@ -203,13 +203,10 @@ export const PERMISSIONS = {
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
   
-  // Blog & Documentation (Phase 2)
-  BLOG_VIEW: 'blog.view',
-  BLOG_MANAGE: 'blog.manage',
-  BLOG_POST_CREATE: 'blog.post.create',
-  BLOG_POST_EDIT: 'blog.post.edit',
-  BLOG_POST_DELETE: 'blog.post.delete',
-  BLOG_COMMENT_MODERATE: 'blog.comment.moderate',
+  // Documentation (old DB-backed CMS, superseded by apps/docs at D6.3 — see G57).
+  // Referenced by real, mounted admin routes (documentation.routes.ts) but never seeded
+  // anywhere, so those routes 403 for every role including SUPER_ADMIN. Left unseeded
+  // deliberately: that CMS is being phased out, not worth granting access to.
   DOCS_VIEW: 'docs.view',
   DOCS_MANAGE: 'docs.manage',
   DOCS_PAGE_CREATE: 'docs.page.create',

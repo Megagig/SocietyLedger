@@ -117,8 +117,8 @@ export default function PollDetailPage() {
       if (selectedOptions.includes(optionId)) {
         setSelectedOptions(selectedOptions.filter(id => id !== optionId));
       } else {
-        if (poll?.maxSelections && selectedOptions.length >= poll.maxSelections) {
-          toast.error(`You can only select up to ${poll.maxSelections} options`);
+        if (poll?.maxChoices && selectedOptions.length >= poll.maxChoices) {
+          toast.error(`You can only select up to ${poll.maxChoices} options`);
           return;
         }
         setSelectedOptions([...selectedOptions, optionId]);
@@ -260,7 +260,7 @@ export default function PollDetailPage() {
             {poll.isAnonymous && (
               <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Anonymous</span>
             )}
-            {poll.allowMultipleResponses && (
+            {poll.allowMultipleVotes && (
               <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Can Change</span>
             )}
             <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs capitalize">

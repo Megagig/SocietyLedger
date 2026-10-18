@@ -19,20 +19,23 @@ The web app is finished, so the documentation site ships **first**. The admin co
 | 10 | **Remediation Phase R3** — Communication & notifications | R3.1 – R3.6 |
 | 11 | **Remediation Phase R4** — Settings & billing correctness | R4.1 – R4.5 |
 | 12 | **Remediation Phase R5** — Accounting completeness | R5.1 – R5.5 |
-| 13 | **Remediation Phase R6** — Remaining functional gaps & hygiene | R6.1 – R6.16 → **Milestone RL: gap log clear** |
-| 14 | **Admin Phase A1** — Backend, scaffold & shell | A1.1 – A1.7 |
-| 15 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
-| 16 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
-| 17 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
-| 18 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
-| 19 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
-| 20 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
-| 21 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
-| 22 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
+| 13 | **Remediation Phase R6** — Remaining functional gaps & hygiene | R6.1 – R6.16 |
+| 14 | **Remediation Phase R7** — Unbuilt R0 decisions | R7.1 – R7.3 → **Milestone RL: gap log clear** |
+| 15 | **Admin Phase A1** — Backend, scaffold & shell | A1.1 – A1.7 |
+| 16 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
+| 17 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
+| 18 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
+| 19 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
+| 20 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
+| 21 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
+| 22 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
+| 23 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
 
 **The owner has explicitly asked that Track R (gap remediation) run to completion — every gap resolved, declined, or deferred with a recorded reason — before Admin Phase A1 begins** (2026-10-14). This supersedes the earlier "D and A may run in parallel" note below for this point in the sequence: nothing in Track A starts until Track R's Milestone RL.
 
-If the owner runs agents in parallel within a track: Track R's phases touch `apps/api` and `apps/web` throughout, so do not run R-phases concurrently with each other (later phases may touch files earlier phases already changed) — strictly sequential, R0 → R1 → … → R6. Once Track R reaches Milestone RL, the original parallelism note applies again: the admin track (A) and the (now-finished) docs track don't overlap, so there's nothing left to parallelize there, but **D6.3 and A3.1 both editing `apps/web` is moot** since D6.3 already shipped before Track R started. The mobile track starts after Milestone AL (mobile login relies on `PLATFORM_LOGIN_REQUIRED` and reserved subdomains). Each track goes strictly in order, and D7.x waits for its mobile milestone.
+**R7 added 2026-10-18**, after R6's own audit found that R0 (2026-10-15) had only *decided* G13/G17/G65, never actually built any of the three — each is a real feature, not hygiene, so R6 deliberately didn't fold them in under "remaining gaps."
+
+If the owner runs agents in parallel within a track: Track R's phases touch `apps/api` and `apps/web` throughout, so do not run R-phases concurrently with each other (later phases may touch files earlier phases already changed) — strictly sequential, R0 → R1 → … → R7. Once Track R reaches Milestone RL, the original parallelism note applies again: the admin track (A) and the (now-finished) docs track don't overlap, so there's nothing left to parallelize there, but **D6.3 and A3.1 both editing `apps/web` is moot** since D6.3 already shipped before Track R started. The mobile track starts after Milestone AL (mobile login relies on `PLATFORM_LOGIN_REQUIRED` and reserved subdomains). Each track goes strictly in order, and D7.x waits for its mobile milestone.
 
 ## How to run a feature
 1. Read `progress-tracker.md` → find the next unchecked feature in the Master sequence.
@@ -170,17 +173,23 @@ Migrate `docs/reports/*`.
 *Nothing else in Track R starts until these are resolved — several later phases' scope depends on the answers.*
 ### R0.1 Module/plan gating enforcement (G13)
 Decide whether/when to flip `FEATURE_FLAG_MODE` to `enforce`, and whether the frontend's locked/upgrade state ships before or alongside that flip.
+**Decided (2026-10-15):** build the frontend's locked/upgrade state first (handle `MODULE_DISABLED`/`FEATURE_DISABLED`, using the existing `upgradeRequired` flag already returned by `module-feature.middleware.ts`), verify it live, *then* set `FEATURE_FLAG_MODE=enforce`. Enforcement itself is already fully built — this is sequencing only, so no tenant hits a raw unhandled 403 the moment it ships.
 ### R0.2 Member self-service permission scope (G16)
 Design real `_own`-scoped permissions for voting/welfare/cooperatives, or formally accept the current broad officer-level grants as intentional for v1.
+**Decided (2026-10-15):** design real `_own`-scoped permissions — e.g. `voting.vote_own`, `welfare.view_own`, `cooperatives.view_own` — added to the member role template, matching the existing `ledger.view_own`/`payments.view_own`/`members.view_own` pattern. Update the real routes (`/api/voting/active`, `/api/welfare/dashboard`, `/api/cooperatives/my-profile`, plus `ELECTION_VOTE`/`ELECTION_NOMINATE`/`POLL_VIEW`/`POLL_VOTE`) to accept the new keys instead of the broad officer-level ones.
 ### R0.3 Member payment verification model (G17)
 Decide whether the web's unverified self-declare payment flow is acceptable long-term, or should be gated now rather than waiting on mobile's real Paystack/proof-upload flow.
+**Decided (2026-10-15):** gate it now with a real two-step flow — a member submits a payment method plus an **uploaded screenshot/bank-receipt**, and the transaction stays `pending` until an officer reviews and approves it; only then does it show as paid on the member's own dashboard. An officer recording a payment directly (no member upload) is unaffected and still posts immediately. **Reuse the proof-upload infrastructure already built for Nigerian bank transfers** (`apps/api/src/modules/nigerian-payments/nigerian-payments.routes.ts`: `multer` disk storage → `POST /proofs` member upload → `POST /proofs/:id/verify` officer action) applied to `member-finance.controller.ts`'s `processPayment` path, rather than building new upload plumbing.
 ### R0.4 Behavioral settings scope (G53)
 Per category (Financial, Payment, Notification, Members & Access, Data & Privacy, Integrations) — decide whether to wire real enforcement, or be upfront that the category is a roadmap/preferences page today.
+**Decided (2026-10-15):** wire real enforcement for all six categories — this is substantially more work than R4 budgets for, so it gets its own block, **R4.6**, added after R4's existing 5 items rather than folded into them (see Phase R4 below).
 ### R0.5 SMS implementation direction (G38)
 Delete the orphaned `/dashboard/communication/sms/*` pages, or rewrite the linked `/dashboard/communications/*` pages (and `lib/api/sms.ts`) to match the real API. This decision sets R3's actual scope.
+**Decided (2026-10-15):** rewrite the linked `/dashboard/communications/*` pages to match the real API — port the orphaned set's working Paystack top-up into it (fixing G41), fix the payload shapes (G39) and the message-box bug (G40) in the same pass — then delete the orphaned `/dashboard/communication/sms/*` set. One correct implementation survives; see R3.1.
 ### R0.6 Tenant-level self-registration approval (G65)
 Decide whether an association admin should get their own approval screen for self-registered members, or whether platform-only approval is intentional for this version.
-- **DoD:** every decision above recorded in `progress-tracker.md`'s Decisions log with the owner's choice and reasoning; R1–R6 below updated if a decision changes a phase's scope.
+**Decided (2026-10-15):** build a tenant-scoped approval screen (e.g. `/dashboard/settings/pending-approvals` + a matching endpoint scoped to the caller's own `associationId`) so an association's own admin can approve/reject its own self-registered members, reusing the existing `approvalStatus` field already on the member model — rather than leaving approval platform-Super-Admin-only.
+- **DoD:** every decision above recorded in `progress-tracker.md`'s Decisions log with the owner's choice and reasoning; R1–R6 below updated if a decision changes a phase's scope. **All six decided 2026-10-15 — R0 complete.**
 
 ## Remediation Phase R1 — Security, financial integrity & tooling
 ### R1.1 Fix `apps/api`'s broken `type-check` (G69)
@@ -203,8 +212,9 @@ Annotate the exported `Router` type in each of the ~38 route files that currentl
 - **DoD:** a real election can be created, have candidates added and approved, go to voting, close, and show results — end to end, with no direct API call needed at any step.
 
 ## Remediation Phase R3 — Communication & notifications
-*Scope depends on R0.5's decision.*
-### R3.1 Consolidate the SMS implementation per R0.5 (G38)
+*Scope set by R0.5's decision: rewrite + delete orphaned.*
+### R3.1 Rewrite the linked SMS pages to match the real API, then delete the orphaned set (G38)
+Rewrite `/dashboard/communications/*` (and `lib/api/sms.ts`) to call the real API correctly, porting over the orphaned `/dashboard/communication/sms/*` set's working Paystack top-up flow in the process. Delete the orphaned set once the linked pages are verified to cover everything it had. This single pass also closes R3.2 and R1.4/R3's SMS-credit portion as a side effect — implement them together, not as separate follow-on fixes.
 ### R3.2 Fix SMS write-action payload shapes (G39)
 ### R3.3 Fix the campaign message box for every recipient type (G40)
 ### R3.4 Real email + scheduled job for payment reminders (G43)
@@ -219,6 +229,22 @@ Annotate the exported `Router` type in each of the ~38 route files that currentl
 ### R4.4 Tenant-scoped audit log endpoint (G51)
 ### R4.5 Member ID format consistency (G20)
 - **DoD:** each gap's proposed fix implemented; `settings/audit-logs` works for a real tenant Administrator; the Plans page's copy matches what checkout actually does.
+
+### R4.6 Behavioral settings enforcement (G53) — *new block, owner-decided R0.4, 2026-10-15*
+*Wires real enforcement for every settings field confirmed cosmetic at D5.2, except G52 (already fixed in R1.6) and anything R3.6 already covers (per-member notification-channel preferences — distinct from this block's association-level notification settings).*
+#### R4.6.1 Financial Settings enforcement
+`defaultGracePeriodDays`, `enableLateFees`, `lateFeeType`, `lateFeeAmount`, `requirePaymentApproval`, `enablePartialPayments` — wire each into the real penalty/payment-approval code paths; fix or remove the page's own false "changes apply going forward" banner to match whatever's actually true once wired.
+#### R4.6.2 Payment Settings enforcement
+`enabledChannels`, `defaultPaymentMethod`, `manualPaymentApprovalRequired`, `receiptAutoGenerate` — wire into the real payment-method selection/validation and receipt-generation code paths.
+#### R4.6.3 Notification Settings enforcement
+`paymentReminderDays`, `overdueReminderFrequency`, `senderName`, `emailEnabled`/`smsEnabled` — association-level notification config, wired into R3.4's real reminder job and whatever sends outbound email/SMS under the association's name. (Per-member channel opt-out is R3.6, not this item.)
+#### R4.6.4 Members & Access enforcement
+`defaultRole`, `allowMultipleRoles`, `inviteExpiryHours` (replacing the fixed `INVITE_TOKEN_EXPIRY_HOURS` constant), `memberIdAutoGenerate`, `memberIdPrefix` — **check for a shared root cause with G20/R4.5 before fixing separately**, since both touch member-ID generation.
+#### R4.6.5 Data & Privacy enforcement
+`dataRetentionMonths`, `anonymizeInactiveMembers`, `gdprCompliant` — wire into a real retention/anonymization job where feasible; where a field genuinely can't be enforced within this block (e.g. a pure compliance declaration), relabel it honestly in the UI rather than leaving it silently inert.
+#### R4.6.6 Integrations enforcement
+`paystackEnabled`, `nombaEnabled`, `smsProvider`, `apiAccessEnabled` — gate the real gateway/provider selection and API-access code paths on these flags (noting real Paystack availability is server-config-only, per the original G53 finding).
+- **DoD:** each field above either genuinely changes behavior (confirmed live, field by field, the same way G53 was originally found to be cosmetic) or is relabeled in the product as not-yet-enforced — no field left silently inert and undocumented.
 
 ## Remediation Phase R5 — Accounting completeness
 ### R5.1 Welfare & Cooperatives accounting sync (G46)
@@ -245,9 +271,21 @@ Annotate the exported `Router` type in each of the ~38 route files that currentl
 ### R6.14 Hardcoded local-dev URLs (G64, G72)
 ### R6.15 Seed-ordering real fix & RBAC cache invalidation (G66, G67)
 ### R6.16 Support email consistency & penalty "null" text (G68, G71)
-- **DoD:** every gap above resolved, declined or deferred with a reason — this closes out the Backend gaps table down to only genuinely future/v2 items. **Milestone RL: gap log clear.**
+- **DoD:** every gap above resolved, declined or deferred with a reason. R6 also absorbed G77 (re-verified live, not actually exploitable — hardened anyway) and a cluster of smaller R4-era leftovers (G79, G80, G82, G84, G87 fixed; G81, G83 declined/deferred; G73 investigated, found bigger than scoped, deliberately left for a dedicated pass) that the pre-build audit found weren't in anyone's list. The three substantial R0 decisions (G13, G17, G65) were deliberately **not** absorbed here — see Phase R7.
 
 **Excluded from Track R** (already closed, accepted for v1, or already correctly sequenced into a later track — not re-done here): G2 (F1.3), G4 (approved for F0.5), G5 (won't do), G6 (resolved — D6.3 shipped the redirect), G7 (GA4 accepted for v1), G8/G9/G10/G11 (Admin Phase A1/A3 scope), G12 (resolved), G61–G63 (D6.4 owner/infrastructure handoff, not engineering work).
+
+---
+
+## Remediation Phase R7 — Unbuilt R0 decisions
+R0 (2026-10-15) decided these three; none was actually built through R1–R6.
+### R7.1 Module/plan gating enforcement (G13) — done 2026-10-18
+Build the frontend's `MODULE_DISABLED`/`FEATURE_DISABLED` locked/upgrade state first (enforcement middleware already exists in shadow mode), then flip `FEATURE_FLAG_MODE=enforce`. See `progress-tracker.md` R7.1 for full resolution notes (default-fallback/`upgradeRequired` bug fixes, demo-association plan upgrade, `FEATURE_FLAG_MODE=enforce` scoped to local `.env` only).
+### R7.2 Member payment proof-upload model (G17) — done 2026-10-18
+Two-step proof-upload + officer-approval flow for member self-declared payments, reusing the Nigerian-payments module's existing `multer`/proofs/verify infrastructure. See `progress-tracker.md` R7.2/G92/G93 for full resolution notes (declaration-note flow for Cash/Card/POS, both orphaned officer verification pages fixed and the richer one linked from the Sidebar, member-upload permission gate fixed).
+### R7.3 Tenant-level self-registration approval screen (G65)
+A tenant-scoped screen (e.g. `/dashboard/settings/pending-approvals`) for an association's own admin to approve a newly self-registered member, reusing the existing `approvalStatus` field.
+- **DoD:** each of G13/G17/G65 is either built for real and live-verified, or the owner formally revisits the R0 decision (declined/deferred for v2) — this is what actually closes out the Backend gaps table down to only genuinely future/v2 items. **Milestone RL: gap log clear.**
 
 ---
 

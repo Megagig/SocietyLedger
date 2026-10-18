@@ -745,19 +745,47 @@ export const nigerianPaymentsController = {
 
       const data = uploadPaymentProofSchema.parse(req.body);
 
-      // Handle file upload (assuming file is already uploaded and we have the path)
+      // R7.2 (G17): a Bank Transfer declaration needs a real file; this endpoint is
+      // reached for other methods too (via the transactionIds array), where a
+      // declarationNote stands in for the file instead.
       const file = req.file;
-      if (!file) {
-        return res.status(400).json({ success: false, message: 'File is required' });
+      if (!file && !data.declarationNote) {
+        return res.status(400).json({
+          success: false,
+          message: 'Either a receipt file or a written declaration of the payment is required',
+        });
+      }
+
+      // R7.2 (G17): confirm every declared transaction actually belongs to this
+      // member and is genuinely outstanding — without this, any member could
+      // submit a proof for someone else's transaction.
+      if (data.transactionIds && data.transactionIds.length > 0) {
+        const owned = await prisma.transaction.count({
+          where: {
+            id: { in: data.transactionIds },
+            memberId: member.id,
+            associationId,
+            status: { in: ['pending', 'overdue', 'partial'] },
+          },
+        });
+        if (owned !== data.transactionIds.length) {
+          return res.status(400).json({
+            success: false,
+            message: 'Some transactions were not found, already paid, or do not belong to you',
+          });
+        }
       }
 
       const proof = await nigerianPaymentsService.uploadPaymentProof(associationId, member.id, {
         transactionId: data.transactionId,
+        transactionIds: data.transactionIds,
         bankTransferId: data.bankTransferId,
-        filename: file.originalname,
-        filepath: file.path,
-        fileSize: file.size,
-        mimeType: file.mimetype,
+        paymentMethod: data.paymentMethod || (file ? 'bank_transfer' : undefined),
+        filename: file?.originalname,
+        filepath: file?.path,
+        fileSize: file?.size,
+        mimeType: file?.mimetype,
+        declarationNote: data.declarationNote,
         notes: data.notes,
       });
 
@@ -768,7 +796,7 @@ export const nigerianPaymentsController = {
           action: 'UPLOAD',
           tableName: 'payment_proofs',
           recordId: proof.id,
-          newValues: { filename: file.originalname, transactionId: data.transactionId },
+          newValues: { filename: file?.originalname, transactionId: data.transactionId, transactionIds: data.transactionIds },
         },
       });
 

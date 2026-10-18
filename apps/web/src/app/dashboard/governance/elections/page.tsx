@@ -32,7 +32,6 @@ function StatusBadge({ status }: { status: ElectionStatus }) {
   const statusConfig: Record<ElectionStatus, { color: string; label: string }> = {
     DRAFT: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', label: 'Draft' },
     NOMINATIONS_OPEN: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Nominations Open' },
-    NOMINATIONS_CLOSED: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', label: 'Nominations Closed' },
     VOTING_OPEN: { color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', label: 'Voting Open' },
     VOTING_CLOSED: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', label: 'Voting Closed' },
     RESULTS_PUBLISHED: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', label: 'Results Published' },
@@ -51,8 +50,9 @@ function StatusBadge({ status }: { status: ElectionStatus }) {
 function TypeBadge({ type }: { type: ElectionType }) {
   const typeConfig: Record<ElectionType, { color: string; label: string }> = {
     GENERAL: { color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', label: 'General' },
-    BY_ELECTION: { color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', label: 'By-Election' },
-    REFERENDUM: { color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', label: 'Referendum' },
+    EXECUTIVE: { color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', label: 'Executive Committee' },
+    COMMITTEE: { color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', label: 'Committee Member' },
+    SPECIAL: { color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300', label: 'Special Purpose' },
   };
 
   const config = typeConfig[type];
@@ -149,7 +149,6 @@ export default function ElectionsListPage() {
               <option value="">All Statuses</option>
               <option value="DRAFT">Draft</option>
               <option value="NOMINATIONS_OPEN">Nominations Open</option>
-              <option value="NOMINATIONS_CLOSED">Nominations Closed</option>
               <option value="VOTING_OPEN">Voting Open</option>
               <option value="VOTING_CLOSED">Voting Closed</option>
               <option value="RESULTS_PUBLISHED">Results Published</option>
@@ -162,8 +161,9 @@ export default function ElectionsListPage() {
             >
               <option value="">All Types</option>
               <option value="GENERAL">General</option>
-              <option value="BY_ELECTION">By-Election</option>
-              <option value="REFERENDUM">Referendum</option>
+              <option value="EXECUTIVE">Executive Committee</option>
+              <option value="COMMITTEE">Committee Member</option>
+              <option value="SPECIAL">Special Purpose</option>
             </select>
           </div>
         </div>

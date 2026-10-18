@@ -34,26 +34,31 @@ export interface PlanWithFeatures extends Plan {
   };
 }
 
+// Reconciled against the real Prisma Subscription model (G84) — cancelledAt, trialStart,
+// paystackCustomerCode and paystackSubscriptionCode never existed on the real model;
+// trialEnd is really trialEndsAt (silently masked by currentPeriodEnd being set to the
+// same value during a trial, so this never surfaced as a visible UI bug); renewalDate
+// was missing entirely.
 export interface Subscription {
   id: number;
   associationId: number;
   planId: number;
   status: SubscriptionStatus;
   billingCycle: BillingCycle;
+  trialEndsAt: Date | string | null;
   currentPeriodStart: Date | string;
   currentPeriodEnd: Date | string;
   cancelAtPeriodEnd: boolean;
-  cancelledAt: Date | string | null;
-  trialStart: Date | string | null;
-  trialEnd: Date | string | null;
-  paystackCustomerCode: string | null;
-  paystackSubscriptionCode: string | null;
+  renewalDate: Date | string | null;
+  pendingPlanId: number | null;
+  pendingBillingCycle: BillingCycle | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
 
 export interface SubscriptionWithPlan extends Subscription {
   plan: PlanWithFeatures;
+  pendingPlan?: Plan | null;
   payments?: any[]; // Payment history
 }
 

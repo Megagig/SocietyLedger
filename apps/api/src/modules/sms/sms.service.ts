@@ -21,6 +21,7 @@ import {
   applyMessageTemplate 
 } from '../../lib/sms';
 import { Prisma, SMSStatus, SMSCampaignStatus, SMSRecipientType, SMSTemplateCategory } from '@prisma/client';
+import { SettingsService } from '../settings/settings.service';
 import {
   QuickSMSData,
   QuickSMSResult,
@@ -168,6 +169,13 @@ export class SMSService {
     data: QuickSMSData
   ): Promise<QuickSMSResult> {
     const { recipients, message, useTemplate, templateId, templateData } = data;
+
+    // R4.6/G53: Integrations Settings' smsProvider ('termii'|'none') was
+    // saved but never read — 'none' should actually block sending.
+    const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
+    if (smsProvider === 'none') {
+      throw new Error('SMS sending is disabled for this association');
+    }
 
     // Get or apply template
     let finalMessage = message;
@@ -405,6 +413,11 @@ export class SMSService {
 
     if (campaign.status !== 'DRAFT' && campaign.status !== 'SCHEDULED') {
       throw new Error(`Cannot start campaign with status: ${campaign.status}`);
+    }
+
+    const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
+    if (smsProvider === 'none') {
+      throw new Error('SMS sending is disabled for this association');
     }
 
     // Get recipients

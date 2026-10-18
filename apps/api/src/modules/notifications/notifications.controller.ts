@@ -2,10 +2,12 @@ import { Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { AuthRequest } from '../../middleware/auth.middleware';
-import { sendEmail } from '../../lib/email';
-
-// In-memory store for preferences (in production, this should be a database table)
-const preferencesStore = new Map<string, any>();
+import {
+  getPreferences as getRealPreferences,
+  upsertPreferences,
+  dispatchNotification,
+  broadcastNotification,
+} from '../../services/notification-preferences.service';
 
 const createNotificationSchema = z.object({
   title: z.string().min(1).max(200),
@@ -13,6 +15,7 @@ const createNotificationSchema = z.object({
   type: z.enum(['payment_due', 'payment_received', 'system', 'approval', 'announcement']),
   userId: z.number().optional(), // If not provided, broadcast to all users
   sendEmail: z.boolean().optional().default(false),
+  sendSMS: z.boolean().optional().default(false),
 });
 
 const announcementSchema = z.object({
@@ -20,6 +23,7 @@ const announcementSchema = z.object({
   message: z.string().min(1).max(2000),
   priority: z.enum(['info', 'warning', 'urgent']).optional().default('info'),
   sendEmail: z.boolean().optional().default(false),
+  sendSMS: z.boolean().optional().default(false),
 });
 
 export class NotificationsController {
@@ -117,80 +121,47 @@ export class NotificationsController {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
       }
 
-      const { title, message, type, userId, sendEmail: shouldSendEmail } = createNotificationSchema.parse(req.body);
+      const { title, message, type, userId, sendEmail: shouldSendEmail, sendSMS: shouldSendSMS } = createNotificationSchema.parse(req.body);
 
-      // If userId is provided, create for specific user; otherwise broadcast to all
+      // R3.6/G14/G42: both branches now go through dispatchNotification(),
+      // which checks the recipient's real preferences (not an in-memory
+      // Map nothing ever read) before creating the in-app row, emailing, or
+      // texting — each channel independently gated per notification type.
       if (userId) {
-        const notification = await prisma.notification.create({
-          data: {
-            associationId,
-            userId,
-            title,
-            message,
-            type,
-          },
+        const result = await dispatchNotification({
+          associationId,
+          userId,
+          title,
+          message,
+          kind: type,
+          sendEmail: shouldSendEmail,
+          sendSMS: shouldSendSMS,
+          emailSubject: title,
+          emailTemplate: 'notification',
+          emailData: { title, message, type },
         });
-
-        // Send email if requested
-        if (shouldSendEmail) {
-          const user = await prisma.user.findUnique({ where: { id: userId } });
-          if (user?.email) {
-            try {
-              await sendEmail({
-                to: user.email,
-                subject: title,
-                template: 'notification',
-                data: { title, message, type },
-              });
-            } catch (emailError) {
-              console.error('Failed to send notification email:', emailError);
-            }
-          }
-        }
 
         return res.status(201).json({
           success: true,
           message: 'Notification created',
-          data: notification,
+          data: result,
         });
       } else {
-        // Broadcast to all users in the association
-        const users = await prisma.user.findMany({
-          where: { associationId, isActive: true },
-          select: { id: true, email: true },
+        const result = await broadcastNotification(associationId, {
+          title,
+          message,
+          kind: type,
+          sendEmail: shouldSendEmail,
+          sendSMS: shouldSendSMS,
+          emailSubject: title,
+          emailTemplate: 'notification',
+          emailData: { title, message, type },
         });
-
-        const notifications = await prisma.notification.createMany({
-          data: users.map(user => ({
-            associationId,
-            userId: user.id,
-            title,
-            message,
-            type,
-          })),
-        });
-
-        // Send emails if requested
-        if (shouldSendEmail) {
-          const emails = users.filter(u => u.email).map(u => u.email);
-          for (const email of emails) {
-            try {
-              await sendEmail({
-                to: email,
-                subject: title,
-                template: 'notification',
-                data: { title, message, type },
-              });
-            } catch (emailError) {
-              console.error(`Failed to send email to ${email}:`, emailError);
-            }
-          }
-        }
 
         return res.status(201).json({
           success: true,
-          message: `Notification sent to ${users.length} users`,
-          data: { count: notifications.count },
+          message: `Notification sent to ${result.recipientCount} users`,
+          data: result,
         });
       }
     } catch (error) {
@@ -314,23 +285,31 @@ export class NotificationsController {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
       }
 
-      const { title, message, priority, sendEmail: shouldSendEmail } = announcementSchema.parse(req.body);
+      const { title, message, priority, sendEmail: shouldSendEmail, sendSMS: shouldSendSMS } = announcementSchema.parse(req.body);
 
-      // Get all active users in the association
-      const users = await prisma.user.findMany({
-        where: { associationId, isActive: true },
-        select: { id: true, email: true },
+      const association = await prisma.association.findUnique({
+        where: { id: associationId },
+        select: { name: true },
       });
 
-      // Create notifications for all users
-      const notifications = await prisma.notification.createMany({
-        data: users.map(user => ({
-          associationId,
-          userId: user.id,
-          title: `📢 ${title}`,
+      // R3.6/G14/G42: real preference gating per recipient (was: in-memory
+      // Map nothing read). Also now correctly typed 'announcement' rather
+      // than 'system' — matches the dedicated announcementEmail/SMS/InApp
+      // preference fields that already existed for exactly this category.
+      const result = await broadcastNotification(associationId, {
+        title: `📢 ${title}`,
+        message,
+        kind: 'announcement',
+        sendEmail: shouldSendEmail,
+        sendSMS: shouldSendSMS,
+        emailSubject: `📢 ${title} - ${association?.name || 'Association'}`,
+        emailTemplate: 'announcement',
+        emailData: {
+          title,
           message,
-          type: 'system',
-        })),
+          priority,
+          associationName: association?.name || 'Your Association',
+        },
       });
 
       // Log the announcement
@@ -340,44 +319,17 @@ export class NotificationsController {
           userId: adminId,
           action: 'ANNOUNCEMENT_CREATED',
           tableName: 'notifications',
-          newValues: { title, message, priority, recipientCount: users.length },
+          newValues: { title, message, priority, recipientCount: result.recipientCount },
         },
       });
 
-      // Send emails if requested
-      if (shouldSendEmail) {
-        const association = await prisma.association.findUnique({
-          where: { id: associationId },
-          select: { name: true },
-        });
-
-        for (const user of users) {
-          if (user.email) {
-            try {
-              await sendEmail({
-                to: user.email,
-                subject: `📢 ${title} - ${association?.name || 'Association'}`,
-                template: 'announcement',
-                data: { 
-                  title, 
-                  message, 
-                  priority,
-                  associationName: association?.name || 'Your Association',
-                },
-              });
-            } catch (emailError) {
-              console.error(`Failed to send announcement email to ${user.email}:`, emailError);
-            }
-          }
-        }
-      }
-
       return res.status(201).json({
         success: true,
-        message: `Announcement sent to ${users.length} users`,
-        data: { 
-          count: notifications.count,
-          emailsSent: shouldSendEmail ? users.filter(u => u.email).length : 0,
+        message: `Announcement sent to ${result.recipientCount} users`,
+        data: {
+          count: result.recipientCount,
+          emailsSent: result.emailsSent,
+          smsSent: result.smsSent,
         },
       });
     } catch (error) {
@@ -405,37 +357,9 @@ export class NotificationsController {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
       }
 
-      const userKey = `${associationId}-${userId}`;
-      
-      // Get preferences from store or return defaults
-      const storedPreferences = preferencesStore.get(userKey);
-      
-      const defaultPreferences = {
-        emailEnabled: true,
-        smsEnabled: false,
-        inAppEnabled: true,
-        paymentDueEmail: true,
-        paymentDueSMS: false,
-        paymentDueInApp: true,
-        paymentReceivedEmail: true,
-        paymentReceivedSMS: false,
-        paymentReceivedInApp: true,
-        systemEmail: true,
-        systemSMS: false,
-        systemInApp: true,
-        approvalEmail: true,
-        approvalSMS: false,
-        approvalInApp: true,
-        announcementEmail: true,
-        announcementSMS: false,
-        announcementInApp: true,
-        quietHoursEnabled: false,
-        quietHoursStart: '22:00',
-        quietHoursEnd: '08:00',
-        quietHoursTimezone: 'UTC',
-      };
-
-      const preferences = storedPreferences || defaultPreferences;
+      // R3.6/G14/G42: real DB-backed preferences, not an in-memory Map
+      // that lost every value on restart and that nothing ever read.
+      const preferences = await getRealPreferences(associationId, userId);
 
       return res.json({
         success: true,
@@ -459,13 +383,7 @@ export class NotificationsController {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
       }
 
-      const userKey = `${associationId}-${userId}`;
-      const preferences = req.body;
-
-      // Store preferences in memory
-      preferencesStore.set(userKey, preferences);
-
-      console.log(`Updated preferences for user ${userKey}:`, preferences);
+      const preferences = await upsertPreferences(associationId, userId, req.body);
 
       return res.json({
         success: true,

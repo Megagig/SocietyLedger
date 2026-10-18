@@ -4,6 +4,7 @@ import prisma from '../../lib/prisma';
 import { hashPassword, verifyPassword, generateToken } from '../../lib/auth';
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
+import { SettingsService } from '../settings/settings.service';
 import {
   createUserWithVerification,
   verifyEmailCode,
@@ -274,6 +275,17 @@ export class AuthController {
         return;
       }
 
+      // G52: self-signup must actually be gated by the association's own setting
+      const selfSignupEnabled = await SettingsService.getSetting(tenantId, 'members_access', 'selfSignupEnabled');
+      if (!selfSignupEnabled) {
+        res.status(403).json({
+          success: false,
+          code: 'SELF_SIGNUP_DISABLED',
+          message: 'Self-registration is not enabled for this association. Please contact an administrator for an invite.',
+        });
+        return;
+      }
+
       // Check if user already exists
       const existingUser = await prisma.user.findFirst({
         where: { email: email.toLowerCase(), associationId: tenantId },
@@ -287,11 +299,17 @@ export class AuthController {
         return;
       }
 
+      // R4.6/G53: Members & Access Settings' defaultRole was saved but
+      // never read — self-registered users always got the 'member' literal
+      // regardless of what the association configured.
+      const defaultRole = await SettingsService.getSetting(tenantId, 'members_access', 'defaultRole');
+
       // Create user with verification code
       const { user, verificationCode } = await createUserWithVerification({
         email,
         password,
         associationId: tenantId,
+        role: defaultRole || undefined,
         firstName,
         lastName,
       });

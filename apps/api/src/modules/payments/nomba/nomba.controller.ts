@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
 import { nombaService } from './nomba.service';
+import { SettingsService } from '../../settings/settings.service';
 import {
   NombaInitializePaymentRequest,
   NombaInitializePaymentResponse,
@@ -30,6 +31,16 @@ export class NombaController {
         res.status(400).json({
           success: false,
           message: 'Transaction ID is required',
+        });
+        return;
+      }
+
+      // R4.6/G53: Integrations Settings' nombaEnabled was saved but never read
+      const nombaEnabled = await SettingsService.getSetting(associationId, 'integrations', 'nombaEnabled');
+      if (nombaEnabled === false) {
+        res.status(400).json({
+          success: false,
+          message: 'Online payment via Nomba is not enabled for this association',
         });
         return;
       }

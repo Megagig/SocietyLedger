@@ -1,5 +1,7 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { SettingsService } from '../../settings/settings.service';
 
 // ============================================
 // PENALTY SERVICE (TASK-ADV-005, TASK-ADV-006, TASK-ADV-007)
@@ -314,13 +316,31 @@ export const penaltiesService = {
     const now = new Date();
 
     // Get active late payment rules
-    const rules = await prisma.penaltyRule.findMany({
+    let rules = await prisma.penaltyRule.findMany({
       where: {
         associationId,
         isActive: true,
         triggerType: 'late_payment',
       },
     });
+
+    // R4.6/G53: Financial Settings' enableLateFees/lateFeeType/lateFeeAmount/
+    // defaultGracePeriodDays were saved but never read by anything — fall
+    // back to a real general rule derived from them when no officer-defined
+    // PenaltyRule exists yet, so the setting actually does something.
+    if (rules.length === 0) {
+      const financialSettings = await SettingsService.getSettings(associationId, 'financial');
+      if (financialSettings.enableLateFees) {
+        const generalRule = await this.createRule(associationId, userId, {
+          name: 'Default Late Fee (from Financial Settings)',
+          triggerType: 'late_payment',
+          gracePeriodDays: financialSettings.defaultGracePeriodDays ?? 7,
+          feeType: financialSettings.lateFeeType ?? 'fixed',
+          feeAmount: financialSettings.lateFeeAmount ?? 0,
+        });
+        rules = [generalRule];
+      }
+    }
 
     if (rules.length === 0) {
       return { applied: 0, totalAmount: 0 };
@@ -410,7 +430,9 @@ export const penaltiesService = {
           amount: penaltyAmount,
           referenceNumber: `TXN${String(txnCount + penaltyIndex + 1).padStart(6, '0')}`,
           status: 'pending',
-          notes: `Late fee for ${txn.referenceNumber} - ${applicableRule.name}`,
+          // G71: referenceNumber is genuinely nullable — fall back to the category + id
+          // instead of letting it render as a literal "null" in the note text
+          notes: `Late fee for ${txn.referenceNumber || `${txn.category.name} #${txn.id}`} - ${applicableRule.name}`,
           createdBy: userId,
         },
       });
@@ -430,6 +452,24 @@ export const penaltiesService = {
           where: { id: txn.id },
           data: { status: 'overdue' },
         });
+      }
+
+      // G45: auto-applied penalties create a Transaction directly, bypassing
+      // finance.controller.ts's sync hook — wire it here so penalties sync
+      // the same way manually-created transactions already do.
+      try {
+        const fullPenaltyTxn = await prisma.transaction.findUnique({
+          where: { id: penaltyTxn.id },
+          include: {
+            member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+            category: { select: { id: true, name: true, type: true } },
+          },
+        });
+        if (fullPenaltyTxn) {
+          await accountingIntegrationService.onTransactionCreated(fullPenaltyTxn, userId);
+        }
+      } catch (syncError) {
+        console.error(`Accounting sync failed for penalty transaction ${penaltyTxn.id} (non-critical):`, syncError);
       }
 
       results.push({

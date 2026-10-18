@@ -19,8 +19,9 @@ export default function NewPollPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [allowMultipleResponses, setAllowMultipleResponses] = useState(false);
-  const [maxSelections, setMaxSelections] = useState<number | undefined>(undefined);
+  const [allowMultipleVotes, setAllowMultipleVotes] = useState(false);
+  const [maxChoices, setMaxChoices] = useState<number | undefined>(undefined);
+  const [showResultsBeforeEnd, setShowResultsBeforeEnd] = useState(false);
   const [options, setOptions] = useState<string[]>(['', '']);
 
   const createPollMutation = useMutation({
@@ -44,15 +45,21 @@ export default function NewPollPage() {
       return;
     }
 
+    if (!startDate || !endDate) {
+      toast.error('Please set both a start and end date');
+      return;
+    }
+
     createPollMutation.mutate({
       title,
       description: description || undefined,
       pollType,
-      startDate: startDate ? new Date(startDate).toISOString() : undefined,
-      endDate: endDate ? new Date(endDate).toISOString() : undefined,
+      startDate: new Date(startDate).toISOString(),
+      endDate: new Date(endDate).toISOString(),
       isAnonymous,
-      allowMultipleResponses,
-      maxSelections: pollType === 'MULTIPLE_CHOICE' ? maxSelections : undefined,
+      allowMultipleVotes,
+      maxChoices: pollType === 'MULTIPLE_CHOICE' ? maxChoices : undefined,
+      showResultsBeforeEnd,
       options: validOptions.map((text, index) => ({ optionText: text, orderNumber: index })),
     });
   };
@@ -139,7 +146,7 @@ export default function NewPollPage() {
             <option value="SINGLE_CHOICE">Single Choice (select one)</option>
             <option value="MULTIPLE_CHOICE">Multiple Choice (select multiple)</option>
             <option value="YES_NO">Yes/No</option>
-            <option value="RANKED_CHOICE">Ranked Choice</option>
+            <option value="RATING">Rating</option>
           </select>
         </div>
 
@@ -151,8 +158,8 @@ export default function NewPollPage() {
             <input
               type="number"
               min={1}
-              value={maxSelections || ''}
-              onChange={(e) => setMaxSelections(e.target.value ? parseInt(e.target.value) : undefined)}
+              value={maxChoices || ''}
+              onChange={(e) => setMaxChoices(e.target.value ? parseInt(e.target.value) : undefined)}
               placeholder="Leave empty for unlimited"
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
             />
@@ -204,23 +211,25 @@ export default function NewPollPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Start Date
+              Start Date *
             </label>
             <input
               type="datetime-local"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              required
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              End Date
+              End Date *
             </label>
             <input
               type="datetime-local"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
+              required
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
             />
           </div>
@@ -239,11 +248,20 @@ export default function NewPollPage() {
           <label className="flex items-center gap-3">
             <input
               type="checkbox"
-              checked={allowMultipleResponses}
-              onChange={(e) => setAllowMultipleResponses(e.target.checked)}
+              checked={allowMultipleVotes}
+              onChange={(e) => setAllowMultipleVotes(e.target.checked)}
               className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Allow members to change their response</span>
+          </label>
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={showResultsBeforeEnd}
+              onChange={(e) => setShowResultsBeforeEnd(e.target.checked)}
+              className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">Show results before the poll ends</span>
           </label>
         </div>
 

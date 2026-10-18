@@ -3,7 +3,7 @@ import { subscriptionController } from './subscription.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // Public route - verify payment (no auth required as user might be redirected from Paystack)
 router.get('/verify/:reference', subscriptionController.verifyPayment);
@@ -20,6 +20,9 @@ router.get('/current', subscriptionController.getCurrentSubscription);
 
 // Initialize subscription payment
 router.post('/initialize', subscriptionController.initializePayment);
+
+// Start a free trial with no payment step (G56)
+router.post('/start-trial', subscriptionController.startTrial);
 
 // Cancel subscription (mark for cancellation at period end)
 router.post('/cancel', subscriptionController.cancelSubscription);

@@ -12,7 +12,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const router = Router();
+const router: Router = Router();
 
 // Configure multer for logo uploads (memory storage for processing)
 const logoUpload = multer({
@@ -77,6 +77,17 @@ router.get(
   '/export',
   requirePermission(PERMISSIONS.SETTINGS_VIEW),
   SettingsController.exportSettings
+);
+
+/**
+ * Audit Log Route (G51)
+ */
+
+// GET /api/settings/audit-logs - tenant-scoped audit log listing
+router.get(
+  '/audit-logs',
+  requirePermission(PERMISSIONS.AUDIT_VIEW),
+  SettingsController.getAuditLogs
 );
 
 /**

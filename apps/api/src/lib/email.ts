@@ -15,6 +15,11 @@ interface EmailOptions {
   subject: string;
   template: string;
   data: Record<string, any>;
+  // R4.6/G53: Notification Settings' senderName was saved but never read —
+  // swap in the association's chosen display name while keeping the one
+  // verified sending address (Resend only requires the domain to be
+  // verified, not the display name before it).
+  fromName?: string;
 }
 
 // Lazy-load Resend client to ensure environment variables are loaded first
@@ -89,12 +94,19 @@ async function withRetry<T>(
  * Production-ready implementation with error handling, logging, and retry logic
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
-  const { to, subject, template, data } = options;
+  const { to, subject, template, data, fromName } = options;
 
   try {
     // Get configuration
     const config = getEmailConfig();
-    
+
+    let from = config.FROM_EMAIL;
+    if (fromName) {
+      const addressMatch = config.FROM_EMAIL.match(/<(.+)>/);
+      const address = addressMatch ? addressMatch[1] : config.FROM_EMAIL;
+      from = `${fromName} <${address}>`;
+    }
+
     // Get HTML content for template
     const htmlContent = getTemplateContent(template, data);
 
@@ -105,7 +117,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     const result = await withRetry(async () => {
       const resend = getResendClient();
       return resend.emails.send({
-        from: config.FROM_EMAIL,
+        from,
         to,
         subject,
         html: htmlContent,
@@ -350,6 +362,38 @@ function getTemplateContent(template: string, data: Record<string, any>): string
             
             <p style="color: #dc2626; font-size: 14px; margin-top: 32px;">
               ⏰ <strong>Important:</strong> Your data will be permanently deleted after 30 days of inactivity. Please renew to avoid data loss.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="${data.renewUrl}">Renew Now</a> • <a href="mailto:${SUPPORT_EMAIL}">Contact Support</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'subscription-past-due': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ Payment Overdue</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.associationName},</h2>
+            <p class="warning">Your SocietyLedger subscription payment is overdue. Your account is still active, but access will be suspended in <strong>3 days</strong> if payment isn't received.</p>
+
+            <p>Please renew your subscription now to avoid any interruption.</p>
+
+            <center>
+              <a href="${data.renewUrl}" class="button">Renew Subscription</a>
+            </center>
+
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              No action needed if you've already renewed — this may cross with your payment.
             </p>
           </div>
           <div class="footer">

@@ -5,7 +5,7 @@ import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth and tenant middleware to all routes
 router.use(authMiddleware);
@@ -37,6 +37,17 @@ router.post('/bulk',
 router.get('/',
   requirePermission(PERMISSIONS.MEMBER_VIEW),
   memberController.list
+);
+
+// R7.3 (G65): tenant-scoped self-registration approval queue
+router.get('/approvals',
+  requirePermission(PERMISSIONS.MEMBER_EDIT_ALL),
+  memberController.listPendingApprovals
+);
+
+router.patch('/approvals/:userId',
+  requirePermission(PERMISSIONS.MEMBER_EDIT_ALL),
+  memberController.updateApprovalStatus
 );
 
 // Get single member by ID

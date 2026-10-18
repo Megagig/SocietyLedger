@@ -95,6 +95,21 @@ export default function AccountingIntegrationPage() {
     }
   };
 
+  // Generic bulk sync for the welfare/cooperatives record types below
+  const handleBulkSync = async (key: string, endpoint: string) => {
+    setSyncing(key);
+    try {
+      const response = await api.post(`/accounting/sync/${endpoint}/bulk`);
+      toast.success(response.data.message);
+      fetchSyncStatus();
+    } catch (error) {
+      console.error(`Error syncing ${key}:`, error);
+      toast.error(`Failed to sync ${key}`);
+    } finally {
+      setSyncing(null);
+    }
+  };
+
   useEffect(() => {
     fetchSyncStatus();
     fetchSyncErrors();
@@ -231,27 +246,65 @@ export default function AccountingIntegrationPage() {
           <h2 className="text-xl font-semibold mb-2">Welfare Module</h2>
           <p className="text-sm text-gray-600 mb-6">Contributions and payouts synchronization</p>
           <div className="space-y-4">
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Contributions</h4>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>Total: {syncStatus.welfare.contributions.total}</span>
-                <span className="text-green-600">Synced: {syncStatus.welfare.contributions.synced}</span>
-                <span className="text-orange-600">Unsynced: {syncStatus.welfare.contributions.unsynced}</span>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.welfare.contributions.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                  {syncStatus.welfare.contributions.syncRate}%
-                </span>
+            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900">Contributions</h4>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span>Total: {syncStatus.welfare.contributions.total}</span>
+                  <span className="text-green-600">Synced: {syncStatus.welfare.contributions.synced}</span>
+                  <span className="text-orange-600">Unsynced: {syncStatus.welfare.contributions.unsynced}</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.welfare.contributions.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {syncStatus.welfare.contributions.syncRate}%
+                  </span>
+                </div>
               </div>
+              <button
+                onClick={() => handleBulkSync('welfare contributions', 'welfare-contributions')}
+                disabled={syncing === 'welfare contributions' || syncStatus.welfare.contributions.unsynced === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {syncing === 'welfare contributions' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Sync Now
+                  </>
+                )}
+              </button>
             </div>
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Payouts</h4>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>Total: {syncStatus.welfare.payouts.total}</span>
-                <span className="text-green-600">Synced: {syncStatus.welfare.payouts.synced}</span>
-                <span className="text-orange-600">Unsynced: {syncStatus.welfare.payouts.unsynced}</span>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.welfare.payouts.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                  {syncStatus.welfare.payouts.syncRate}%
-                </span>
+            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900">Payouts</h4>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span>Total: {syncStatus.welfare.payouts.total}</span>
+                  <span className="text-green-600">Synced: {syncStatus.welfare.payouts.synced}</span>
+                  <span className="text-orange-600">Unsynced: {syncStatus.welfare.payouts.unsynced}</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.welfare.payouts.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {syncStatus.welfare.payouts.syncRate}%
+                  </span>
+                </div>
               </div>
+              <button
+                onClick={() => handleBulkSync('welfare payouts', 'welfare-payouts')}
+                disabled={syncing === 'welfare payouts' || syncStatus.welfare.payouts.unsynced === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {syncing === 'welfare payouts' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Sync Now
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -263,38 +316,95 @@ export default function AccountingIntegrationPage() {
           <h2 className="text-xl font-semibold mb-2">Cooperatives Module</h2>
           <p className="text-sm text-gray-600 mb-6">Savings, loans, and repayments synchronization</p>
           <div className="space-y-4">
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Savings Transactions</h4>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>Total: {syncStatus.cooperatives.savingsTransactions.total}</span>
-                <span className="text-green-600">Synced: {syncStatus.cooperatives.savingsTransactions.synced}</span>
-                <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.savingsTransactions.unsynced}</span>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.cooperatives.savingsTransactions.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                  {syncStatus.cooperatives.savingsTransactions.syncRate}%
-                </span>
+            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900">Savings Transactions</h4>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span>Total: {syncStatus.cooperatives.savingsTransactions.total}</span>
+                  <span className="text-green-600">Synced: {syncStatus.cooperatives.savingsTransactions.synced}</span>
+                  <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.savingsTransactions.unsynced}</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.cooperatives.savingsTransactions.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {syncStatus.cooperatives.savingsTransactions.syncRate}%
+                  </span>
+                </div>
               </div>
+              <button
+                onClick={() => handleBulkSync('savings transactions', 'savings-transactions')}
+                disabled={syncing === 'savings transactions' || syncStatus.cooperatives.savingsTransactions.unsynced === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {syncing === 'savings transactions' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Sync Now
+                  </>
+                )}
+              </button>
             </div>
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Loans</h4>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>Total: {syncStatus.cooperatives.loans.total}</span>
-                <span className="text-green-600">Synced: {syncStatus.cooperatives.loans.synced}</span>
-                <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.loans.unsynced}</span>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.cooperatives.loans.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                  {syncStatus.cooperatives.loans.syncRate}%
-                </span>
+            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900">Loans</h4>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span>Total: {syncStatus.cooperatives.loans.total}</span>
+                  <span className="text-green-600">Synced: {syncStatus.cooperatives.loans.synced}</span>
+                  <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.loans.unsynced}</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.cooperatives.loans.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {syncStatus.cooperatives.loans.syncRate}%
+                  </span>
+                </div>
               </div>
+              <button
+                onClick={() => handleBulkSync('loans', 'loans')}
+                disabled={syncing === 'loans' || syncStatus.cooperatives.loans.unsynced === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {syncing === 'loans' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Sync Now
+                  </>
+                )}
+              </button>
             </div>
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Loan Repayments</h4>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>Total: {syncStatus.cooperatives.loanRepayments.total}</span>
-                <span className="text-green-600">Synced: {syncStatus.cooperatives.loanRepayments.synced}</span>
-                <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.loanRepayments.unsynced}</span>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.cooperatives.loanRepayments.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                  {syncStatus.cooperatives.loanRepayments.syncRate}%
-                </span>
+            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900">Loan Repayments</h4>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span>Total: {syncStatus.cooperatives.loanRepayments.total}</span>
+                  <span className="text-green-600">Synced: {syncStatus.cooperatives.loanRepayments.synced}</span>
+                  <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.loanRepayments.unsynced}</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${parseFloat(syncStatus.cooperatives.loanRepayments.syncRate) >= 90 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {syncStatus.cooperatives.loanRepayments.syncRate}%
+                  </span>
+                </div>
               </div>
+              <button
+                onClick={() => handleBulkSync('loan repayments', 'loan-repayments')}
+                disabled={syncing === 'loan repayments' || syncStatus.cooperatives.loanRepayments.unsynced === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {syncing === 'loan repayments' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Sync Now
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

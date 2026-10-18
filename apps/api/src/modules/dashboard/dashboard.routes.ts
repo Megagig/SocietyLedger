@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { dashboardController } from './dashboard.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth middleware - tenant context comes from user's associationId in JWT
 // Note: tenantMiddleware is bypassed globally for /api/dashboard routes

@@ -16,7 +16,7 @@ import {
 } from './documentation.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 // ============================================
 // PUBLIC ENDPOINTS (No Auth Required)

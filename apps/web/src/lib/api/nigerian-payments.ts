@@ -88,21 +88,31 @@ export interface BankStatementEntry {
   createdAt: string;
 }
 
+// Reconciled against the real backend shape (R7.2/G17) — ids are numbers, status is
+// PENDING/APPROVED/REJECTED (not VERIFIED), file fields are nullable (a Cash/Card/POS
+// declaration has no file, only declarationNote), and transactionIds (plural) covers
+// a member declaring one payment against several outstanding items at once.
 export interface PaymentProof {
-  id: string;
-  associationId: string;
-  memberId?: string;
-  transactionId?: string;
-  fileName: string;
-  fileUrl: string;
-  fileSize: number;
+  id: number;
+  associationId: number;
+  memberId: number;
+  transactionId: number | null;
+  transactionIds: number[];
+  bankTransferId: number | null;
+  paymentMethod: string | null;
+  filename: string | null;
+  filepath: string | null;
+  fileSize: number | null;
+  mimeType: string | null;
+  declarationNote: string | null;
   uploadedAt: string;
-  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
-  verifiedAt?: string;
-  verifiedBy?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  verifiedAt?: string | null;
+  verifiedBy?: number | null;
+  rejectionReason?: string | null;
+  notes?: string | null;
+  member?: { id: number; memberId: string; firstName: string; lastName: string };
+  transaction?: { id: number; referenceNumber: string; amount: number; status: string } | null;
 }
 
 export interface NigerianBank {
@@ -292,9 +302,9 @@ export const nigerianPaymentsApi = {
     endDate?: string;
     page?: number;
     limit?: number;
-  }): Promise<{ data: PaymentProof[]; total: number; page: number; limit: number }> {
+  }): Promise<{ proofs: PaymentProof[]; pagination: { page: number; limit: number; totalCount: number; totalPages: number; hasMore: boolean } }> {
     const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS, { params });
-    return response.data;
+    return response.data.data;
   },
 
   async getPaymentProof(id: string): Promise<PaymentProof> {
@@ -313,7 +323,7 @@ export const nigerianPaymentsApi = {
     return response.data.data;
   },
 
-  async verifyPaymentProof(id: string, data: { verified: boolean; rejectionReason?: string }): Promise<PaymentProof> {
+  async verifyPaymentProof(id: number, data: { status: 'APPROVED' | 'REJECTED'; rejectionReason?: string; notes?: string }): Promise<PaymentProof> {
     const response = await api.post(`${API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS}/${id}/verify`, data);
     return response.data.data;
   },

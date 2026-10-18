@@ -1,5 +1,6 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { accountingIntegrationService } from '../../../services/accounting-integration.service';
 
 // ============================================
 // LEVY CAMPAIGN SERVICE (TASK-ADV-001, TASK-ADV-002)
@@ -362,6 +363,23 @@ export const leviesService = {
           },
         });
         transactionId = transaction.id;
+
+        // G45: levy campaign assignment creates a Transaction directly,
+        // bypassing finance.controller.ts's sync hook — wire it here too.
+        try {
+          const fullLevyTxn = await prisma.transaction.findUnique({
+            where: { id: transaction.id },
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+              category: { select: { id: true, name: true, type: true } },
+            },
+          });
+          if (fullLevyTxn) {
+            await accountingIntegrationService.onTransactionCreated(fullLevyTxn, userId);
+          }
+        } catch (syncError) {
+          console.error(`Accounting sync failed for levy transaction ${transaction.id} (non-critical):`, syncError);
+        }
       }
 
       const assignment = await prisma.levyCampaignAssignment.create({

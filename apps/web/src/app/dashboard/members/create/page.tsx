@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
 import { getTenantHeaders } from '@/utils/tenant';
+import { apiGet } from '@/utils/api';
 import { ArrowLeft, Save } from 'lucide-react';
 import { HelpLink } from '@/components/docs/HelpLink';
 
@@ -11,10 +12,31 @@ export default function CreateMemberPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  // G80: memberIdAutoGenerate off means there's no auto-generation to silently fall
+  // back to — the create form needs a real manual-entry field in that case.
+  const [memberIdAutoGenerate, setMemberIdAutoGenerate] = useState(true);
+
+  useEffect(() => {
+    const fetchSetting = async () => {
+      try {
+        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/members_access`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.data?.memberIdAutoGenerate === false) {
+            setMemberIdAutoGenerate(false);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch members_access settings:', err);
+      }
+    };
+    fetchSetting();
+  }, []);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    memberId: '',
     email: '',
     phone: '',
     dateOfBirth: '',
@@ -50,6 +72,7 @@ export default function CreateMemberPage() {
       // Convert empty strings to null for optional fields
       const payload = {
         ...formData,
+        memberId: formData.memberId.trim() || null,
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
         dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
@@ -159,6 +182,26 @@ export default function CreateMemberPage() {
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            {!memberIdAutoGenerate && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Member ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="memberId"
+                  value={formData.memberId}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g. MEM0001"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Automatic member ID generation is turned off for this association — enter one manually.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

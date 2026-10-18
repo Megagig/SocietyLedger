@@ -40,36 +40,36 @@ describe('Multi-Tenancy Data Isolation', () => {
     tenant1User = await prisma.user.create({
       data: {
         email: 'admin1@test.com',
-        password: hashedPassword,
-        firstName: 'Admin',
-        lastName: 'One',
+        passwordHash: hashedPassword,
         role: 'admin',
         associationId: tenant1.id,
+        isActive: true,
+        emailVerified: true,
       },
     });
 
     tenant2User = await prisma.user.create({
       data: {
         email: 'admin2@test.com',
-        password: hashedPassword,
-        firstName: 'Admin',
-        lastName: 'Two',
+        passwordHash: hashedPassword,
         role: 'admin',
         associationId: tenant2.id,
+        isActive: true,
+        emailVerified: true,
       },
     });
 
     // Login as tenant1 admin
     const res1 = await request(app)
       .post('/api/auth/login')
-      .set('X-Subdomain', 'testassoc1')
+      .set('x-tenant', 'testassoc1')
       .send({ email: 'admin1@test.com', password: 'Test123!' });
     tenant1Token = res1.body.data.token;
 
     // Login as tenant2 admin
     const res2 = await request(app)
       .post('/api/auth/login')
-      .set('X-Subdomain', 'testassoc2')
+      .set('x-tenant', 'testassoc2')
       .send({ email: 'admin2@test.com', password: 'Test123!' });
     tenant2Token = res2.body.data.token;
   });
@@ -96,8 +96,8 @@ describe('Multi-Tenancy Data Isolation', () => {
           firstName: 'Member',
           lastName: 'One',
           email: 'member1@test.com',
-          membershipNumber: 'T1-001',
-          status: 'ACTIVE',
+          memberId: 'T1-001',
+          status: 'active',
           joinDate: new Date(),
           associationId: tenant1.id,
         },
@@ -109,8 +109,8 @@ describe('Multi-Tenancy Data Isolation', () => {
           firstName: 'Member',
           lastName: 'Two',
           email: 'member2@test.com',
-          membershipNumber: 'T2-001',
-          status: 'ACTIVE',
+          memberId: 'T2-001',
+          status: 'active',
           joinDate: new Date(),
           associationId: tenant2.id,
         },
@@ -126,7 +126,7 @@ describe('Multi-Tenancy Data Isolation', () => {
     it('should not allow tenant1 to see tenant2 members', async () => {
       const res = await request(app)
         .get('/api/members')
-        .set('X-Subdomain', 'testassoc1')
+        .set('x-tenant', 'testassoc1')
         .set('Authorization', `Bearer ${tenant1Token}`);
 
       expect(res.status).toBe(200);
@@ -138,7 +138,7 @@ describe('Multi-Tenancy Data Isolation', () => {
     it('should not allow tenant2 to see tenant1 members', async () => {
       const res = await request(app)
         .get('/api/members')
-        .set('X-Subdomain', 'testassoc2')
+        .set('x-tenant', 'testassoc2')
         .set('Authorization', `Bearer ${tenant2Token}`);
 
       expect(res.status).toBe(200);
@@ -150,7 +150,7 @@ describe('Multi-Tenancy Data Isolation', () => {
     it('should not allow tenant1 to access tenant2 member by ID', async () => {
       const res = await request(app)
         .get(`/api/members/${tenant2Member.id}`)
-        .set('X-Subdomain', 'testassoc1')
+        .set('x-tenant', 'testassoc1')
         .set('Authorization', `Bearer ${tenant1Token}`);
 
       expect(res.status).toBe(404);
@@ -161,7 +161,7 @@ describe('Multi-Tenancy Data Isolation', () => {
     it('should not allow tenant1 to see tenant2 users', async () => {
       const res = await request(app)
         .get('/api/users')
-        .set('X-Subdomain', 'testassoc1')
+        .set('x-tenant', 'testassoc1')
         .set('Authorization', `Bearer ${tenant1Token}`);
 
       expect(res.status).toBe(200);
@@ -175,7 +175,7 @@ describe('Multi-Tenancy Data Isolation', () => {
     it('should reject tenant1 token when accessing tenant2 subdomain', async () => {
       const res = await request(app)
         .get('/api/members')
-        .set('X-Subdomain', 'testassoc2')
+        .set('x-tenant', 'testassoc2')
         .set('Authorization', `Bearer ${tenant1Token}`);
 
       expect(res.status).toBe(403);
@@ -185,7 +185,7 @@ describe('Multi-Tenancy Data Isolation', () => {
     it('should reject tenant2 token when accessing tenant1 subdomain', async () => {
       const res = await request(app)
         .get('/api/members')
-        .set('X-Subdomain', 'testassoc1')
+        .set('x-tenant', 'testassoc1')
         .set('Authorization', `Bearer ${tenant2Token}`);
 
       expect(res.status).toBe(403);

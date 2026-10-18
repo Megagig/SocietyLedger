@@ -2,11 +2,21 @@ import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
+import { SettingsService } from '../settings/settings.service';
 
 // Validation schemas
+// Same canonical 6-value set used everywhere else (finance.controller.ts, welfare.validation.ts,
+// the dashboard's PAYMENT_METHOD_CONFIG) — this validator previously used a different,
+// uppercase 5-value set with no "cheque"/"other" and a "POS" value nothing else recognised (G58)
+const memberPaymentMethodSchema = z.enum(['cash', 'bank_transfer', 'card', 'mobile_money', 'cheque', 'other']);
+
+// R7.2 (G17): paymentMethod no longer defaults to bank_transfer here — bank transfer
+// needs a real uploaded file, which this JSON endpoint can't carry, so it's submitted
+// through POST /nigerian-payments/proofs (multipart) instead; see processPayment below.
 const paymentSchema = z.object({
   transactionIds: z.array(z.number().int().positive()).min(1, 'At least one transaction is required'),
-  paymentMethod: z.enum(['BANK_TRANSFER', 'CASH', 'CARD', 'POS', 'MOBILE_MONEY']).default('BANK_TRANSFER'),
+  paymentMethod: memberPaymentMethodSchema,
+  declarationNote: z.string().min(20, 'Please describe the payment in more detail (at least 20 characters) — who it was paid to, when, and the circumstances'),
   reference: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -14,7 +24,7 @@ const paymentSchema = z.object({
 const donationSchema = z.object({
   categoryId: z.number().int().positive('Category ID is required'),
   amount: z.number().positive('Amount must be positive'),
-  paymentMethod: z.enum(['BANK_TRANSFER', 'CASH', 'CARD', 'POS', 'MOBILE_MONEY']).default('BANK_TRANSFER'),
+  paymentMethod: memberPaymentMethodSchema.default('bank_transfer'),
   reference: z.string().optional(),
   notes: z.string().optional(),
   isAnonymous: z.boolean().default(false),
@@ -44,6 +54,7 @@ export const memberFinanceController = {
           data: {
             totalDue: 0,
             totalPaid: 0,
+            paidThisMonth: 0,
             totalOutstanding: 0,
             overdueAmount: 0,
             overdueCount: 0,
@@ -79,6 +90,7 @@ export const memberFinanceController = {
       // Calculate summaries
       let totalDue = new Decimal(0);
       let totalPaid = new Decimal(0);
+      let paidThisMonth = new Decimal(0);
       let overdueAmount = new Decimal(0);
       let overdueCount = 0;
 
@@ -88,9 +100,14 @@ export const memberFinanceController = {
       const donationsSummary = { total: new Decimal(0), count: 0 };
 
       const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
       transactions.forEach(txn => {
         const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+        const paidThisTxnThisMonth = txn.payments
+          .filter(p => new Date(p.paymentDate) >= monthStart)
+          .reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+        paidThisMonth = paidThisMonth.plus(paidThisTxnThisMonth);
         const balance = new Decimal(txn.amount).minus(paid);
         
         totalDue = totalDue.plus(txn.amount);
@@ -171,6 +188,7 @@ export const memberFinanceController = {
         data: {
           totalDue: Number(totalDue),
           totalPaid: Number(totalPaid),
+          paidThisMonth: Number(paidThisMonth),
           totalOutstanding: Number(totalDue.minus(totalPaid)),
           overdueAmount: Number(overdueAmount),
           overdueCount,
@@ -522,6 +540,57 @@ export const memberFinanceController = {
     }
   },
 
+  // R7.2 (G17): member-safe view of the association's receiving bank accounts —
+  // name/number/bank only, no internal fields. The existing officer endpoint for
+  // this is gated by SETTINGS_VIEW, which members never hold.
+  async getAssociationBankAccounts(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const accounts = await prisma.associationBankAccount.findMany({
+        where: { associationId, isActive: true },
+        select: { id: true, bankName: true, accountName: true, accountNumber: true, isDefault: true },
+        orderBy: { isDefault: 'desc' },
+      });
+
+      return res.status(200).json({ success: true, data: { accounts } });
+    } catch (error) {
+      console.error('Error fetching association bank accounts:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch bank accounts' });
+    }
+  },
+
+  // R7.2 (G17): a member's own submitted payment declarations/proofs — lets the
+  // dashboard show "Awaiting Verification" instead of the plain outstanding status.
+  async getMyPaymentProofs(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const associationId = req.user?.associationId;
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      if (!member) {
+        return res.status(200).json({ success: true, data: { proofs: [] } });
+      }
+
+      const proofs = await prisma.paymentProof.findMany({
+        where: { associationId, memberId: member.id },
+        orderBy: { uploadedAt: 'desc' },
+        take: 50,
+      });
+
+      return res.status(200).json({ success: true, data: { proofs } });
+    } catch (error) {
+      console.error('Error fetching payment proofs:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch payment proofs' });
+    }
+  },
+
   // Get all outstanding items for payment
   async getOutstanding(req: Request, res: Response) {
     try {
@@ -609,17 +678,35 @@ export const memberFinanceController = {
 
       const validatedData = paymentSchema.parse(req.body);
 
-      // Verify all transactions belong to this member
+      // R7.2 (G17): bank transfer needs a real uploaded receipt, which this JSON
+      // endpoint can't carry — the frontend submits that through the multipart
+      // POST /nigerian-payments/proofs endpoint instead. Defensive guard in case
+      // this is ever called directly with bank_transfer.
+      if (validatedData.paymentMethod === 'bank_transfer') {
+        return res.status(400).json({
+          success: false,
+          message: 'Bank Transfer payments require an uploaded receipt — use the proof-upload endpoint instead',
+        });
+      }
+
+      // R4.6/G53 + G85: same enabledChannels check finance.controller.ts's recordPayment
+      // already enforces.
+      const paymentSettings = await SettingsService.getSettings(associationId, 'payments');
+      const enabledChannels: string[] = paymentSettings.enabledChannels || [];
+      if (enabledChannels.length > 0 && !enabledChannels.includes(validatedData.paymentMethod)) {
+        return res.status(400).json({
+          success: false,
+          message: `Payment method "${validatedData.paymentMethod}" is not enabled for this association`,
+        });
+      }
+
+      // Verify all transactions belong to this member and are genuinely outstanding
       const transactions = await prisma.transaction.findMany({
         where: {
           id: { in: validatedData.transactionIds },
           memberId: member.id,
           associationId,
           status: { in: ['pending', 'overdue', 'partial'] },
-        },
-        include: {
-          payments: { select: { amountPaid: true } },
-          category: { select: { name: true, type: true } },
         },
       });
 
@@ -630,62 +717,31 @@ export const memberFinanceController = {
         });
       }
 
-      // Process payments in a transaction
-      const result = await prisma.$transaction(async (tx) => {
-        const payments = [];
-
-        for (const txn of transactions) {
-          const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
-          const balance = new Decimal(txn.amount).minus(paid);
-
-          if (balance.lessThanOrEqualTo(0)) continue;
-
-          // Generate receipt number
-          const paymentCount = await tx.payment.count({ where: { associationId } });
-          const receiptNumber = `PAY${String(paymentCount + 1).padStart(6, '0')}`;
-
-          // Create payment record
-          const payment = await tx.payment.create({
-            data: {
-              associationId,
-              transactionId: txn.id,
-              amountPaid: balance,
-              paymentDate: new Date(),
-              paymentMethod: validatedData.paymentMethod.toLowerCase(),
-              receiptNumber,
-              confirmedBy: userId,
-              confirmedAt: new Date(),
-            },
-          });
-
-          // Update transaction status
-          await tx.transaction.update({
-            where: { id: txn.id },
-            data: { status: 'paid' },
-          });
-
-          // Update levy assignment status if applicable
-          await tx.levyCampaignAssignment.updateMany({
-            where: { transactionId: txn.id },
-            data: { status: 'paid' },
-          });
-
-          payments.push(payment);
-        }
-
-        return payments;
+      // R7.2 (G17): no Payment row and no status change yet — this only records a
+      // pending declaration. An officer reviewing it from the verification queue is
+      // what actually completes the payment (nigerian-payments.service.ts's
+      // verifyPaymentProof, extended to handle transactionIds).
+      const proof = await prisma.paymentProof.create({
+        data: {
+          associationId,
+          memberId: member.id,
+          transactionIds: validatedData.transactionIds,
+          paymentMethod: validatedData.paymentMethod,
+          declarationNote: validatedData.declarationNote,
+          notes: validatedData.notes,
+          status: 'PENDING',
+        },
       });
 
-      // Create audit log
       await prisma.auditLog.create({
         data: {
           associationId,
           userId,
-          action: 'MEMBER_PAYMENT',
-          tableName: 'payments',
+          action: 'MEMBER_PAYMENT_DECLARED',
+          tableName: 'payment_proofs',
+          recordId: proof.id,
           newValues: {
             transactionIds: validatedData.transactionIds,
-            paymentCount: result.length,
             paymentMethod: validatedData.paymentMethod,
           },
         },
@@ -693,15 +749,15 @@ export const memberFinanceController = {
 
       return res.status(200).json({
         success: true,
-        message: `Successfully recorded ${result.length} payment(s)`,
-        data: { payments: result },
+        message: 'Your payment has been submitted for verification. It will appear once an officer approves it.',
+        data: { proof },
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error processing payment:', error);
-      return res.status(500).json({ success: false, message: 'Failed to process payment' });
+      console.error('Error declaring payment:', error);
+      return res.status(500).json({ success: false, message: 'Failed to submit payment for verification' });
     }
   },
 
@@ -902,7 +958,8 @@ export const memberFinanceController = {
           memberIdNumber = parseInt(match[1], 10) + 1;
         }
       }
-      const memberId = `MEM${memberIdNumber.toString().padStart(4, '0')}`;
+      const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
+      const memberId = `${memberIdPrefix}${memberIdNumber.toString().padStart(4, '0')}`;
 
       const newMember = await prisma.member.create({
         data: {

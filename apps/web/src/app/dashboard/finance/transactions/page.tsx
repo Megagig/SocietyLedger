@@ -43,6 +43,7 @@ export default function TransactionsPage() {
   // Bulk Mark as Paid state
   const [showBulkPayModal, setShowBulkPayModal] = useState(false);
   const [isBulkPaying, setIsBulkPaying] = useState(false);
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState('cash');
   const [bulkPayForm, setBulkPayForm] = useState({
     paymentMethod: 'cash',
     paymentDate: new Date().toISOString().split('T')[0],
@@ -69,6 +70,7 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     fetchCategories();
+    fetchDefaultPaymentMethod();
     fetchStats();
   }, []);
 
@@ -87,6 +89,22 @@ export default function TransactionsPage() {
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
+    }
+  };
+
+  const fetchDefaultPaymentMethod = async () => {
+    try {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/payments`);
+      if (response.ok) {
+        const data = await response.json();
+        const defaultMethod = data.data?.defaultPaymentMethod;
+        if (defaultMethod) {
+          setDefaultPaymentMethod(defaultMethod);
+          setBulkPayForm((prev) => ({ ...prev, paymentMethod: defaultMethod }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching default payment method:', err);
     }
   };
 
@@ -304,7 +322,7 @@ export default function TransactionsPage() {
     }
     
     setBulkPayForm({
-      paymentMethod: 'cash',
+      paymentMethod: defaultPaymentMethod,
       paymentDate: new Date().toISOString().split('T')[0],
       notes: '',
     });

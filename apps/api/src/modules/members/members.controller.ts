@@ -1,8 +1,12 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 // Phase 12: Cache invalidation
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
+import { SettingsService } from '../settings/settings.service';
+import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.service';
+import type { AuthRequest } from '../../middleware/auth.middleware';
 
 // Validation schemas
 const createMemberSchema = z.object({
@@ -30,6 +34,8 @@ const createMemberSchema = z.object({
   emergencyContactPhone: z.string().optional().nullable(),
   emergencyContactRelationship: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  // G80: only read when memberIdAutoGenerate is off — see create()
+  memberId: z.string().min(1).optional().nullable(),
 });
 
 const updateMemberSchema = createMemberSchema.partial();
@@ -68,21 +74,8 @@ export const memberController = {
         const headerAssociationId = req.headers['x-association-id'] as string;
         if (headerAssociationId && !isNaN(Number(headerAssociationId))) {
           associationId = Number(headerAssociationId);
-          console.log('[Members] Super Admin using X-Association-Id header:', associationId);
         }
       }
-      
-      // Debug logging for impersonation
-      console.log('[Members] List request - User:', {
-        id: req.user?.id,
-        email: req.user?.email,
-        associationId: req.user?.associationId,
-        platformRole: req.user?.platformRole,
-        isImpersonating: req.user?.isImpersonating,
-        originalAssociationId: req.user?.originalAssociationId,
-      });
-      console.log('[Members] X-Association-Id header:', req.headers['x-association-id']);
-      console.log('[Members] Final associationId for query:', associationId);
 
       if (!associationId) {
         return res.status(400).json({
@@ -90,8 +83,6 @@ export const memberController = {
           message: 'Association ID is required',
         });
       }
-      
-      console.log('[Members] Querying members for associationId:', associationId);
 
       // Validate and parse query params
       const queryParams = memberQuerySchema.parse(req.query);
@@ -270,9 +261,34 @@ export const memberController = {
       // Validate request body
       const validatedData = createMemberSchema.parse(req.body);
 
-      // Generate member ID
-      const memberCount = await prisma.member.count({ where: { associationId } });
-      const memberId = `MEM${String(memberCount + 1).padStart(4, '0')}`;
+      // Generate member ID — R4.6/G53: Members & Access Settings'
+      // memberIdPrefix was saved but never read; 'MEM' stays the fallback.
+      // G80: memberIdAutoGenerate now has a real manual-entry fallback instead of
+      // silently doing nothing when turned off.
+      const memberIdAutoGenerate = await SettingsService.getSetting(associationId, 'members_access', 'memberIdAutoGenerate');
+      let memberId: string;
+      if (memberIdAutoGenerate === false) {
+        if (!validatedData.memberId) {
+          return res.status(400).json({
+            success: false,
+            message: 'Member ID is required (automatic generation is turned off for this association)',
+          });
+        }
+        const existingId = await prisma.member.findFirst({
+          where: { associationId, memberId: validatedData.memberId },
+        });
+        if (existingId) {
+          return res.status(400).json({
+            success: false,
+            message: 'This member ID is already in use',
+          });
+        }
+        memberId = validatedData.memberId;
+      } else {
+        const memberCount = await prisma.member.count({ where: { associationId } });
+        const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
+        memberId = `${memberIdPrefix}${String(memberCount + 1).padStart(4, '0')}`;
+      }
 
       // Check if email already exists
       if (validatedData.email) {
@@ -393,11 +409,12 @@ export const memberController = {
         }
       }
 
-      // Update member
+      // Update member — memberId is create-only (G80), never editable via this endpoint
+      const { memberId: _ignoredMemberId, ...updateFields } = validatedData;
       const updatedMember = await prisma.member.update({
         where: { id: parseInt(id) },
         data: {
-          ...validatedData,
+          ...updateFields,
           joinDate: validatedData.joinDate ? new Date(validatedData.joinDate) : undefined,
         },
       });
@@ -590,6 +607,7 @@ export const memberController = {
 
       // Get current member count for ID generation
       let memberCount = await prisma.member.count({ where: { associationId } });
+      const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
 
       const results = {
         created: 0,
@@ -618,7 +636,7 @@ export const memberController = {
 
           // Generate member ID
           memberCount++;
-          const memberId = `MEM${String(memberCount).padStart(4, '0')}`;
+          const memberId = `${memberIdPrefix}${String(memberCount).padStart(4, '0')}`;
 
           // Validate category
           const validCategories = ['regular', 'executive', 'honorary', 'student'];
@@ -689,7 +707,7 @@ export const memberController = {
   async getMe(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      const userEmail = req.user?.email;
+      const userId = req.user?.id;
 
       if (!associationId) {
         return res.status(400).json({
@@ -698,18 +716,20 @@ export const memberController = {
         });
       }
 
-      if (!userEmail) {
+      if (!userId) {
         return res.status(400).json({
           success: false,
-          message: 'User email is required',
+          message: 'User ID is required',
         });
       }
 
-      // Find member by email and association
+      // G15 (found at R2.7, 2026-10-15): this used to match on
+      // Member.email === User.email, but Member.email is frequently null/
+      // different from the login email — the real link is Member.userId.
       const member = await prisma.member.findFirst({
         where: {
           associationId,
-          email: userEmail,
+          userId,
         },
       });
 
@@ -737,7 +757,7 @@ export const memberController = {
   async updateMe(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      const userEmail = req.user?.email;
+      const userId = req.user?.id;
 
       if (!associationId) {
         return res.status(400).json({
@@ -746,21 +766,21 @@ export const memberController = {
         });
       }
 
-      if (!userEmail) {
+      if (!userId) {
         return res.status(400).json({
           success: false,
-          message: 'User email is required',
+          message: 'User ID is required',
         });
       }
 
       // Validate request body
       const validatedData = updateMemberSchema.parse(req.body);
 
-      // Find member by email and association
+      // G15: see getMe() above — match on Member.userId, not Member.email.
       const existingMember = await prisma.member.findFirst({
         where: {
           associationId,
-          email: userEmail,
+          userId,
         },
       });
 
@@ -789,11 +809,12 @@ export const memberController = {
         }
       }
 
-      // Update member
+      // Update member — memberId is create-only (G80), never editable via this endpoint
+      const { memberId: _ignoredMemberId, ...updateFields } = validatedData;
       const updatedMember = await prisma.member.update({
         where: { id: existingMember.id },
         data: {
-          ...validatedData,
+          ...updateFields,
           joinDate: validatedData.joinDate ? new Date(validatedData.joinDate) : undefined,
         },
       });
@@ -833,6 +854,167 @@ export const memberController = {
         success: false,
         message: 'Failed to update profile',
       });
+    }
+  },
+
+  // R7.3 (G65): tenant-scoped approval queue — lets association admins approve
+  // or reject self-registered members without needing platform Super Admin access.
+  async listPendingApprovals(req: AuthRequest, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const page = Number(req.query.page) || 1;
+      const limit = Math.min(Number(req.query.limit) || 20, 100);
+      const skip = (page - 1) * limit;
+      const validStatuses = ['pending', 'approved', 'rejected'] as const;
+      type ApprovalStatus = typeof validStatuses[number];
+      const rawStatus = req.query.status as string;
+      const status: ApprovalStatus = validStatuses.includes(rawStatus as ApprovalStatus) ? (rawStatus as ApprovalStatus) : 'pending';
+      const search = (req.query.search as string | undefined)?.trim() ?? '';
+
+      const whereClause: Prisma.UserApprovalWhereInput = {
+        approvalStatus: status,
+        user: {
+          associationId,
+          ...(search ? {
+            OR: [
+              { email: { contains: search, mode: 'insensitive' } },
+              { member: {
+                OR: [
+                  { firstName: { contains: search, mode: 'insensitive' } },
+                  { lastName: { contains: search, mode: 'insensitive' } },
+                ],
+              }},
+            ],
+          } : {}),
+        },
+      };
+
+      const [approvals, total] = await Promise.all([
+        prisma.userApproval.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                emailVerified: true,
+                isActive: true,
+                createdAt: true,
+                member: {
+                  select: {
+                    id: true,
+                    memberId: true,
+                    firstName: true,
+                    lastName: true,
+                    phone: true,
+                  },
+                },
+              },
+            },
+            approvedBy: {
+              select: { id: true, email: true },
+            },
+          },
+        }),
+        prisma.userApproval.count({ where: whereClause }),
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          approvals,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error('List pending approvals error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  },
+
+  async updateApprovalStatus(req: AuthRequest, res: Response) {
+    const approvalSchema = z.object({
+      status: z.enum(['approved', 'rejected']),
+      rejectionReason: z.string().optional(),
+    });
+
+    try {
+      const associationId = req.user?.associationId;
+      const adminId = req.user?.id;
+      if (!associationId || !adminId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const userId = Number(req.params.userId);
+      if (!userId) {
+        return res.status(400).json({ success: false, message: 'Invalid userId' });
+      }
+
+      const { status, rejectionReason } = approvalSchema.parse(req.body);
+
+      // Scope check: user must belong to this association
+      const user = await prisma.user.findFirst({
+        where: { id: userId, associationId },
+        include: {
+          association: { select: { name: true, subdomain: true } },
+          userApproval: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found in this association' });
+      }
+
+      if (!user.userApproval) {
+        return res.status(400).json({ success: false, message: 'User approval record not found' });
+      }
+
+      const result = await updateUserApproval(userId, status, adminId, rejectionReason);
+      if (!result.success) {
+        return res.status(400).json({ success: false, message: result.message });
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: adminId,
+          action: status === 'approved' ? 'USER_APPROVED' : 'USER_REJECTED',
+          tableName: 'user_approvals',
+          recordId: userId,
+          newValues: { status, rejectionReason },
+        },
+      });
+
+      try {
+        await sendApprovalNotificationEmail(
+          user.email,
+          status,
+          user.association?.name,
+          rejectionReason,
+          user.association?.subdomain
+        );
+      } catch (emailError) {
+        console.error('Failed to send approval notification email:', emailError);
+      }
+
+      return res.json({ success: true, message: result.message });
+    } catch (error) {
+      console.error('Update approval status error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   },
 };

@@ -3,7 +3,7 @@ import { NotificationsController } from './notifications.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requireAssociationRole } from '../../middleware/rbac';
 
-const router = Router();
+const router: Router = Router();
 const controller = new NotificationsController();
 
 // All routes require authentication

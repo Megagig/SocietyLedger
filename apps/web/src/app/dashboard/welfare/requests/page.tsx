@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  getPayoutRequests, getWelfareFunds, createPayoutRequest, 
+  getPayoutRequests, getWelfareFunds, createPayoutRequest, createBereavementRequest,
   reviewPayoutRequest, disbursePayoutRequest, cancelPayoutRequest,
   checkEligibility, WelfarePayoutRequest, WelfareFund
 } from '@/lib/api/welfare';
@@ -539,7 +539,11 @@ function CreateRequestModal({
     amount: '',
     reason: '',
     supportingDocuments: '',
+    deceasedName: '',
+    relationship: '',
+    dateOfDeath: '',
   });
+  const isBereavement = formData.payoutType === 'BEREAVEMENT';
 
   const checkFundEligibility = async (fundId: string) => {
     if (!fundId) {
@@ -563,13 +567,24 @@ function CreateRequestModal({
     setIsSubmitting(true);
 
     try {
-      await createPayoutRequest({
-        fundId: Number(formData.fundId),
-        payoutType: formData.payoutType,
-        amount: Number(formData.amount),
-        reason: formData.reason,
-        supportingDocuments: formData.supportingDocuments || undefined,
-      });
+      if (isBereavement) {
+        await createBereavementRequest({
+          fundId: Number(formData.fundId),
+          amount: Number(formData.amount),
+          deceasedName: formData.deceasedName,
+          relationship: formData.relationship,
+          dateOfDeath: formData.dateOfDeath,
+          supportingDocuments: formData.supportingDocuments || undefined,
+        });
+      } else {
+        await createPayoutRequest({
+          fundId: Number(formData.fundId),
+          payoutType: formData.payoutType,
+          amount: Number(formData.amount),
+          reason: formData.reason,
+          supportingDocuments: formData.supportingDocuments || undefined,
+        });
+      }
       toast.success('Payout request submitted successfully');
       onSuccess();
     } catch (err: any) {
@@ -650,20 +665,62 @@ function CreateRequestModal({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Reason / Description *
-            </label>
-            <textarea
-              required
-              minLength={10}
-              value={formData.reason}
-              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Please provide details about your request (minimum 10 characters)..."
-            />
-          </div>
+          {isBereavement ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Name of the Deceased *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.deceasedName}
+                  onChange={(e) => setFormData({ ...formData, deceasedName: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Relationship to the Deceased *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.relationship}
+                  onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
+                  placeholder="e.g. Spouse, Parent, Child"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Date of Death *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.dateOfDeath}
+                  onChange={(e) => setFormData({ ...formData, dateOfDeath: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Reason / Description *
+              </label>
+              <textarea
+                required
+                minLength={10}
+                value={formData.reason}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Please provide details about your request (minimum 10 characters)..."
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -7,11 +7,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 // Phase 4.5
 // ============================================
 
-// Enums
-export type ElectionType = 'GENERAL' | 'BY_ELECTION' | 'REFERENDUM';
-export type ElectionStatus = 'DRAFT' | 'NOMINATIONS_OPEN' | 'NOMINATIONS_CLOSED' | 'VOTING_OPEN' | 'VOTING_CLOSED' | 'RESULTS_PUBLISHED' | 'CANCELLED';
+// Enums — must match apps/api's voting.validation.ts / schema.prisma exactly.
+// NOMINATIONS_CLOSED, BY_ELECTION/REFERENDUM and RANKED_CHOICE never existed on
+// the backend — found and corrected at Track R R2 (2026-10-15), see G76.
+export type ElectionType = 'GENERAL' | 'EXECUTIVE' | 'COMMITTEE' | 'SPECIAL';
+export type ElectionStatus = 'DRAFT' | 'NOMINATIONS_OPEN' | 'VOTING_OPEN' | 'VOTING_CLOSED' | 'RESULTS_PUBLISHED' | 'CANCELLED';
 export type CandidateStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
-export type PollType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'RANKED_CHOICE' | 'YES_NO';
+export type PollType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'YES_NO' | 'RATING';
 export type PollStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'CANCELLED';
 
 // Types
@@ -25,10 +27,14 @@ export interface Election {
   nominationEndDate?: string;
   votingStartDate?: string;
   votingEndDate?: string;
-  resultsPublishedAt?: string;
+  maxVotesPerMember: number;
+  allowAbstention: boolean;
   isAnonymous: boolean;
-  allowAbstain: boolean;
-  minVotesRequired?: number;
+  requiresQuorum: boolean;
+  quorumPercentage?: number;
+  eligibleVoterCount: number;
+  totalVotesCast: number;
+  publishedAt?: string;
   createdAt: string;
   updatedAt: string;
   positions?: ElectionPosition[];
@@ -44,8 +50,7 @@ export interface ElectionPosition {
   title: string;
   description?: string;
   maxCandidates: number;
-  minCandidates: number;
-  displayOrder: number;
+  orderNumber: number;
   candidates?: Candidate[];
   _count?: {
     candidates: number;
@@ -103,8 +108,10 @@ export interface Poll {
   startDate?: string;
   endDate?: string;
   isAnonymous: boolean;
-  allowMultipleResponses: boolean;
-  maxSelections?: number;
+  allowMultipleVotes: boolean;
+  maxChoices?: number;
+  showResultsBeforeEnd: boolean;
+  totalResponses: number;
   createdAt: string;
   updatedAt: string;
   options?: PollOption[];
@@ -141,21 +148,31 @@ export interface VotingDashboard {
   recentResults: Election[];
 }
 
+// Matches voting.service.ts's getElectionResults() return shape exactly —
+// the previous version of this type was never reconciled against it (G76).
+export interface ElectionCandidateResult {
+  candidateId: number;
+  memberId: number;
+  memberName: string;
+  voteCount: number;
+  votePercentage: number;
+}
+
 export interface ElectionResults {
-  election: Election;
-  positions: Array<{
-    position: ElectionPosition;
-    candidates: Array<{
-      candidate: Candidate;
-      voteCount: number;
-      percentage: number;
-    }>;
-    totalVotes: number;
-    abstainCount: number;
-    winner?: Candidate;
-  }>;
-  totalVoters: number;
+  electionId: number;
+  electionTitle: string;
+  status: ElectionStatus;
+  totalEligibleVoters: number;
+  totalVotesCast: number;
   voterTurnout: number;
+  quorumMet: boolean;
+  positions: Array<{
+    positionId: number;
+    positionTitle: string;
+    candidates: ElectionCandidateResult[];
+    winner?: ElectionCandidateResult;
+  }>;
+  generalResults?: ElectionCandidateResult[];
 }
 
 export interface PollResults {
@@ -176,9 +193,12 @@ export interface PollResults {
 
 export interface VoterStatus {
   electionId: number;
+  memberId: number;
   hasVoted: boolean;
   votedPositions: number[];
-  remainingPositions: number[];
+  pendingPositions: Array<{ id: number; title: string }>;
+  totalPositions: number;
+  votesCompleted: number;
 }
 
 // ==========================================
@@ -232,11 +252,13 @@ export async function createElection(data: {
   electionType: ElectionType;
   nominationStartDate?: string;
   nominationEndDate?: string;
-  votingStartDate?: string;
-  votingEndDate?: string;
+  votingStartDate: string;
+  votingEndDate: string;
+  maxVotesPerMember?: number;
   isAnonymous?: boolean;
-  allowAbstain?: boolean;
-  minVotesRequired?: number;
+  allowAbstention?: boolean;
+  requiresQuorum?: boolean;
+  quorumPercentage?: number;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/elections`, data);
   if (!response.ok) {
@@ -254,9 +276,11 @@ export async function updateElection(id: number, data: Partial<{
   nominationEndDate: string;
   votingStartDate: string;
   votingEndDate: string;
+  maxVotesPerMember: number;
   isAnonymous: boolean;
-  allowAbstain: boolean;
-  minVotesRequired: number;
+  allowAbstention: boolean;
+  requiresQuorum: boolean;
+  quorumPercentage: number;
 }>) {
   const response = await apiPut(`${API_URL}/api/voting/elections/${id}`, data);
   if (!response.ok) {
@@ -344,8 +368,7 @@ export async function addPosition(electionId: number, data: {
   title: string;
   description?: string;
   maxCandidates?: number;
-  minCandidates?: number;
-  displayOrder?: number;
+  orderNumber?: number;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/elections/${electionId}/positions`, data);
   if (!response.ok) {
@@ -359,8 +382,7 @@ export async function updatePosition(positionId: number, data: Partial<{
   title: string;
   description: string;
   maxCandidates: number;
-  minCandidates: number;
-  displayOrder: number;
+  orderNumber: number;
 }>) {
   const response = await apiPut(`${API_URL}/api/voting/positions/${positionId}`, data);
   if (!response.ok) {
@@ -397,9 +419,10 @@ export async function getCandidates(electionId: number, params?: {
 }
 
 export async function registerCandidate(electionId: number, data: {
-  positionId: number;
+  positionId?: number;
   memberId: number;
   manifesto?: string;
+  photoUrl?: string;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/elections/${electionId}/candidates`, data);
   if (!response.ok) {
@@ -410,8 +433,9 @@ export async function registerCandidate(electionId: number, data: {
 }
 
 export async function selfNominate(electionId: number, data: {
-  positionId: number;
+  positionId?: number;
   manifesto?: string;
+  photoUrl?: string;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/elections/${electionId}/self-nominate`, data);
   if (!response.ok) {
@@ -421,9 +445,11 @@ export async function selfNominate(electionId: number, data: {
   return response.json();
 }
 
+// G76: previously sent {approved, rejectedReason} — the real endpoint expects
+// {status, rejectionReason} (approveCandidateSchema); this call never worked.
 export async function approveCandidate(candidateId: number, data: {
-  approved: boolean;
-  rejectedReason?: string;
+  status: 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/candidates/${candidateId}/approve`, data);
   if (!response.ok) {
@@ -433,8 +459,8 @@ export async function approveCandidate(candidateId: number, data: {
   return response.json();
 }
 
-export async function withdrawCandidate(candidateId: number) {
-  const response = await apiPost(`${API_URL}/api/voting/candidates/${candidateId}/withdraw`, {});
+export async function withdrawCandidate(candidateId: number, withdrawalReason?: string) {
+  const response = await apiPost(`${API_URL}/api/voting/candidates/${candidateId}/withdraw`, { withdrawalReason });
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to withdraw candidacy');
@@ -449,7 +475,7 @@ export async function withdrawCandidate(candidateId: number) {
 export async function castVote(electionId: number, data: {
   positionId: number;
   candidateId?: number;
-  isAbstain?: boolean;
+  isAbstention?: boolean;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/elections/${electionId}/vote`, data);
   if (!response.ok) {
@@ -462,7 +488,7 @@ export async function castVote(electionId: number, data: {
 export async function bulkCastVotes(electionId: number, votes: Array<{
   positionId: number;
   candidateId?: number;
-  isAbstain?: boolean;
+  isAbstention?: boolean;
 }>) {
   const response = await apiPost(`${API_URL}/api/voting/elections/${electionId}/vote/bulk`, { votes });
   if (!response.ok) {
@@ -511,12 +537,13 @@ export async function createPoll(data: {
   title: string;
   description?: string;
   pollType: PollType;
-  startDate?: string;
-  endDate?: string;
+  startDate: string;
+  endDate: string;
   isAnonymous?: boolean;
-  allowMultipleResponses?: boolean;
-  maxSelections?: number;
-  options?: { optionText: string; orderNumber?: number }[];
+  allowMultipleVotes?: boolean;
+  maxChoices?: number;
+  showResultsBeforeEnd?: boolean;
+  options: { optionText: string; orderNumber?: number }[];
 }) {
   const response = await apiPost(`${API_URL}/api/voting/polls`, data);
   if (!response.ok) {
@@ -529,12 +556,12 @@ export async function createPoll(data: {
 export async function updatePoll(id: number, data: Partial<{
   title: string;
   description: string;
-  pollType: PollType;
   startDate: string;
   endDate: string;
   isAnonymous: boolean;
-  allowMultipleResponses: boolean;
-  maxSelections: number;
+  allowMultipleVotes: boolean;
+  maxChoices: number;
+  showResultsBeforeEnd: boolean;
 }>) {
   const response = await apiPut(`${API_URL}/api/voting/polls/${id}`, data);
   if (!response.ok) {
@@ -583,8 +610,8 @@ export async function cancelPoll(id: number) {
 
 // Poll Options
 export async function addPollOption(pollId: number, data: {
-  text: string;
-  displayOrder?: number;
+  optionText: string;
+  orderNumber?: number;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/polls/${pollId}/options`, data);
   if (!response.ok) {

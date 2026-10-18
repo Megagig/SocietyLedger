@@ -17,8 +17,9 @@ import prisma from '../../lib/prisma';
 import { hashPassword } from '../../lib/auth';
 import { sendEmail } from '../../lib/email';
 import { hashToken } from '../auth/auth.service';
+import { SettingsService } from '../settings/settings.service';
 
-const INVITE_TOKEN_EXPIRY_HOURS = 72; // 3 days
+const DEFAULT_INVITE_TOKEN_EXPIRY_HOURS = 72; // 3 days — fallback only
 
 /**
  * Generate a secure invite token
@@ -35,7 +36,8 @@ export async function sendMemberInviteEmail(
   inviteToken: string,
   memberName: string,
   associationName: string,
-  subdomain?: string
+  subdomain?: string,
+  expiresAt?: Date
 ): Promise<void> {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const baseDomain = process.env.BASE_DOMAIN || 'societyledger.com';
@@ -51,12 +53,21 @@ export async function sendMemberInviteEmail(
   if (subdomain && process.env.NODE_ENV === 'production') {
     activateUrl = `https://${subdomain}.${baseDomain}/auth/activate?token=${inviteToken}`;
   } else if (subdomain) {
-    activateUrl = `http://${subdomain}.localhost:3000/auth/activate?token=${inviteToken}`;
+    // G72: read the real dev port from FRONTEND_URL instead of hardcoding :3000
+    const devPort = new URL(baseUrl).port || '3000';
+    activateUrl = `http://${subdomain}.localhost:${devPort}/auth/activate?token=${inviteToken}`;
   } else {
     activateUrl = `${baseUrl}/auth/activate?token=${inviteToken}`;
   }
   
   console.log('[Member Invite] Generated activation URL:', activateUrl);
+
+  // R4.6/G53: Members & Access Settings' inviteExpiryHours was saved but
+  // never read — createMemberInvite() now sets the real expiry from it, so
+  // display the real expiresAt here instead of the old hardcoded constant.
+  const expiryHours = expiresAt
+    ? Math.round((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60))
+    : DEFAULT_INVITE_TOKEN_EXPIRY_HOURS;
 
   await sendEmail({
     to: email,
@@ -66,7 +77,7 @@ export async function sendMemberInviteEmail(
       memberName,
       associationName,
       activateUrl,
-      expiryHours: INVITE_TOKEN_EXPIRY_HOURS,
+      expiryHours,
     },
   });
 }
@@ -122,7 +133,9 @@ export async function createMemberInvite(data: {
   // Generate invite token
   const inviteToken = generateInviteToken();
   const hashedToken = hashToken(inviteToken);
-  const expiresAt = new Date(Date.now() + INVITE_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+  const inviteExpiryHours = await SettingsService.getSetting(associationId, 'members_access', 'inviteExpiryHours')
+    ?? DEFAULT_INVITE_TOKEN_EXPIRY_HOURS;
+  const expiresAt = new Date(Date.now() + inviteExpiryHours * 60 * 60 * 1000);
 
   // Create invite record
   const invite = await prisma.memberInvite.create({
@@ -480,7 +493,8 @@ export async function memberSelfRegister(data: {
   } else {
     // No existing member - create both member and user
     const memberCount = await prisma.member.count({ where: { associationId } });
-    const memberId = `MEM${String(memberCount + 1).padStart(4, '0')}`;
+    const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
+    const memberId = `${memberIdPrefix}${String(memberCount + 1).padStart(4, '0')}`;
 
     const result = await prisma.$transaction(async (tx) => {
       // Create user first

@@ -12,6 +12,9 @@ import {
   createMinutes,
   updateMinutes,
   approveMinutes,
+  addAgendaItem,
+  updateAgendaItem,
+  deleteAgendaItem,
   Meeting,
   Attendance,
   AttendanceStatus,
@@ -181,6 +184,52 @@ export default function MeetingDetailPage() {
     }
   };
 
+  // G27: IN_PROGRESS was never reachable — Complete Meeting only rendered
+  // once already IN_PROGRESS, but nothing ever set that status.
+  const handleStartMeeting = async () => {
+    try {
+      await updateMeeting(meetingId, { status: 'IN_PROGRESS' });
+      await fetchMeeting();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleAddAgendaItem = async () => {
+    const title = window.prompt('Agenda item title');
+    if (!title?.trim()) return;
+    try {
+      await addAgendaItem(meetingId, {
+        orderNumber: (meeting?.agendaItems?.length || 0) + 1,
+        title: title.trim(),
+      });
+      await fetchMeeting();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleEditAgendaItem = async (agendaId: number, currentTitle: string) => {
+    const title = window.prompt('Agenda item title', currentTitle);
+    if (!title?.trim()) return;
+    try {
+      await updateAgendaItem(meetingId, agendaId, { title: title.trim() });
+      await fetchMeeting();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteAgendaItem = async (agendaId: number) => {
+    if (!window.confirm('Remove this agenda item?')) return;
+    try {
+      await deleteAgendaItem(meetingId, agendaId);
+      await fetchMeeting();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -249,6 +298,13 @@ export default function MeetingDetailPage() {
               >
                 <IconEdit size={18} />
                 Edit
+              </button>
+              <button
+                onClick={handleStartMeeting}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <IconCheck size={18} />
+                Start Meeting
               </button>
               <button
                 onClick={() => setShowCancelModal(true)}
@@ -380,9 +436,22 @@ export default function MeetingDetailPage() {
 
           {/* Agenda */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Agenda
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Agenda
+              </h2>
+              {/* G27: agenda items could only be set at creation — no add/edit/
+                  delete control existed on this page at all. */}
+              {meeting.status === 'SCHEDULED' && (
+                <button
+                  onClick={handleAddAgendaItem}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700"
+                >
+                  <IconPlus size={14} />
+                  Add Item
+                </button>
+              )}
+            </div>
             {meeting.agendaItems && meeting.agendaItems.length > 0 ? (
               <div className="space-y-3">
                 {meeting.agendaItems.map((item, index) => (
@@ -406,6 +475,22 @@ export default function MeetingDetailPage() {
                           {item.presenter && <span>Presenter: {item.presenter}</span>}
                         </div>
                       </div>
+                      {meeting.status === 'SCHEDULED' && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditAgendaItem(item.id, item.title)}
+                            className="p-1.5 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                          >
+                            <IconEdit size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAgendaItem(item.id)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          >
+                            <IconTrash size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

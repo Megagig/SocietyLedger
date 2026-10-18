@@ -4,6 +4,7 @@
 
 import { prisma } from '../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
 import {
   BankAccountInput,
   BankTransferInput,
@@ -739,12 +740,15 @@ export const nigerianPaymentsService = {
       data: {
         associationId,
         transactionId: data.transactionId,
+        transactionIds: data.transactionIds || [],
         bankTransferId: data.bankTransferId,
+        paymentMethod: data.paymentMethod,
         memberId,
         filename: data.filename,
         filepath: data.filepath,
         fileSize: data.fileSize,
         mimeType: data.mimeType,
+        declarationNote: data.declarationNote,
         status: 'PENDING',
         notes: data.notes,
       },
@@ -772,74 +776,131 @@ export const nigerianPaymentsService = {
     userId: number,
     verification: PaymentProofVerification
   ) {
-    const proof = await prisma.paymentProof.update({
-      where: { id },
-      data: {
-        status: verification.status,
-        verifiedBy: userId,
-        verifiedAt: new Date(),
-        rejectionReason: verification.rejectionReason,
-        notes: verification.notes,
-      },
-      include: {
-        transaction: true,
-        bankTransfer: true,
-      },
-    });
+    // Accounting syncs run after the DB transaction commits — onPaymentRecorded is
+    // non-critical and must not cause the approval to roll back if it fails.
+    type AccountingSync = () => Promise<void>;
+    const accountingSyncs: AccountingSync[] = [];
 
-    // If approved and linked to a transaction, update transaction status
-    if (verification.status === 'APPROVED' && proof.transactionId) {
-      await prisma.transaction.update({
-        where: { id: proof.transactionId },
+    const proof = await prisma.$transaction(async (tx) => {
+      const updated = await tx.paymentProof.update({
+        where: { id },
         data: {
-          status: 'paid',
-          paymentDate: new Date(),
-          paymentMethod: 'bank_transfer',
-        },
-      });
-
-      // Create payment record
-      const paymentCount = await prisma.payment.count({ where: { associationId } });
-      const payment = await prisma.payment.create({
-        data: {
-          associationId,
-          transactionId: proof.transactionId,
-          amountPaid: proof.transaction!.amount,
-          paymentDate: new Date(),
-          paymentMethod: 'bank_transfer',
-          receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
-          confirmedBy: userId,
-          confirmedAt: new Date(),
-        },
-        include: {
-          transaction: {
-            include: {
-              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-              category: { select: { id: true, name: true, type: true } },
-            },
-          },
-        },
-      });
-
-      // Accounting integration: Sync payment to accounting module
-      try {
-        await accountingIntegrationService.onPaymentRecorded(payment, userId);
-      } catch (syncError) {
-        console.error('Accounting sync failed (non-critical):', syncError);
-        // Don't throw - payment creation succeeded
-      }
-    }
-
-    // If approved and linked to bank transfer, update transfer status
-    if (verification.status === 'APPROVED' && proof.bankTransferId) {
-      await prisma.bankTransfer.update({
-        where: { id: proof.bankTransferId },
-        data: {
-          status: 'VERIFIED',
+          status: verification.status,
           verifiedBy: userId,
           verifiedAt: new Date(),
+          rejectionReason: verification.rejectionReason,
+          notes: verification.notes,
+        },
+        include: {
+          transaction: true,
+          bankTransfer: true,
         },
       });
+
+      if (verification.status === 'APPROVED') {
+        // R7.2 (G17): transactionIds (multi-item member declaration) and transactionId
+        // (single bank-transfer-linked proof) are mutually exclusive paths. Checking
+        // transactionIds first ensures a proof that carries both fields only processes
+        // payments once — the bank-transfer path (else if) is skipped when declarations
+        // are present, preventing double payment records.
+        if (updated.transactionIds.length > 0) {
+          const transactions = await tx.transaction.findMany({
+            where: { id: { in: updated.transactionIds }, associationId },
+            include: { payments: { select: { amountPaid: true } } },
+          });
+
+          for (const txn of transactions) {
+            const alreadyPaid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+            const balance = new Decimal(txn.amount).minus(alreadyPaid);
+            if (balance.lessThanOrEqualTo(0)) continue;
+
+            const paymentCount = await tx.payment.count({ where: { associationId } });
+            const payment = await tx.payment.create({
+              data: {
+                associationId,
+                transactionId: txn.id,
+                amountPaid: balance,
+                paymentDate: new Date(),
+                paymentMethod: updated.paymentMethod || 'bank_transfer',
+                receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
+                confirmedBy: userId,
+                confirmedAt: new Date(),
+              },
+              include: {
+                transaction: {
+                  include: {
+                    member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+                    category: { select: { id: true, name: true, type: true } },
+                  },
+                },
+              },
+            });
+
+            await tx.transaction.update({ where: { id: txn.id }, data: { status: 'paid' } });
+            await tx.levyCampaignAssignment.updateMany({
+              where: { transactionId: txn.id },
+              data: { status: 'paid' },
+            });
+
+            accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
+          }
+        } else if (updated.transactionId && updated.transaction) {
+          // Single bank-transfer-linked proof path — only runs when transactionIds is empty
+          await tx.transaction.update({
+            where: { id: updated.transactionId },
+            data: {
+              status: 'paid',
+              paymentDate: new Date(),
+              paymentMethod: 'bank_transfer',
+            },
+          });
+
+          const paymentCount = await tx.payment.count({ where: { associationId } });
+          const payment = await tx.payment.create({
+            data: {
+              associationId,
+              transactionId: updated.transactionId,
+              amountPaid: updated.transaction.amount,
+              paymentDate: new Date(),
+              paymentMethod: 'bank_transfer',
+              receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
+              confirmedBy: userId,
+              confirmedAt: new Date(),
+            },
+            include: {
+              transaction: {
+                include: {
+                  member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+                  category: { select: { id: true, name: true, type: true } },
+                },
+              },
+            },
+          });
+
+          accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
+        }
+
+        if (updated.bankTransferId) {
+          await tx.bankTransfer.update({
+            where: { id: updated.bankTransferId },
+            data: {
+              status: 'VERIFIED',
+              verifiedBy: userId,
+              verifiedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      return updated;
+    });
+
+    for (const sync of accountingSyncs) {
+      try {
+        await sync();
+      } catch (syncError) {
+        console.error('Accounting sync failed (non-critical):', syncError);
+      }
     }
 
     return proof;
@@ -858,8 +919,8 @@ export const nigerianPaymentsService = {
     const { page, limit, status, memberId, transactionId } = options;
     const skip = (page - 1) * limit;
 
-    const where: any = { associationId };
-    if (status) where.status = status;
+    const where: Prisma.PaymentProofWhereInput = { associationId };
+    if (status) where.status = status as Prisma.EnumPaymentProofStatusFilter;
     if (memberId) where.memberId = memberId;
     if (transactionId) where.transactionId = transactionId;
 

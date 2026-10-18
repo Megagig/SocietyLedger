@@ -685,62 +685,6 @@ export const accountingController = {
   },
 
   // ==========================================
-  // TASK-ACC-008: Auto-sync Transactions
-  // ==========================================
-
-  /**
-   * Sync a transaction to accounting
-   * POST /api/accounting/sync/transaction/:id
-   */
-  async syncTransaction(req: Request, res: Response) {
-    try {
-      const associationId = req.user?.associationId;
-      const userId = req.user?.id;
-      if (!associationId || !userId) {
-        return res.status(400).json({ success: false, message: 'Authentication required' });
-      }
-
-      const transactionId = parseInt(req.params.id);
-      const entry = await accountingService.syncTransactionToAccounting(associationId, transactionId, userId);
-
-      return res.status(201).json({
-        success: true,
-        message: 'Transaction synced to accounting successfully',
-        data: entry,
-      });
-    } catch (error: any) {
-      console.error('Error syncing transaction:', error);
-      return res.status(400).json({ success: false, message: error.message });
-    }
-  },
-
-  /**
-   * Sync a payment to accounting
-   * POST /api/accounting/sync/payment/:id
-   */
-  async syncPayment(req: Request, res: Response) {
-    try {
-      const associationId = req.user?.associationId;
-      const userId = req.user?.id;
-      if (!associationId || !userId) {
-        return res.status(400).json({ success: false, message: 'Authentication required' });
-      }
-
-      const paymentId = parseInt(req.params.id);
-      const entry = await accountingService.syncPaymentToAccounting(associationId, paymentId, userId);
-
-      return res.status(201).json({
-        success: true,
-        message: 'Payment synced to accounting successfully',
-        data: entry,
-      });
-    } catch (error: any) {
-      console.error('Error syncing payment:', error);
-      return res.status(400).json({ success: false, message: error.message });
-    }
-  },
-
-  // ==========================================
   // SYNC STATUS & BULK OPERATIONS
   // ==========================================
 
@@ -984,6 +928,245 @@ export const accountingController = {
     } catch (error) {
       console.error('Error bulk syncing payments:', error);
       return res.status(500).json({ success: false, message: 'Failed to bulk sync payments' });
+    }
+  },
+
+  /**
+   * Bulk sync unsynced welfare contributions
+   * POST /api/accounting/sync/welfare-contributions/bulk
+   */
+  async bulkSyncWelfareContributions(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const { prisma } = await import('../../lib/prisma');
+      const { accountingIntegrationService } = await import('../../services/accounting-integration.service');
+
+      const contributions = await prisma.welfareContribution.findMany({
+        where: { associationId, status: 'CONFIRMED', accountingSynced: false } as any,
+        include: { fund: { select: { id: true, name: true } } },
+        take: 100,
+      });
+
+      let synced = 0;
+      let failed = 0;
+      const errors: any[] = [];
+
+      for (const contribution of contributions) {
+        try {
+          await accountingIntegrationService.onWelfareContributionConfirmed(contribution, contribution.fund, req.user!.id);
+          synced++;
+        } catch (error: any) {
+          failed++;
+          errors.push({ contributionId: contribution.id, error: error.message });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Synced ${synced} welfare contributions, ${failed} failed`,
+        data: { total: contributions.length, synced, failed, errors: errors.slice(0, 10) },
+      });
+    } catch (error) {
+      console.error('Error bulk syncing welfare contributions:', error);
+      return res.status(500).json({ success: false, message: 'Failed to bulk sync welfare contributions' });
+    }
+  },
+
+  /**
+   * Bulk sync unsynced welfare payouts
+   * POST /api/accounting/sync/welfare-payouts/bulk
+   */
+  async bulkSyncWelfarePayouts(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const { prisma } = await import('../../lib/prisma');
+      const { accountingIntegrationService } = await import('../../services/accounting-integration.service');
+
+      const payouts = await prisma.welfarePayoutRequest.findMany({
+        where: { associationId, status: 'DISBURSED', accountingSynced: false } as any,
+        include: { fund: { select: { id: true, name: true } } },
+        take: 100,
+      });
+
+      let synced = 0;
+      let failed = 0;
+      const errors: any[] = [];
+
+      for (const payout of payouts) {
+        try {
+          await accountingIntegrationService.onWelfarePayoutDisbursed(payout, payout.fund, req.user!.id);
+          synced++;
+        } catch (error: any) {
+          failed++;
+          errors.push({ payoutId: payout.id, error: error.message });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Synced ${synced} welfare payouts, ${failed} failed`,
+        data: { total: payouts.length, synced, failed, errors: errors.slice(0, 10) },
+      });
+    } catch (error) {
+      console.error('Error bulk syncing welfare payouts:', error);
+      return res.status(500).json({ success: false, message: 'Failed to bulk sync welfare payouts' });
+    }
+  },
+
+  /**
+   * Bulk sync unsynced cooperative savings transactions
+   * POST /api/accounting/sync/savings-transactions/bulk
+   */
+  async bulkSyncSavingsTransactions(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const { prisma } = await import('../../lib/prisma');
+      const { accountingIntegrationService } = await import('../../services/accounting-integration.service');
+
+      // Only DEPOSIT/WITHDRAWAL are ever synced (same scope the real-time path covers) —
+      // INTEREST/TRANSFER_IN/TRANSFER_OUT/FEE have no accounting mapping today.
+      const transactions = await prisma.savingsTransaction.findMany({
+        where: {
+          associationId,
+          type: { in: ['DEPOSIT', 'WITHDRAWAL'] },
+          accountingSynced: false,
+        } as any,
+        include: {
+          savingsAccount: {
+            include: { member: { select: { id: true, memberId: true, firstName: true, lastName: true } } },
+          },
+        },
+        take: 100,
+      });
+
+      let synced = 0;
+      let failed = 0;
+      const errors: any[] = [];
+
+      for (const transaction of transactions) {
+        try {
+          if (transaction.type === 'DEPOSIT') {
+            await accountingIntegrationService.onSavingsDeposit(transaction, transaction.savingsAccount, req.user!.id);
+          } else {
+            await accountingIntegrationService.onSavingsWithdrawal(transaction, transaction.savingsAccount, req.user!.id);
+          }
+          synced++;
+        } catch (error: any) {
+          failed++;
+          errors.push({ transactionId: transaction.id, error: error.message });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Synced ${synced} savings transactions, ${failed} failed`,
+        data: { total: transactions.length, synced, failed, errors: errors.slice(0, 10) },
+      });
+    } catch (error) {
+      console.error('Error bulk syncing savings transactions:', error);
+      return res.status(500).json({ success: false, message: 'Failed to bulk sync savings transactions' });
+    }
+  },
+
+  /**
+   * Bulk sync unsynced loans (disbursed)
+   * POST /api/accounting/sync/loans/bulk
+   */
+  async bulkSyncLoans(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const { prisma } = await import('../../lib/prisma');
+      const { accountingIntegrationService } = await import('../../services/accounting-integration.service');
+
+      const loans = await prisma.loan.findMany({
+        where: { associationId, accountingSynced: false } as any,
+        include: { application: true },
+        take: 100,
+      });
+
+      let synced = 0;
+      let failed = 0;
+      const errors: any[] = [];
+
+      for (const loan of loans) {
+        try {
+          await accountingIntegrationService.onLoanDisbursed(loan, loan.application, req.user!.id);
+          synced++;
+        } catch (error: any) {
+          failed++;
+          errors.push({ loanId: loan.id, loanNumber: loan.loanNumber, error: error.message });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Synced ${synced} loans, ${failed} failed`,
+        data: { total: loans.length, synced, failed, errors: errors.slice(0, 10) },
+      });
+    } catch (error) {
+      console.error('Error bulk syncing loans:', error);
+      return res.status(500).json({ success: false, message: 'Failed to bulk sync loans' });
+    }
+  },
+
+  /**
+   * Bulk sync unsynced loan repayments
+   * POST /api/accounting/sync/loan-repayments/bulk
+   */
+  async bulkSyncLoanRepayments(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const { prisma } = await import('../../lib/prisma');
+      const { accountingIntegrationService } = await import('../../services/accounting-integration.service');
+
+      const repayments = await prisma.loanRepayment.findMany({
+        where: { associationId, accountingSynced: false } as any,
+        include: { loan: true },
+        take: 100,
+      });
+
+      let synced = 0;
+      let failed = 0;
+      const errors: any[] = [];
+
+      for (const repayment of repayments) {
+        try {
+          await accountingIntegrationService.onLoanRepayment(repayment, repayment.loan, req.user!.id);
+          synced++;
+        } catch (error: any) {
+          failed++;
+          errors.push({ repaymentId: repayment.id, error: error.message });
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Synced ${synced} loan repayments, ${failed} failed`,
+        data: { total: repayments.length, synced, failed, errors: errors.slice(0, 10) },
+      });
+    } catch (error) {
+      console.error('Error bulk syncing loan repayments:', error);
+      return res.status(500).json({ success: false, message: 'Failed to bulk sync loan repayments' });
     }
   },
 

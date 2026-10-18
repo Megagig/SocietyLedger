@@ -21,7 +21,7 @@ import { IconPlus, IconDots, IconRefresh, IconEdit, IconTrash } from '@tabler/ic
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { smsApi, SMSTemplate, CreateTemplateRequest } from '@/lib/api/sms';
+import { smsApi, SMSTemplate, SMSTemplateCategory, CreateTemplateRequest } from '@/lib/api/sms';
 import { TemplateCategory } from '@/components/communications/TemplateCategory';
 import { TemplateEditor } from '@/components/communications/TemplateEditor';
 
@@ -30,7 +30,7 @@ export default function TemplatesListPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<SMSTemplateCategory | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<SMSTemplate | null>(null);
   const [showEditor, setShowEditor] = useState(false);
 
@@ -91,7 +91,7 @@ export default function TemplatesListPage() {
     }
   };
 
-  const handleSaveTemplate = async (template: { name: string; category: string; message: string }) => {
+  const handleSaveTemplate = async (template: CreateTemplateRequest) => {
     if (editingTemplate) {
       // Update existing template
       try {
@@ -146,8 +146,8 @@ export default function TemplatesListPage() {
         </Badge>
       </Table.Td>
       <Table.Td>
-        <Text size="sm" lineClamp={2} title={template.message}>
-          {template.message}
+        <Text size="sm" lineClamp={2} title={template.content}>
+          {template.content}
         </Text>
       </Table.Td>
       <Table.Td>{template.usageCount}</Table.Td>
@@ -243,7 +243,7 @@ export default function TemplatesListPage() {
               <TemplateCategory
                 categories={categories}
                 selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
+                onCategoryChange={(cat) => setSelectedCategory(cat as SMSTemplateCategory | null)}
                 categoryCounts={categoryCounts}
               />
             </Card>

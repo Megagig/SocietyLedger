@@ -6,6 +6,7 @@
  */
 
 import { Request, Response } from 'express';
+import prisma from '../../lib/prisma';
 import { SettingsService } from './settings.service';
 import { LogoService } from './logo.service';
 import { SettingsCategory } from './settings.types';
@@ -182,6 +183,84 @@ export class SettingsController {
       res.status(500).json({
         success: false,
         message: 'Failed to update association profile'
+      });
+    }
+  }
+
+  /**
+   * GET /api/settings/audit-logs
+   * G51: tenant-scoped audit log listing — the only prior frontend caller
+   * hit a platform-only route and always got "Platform access denied."
+   * This one is filtered to the caller's own association.
+   */
+  static async getAuditLogs(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Association context required'
+        });
+      }
+
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Number(req.query.limit) || 20);
+      const skip = (page - 1) * limit;
+      const action = req.query.action as string | undefined;
+      const tableName = req.query.tableName as string | undefined;
+      const search = req.query.search as string | undefined;
+
+      const whereClause: any = { associationId };
+      if (action) {
+        whereClause.action = { contains: action, mode: 'insensitive' };
+      }
+      if (tableName) {
+        whereClause.tableName = tableName;
+      }
+      if (search) {
+        whereClause.OR = [
+          { action: { contains: search, mode: 'insensitive' } },
+          { tableName: { contains: search, mode: 'insensitive' } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+        ];
+      }
+
+      const [logs, total] = await Promise.all([
+        prisma.auditLog.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: {
+              select: {
+                email: true,
+                member: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        }),
+        prisma.auditLog.count({ where: whereClause }),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          logs,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch audit logs'
       });
     }
   }
