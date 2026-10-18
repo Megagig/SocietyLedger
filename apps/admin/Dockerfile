@@ -21,6 +21,7 @@ WORKDIR /app
 # the full source. pnpm puts Next.js in apps/admin/node_modules, not the root.
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
+COPY tsconfig.base.json ./tsconfig.base.json
 ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* vars must be baked in at build time
 ARG NEXT_PUBLIC_ADMIN_HOST
