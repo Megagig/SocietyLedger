@@ -91,11 +91,14 @@ Maximum 24 hours — daily automated backups are configured in Dokploy.
 
 | Variable | Required | Description |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | Yes | API base URL e.g. `https://api.societyledger.com.ng` |
-| `NEXT_PUBLIC_ADMIN_HOST` | Yes | Admin console origin e.g. `https://admin.societyledger.com.ng` (used for CSRF check) |
-| `SESSION_SECRET` | Yes | 32-byte hex secret for cookie signing |
-| `ADMIN_IP_ALLOWLIST` | No | Comma-separated CIDR blocks; leave blank to allow all |
-| `NODE_ENV` | Yes | `production` in prod; controls cookie `Secure` flag |
+| `API_URL` | Yes | API base URL (server-side only) e.g. `https://api.societyledger.com.ng` |
+| `NEXT_PUBLIC_ADMIN_HOST` | Yes | Admin console origin e.g. `https://admin.societyledger.com.ng` — used for CSRF origin check in BFF |
+| `BASE_DOMAIN` | Yes | Root domain e.g. `societyledger.com.ng` |
+| `NODE_ENV` | Yes | `production` in prod; enables `Secure` flag on session cookie |
+| `NEXT_PUBLIC_ENV` | No | `production` — controls the env badge displayed in the UI header |
+| `ADMIN_IP_ALLOWLIST` | No | Comma-separated CIDR blocks; leave blank to allow all IPs |
+
+> **Note:** `NEXT_PUBLIC_API_URL` and `SESSION_SECRET` are **not** used by the admin app — do not set them here. `NEXT_PUBLIC_API_URL` belongs to `apps/web`.
 
 ---
 
