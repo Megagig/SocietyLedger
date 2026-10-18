@@ -20,6 +20,11 @@ WORKDIR /app
 COPY --from=installer /app/node_modules ./node_modules
 COPY --from=pruner /app/out/full/ .
 ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* vars must be baked in at build time
+ARG NEXT_PUBLIC_ADMIN_HOST
+ARG NEXT_PUBLIC_ENV
+ENV NEXT_PUBLIC_ADMIN_HOST=$NEXT_PUBLIC_ADMIN_HOST
+ENV NEXT_PUBLIC_ENV=$NEXT_PUBLIC_ENV
 RUN npm install -g pnpm && pnpm --filter @societyledger/admin build
 
 # Production runner
