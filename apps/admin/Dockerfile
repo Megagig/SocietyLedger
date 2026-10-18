@@ -17,7 +17,9 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 # Build
 FROM base AS builder
 WORKDIR /app
-COPY --from=installer /app/node_modules ./node_modules
+# Copy the full installer output (root + workspace node_modules) then overlay
+# the full source. pnpm puts Next.js in apps/admin/node_modules, not the root.
+COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
 ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* vars must be baked in at build time
