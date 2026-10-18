@@ -26,8 +26,8 @@
     "debug:accounting": "tsx ../../scripts/debug-association-accounting.ts"
   },
   "dependencies": {
-    "@societyledger/shared": "workspace:*",
     "@prisma/client": "^5.0.0",
+    "@societyledger/shared": "workspace:*",
     "@types/bcryptjs": "^2.4.0",
     "@types/cookie-parser": "^1.4.6",
     "@types/cors": "^2.8.17",
@@ -53,6 +53,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
+    "otplib": "^13.5.0",
     "paystack-node": "^0.3.0",
     "pdfkit": "^0.17.2",
     "prisma": "^5.0.0",

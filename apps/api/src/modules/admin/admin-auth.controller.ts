@@ -26,6 +26,8 @@ export class AdminAuthController {
           role: true,
           associationId: true,
           emailVerified: true,
+          totpEnabledAt: true,
+          totpSecretEnc: true,
         },
       });
 
@@ -42,6 +44,38 @@ export class AdminAuthController {
 
       if (!user.emailVerified) {
         res.status(403).json({ success: false, message: 'Email not verified', code: 'EMAIL_NOT_VERIFIED' });
+        return;
+      }
+
+      // If TOTP is enabled, create a challenge and return requires2fa
+      const totpEnabled = !!user.totpEnabledAt && !!user.totpSecretEnc && !user.totpSecretEnc.startsWith('pending:');
+      if (totpEnabled) {
+        const challenge = await prisma.adminLoginChallenge.create({
+          data: {
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 5 * 60_000), // 5 minutes
+          },
+        });
+        res.json({
+          success: true,
+          data: { requires2fa: true, challengeId: challenge.id },
+        });
+        return;
+      }
+
+      // If TOTP is configured but not confirmed (pending), return requires2faSetup
+      const totpPending = !!user.totpSecretEnc?.startsWith('pending:');
+      if (totpPending) {
+        const challenge = await prisma.adminLoginChallenge.create({
+          data: {
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 5 * 60_000),
+          },
+        });
+        res.json({
+          success: true,
+          data: { requires2faSetup: true, challengeId: challenge.id },
+        });
         return;
       }
 
