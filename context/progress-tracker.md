@@ -3,8 +3,8 @@
 > **Living document.** Updated after every feature ships. A new session reads this first to know exactly where things stand. Build the **next unchecked item in the Master sequence** whose dependencies are checked (order and details in `build-plan.md`). Docs track (D) comes first, then the admin track (A), then the mobile track (F), with D7.x after mobile milestones.
 
 ## Current status
-- **Track / phase:** Docs D6 handed off to the owner (D6.1–D6.3 complete; D6.4's remaining items are G61–G63, owner/infrastructure/browser-dependent — see that section) — **Track R (Gap Remediation) complete as of 2026-10-18. R0–R7 all done; Milestone RL achieved. Post-review fixes applied 2026-10-18 (see Decisions log).** Next is Admin Phase A1 (per the sequencing rule: A1 does not start until RL).
-- **Next feature:** **Admin Phase A1** — Track R is done, Milestone RL is claimed. Remaining `open` gaps are G2/G4/G8/G9/G10/G11, all correctly excluded from Track R (Admin-phase, Mobile-phase, or accepted-for-v1). See `build-plan.md` for A1 scope.
+- **Track / phase:** Admin Phase A1 — A1.1–A1.6 complete as of 2026-10-18. **Next: A1.7 Dokploy staging deploy.**
+- **Next feature:** **A1.7** — Add `societyledger-admin` service to `docker-compose.dokploy.yml`, Traefik priority 100 for admin and 1 for web wildcard, env vars, health check, staging verification, README runbook.
 - **Last updated:** 2026-10-18 (R6 — Remaining functional gaps & hygiene. Audited every gap number against R6's listed 16 items before starting and found real, unaddressed material outside that list: G77 (re-verified live — not actually exploitable, hardened anyway for defense-in-depth) and a cluster of smaller R4-era leftovers (G79/G80/G82/G84/G87 fixed, G81/G83 formally declined/deferred, G73 investigated and found bigger than scoped). Split the three substantial-but-undone R0 decisions (G13/G17/G65) into a new Phase R7 rather than quietly building them as "hygiene." Three gaps turned out stale on live re-verification — G18 (1,440 real ledger entries already exist and both read endpoints return them), G36 (a real disbursement already sets `nextPaymentDate` correctly; the null was leftover seed data), and G67's live-API half (`updateRole`/`assignRole`/`removeRole` already invalidate cache correctly) — same discipline R5 used for G46. Also found and fixed, mid-build: the real signup flow's role-permission map had drifted significantly from `rbac-seed.ts`'s (missing an entire `financial_secretary` role), and the waive-penalty modal referenced by G21 had never actually been rendered at all, not just untriggered. See the Track R checklist and the gap rows below for detail.)
 - **Blockers:** D6.4's remaining items (G61–G63) need either the owner directly (Dokploy, Search Console/Bing, the announcement) or a browser-equipped environment (no browser/Chrome binary has been available in any session so far)
 - **2026-10-14 D6.4 session note:** Of the build-plan's D6.4 checklist, two items are genuinely verified by this session: **zero drafts in production outside the mobile-only exception** (`pnpm coverage` confirms all 14 current drafts are the mobile-app section, `install-the-mobile-app`, `signed-in-devices`, `app-lock-and-biometrics` and `mobile-app-faq` — exactly the pages explicitly deferred to D7, nothing else) and **zero pending screenshots** (grepped every published page's `<Screenshot pending=…>` usage — the only hit is the unpublished `_kitchen-sink.mdx` demo page). Everything else in the checklist could not be completed this session, for the same reason D1.2/D1.4/D1.5/D1.6 all flagged: **no browser is available** — confirmed again by trying `npx lighthouse` directly, which installed and ran but found no Chrome/Chromium binary to drive. See G61–G63.
@@ -297,12 +297,12 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 # Track A — Platform admin console (`apps/admin`, admin.societyledger.com.ng)
 
 ## Admin Phase A1 — Backend, scaffold & shell
-- [ ] A1.1 Super Admin inventory & migration map
-- [ ] A1.2 Backend: platform login, reserved subdomains, CORS, reasons
-- [ ] A1.3 Backend: impersonation handoff
-- [ ] A1.4 Backend: TOTP 2FA for platform users *(owner may defer)*
-- [ ] A1.5 Scaffold `apps/admin`
-- [ ] A1.6 Admin shell, theme & shared components
+- [x] A1.1 Super Admin inventory & migration map — 2026-10-18
+- [x] A1.2 Backend: platform login, reserved subdomains, CORS, reasons — 2026-10-18
+- [x] A1.3 Backend: impersonation handoff — 2026-10-18
+- [x] A1.4 Backend: TOTP 2FA for platform users — 2026-10-18
+- [x] A1.5 Scaffold `apps/admin` — 2026-10-18
+- [x] A1.6 Admin shell, theme & shared components — 2026-10-18
 - [ ] A1.7 Dokploy deployment (staging + production)
 
 ## Admin Phase A2 — Migrate platform screens

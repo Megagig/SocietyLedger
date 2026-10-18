@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import '@/theme/admin.css';
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryProvider } from '@/lib/query-client';
+import { adminTheme } from '@/theme/mantine-theme';
 
 export const metadata: Metadata = {
   title: 'SocietyLedger Admin',
@@ -18,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ColorSchemeScript defaultColorScheme="light" />
       </head>
       <body>
-        <MantineProvider defaultColorScheme="light">
+        <MantineProvider theme={adminTheme} defaultColorScheme="light">
           <Notifications />
           <QueryProvider>
             {children}

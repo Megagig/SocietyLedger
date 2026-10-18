@@ -22,11 +22,13 @@
     "next": "14.2.29",
     "react": "^18",
     "react-dom": "^18",
-    "zustand": "^4.4.0"
+    "zustand": "^4.4.0",
+    "qrcode": "^1.5.3"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
+    "@types/qrcode": "^1.5.5",
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.29",
