@@ -102,11 +102,16 @@ export class ModuleFeatureService {
       where: { code: moduleCode }
     });
 
-    // 4. Default: enabled (backward compatible)
+    // 4. Default when no explicit PlanModule row exists for this plan+module: core
+    // modules only (G13) — this now matches getEnabledModules()'s batch default.
+    // Previously defaulted to enabled unconditionally, which meant the UI (reading
+    // the batch helper) could show a non-core module as locked while requireModule()
+    // (reading this per-check path) still let the request through once enforce mode
+    // actually started blocking anything.
     return {
       code: moduleCode,
       name: module?.name || moduleCode,
-      isEnabled: true,
+      isEnabled: module?.isCore ?? true,
       source: 'default',
     };
   }
@@ -195,12 +200,13 @@ export class ModuleFeatureService {
       include: { module: true }
     });
 
-    // 4. Default: enabled (backward compatible)
+    // 4. Default when no explicit PlanFeature row exists: core features only (G13),
+    // same reconciliation as getModuleStatus() above.
     return {
       code: featureCode,
       name: feature?.name || featureCode,
       moduleCode: feature?.module.code || 'unknown',
-      isEnabled: true,
+      isEnabled: feature?.isCore ?? true,
       source: 'default',
     };
   }
@@ -351,12 +357,13 @@ export class ModuleFeatureService {
         };
       }
 
-      // Default: enabled
+      // Default: core features only (G13) — matches getEnabledModules()'s batch
+      // default and the now-reconciled getFeatureStatus() per-check default.
       return {
         code: feature.code,
         name: feature.name,
         moduleCode: feature.module.code,
-        isEnabled: true,
+        isEnabled: feature.isCore,
         source: 'default' as const,
       };
     });

@@ -1712,9 +1712,15 @@ export const financeController = {
       // R4.6/G53: Financial Settings' enablePartialPayments was saved but
       // never read — reject an amount that doesn't fully settle the
       // balance when the association has disabled partial payments.
+      // G87: Payment Settings has an identically-named, independently-toggleable
+      // enablePartialPayments field that was never checked at all — either one
+      // being off blocks a partial payment.
       if (new Decimal(validatedData.amountPaid).lessThan(balance)) {
-        const financialSettings = await SettingsService.getSettings(associationId, 'financial');
-        if (financialSettings.enablePartialPayments === false) {
+        const [financialSettings, paymentSettings] = await Promise.all([
+          SettingsService.getSettings(associationId, 'financial'),
+          SettingsService.getSettings(associationId, 'payments'),
+        ]);
+        if (financialSettings.enablePartialPayments === false || paymentSettings.enablePartialPayments === false) {
           return res.status(400).json({
             success: false,
             message: 'Partial payments are not enabled for this association. The full balance must be paid.',
@@ -2212,14 +2218,16 @@ export const financeController = {
         }),
       ]);
 
-      // Get total outstanding
+      // Get total outstanding — scoped to the SAME pending/overdue/partial transactions,
+      // not every payment ever made (G22: summing all-time payments against only the
+      // still-outstanding transactions' total produced a large negative figure)
       const allTransactions = await prisma.transaction.aggregate({
         where: { associationId, status: { in: ['pending', 'overdue', 'partial'] } },
         _sum: { amount: true },
       });
 
       const allPayments = await prisma.payment.aggregate({
-        where: { associationId },
+        where: { associationId, transaction: { status: { in: ['pending', 'overdue', 'partial'] } } },
         _sum: { amountPaid: true },
       });
 

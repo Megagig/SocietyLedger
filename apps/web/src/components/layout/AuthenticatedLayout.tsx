@@ -12,6 +12,7 @@ import { ContextIndicator } from '@/components/layout/ContextIndicator';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
 import { SuperAdminContextBanner } from '@/components/admin';
+import { ModuleLockedModal } from '@/components/layout/ModuleLockedModal';
 import { Loader } from '@mantine/core';
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -134,6 +135,9 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* G13: module/feature upgrade prompt, triggered from lib/axios.ts / utils/api.ts */}
+      <ModuleLockedModal />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { AssociationStatus, AssociationTier, BillingCycle, SubscriptionStatus } from '@prisma/client';
+import { ROLE_PERMISSION_MAPPING } from '../../lib/role-permission-mapping';
 
 const createSchema = z.object({
   name: z.string().min(2),
@@ -174,41 +175,10 @@ export class AssociationsController {
       // Import auth service for verification
       const { generateVerificationCode, hashToken, sendVerificationEmail } = await import('../auth/auth.service');
       
-      // Pre-fetch all permissions needed (outside transaction for speed)
-      const rolePermissionMap: Record<string, string[]> = {
-        admin: [
-          "members.view", "members.view_all", "members.create", "members.edit", "members.edit_all", 
-          "members.disable", "members.bulk_import", "members.manage_roles",
-          "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.reverse", 
-          "ledger.export", "ledger.view_member_statement",
-          "payments.view", "payments.view_all", "payments.manual_create", "payments.approve", "payments.delete",
-          "reports.generate", "reports.export", "reports.financial_summary",
-          "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
-          "settings.view", "settings.edit", "settings.billing", "settings.integrations",
-          "audit.view", "audit.export"
-        ],
-        treasurer: [
-          "members.view", "members.view_all",
-          "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export", 
-          "ledger.view_member_statement",
-          "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
-          "reports.generate", "reports.export", "reports.financial_summary",
-          "settings.view"
-        ],
-        secretary: [
-          "members.view", "members.view_all",
-          "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
-          "payments.view", "payments.view_all", "payments.manual_create",
-          "reports.generate", "reports.export", "reports.financial_summary",
-          "settings.view"
-        ],
-        member: [
-          "members.view", "members.view_own", "members.edit_own",
-          "ledger.view", "ledger.view_own",
-          "payments.view", "payments.view_own",
-          "reports.generate"
-        ]
-      };
+      // G66: reuse the shared mapping (rbac-seed.ts's own source of truth) instead of
+      // an independent copy — that copy had drifted, missing an entire financial_secretary
+      // role and roughly a dozen permissions per role real re-seeded associations already had.
+      const rolePermissionMap: Record<string, string[]> = ROLE_PERMISSION_MAPPING;
 
       // Get all unique permission keys
       const allPermissionKeys = [...new Set(Object.values(rolePermissionMap).flat())];
@@ -272,7 +242,7 @@ export class AssociationsController {
         const rolesToCreate = [
           { name: 'admin', displayName: 'Administrator', description: 'Full administrative access' },
           { name: 'treasurer', displayName: 'Treasurer', description: 'Financial management' },
-          { name: 'secretary', displayName: 'Secretary', description: 'Record keeping and communications' },
+          { name: 'financial_secretary', displayName: 'Financial Secretary', description: 'Financial record keeping' },
           { name: 'member', displayName: 'Member', description: 'Basic member access' },
         ];
 

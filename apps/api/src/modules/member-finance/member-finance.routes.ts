@@ -72,6 +72,21 @@ router.post('/pay',
   memberFinanceController.processPayment
 );
 
+// R7.2 (G17): a member's own submitted payment declarations/proofs
+router.get('/payment-proofs',
+  requireAnyPermission(viewPermissions),
+  memberFinanceController.getMyPaymentProofs
+);
+
+// R7.2 (G17): the association's own receiving bank accounts, shown on the payment
+// page so a member knows where to actually send a bank transfer — the existing
+// endpoint for this is officer-only (SETTINGS_VIEW), so this is a minimal-field,
+// member-safe equivalent.
+router.get('/bank-accounts',
+  requireAnyPermission(viewPermissions),
+  memberFinanceController.getAssociationBankAccounts
+);
+
 // Make a donation
 router.post('/donate',
   requireAnyPermission(viewPermissions),

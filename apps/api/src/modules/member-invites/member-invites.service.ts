@@ -53,7 +53,9 @@ export async function sendMemberInviteEmail(
   if (subdomain && process.env.NODE_ENV === 'production') {
     activateUrl = `https://${subdomain}.${baseDomain}/auth/activate?token=${inviteToken}`;
   } else if (subdomain) {
-    activateUrl = `http://${subdomain}.localhost:3000/auth/activate?token=${inviteToken}`;
+    // G72: read the real dev port from FRONTEND_URL instead of hardcoding :3000
+    const devPort = new URL(baseUrl).port || '3000';
+    activateUrl = `http://${subdomain}.localhost:${devPort}/auth/activate?token=${inviteToken}`;
   } else {
     activateUrl = `${baseUrl}/auth/activate?token=${inviteToken}`;
   }

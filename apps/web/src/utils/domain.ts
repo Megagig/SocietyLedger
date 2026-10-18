@@ -7,9 +7,14 @@ export function getBaseDomain(): string {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-    // If on localhost, return localhost
+    // If on localhost, read NEXT_PUBLIC_BASE_DOMAIN (already set to the real
+    // dev port, e.g. "localhost:3002") instead of hardcoding :3000 (G64) —
+    // fall back to the real port the page is actually running on if unset
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'localhost:3000';
+      return (
+        process.env.NEXT_PUBLIC_BASE_DOMAIN ||
+        (window.location.port ? `localhost:${window.location.port}` : 'localhost')
+      );
     }
     
     // If on Netlify or production, extract the base domain

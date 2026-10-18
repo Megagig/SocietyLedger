@@ -291,6 +291,8 @@ export const meetingsService = {
   // ==================== ATTENDANCE ====================
 
   async initializeAttendance(associationId: number, meetingId: number) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
+
     // Get all active members
     const members = await prisma.member.findMany({
       where: { associationId, status: 'active' },
@@ -313,10 +315,12 @@ export const meetingsService = {
   },
 
   async markAttendance(
+    associationId: number,
     meetingId: number,
     userId: number,
     data: MarkAttendanceInput
   ) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
     return prisma.meetingAttendance.upsert({
       where: {
         meetingId_memberId: {
@@ -351,19 +355,22 @@ export const meetingsService = {
   },
 
   async bulkMarkAttendance(
+    associationId: number,
     meetingId: number,
     userId: number,
     attendances: MarkAttendanceInput[]
   ) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
     const results = await Promise.all(
       attendances.map((attendance) =>
-        this.markAttendance(meetingId, userId, attendance)
+        this.markAttendance(associationId, meetingId, userId, attendance)
       )
     );
     return results;
   },
 
-  async getAttendanceStats(meetingId: number): Promise<AttendanceStats> {
+  async getAttendanceStats(associationId: number, meetingId: number): Promise<AttendanceStats> {
+    await this.assertMeetingInAssociation(associationId, meetingId);
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
       select: { quorumRequired: true },
@@ -416,7 +423,8 @@ export const meetingsService = {
     return stats;
   },
 
-  async getMeetingAttendance(meetingId: number) {
+  async getMeetingAttendance(associationId: number, meetingId: number) {
+    await this.assertMeetingInAssociation(associationId, meetingId);
     return prisma.meetingAttendance.findMany({
       where: { meetingId },
       include: {

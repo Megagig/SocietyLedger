@@ -152,7 +152,7 @@ export const subscriptionController = {
 
       // Check if subscription already exists
       let subscription = await prisma.subscription.findFirst({
-        where: { 
+        where: {
           associationId,
           status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] }
         },
@@ -160,22 +160,48 @@ export const subscriptionController = {
 
       // Create or update subscription
       if (!subscription) {
-        const trialDays = 14;
-        const currentDate = new Date();
-        const trialEnd = new Date(currentDate);
-        trialEnd.setDate(trialEnd.getDate() + trialDays);
+        // G79: don't start a free trial for an association that has ever had one,
+        // even if its old subscription has since expired/been cancelled — the status
+        // filter above only catches a currently-active trial, not a past one. Goes
+        // straight to a real (unpaid, pending-verification) billing period instead —
+        // the same period-length verifyPaystackPayment/verifyNombaPayment use once
+        // the actual payment this function redirects to afterward is confirmed.
+        if (association.hasEverTrialed) {
+          const currentDate = new Date();
+          const periodEnd = new Date(currentDate);
+          periodEnd.setMonth(periodEnd.getMonth() + (billingCycle === 'MONTHLY' ? 1 : 12));
+          subscription = await prisma.subscription.create({
+            data: {
+              associationId,
+              planId: plan.id,
+              status: 'ACTIVE',
+              billingCycle: billingCycle as BillingCycle,
+              currentPeriodStart: currentDate,
+              currentPeriodEnd: periodEnd,
+            },
+          });
+        } else {
+          const trialDays = 14;
+          const currentDate = new Date();
+          const trialEnd = new Date(currentDate);
+          trialEnd.setDate(trialEnd.getDate() + trialDays);
 
-        subscription = await prisma.subscription.create({
-          data: {
-            associationId,
-            planId: plan.id,
-            status: 'TRIALING',
-            billingCycle: billingCycle as BillingCycle,
-            trialEndsAt: trialEnd,
-            currentPeriodStart: currentDate,
-            currentPeriodEnd: trialEnd,
-          },
-        });
+          subscription = await prisma.subscription.create({
+            data: {
+              associationId,
+              planId: plan.id,
+              status: 'TRIALING',
+              billingCycle: billingCycle as BillingCycle,
+              trialEndsAt: trialEnd,
+              currentPeriodStart: currentDate,
+              currentPeriodEnd: trialEnd,
+            },
+          });
+          await prisma.association.update({
+            where: { id: associationId },
+            data: { hasEverTrialed: true },
+          });
+        }
       }
 
       // Initialize payment based on provider
@@ -247,6 +273,17 @@ export const subscriptionController = {
         });
       }
 
+      // G79: a trial is a once-ever benefit, not scoped to the currently-active
+      // subscription status — an expired/cancelled association can't start a new
+      // free trial by picking a different plan than the one that expired.
+      const association = await prisma.association.findUnique({ where: { id: associationId } });
+      if (association?.hasEverTrialed) {
+        return res.status(400).json({
+          success: false,
+          message: 'This association has already used its free trial. Please choose a plan to subscribe.',
+        });
+      }
+
       const trialDays = 14;
       const now = new Date();
       const trialEnd = new Date(now);
@@ -262,6 +299,11 @@ export const subscriptionController = {
           currentPeriodStart: now,
           currentPeriodEnd: trialEnd,
         },
+      });
+
+      await prisma.association.update({
+        where: { id: associationId },
+        data: { hasEverTrialed: true },
       });
 
       return res.status(201).json({

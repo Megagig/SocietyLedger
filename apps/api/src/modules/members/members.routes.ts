@@ -39,6 +39,17 @@ router.get('/',
   memberController.list
 );
 
+// R7.3 (G65): tenant-scoped self-registration approval queue
+router.get('/approvals',
+  requirePermission(PERMISSIONS.MEMBER_EDIT_ALL),
+  memberController.listPendingApprovals
+);
+
+router.patch('/approvals/:userId',
+  requirePermission(PERMISSIONS.MEMBER_EDIT_ALL),
+  memberController.updateApprovalStatus
+);
+
 // Get single member by ID
 router.get('/:id',
   requirePermission(PERMISSIONS.MEMBER_VIEW),

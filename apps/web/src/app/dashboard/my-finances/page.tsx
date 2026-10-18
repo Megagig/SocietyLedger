@@ -27,15 +27,39 @@ interface FinanceSummary {
   hasMemberProfile?: boolean;
 }
 
+interface PaymentProof {
+  id: number;
+  transactionIds: number[];
+  paymentMethod: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason: string | null;
+  uploadedAt: string;
+}
+
 export default function MyFinancesPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
+  const [pendingProofs, setPendingProofs] = useState<PaymentProof[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
 
   useEffect(() => {
     fetchSummary();
+    fetchPendingProofs();
   }, []);
+
+  // R7.2 (G17): a member's own submitted-but-not-yet-reviewed payment declarations
+  const fetchPendingProofs = async () => {
+    try {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/me/payment-proofs`);
+      if (response.ok) {
+        const result = await response.json();
+        setPendingProofs((result.data?.proofs || []).filter((p: PaymentProof) => p.status === 'PENDING'));
+      }
+    } catch (err) {
+      console.error('Failed to fetch payment proofs:', err);
+    }
+  };
 
   const fetchSummary = async () => {
     try {
@@ -297,6 +321,26 @@ export default function MyFinancesPage() {
             </button>
           </div>
         </div>
+
+        {/* R7.2 (G17): Awaiting Verification — submitted but not yet reviewed by an officer */}
+        {pendingProofs.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-amber-400">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Awaiting Verification</h2>
+            <div className="space-y-3">
+              {pendingProofs.map((proof) => (
+                <div key={proof.id} className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white capitalize">
+                      {proof.paymentMethod?.replace('_', ' ') || 'Payment'} — {proof.transactionIds.length} item{proof.transactionIds.length > 1 ? 's' : ''}
+                    </p>
+                    <p className="text-sm text-gray-500">Submitted {formatDate(proof.uploadedAt)}</p>
+                  </div>
+                  <Badge color="yellow" size="sm">Awaiting Officer Review</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Upcoming Payments */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">

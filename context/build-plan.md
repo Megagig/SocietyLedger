@@ -19,20 +19,23 @@ The web app is finished, so the documentation site ships **first**. The admin co
 | 10 | **Remediation Phase R3** — Communication & notifications | R3.1 – R3.6 |
 | 11 | **Remediation Phase R4** — Settings & billing correctness | R4.1 – R4.5 |
 | 12 | **Remediation Phase R5** — Accounting completeness | R5.1 – R5.5 |
-| 13 | **Remediation Phase R6** — Remaining functional gaps & hygiene | R6.1 – R6.16 → **Milestone RL: gap log clear** |
-| 14 | **Admin Phase A1** — Backend, scaffold & shell | A1.1 – A1.7 |
-| 15 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
-| 16 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
-| 17 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
-| 18 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
-| 19 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
-| 20 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
-| 21 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
-| 22 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
+| 13 | **Remediation Phase R6** — Remaining functional gaps & hygiene | R6.1 – R6.16 |
+| 14 | **Remediation Phase R7** — Unbuilt R0 decisions | R7.1 – R7.3 → **Milestone RL: gap log clear** |
+| 15 | **Admin Phase A1** — Backend, scaffold & shell | A1.1 – A1.7 |
+| 16 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
+| 17 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
+| 18 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
+| 19 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
+| 20 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
+| 21 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
+| 22 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
+| 23 | **Mobile Phase 9** — Hardening & release | F9.1 – F9.6 |
 
 **The owner has explicitly asked that Track R (gap remediation) run to completion — every gap resolved, declined, or deferred with a recorded reason — before Admin Phase A1 begins** (2026-10-14). This supersedes the earlier "D and A may run in parallel" note below for this point in the sequence: nothing in Track A starts until Track R's Milestone RL.
 
-If the owner runs agents in parallel within a track: Track R's phases touch `apps/api` and `apps/web` throughout, so do not run R-phases concurrently with each other (later phases may touch files earlier phases already changed) — strictly sequential, R0 → R1 → … → R6. Once Track R reaches Milestone RL, the original parallelism note applies again: the admin track (A) and the (now-finished) docs track don't overlap, so there's nothing left to parallelize there, but **D6.3 and A3.1 both editing `apps/web` is moot** since D6.3 already shipped before Track R started. The mobile track starts after Milestone AL (mobile login relies on `PLATFORM_LOGIN_REQUIRED` and reserved subdomains). Each track goes strictly in order, and D7.x waits for its mobile milestone.
+**R7 added 2026-10-18**, after R6's own audit found that R0 (2026-10-15) had only *decided* G13/G17/G65, never actually built any of the three — each is a real feature, not hygiene, so R6 deliberately didn't fold them in under "remaining gaps."
+
+If the owner runs agents in parallel within a track: Track R's phases touch `apps/api` and `apps/web` throughout, so do not run R-phases concurrently with each other (later phases may touch files earlier phases already changed) — strictly sequential, R0 → R1 → … → R7. Once Track R reaches Milestone RL, the original parallelism note applies again: the admin track (A) and the (now-finished) docs track don't overlap, so there's nothing left to parallelize there, but **D6.3 and A3.1 both editing `apps/web` is moot** since D6.3 already shipped before Track R started. The mobile track starts after Milestone AL (mobile login relies on `PLATFORM_LOGIN_REQUIRED` and reserved subdomains). Each track goes strictly in order, and D7.x waits for its mobile milestone.
 
 ## How to run a feature
 1. Read `progress-tracker.md` → find the next unchecked feature in the Master sequence.
@@ -268,9 +271,21 @@ Rewrite `/dashboard/communications/*` (and `lib/api/sms.ts`) to call the real AP
 ### R6.14 Hardcoded local-dev URLs (G64, G72)
 ### R6.15 Seed-ordering real fix & RBAC cache invalidation (G66, G67)
 ### R6.16 Support email consistency & penalty "null" text (G68, G71)
-- **DoD:** every gap above resolved, declined or deferred with a reason — this closes out the Backend gaps table down to only genuinely future/v2 items. **Milestone RL: gap log clear.**
+- **DoD:** every gap above resolved, declined or deferred with a reason. R6 also absorbed G77 (re-verified live, not actually exploitable — hardened anyway) and a cluster of smaller R4-era leftovers (G79, G80, G82, G84, G87 fixed; G81, G83 declined/deferred; G73 investigated, found bigger than scoped, deliberately left for a dedicated pass) that the pre-build audit found weren't in anyone's list. The three substantial R0 decisions (G13, G17, G65) were deliberately **not** absorbed here — see Phase R7.
 
 **Excluded from Track R** (already closed, accepted for v1, or already correctly sequenced into a later track — not re-done here): G2 (F1.3), G4 (approved for F0.5), G5 (won't do), G6 (resolved — D6.3 shipped the redirect), G7 (GA4 accepted for v1), G8/G9/G10/G11 (Admin Phase A1/A3 scope), G12 (resolved), G61–G63 (D6.4 owner/infrastructure handoff, not engineering work).
+
+---
+
+## Remediation Phase R7 — Unbuilt R0 decisions
+R0 (2026-10-15) decided these three; none was actually built through R1–R6.
+### R7.1 Module/plan gating enforcement (G13) — done 2026-10-18
+Build the frontend's `MODULE_DISABLED`/`FEATURE_DISABLED` locked/upgrade state first (enforcement middleware already exists in shadow mode), then flip `FEATURE_FLAG_MODE=enforce`. See `progress-tracker.md` R7.1 for full resolution notes (default-fallback/`upgradeRequired` bug fixes, demo-association plan upgrade, `FEATURE_FLAG_MODE=enforce` scoped to local `.env` only).
+### R7.2 Member payment proof-upload model (G17) — done 2026-10-18
+Two-step proof-upload + officer-approval flow for member self-declared payments, reusing the Nigerian-payments module's existing `multer`/proofs/verify infrastructure. See `progress-tracker.md` R7.2/G92/G93 for full resolution notes (declaration-note flow for Cash/Card/POS, both orphaned officer verification pages fixed and the richer one linked from the Sidebar, member-upload permission gate fixed).
+### R7.3 Tenant-level self-registration approval screen (G65)
+A tenant-scoped screen (e.g. `/dashboard/settings/pending-approvals`) for an association's own admin to approve a newly self-registered member, reusing the existing `approvalStatus` field.
+- **DoD:** each of G13/G17/G65 is either built for real and live-verified, or the owner formally revisits the R0 decision (declined/deferred for v2) — this is what actually closes out the Backend gaps table down to only genuinely future/v2 items. **Milestone RL: gap log clear.**
 
 ---
 

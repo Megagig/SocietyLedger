@@ -61,6 +61,10 @@ export default function CreateBankTransferPage() {
     }
   };
 
+  useEffect(() => {
+    loadBankAccounts();
+  }, []);
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };

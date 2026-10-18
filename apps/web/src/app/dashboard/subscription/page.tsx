@@ -223,8 +223,8 @@ export default function SubscriptionPage() {
               </div>
               <div className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
                 {new Date(
-                  subscription.status === 'TRIALING' && subscription.trialEnd
-                    ? subscription.trialEnd
+                  subscription.status === 'TRIALING' && subscription.trialEndsAt
+                    ? subscription.trialEndsAt
                     : subscription.currentPeriodEnd
                 ).toLocaleDateString()}
               </div>

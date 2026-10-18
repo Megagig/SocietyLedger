@@ -430,7 +430,9 @@ export const penaltiesService = {
           amount: penaltyAmount,
           referenceNumber: `TXN${String(txnCount + penaltyIndex + 1).padStart(6, '0')}`,
           status: 'pending',
-          notes: `Late fee for ${txn.referenceNumber} - ${applicableRule.name}`,
+          // G71: referenceNumber is genuinely nullable — fall back to the category + id
+          // instead of letting it render as a literal "null" in the note text
+          notes: `Late fee for ${txn.referenceNumber || `${txn.category.name} #${txn.id}`} - ${applicableRule.name}`,
           createdBy: userId,
         },
       });

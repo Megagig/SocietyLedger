@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import {
   IconWallet,
@@ -11,9 +12,42 @@ import {
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { apiGet } from '@/utils/api';
+
+interface FinanceSummary {
+  totalOutstanding: number;
+  paidThisMonth: number;
+  recentTransactions: { id: number; category: { name: string }; balance: number; status: string; createdAt: string }[];
+  upcomingPayments: { id: number; category: { name: string }; balance: number; dueDate: string }[];
+}
 
 export default function MemberDashboardPage() {
   const { user } = useAuthStore();
+  const [summary, setSummary] = useState<FinanceSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/me/finance-summary`);
+        if (response.ok) {
+          const result = await response.json();
+          setSummary(result.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch finance summary:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSummary();
+  }, []);
+
+  const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const nextDue = summary?.upcomingPayments?.[0];
 
   return (
     <>
@@ -35,21 +69,21 @@ export default function MemberDashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
           <QuickStatCard
             title="Outstanding Balance"
-            value="₦0.00"
+            value={isLoading ? '…' : formatCurrency(summary?.totalOutstanding || 0)}
             icon={<IconWallet size={20} />}
             color="text-orange-600 dark:text-orange-400"
             bgColor="bg-orange-50 dark:bg-orange-900/20"
           />
           <QuickStatCard
             title="Paid This Month"
-            value="₦0.00"
+            value={isLoading ? '…' : formatCurrency(summary?.paidThisMonth || 0)}
             icon={<IconCreditCard size={20} />}
             color="text-green-600 dark:text-green-400"
             bgColor="bg-green-50 dark:bg-green-900/20"
           />
           <QuickStatCard
             title="Next Due Date"
-            value="No dues"
+            value={isLoading ? '…' : nextDue ? formatDate(nextDue.dueDate) : 'No dues'}
             icon={<IconCalendarEvent size={20} />}
             color="text-blue-600 dark:text-blue-400"
             bgColor="bg-blue-50 dark:bg-blue-900/20"
@@ -105,14 +139,28 @@ export default function MemberDashboardPage() {
           <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Recent Activity
           </h2>
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <IconChartBar size={32} className="text-gray-400" />
+          {summary?.recentTransactions && summary.recentTransactions.length > 0 ? (
+            <div className="space-y-3">
+              {summary.recentTransactions.map((txn) => (
+                <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{txn.category?.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(txn.createdAt)}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatCurrency(txn.balance)} due</p>
+                </div>
+              ))}
             </div>
-            <p className="text-gray-500 dark:text-gray-400">
-              No recent activity to display
-            </p>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <IconChartBar size={32} className="text-gray-400" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">
+                {isLoading ? 'Loading…' : 'No recent activity to display'}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Upcoming Obligations */}
@@ -120,14 +168,28 @@ export default function MemberDashboardPage() {
           <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Upcoming Obligations
           </h2>
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <IconCalendarEvent size={32} className="text-gray-400" />
+          {summary?.upcomingPayments && summary.upcomingPayments.length > 0 ? (
+            <div className="space-y-3">
+              {summary.upcomingPayments.map((txn) => (
+                <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{txn.category?.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Due {formatDate(txn.dueDate)}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">{formatCurrency(txn.balance)}</p>
+                </div>
+              ))}
             </div>
-            <p className="text-gray-500 dark:text-gray-400">
-              No upcoming obligations
-            </p>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <IconCalendarEvent size={32} className="text-gray-400" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">
+                {isLoading ? 'Loading…' : 'No upcoming obligations'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -140,6 +140,8 @@ export const API_ROUTES = {
     BY_ID: (id: number) => `${API_BASE_URL}/api/members/${id}`,
     TRANSACTIONS: (id: number) => `${API_BASE_URL}/api/members/${id}/transactions`,
     BULK: `${API_BASE_URL}/api/members/bulk`,
+    APPROVALS: `${API_BASE_URL}/api/members/approvals`,
+    APPROVAL_BY_ID: (userId: number) => `${API_BASE_URL}/api/members/approvals/${userId}`,
   },
   TRANSACTIONS: {
     LIST: `${API_BASE_URL}/api/transactions`,

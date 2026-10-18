@@ -185,9 +185,12 @@ router.post('/auto-match/apply',
 // PAYMENT PROOF ROUTES (TASK-PAY-007, TASK-PAY-008)
 // ==========================================
 
-// Upload payment proof (member action)
+// Upload payment proof (member action). R7.2 (G17): added PAYMENTS_VIEW_OWN — the
+// real `member` role only ever holds payments.view_own, not PAYMENT_CREATE/PAYMENT_VIEW
+// (officer-level), so this endpoint was unreachable for any real member despite being
+// built as "a member action" (see the comment above).
 router.post('/proofs',
-  requireAnyPermission([PERMISSIONS.PAYMENT_CREATE, PERMISSIONS.PAYMENT_VIEW]),
+  requireAnyPermission([PERMISSIONS.PAYMENT_CREATE, PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENTS_VIEW_OWN]),
   upload.single('file'),
   nigerianPaymentsController.uploadPaymentProof
 );

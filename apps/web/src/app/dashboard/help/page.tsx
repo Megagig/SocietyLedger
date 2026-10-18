@@ -420,8 +420,8 @@ export default function HelpPage() {
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Need urgent help? Email us at{' '}
-              <a href="mailto:support@societyledger.com" className="text-teal-600 dark:text-teal-400 hover:underline">
-                support@societyledger.com
+              <a href="mailto:support@societyledger.com.ng" className="text-teal-600 dark:text-teal-400 hover:underline">
+                support@societyledger.com.ng
               </a>
             </p>
           </div>

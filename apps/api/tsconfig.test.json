@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "composite": false,
+    // tsconfig.base.json's typeRoots is relative to ITS OWN location (the monorepo root),
+    // so it only ever sees root-hoisted @types packages. @types/jest lives in apps/api's
+    // own node_modules (pnpm's normal per-package placement), invisible to that path alone —
+    // the real root cause behind G74, not a missing install.
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
+  },
+  "include": ["src/**/*", "__tests__/**/*"]
+}

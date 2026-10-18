@@ -19,7 +19,7 @@ router.use(tenantMiddleware);
 
 // Phase 19: Apply module check to all AI routes (Enterprise tier)
 // In shadow mode, this logs but doesn't block; in enforce mode, it blocks access
-router.use(requireModule('ai_assistant'));
+router.use(requireModule('ai')); // G13: was 'ai_assistant', which never matched the seeded code 'ai' — always silently ungated
 
 // ==========================================
 // AI STATUS & CONFIGURATION

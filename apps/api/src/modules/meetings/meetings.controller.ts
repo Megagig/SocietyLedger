@@ -152,7 +152,7 @@ export const meetingsController = {
       }
 
       // Get attendance stats
-      const attendanceStats = await meetingsService.getAttendanceStats(meetingId);
+      const attendanceStats = await meetingsService.getAttendanceStats(associationId, meetingId);
 
       return res.status(200).json({
         success: true,
@@ -518,7 +518,7 @@ export const meetingsController = {
       }
 
       const validatedData = markAttendanceSchema.parse(req.body);
-      const attendance = await meetingsService.markAttendance(meetingId, userId, validatedData);
+      const attendance = await meetingsService.markAttendance(associationId, meetingId, userId, validatedData);
 
       // Get member's user ID to send notification
       const member = await prisma.member.findUnique({
@@ -579,7 +579,7 @@ export const meetingsController = {
       }
 
       const { attendances } = bulkMarkAttendanceSchema.parse(req.body);
-      const results = await meetingsService.bulkMarkAttendance(meetingId, userId, attendances);
+      const results = await meetingsService.bulkMarkAttendance(associationId, meetingId, userId, attendances);
 
       return res.status(200).json({
         success: true,
@@ -624,8 +624,8 @@ export const meetingsController = {
       }
 
       const [attendance, stats] = await Promise.all([
-        meetingsService.getMeetingAttendance(meetingId),
-        meetingsService.getAttendanceStats(meetingId),
+        meetingsService.getMeetingAttendance(associationId, meetingId),
+        meetingsService.getAttendanceStats(associationId, meetingId),
       ]);
 
       return res.status(200).json({

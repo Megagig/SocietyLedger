@@ -43,7 +43,7 @@ describe('Subdomain Routing', () => {
     it('should resolve tenant from X-Subdomain header', async () => {
       const res = await request(app)
         .get('/api/associations/check-subdomain?subdomain=activetest')
-        .set('X-Subdomain', 'activetest');
+        .set('x-tenant', 'activetest');
 
       expect(res.status).toBe(409);
       expect(res.body.message).toContain('already taken');
@@ -52,7 +52,7 @@ describe('Subdomain Routing', () => {
     it('should reject request with non-existent subdomain', async () => {
       const res = await request(app)
         .get('/api/auth/me')
-        .set('X-Subdomain', 'nonexistent');
+        .set('x-tenant', 'nonexistent');
 
       expect(res.status).toBe(404);
       expect(res.body.message).toContain('not found');
@@ -75,17 +75,17 @@ describe('Subdomain Routing', () => {
       const user = await prisma.user.create({
         data: {
           email: 'user@suspended.com',
-          password: hashedPassword,
-          firstName: 'Test',
-          lastName: 'User',
+          passwordHash: hashedPassword,
           role: 'admin',
           associationId: suspendedAssociation.id,
+          isActive: true,
+          emailVerified: true,
         },
       });
 
       const res = await request(app)
         .post('/api/auth/login')
-        .set('X-Subdomain', 'suspendedtest')
+        .set('x-tenant', 'suspendedtest')
         .send({ email: 'user@suspended.com', password: 'Test123!' });
 
       userToken = res.body.data?.token;
@@ -96,7 +96,7 @@ describe('Subdomain Routing', () => {
 
       const res = await request(app)
         .get('/api/auth/me')
-        .set('X-Subdomain', 'suspendedtest')
+        .set('x-tenant', 'suspendedtest')
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(403);
@@ -109,17 +109,17 @@ describe('Subdomain Routing', () => {
       await prisma.user.create({
         data: {
           email: 'user@active.com',
-          password: hashedPassword,
-          firstName: 'Test',
-          lastName: 'User',
+          passwordHash: hashedPassword,
           role: 'admin',
           associationId: activeAssociation.id,
+          isActive: true,
+          emailVerified: true,
         },
       });
 
       const loginRes = await request(app)
         .post('/api/auth/login')
-        .set('X-Subdomain', 'activetest')
+        .set('x-tenant', 'activetest')
         .send({ email: 'user@active.com', password: 'Test123!' });
 
       expect(loginRes.status).toBe(200);
@@ -127,7 +127,7 @@ describe('Subdomain Routing', () => {
 
       const meRes = await request(app)
         .get('/api/auth/me')
-        .set('X-Subdomain', 'activetest')
+        .set('x-tenant', 'activetest')
         .set('Authorization', `Bearer ${loginRes.body.data.token}`);
 
       expect(meRes.status).toBe(200);

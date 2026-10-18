@@ -203,13 +203,10 @@ export const PERMISSIONS = {
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
   
-  // Blog & Documentation (Phase 2)
-  BLOG_VIEW: 'blog.view',
-  BLOG_MANAGE: 'blog.manage',
-  BLOG_POST_CREATE: 'blog.post.create',
-  BLOG_POST_EDIT: 'blog.post.edit',
-  BLOG_POST_DELETE: 'blog.post.delete',
-  BLOG_COMMENT_MODERATE: 'blog.comment.moderate',
+  // Documentation (old DB-backed CMS, superseded by apps/docs at D6.3 — see G57).
+  // Referenced by real, mounted admin routes (documentation.routes.ts) but never seeded
+  // anywhere, so those routes 403 for every role including SUPER_ADMIN. Left unseeded
+  // deliberately: that CMS is being phased out, not worth granting access to.
   DOCS_VIEW: 'docs.view',
   DOCS_MANAGE: 'docs.manage',
   DOCS_PAGE_CREATE: 'docs.page.create',

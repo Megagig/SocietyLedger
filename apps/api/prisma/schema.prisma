@@ -18,6 +18,11 @@ model Association {
   logo                       String?
   primaryColor               String?                     @map("primary_color")
   subscriptionExpiresAt      DateTime?                   @map("subscription_expires_at")
+  // G79: tracks whether this association has EVER started a trial, independent of which
+  // Subscription row/plan it was against — initializePayment/startTrial's own "does a
+  // subscription already exist" check only looked at currently-active statuses, so an
+  // expired/cancelled association could get a second free trial just by picking a new plan.
+  hasEverTrialed             Boolean                     @default(false) @map("has_ever_trialed")
   // Phase 19: Platform Admin - Soft Delete
   deletedAt                  DateTime?                   @map("deleted_at")
   deletedBy                  Int?                        @map("deleted_by")
@@ -1139,12 +1144,23 @@ model PaymentProof {
   id              Int                @id @default(autoincrement())
   associationId   Int                @map("association_id")
   transactionId   Int?               @map("transaction_id")
+  // R7.2 (G17): a member can declare one payment covering several outstanding
+  // transactions at once (the existing /me/pay UI already supports multi-select) —
+  // transactionId alone can't represent that, so the member-declare flow uses this
+  // instead. transactionId stays as-is for the pre-existing single-transaction
+  // officer/bank-transfer-reconciliation use case.
+  transactionIds  Int[]              @default([]) @map("transaction_ids")
   bankTransferId  Int?               @map("bank_transfer_id")
   memberId        Int                @map("member_id")
-  filename        String
-  filepath        String
-  fileSize        Int                @map("file_size")
-  mimeType        String             @map("mime_type")
+  // R7.2 (G17): nullable — a Cash/Card/POS self-declared payment has no file, only a
+  // written declaration (declarationNote). Exactly one of (filename set) or
+  // (declarationNote set) is required; enforced in application code, not the DB.
+  filename        String?
+  filepath        String?
+  fileSize        Int?               @map("file_size")
+  mimeType        String?            @map("mime_type")
+  declarationNote String?            @map("declaration_note") @db.Text
+  paymentMethod   String?            @map("payment_method")
   status          PaymentProofStatus @default(PENDING)
   uploadedAt      DateTime           @default(now()) @map("uploaded_at")
   verifiedBy      Int?               @map("verified_by")

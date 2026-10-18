@@ -39,6 +39,17 @@ interface PenaltyRule {
   _count?: { appliedPenalties: number };
 }
 
+interface AppliedPenalty {
+  id: number;
+  amount: number;
+  status: string;
+  referenceNumber: string | null;
+  createdAt: string;
+  member: { firstName: string; lastName: string; memberId: string };
+  category: { name: string };
+  payments: { amountPaid: number }[];
+}
+
 interface PenaltyWaiver {
   id: number;
   waivedAmount: number;
@@ -72,6 +83,7 @@ export default function PenaltiesPage() {
   const [penalties, setPenalties] = useState<PenaltyCategory[]>([]);
   const [rules, setRules] = useState<PenaltyRule[]>([]);
   const [waivers, setWaivers] = useState<PenaltyWaiver[]>([]);
+  const [appliedPenalties, setAppliedPenalties] = useState<AppliedPenalty[]>([]);
   const [stats, setStats] = useState<PenaltyStats | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,6 +140,7 @@ export default function PenaltiesPage() {
     fetchPenalties();
     fetchRules();
     fetchWaivers();
+    fetchAppliedPenalties();
     fetchStats();
     fetchMembers();
   }, []);
@@ -173,6 +186,20 @@ export default function PenaltiesPage() {
       }
     } catch (err: any) {
       console.error('Error fetching waivers:', err);
+    }
+  };
+
+  const fetchAppliedPenalties = async () => {
+    try {
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions?type=penalty&limit=100&sortBy=createdAt&sortOrder=desc`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setAppliedPenalties(data.data.transactions || []);
+      }
+    } catch (err: any) {
+      console.error('Error fetching applied penalties:', err);
     }
   };
 
@@ -314,6 +341,14 @@ export default function PenaltiesPage() {
     }
   };
 
+  const openWaiverModal = (txn: AppliedPenalty) => {
+    const paid = txn.payments.reduce((sum, p) => sum + Number(p.amountPaid), 0);
+    const outstanding = Number(txn.amount) - paid;
+    setSelectedTransaction(txn);
+    setWaiverForm({ waivedAmount: outstanding.toString(), reason: '' });
+    setShowWaiverModal(true);
+  };
+
   const handleWaivePenalty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTransaction) return;
@@ -336,6 +371,7 @@ export default function PenaltiesPage() {
       setSelectedTransaction(null);
       setWaiverForm({ waivedAmount: '', reason: '' });
       fetchWaivers();
+      fetchAppliedPenalties();
       fetchStats();
     } catch (err: any) {
       toast.error(err.message || 'Failed to waive penalty');
@@ -568,6 +604,7 @@ export default function PenaltiesPage() {
         <Tabs.List>
           <Tabs.Tab value="categories">Penalty Types ({penalties.length})</Tabs.Tab>
           <Tabs.Tab value="rules">Late Fee Rules ({rules.length})</Tabs.Tab>
+          <Tabs.Tab value="applied">Applied Penalties ({appliedPenalties.length})</Tabs.Tab>
           <Tabs.Tab value="waivers">Waivers ({waivers.length})</Tabs.Tab>
         </Tabs.List>
 
@@ -761,6 +798,77 @@ export default function PenaltiesPage() {
                   </Can>
                 </div>
               ))}
+            </div>
+          )}
+        </Tabs.Panel>
+
+        <Tabs.Panel value="applied" pt="md">
+          {/* Applied Penalties */}
+          {appliedPenalties.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+              <AlertTriangle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No Penalties Applied Yet
+              </h3>
+              <p className="text-gray-500">
+                Penalty transactions will appear here once applied to members
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Outstanding</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {appliedPenalties.map(txn => {
+                    const paid = txn.payments.reduce((sum, p) => sum + Number(p.amountPaid), 0);
+                    const outstanding = Number(txn.amount) - paid;
+                    const waivable = txn.status !== 'waived' && outstanding > 0;
+                    return (
+                      <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="font-medium">{txn.member.firstName} {txn.member.lastName}</p>
+                            <p className="text-sm text-gray-500">{txn.member.memberId}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{txn.category.name}</td>
+                        <td className="px-4 py-3 text-red-600">₦{Number(txn.amount).toLocaleString()}</td>
+                        <td className="px-4 py-3">₦{outstanding.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 capitalize">
+                            {txn.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {new Date(txn.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Can permission={PERMISSIONS.FINANCE_EDIT}>
+                            {waivable && (
+                              <button
+                                onClick={() => openWaiverModal(txn)}
+                                className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                              >
+                                Waive
+                              </button>
+                            )}
+                          </Can>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </Tabs.Panel>
@@ -1148,6 +1256,67 @@ export default function PenaltiesPage() {
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
                 >
                   {isSubmitting ? 'Creating...' : 'Create Rule'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Waiver Modal */}
+      {showWaiverModal && selectedTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+              Waive Penalty
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              {selectedTransaction.member.firstName} {selectedTransaction.member.lastName} — {selectedTransaction.category.name}
+            </p>
+
+            <form onSubmit={handleWaivePenalty} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Amount to Waive (₦) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={waiverForm.waivedAmount}
+                  onChange={(e) => setWaiverForm({ ...waiverForm, waivedAmount: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Reason *
+                </label>
+                <textarea
+                  required
+                  value={waiverForm.reason}
+                  onChange={(e) => setWaiverForm({ ...waiverForm, reason: e.target.value })}
+                  rows={3}
+                  placeholder="Why is this penalty being waived?"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowWaiverModal(false); setSelectedTransaction(null); }}
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Waiving...' : 'Waive Penalty'}
                 </button>
               </div>
             </form>
