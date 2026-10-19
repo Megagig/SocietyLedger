@@ -169,7 +169,11 @@ export class PlatformActionLogService {
       }
     }
 
-    const [totalActions, actionsByType, actionsByTarget] = await Promise.all([
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayWhere = { ...where, createdAt: { ...(where.createdAt as object), gte: todayStart } };
+
+    const [totalActions, actionsByType, actionsByTarget, actionsToday, actorGroups] = await Promise.all([
       prisma.platformActionLog.count({ where }),
       prisma.platformActionLog.groupBy({
         by: ['actionType'],
@@ -183,10 +187,15 @@ export class PlatformActionLogService {
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
       }),
+      prisma.platformActionLog.count({ where: todayWhere }),
+      prisma.platformActionLog.groupBy({ by: ['actorId'], where }),
     ]);
 
     return {
       totalActions,
+      actionsToday,
+      uniqueAdmins: actorGroups.length,
+      mostCommonAction: actionsByType[0]?.actionType ?? null,
       actionsByType: actionsByType.map((a: { actionType: string; _count: { id: number } }) => ({
         type: a.actionType,
         count: a._count.id,
