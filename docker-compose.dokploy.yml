@@ -104,45 +104,44 @@ services:
     networks:
       - dokploy-network
     labels:
-      # Wildcard rule so every tenant subdomain (e.g. ogunstate.societyledger.com.ng)
-      # and the apex domain both route here.
-      # TLS: wildcard cert *.societyledger.com.ng is issued via DNS-01 (HTTP-01
-      # cannot issue wildcard certs). Requires CF_DNS_API_TOKEN env var in the
-      # Dokploy Traefik settings and the letsencrypt certresolver configured with
-      # dnsChallenge provider=cloudflare — see docs/deployment/DOKPLOY_MIGRATION.md.
+      # The apex domain (societyledger.com.ng) is already handled by Dokploy's own
+      # native Domains tab (Dokploy → this app → Domains), which generates its own
+      # Traefik routing independent of these Docker labels and has worked reliably
+      # the whole time (same mechanism api/admin/docs/web all use there). We found,
+      # after a long debugging session, that our own hand-written traefik.http.*
+      # labels for the apex domain were a SECOND, PARALLEL routing config for the
+      # exact same hostname — fighting Dokploy's native one. That's what caused the
+      # repeated "cannot be linked automatically with multiple Services" errors and
+      # the phantom "v1dsnv-*" service names (artifacts of Dokploy's own generated
+      # config, not leftover containers — docker ps/docker service ls never showed
+      # them because they were never real containers).
+      #
+      # So this router ONLY matches actual tenant subdomains (requires a literal
+      # "." before the base domain) — never the apex — so it can never overlap with
+      # Dokploy's native "web" domain entry. This is the one thing Dokploy's simple
+      # per-domain UI can't do (wildcard subdomains), so it's the only piece of
+      # custom Traefik config this app still needs.
       - "traefik.enable=true"
-      # Router/service names use the "sl-" prefix, not "societyledger-", because
-      # stale containers from earlier Dokploy deploys are still running with the
-      # old "societyledger-*" router labels and Traefik refuses to link a router
-      # that's defined on more than one container ("cannot be linked automatically
-      # with multiple Services"). A disjoint name sidesteps the collision entirely
-      # — those old containers still need to be removed via `docker rm`, but this
-      # keeps the live site working in the meantime.
-      - "traefik.http.routers.sl-web-http.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
-      - "traefik.http.routers.sl-web-http.entrypoints=web"
-      - "traefik.http.routers.sl-web-http.middlewares=sl-redirect-to-https"
-      - "traefik.http.routers.sl-web-http.service=sl-web"
-      - "traefik.http.routers.sl-web-http.priority=1"
+      - "traefik.http.routers.sl-tenant-http.rule=HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.sl-tenant-http.entrypoints=web"
+      - "traefik.http.routers.sl-tenant-http.middlewares=sl-redirect-to-https"
+      - "traefik.http.routers.sl-tenant-http.service=sl-tenant"
+      - "traefik.http.routers.sl-tenant-http.priority=1"
       - "traefik.http.middlewares.sl-redirect-to-https.redirectscheme.scheme=https"
       - "traefik.http.middlewares.sl-redirect-to-https.redirectscheme.permanent=true"
       # Traefik v3 HostRegexp takes a plain Go regexp (v2 named-group syntax
       # {subdomain:pattern} was removed in v3 and causes the router to be rejected).
-      - "traefik.http.routers.sl-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
-      - "traefik.http.routers.sl-web.entrypoints=websecure"
-      - "traefik.http.routers.sl-web.tls=true"
-      - "traefik.http.routers.sl-web.tls.certresolver=letsencrypt"
-      # Tell Traefik which names to include in the wildcard cert request.
-      # Without these, Traefik can't infer the domains from a HostRegexp pattern.
-      - "traefik.http.routers.sl-web.tls.domains[0].main=${BASE_DOMAIN}"
-      - "traefik.http.routers.sl-web.tls.domains[0].sans[0]=*.${BASE_DOMAIN}"
-      - "traefik.http.services.sl-web.loadbalancer.server.port=3000"
-      - "traefik.http.routers.sl-web.service=sl-web"
-      # Below docs' priority (100) — without this, Traefik's rule-length tiebreak
-      # could let this wildcard capture docs.${BASE_DOMAIN}, since HostRegexp also
-      # matches it. Fixed at D1.7, when docs (the first service needing explicit
-      # priority) actually landed — architecture.md §17.3 flagged this gap when web
-      # shipped, before admin/docs existed to need it.
-      - "traefik.http.routers.sl-web.priority=1"
+      - "traefik.http.routers.sl-tenant.rule=HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.sl-tenant.entrypoints=websecure"
+      - "traefik.http.routers.sl-tenant.tls=true"
+      - "traefik.http.routers.sl-tenant.tls.certresolver=letsencrypt"
+      # Tell Traefik which names to include in the wildcard cert request. The apex
+      # domain's own cert is issued separately by Dokploy's native "web" domain
+      # entry, so this only needs the wildcard SAN.
+      - "traefik.http.routers.sl-tenant.tls.domains[0].main=*.${BASE_DOMAIN}"
+      - "traefik.http.services.sl-tenant.loadbalancer.server.port=3000"
+      - "traefik.http.routers.sl-tenant.service=sl-tenant"
+      - "traefik.http.routers.sl-tenant.priority=1"
 
   admin:
     build:
@@ -176,22 +175,12 @@ services:
       - internal
       - dokploy-network
     labels:
-      - "traefik.enable=true"
-      # "sl-" prefix — see the long comment on the web service's labels above for why.
-      - "traefik.http.routers.sl-admin-http.rule=Host(`${ADMIN_DOMAIN}`)"
-      - "traefik.http.routers.sl-admin-http.entrypoints=web"
-      - "traefik.http.routers.sl-admin-http.middlewares=sl-redirect-to-https"
-      - "traefik.http.routers.sl-admin-http.service=sl-admin"
-      - "traefik.http.routers.sl-admin-http.priority=100"
-      - "traefik.http.routers.sl-admin.rule=Host(`${ADMIN_DOMAIN}`)"
-      - "traefik.http.routers.sl-admin.entrypoints=websecure"
-      - "traefik.http.routers.sl-admin.tls=true"
-      - "traefik.http.routers.sl-admin.tls.certresolver=letsencrypt"
-      # Priority 100 — same as docs; both beat the web wildcard (priority 1) so
-      # admin.${BASE_DOMAIN} routes here, not to the tenant-subdomain HostRegexp.
-      - "traefik.http.routers.sl-admin.priority=100"
-      - "traefik.http.services.sl-admin.loadbalancer.server.port=3002"
-      - "traefik.http.routers.sl-admin.service=sl-admin"
+      # Routed via Dokploy's native Domains tab (admin.${BASE_DOMAIN} → port 3002),
+      # same mechanism as api below — no hand-written traefik.* labels needed. See
+      # the long comment on the web service's labels for why we stopped hand-writing
+      # these for domains Dokploy already manages natively.
+      - "dokploy.domain=${ADMIN_DOMAIN}"
+      - "dokploy.port=3002"
 
   docs:
     build:
@@ -215,22 +204,11 @@ services:
     networks:
       - dokploy-network
     labels:
-      - "traefik.enable=true"
-      # "sl-" prefix — see the long comment on the web service's labels above for why.
-      - "traefik.http.routers.sl-docs-http.rule=Host(`${DOCS_DOMAIN}`)"
-      - "traefik.http.routers.sl-docs-http.entrypoints=web"
-      - "traefik.http.routers.sl-docs-http.middlewares=sl-redirect-to-https"
-      - "traefik.http.routers.sl-docs-http.service=sl-docs"
-      - "traefik.http.routers.sl-docs-http.priority=100"
-      - "traefik.http.routers.sl-docs.rule=Host(`${DOCS_DOMAIN}`)"
-      - "traefik.http.routers.sl-docs.entrypoints=websecure"
-      - "traefik.http.routers.sl-docs.tls=true"
-      - "traefik.http.routers.sl-docs.tls.certresolver=letsencrypt"
-      # Above the web wildcard (priority 1) so docs.${BASE_DOMAIN} resolves here,
-      # not to web's HostRegexp tenant-subdomain rule (architecture.md §17.3).
-      - "traefik.http.routers.sl-docs.priority=100"
-      - "traefik.http.services.sl-docs.loadbalancer.server.port=80"
-      - "traefik.http.routers.sl-docs.service=sl-docs"
+      # Routed via Dokploy's native Domains tab (docs.${BASE_DOMAIN} → port 80),
+      # same mechanism as api/admin — no hand-written traefik.* labels needed. See
+      # the long comment on the web service's labels for why.
+      - "dokploy.domain=${DOCS_DOMAIN}"
+      - "dokploy.port=80"
 
 networks:
   internal:
