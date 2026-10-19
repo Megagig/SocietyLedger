@@ -1,6 +1,7 @@
 'use client';
 
-import { AppShell as MantineAppShell, Burger, Group, Text, NavLink, Stack } from '@mantine/core';
+import { useState } from 'react';
+import { AppShell as MantineAppShell, Burger, Group, Text, NavLink, Stack, Divider } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -20,6 +21,7 @@ import {
   IconHeadset,
   IconShieldCheck,
   IconUser,
+  IconLogout,
 } from '@tabler/icons-react';
 
 const navItems = [
@@ -45,6 +47,19 @@ const navItems = [
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
   const pathname = usePathname();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch('/bff/session', { method: 'DELETE' });
+    } finally {
+      // Full navigation, not router.push() — guarantees middleware re-checks
+      // against the now-cleared session cookie rather than a stale cached
+      // response (same class of bug as the tenant-side impersonation fix).
+      window.location.href = '/login';
+    }
+  }
 
   return (
     <MantineAppShell
@@ -93,6 +108,24 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </Stack>
+        </MantineAppShell.Section>
+
+        <MantineAppShell.Section>
+          <Divider color="var(--admin-chrome-fg-muted)" opacity={0.2} mb="xs" />
+          <NavLink
+            label={loggingOut ? 'Signing out…' : 'Log out'}
+            leftSection={<IconLogout size={16} />}
+            onClick={handleLogout}
+            disabled={loggingOut}
+            styles={{
+              root: {
+                color: 'var(--admin-chrome-fg-muted)',
+                borderRadius: 6,
+                '&:hover': { backgroundColor: 'var(--admin-chrome-active-bg)' },
+              },
+              label: { fontSize: 13 },
+            }}
+          />
         </MantineAppShell.Section>
       </MantineAppShell.Navbar>
 
