@@ -122,6 +122,10 @@ services:
       - "traefik.http.routers.societyledger-web.tls.domains[0].main=${BASE_DOMAIN}"
       - "traefik.http.routers.societyledger-web.tls.domains[0].sans[0]=*.${BASE_DOMAIN}"
       - "traefik.http.services.societyledger-web.loadbalancer.server.port=3000"
+      # Explicitly bind this router to our service — prevents the "cannot be linked
+      # automatically with multiple Services" error when old Dokploy containers from
+      # previous deploys are still running with auto-generated service names.
+      - "traefik.http.routers.societyledger-web.service=societyledger-web"
       # Below docs' priority (100) — without this, Traefik's rule-length tiebreak
       # could let this wildcard capture docs.${BASE_DOMAIN}, since HostRegexp also
       # matches it. Fixed at D1.7, when docs (the first service needing explicit
@@ -170,6 +174,7 @@ services:
       # admin.${BASE_DOMAIN} routes here, not to the tenant-subdomain HostRegexp.
       - "traefik.http.routers.societyledger-admin.priority=100"
       - "traefik.http.services.societyledger-admin.loadbalancer.server.port=3002"
+      - "traefik.http.routers.societyledger-admin.service=societyledger-admin"
 
   docs:
     build:
@@ -202,6 +207,7 @@ services:
       # not to web's HostRegexp tenant-subdomain rule (architecture.md §17.3).
       - "traefik.http.routers.societyledger-docs.priority=100"
       - "traefik.http.services.societyledger-docs.loadbalancer.server.port=80"
+      - "traefik.http.routers.societyledger-docs.service=societyledger-docs"
 
 networks:
   internal:
