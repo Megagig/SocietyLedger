@@ -92,6 +92,7 @@ export async function subscriptionMiddleware(
         success: false,
         message: 'No active subscription. Please subscribe to a plan.',
         requiresSubscription: true,
+        code: 'SUBSCRIPTION_INACTIVE', // F0.5
       });
     }
 
@@ -118,6 +119,7 @@ export async function subscriptionMiddleware(
         success: false,
         message: 'Subscription has expired. Please renew your subscription.',
         requiresRenewal: true,
+        code: 'SUBSCRIPTION_INACTIVE', // F0.5
       });
     }
 
@@ -128,6 +130,7 @@ export async function subscriptionMiddleware(
           success: false,
           message: 'Trial period has ended. Please subscribe to continue.',
           trialEnded: true,
+          code: 'SUBSCRIPTION_INACTIVE', // F0.5
         });
       }
     }
@@ -159,6 +162,7 @@ export function featureAccessMiddleware(requiredFeature: string) {
         return res.status(403).json({
           success: false,
           message: 'No active subscription plan found',
+          code: 'SUBSCRIPTION_INACTIVE', // F0.5
         });
       }
 

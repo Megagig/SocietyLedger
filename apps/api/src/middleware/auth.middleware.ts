@@ -47,6 +47,7 @@ export async function authMiddleware(
         res.status(403).json({
           success: false,
           message: 'Access denied for this association',
+          code: 'TENANT_MISMATCH', // F0.5
         });
         return;
       }
@@ -91,6 +92,7 @@ export function requireRole(allowedRoles: string[]) {
       res.status(403).json({
         success: false,
         message: 'Insufficient permissions',
+        code: 'INSUFFICIENT_PERMISSIONS', // F0.5
       });
       return;
     }

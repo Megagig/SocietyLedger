@@ -196,6 +196,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       res.status(400).json({
         success: false,
         message: 'Association not found. Provide a valid subdomain or tenant header.',
+        code: 'ASSOCIATION_NOT_FOUND', // F0.5
       });
       return;
     }
@@ -204,6 +205,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       res.status(403).json({
         success: false,
         message: 'Association is suspended. Please contact support.',
+        code: 'ASSOCIATION_SUSPENDED', // F0.5
       });
       return;
     }
@@ -212,6 +214,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       res.status(403).json({
         success: false,
         message: 'Association subscription is cancelled.',
+        code: 'ASSOCIATION_CANCELLED', // F0.5
       });
       return;
     }

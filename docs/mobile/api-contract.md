@@ -216,5 +216,18 @@ F0.2 maps these (plus the new event types it adds dispatch calls for — payment
 
 **Not yet wired to push in this pass** (deliberately deferred, not forgotten — see progress-tracker.md): payment proof submitted/verified/rejected, bank transfer pending/verified, loan/guarantor/welfare events, election phase changes, poll opened, support ticket replies, user-approval-pending. Each needs its own careful recipient-resolution pass (who gets notified) through controllers this session didn't verify — left for the mobile feature session that first surfaces each event (e.g. F5.4 for payment proofs), rather than risking a broad, unverified change across many unfamiliar files right now.
 
+## 13. Error codes (F0.5) — now real everywhere architecture.md §6.3's table expects one
+
+| Code | Where | Real message text (unchanged) |
+|---|---|---|
+| `SUBSCRIPTION_INACTIVE` | `subscription.middleware.ts` | "No active subscription. Please subscribe to a plan." / "Subscription has expired. Please renew your subscription." / "Trial period has ended. Please subscribe to continue." / "No active subscription plan found" |
+| `TENANT_MISMATCH` | `auth.middleware.ts` | "Access denied for this association" |
+| `ASSOCIATION_NOT_FOUND` | `tenant.middleware.ts` | "Association not found. Provide a valid subdomain or tenant header." |
+| `ASSOCIATION_SUSPENDED` | `tenant.middleware.ts` | "Association is suspended. Please contact support." |
+| `ASSOCIATION_CANCELLED` | `tenant.middleware.ts` | "Association subscription is cancelled." |
+| `INSUFFICIENT_PERMISSIONS` | `rbac-enhanced.ts` — **4 separate functions**, not 1: `requirePermission` ("Permission denied"), `requireAnyPermission` ("Permission denied"), `requireAllPermissions` ("Insufficient permissions"), `requireAssociationRole` ("Access denied"); also `auth.middleware.ts`'s `requireRole` ("Insufficient permissions") | see above — same code on all of them regardless of exact wording |
+
+Not given a code (deliberately, out of mobile's scope per architecture.md rule #15): `requireOwnership`'s "You can only access your own resources" (a distinct condition, not a permission lack), `requirePlatformRole`/`requireSuperAdmin`'s platform-only rejections (mobile never reaches these).
+
 ## Endpoints referenced by the build-plan but not yet re-verified in this pass
 `GET /api/members/me/profile` detail, `POST /api/member-ledger/my-ledger/export`, officer-only Nigerian-payments list/detail routes, `associations/signup`. None are on the Phase 2–3 member-facing critical path; verify when the feature that needs them starts (F1.3 or later), not retroactively here.
