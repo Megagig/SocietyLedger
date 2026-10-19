@@ -230,15 +230,20 @@ export const useAuthStore = create<AuthState>()(
       
       startImpersonation: (token, association) => {
         const currentUser = get().user;
-        
+
         // Update cookie
         if (typeof document !== 'undefined') {
           document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`;
         }
-        
+
         // Update all state at once
         set({
           token,
+          // The handoff lands in a brand-new browser tab with no prior session,
+          // so currentUser is always null here — without this, isAuthenticated
+          // stays false and ProtectedRoute bounces straight to the login page
+          // instead of the dashboard.
+          isAuthenticated: true,
           isImpersonating: true,
           impersonatedAssociation: association,
           originalAssociationId: currentUser?.associationId || null,
@@ -248,6 +253,11 @@ export const useAuthStore = create<AuthState>()(
             associationId: association.id,
           } : null,
         });
+
+        // The exchange endpoint only returns { token, association }, not the
+        // user profile — fetch it now so `user` isn't left null for the rest
+        // of the impersonated session.
+        void get().checkAuth();
       },
       
       endImpersonation: async () => {
