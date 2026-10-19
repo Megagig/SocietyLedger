@@ -60,11 +60,13 @@ interface PendingApproval {
 }
 
 interface ActionLog {
-  id: string;
-  action: string;
-  performedBy: string;
-  targetType?: string;
-  createdAt: string;
+  id: number;
+  actionType: string;
+  targetType: string | null;
+  targetName: string | null;
+  performedAt: string;
+  admin: { id: number; email: string } | null;
+  association: { id: number; name: string; subdomain: string } | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -366,12 +368,12 @@ export default function DashboardPage() {
                   <Table.Tr key={log.id}>
                     <Table.Td>
                       <Badge variant="light" size="sm" color="ledger" radius="sm">
-                        {fmtAction(log.action)}
+                        {fmtAction(log.actionType)}
                       </Badge>
                     </Table.Td>
-                    <Table.Td c="dimmed">{log.performedBy}</Table.Td>
+                    <Table.Td c="dimmed">{log.admin?.email ?? 'System'}</Table.Td>
                     <Table.Td c="dimmed">{log.targetType ?? '—'}</Table.Td>
-                    <Table.Td c="dimmed">{fmtDate(log.createdAt)}</Table.Td>
+                    <Table.Td c="dimmed">{fmtDate(log.performedAt)}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
