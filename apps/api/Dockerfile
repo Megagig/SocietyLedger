@@ -29,6 +29,10 @@ COPY --from=pruner /app/out/full/ .
 # out/full — without it, tsc fails to load its config (TS5083) before it can compile anything.
 COPY tsconfig.base.json ./tsconfig.base.json
 RUN pnpm --filter @societyledger/api run db:generate
+# Build shared package first so Node.js runtime can require() its compiled CJS output.
+# packages/shared/main is ./dist/index.js — without this step Node would try to
+# execute the TypeScript source directly and fail with ERR_MODULE_NOT_FOUND.
+RUN pnpm --filter @societyledger/shared build
 # Pre-existing TS2345/TS2322 errors in controllers (Zod body vs service params) cause
 # tsc to exit non-zero. noEmitOnError:false in tsconfig.prod.json means JS is still
 # emitted; || true absorbs the non-zero exit so Docker doesn't fail the layer.
