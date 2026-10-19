@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 
 function ImpersonateContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { startImpersonation } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
@@ -29,12 +28,20 @@ function ImpersonateContent() {
         const data = await res.json();
         if (!data.success) throw new Error(data.message || 'Exchange failed');
         startImpersonation(data.data.token, data.data.association);
-        router.replace('/dashboard');
+        // A full navigation, not router.replace(): this is a brand-new tab with
+        // nothing worth preserving from client router state, and critically,
+        // Next's App Router can serve a stale prefetched/cached response for
+        // '/dashboard' fetched before the token cookie existed — the server
+        // middleware (middleware.ts) would then see no cookie and bounce to
+        // /auth/login even though startImpersonation() just set it correctly.
+        // A hard navigation guarantees the middleware re-checks with the
+        // current cookie jar.
+        window.location.href = '/dashboard';
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to complete impersonation.');
       }
     })();
-  }, [searchParams, router, startImpersonation]);
+  }, [searchParams, startImpersonation]);
 
   if (error) {
     return (
