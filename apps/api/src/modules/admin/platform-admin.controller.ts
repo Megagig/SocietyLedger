@@ -11,6 +11,7 @@
 
 import { Response } from 'express';
 import { z } from 'zod';
+import prisma from '../../lib/prisma';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { TenantManagementService } from '../../services/tenant-management.service';
 import { ModuleFeatureService } from '../../services/module-feature.service';
@@ -897,9 +898,45 @@ export class PlatformAdminController {
         filters.limit
       );
 
+      // PlatformActionLogService returns raw platform_action_logs rows
+      // (actorId/associationId as bare ints, createdAt, no description) —
+      // the admin UI needs actor/association objects, performedAt, and a
+      // human-readable description. Batch-fetch the referenced users/
+      // associations rather than N+1-querying per row.
+      const actorIds = [...new Set(result.logs.map((l) => l.actorId))];
+      const associationIds = [...new Set(result.logs.map((l) => l.associationId).filter((id): id is number => id != null))];
+
+      const [actors, associations] = await Promise.all([
+        actorIds.length
+          ? prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, email: true } })
+          : [],
+        associationIds.length
+          ? prisma.association.findMany({ where: { id: { in: associationIds } }, select: { id: true, name: true, subdomain: true } })
+          : [],
+      ]);
+      const actorById = new Map(actors.map((a) => [a.id, a]));
+      const associationById = new Map(associations.map((a) => [a.id, a]));
+
+      const logs = result.logs.map((l) => ({
+        id: l.id,
+        actionType: l.actionType,
+        targetType: l.targetType,
+        targetId: l.targetId !== null ? String(l.targetId) : null,
+        targetName: null as string | null,
+        description: l.reason || `${l.actionType} on ${l.targetType}${l.targetId !== null ? ` #${l.targetId}` : ''}`,
+        metadata: (l.afterState ?? l.beforeState) as Record<string, unknown> | null,
+        performedAt: l.createdAt,
+        admin: actorById.get(l.actorId) ?? null,
+        association: l.associationId !== null ? (associationById.get(l.associationId) ?? null) : null,
+      }));
+
       return res.json({
         success: true,
-        data: result,
+        data: {
+          logs,
+          total: result.pagination.total,
+          totalPages: result.pagination.totalPages,
+        },
       });
     } catch (error) {
       console.error('Get action logs error:', error);
