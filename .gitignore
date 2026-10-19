@@ -39,8 +39,8 @@ build/
 apps/*/dist/
 apps/*/build/
 
-# Logs
-logs
+# Logs — root-level log directories only (not app source dirs named "logs")
+/logs
 *.log
 npm-debug.log*
 yarn-debug.log*

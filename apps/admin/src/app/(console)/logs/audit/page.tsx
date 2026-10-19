@@ -10,7 +10,6 @@ import {
 import { IconDownload, IconChevronDown, IconChevronRight, IconShield } from '@tabler/icons-react';
 import { bff } from '@/lib/bff';
 import { PageHeader } from '@/components/PageHeader';
-import { DataTable } from '@/components/DataTable';
 import { FilterBar } from '@/components/FilterBar';
 import { ErrorState } from '@/components/ErrorState';
 

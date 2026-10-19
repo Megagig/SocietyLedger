@@ -449,15 +449,21 @@ function ImpersonateModal({
 
   const mut = useMutation({
     mutationFn: () =>
-      bff<{ handoffUrl: string }>(`admin/associations/${associationId}/impersonate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason, expiresInHours: Number(expiry) }),
-      }),
+      bff<{ handoffCode: string; subdomain: string; expiresAt: string }>(
+        `admin/associations/${associationId}/impersonate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason, durationMinutes: Number(expiry) * 60 }),
+        },
+      ),
     onSuccess: (data) => {
       notifications.show({ message: `Impersonation session started for ${associationName}`, color: 'blue' });
       onClose();
-      window.open(data.handoffUrl, '_blank', 'noopener,noreferrer');
+      // Derive base domain from admin hostname (admin.foo.com → foo.com)
+      const baseDomain = window.location.hostname.split('.').slice(1).join('.');
+      const handoffUrl = `https://${data.subdomain}.${baseDomain}/auth/impersonate?code=${data.handoffCode}`;
+      window.open(handoffUrl, '_blank', 'noopener,noreferrer');
     },
     onError: (err: Error) => {
       notifications.show({ message: err.message, color: 'red' });

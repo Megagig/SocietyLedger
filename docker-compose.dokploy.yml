@@ -105,13 +105,22 @@ services:
       - dokploy-network
     labels:
       # Wildcard rule so every tenant subdomain (e.g. ogunstate.societyledger.com.ng)
-      # and the apex domain both route here. Requires a wildcard TLS cert issued via
-      # DNS-01 (HTTP-01 cannot issue wildcard certs) — see the migration doc.
+      # and the apex domain both route here.
+      # TLS: wildcard cert *.societyledger.com.ng is issued via DNS-01 (HTTP-01
+      # cannot issue wildcard certs). Requires CF_DNS_API_TOKEN env var in the
+      # Dokploy Traefik settings and the letsencrypt certresolver configured with
+      # dnsChallenge provider=cloudflare — see docs/deployment/DOKPLOY_MIGRATION.md.
       - "traefik.enable=true"
-      - "traefik.http.routers.societyledger-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+.${BASE_DOMAIN}`)"
+      # Traefik v2 HostRegexp requires named-group syntax {var:pattern}; dots in
+      # the literal domain portion must be escaped so they match only '.', not any char.
+      - "traefik.http.routers.societyledger-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`{subdomain:[a-zA-Z0-9-]+}\\.${BASE_DOMAIN}`)"
       - "traefik.http.routers.societyledger-web.entrypoints=websecure"
       - "traefik.http.routers.societyledger-web.tls=true"
       - "traefik.http.routers.societyledger-web.tls.certresolver=letsencrypt"
+      # Tell Traefik which names to include in the wildcard cert request.
+      # Without these, Traefik can't infer the domains from a HostRegexp pattern.
+      - "traefik.http.routers.societyledger-web.tls.domains[0].main=${BASE_DOMAIN}"
+      - "traefik.http.routers.societyledger-web.tls.domains[0].sans[0]=*.${BASE_DOMAIN}"
       - "traefik.http.services.societyledger-web.loadbalancer.server.port=3000"
       # Below docs' priority (100) — without this, Traefik's rule-length tiebreak
       # could let this wildcard capture docs.${BASE_DOMAIN}, since HostRegexp also
