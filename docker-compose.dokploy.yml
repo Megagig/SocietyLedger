@@ -111,39 +111,38 @@ services:
       # Dokploy Traefik settings and the letsencrypt certresolver configured with
       # dnsChallenge provider=cloudflare — see docs/deployment/DOKPLOY_MIGRATION.md.
       - "traefik.enable=true"
-      # HTTP → HTTPS redirect router (port 80)
-      - "traefik.http.routers.societyledger-web-http.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
-      - "traefik.http.routers.societyledger-web-http.entrypoints=web"
-      - "traefik.http.routers.societyledger-web-http.middlewares=redirect-to-https"
-      - "traefik.http.routers.societyledger-web-http.priority=1"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      # Router/service names use the "sl-" prefix, not "societyledger-", because
+      # stale containers from earlier Dokploy deploys are still running with the
+      # old "societyledger-*" router labels and Traefik refuses to link a router
+      # that's defined on more than one container ("cannot be linked automatically
+      # with multiple Services"). A disjoint name sidesteps the collision entirely
+      # — those old containers still need to be removed via `docker rm`, but this
+      # keeps the live site working in the meantime.
+      - "traefik.http.routers.sl-web-http.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.sl-web-http.entrypoints=web"
+      - "traefik.http.routers.sl-web-http.middlewares=sl-redirect-to-https"
+      - "traefik.http.routers.sl-web-http.service=sl-web"
+      - "traefik.http.routers.sl-web-http.priority=1"
+      - "traefik.http.middlewares.sl-redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sl-redirect-to-https.redirectscheme.permanent=true"
       # Traefik v3 HostRegexp takes a plain Go regexp (v2 named-group syntax
       # {subdomain:pattern} was removed in v3 and causes the router to be rejected).
-      - "traefik.http.routers.societyledger-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
-      - "traefik.http.routers.societyledger-web.entrypoints=websecure"
-      - "traefik.http.routers.societyledger-web.tls=true"
-      - "traefik.http.routers.societyledger-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.sl-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.sl-web.entrypoints=websecure"
+      - "traefik.http.routers.sl-web.tls=true"
+      - "traefik.http.routers.sl-web.tls.certresolver=letsencrypt"
       # Tell Traefik which names to include in the wildcard cert request.
       # Without these, Traefik can't infer the domains from a HostRegexp pattern.
-      - "traefik.http.routers.societyledger-web.tls.domains[0].main=${BASE_DOMAIN}"
-      - "traefik.http.routers.societyledger-web.tls.domains[0].sans[0]=*.${BASE_DOMAIN}"
-      - "traefik.http.services.societyledger-web.loadbalancer.server.port=3000"
-      # Explicitly bind this router to our service — prevents the "cannot be linked
-      # automatically with multiple Services" error when old Dokploy containers from
-      # previous deploys are still running with auto-generated service names.
-      - "traefik.http.routers.societyledger-web.service=societyledger-web"
-      # Health check — Traefik only routes to backends that pass this check,
-      # so stale containers from old deploys are automatically excluded.
-      - "traefik.http.services.societyledger-web.loadbalancer.healthcheck.path=/"
-      - "traefik.http.services.societyledger-web.loadbalancer.healthcheck.interval=10s"
-      - "traefik.http.services.societyledger-web.loadbalancer.healthcheck.timeout=5s"
+      - "traefik.http.routers.sl-web.tls.domains[0].main=${BASE_DOMAIN}"
+      - "traefik.http.routers.sl-web.tls.domains[0].sans[0]=*.${BASE_DOMAIN}"
+      - "traefik.http.services.sl-web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.sl-web.service=sl-web"
       # Below docs' priority (100) — without this, Traefik's rule-length tiebreak
       # could let this wildcard capture docs.${BASE_DOMAIN}, since HostRegexp also
       # matches it. Fixed at D1.7, when docs (the first service needing explicit
       # priority) actually landed — architecture.md §17.3 flagged this gap when web
       # shipped, before admin/docs existed to need it.
-      - "traefik.http.routers.societyledger-web.priority=1"
+      - "traefik.http.routers.sl-web.priority=1"
 
   admin:
     build:
@@ -178,18 +177,21 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.societyledger-admin.rule=Host(`${ADMIN_DOMAIN}`)"
-      - "traefik.http.routers.societyledger-admin.entrypoints=websecure"
-      - "traefik.http.routers.societyledger-admin.tls=true"
-      - "traefik.http.routers.societyledger-admin.tls.certresolver=letsencrypt"
+      # "sl-" prefix — see the long comment on the web service's labels above for why.
+      - "traefik.http.routers.sl-admin-http.rule=Host(`${ADMIN_DOMAIN}`)"
+      - "traefik.http.routers.sl-admin-http.entrypoints=web"
+      - "traefik.http.routers.sl-admin-http.middlewares=sl-redirect-to-https"
+      - "traefik.http.routers.sl-admin-http.service=sl-admin"
+      - "traefik.http.routers.sl-admin-http.priority=100"
+      - "traefik.http.routers.sl-admin.rule=Host(`${ADMIN_DOMAIN}`)"
+      - "traefik.http.routers.sl-admin.entrypoints=websecure"
+      - "traefik.http.routers.sl-admin.tls=true"
+      - "traefik.http.routers.sl-admin.tls.certresolver=letsencrypt"
       # Priority 100 — same as docs; both beat the web wildcard (priority 1) so
       # admin.${BASE_DOMAIN} routes here, not to the tenant-subdomain HostRegexp.
-      - "traefik.http.routers.societyledger-admin.priority=100"
-      - "traefik.http.services.societyledger-admin.loadbalancer.server.port=3002"
-      - "traefik.http.routers.societyledger-admin.service=societyledger-admin"
-      - "traefik.http.services.societyledger-admin.loadbalancer.healthcheck.path=/api/health"
-      - "traefik.http.services.societyledger-admin.loadbalancer.healthcheck.interval=10s"
-      - "traefik.http.services.societyledger-admin.loadbalancer.healthcheck.timeout=5s"
+      - "traefik.http.routers.sl-admin.priority=100"
+      - "traefik.http.services.sl-admin.loadbalancer.server.port=3002"
+      - "traefik.http.routers.sl-admin.service=sl-admin"
 
   docs:
     build:
@@ -214,18 +216,21 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.societyledger-docs.rule=Host(`${DOCS_DOMAIN}`)"
-      - "traefik.http.routers.societyledger-docs.entrypoints=websecure"
-      - "traefik.http.routers.societyledger-docs.tls=true"
-      - "traefik.http.routers.societyledger-docs.tls.certresolver=letsencrypt"
+      # "sl-" prefix — see the long comment on the web service's labels above for why.
+      - "traefik.http.routers.sl-docs-http.rule=Host(`${DOCS_DOMAIN}`)"
+      - "traefik.http.routers.sl-docs-http.entrypoints=web"
+      - "traefik.http.routers.sl-docs-http.middlewares=sl-redirect-to-https"
+      - "traefik.http.routers.sl-docs-http.service=sl-docs"
+      - "traefik.http.routers.sl-docs-http.priority=100"
+      - "traefik.http.routers.sl-docs.rule=Host(`${DOCS_DOMAIN}`)"
+      - "traefik.http.routers.sl-docs.entrypoints=websecure"
+      - "traefik.http.routers.sl-docs.tls=true"
+      - "traefik.http.routers.sl-docs.tls.certresolver=letsencrypt"
       # Above the web wildcard (priority 1) so docs.${BASE_DOMAIN} resolves here,
       # not to web's HostRegexp tenant-subdomain rule (architecture.md §17.3).
-      - "traefik.http.routers.societyledger-docs.priority=100"
-      - "traefik.http.services.societyledger-docs.loadbalancer.server.port=80"
-      - "traefik.http.routers.societyledger-docs.service=societyledger-docs"
-      - "traefik.http.services.societyledger-docs.loadbalancer.healthcheck.path=/"
-      - "traefik.http.services.societyledger-docs.loadbalancer.healthcheck.interval=10s"
-      - "traefik.http.services.societyledger-docs.loadbalancer.healthcheck.timeout=5s"
+      - "traefik.http.routers.sl-docs.priority=100"
+      - "traefik.http.services.sl-docs.loadbalancer.server.port=80"
+      - "traefik.http.routers.sl-docs.service=sl-docs"
 
 networks:
   internal:
