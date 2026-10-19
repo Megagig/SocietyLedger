@@ -15,7 +15,7 @@ import { sendEmail } from '../src/lib/email';
 async function testEmailService() {
   console.log('🧪 Testing Resend Email Service...\n');
   console.log(`📧 Using API Key: ${process.env.RESEND_API_KEY?.substring(0, 10)}...`);
-  console.log(`📤 From: ${process.env.EMAIL_FROM || 'SocietyLedger <admin@megagigsolution.com>'}\n`);
+  console.log(`📤 From: ${process.env.EMAIL_FROM}\n`);
 
   // Test email address (use your own)
   const testEmail = process.env.TEST_EMAIL || 'test@example.com';

@@ -39,9 +39,9 @@ function getResendClient(): Resend {
 // Lazy-load email configuration to ensure environment variables are available
 function getEmailConfig() {
   return {
-    FROM_EMAIL: process.env.EMAIL_FROM || 'SocietyLedger <admin@societyledger.com.ng>',
-    REPLY_TO: process.env.EMAIL_REPLY_TO || 'admin@societyledger.com.ng',
-    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO || 'admin@societyledger.com.ng',
+    FROM_EMAIL: process.env.EMAIL_FROM,
+    REPLY_TO: process.env.EMAIL_REPLY_TO,
+    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO,
     WEBSITE_URL: process.env.APP_URL || 'https://societyledger.com',
   };
 }
@@ -100,7 +100,9 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     // Get configuration
     const config = getEmailConfig();
 
-    let from = config.FROM_EMAIL;
+    if (!config.FROM_EMAIL) throw new Error('EMAIL_FROM environment variable is not set');
+
+    let from: string = config.FROM_EMAIL;
     if (fromName) {
       const addressMatch = config.FROM_EMAIL.match(/<(.+)>/);
       const address = addressMatch ? addressMatch[1] : config.FROM_EMAIL;
