@@ -40,8 +40,8 @@ interface DocSection {
   id: number;
   name: string;
   slug: string;
-  sortOrder: number;
-  pageCount: number;
+  order: number;
+  _count: { pages: number };
 }
 
 interface DocPagesResponse {
@@ -89,7 +89,10 @@ function NewSectionModal({ opened, onClose, onCreated }: {
     mutationFn: () => bff('admin/documentation/sections', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        slug: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+      }),
     }),
     onSuccess: () => {
       notifications.show({ message: 'Section created', color: 'green' });
@@ -228,7 +231,7 @@ export default function HelpPage() {
               style={{ cursor: 'pointer' }}
               onClick={() => setSectionId(sectionId === String(s.id) ? null : String(s.id))}
             >
-              {s.name} ({s.pageCount})
+              {s.name} ({s._count.pages})
             </Badge>
           ))}
         </Group>

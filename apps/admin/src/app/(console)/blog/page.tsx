@@ -36,7 +36,7 @@ interface BlogCategory {
   id: number;
   name: string;
   slug: string;
-  postCount: number;
+  _count: { posts: number };
 }
 
 interface BlogPostsResponse {
@@ -75,7 +75,10 @@ function NewCategoryModal({ opened, onClose, onCreated }: {
     mutationFn: () => bff('admin/blog/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        slug: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+      }),
     }),
     onSuccess: () => {
       notifications.show({ message: 'Category created', color: 'green' });
@@ -210,7 +213,7 @@ export default function BlogPage() {
               style={{ cursor: 'pointer' }}
               onClick={() => setCategoryId(categoryId === String(c.id) ? null : String(c.id))}
             >
-              {c.name} ({c.postCount})
+              {c.name} ({c._count.posts})
             </Badge>
           ))}
         </Group>
