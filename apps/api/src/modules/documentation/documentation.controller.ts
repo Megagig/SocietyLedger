@@ -421,6 +421,7 @@ export const listAllFeedback = async (req: Request, res: Response, next: NextFun
 export const getFeedbackById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ success: false, message: 'Invalid feedback ID' });
     const feedback = await documentationService.getFeedbackById(id);
 
     if (!feedback) {
