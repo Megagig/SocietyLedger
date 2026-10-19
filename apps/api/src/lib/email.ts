@@ -39,9 +39,9 @@ function getResendClient(): Resend {
 // Lazy-load email configuration to ensure environment variables are available
 function getEmailConfig() {
   return {
-    FROM_EMAIL: process.env.EMAIL_FROM || 'SocietyLedger <admin@megagigsolution.com>',
-    REPLY_TO: process.env.EMAIL_REPLY_TO || 'admin@megagigsolution.com',
-    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO || 'admin@megagigsolution.com',
+    FROM_EMAIL: process.env.EMAIL_FROM || 'SocietyLedger <admin@societyledger.com.ng>',
+    REPLY_TO: process.env.EMAIL_REPLY_TO || 'admin@societyledger.com.ng',
+    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO || 'admin@societyledger.com.ng',
     WEBSITE_URL: process.env.APP_URL || 'https://societyledger.com',
   };
 }
