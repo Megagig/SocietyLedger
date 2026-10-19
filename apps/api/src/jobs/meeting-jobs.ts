@@ -1,7 +1,8 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
 import { sendEmail } from '../lib/email';
-import { channelAllowed, getPreferences } from '../services/notification-preferences.service';
+import { channelAllowed, getPreferences, filterPushEligible } from '../services/notification-preferences.service';
+import { sendPushToUsers } from '../services/push.service';
 
 /**
  * Cron Jobs for Meeting Management
@@ -19,7 +20,12 @@ async function createMeetingNotifications(
   associationId: number,
   title: string,
   message: string,
-  type: 'system' | 'announcement' = 'system'
+  type: 'system' | 'announcement' = 'system',
+  // F0.2: entityId/pushType are purely additive — they only affect the push
+  // payload (deep link), never the stored `type` above, so existing readers
+  // of `Notification.type` see no change.
+  entityId?: number,
+  pushType?: string
 ) {
   try {
     // Get all active users in the association
@@ -48,8 +54,21 @@ async function createMeetingNotifications(
         title,
         message,
         type,
+        entityId,
       })),
     });
+
+    // F0.2: push to the same eligible set, further narrowed to those who
+    // haven't opted out of push specifically (see filterPushEligible).
+    const pushEligibleUserIds = await filterPushEligible(associationId, eligibleUserIds);
+    if (pushEligibleUserIds.length > 0) {
+      await sendPushToUsers(pushEligibleUserIds, {
+        title,
+        body: message,
+        data: { type: pushType, entityId },
+        channelId: 'governance',
+      });
+    }
 
     return result.count;
   } catch (error) {
@@ -173,7 +192,9 @@ export const checkMeetingReminders = cron.schedule('0 * * * *', async () => {
           meeting.associationId,
           notificationTitle,
           notificationMessage,
-          'announcement'
+          'announcement',
+          meeting.id,
+          'meeting.reminder'
         );
 
         // Send email reminders
@@ -246,7 +267,9 @@ export async function notifyMeetingScheduled(
       associationId,
       notificationTitle,
       notificationMessage,
-      'announcement'
+      'announcement',
+      meeting.id,
+      'meeting.scheduled'
     );
 
     console.log(`[MEETING-JOBS] Meeting scheduled notification sent: ${notificationsCreated} users`);
@@ -287,7 +310,9 @@ export async function notifyMeetingCancelled(
       associationId,
       notificationTitle,
       notificationMessage,
-      'announcement'
+      'announcement',
+      meeting.id,
+      'meeting.cancelled'
     );
 
     // Send cancellation emails
@@ -354,15 +379,19 @@ export async function notifyAttendanceMarked(
                        status === 'LATE' ? 'late' :
                        status === 'APOLOGY' ? 'excused (apology)' : status.toLowerCase();
 
+    const title = `✅ Attendance Recorded`;
+    const message = `Your attendance for "${meeting.title}" has been marked as ${statusText}.`;
+
     await prisma.notification.create({
-      data: {
-        associationId,
-        userId,
-        title: `✅ Attendance Recorded`,
-        message: `Your attendance for "${meeting.title}" has been marked as ${statusText}.`,
-        type: 'system',
-      },
+      data: { associationId, userId, title, message, type: 'system', entityId: meeting.id },
     });
+
+    // F0.2: push is additive — the in-app row above is still created
+    // unconditionally exactly as before, regardless of this check.
+    const pushEligible = await filterPushEligible(associationId, [userId]);
+    if (pushEligible.length > 0) {
+      await sendPushToUsers(pushEligible, { title, body: message, data: { entityId: meeting.id }, channelId: 'governance' });
+    }
 
     console.log(`[MEETING-JOBS] Attendance notification sent to user ${userId}`);
     return true;

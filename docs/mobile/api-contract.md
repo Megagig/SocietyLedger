@@ -182,5 +182,19 @@ F0.2 maps these (plus the new event types it adds dispatch calls for — payment
 
 **Conclusion**: mobile does not import `packages/shared`'s `User`/`Member`/`PaginatedResponse` (per `architecture.md §2`'s existing rule). F1.3 generates `src/types/api/*` directly from this contract doc instead. Gap **G2** stays open in `progress-tracker.md` until F1.3; nothing in Phase 0 touches `packages/shared`.
 
+## 11. Devices — `/api/devices/*` (F0.2, no `X-Tenant` needed — tenant-excluded, same as `/api/members/me/*`)
+
+### `POST /api/devices/register` — authenticated
+`{ expoPushToken: string, platform: 'ios'|'android', deviceName?: string, appVersion?: string }` → `200 { data: { id: number } }`. Upserts by `expoPushToken` (unique) — re-registering reassigns the token to the current caller and clears any prior `disabledAt`. Errors: `400` Zod · `401` · `500`.
+
+### `POST /api/devices/unregister` — authenticated
+`{ expoPushToken: string }` → `200`. Scoped to the caller's own tokens; idempotent (no error if the token doesn't exist or belongs to someone else).
+
+## 12. Notification model additions (F0.2)
+
+`Notification` gained a nullable `entityId` (for push deep-link routing — `null` on every row written before this feature, and on any writer that still doesn't pass one). `NotificationPreference` gained a `pushEnabled` master toggle (default `true`), independent of the existing `inAppEnabled`/`emailEnabled`/`smsEnabled` toggles — push is sent only when an in-app row was actually created **and** `pushEnabled` is true. §7's `Notification.type` inventory is unchanged by this feature — push's `data.type` (what the mobile client's routing table switches on) is a **separate**, deliberately decoupled value computed in `push.service.ts`/`notification-preferences.service.ts`'s `KIND_TO_PUSH_TYPE` map (or an explicit per-call `pushType` override), never the stored `type` string — see `progress-tracker.md`'s F0.2 entry for why.
+
+**Not yet wired to push in this pass** (deliberately deferred, not forgotten — see progress-tracker.md): payment proof submitted/verified/rejected, bank transfer pending/verified, loan/guarantor/welfare events, election phase changes, poll opened, support ticket replies, user-approval-pending. Each needs its own careful recipient-resolution pass (who gets notified) through controllers this session didn't verify — left for the mobile feature session that first surfaces each event (e.g. F5.4 for payment proofs), rather than risking a broad, unverified change across many unfamiliar files right now.
+
 ## Endpoints referenced by the build-plan but not yet re-verified in this pass
 `GET /api/members/me/profile` detail, `POST /api/member-ledger/my-ledger/export`, officer-only Nigerian-payments list/detail routes, `associations/signup`. None are on the Phase 2–3 member-facing critical path; verify when the feature that needs them starts (F1.3 or later), not retroactively here.

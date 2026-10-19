@@ -32,7 +32,7 @@
 | expo-updates | OTA | _SDK-matched_ |
 | jest-expo, @testing-library/react-native, msw | tests | jest-expo **58.0.11**, jest **30.5.2** (jest-expo 58 accepts `^29 \|\| ^30`, but its own `jest-watch-typeahead` transitive dep wants `^30` — pin 30 to avoid a peer warning), @testing-library/react-native **14.1.0** (wants `test-renderer@^1.0.0`, **not** `react-test-renderer` — that package is deprecated under React 19; use the `test-renderer` npm package instead, see its own section below), msw latest. |
 | typescript (mobile workspace only) | language | **5.9.3, not the real npm `latest` (7.0.2)** — `eslint-config-expo@58.0.4`'s `@typescript-eslint/eslint-plugin@^8.59.0` caps at `typescript: >=4.8.4 <6.1.0` (same ceiling pattern as the docs workspace's own TS pin below). Re-check this ceiling before ever bumping. |
-| expo-server-sdk (**api only**) | push sending | latest |
+| expo-server-sdk (**api only**) | push sending | **5.0.0, not npm `latest` (7.2.0)** — 6.x/7.x are ESM-only (`"type": "module"`, no CJS build at all) and require Node ≥20/≥22.12; production's Dockerfile runs `node:20-alpine`, and ESM-only also crashes Jest's default CJS transform. `5.0.0` is the newest version that's still CJS, requires Node ≥20 (matches production), and has an identical `Expo`/`chunkPushNotifications`/`sendPushNotificationsAsync`/receipts API (confirmed via its `.d.ts` — pinned F0.2). |
 | **Docs site (`apps/docs`)** | | |
 | fumadocs-core, fumadocs-mdx | docs framework, MDX content source | 16.17.1 / 15.4.7 (pinned D1.1) |
 | fumadocs-ui | UI (resolves to the renamed `@fumadocs/base-ui` package at this version — keep the `npm:` alias in `package.json`, don't "fix" the name) | `npm:@fumadocs/base-ui@16.17.1` (pinned D1.1) |

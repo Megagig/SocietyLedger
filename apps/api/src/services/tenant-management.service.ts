@@ -12,6 +12,8 @@
 import { AssociationStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { PlatformActionLogService } from './platform-action-log.service';
+import { filterPushEligible } from './notification-preferences.service';
+import { sendPushToUsers } from './push.service';
 
 export interface TenantSecuritySettings {
   force2FA: boolean;
@@ -750,19 +752,28 @@ export class TenantManagementService {
     // 3. Send SMS if configured
     
     console.log(`[TenantManagement] Notifying ${users.length} users about ${eventType}: ${reason}`);
-    
+
+    const title = eventType === 'suspension'
+      ? 'Account Suspended'
+      : 'Account Scheduled for Deletion';
+
     // Create notifications for each user
     await prisma.notification.createMany({
       data: users.map(user => ({
         associationId,
         userId: user.id,
-        title: eventType === 'suspension' 
-          ? 'Account Suspended' 
-          : 'Account Scheduled for Deletion',
+        title,
         message: reason,
         type: 'system',
         isRead: false,
       }))
     });
+
+    // F0.2: push is additive — the in-app rows above are still created
+    // unconditionally for every user exactly as before, regardless of this.
+    const pushEligibleUserIds = await filterPushEligible(associationId, users.map(u => u.id));
+    if (pushEligibleUserIds.length > 0) {
+      await sendPushToUsers(pushEligibleUserIds, { title, body: reason, channelId: 'default' });
+    }
   }
 }

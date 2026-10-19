@@ -10,6 +10,7 @@ import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
+import { startPushReceiptsJob, stopPushReceiptsJob } from './services/push.service';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
 import { standardRateLimit, authRateLimit, sessionRateLimit } from './middleware/rate-limit.middleware';
@@ -30,6 +31,7 @@ import cronRoutes from './modules/cron/cron.routes';
 import paymentRoutes from './modules/payments/payments.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
+import devicesRoutes from './modules/devices/devices.routes';
 import memberInviteRoutes from './modules/member-invites/member-invites.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import exportsRoutes from './modules/exports/exports.routes';
@@ -198,6 +200,7 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/devices', devicesRoutes);
 app.use('/api/member-invites', memberInviteRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/exports', exportsRoutes);
@@ -252,6 +255,7 @@ if (process.env.NODE_ENV !== 'test') {
         startSubscriptionJobs();
         startMeetingJobs();
         startPaymentReminderJobs();
+        startPushReceiptsJob();
       });
     })
     .catch((err) => {
@@ -268,6 +272,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopSubscriptionJobs();
     stopMeetingJobs();
     stopPaymentReminderJobs();
+    stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);
   });
@@ -277,6 +282,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopSubscriptionJobs();
     stopMeetingJobs();
     stopPaymentReminderJobs();
+    stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);
   });

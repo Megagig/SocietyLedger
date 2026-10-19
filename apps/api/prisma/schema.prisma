@@ -217,6 +217,9 @@ model User {
   recoveryCodes   RecoveryCode[]
   loginChallenges AdminLoginChallenge[]
 
+  // F0.2 — Mobile push notifications
+  deviceTokens DeviceToken[]
+
   @@unique([associationId, email])
   @@index([associationId, email])
   @@map("users")
@@ -478,6 +481,7 @@ model Notification {
   title         String
   message       String
   type          String
+  entityId      Int?        @map("entity_id") // F0.2: the entity (payment, meeting, election...) this notification is about, for push deep-link routing. Nullable — existing rows and writers that don't pass one are unaffected.
   isRead        Boolean     @default(false) @map("is_read")
   createdAt     DateTime    @default(now()) @map("created_at")
   association   Association @relation(fields: [associationId], references: [id])
@@ -497,6 +501,7 @@ model NotificationPreference {
   emailEnabled          Boolean     @default(true) @map("email_enabled")
   smsEnabled            Boolean     @default(false) @map("sms_enabled")
   inAppEnabled          Boolean     @default(true) @map("in_app_enabled")
+  pushEnabled           Boolean     @default(true) @map("push_enabled") // F0.2: master toggle for mobile push, independent of the in-app feed. Per-kind push granularity (like email/SMS/inApp have) can be added later if a mobile settings screen needs it — not required for v1.
   paymentDueEmail       Boolean     @default(true) @map("payment_due_email")
   paymentDueSMS         Boolean     @default(false) @map("payment_due_sms")
   paymentDueInApp       Boolean     @default(true) @map("payment_due_in_app")
@@ -523,6 +528,28 @@ model NotificationPreference {
 
   @@unique([associationId, userId])
   @@map("notification_preferences")
+}
+
+// F0.2 — a registered Expo push token for one install of the mobile app.
+// associationId is nullable: a device can be registered before the user has
+// selected/switched a tenant in some flows, and one physical device token is
+// re-used/reassigned across associations if the same phone signs into more
+// than one (register upserts by expoPushToken, not by user).
+model DeviceToken {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  associationId Int?      @map("association_id")
+  expoPushToken String    @unique @map("expo_push_token")
+  platform      String // 'ios' | 'android'
+  deviceName    String?   @map("device_name")
+  appVersion    String?   @map("app_version")
+  lastSeenAt    DateTime  @default(now()) @map("last_seen_at")
+  disabledAt    DateTime? @map("disabled_at") // set by the receipts job on a DeviceNotRegistered receipt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, associationId])
+  @@map("device_tokens")
 }
 
 model Settings {

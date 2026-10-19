@@ -90,6 +90,14 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // F0.2: allow device-token registration without a tenant header — a
+    // device can register before the user has selected/switched an
+    // association in some mobile flows; associationId on DeviceToken is
+    // nullable and just comes from the authenticated user's token instead.
+    if (req.path.startsWith('/api/devices')) {
+      return next();
+    }
+
     // Allow subscription plans endpoint without strict tenant requirement
     if (req.path === '/api/subscriptions/plans') {
       // Try to resolve tenant but don't fail if not found
