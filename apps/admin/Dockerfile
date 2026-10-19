@@ -22,6 +22,8 @@ WORKDIR /app
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
 COPY tsconfig.base.json ./tsconfig.base.json
+# Build shared package first so its dist/index.js exists for webpack resolution
+RUN npm install -g pnpm && pnpm --filter @societyledger/shared build
 ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* vars must be baked in at build time
 ARG NEXT_PUBLIC_ADMIN_HOST

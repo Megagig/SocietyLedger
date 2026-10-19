@@ -41,6 +41,8 @@ ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 ENV NEXT_PUBLIC_BASE_DOMAIN=$NEXT_PUBLIC_BASE_DOMAIN
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
+# Build shared package first so its dist/index.js exists for webpack resolution
+RUN pnpm --filter @societyledger/shared build
 RUN pnpm --filter @societyledger/web run build
 
 # ---- Runtime image (Next.js standalone output) ----
