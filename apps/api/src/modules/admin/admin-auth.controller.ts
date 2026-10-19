@@ -1,11 +1,19 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import { createHash } from 'crypto';
 import prisma from '../../lib/prisma';
-import { verifyPassword, generatePlatformToken, verifyToken, TokenPayload } from '../../lib/auth';
+import { verifyPassword, hashPassword, generatePlatformToken, verifyToken, TokenPayload } from '../../lib/auth';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(1, 'Password is required'),
+});
+
+const acceptInviteSchema = z.object({
+  token: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 export class AdminAuthController {
@@ -158,6 +166,94 @@ export class AdminAuthController {
       });
     } catch (error) {
       console.error('Admin auth me error:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * A2.12 — Look up a pending invite by its raw token, for the accept page
+   * to display who's inviting and to what role before the user commits.
+   */
+  async getInvite(req: Request, res: Response): Promise<void> {
+    try {
+      const token = req.params.token;
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+
+      const invite = await prisma.platformAdminInvite.findUnique({
+        where: { tokenHash },
+        include: { invitedBy: { select: { email: true } } },
+      });
+
+      if (!invite || invite.acceptedAt || invite.revokedAt || invite.expiresAt < new Date()) {
+        res.status(404).json({ success: false, message: 'Invite not found or no longer valid' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          email: invite.email,
+          platformRole: invite.platformRole,
+          invitedByEmail: invite.invitedBy.email,
+        },
+      });
+    } catch (error) {
+      console.error('Get platform admin invite error:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * A2.12 — Accept a platform admin invite: set a name/password and
+   * create the User account with the invited platformRole.
+   */
+  async acceptInvite(req: Request, res: Response): Promise<void> {
+    try {
+      const { token, firstName, lastName, password } = acceptInviteSchema.parse(req.body);
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+
+      const invite = await prisma.platformAdminInvite.findUnique({ where: { tokenHash } });
+      if (!invite || invite.acceptedAt || invite.revokedAt || invite.expiresAt < new Date()) {
+        res.status(404).json({ success: false, message: 'Invite not found or no longer valid' });
+        return;
+      }
+
+      const existing = await prisma.user.findFirst({
+        where: { email: invite.email, platformRole: { not: null } },
+      });
+      if (existing) {
+        res.status(409).json({ success: false, message: 'An account with this email already exists' });
+        return;
+      }
+
+      const passwordHash = await hashPassword(password);
+
+      await prisma.$transaction([
+        prisma.user.create({
+          data: {
+            email: invite.email,
+            passwordHash,
+            firstName,
+            lastName,
+            role: 'admin',
+            platformRole: invite.platformRole,
+            isActive: true,
+            emailVerified: true,
+          },
+        }),
+        prisma.platformAdminInvite.update({
+          where: { id: invite.id },
+          data: { acceptedAt: new Date() },
+        }),
+      ]);
+
+      res.json({ success: true, message: 'Account created — you can now log in.' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+        return;
+      }
+      console.error('Accept platform admin invite error:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

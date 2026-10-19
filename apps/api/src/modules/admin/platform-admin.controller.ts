@@ -11,6 +11,8 @@
 
 import { Response } from 'express';
 import { z } from 'zod';
+import { randomBytes, createHash } from 'crypto';
+import { PlatformRole } from '@prisma/client';
 import prisma from '../../lib/prisma';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { TenantManagementService } from '../../services/tenant-management.service';
@@ -18,6 +20,23 @@ import { ModuleFeatureService } from '../../services/module-feature.service';
 import { BillingOverrideService } from '../../services/billing-override.service';
 import { PlatformActionLogService } from '../../services/platform-action-log.service';
 import { SMSService } from '../sms/sms.service';
+import { sendEmail } from '../../lib/email';
+import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
+import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
+
+const inviteAdminSchema = z.object({
+  email: z.string().email(),
+  platformRole: z.nativeEnum(PlatformRole),
+});
+
+const ADMIN_INVITE_EXPIRY_HOURS = 72;
+
+const ROLE_LABELS: Record<PlatformRole, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  SUPPORT_AGENT: 'Support Agent',
+  FINANCE_ADMIN: 'Finance Admin',
+  COMPLIANCE_ADMIN: 'Compliance Admin',
+};
 
 const smsService = new SMSService();
 
@@ -1259,6 +1278,162 @@ export class PlatformAdminController {
       });
     } catch (error) {
       console.error('Get revenue trends error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * A2.12 — List current platform admins + pending invites
+   */
+  async listAdmins(req: AuthRequest, res: Response) {
+    try {
+      const [admins, invites] = await Promise.all([
+        prisma.user.findMany({
+          where: { platformRole: { not: null } },
+          select: {
+            id: true, email: true, firstName: true, lastName: true,
+            platformRole: true, isActive: true, lastLoginAt: true, createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.platformAdminInvite.findMany({
+          where: { acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+          include: { invitedBy: { select: { id: true, email: true } } },
+          orderBy: { createdAt: 'desc' },
+        }),
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          admins,
+          invites: invites.map((i) => ({
+            id: i.id,
+            email: i.email,
+            platformRole: i.platformRole,
+            invitedBy: i.invitedBy,
+            expiresAt: i.expiresAt,
+            createdAt: i.createdAt,
+          })),
+        },
+      });
+    } catch (error) {
+      console.error('List platform admins error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * A2.12 — Invite a new platform admin by email
+   */
+  async inviteAdmin(req: AuthRequest, res: Response) {
+    try {
+      const inviter = req.user!;
+      const { email, platformRole } = inviteAdminSchema.parse(req.body);
+      const normalizedEmail = email.toLowerCase();
+
+      const existingAdmin = await prisma.user.findFirst({
+        where: { email: normalizedEmail, platformRole: { not: null } },
+      });
+      if (existingAdmin) {
+        return res.status(409).json({ success: false, message: 'This email already has a platform admin account' });
+      }
+
+      const existingInvite = await prisma.platformAdminInvite.findFirst({
+        where: { email: normalizedEmail, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      });
+      if (existingInvite) {
+        return res.status(409).json({ success: false, message: 'An active invite already exists for this email' });
+      }
+
+      const rawToken = randomBytes(32).toString('hex');
+      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+      const expiresAt = new Date(Date.now() + ADMIN_INVITE_EXPIRY_HOURS * 60 * 60 * 1000);
+
+      const invite = await prisma.platformAdminInvite.create({
+        data: {
+          email: normalizedEmail,
+          platformRole,
+          tokenHash,
+          invitedById: inviter.id,
+          expiresAt,
+        },
+      });
+
+      const acceptUrl = `${process.env.ADMIN_URL}/invite/${rawToken}`;
+      try {
+        await sendEmail({
+          to: normalizedEmail,
+          subject: 'You’re invited to SocietyLedger Admin',
+          template: 'platform-admin-invite',
+          data: {
+            invitedByEmail: inviter.email,
+            roleLabel: ROLE_LABELS[platformRole],
+            acceptUrl,
+            expiresInHours: ADMIN_INVITE_EXPIRY_HOURS,
+          },
+        });
+      } catch (emailError) {
+        console.error('Failed to send platform admin invite email:', emailError);
+      }
+
+      void logSecurityEvent({
+        eventType: 'PLATFORM_ADMIN_INVITED',
+        severity: SecurityEventSeverity.WARNING,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: inviter.id,
+        actorEmail: inviter.email,
+        targetType: 'platform_admin_invite',
+        targetId: invite.id,
+        targetName: normalizedEmail,
+        details: { platformRole },
+        ...requestContext(req),
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: { id: invite.id, email: invite.email, platformRole: invite.platformRole, expiresAt: invite.expiresAt },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid data', errors: error.errors });
+      }
+      console.error('Invite platform admin error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * A2.12 — Revoke a pending platform admin invite
+   */
+  async revokeAdminInvite(req: AuthRequest, res: Response) {
+    try {
+      const inviteId = Number(req.params.inviteId);
+      const invite = await prisma.platformAdminInvite.findUnique({ where: { id: inviteId } });
+      if (!invite) {
+        return res.status(404).json({ success: false, message: 'Invite not found' });
+      }
+
+      await prisma.platformAdminInvite.update({
+        where: { id: inviteId },
+        data: { revokedAt: new Date() },
+      });
+
+      void logSecurityEvent({
+        eventType: 'PLATFORM_ADMIN_INVITE_REVOKED',
+        severity: SecurityEventSeverity.INFO,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: req.user!.id,
+        actorEmail: req.user!.email,
+        targetType: 'platform_admin_invite',
+        targetId: inviteId,
+        targetName: invite.email,
+        ...requestContext(req),
+      });
+
+      return res.json({ success: true, message: 'Invite revoked' });
+    } catch (error) {
+      console.error('Revoke platform admin invite error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

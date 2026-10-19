@@ -22,6 +22,7 @@ import {
   IconShieldCheck,
   IconUser,
   IconLogout,
+  IconUserShield,
 } from '@tabler/icons-react';
 
 const navItems = [
@@ -41,6 +42,7 @@ const navItems = [
   { label: 'Help Content', href: '/help', icon: IconHelp },
   { label: 'Support', href: '/support', icon: IconHeadset },
   { label: 'Impersonation', href: '/impersonation', icon: IconShieldCheck },
+  { label: 'Admins', href: '/admins', icon: IconUserShield },
   { label: 'Account', href: '/account', icon: IconUser },
 ];
 

@@ -205,6 +205,9 @@ model User {
   // A1.3 — Impersonation handoff
   impersonationHandoffs ImpersonationHandoff[]
 
+  // A2.12 — Platform admin invites
+  platformAdminInvitesSent PlatformAdminInvite[] @relation("PlatformAdminInvitedBy")
+
   // A1.4 — TOTP 2FA for platform users (stored only on platform-role users)
   firstName       String?   @map("first_name")
   lastName        String?   @map("last_name")
@@ -3136,6 +3139,29 @@ model ImpersonationHandoff {
   @@index([adminUserId])
   @@index([expiresAt])
   @@map("impersonation_handoffs")
+}
+
+// ============================================================
+// A2.12 — Platform admin invites: email-link invite flow for adding
+// new platform admin console users. tokenHash follows the same
+// SHA-256-of-a-random-token pattern as ImpersonationHandoff above
+// (never store the raw token — only what's needed to verify it).
+// ============================================================
+model PlatformAdminInvite {
+  id           Int          @id @default(autoincrement())
+  email        String
+  platformRole PlatformRole @map("platform_role")
+  tokenHash    String       @unique @map("token_hash")
+  invitedById  Int          @map("invited_by")
+  invitedBy    User         @relation("PlatformAdminInvitedBy", fields: [invitedById], references: [id])
+  expiresAt    DateTime     @map("expires_at")
+  acceptedAt   DateTime?    @map("accepted_at")
+  revokedAt    DateTime?    @map("revoked_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([expiresAt])
+  @@map("platform_admin_invites")
 }
 
 // ============================================================

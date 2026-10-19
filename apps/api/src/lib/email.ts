@@ -954,6 +954,36 @@ function getTemplateContent(template: string, data: Record<string, any>): string
       </body>
       </html>
     `,
+
+    'platform-admin-invite': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>You're invited to SocietyLedger Admin</h1>
+          </div>
+          <div class="content">
+            <h2>Hello!</h2>
+            <p>${data.invitedByEmail} has invited you to join the SocietyLedger platform admin console as <strong>${data.roleLabel}</strong>.</p>
+
+            <center>
+              <a href="${data.acceptUrl}" class="button">Accept Invite</a>
+            </center>
+
+            <p style="color: #6b7280; font-size: 14px;">
+              This invite expires in ${data.expiresInHours} hours. If you weren't expecting this, you can safely ignore this email.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
   };
 
   const templateFn = templates[template];

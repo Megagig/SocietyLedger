@@ -103,6 +103,11 @@ router.post('/associations/:id/override', PlatformSettingsController.setAssociat
 
 // ==================== PHASE 19: PLATFORM ADMIN CONTROLS ====================
 
+// Platform admin invites (A2.12)
+router.get('/platform-admins', (req, res) => platformCtrl.listAdmins(req as any, res));
+router.post('/platform-admins/invite', (req, res) => platformCtrl.inviteAdmin(req as any, res));
+router.delete('/platform-admins/invites/:inviteId', (req, res) => platformCtrl.revokeAdminInvite(req as any, res));
+
 // Tenant Management (Phase 19.3)
 router.get('/tenants', (req, res) => platformCtrl.listTenants(req as any, res));
 router.get('/tenants/:associationId/status', (req, res) => platformCtrl.getTenantStatus(req as any, res));
