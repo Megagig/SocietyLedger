@@ -617,10 +617,11 @@ export class AuthController {
 
   async me(req: Request, res: Response): Promise<void> {
     try {
-      const authReq = req as TenantRequest & { user?: { id?: number } };
+      const authReq = req as TenantRequest & { user?: TokenPayload };
       const userId = authReq.user?.id;
       const tenantId = authReq.tenantId;
       const tenant = authReq.tenant;
+      const isImpersonating = !!authReq.user?.isImpersonating;
 
       if (!userId) {
         res.status(401).json({
@@ -630,8 +631,16 @@ export class AuthController {
         return;
       }
 
+      // id is the primary key, so it alone is sufficient to find the exact
+      // user row — no associationId filter needed for correctness. A filter
+      // here would also be WRONG during impersonation: userId is the super
+      // admin's own id, but tenantId (resolved from the subdomain) is the
+      // impersonated association's id, which never matches the super
+      // admin's actual associationId column. authMiddleware already
+      // enforces the real tenant-isolation boundary (with its own correct
+      // SUPER_ADMIN bypass) before this handler ever runs.
       const user = await prisma.user.findFirst({
-        where: { id: userId, associationId: tenantId ?? undefined },
+        where: { id: userId },
         select: {
           id: true,
           email: true,
@@ -683,12 +692,18 @@ export class AuthController {
       };
       const userPermissions = await RBACService.resolveUserPermissions(rbacContext);
 
-      // Determine if this is a platform login
-      const isPlatformLogin = user.platformRole === 'SUPER_ADMIN';
+      // Determine if this is a platform login — but not when impersonating:
+      // the whole point of impersonation is to present the IMPERSONATED
+      // tenant's context (`tenant`, resolved from the subdomain), not the
+      // super admin's own platform identity. Without this check, every
+      // impersonation session's /me response claimed to be the fake
+      // "SocietyLedger Platform" association instead of the tenant actually
+      // being impersonated.
+      const isPlatformLogin = user.platformRole === 'SUPER_ADMIN' && !isImpersonating;
 
       res.status(200).json({
         success: true,
-        data: { 
+        data: {
           user: {
             ...user,
             association: isPlatformLogin ? {

@@ -38,6 +38,7 @@ dist/
 build/
 apps/*/dist/
 apps/*/build/
+*.tsbuildinfo
 
 # Logs — root-level log directories only (not app source dirs named "logs")
 /logs
