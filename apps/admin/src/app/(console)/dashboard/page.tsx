@@ -51,12 +51,14 @@ interface Stats {
 }
 
 interface PendingApproval {
-  id: string;
-  associationName: string;
-  adminEmail: string;
-  adminName: string;
+  id: number;
+  approvalStatus: string;
   createdAt: string;
-  status: string;
+  user: {
+    id: number;
+    email: string;
+    association: { id: number; name: string; subdomain: string } | null;
+  };
 }
 
 interface ActionLog {
@@ -322,11 +324,11 @@ export default function DashboardPage() {
                 {approvalsQ.data?.approvals.map((a) => (
                   <Group key={a.id} justify="space-between" wrap="nowrap">
                     <Stack gap={0} style={{ minWidth: 0 }}>
-                      <Text size="xs" fw={600} truncate>{a.associationName}</Text>
-                      <Text size="xs" c="dimmed" truncate>{a.adminEmail}</Text>
+                      <Text size="xs" fw={600} truncate>{a.user.association?.name ?? '—'}</Text>
+                      <Text size="xs" c="dimmed" truncate>{a.user.email}</Text>
                     </Stack>
                     <Stack align="flex-end" gap={2}>
-                      <StatusBadge status={a.status} size="xs" />
+                      <StatusBadge status={a.approvalStatus} size="xs" />
                       <Text size="xs" c="dimmed">{fmtDate(a.createdAt)}</Text>
                     </Stack>
                   </Group>
