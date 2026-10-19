@@ -111,6 +111,13 @@ services:
       # Dokploy Traefik settings and the letsencrypt certresolver configured with
       # dnsChallenge provider=cloudflare — see docs/deployment/DOKPLOY_MIGRATION.md.
       - "traefik.enable=true"
+      # HTTP → HTTPS redirect router (port 80)
+      - "traefik.http.routers.societyledger-web-http.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.societyledger-web-http.entrypoints=web"
+      - "traefik.http.routers.societyledger-web-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.societyledger-web-http.priority=1"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
       # Traefik v3 HostRegexp takes a plain Go regexp (v2 named-group syntax
       # {subdomain:pattern} was removed in v3 and causes the router to be rejected).
       - "traefik.http.routers.societyledger-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
