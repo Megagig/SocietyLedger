@@ -126,6 +126,11 @@ services:
       # automatically with multiple Services" error when old Dokploy containers from
       # previous deploys are still running with auto-generated service names.
       - "traefik.http.routers.societyledger-web.service=societyledger-web"
+      # Health check — Traefik only routes to backends that pass this check,
+      # so stale containers from old deploys are automatically excluded.
+      - "traefik.http.services.societyledger-web.loadbalancer.healthcheck.path=/"
+      - "traefik.http.services.societyledger-web.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.societyledger-web.loadbalancer.healthcheck.timeout=5s"
       # Below docs' priority (100) — without this, Traefik's rule-length tiebreak
       # could let this wildcard capture docs.${BASE_DOMAIN}, since HostRegexp also
       # matches it. Fixed at D1.7, when docs (the first service needing explicit
@@ -175,6 +180,9 @@ services:
       - "traefik.http.routers.societyledger-admin.priority=100"
       - "traefik.http.services.societyledger-admin.loadbalancer.server.port=3002"
       - "traefik.http.routers.societyledger-admin.service=societyledger-admin"
+      - "traefik.http.services.societyledger-admin.loadbalancer.healthcheck.path=/api/health"
+      - "traefik.http.services.societyledger-admin.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.societyledger-admin.loadbalancer.healthcheck.timeout=5s"
 
   docs:
     build:
@@ -208,6 +216,9 @@ services:
       - "traefik.http.routers.societyledger-docs.priority=100"
       - "traefik.http.services.societyledger-docs.loadbalancer.server.port=80"
       - "traefik.http.routers.societyledger-docs.service=societyledger-docs"
+      - "traefik.http.services.societyledger-docs.loadbalancer.healthcheck.path=/"
+      - "traefik.http.services.societyledger-docs.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.societyledger-docs.loadbalancer.healthcheck.timeout=5s"
 
 networks:
   internal:
