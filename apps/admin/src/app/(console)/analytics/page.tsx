@@ -44,11 +44,12 @@ interface AnalyticsOverview {
 }
 
 interface ModuleAdoption {
-  moduleId: string;
-  moduleName: string;
-  activeCount: number;
-  totalEnabled: number;
+  code: string;
+  name: string;
+  isCore: boolean;
+  enabledCount: number;
   adoptionRate: number;
+  plans: string[];
 }
 
 interface ChurnData {
@@ -147,7 +148,7 @@ function OverviewTab({ months }: { months: number }) {
 function ModuleAdoptionTab() {
   const q = useQuery({
     queryKey: ['analytics-module-adoption'],
-    queryFn: () => bff<{ modules: ModuleAdoption[] }>('admin/analytics/module-adoption'),
+    queryFn: () => bff<{ totalAssociations: number; modules: ModuleAdoption[] }>('admin/analytics/module-adoption'),
   });
 
   if (q.isLoading) {
@@ -162,6 +163,7 @@ function ModuleAdoptionTab() {
   }
 
   const modules = q.data?.modules ?? [];
+  const totalAssociations = q.data?.totalAssociations ?? 0;
 
   return (
     <Stack gap="md">
@@ -186,7 +188,7 @@ function ModuleAdoptionTab() {
           .sort((a, b) => b.adoptionRate - a.adoptionRate)
           .map((m) => (
             <Card
-              key={m.moduleId}
+              key={m.code}
               style={{
                 backgroundColor: 'var(--admin-surface)',
                 border: '1px solid var(--admin-border)',
@@ -195,10 +197,10 @@ function ModuleAdoptionTab() {
               radius="md"
             >
               <Group justify="space-between" mb={6}>
-                <Text size="sm" fw={600}>{m.moduleName}</Text>
+                <Text size="sm" fw={600}>{m.name}</Text>
                 <Group gap="xs">
                   <Text size="xs" c="dimmed">
-                    {m.activeCount.toLocaleString()} / {m.totalEnabled.toLocaleString()}
+                    {m.enabledCount.toLocaleString()} / {totalAssociations.toLocaleString()}
                   </Text>
                   <Badge variant="light" size="sm" color={m.adoptionRate >= 60 ? 'green' : m.adoptionRate >= 30 ? 'orange' : 'red'}>
                     {fmtPct(m.adoptionRate)}
