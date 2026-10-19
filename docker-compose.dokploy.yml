@@ -111,9 +111,9 @@ services:
       # Dokploy Traefik settings and the letsencrypt certresolver configured with
       # dnsChallenge provider=cloudflare — see docs/deployment/DOKPLOY_MIGRATION.md.
       - "traefik.enable=true"
-      # Traefik v2 HostRegexp requires named-group syntax {var:pattern}; dots in
-      # the literal domain portion must be escaped so they match only '.', not any char.
-      - "traefik.http.routers.societyledger-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`{subdomain:[a-zA-Z0-9-]+}\\.${BASE_DOMAIN}`)"
+      # Traefik v3 HostRegexp takes a plain Go regexp (v2 named-group syntax
+      # {subdomain:pattern} was removed in v3 and causes the router to be rejected).
+      - "traefik.http.routers.societyledger-web.rule=Host(`${BASE_DOMAIN}`) || HostRegexp(`[a-zA-Z0-9-]+\\.${BASE_DOMAIN}`)"
       - "traefik.http.routers.societyledger-web.entrypoints=websecure"
       - "traefik.http.routers.societyledger-web.tls=true"
       - "traefik.http.routers.societyledger-web.tls.certresolver=letsencrypt"
