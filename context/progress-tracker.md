@@ -354,7 +354,7 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 # Track F — Mobile app (`apps/mobile`)
 
 ## Phase 0 — Backend enablement
-- [ ] F0.1 Mobile docs folder & API contract audit
+- [x] F0.1 Mobile docs folder & API contract audit — 2026-10-19 — `docs/mobile/README.md` + `docs/mobile/api-contract.md` written from direct controller reads (auth, associations/check-subdomain, members/me, member-finance, member-ledger, paystack, nigerian-payments, notifications, meetings, voting). Found and documented 4 distinct, incompatible list-pagination shapes across endpoints (`{entries,pagination}`, `{items}` with none, flat notification fields, bare array) and 2 "500 instead of 404" gaps (`voting/elections/:id`, `member-ledger/my-ledger/statement`) mobile's error mapping must special-case. Confirmed `architecture.md §9.3`'s paystack-initialize "no schema change needed" claim is correct. Also inventoried every real `Notification.type` write site: only `payment_received`/`system`/`announcement` are actually auto-dispatched today; `payment_due`/`approval` are declared but unreachable except via manual admin create — flagged for F0.2 to resolve. G2 (stale `packages/shared` types) confirmed and detailed with concrete field-level mismatches (`User.id`/`Member.id` are `number` not `string`; `PaginatedResponse<T>` matches none of the 4 real shapes) — stays `open`, fix deferred to F1.3 per the gap's own scope.
 - [ ] F0.2 Push notifications backend
 - [ ] F0.3 Refresh-token sessions
 - [ ] F0.4 Mobile payment return bridge
