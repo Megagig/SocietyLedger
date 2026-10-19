@@ -36,6 +36,7 @@ interface AssociationDetail {
   logo: string | null;
   primaryColor: string | null;
   createdAt: string;
+  users: { id: number; email: string; role: string }[];
   _count: { users: number; members: number; transactions: number; payments: number };
   subscriptions: Subscription[];
 }
@@ -134,7 +135,6 @@ function OverviewTab({
               {[
                 { label: 'ID', value: String(detail.id) },
                 { label: 'Slug', value: detail.slug },
-                { label: 'Subdomain', value: detail.subdomain },
                 { label: 'Created', value: fmtDate(detail.createdAt) },
               ].map(({ label, value }) => (
                 <Group key={label} justify="space-between">
@@ -153,6 +153,19 @@ function OverviewTab({
                   </Group>
                 </Group>
               ))}
+              {/* Subdomain — clickable link */}
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">Subdomain</Text>
+                <Anchor
+                  href={`https://${detail.subdomain}.societyledger.com.ng`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="sm"
+                  fw={500}
+                >
+                  {detail.subdomain} <IconExternalLink size={12} style={{ verticalAlign: 'middle' }} />
+                </Anchor>
+              </Group>
               {detail.primaryColor && (
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Brand color</Text>
@@ -170,6 +183,19 @@ function OverviewTab({
                     <Text size="sm" fw={500}>{detail.primaryColor}</Text>
                   </Group>
                 </Group>
+              )}
+              {/* Admin contacts */}
+              {detail.users?.length > 0 && (
+                <>
+                  <Divider my={4} />
+                  <Text size="xs" fw={600} tt="uppercase" c="dimmed">Admin contacts</Text>
+                  {detail.users.map((u) => (
+                    <Group key={u.id} justify="space-between">
+                      <Text size="sm" c="dimmed">Admin</Text>
+                      <Anchor href={`mailto:${u.email}`} size="sm">{u.email}</Anchor>
+                    </Group>
+                  ))}
+                </>
               )}
             </Stack>
           </Card>

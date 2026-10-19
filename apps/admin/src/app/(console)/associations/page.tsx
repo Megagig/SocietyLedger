@@ -196,10 +196,17 @@ export default function AssociationsPage() {
               key: 'subdomain',
               header: 'Subdomain',
               render: (r) => (
-                <Group gap={4}>
-                  <Text size="sm" c="dimmed">{r.subdomain}</Text>
-                  <IconExternalLink size={12} color="var(--mantine-color-dimmed)" />
-                </Group>
+                <Anchor
+                  href={`https://${r.subdomain}.societyledger.com.ng`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="sm"
+                >
+                  <Group gap={4} wrap="nowrap">
+                    <Text size="sm" inherit>{r.subdomain}</Text>
+                    <IconExternalLink size={12} />
+                  </Group>
+                </Anchor>
               ),
             },
             {

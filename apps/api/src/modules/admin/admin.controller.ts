@@ -254,19 +254,24 @@ export class AdminController {
           subscriptions: {
             orderBy: { createdAt: 'desc' },
             take: 5,
-            include: { 
+            include: {
               plan: true,
               payments: { orderBy: { createdAt: 'desc' }, take: 5 }
             },
           },
-          _count: { 
-            select: { 
-              users: true, 
-              members: true, 
+          users: {
+            where: { role: 'admin' },
+            select: { id: true, email: true, role: true },
+            take: 3,
+          },
+          _count: {
+            select: {
+              users: true,
+              members: true,
               transactions: true,
               payments: true,
               accounting: true,
-            } 
+            }
           },
         },
       });

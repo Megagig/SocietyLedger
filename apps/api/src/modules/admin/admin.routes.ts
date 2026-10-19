@@ -31,6 +31,58 @@ router.get('/associations', (req, res) => ctrl.listAssociations(req as any, res)
 router.get('/associations/:associationId', (req, res) => ctrl.getAssociation(req as any, res));
 router.post('/associations/:associationId/suspend', (req, res) => ctrl.suspendAssociation(req as any, res));
 router.post('/associations/:associationId/reactivate', (req, res) => ctrl.reactivateAssociation(req as any, res));
+router.post('/associations/:associationId/impersonate', (req, res) => ctrl.impersonate(req as any, res));
+
+// Association sub-resources
+router.get('/associations/:associationId/audit-logs', async (req, res) => {
+  try {
+    const associationId = Number(req.params.associationId);
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const logs = await prisma.auditLog.findMany({
+      where: { associationId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        action: true,
+        tableName: true,
+        createdAt: true,
+        user: { select: { email: true } },
+      },
+    });
+    return res.json({ success: true, data: { logs } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.get('/associations/:associationId/modules', async (req, res) => {
+  try {
+    const associationId = Number(req.params.associationId);
+    const tenantModules = await prisma.tenantModule.findMany({
+      where: {
+        associationId,
+        isEnabled: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      include: { module: { select: { code: true, name: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return res.json({
+      success: true,
+      data: {
+        modules: tenantModules.map((tm) => ({
+          moduleId: tm.module.code,
+          moduleName: tm.module.name,
+          enabledAt: tm.createdAt.toISOString(),
+        })),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 router.post('/impersonate/:associationId', (req, res) => ctrl.impersonate(req as any, res));
 router.post('/end-impersonation', (req, res) => ctrl.endImpersonation(req as any, res));
 router.get('/impersonation-sessions', (req, res) => ctrl.listImpersonationSessions(req as any, res));
