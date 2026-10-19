@@ -36,6 +36,7 @@ model Association {
   updatedAt                  DateTime                    @updatedAt @map("updated_at")
   accounting                 AccountingEntry[]
   auditLogs                  AuditLog[]
+  securityEventLogs          SecurityEventLog[]
   exports                    ExportHistory[]
   categories                 FinancialCategory[]
   memberInvites              MemberInvite[]
@@ -551,6 +552,51 @@ model AuditLog {
 
   @@index([associationId, tableName])
   @@map("audit_log")
+}
+
+enum SecurityEventSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum SecurityEventActorType {
+  ADMIN
+  USER
+  SYSTEM
+}
+
+// Immutable security-relevant event log across all tenants (logins, 2FA,
+// impersonation, password resets, suspensions, approvals, etc). Distinct
+// from AuditLog above, which only tracks generic record changes
+// (action/tableName/oldValues/newValues) and has no severity or actor-type
+// concept. Written via lib/security-audit-log.ts's logSecurityEvent().
+model SecurityEventLog {
+  id            Int                     @id @default(autoincrement())
+  eventType     String                  @map("event_type")
+  severity      SecurityEventSeverity   @default(INFO)
+  actorType     SecurityEventActorType  @map("actor_type")
+  // Loose reference, not a Prisma relation — actorType can be SYSTEM (no
+  // user at all), and the actor may later be deleted; a real FK would force
+  // the opposite (losing immutable history when the actor is removed).
+  actorId       Int?                    @map("actor_id")
+  actorEmail    String?                 @map("actor_email")
+  targetType    String?                 @map("target_type")
+  targetId      String?                 @map("target_id")
+  targetName    String?                 @map("target_name")
+  ipAddress     String?                 @map("ip_address")
+  userAgent     String?                 @map("user_agent")
+  details       Json?
+  associationId Int?                    @map("association_id")
+  association   Association?            @relation(fields: [associationId], references: [id])
+  occurredAt    DateTime                @default(now()) @map("occurred_at")
+
+  @@index([severity])
+  @@index([actorType])
+  @@index([associationId])
+  @@index([occurredAt])
+  @@map("security_event_logs")
 }
 
 model Plan {

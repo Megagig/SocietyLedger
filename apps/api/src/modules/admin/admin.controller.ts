@@ -7,6 +7,8 @@ import { generateToken, TokenPayload } from '../../lib/auth';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.service';
 import { logImpersonationAction, getImpersonationDuration, formatImpersonationDuration } from '../../utils/audit-helpers';
+import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
+import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || 'societyledger.com.ng';
 
@@ -77,6 +79,20 @@ export class AdminController {
         durationMinutes,
       });
 
+      void logSecurityEvent({
+        eventType: 'IMPERSONATION_STARTED',
+        severity: SecurityEventSeverity.CRITICAL,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: superAdmin.id,
+        actorEmail: superAdmin.email,
+        targetType: 'association',
+        targetId: targetAssociationId,
+        targetName: association.name,
+        associationId: targetAssociationId,
+        details: { reason, durationMinutes },
+        ...requestContext(req),
+      });
+
       return res.json({
         success: true,
         data: {
@@ -123,6 +139,19 @@ export class AdminController {
         duration,
         durationFormatted,
         originalAssociationId: user.originalAssociationId,
+      });
+
+      void logSecurityEvent({
+        eventType: 'IMPERSONATION_ENDED',
+        severity: SecurityEventSeverity.WARNING,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: user.id,
+        actorEmail: user.email,
+        targetType: 'association',
+        targetId: user.associationId ?? undefined,
+        associationId: user.associationId ?? undefined,
+        details: { duration, durationFormatted },
+        ...requestContext(req),
       });
 
       // Generate new token for home association (no impersonation flags)
@@ -360,6 +389,20 @@ export class AdminController {
         },
       });
 
+      void logSecurityEvent({
+        eventType: 'ASSOCIATION_SUSPENDED',
+        severity: SecurityEventSeverity.CRITICAL,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: adminId,
+        actorEmail: req.user?.email,
+        targetType: 'association',
+        targetId: associationId,
+        targetName: association.name,
+        associationId,
+        details: { reason, previousStatus: association.status },
+        ...requestContext(req),
+      });
+
       return res.json({
         success: true,
         message: 'Association suspended successfully',
@@ -408,6 +451,20 @@ export class AdminController {
           oldValues: { status: association.status },
           newValues: { status: 'ACTIVE' },
         },
+      });
+
+      void logSecurityEvent({
+        eventType: 'ASSOCIATION_REACTIVATED',
+        severity: SecurityEventSeverity.WARNING,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: adminId,
+        actorEmail: req.user?.email,
+        targetType: 'association',
+        targetId: associationId,
+        targetName: association.name,
+        associationId,
+        details: { previousStatus: association.status },
+        ...requestContext(req),
       });
 
       return res.json({
@@ -580,36 +637,53 @@ export class AdminController {
   }
 
   /**
-   * Get audit logs (platform-wide or per association)
+   * Get security event audit logs (platform-wide or per association).
+   * Distinct from the generic record-change "audit_log" table — this reads
+   * security_event_logs (logins, 2FA, impersonation, password resets,
+   * suspensions, approvals, etc), written via lib/security-audit-log.ts.
    */
   async auditLogs(req: AuthRequest, res: Response) {
     try {
       const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 50;
+      const limit = Number(req.query.limit) || 25;
       const skip = (page - 1) * limit;
       const associationId = req.query.associationId ? Number(req.query.associationId) : undefined;
-      const action = req.query.action as string | undefined;
+      const search = req.query.search as string | undefined;
+      const severity = req.query.severity as string | undefined;
+      const eventType = req.query.eventType as string | undefined;
+      const actorType = req.query.actorType as string | undefined;
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
 
       const whereClause: any = {};
-      if (associationId) {
-        whereClause.associationId = associationId;
+      if (associationId) whereClause.associationId = associationId;
+      if (severity) whereClause.severity = severity;
+      if (actorType) whereClause.actorType = actorType;
+      if (eventType) whereClause.eventType = { contains: eventType, mode: 'insensitive' };
+      if (search) {
+        whereClause.OR = [
+          { eventType: { contains: search, mode: 'insensitive' } },
+          { actorEmail: { contains: search, mode: 'insensitive' } },
+          { targetName: { contains: search, mode: 'insensitive' } },
+        ];
       }
-      if (action) {
-        whereClause.action = { contains: action, mode: 'insensitive' };
+      if (startDate || endDate) {
+        whereClause.occurredAt = {};
+        if (startDate) whereClause.occurredAt.gte = new Date(startDate);
+        if (endDate) whereClause.occurredAt.lte = new Date(endDate);
       }
 
       const [logs, total] = await Promise.all([
-        prisma.auditLog.findMany({
+        prisma.securityEventLog.findMany({
           where: whereClause,
           skip,
           take: limit,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { occurredAt: 'desc' },
           include: {
-            user: { select: { id: true, email: true } },
             association: { select: { id: true, name: true, subdomain: true } },
           },
         }),
-        prisma.auditLog.count({ where: whereClause }),
+        prisma.securityEventLog.count({ where: whereClause }),
       ]);
 
       return res.json({
@@ -745,6 +819,20 @@ export class AdminController {
           recordId: userId,
           newValues: { status, rejectionReason },
         },
+      });
+
+      void logSecurityEvent({
+        eventType: status === 'approved' ? 'USER_APPROVED' : 'USER_REJECTED',
+        severity: SecurityEventSeverity.INFO,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: adminId,
+        actorEmail: req.user?.email,
+        targetType: 'user',
+        targetId: userId,
+        targetName: user.email,
+        associationId: user.associationId ?? undefined,
+        details: { status, rejectionReason },
+        ...requestContext(req),
       });
 
       // Send notification email

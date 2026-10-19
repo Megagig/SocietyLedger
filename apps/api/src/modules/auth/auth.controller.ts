@@ -6,6 +6,8 @@ import { hashPassword, verifyPassword, generateToken, TokenPayload } from '../..
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
 import { SettingsService } from '../settings/settings.service';
+import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
+import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
 import {
   createUserWithVerification,
   verifyEmailCode,
@@ -130,6 +132,14 @@ export class AuthController {
       }
 
       if (!user) {
+        void logSecurityEvent({
+          eventType: 'LOGIN_FAILED',
+          severity: SecurityEventSeverity.WARNING,
+          actorType: SecurityEventActorType.USER,
+          actorEmail: email,
+          details: { reason: 'user_not_found' },
+          ...requestContext(req),
+        });
         res.status(401).json({
           success: false,
           message: 'Invalid credentials',
@@ -140,6 +150,16 @@ export class AuthController {
       // Check password
       const isPasswordValid = await verifyPassword(password, user.passwordHash);
       if (!isPasswordValid) {
+        void logSecurityEvent({
+          eventType: 'LOGIN_FAILED',
+          severity: SecurityEventSeverity.WARNING,
+          actorType: user.platformRole ? SecurityEventActorType.ADMIN : SecurityEventActorType.USER,
+          actorId: user.id,
+          actorEmail: user.email,
+          associationId: user.associationId ?? undefined,
+          details: { reason: 'invalid_password' },
+          ...requestContext(req),
+        });
         res.status(401).json({
           success: false,
           message: 'Invalid credentials',
@@ -180,6 +200,15 @@ export class AuthController {
 
       // Check if user is active
       if (!user.isActive) {
+        void logSecurityEvent({
+          eventType: 'LOGIN_DENIED_SUSPENDED',
+          severity: SecurityEventSeverity.WARNING,
+          actorType: SecurityEventActorType.USER,
+          actorId: user.id,
+          actorEmail: user.email,
+          associationId: user.associationId ?? undefined,
+          ...requestContext(req),
+        });
         res.status(401).json({
           success: false,
           message: 'Your account has been suspended',
@@ -229,6 +258,16 @@ export class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
         domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
+      });
+
+      void logSecurityEvent({
+        eventType: 'LOGIN_SUCCESS',
+        severity: SecurityEventSeverity.INFO,
+        actorType: user.platformRole ? SecurityEventActorType.ADMIN : SecurityEventActorType.USER,
+        actorId: user.id,
+        actorEmail: user.email,
+        associationId: tokenAssociationId ?? undefined,
+        ...requestContext(req),
       });
 
       res.status(200).json({
