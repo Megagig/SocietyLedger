@@ -933,8 +933,8 @@ export class PlatformAdminController {
           ? prisma.association.findMany({ where: { id: { in: associationIds } }, select: { id: true, name: true, subdomain: true } })
           : [],
       ]);
-      const actorById = new Map(actors.map((a) => [a.id, a]));
-      const associationById = new Map(associations.map((a) => [a.id, a]));
+      const actorById = new Map(actors.map((a) => [a.id, a] as const));
+      const associationById = new Map(associations.map((a) => [a.id, a] as const));
 
       const logs = result.logs.map((l) => ({
         id: l.id,
