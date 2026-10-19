@@ -1,61 +1,68 @@
-# Memory — SocietyLedger: Track R complete, Milestone RL achieved, post-review fixes applied
+# Memory — Production deploy debugging + post-launch admin/impersonation remediation
 
-Last updated: 2026-10-18
+Last updated: 2026-10-19
 
 ## What was built
 
-**Track R0–R3**: committed (`411ca32` R0+R1, `8e52a07` R2, `970bbd1` R3). Read git log / `progress-tracker.md` gap rows if needed.
+**Infrastructure root-cause fix** (`docker-compose.dokploy.yml`): hand-written Traefik Docker labels for `admin`/`docs`/`web` were a second, parallel routing config fighting Dokploy's own native per-app **Domains tab** (the mechanism that made `api` reliable the whole time — it only ever had `dokploy.domain`/`dokploy.port` labels). This was the root cause of a multi-hour "multiple Services" / 502 / no-cert saga. Fixed: `admin`/`docs` now use the same `dokploy.domain`/`dokploy.port` pattern as `api`; `web`'s router (renamed `sl-tenant`) now matches **only** tenant subdomains via `HostRegexp`, never the apex domain, so it can never overlap with Dokploy's native "web" domain entry.
 
-**Track R4 — Settings & billing correctness** (uncommitted): G54 plan-downgrade deferral, G55 PAST_DUE real path, G56 real no-card trial, G51 tenant audit log, G20 member ID format, G53 six settings categories wired. Full detail in prior session's `memory.md` entry (now overwritten) — see `progress-tracker.md` R4 checklist for the complete list.
+**Two Prisma migration-drift gaps** found and fixed (fields existed in `schema.prisma`, added via `db push` in dev, never had a migration file, so `prisma migrate deploy` never created them in production — P2022 on every request touching them):
+- `transactions.last_reminder_sent_at` — migration `20261019_add_transaction_last_reminder_sent_at`
+- `payment_proofs.transaction_ids`/`declaration_note`/`payment_method` + nullable file fields — migration `20261019_add_payment_proof_multi_transaction_declare`
 
-**Track R5 — Accounting completeness** (committed in `5ebe488`): G46 (welfare/cooperatives accounting sync). Read `progress-tracker.md` R5.
+**Env var wiring gaps** (set in Dokploy's project-level Environment tab, but never referenced in the relevant service's `environment:` block in `docker-compose.dokploy.yml` — Dokploy only injects what a service explicitly asks for via `${VAR}`): `EMAIL_FROM`/`EMAIL_REPLY_TO` (api service) — fixed in compose. `ADMIN_URL` — was never set at all in Dokploy; user added it directly.
 
-**Track R6 — Remaining functional gaps & hygiene** (uncommitted): 16 items (G21, G25, G26, G28, G29, G36, G38, G40, G44, G57, G58, G60, G64, G66, G68, G71). All resolved. Full detail in `progress-tracker.md` R6 checklist.
+**Admin bug fixes** (all were "built but never wired" or field-name-mismatch bugs, not logic bugs):
+- Analytics page crash: `ModuleAdoption` interface used `moduleId`/`moduleName`/`activeCount`/`totalEnabled`, API actually returns `code`/`name`/`enabledCount` + top-level `totalAssociations`
+- Action log stats crash: backend never computed `actionsToday`/`uniqueAdmins`/`mostCommonAction` — now computed in `platform-action-log.service.ts`
+- Action logs list "Invalid Date": backend returned raw `platform_action_logs` rows (`createdAt`, bare `actorId`/`associationId` ints, `pagination.total` nested, no `description`) while UI expected `performedAt`/`admin`/`association` objects/top-level totals — `getActionLogs` in `platform-admin.controller.ts` now batch-fetches and maps correctly
+- `/blog/new`, `/blog/[id]/edit`, `/help/new`, `/help/[id]/edit` all 404'd — never built despite being marked done. Built `BlogPostForm`/`DocPageForm` (`apps/admin/src/components/forms/`), registered in `ui-registry.md`
+- Blog's "New category" / Help's "New section" modals had been silently broken since they shipped (sent `{ name }` only; `slug` is a required unique column with no default) — now slugify client-side
+- `BlogCategory.postCount`/`DocSection.pageCount` → actually `_count.posts`/`_count.pages`
 
-**Track R7 — Unbuilt R0 decisions** (uncommitted):
-- **R7.1 (G13)**: module-lock `upgradeRequired` logic fixed (`status.source !== 'tenant_override'`); `FEATURE_FLAG_MODE=enforce` wired in local `.env`; demo association subscription upgraded to Enterprise. Modified: `module-feature.service.ts`, `module-feature.middleware.ts`, `moduleLockStore.ts` (Zustand), `axios.ts` interceptor, `utils/api.ts`.
-- **R7.2 (G17)**: `PaymentProof` Prisma model extended (nullable file fields + `declarationNote` + `transactionIds[]`); member proof-upload flow (`/dashboard/my-finances/pay/page.tsx`); officer verification page Sidebar entry (`IconClipboardCheck`, gated by `PERMISSIONS.PAYMENT_CONFIRM`); G92 (orphaned verification pages) + G93 (permission gate) fixed in same pass.
-- **R7.3 (G65)**: `GET /api/members/approvals` + `PATCH /api/members/approvals/:userId` in `members.controller.ts` + `members.routes.ts`; `pending-approvals/page.tsx` (full approval queue UI with tabs, search, approve/reject modals, pagination); Sidebar entry under Settings gated by `PERMISSIONS.MEMBER_EDIT_ALL`. API routes use `updateUserApproval()` + `sendApprovalNotificationEmail()` from `auth.service.ts`.
-- **Milestone RL** claimed: all gap rows `resolved`, `declined`, or `deferred`. Remaining `open` rows (G2/G4/G8/G9/G10/G11) correctly excluded from Track R.
+**Full security event audit log built from scratch** — the Audit Log page was designed against a security-event concept (severity, actor type, IP/user-agent) that never existed server-side; only a generic record-change table did. Added `SecurityEventLog` model + migration (`20261019_add_security_event_log`), `apps/api/src/lib/security-audit-log.ts` (`logSecurityEvent()`, fire-and-forget, never throws), rewired `GET /admin/audit-logs`. Instrumented: login success/failure/suspended-denied, impersonation start/end, association suspend/reactivate, user approve/reject.
 
-**Post-review fixes** (same session, uncommitted):
-- `nigerian-payments.service.ts`: `verifyPaymentProof` wrapped in `prisma.$transaction()`; `transactionIds` and `transactionId` paths made mutually exclusive (`if/else if`) — prevents double payment records; `proof.transaction!` non-null assertion replaced with `else if (updated.transaction)` guard; `where: any` → `Prisma.PaymentProofWhereInput` in `getPaymentProofs`.
-- `payments/verification/page.tsx`: hardcoded hex `#fee2e2`/`#dc2626` → `var(--mantine-color-red-1)` / `var(--mantine-color-red-6)`.
-- `my-finances/pay/page.tsx`: `catch (err: any)` → `catch (err: unknown)` with `instanceof Error` guard (×2); `console.error` in bank-accounts catch removed.
-- `members.controller.ts`: 5 debug `console.log` blocks removed from `list()`; `status` query param now validated against `['pending','approved','rejected']` enum in `listPendingApprovals`; server-side `search` param added (filters by email + member first/last name via Prisma nested OR).
-- `pending-approvals/page.tsx`: `search` passed to API; client-side `filtered` array removed; `useEffect` resets page to 1 on search/filter change.
-- Added `import { Prisma } from '@prisma/client'` to both service files above.
+**Admin logout button** — `DELETE /bff/session` already existed and worked; just had no UI. Added to `AppShell.tsx` sidebar.
+
+**Platform admin invite flow built from scratch** (owner chose email-link invite, not direct creation w/ temp password): `PlatformAdminInvite` model + migration (`20261019_add_platform_admin_invites`), `POST /api/admin/platform-admins/invite` (+ list/revoke), public `GET/POST /api/admin/auth/invite/:token`/`/accept` (no session — invitee doesn't have one), new admin `/admins` page, public `/invite/[token]` accept page with its own `/bff/invite/*` proxy routes (added `/invite` to `middleware.ts`'s `PUBLIC_PATHS`), new `platform-admin-invite` email template.
+
+**Impersonation — four separate root causes found and fixed, in sequence** (each was real; fixing one revealed the next):
+1. `startImpersonation()` (`apps/web/src/store/authStore.ts`) never set `isAuthenticated: true`
+2. `router.replace('/dashboard')` could serve a stale Next.js App Router response cached before the cookie existed → switched to `window.location.href` hard navigation in `apps/web/src/app/auth/impersonate/page.tsx`
+3. The hard navigation then exposed a **hydration race**: `AuthenticatedLayout`/`ProtectedRoute` called `checkAuth()`/redirected before Zustand's `persist` middleware finished rehydrating `auth-storage` from localStorage (the store already had an unused `_hasHydrated` flag) — both now wait for it
+4. **The actual final root cause**: `GET /api/auth/me` queried `prisma.user.findFirst({ where: { id: userId, associationId: tenantId } })` — during impersonation `userId` is the super admin's own id, `tenantId` is the impersonated association's id (resolved from subdomain), which never matches the admin's real `associationId` column by design. Query returned null → 404 → `checkAuth()`'s catch block wiped the session. Fixed: query by `id` alone (`authMiddleware` already enforces real tenant isolation with its own correct `SUPER_ADMIN` bypass). Also fixed in the same function: the response always showed the fake "SocietyLedger Platform" association for any `SUPER_ADMIN`, even while impersonating — now gated on `!isImpersonating`.
+
+**Tooling fix**: found that local `npx tsc --noEmit -p tsconfig.json` checks had been giving false "clean" results all session due to a stale incremental `.tsbuildinfo` cache — a `new Map(arr.map(a => [a.id, a]))` tuple-inference error (missing `as const`) only surfaced in the actual `tsconfig.prod.json` build. Fixed the error, added `*.tsbuildinfo` to `.gitignore`, untracked the 3 previously-committed ones.
 
 ## Decisions made
 
-- **verifyPaymentProof atomicity**: accounting sync (`onPaymentRecorded`) stays *outside* the Prisma transaction — it is intentionally non-critical and must not roll back a successful approval if the sync fails. Collected in an `accountingSyncs[]` array and awaited after `prisma.$transaction()` resolves.
-- **Mutual exclusion (transactionIds vs transactionId)**: `transactionIds.length > 0` is checked first; the single-transaction bank-transfer path only runs in `else if`. This matches the intended design (two distinct submission flows) and prevents double payment records if both fields happen to be populated.
-- **Search server-side, not client-side**: the approval queue can have 100+ entries across multiple pages; a client-side filter only over the current page is silently incomplete for real workloads.
-- **ui-registry.md / code-standards.md / ui-rules.md / ui-tokens.md scope**: these three docs govern mobile/docs/admin only. `apps/api` and `apps/web`'s dashboard work is checked against the surrounding file's own established convention, not these docs. Confirmed standing decision from prior sessions.
+- **Traefik/Dokploy routing**: never hand-write Docker labels for a domain Dokploy's native per-app Domains tab already manages (apex/admin/docs domains) — only hand-write for what that simple UI can't do (wildcard tenant subdomains), and scope that router so it can never overlap with a native entry.
+- **Audit Log**: build the real security event model properly rather than adapting the UI down to the existing generic table — owner's explicit choice when asked.
+- **Admin invite**: email-link flow, not direct account creation with a temp password — owner's explicit choice when asked.
+- **Prisma JSON fields in TS**: cast with `Prisma.InputJsonValue`, not `any`, when a loosely-typed `Record<string, unknown>` won't satisfy the generated input type.
 
 ## Problems solved
 
-- **Issue #6 (email failure → 500) was already correctly handled**: `sendApprovalNotificationEmail` in `updateApprovalStatus` was already inside its own `try/catch` with `console.error` — review confirmed correct, no change needed.
-- **Non-null assertion on `proof.transaction`**: the guard `else if (updated.transactionId && updated.transaction)` both prevents the assertion AND eliminates the need for it — TypeScript narrows `updated.transaction` to non-null inside the block.
-- **`Prisma.EnumPaymentProofStatusFilter` for status assignment**: assigning `string` to `PaymentProofWhereInput.status` required a cast (`status as Prisma.EnumPaymentProofStatusFilter`) because Prisma's generated type does not accept a bare `string` — but the value is already validated upstream.
+- Pattern seen repeatedly across admin pages (analytics, action logs, blog, help): frontend TS interfaces were built against an assumed/planned API response shape that drifted from what the backend actually returns. Always verify the real controller response shape, don't trust the frontend interface.
+- Env vars set in Dokploy's Environment tab do **not** automatically reach a service's container — `docker-compose.dokploy.yml` must explicitly list `VAR: ${VAR}` in that specific service's `environment:` block.
+- Prisma schema/migration drift: a field added to `schema.prisma` via `db push` in dev (or by hand) with no matching migration file silently never reaches production, since `prisma migrate deploy` (run automatically in `apps/api/docker-entrypoint.sh`) only applies tracked migrations.
+- Local `tsc --noEmit -p tsconfig.json` can give false "clean" results from a stale incremental `.tsbuildinfo` cache. For a trustworthy check, either delete `tsconfig.tsbuildinfo` first or check against `tsconfig.prod.json` (what the actual Docker build runs) — note `tsconfig.prod.json` has `strict: false`/`noEmitOnError: false`/wrapped in `|| true` in the Dockerfile, so most type errors there are cosmetic and non-blocking; only a hard Docker-level failure actually stops the build.
 
 ## Current state
 
-- **Branch `gap-remediation`, 3 commits ahead of `develop`** (`411ca32` R0+R1, `8e52a07` R2, `970bbd1` R3). **R4 through R7 including all post-review fixes are uncommitted in the working tree.**
-- Both `apps/api` and `apps/web` type-check clean (`npx tsc --noEmit` exit 0 on both).
-- `progress-tracker.md` fully up to date: Milestone RL claimed, all R7 items ticked, post-review decisions logged (two new Decisions log entries).
-- The entire Track R implementation is complete and code-quality-clean. Nothing is partial or broken.
+- **Infra/routing**: confirmed working — subdomains load with valid HTTPS, wildcard cert via Cloudflare DNS-01 issued successfully.
+- **Email sending**: confirmed working (EMAIL_FROM wired correctly, invite emails arrived).
+- **Dashboard/finance-summary/payment-proofs 500s**: fixed, not yet re-confirmed by user after the latest deploy.
+- **Blog/Help CMS create/edit, Audit Log page, admin logout, admin invite**: all built and pushed, **not yet confirmed working** by the user — the deploy that should carry them (and the 4th impersonation fix) **failed**.
+- **Impersonation**: all 4 fixes pushed (latest: commit `3496091`), **not yet confirmed working** — same failed deploy.
+- **Latest commit pushed**: `64915d2` (Map tuple `as const` fix, found while investigating the failed deploy).
+- **BLOCKING**: the Dokploy deployment that should include all of the above **failed**. The user pasted a 50,000-character build log that got truncated mid-way through a long list of **pre-existing, non-fatal** TS warnings (tolerated by `|| true` + `noEmitOnError: false` in the API's `build:prod` step) — confirmed these aren't the real cause. The actual fatal error is further down in the log, past the truncation point. **Was waiting on the user to paste the tail of the log (last 30-50 lines) when the session ended.**
 
 ## Next session starts with
 
-**Commit Track R** — this is a large working tree spanning R4–R7 plus post-review fixes (100+ modified files). Suggested commit strategy: one commit per phase (`R4`, `R5`, `R6`, `R7`, `R7 post-review fixes`), or one single `Track R complete` commit if the user prefers. Then **open a PR `gap-remediation → develop`** unless the user wants to accumulate further.
-
-After merging: **Admin Phase A1** is next (per `progress-tracker.md`'s sequencing rule: A1 does not start until Milestone RL). Run `/architect` for "Admin Phase A1" first — read `build-plan.md`'s A1 section before proposing anything.
+**Get the tail of the failed deployment log** (ask the user to scroll to the bottom in Dokploy, or use "Download logs") to find the actual fatal error — it's not the API's TS warnings (those are tolerated). Likely candidates: a `pnpm build` failure in `web`/`admin`/`docs` (those are NOT wrapped in `|| true`, unlike the API), or a container failing to start after a successful image build. Once found and fixed, redeploy and have the user re-verify, in order: impersonation (full flow, pathfinder or similar), Blog CMS create/edit, Help Content create/edit, Audit Log page, admin logout, admin invite end-to-end (send → email → accept → login), Action Logs page.
 
 ## Open questions
 
-- **How to commit R4–R7**: one big commit, one per phase, or something else? The user hasn't said yet.
-- **PR strategy**: open `gap-remediation → develop` now, or keep accumulating A1 work first?
-- **G58 (member self-service payment method casing)** is still open and blocks extending `enabledChannels` enforcement to member-initiated payments (G85).
-- **G77's attendance half** (markAttendance/bulkMarkAttendance etc.) is still a live cross-tenant IDOR — flagged in R2/R4 sessions, still not addressed. Same standing recommendation: consider before A1.
-- **G86's `changePlan` proration math** was not independently audited when the upgrade-metadata bug was fixed — still worth a closer look if A1 or later ever touches billing again.
+- Root cause of the current failed deployment — unresolved when session ended.
+- Whether `git push` failing with `ssh: connect to host ssh.github.com port 443: Connection timed out` (happened several times this session, always succeeded on immediate retry) is a recurring local network flake worth a standing note, or was coincidental.

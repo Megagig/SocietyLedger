@@ -4,14 +4,14 @@
 
 | Library | Purpose | Pinned version |
 |---|---|---|
-| expo (SDK 56) | runtime | _set in F1.1_ |
-| expo-router | navigation | _SDK-matched_ |
-| nativewind + tailwindcss | styling | _set in F1.2_ |
+| expo (SDK 58) | runtime | **58.0.16** — pinned at F1.1 (2026-10-19). Owner explicitly asked for "SDK 55+"; 58 was latest stable at scaffold time (56/57 also exist but 58 has no open issues blocking us). React 19.3.0, React Native 0.88.0, New Architecture only (no `newArchEnabled` config key in this SDK — it's the only architecture, not a toggle). |
+| expo-router | navigation | 58.0.24 (SDK-matched) |
+| nativewind + tailwindcss | styling | **nativewind 4.2.7, tailwindcss 3.4.19** — pinned at F1.2. NativeWind v5 exists only as a preview/rc; v4.2.x is what `ui-tokens.md §10-12`'s CSS-variable/`tailwind.config.js` shapes are written for. |
 | @tanstack/react-query (+ persist client, async-storage persister) | server state | v5.x |
 | zustand | client state | v5.x |
 | react-hook-form, @hookform/resolvers, zod | forms | rhf 7.x, zod 3.x (match API) |
 | axios | HTTP | 1.x |
-| expo-secure-store, react-native-mmkv | storage | _SDK-matched / latest_ |
+| expo-secure-store, react-native-mmkv | storage | react-native-mmkv **4.3.2** (Nitro-modules based). **API changed from v2/v3**: there is no `new MMKV({...})` constructor anymore — `MMKV` is a type-only export; create instances with `createMMKV({ id, ... })` from `react-native-mmkv`. Get/set method names (`getString`, `getBoolean`, `getNumber`, `set`, `remove`, `contains`, `getAllKeys`) are unchanged. Reactive hooks (`useMMKVString` etc.) exist but call their getter unconditionally in both `getSnapshot` and `getServerSnapshot` inside `useSyncExternalStore` — **not safe under Expo Router static-export SSR**, since the web shim throws ("Tried to access storage on the server") when read outside a browser. For any value read during initial render that must survive static export, write your own `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)` with a `getServerSnapshot` that returns a static default and never touches the MMKV instance — see `src/providers/ThemeProvider.tsx` (F1.2). |
 | expo-notifications, expo-device | push | _SDK-matched_ |
 | expo-web-browser, expo-linking | Paystack, deep links | _SDK-matched_ |
 | expo-local-authentication | biometrics | _SDK-matched_ |
@@ -30,7 +30,8 @@
 | decimal.js-light | money | 2.x |
 | @sentry/react-native | crash reporting | latest (Expo plugin) |
 | expo-updates | OTA | _SDK-matched_ |
-| jest-expo, @testing-library/react-native, msw | tests | latest |
+| jest-expo, @testing-library/react-native, msw | tests | jest-expo **58.0.11**, jest **30.5.2** (jest-expo 58 accepts `^29 \|\| ^30`, but its own `jest-watch-typeahead` transitive dep wants `^30` — pin 30 to avoid a peer warning), @testing-library/react-native **14.1.0** (wants `test-renderer@^1.0.0`, **not** `react-test-renderer` — that package is deprecated under React 19; use the `test-renderer` npm package instead, see its own section below), msw latest. |
+| typescript (mobile workspace only) | language | **5.9.3, not the real npm `latest` (7.0.2)** — `eslint-config-expo@58.0.4`'s `@typescript-eslint/eslint-plugin@^8.59.0` caps at `typescript: >=4.8.4 <6.1.0` (same ceiling pattern as the docs workspace's own TS pin below). Re-check this ceiling before ever bumping. |
 | expo-server-sdk (**api only**) | push sending | latest |
 | **Docs site (`apps/docs`)** | | |
 | fumadocs-core, fumadocs-mdx | docs framework, MDX content source | 16.17.1 / 15.4.7 (pinned D1.1) |
@@ -78,11 +79,13 @@ Install Expo-managed packages with `pnpm -F @societyledger/mobile exec expo inst
 - Deep links: scheme `societyledger`; `lib/linking.ts` maps incoming URLs (validated with zod) to routes in `+native-intent.tsx`.
 
 ## NativeWind
-- `src/theme/global.css` holds **all** CSS variables (`ui-tokens.md`) for `:root` (light) and the dark scheme. Imported once in `app/_layout.tsx`.
+- `src/theme/global.css` holds **all** CSS variables (`ui-tokens.md`) for `:root` (light) and the dark scheme (plain `@media (prefers-color-scheme: dark)`, not a `.dark` class selector). Imported once in `app/_layout.tsx`.
 - `tailwind.config.js` maps every token to a utility using `rgb(var(--color-x) / <alpha-value>)` so opacity modifiers work (`bg-primary/10`). Custom scales replace Tailwind defaults (no stock `gray-500`, `teal-600` usage in code).
-- Dark mode: driven by `useColorScheme` from `nativewind` + `colorScheme.set('light'|'dark'|'system')` from the prefs store.
-- Use `className` only; the `cn()` helper (`lib/cn.ts`, clsx-based) merges conditional classes. Avoid `cssInterop` except for third-party components that need `className` (register once in `src/theme/interop.ts`).
+- **Dark mode mechanism — confirmed at F1.2** (the exact confirmation `ui-tokens.md §10`'s footnote asked for): NativeWind v4's own `useColorScheme()`/`colorScheme.set('light'|'dark'|'system')` (from `nativewind`, not React Native's `useColorScheme`) patches what the app's effective appearance resolves to, and NativeWind's CSS-interop evaluates the raw `@media (prefers-color-scheme: dark)` block against that overridden appearance — so the plain media-query block in `global.css` (no `darkMode: 'class'`, no `.dark:root` selector) is the correct, sufficient approach; nothing else needed.
+- Use `className` only; the `cn()` helper (`lib/cn.ts`, clsx-based, added at F1.6) merges conditional classes. Avoid `cssInterop` except for third-party components that need `className` (register once in `src/theme/interop.ts` — e.g. `expo-router`'s `Link`, registered at F1.2).
 - If a value must be read in JS (charts, navigation, status bar), use `src/theme/tokens.ts` → `useThemeTokens()`; never parse CSS at runtime.
+- **pnpm phantom-dependency gotcha (found at F1.2):** NativeWind's babel preset (`jsxImportSource: 'nativewind'`) makes every `.tsx` file import `react-native-css-interop/jsx-runtime` automatically. `react-native-css-interop` is a real dependency of `nativewind` itself, but **not** a declared dependency of `apps/mobile` — under pnpm's isolated (non-hoisted) node_modules, that makes it an inaccessible "phantom" dependency from the app's own files, and Metro fails with `Unable to resolve "react-native-css-interop/jsx-runtime"`. Do **not** reach for `node-linker=hoisted` in the root `.npmrc` for this specific error (that's a monorepo-wide change that risks exactly the React-version-collision problem `architecture.md §2` warns `public-hoist-pattern` against, since web pins React 18 and mobile pins React 19) — instead add `react-native-css-interop` as an explicit direct dependency of `apps/mobile` pinned to the same version `nativewind` itself resolves (checked via `node -e "console.log(require('nativewind/package.json').dependencies)"` from inside `apps/mobile`). The general `node-linker=hoisted` fallback `architecture.md §2` describes remains the right tool for a *different* kind of resolution failure (e.g. a native module that truly can't be found via any reasonable direct-dependency fix); it is not the default first move.
+- **Static-export SSR gotcha (found at F1.2):** `expo export -p web` (and `app.config.ts`'s `web.output: 'static'`) renders every route once on Node via Expo Router's static server renderer, not just in-browser. Any code that runs during initial render (an unguarded `useState(() => ...)` initializer, a `useSyncExternalStore` `getSnapshot` used as `getServerSnapshot`, a module-scope side effect) and touches a browser-only API — MMKV's web shim backed by `localStorage`, for instance — throws during that server pass even though the exact same code works fine in the actual browser/device runtime. Any value read from such a source for initial state must go through `useSyncExternalStore` with a distinct `getServerSnapshot` that returns a static default and never touches the browser-only API — see `src/providers/ThemeProvider.tsx`.
 
 ## TanStack Query
 - Single `QueryClient` in `providers/QueryProvider.tsx` with defaults from architecture.md §11.

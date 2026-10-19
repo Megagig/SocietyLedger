@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* surfaces */
+  --color-bg: 245 248 247;
+  --color-surface: 255 255 255;
+  --color-surface-raised: 255 255 255;
+  --color-surface-sunken: 237 242 240;
+  --color-border: 221 229 227;
+  --color-border-strong: 197 208 205;
+  /* text */
+  --color-text: 19 33 31;
+  --color-text-secondary: 94 112 108;
+  --color-text-tertiary: 138 155 151;
+  --color-text-inverse: 255 255 255;
+  /* brand */
+  --color-primary: 11 92 83;
+  --color-primary-pressed: 8 72 66;
+  --color-primary-soft: 238 247 245;
+  --color-on-primary-soft: 11 92 83;
+  --color-accent: 200 150 46;
+  --color-accent-text: 138 101 22;
+  --color-accent-soft: 247 235 207;
+  /* status */
+  --color-success: 22 128 74;
+  --color-success-soft: 228 245 235;
+  --color-warning: 194 65 12;
+  --color-warning-soft: 255 237 225;
+  --color-danger: 180 35 24;
+  --color-danger-soft: 254 232 230;
+  --color-info: 37 84 170;
+  --color-info-soft: 231 238 252;
+  /* misc */
+  --color-overlay: 8 20 19;
+  --color-focus: 23 134 120;
+  /* passbook (theme-independent) */
+  --color-passbook: 10 72 66;
+  --color-on-passbook: 255 255 255;
+  --color-on-passbook-muted: 168 215 206;
+  --color-passbook-stamp: 227 194 122;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: 12 23 22;
+    --color-surface: 18 33 32;
+    --color-surface-raised: 26 45 43;
+    --color-surface-sunken: 9 18 17;
+    --color-border: 37 64 60;
+    --color-border-strong: 52 84 79;
+    --color-text: 232 240 238;
+    --color-text-secondary: 154 176 172;
+    --color-text-tertiary: 110 133 129;
+    --color-text-inverse: 12 23 22;
+    --color-primary: 60 162 148;
+    --color-primary-pressed: 111 189 176;
+    --color-primary-soft: 14 52 47;
+    --color-on-primary-soft: 168 215 206;
+    --color-accent: 227 194 122;
+    --color-accent-text: 227 194 122;
+    --color-accent-soft: 58 45 17;
+    --color-success: 74 199 128;
+    --color-success-soft: 16 51 33;
+    --color-warning: 251 146 60;
+    --color-warning-soft: 61 32 14;
+    --color-danger: 248 113 102;
+    --color-danger-soft: 66 20 17;
+    --color-info: 125 165 240;
+    --color-info-soft: 20 34 66;
+    --color-overlay: 0 0 0;
+    --color-focus: 111 189 176;
+  }
+}

@@ -76,6 +76,15 @@ Rules:
 
 # Mobile app (`apps/mobile`)
 
+## Mobile theme & design tokens (F1.2)
+Not reusable UI components, but conventions every future mobile component/screen relies on from F1.2 onward (same pattern as the docs site's own non-component "tooling" sections below).
+- **Tokens:** `src/theme/global.css` (CSS variables, copied verbatim from `ui-tokens.md §10`) + `src/theme/tokens.ts` (JS mirror, `ui-tokens.md §12` shape). A unit test (`src/theme/tokens.test.ts`) asserts every hex in `tokens.ts` equals the RGB channels in `global.css` for both themes — keep both in sync in the same commit.
+- **Tailwind config:** `tailwind.config.js` (`ui-tokens.md §11` shape, verbatim) — stock Tailwind colours/spacing/font sizes are replaced, not extended.
+- **Theme provider:** `src/providers/ThemeProvider.tsx` exports `ThemeProvider` (wraps the app in `app/_layout.tsx`, also owns Manrope font loading and splash-screen hide-on-ready), `useThemeMode()` (`{ preference: 'light'|'dark'|'system', scheme: 'light'|'dark', setPreference }`), and `useThemeTokens()` (returns `tokens.light` or `tokens.dark` from `src/theme/tokens.ts` for the active scheme — use this, never parse CSS at runtime, for any JS-side value like chart colours or the status bar).
+- **Persisted preference:** one MMKV key (`prefs.themeMode`), read via `useSyncExternalStore` with a server-safe snapshot (see `library-docs.md`'s NativeWind section for why this matters under static export). The dedicated MMKV instance inside `ThemeProvider.tsx` is temporary — F1.6's `lib/storage.ts` will absorb it without changing `useThemeMode`'s public API.
+- **Third-party `className` interop:** `src/theme/interop.ts` registers NativeWind's `cssInterop` for third-party components that need `className` support (currently: `expo-router`'s `Link`). Import it once, for its side effects, in `app/_layout.tsx`. Add new registrations here, not inline in screens.
+- **Design-token proof screen:** `app/index.tsx` (temporary — F1.8 replaces it with real splash/redirect logic) renders every color token, the full type scale, the spacing scale and the radius scale in both themes with a manual theme toggle. Not a registered component (one-off, screen-specific); consult it directly for a literal example of every token-backed class name.
+
 ## UI primitives (`src/components/ui`)
 _(none yet)_
 
