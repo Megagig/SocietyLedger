@@ -142,6 +142,12 @@ Already-verified → `200 { data: { status:'success', reference, amount, transac
 ### `GET /api/payments/paystack/status/:reference`
 `200 { data: { reference, status, amount, provider:'paystack', webhookReceived, transaction:{id,referenceNumber,amount,status,member:{firstName,lastName},category:{name}} | null, createdAt } }`. Errors: `400`/`404`/`500`.
 
+## 5a. Mobile payment return bridge (F0.4)
+
+### `GET /api/payments/mobile-return?reference=&trxref=&status=` — public, mounted **before** `tenantMiddleware` in `server.ts` (not reachable via the tenant-exclusion-list mechanism other public auth endpoints use — registered earlier in the pipeline instead, same as the webhook/cron/blog/admin-auth routes already mounted there)
+Always `302` to the **hard-coded** `societyledger://payments/return` scheme, with `reference` (falling back to `trxref` if `reference` is absent) and `status` forwarded as query params when present — never any other request input, so this can't become an open redirect (confirmed by test: a `redirect=` query param is silently ignored). Body is a small HTML page with a visible fallback link to the same deep link, for browsers that block automatic custom-scheme redirects.
+Confirmed live against the running server; not run through an actual Paystack test-mode checkout in a browser this session (no browser automation was used for this specific external, multi-step redirect flow) — the endpoint itself doesn't touch `paystack.controller.ts` at all, it's a new, independent, passive redirect target, so this is a lower-risk gap than it would be for a change to the Paystack integration itself.
+
 ## 6. Nigerian payments — real base path `/api/payments/nigerian` (tenant **required**)
 
 ### `GET /api/payments/nigerian/banks` — requires `FINANCE_VIEW` (**officer permission, not member-safe** — mobile members cannot call this; use `/api/members/me/bank-accounts` instead, §4). `200 { data: { banks: NIGERIAN_BANKS } }` (static list).

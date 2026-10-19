@@ -32,6 +32,7 @@ import paymentRoutes from './modules/payments/payments.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import devicesRoutes from './modules/devices/devices.routes';
+import mobileReturnRoutes from './modules/payments/mobile-return.routes';
 import memberInviteRoutes from './modules/member-invites/member-invites.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import exportsRoutes from './modules/exports/exports.routes';
@@ -156,6 +157,9 @@ app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admi
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);
+
+// F0.4 — mobile Paystack return bridge, must be before tenantMiddleware (public, no tenant context)
+app.use('/api/payments/mobile-return', mobileReturnRoutes);
 
 // Tenant middleware for all other routes
 app.use(tenantMiddleware);
