@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { z } from 'zod';
 import { randomBytes, createHash } from 'crypto';
+import bcrypt from 'bcryptjs';
 import prisma from '../../lib/prisma';
 import { generateToken, TokenPayload } from '../../lib/auth';
 import { AuthRequest } from '../../middleware/auth.middleware';
@@ -871,6 +872,253 @@ export class AdminController {
       });
     } catch (error) {
       console.error('List impersonation sessions error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  // ── Webhook event logs ────────────────────────────────────────────────────
+
+  async getWebhookStats(req: AuthRequest, res: Response) {
+    try {
+      const allLogs = await prisma.webhookEventLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+        select: { id: true, source: true, status: true, createdAt: true },
+      });
+
+      function channelStats(logs: typeof allLogs) {
+        const total = logs.length;
+        const successful = logs.filter((l) => l.status === 'SUCCESS').length;
+        const failed = logs.filter((l) => l.status === 'FAILED').length;
+        const last = logs[0]?.createdAt ?? null;
+        return {
+          totalEvents: total,
+          successfulEvents: successful,
+          failedEvents: failed,
+          successRate: total > 0 ? (successful / total) * 100 : 0,
+          failureRate: total > 0 ? (failed / total) * 100 : 0,
+          lastEventTime: last ? last.toISOString() : null,
+        };
+      }
+
+      const recentFull = await prisma.webhookEventLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          eventType: true,
+          source: true,
+          status: true,
+          statusCode: true,
+          duration: true,
+          errorMessage: true,
+          payload: true,
+          createdAt: true,
+        },
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          paystack: channelStats(allLogs.filter((l) => l.source === 'paystack')),
+          custom: channelStats(allLogs.filter((l) => l.source !== 'paystack')),
+          overall: channelStats(allLogs),
+          recentEvents: recentFull.map((e) => ({
+            id: e.id,
+            eventType: e.eventType,
+            source: e.source,
+            status: e.status.toLowerCase(),
+            statusCode: e.statusCode,
+            duration: e.duration,
+            errorMessage: e.errorMessage,
+            payload: e.payload,
+            timestamp: e.createdAt.toISOString(),
+          })),
+        },
+      });
+    } catch (error) {
+      console.error('getWebhookStats error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async listWebhookEvents(req: AuthRequest, res: Response) {
+    try {
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = 20;
+      const skip = (page - 1) * limit;
+      const { search, eventType, status } = req.query as Record<string, string | undefined>;
+
+      const where: Record<string, unknown> = {};
+      if (eventType) where.eventType = eventType;
+      if (status) where.status = status.toUpperCase();
+      if (search) {
+        where.OR = [
+          { eventType: { contains: search, mode: 'insensitive' } },
+          { errorMessage: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      const [items, total] = await Promise.all([
+        prisma.webhookEventLog.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip,
+          select: {
+            id: true,
+            eventType: true,
+            source: true,
+            status: true,
+            statusCode: true,
+            duration: true,
+            errorMessage: true,
+            payload: true,
+            createdAt: true,
+          },
+        }),
+        prisma.webhookEventLog.count({ where }),
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          events: items.map((e) => ({
+            id: e.id,
+            eventType: e.eventType,
+            source: e.source,
+            status: e.status.toLowerCase(),
+            statusCode: e.statusCode,
+            duration: e.duration,
+            errorMessage: e.errorMessage,
+            payload: e.payload,
+            timestamp: e.createdAt.toISOString(),
+          })),
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error('listWebhookEvents error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async retryFailedWebhooks(req: AuthRequest, res: Response) {
+    try {
+      const { count } = await prisma.webhookEventLog.updateMany({
+        where: { status: 'FAILED' },
+        data: { status: 'RETRYING' },
+      });
+      return res.json({ success: true, data: { queued: count } });
+    } catch (error) {
+      console.error('retryFailedWebhooks error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async retryWebhookEvent(req: AuthRequest, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const event = await prisma.webhookEventLog.findUnique({ where: { id } });
+      if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
+      await prisma.webhookEventLog.update({ where: { id }, data: { status: 'RETRYING', retryCount: event.retryCount + 1 } });
+      return res.json({ success: true, message: 'Event queued for retry' });
+    } catch (error) {
+      console.error('retryWebhookEvent error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  // ── Admin account ─────────────────────────────────────────────────────────
+
+  async getMe(req: AuthRequest, res: Response) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: (req as any).user.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          platformRole: true,
+          createdAt: true,
+          lastLoginAt: true,
+          totpSecretEnc: true,
+        },
+      });
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      return res.json({
+        success: true,
+        data: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          platformRole: user.platformRole,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+          twoFactorEnabled: !!user.totpSecretEnc,
+        },
+      });
+    } catch (error) {
+      console.error('getMe error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async updateMe(req: AuthRequest, res: Response) {
+    const schema = z.object({
+      firstName: z.string().max(100).optional(),
+      lastName: z.string().max(100).optional(),
+    });
+    try {
+      const { firstName, lastName } = schema.parse(req.body);
+      const user = await prisma.user.update({
+        where: { id: (req as any).user.id },
+        data: { firstName, lastName },
+        select: { id: true, email: true, firstName: true, lastName: true, platformRole: true, createdAt: true, lastLoginAt: true, totpSecretEnc: true },
+      });
+      return res.json({
+        success: true,
+        data: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          platformRole: user.platformRole,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+          twoFactorEnabled: !!user.totpSecretEnc,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      console.error('updateMe error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  async changePassword(req: AuthRequest, res: Response) {
+    const schema = z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(8),
+    });
+    try {
+      const { currentPassword, newPassword } = schema.parse(req.body);
+      const user = await prisma.user.findUnique({
+        where: { id: (req as any).user.id },
+        select: { id: true, passwordHash: true },
+      });
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash ?? '');
+      if (!valid) return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+      const newHash = await bcrypt.hash(newPassword, 12);
+      await prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
+      return res.json({ success: true, message: 'Password updated successfully' });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      console.error('changePassword error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

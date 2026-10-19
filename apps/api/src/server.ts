@@ -141,6 +141,7 @@ app.use('/api/webhooks', webhookManagementRoutes);
 
 // Cron routes (Super Admin only, must be before tenantMiddleware)
 app.use('/api/cron', cronRoutes);
+app.use('/api/admin/cron', cronRoutes); // alias for admin console BFF
 
 // Blog & Documentation routes (Platform-level, must be before tenantMiddleware)
 // Public routes - no auth required
@@ -149,6 +150,7 @@ app.use('/api/docs', documentationPublicRoutes);
 // Admin routes - Super Admin only
 app.use('/api/admin/blog', blogAdminRoutes);
 app.use('/api/admin/docs', documentationAdminRoutes);
+app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admin console BFF
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);

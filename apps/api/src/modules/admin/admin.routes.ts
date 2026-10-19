@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import prisma from '../../lib/prisma';
 import { AdminController } from './admin.controller';
 import { PlatformSettingsController } from './platform-settings.controller';
 import { PlatformAdminController } from './platform-admin.controller';
@@ -14,6 +15,11 @@ const settlementsCtrl = new PaymentSettlementsController();
 
 // All routes require SUPER_ADMIN
 router.use(authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]));
+
+// Platform admin profile
+router.get('/me', (req, res) => ctrl.getMe(req as any, res));
+router.patch('/me', (req, res) => ctrl.updateMe(req as any, res));
+router.post('/me/password', (req, res) => ctrl.changePassword(req as any, res));
 
 // Dashboard stats and analytics
 router.get('/stats', (req, res) => ctrl.stats(req as any, res));
@@ -86,6 +92,93 @@ router.get('/analytics/overview', (req, res) => platformCtrl.getAnalyticsOvervie
 router.get('/analytics/module-adoption', (req, res) => platformCtrl.getModuleAdoption(req as any, res));
 router.get('/analytics/churn', (req, res) => platformCtrl.getChurnAnalytics(req as any, res));
 router.get('/analytics/revenue', (req, res) => platformCtrl.getRevenueTrends(req as any, res));
+
+// Impersonation — alternate path for admin console (UI uses /impersonation/... not /impersonation-sessions)
+router.get('/impersonation/stats', async (req, res) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [active, today, total] = await Promise.all([
+      prisma.impersonationHandoff.count({ where: { expiresAt: { gt: now }, usedAt: null } }),
+      prisma.impersonationHandoff.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.impersonationHandoff.count(),
+    ]);
+    const uniqueAdmins = await prisma.impersonationHandoff.groupBy({ by: ['adminUserId'] });
+    return res.json({ success: true, data: { activeSessions: active, sessionsToday: today, totalSessions: total, uniqueAdmins: uniqueAdmins.length } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.get('/impersonation/sessions', async (req, res) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = 20;
+    const skip = (page - 1) * limit;
+    const activeOnly = req.query.activeOnly === 'true';
+    const now = new Date();
+    const where = activeOnly ? { expiresAt: { gt: now }, usedAt: null } : {};
+    const [items, total] = await Promise.all([
+      prisma.impersonationHandoff.findMany({
+        where,
+        take: limit,
+        skip,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          reason: true,
+          durationMinutes: true,
+          expiresAt: true,
+          usedAt: true,
+          createdAt: true,
+          adminUser: { select: { id: true, email: true } },
+          association: { select: { id: true, name: true, subdomain: true } },
+        },
+      }),
+      prisma.impersonationHandoff.count({ where }),
+    ]);
+    return res.json({
+      success: true,
+      data: {
+        sessions: items.map((s) => ({
+          id: s.id,
+          adminId: s.adminUser?.id,
+          adminEmail: s.adminUser?.email,
+          associationId: s.association?.id,
+          associationName: s.association?.name,
+          subdomain: s.association?.subdomain,
+          reason: s.reason,
+          expiresAt: s.expiresAt.toISOString(),
+          revokedAt: null,
+          createdAt: s.createdAt.toISOString(),
+          isActive: s.usedAt === null && s.expiresAt > new Date(),
+        })),
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.post('/impersonation/sessions/:id/revoke', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const session = await prisma.impersonationHandoff.findUnique({ where: { id } });
+    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+    await prisma.impersonationHandoff.update({ where: { id }, data: { expiresAt: new Date() } });
+    return res.json({ success: true, message: 'Session revoked' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Webhook event logs
+router.get('/webhooks/stats', (req, res) => ctrl.getWebhookStats(req as any, res));
+router.get('/webhooks/events', (req, res) => ctrl.listWebhookEvents(req as any, res));
+router.post('/webhooks/retry-failed', (req, res) => ctrl.retryFailedWebhooks(req as any, res));
+router.post('/webhooks/events/:id/retry', (req, res) => ctrl.retryWebhookEvent(req as any, res));
 
 // Payment Settlements (Phase 19.4)
 router.get('/payment-settlements/daily', (req, res) => settlementsCtrl.getDailySettlements(req as any, res));

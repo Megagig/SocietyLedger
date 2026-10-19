@@ -67,31 +67,33 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         style={{ backgroundColor: 'var(--admin-chrome-bg)', borderRight: 'none' }}
         p="sm"
       >
-        <Stack gap={2}>
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <NavLink
-                key={item.href}
-                component={Link}
-                href={item.href}
-                label={item.label}
-                leftSection={<item.icon size={16} />}
-                active={isActive}
-                styles={{
-                  root: {
-                    color: isActive ? 'var(--admin-chrome-fg)' : 'var(--admin-chrome-fg-muted)',
-                    backgroundColor: isActive ? 'var(--admin-chrome-active-bg)' : 'transparent',
-                    borderLeft: isActive ? '3px solid var(--admin-chrome-active-marker)' : '3px solid transparent',
-                    borderRadius: 6,
-                    '&:hover': { backgroundColor: 'var(--admin-chrome-active-bg)' },
-                  },
-                  label: { fontSize: 13 },
-                }}
-              />
-            );
-          })}
-        </Stack>
+        <MantineAppShell.Section grow style={{ overflowY: 'auto' }}>
+          <Stack gap={2}>
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <NavLink
+                  key={item.href}
+                  component={Link}
+                  href={item.href}
+                  label={item.label}
+                  leftSection={<item.icon size={16} />}
+                  active={isActive}
+                  styles={{
+                    root: {
+                      color: isActive ? 'var(--admin-chrome-fg)' : 'var(--admin-chrome-fg-muted)',
+                      backgroundColor: isActive ? 'var(--admin-chrome-active-bg)' : 'transparent',
+                      borderLeft: isActive ? '3px solid var(--admin-chrome-active-marker)' : '3px solid transparent',
+                      borderRadius: 6,
+                      '&:hover': { backgroundColor: 'var(--admin-chrome-active-bg)' },
+                    },
+                    label: { fontSize: 13 },
+                  }}
+                />
+              );
+            })}
+          </Stack>
+        </MantineAppShell.Section>
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main style={{ backgroundColor: 'var(--admin-page-bg)' }}>

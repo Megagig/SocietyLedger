@@ -3,7 +3,7 @@
 // Mounted at /api/admin/docs
 // ============================================
 
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import {
   listSections,
   listAllPages,
@@ -21,6 +21,7 @@ import {
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePlatformRole } from '../../middleware/rbac';
 import { PlatformRole } from '@prisma/client';
+import prisma from '../../lib/prisma';
 
 const router: Router = Router();
 
@@ -114,6 +115,67 @@ router.delete(
   authMiddleware,
   requirePlatformRole([PlatformRole.SUPER_ADMIN]),
   deleteFeedback
+);
+
+// Stats
+router.get(
+  '/stats',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  async (req: Request, res: Response) => {
+    try {
+      const [total, published, draft, viewSum, helpSum, unhelpSum] = await Promise.all([
+        prisma.docPage.count(),
+        prisma.docPage.count({ where: { status: 'PUBLISHED' } }),
+        prisma.docPage.count({ where: { status: 'DRAFT' } }),
+        prisma.docPage.aggregate({ _sum: { viewCount: true } }),
+        prisma.docPage.aggregate({ _sum: { helpfulCount: true } }),
+        prisma.docPage.aggregate({ _sum: { notHelpfulCount: true } }),
+      ]);
+      return res.json({
+        success: true,
+        data: {
+          totalPages: total,
+          publishedPages: published,
+          draftPages: draft,
+          totalViews: viewSum._sum.viewCount ?? 0,
+          helpfulCount: helpSum._sum.helpfulCount ?? 0,
+          unhelpfulCount: unhelpSum._sum.notHelpfulCount ?? 0,
+        },
+      });
+    } catch (error) {
+      console.error('doc stats error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+);
+
+// Feedback stats
+router.get(
+  '/feedback/stats',
+  authMiddleware,
+  requirePlatformRole([PlatformRole.SUPER_ADMIN]),
+  async (req: Request, res: Response) => {
+    try {
+      const [total, helpful, unhelpful] = await Promise.all([
+        prisma.docFeedback.count(),
+        prisma.docFeedback.count({ where: { isHelpful: true } }),
+        prisma.docFeedback.count({ where: { isHelpful: false } }),
+      ]);
+      return res.json({
+        success: true,
+        data: {
+          total,
+          helpful,
+          unhelpful,
+          helpfulRate: total > 0 ? (helpful / total) * 100 : 0,
+        },
+      });
+    } catch (error) {
+      console.error('doc feedback stats error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
 );
 
 export default router;

@@ -205,6 +205,9 @@ model User {
   impersonationHandoffs ImpersonationHandoff[]
 
   // A1.4 — TOTP 2FA for platform users (stored only on platform-role users)
+  firstName       String?   @map("first_name")
+  lastName        String?   @map("last_name")
+  lastLoginAt     DateTime? @map("last_login_at")
   totpSecretEnc   String?   @map("totp_secret_enc")
   totpEnabledAt   DateTime? @map("totp_enabled_at")
   recoveryCodes   RecoveryCode[]

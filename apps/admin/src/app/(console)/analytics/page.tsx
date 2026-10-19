@@ -19,11 +19,28 @@ import { bff } from '@/lib/bff';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AnalyticsOverview {
-  totalRevenue: number;
-  activeSubscriptions: number;
-  churnRate: number;
-  averageRevenuePerUser: number;
-  currency?: string;
+  tenants: {
+    total: number;
+    active: number;
+    suspended: number;
+    deleted: number;
+    trialing: number;
+    newThisMonth: number;
+    newLastMonth: number;
+    growthRate: number;
+  };
+  subscriptions: Record<string, number>;
+  tiers: Record<string, number>;
+  revenue: {
+    thisMonth: number;
+    lastMonth: number;
+    total: number;
+    growthRate: number;
+    mrr: number;
+    arr: number;
+  };
+  users: { total: number; activeIn30Days: number };
+  members: { total: number };
 }
 
 interface ModuleAdoption {
@@ -98,27 +115,29 @@ function OverviewTab({ months }: { months: number }) {
     return <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} />;
   }
   const d = q.data!;
+  const activeSubscriptions = d.subscriptions['ACTIVE'] ?? 0;
+  const arpu = d.users.total > 0 ? Math.round(d.revenue.total / d.users.total) : 0;
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
       <StatCard
         label="Total Revenue"
-        value={fmtCurrency(d.totalRevenue, d.currency)}
+        value={fmtCurrency(d.revenue.total)}
         icon={<IconCurrencyDollar size={16} />}
       />
       <StatCard
         label="Active Subscriptions"
-        value={d.activeSubscriptions.toLocaleString()}
+        value={activeSubscriptions.toLocaleString()}
         icon={<IconBuilding size={16} />}
       />
       <StatCard
-        label="Churn Rate"
-        value={fmtPct(d.churnRate)}
+        label="Revenue Growth"
+        value={fmtPct(d.revenue.growthRate)}
         icon={<IconTrendingDown size={16} />}
-        trendPositive={false}
+        trendPositive={d.revenue.growthRate >= 0}
       />
       <StatCard
         label="Avg Revenue / User"
-        value={fmtCurrency(d.averageRevenuePerUser, d.currency)}
+        value={fmtCurrency(arpu)}
         icon={<IconUsers size={16} />}
       />
     </SimpleGrid>
