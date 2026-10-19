@@ -21,9 +21,16 @@ export default function ProtectedRoute({
   fallback = <div className="flex items-center justify-center min-h-screen">Loading...</div>,
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuthStore();
+  const { user, isLoading, isAuthenticated, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
+    // Wait for Zustand's persist middleware to finish rehydrating from
+    // localStorage — on a fresh page load, isAuthenticated/isLoading both
+    // sit at their pre-hydration defaults (false) for a brief window, which
+    // would otherwise trip the "not authenticated" redirect below even for
+    // an already-logged-in session.
+    if (!_hasHydrated) return;
+
     // Wait for auth check to complete
     if (isLoading) return;
 
@@ -41,10 +48,10 @@ export default function ProtectedRoute({
         return;
       }
     }
-  }, [isLoading, isAuthenticated, user, requireAuth, requiredPermissions, router, redirectTo]);
+  }, [isLoading, isAuthenticated, user, requireAuth, requiredPermissions, router, redirectTo, _hasHydrated]);
 
   // Show loading state
-  if (isLoading) {
+  if (!_hasHydrated || isLoading) {
     return <>{fallback}</>;
   }
 

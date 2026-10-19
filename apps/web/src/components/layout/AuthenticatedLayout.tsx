@@ -17,24 +17,33 @@ import { Loader } from '@mantine/core';
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth, user, _hasHydrated } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
+    // Zustand's persist middleware rehydrates auth-storage from localStorage
+    // asynchronously — on a fresh page load (e.g. a hard navigation right
+    // after impersonation sets the store), this effect can otherwise fire
+    // while `token` is still at its pre-hydration default of null, call
+    // checkAuth() with that null, and have its early-exit
+    // set({isAuthenticated: false}) stomp the real state once hydration
+    // finishes a moment later. Waiting for _hasHydrated avoids the race.
+    if (!_hasHydrated) return;
+
     const verifyAuth = async () => {
       await checkAuth();
       setIsChecking(false);
     };
 
     verifyAuth();
-  }, [checkAuth]);
+  }, [checkAuth, _hasHydrated]);
 
   useEffect(() => {
-    if (!isChecking && !isAuthenticated && !isLoading) {
+    if (_hasHydrated && !isChecking && !isAuthenticated && !isLoading) {
       router.push('/auth/login');
     }
-  }, [isAuthenticated, isLoading, isChecking, router, pathname]);
+  }, [isAuthenticated, isLoading, isChecking, _hasHydrated, router, pathname]);
 
   // Onboarding redirect for association admins who haven't completed onboarding
   useEffect(() => {
@@ -49,7 +58,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     }
   }, [isChecking, isAuthenticated, user, pathname, router]);
 
-  if (isChecking || isLoading) {
+  if (!_hasHydrated || isChecking || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center space-y-4">
