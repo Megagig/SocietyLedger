@@ -22,31 +22,20 @@ interface Stats {
   overview: {
     totalAssociations: number;
     activeAssociations: number;
+    suspendedAssociations: number;
     totalUsers: number;
-    activeUsers: number;
-    totalRevenue: number;
-    monthlyRevenue: number;
+    totalMembers: number;
+    pendingApprovals: number;
   };
   growth: {
     newAssociationsThisMonth: number;
-    newUsersThisMonth: number;
-    revenueGrowth: number;
+    newAssociationsThisWeek: number;
   };
-  subscriptions: {
-    active: number;
-    trialing: number;
-    pastDue: number;
-    cancelled: number;
-  };
-  tiers: Array<{
-    tier: string;
-    count: number;
-    percentage: number;
-  }>;
+  subscriptions: Record<string, number>;
+  tiers: Record<string, number>;
   revenue: {
-    mrr: number;
-    arr: number;
-    currency: string;
+    total: number;
+    thisMonth: number;
   };
 }
 
@@ -164,7 +153,8 @@ export default function DashboardPage() {
 
   // total subscription count for progress bar ratios
   const subTotal = s
-    ? s.subscriptions.active + s.subscriptions.trialing + s.subscriptions.pastDue + s.subscriptions.cancelled
+    ? (s.subscriptions['ACTIVE'] ?? 0) + (s.subscriptions['TRIALING'] ?? 0) +
+      (s.subscriptions['PAST_DUE'] ?? 0) + (s.subscriptions['CANCELED'] ?? 0)
     : 0;
 
   return (
@@ -211,35 +201,29 @@ export default function DashboardPage() {
                 label="Active Associations"
                 value={s.overview.activeAssociations.toLocaleString()}
                 icon={<IconBuilding size={16} />}
+                trend={`+${s.growth.newAssociationsThisWeek} this week`}
+                trendPositive={s.growth.newAssociationsThisWeek > 0}
               />
               <StatCard
                 label="Total Users"
                 value={s.overview.totalUsers.toLocaleString()}
                 icon={<IconUsers size={16} />}
-                trend={`+${s.growth.newUsersThisMonth} this month`}
-                trendPositive={s.growth.newUsersThisMonth > 0}
               />
               <StatCard
-                label="Active Users"
-                value={s.overview.activeUsers.toLocaleString()}
+                label="Total Members"
+                value={s.overview.totalMembers.toLocaleString()}
                 icon={<IconActivity size={16} />}
               />
               <StatCard
                 label="Monthly Revenue"
-                value={fmtCurrency(s.overview.monthlyRevenue, s.revenue.currency)}
+                value={fmtCurrency(s.revenue.thisMonth)}
                 icon={<IconCurrencyDollar size={16} />}
-                trend={
-                  s.growth.revenueGrowth > 0
-                    ? `+${s.growth.revenueGrowth}% vs last month`
-                    : `${s.growth.revenueGrowth}% vs last month`
-                }
-                trendPositive={s.growth.revenueGrowth > 0}
               />
               <StatCard
-                label="ARR"
-                value={fmtCurrency(s.revenue.arr, s.revenue.currency)}
+                label="Total Revenue"
+                value={fmtCurrency(s.revenue.total)}
                 icon={<IconTrendingUp size={16} />}
-                trend={`MRR ${fmtCurrency(s.revenue.mrr, s.revenue.currency)}`}
+                trend={`This month: ${fmtCurrency(s.revenue.thisMonth)}`}
               />
             </>
           ) : null}
@@ -257,10 +241,10 @@ export default function DashboardPage() {
             ) : s && subTotal > 0 ? (
               <Stack gap="sm">
                 {[
-                  { label: 'Active', value: s.subscriptions.active, color: 'green' },
-                  { label: 'Trialing', value: s.subscriptions.trialing, color: 'blue' },
-                  { label: 'Past Due', value: s.subscriptions.pastDue, color: 'orange' },
-                  { label: 'Cancelled', value: s.subscriptions.cancelled, color: 'red' },
+                  { label: 'Active', value: s.subscriptions['ACTIVE'] ?? 0, color: 'green' },
+                  { label: 'Trialing', value: s.subscriptions['TRIALING'] ?? 0, color: 'blue' },
+                  { label: 'Past Due', value: s.subscriptions['PAST_DUE'] ?? 0, color: 'orange' },
+                  { label: 'Cancelled', value: s.subscriptions['CANCELED'] ?? 0, color: 'red' },
                 ].map(({ label, value, color }) => (
                   <Stack key={label} gap={4}>
                     <Group justify="space-between">
@@ -288,20 +272,26 @@ export default function DashboardPage() {
               <Stack gap="sm">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} h={28} radius="sm" />)}
               </Stack>
-            ) : s && s.tiers.length > 0 ? (
+            ) : s && Object.keys(s.tiers).length > 0 ? (
               <Stack gap="sm">
-                {s.tiers.map(({ tier, count, percentage }) => (
-                  <Stack key={tier} gap={4}>
-                    <Group justify="space-between">
-                      <Text size="xs" c="dimmed" tt="capitalize">{tier.toLowerCase()}</Text>
-                      <Text size="xs" fw={600}>
-                        {count.toLocaleString()}{' '}
-                        <Text component="span" c="dimmed" fw={400}>({percentage}%)</Text>
-                      </Text>
-                    </Group>
-                    <Progress value={percentage} color="ledger" size="sm" radius="xl" />
-                  </Stack>
-                ))}
+                {(() => {
+                  const tierTotal = Object.values(s.tiers).reduce((sum, n) => sum + n, 0);
+                  return Object.entries(s.tiers).map(([tier, count]) => {
+                    const pct = tierTotal > 0 ? Math.round((count / tierTotal) * 100) : 0;
+                    return (
+                      <Stack key={tier} gap={4}>
+                        <Group justify="space-between">
+                          <Text size="xs" c="dimmed" tt="capitalize">{tier.toLowerCase()}</Text>
+                          <Text size="xs" fw={600}>
+                            {count.toLocaleString()}{' '}
+                            <Text component="span" c="dimmed" fw={400}>({pct}%)</Text>
+                          </Text>
+                        </Group>
+                        <Progress value={pct} color="ledger" size="sm" radius="xl" />
+                      </Stack>
+                    );
+                  });
+                })()}
               </Stack>
             ) : (
               <Text size="sm" c="dimmed">No tier data</Text>
