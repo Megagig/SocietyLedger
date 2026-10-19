@@ -68,6 +68,8 @@ Rules:
 | Forbidden | admin | State | `src/components/Forbidden.tsx` | A1.6 (2026-10-18) |
 | ReasonField | admin | Action | `src/components/ReasonField.tsx` | A1.6 (2026-10-18) |
 | ConfirmDestructive | admin | Action | `src/components/ConfirmDestructive.tsx` | A1.6 (2026-10-18) |
+| BlogPostForm | admin | Form | `src/components/forms/BlogPostForm.tsx` | A2.10 (2026-10-19) |
+| DocPageForm | admin | Form | `src/components/forms/DocPageForm.tsx` | A2.11 (2026-10-19) |
 | _(first mobile entries with F1.4)_ | | | | |
 
 ---
@@ -513,9 +515,37 @@ Not reusable UI components; the pieces behind `build-plan.md`'s D1.7 bullet, whi
 - **Used in:** X5 suspend/cancel association, X14 permanent delete, X19 close support ticket
 - **Notes:** Submit requires non-empty reason AND (if `confirmValue` set) exact match. Never auto-dismiss on success — caller closes after mutation settles.
 
+## Admin form components (`src/components/forms`)
+
+### BlogPostForm
+- **Surface:** admin
+- **Path:** `src/components/forms/BlogPostForm.tsx`
+- **Added / changed:** A2.10 (2026-10-19)
+- **Purpose:** Create/edit form for a blog post (title, slug, excerpt, content, cover image, status, category, tags). Same component drives both `/blog/new` and `/blog/[id]/edit` — pass `postId` for edit mode, omit for create.
+- **Props:** `postId?: number`
+- **Tokens used:** `--admin-surface`, `--admin-border`
+- **Used in:** X17 Blog CMS (`/blog/new`, `/blog/[id]/edit`)
+- **Example:**
+  ```tsx
+  <BlogPostForm /* create */ />
+  <BlogPostForm postId={42} /* edit */ />
+  ```
+- **Notes:** Slug auto-fills from title (slugified) until the user edits it manually. The blog admin API requires a client-supplied `slug` (unlike documentation pages below, which auto-generate it server-side) — found this the hard way while building the page, since the pre-existing "New category" modal had been silently broken for the same reason (missing required `slug`) since it shipped.
+
+### DocPageForm
+- **Surface:** admin
+- **Path:** `src/components/forms/DocPageForm.tsx`
+- **Added / changed:** A2.11 (2026-10-19)
+- **Purpose:** Create/edit form for a help/documentation page (title, excerpt, content, section; status only shown in edit mode — new pages always start DRAFT). Same component drives both `/help/new` and `/help/[id]/edit` — pass `pageId` for edit mode, omit for create.
+- **Props:** `pageId?: number`
+- **Tokens used:** `--admin-surface`, `--admin-border`
+- **Used in:** X18 Help Content (`/help/new`, `/help/[id]/edit`)
+- **Notes:** No slug field — the documentation API generates it server-side from the title (unlike BlogPostForm above). The pre-existing "New section" modal had the same missing-required-`slug` bug as blog's category modal.
+
 ## Admin page patterns
 - **List page:** `PageHeader` (title + create button) → `FilterBar` → `DataTable` (with `StatusBadge` in status column)
 - **Detail page:** breadcrumb → `PageHeader` → Tabs (URL-synced with `searchParams`) → `DangerZone` section last (A2+)
+- **Create/edit page:** `PageHeader` → form Card (`--admin-surface`/`--admin-border`) → Cancel/Save row; form component takes an optional `id` prop and switches POST↔PUT
 - **Destructive action:** hover row → action button → `ConfirmDestructive` modal → mutation → notification
 
 ---
