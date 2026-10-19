@@ -220,6 +220,9 @@ model User {
   // F0.2 — Mobile push notifications
   deviceTokens DeviceToken[]
 
+  // F0.3 — Mobile refresh-token sessions
+  refreshTokens RefreshToken[]
+
   @@unique([associationId, email])
   @@index([associationId, email])
   @@map("users")
@@ -550,6 +553,32 @@ model DeviceToken {
 
   @@index([userId, associationId])
   @@map("device_tokens")
+}
+
+// F0.3 — one row per issued mobile refresh token. `tokenHash` is the sha256
+// of the opaque token the client holds (the plaintext is never stored).
+// `familyId` groups every token descended from one login via rotation; a
+// reuse of a revoked token revokes the whole family (theft detection).
+// `replacedById` is informational only (no enforced FK, matching
+// architecture.md's own schema exactly) — which row a rotation replaced.
+model RefreshToken {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  associationId Int?      @map("association_id")
+  tokenHash     String    @unique @map("token_hash")
+  familyId      String    @map("family_id")
+  deviceName    String?   @map("device_name")
+  platform      String?
+  expiresAt     DateTime  @map("expires_at")
+  revokedAt     DateTime? @map("revoked_at")
+  replacedById  Int?      @map("replaced_by_id")
+  lastUsedAt    DateTime? @map("last_used_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
 }
 
 model Settings {

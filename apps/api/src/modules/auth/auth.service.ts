@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../lib/prisma';
 import { sendEmail } from '../../lib/email';
 import { hashPassword } from '../../lib/auth';
+import { revokeAllForUser } from '../../services/refresh-token.service';
 
 const VERIFICATION_CODE_EXPIRY_MINUTES = 15;
 const PASSWORD_RESET_EXPIRY_MINUTES = 60;
@@ -341,6 +342,9 @@ export async function resetPassword(
       passwordResetExpiresAt: null,
     },
   });
+
+  // F0.3: a password reset invalidates every existing mobile session.
+  await revokeAllForUser(user.id);
 
   return { success: true, message: 'Password reset successful' };
 }

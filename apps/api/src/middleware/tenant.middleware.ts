@@ -138,6 +138,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       req.path.startsWith('/api/auth/resend-verification') ||
       req.path.startsWith('/api/auth/forgot-password') ||
       req.path.startsWith('/api/auth/reset-password') ||
+      // F0.3: refresh is the mobile credential itself (no X-Tenant needed —
+      // the stored RefreshToken row already carries its own associationId);
+      // sessions are scoped to the caller's own userId, same reasoning.
+      req.path.startsWith('/api/auth/refresh') ||
+      req.path.startsWith('/api/auth/sessions') ||
       req.path.startsWith('/api/member-invites/verify') ||
       req.path.startsWith('/api/member-invites/accept')
     ) {

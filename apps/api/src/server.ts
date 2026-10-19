@@ -179,6 +179,7 @@ app.get('/health', (req: Request, res: Response) => {
 // Phase 12: Apply rate limiting to API routes
 // Session check endpoints (high frequency) - 200 req/min
 app.use('/api/auth/me', sessionRateLimit);
+app.use('/api/auth/refresh', sessionRateLimit); // F0.3
 // Sensitive auth endpoints (login, register, password reset) - 10 req/min
 app.use('/api/auth/login', authRateLimit);
 app.use('/api/auth/register', authRateLimit);

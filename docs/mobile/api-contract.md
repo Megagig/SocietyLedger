@@ -73,7 +73,21 @@ Errors: `401 Not authenticated` · `404 User not found` · `500`.
 ### `POST /api/auth/change-password` — authenticated, plain body (no Zod): `{ currentPassword, newPassword }` → `200` / `400` (missing, too short, or wrong current password) / `404` / `500`.
 ### `POST /api/auth/impersonation/exchange` — public, tenant-optional (admin-track feature, not mobile-relevant, documented for completeness): `{ code }` → `200 { data: { token, association } }` / `404`/`409`/`410`/`403`/`400`/`500`.
 
-**No `/auth/refresh` endpoint exists yet** — that's F0.3's deliverable, next.
+### F0.3 — mobile sessions (`X-Client: mobile`)
+
+`POST /api/auth/login` and `POST /api/member-invites/accept` both check the `X-Client` header: when it's exactly `mobile`, the response `data` gains `refreshToken` (opaque, 30-day, rotating) and `accessTokenExpiresAt` (ISO string, ~15 min from issuance) alongside `token` — the access token itself is also minted with a ~15-min lifetime instead of the web default 7 days. **Without that header, both endpoints are byte-for-byte unchanged from §1** — this is the only branch point, confirmed live. Optional `X-Device-Name`/`X-Device-Platform` headers on login are stored against the session for `GET /auth/sessions` to display; both are plain strings, not validated against a fixed platform enum at this layer (device registration's `platform` enum check happens separately, at `/api/devices/register`, §11).
+
+### `POST /api/auth/refresh` — public (tenant-optional; rate-limited with `sessionRateLimit`)
+`{ refreshToken: string }` → `200 { data: { token, refreshToken, accessTokenExpiresAt } }` — rotates: the presented token is invalidated and a new one issued in the same family. Re-checks the user's `isActive`/approval status and the association's status on every call, not just at login.
+Errors: `401 { code: 'REFRESH_TOKEN_INVALID' }` for an unknown, expired, already-rotated (reused), deactivated-user, or suspended-association token — **deliberately one generic message/code for all of these**, not distinguished, so a client can't learn *why* a stolen token failed. Reusing an already-rotated token also silently revokes every other token in that family (the legitimate holder's session dies too — the standard theft response; confirmed live).
+
+### `GET /api/auth/sessions` — authenticated, no `X-Tenant` needed
+`200 { data: { sessions: [{ familyId, deviceName, platform, lastUsedAt, createdAt }] } }` — one entry per active (non-revoked, non-expired) refresh-token family, most-recently-used first.
+
+### `POST /api/auth/sessions/revoke-others` — authenticated
+`{ refreshToken }` (the session to **keep**) → `200 { message: '<n> other session(s) revoked' }`. If the given token can't be found, revokes every session for the caller instead of silently doing nothing (fails safe, not open).
+
+`POST /api/auth/logout` now also accepts an optional `refreshToken` in the body and revokes it (best effort; web never sends one, so its behavior is unchanged). `POST /api/auth/change-password` and `auth.service.ts`'s `resetPassword()` both now revoke every refresh token for that user as a side effect.
 
 ## 2. Associations — `associations.routes.ts`
 

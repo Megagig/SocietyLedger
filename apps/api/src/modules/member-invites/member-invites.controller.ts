@@ -11,6 +11,8 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { TenantRequest } from '../../middleware/tenant.middleware';
+import { generateToken, mobileAccessTokenExpiresAt } from '../../lib/auth';
+import { issueRefreshToken } from '../../services/refresh-token.service';
 import {
   createMemberInvite,
   verifyInviteToken,
@@ -279,6 +281,25 @@ export const memberInviteController = {
 
       const { user, member } = await acceptMemberInvite({ token, password });
 
+      // F0.3: a mobile client gets signed in immediately (access + refresh
+      // token), matching login's behavior — web's response is byte-for-byte
+      // unchanged (it never sends this header, and still just gets the
+      // "you can now log in" message below with no token at all).
+      const isMobileClient = req.headers['x-client'] === 'mobile';
+      let mobileAuth: { token: string; refreshToken: string; accessTokenExpiresAt: string } | undefined;
+      if (isMobileClient) {
+        const accessToken = generateToken(
+          { id: user.id, email: user.email, role: user.role, associationId: user.associationId ?? undefined },
+          { isMobile: true }
+        );
+        const issued = await issueRefreshToken({ userId: user.id, associationId: user.associationId });
+        mobileAuth = {
+          token: accessToken,
+          refreshToken: issued.token,
+          accessTokenExpiresAt: mobileAccessTokenExpiresAt().toISOString(),
+        };
+      }
+
       res.status(200).json({
         success: true,
         message: 'Account activated successfully. You can now log in.',
@@ -293,6 +314,7 @@ export const memberInviteController = {
             lastName: member.lastName,
             memberId: member.memberId,
           },
+          ...mobileAuth,
         },
       });
     } catch (error: any) {
