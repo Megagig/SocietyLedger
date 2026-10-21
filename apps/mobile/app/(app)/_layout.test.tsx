@@ -22,6 +22,9 @@ jest.mock('@/lib/storage', () => {
   };
 });
 
+// F3.1's push hook registers tokens / OS listeners — irrelevant to the guard being tested here.
+jest.mock('@/hooks/usePushSetup', () => ({ usePushSetup: jest.fn() }));
+
 // `AppLayout` itself only needs to make the right redirect decision (architecture.md §5's one
 // guard) — mocking `Stack`/`Redirect` keeps this test from pulling in the real router tree (every
 // screen under `(tabs)`, MMKV-backed stores, etc.), which is what `_layout.test.tsx` is and isn't

@@ -1287,6 +1287,71 @@ Not reusable UI components; the pieces behind `build-plan.md`'s D1.7 bullet, whi
 
 ---
 
+## Mobile Phase 3 — Engagement (F3.1–F3.8, 2026-10-21)
+
+### F3.1 Push notifications client
+- **`src/lib/push.ts`:** Permission request, Expo push token registration/unregistration via `POST /devices/push-token` / `DELETE /devices/push-token/:token`. Android channels: `default` (normal), `payments`, `voting` (max importance). Foreground handler dismisses + routes.
+- **`src/hooks/usePushSetup.ts`:** Called once in `app/(app)/_layout.tsx`. Requests permission, registers token. Cleans up on unmount.
+- **`src/api/endpoints/devices.ts`:** `devicesApi.registerPushToken(token)` → `POST /devices/push-token`; `devicesApi.unregisterPushToken(token)` → `DELETE /devices/push-token/:token`.
+
+### F3.2 Notifications inbox & preferences
+- **`app/(app)/notifications/index.tsx` (N1):** Paginated inbox, grouped by date. `NotificationRow` (icon by type, unread dot, relative time). `useMarkAllRead()` in header. Pull-to-refresh.
+- **`app/(app)/notifications/preferences.tsx` (N2):** Channel toggles (in-app, email, SMS, push master) + per-type granularity. RHF + `useUpdateNotificationPreferences()`.
+- **`src/components/ui/NotificationRow.tsx`:** Reusable row with icon (type-mapped), title, message, timestamp, unread dot. Tap → `useMarkRead()`.
+
+### F3.3 Profile & settings
+- **`app/(app)/(tabs)/profile/index.tsx` (P1):** Avatar + name + memberId + category chip. Three ListGroups: account (My Profile → P2, Security → P3, Notifications → N2), preferences (Appearance, Help, About), session (Switch Association, Sign Out).
+- **`app/(app)/(tabs)/profile/details.tsx` (P2):** Edit firstName/lastName/phone. Read-only email + memberId. `useUpdateProfile()` mutation via RHF+zod.
+- **`app/(app)/(tabs)/profile/security.tsx` (P3):** Biometric toggle, auto-lock picker (existing). Added: change-password form (3 `PasswordField`s, `useChangePassword()`), active sessions list (`useSessions()`) with revoke-per-device `useRevokeSession()`.
+- **`app/(app)/(tabs)/profile/appearance.tsx`:** Three-way theme picker (Light/Dark/System) using `useThemeMode().setPreference()`.
+- **`app/(app)/(tabs)/profile/about.tsx`:** App version from `Constants.expoConfig?.version`, Privacy Policy / Terms / Licenses via `Linking.openURL`.
+- **`src/api/endpoints/members.ts`:** `membersApi.getProfile()` → `GET /members/me`; `membersApi.updateProfile(payload)` → `PATCH /members/me`.
+- **`src/features/session/queries.ts` extended:** `useProfile()`, `useSessions()`.
+- **`src/features/session/mutations.ts` extended:** `useChangePassword()`, `useUpdateProfile()`, `useRevokeSession()`.
+
+### F3.4 Meetings (member)
+- **`app/(app)/(tabs)/community/meetings/index.tsx` (C2):** Tab switcher Upcoming/Past. `MeetingCard` with status chip, date/time, location preview. Pull-to-refresh.
+- **`app/(app)/(tabs)/community/meetings/[id].tsx` (C3/C4):** Status+type chips, title/description. Details ListGroup: time, virtualLink (→ `Linking.openURL`) or location (→ Google Maps). "Add to calendar" via `expo-calendar`. "Join Online" button. Agenda items list (upcoming). Attendance stats row + minutes (completed).
+- **`src/api/endpoints/meetings.ts` extended:** `getRecent(limit)`, `getById(id)`.
+- **`src/features/meetings/queries.ts` extended:** `useRecentMeetings()`, `useMeetingDetail()`.
+
+### F3.5 Elections & voting (member)
+- **`app/(app)/(tabs)/community/elections/index.tsx` (C5):** `ElectionCard` with status badge (DRAFT/NOMINATIONS_OPEN/VOTING_OPEN/VOTING_CLOSED/RESULTS_PUBLISHED/CANCELLED), date range, candidate count. FlatList + pull-to-refresh.
+- **`app/(app)/(tabs)/community/elections/[id].tsx` (C6):** Three modes: `view` (stats row, positions+candidates), `nominate` (manifesto form, `useSelfNominate()`), `ballot` (`BallotPosition` radio-select per position + abstain, `useBulkCastVotes()`). Results mode shows vote counts when `RESULTS_PUBLISHED`.
+- **`src/types/api/voting.ts` extended:** `ElectionListItemDTO`, `ElectionsListResponseDTO`, `PollListItemDTO`, `PollsListResponseDTO`, `PollDetailDTO`, `CastVotePayload`, `BulkCastVotePayload`, `SelfNominatePayload`.
+- **`src/api/endpoints/voting.ts` extended:** `listElections`, `getElection`, `selfNominate`, `castVote`, `bulkCastVotes`, `listPolls`, `getPoll`, `respondToPoll`.
+- **`src/features/voting/queries.ts` extended:** `useElections`, `useElectionDetail`, `useSelfNominate`, `useBulkCastVotes`, `usePolls`, `usePollDetail`, `useRespondToPoll`.
+
+### F3.6 Polls (member)
+- **`app/(app)/(tabs)/community/polls/index.tsx` (C9):** `PollCard` with status, description, close date, response count. FlatList + pull-to-refresh.
+- **`app/(app)/(tabs)/community/polls/[id].tsx` (C10):** `OptionRow` (radio = single, checkbox = multi based on `allowMultipleVotes`). Active shows "Choose an option", closed shows results. `useRespondToPoll()` mutation, `StickyFooter` submit.
+
+### F3.7 Welfare (member)
+- **`app/(app)/(tabs)/community/welfare/index.tsx` (C11):** Stats grid (totalContributions, totalPayoutsReceived, pendingRequests, eligibleFunds count). Eligible funds list. "Request payout" CTA. Gated on `WELFARE_VIEW`.
+- **`app/(app)/(tabs)/community/welfare/request.tsx` (C12):** RHF+zod form: fundId (`SelectSheet`), payoutType (`SelectSheet` with 7 PAYOUT_TYPES), amount (`TextField` numeric, coerced), reason (`TextField` multiline). `useCreatePayoutRequest()` mutation. Gated on `WELFARE_PAYOUT_REQUEST`.
+- **`src/types/api/welfare.ts`:** `WelfarePayoutType`, `MemberWelfareProfileDTO`, `WelfareFundDTO`, `WelfareFundsResponseDTO`, `CreatePayoutRequestPayload`, `PayoutRequestDTO`.
+- **`src/api/endpoints/welfare.ts`:** `welfareApi.getMyProfile()`, `welfareApi.listFunds(status)`, `welfareApi.createPayoutRequest(payload)`.
+- **`src/features/welfare/queries.ts`:** `useWelfareProfile()`, `useWelfareFunds()`, `useCreatePayoutRequest()`.
+
+### F3.8 Community hub & announcements
+- **`app/(app)/(tabs)/community/index.tsx` (C1) extended:** Added Welfare section (gated on `WELFARE_VIEW`) and wired Announcements "See all" to dedicated C13 screen. Welfare hub card shows eligible fund count from `useWelfareProfile()`.
+- **`app/(app)/(tabs)/community/announcements.tsx` (C13):** Full announcements feed. Client-side filter `type === 'announcement'` on `useNotificationsList({ limit: 50 })`. Unread dot per row, relative timestamp. FlatList + pull-to-refresh. `EmptyState` when none.
+
+## N1 notifications inbox parity (2026-10-21)
+- **`components/ui/NotificationRow.tsx`:** now takes `type` (leading lucide icon + soft tint per kind: payment_due warning, payment_received success, system info, approval primary, announcement accent), `selectionMode`/`selected` (icon becomes a checkbox) and `onLongPress`.
+- **`features/notifications/NotificationFilterBar.tsx`:** `SearchField` + status `SegmentedControl` + horizontal type chips + date-range chip that opens a `BottomSheet` with two `DateField`s; Clear chip when any filter is active. Logic lives in `filters.ts` (`applyNotificationFilters`, tested).
+- **`app/(app)/notifications/index.tsx`:** unread count line, infinite scroll, long-press selection (header turns into Mark read / Delete actions, "Select all"), delete via `ConfirmSheet`, filter-aware empty states.
+
+
+## Community tab web parity (2026-10-21)
+- **New shared UI:** `ui/FilterChip` (scrolling filter pill; also used by `NotificationFilterBar`), `ui/StatTile` (tinted metric tile — Meetings, Voting, election detail), `ui/IconCircle` (36dp leading circle for `ListItem`), `layout/SectionCard` (titled card with trailing badge + hairline-divided rows), `feedback/InlineEmpty` (in-card empty state).
+- **Screens:** `community/_layout.tsx` (Stack), `meetings/index` (segmented + attendance tiles), `elections/index` (My Voting), `polls/index` (search + status/type filters), `welfare/index` (hub), `welfare/contributions`, `welfare/requests`, `announcements` (expandable, paginated).
+- **Fixes:** `ScreenHeader` drops its inner `px-4`; invalid utility classes in detail screens (`bg-primarySoft`, `bg-surfaceRaised`, raw `bg-white`) replaced with tokens; hardcoded hex status colours replaced by `StatusChip`.
+- **Module gating (2026-10-21):** `hooks/useModuleAccess` (`useModuleAccess(permission, module)`, `useModuleDisabled(module)`), `feedback/ModuleLockedScreen` (header + `ModuleLocked`), hub `LockedCard`. `ErrorState` now accepts `error` and shows "Can't reach the server" for network/timeout.
+- **`forms/FilterDropdown`:** controlled filter dropdown — two-line trigger (caption + value, tinted when not the default) opening a `BottomSheet` of icon + hint rows with a check on the selected one. Used for the Polls status/type filters; `SelectSheet` remains the RHF form-field version.
+- **Attendance (2026-10-21):** `ui/ProgressRing` (SVG ring, percent centred, `lib/ring.ts` geometry) and `community/meetings/attendance.tsx` (C4: ring + breakdown tiles + history `SectionCard`). Meetings stat tiles now navigate there; meeting detail gained a "My attendance" row.
+---
+
 # Web (`apps/web`) — docs links & impersonation only
 
 _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs URL helper; from A2.12/A3.1: `/auth/impersonate` exchange page, updated ContextIndicator banner)_

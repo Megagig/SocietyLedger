@@ -45,5 +45,9 @@ if (!baseIgnorePattern?.endsWith('))')) {
 module.exports = {
   ...expoPreset,
   transform,
+  moduleNameMapper: {
+    ...(expoPreset.moduleNameMapper ?? {}),
+    '^sonner-native$': '<rootDir>/src/test-utils/sonner-native.stub.js',
+  },
   transformIgnorePatterns: [baseIgnorePattern.replace(/\)\)$/, '|lucide-react-native))'), ...restIgnorePatterns],
 };

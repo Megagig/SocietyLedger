@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Toaster } from 'sonner-native';
 
 import { loadTokenCache } from '@/lib/secure';
+import { configureForegroundHandler, setupAndroidChannels } from '@/lib/push';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { ThemeProvider, useThemeMode } from '@/providers/ThemeProvider';
 
@@ -18,11 +19,12 @@ SplashScreen.preventAutoHideAsync();
 function RootNavigator() {
   const { scheme } = useThemeMode();
 
-  // F1.7 — `api/client.ts` needs the token cache loaded before any request can attach an
-  // Authorization header. Just the cache load; calling `/auth/me` and routing on the result is
-  // F1.8's job (there's no real boot sequence to hang that off yet).
   useEffect(() => {
     loadTokenCache();
+    // F3.1 — Foreground handler must be set before any notification arrives.
+    configureForegroundHandler();
+    // Android notification channels; no-op on iOS.
+    setupAndroidChannels().catch(() => {});
   }, []);
 
   return (

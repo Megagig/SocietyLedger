@@ -61,6 +61,7 @@ export const ROLE_PERMISSION_MAPPING = {
     "reports.generate",
     "notifications.view",
     "exports.view_history",
-    "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own"
+    "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
+    "welfare.view_own", "welfare.request_own"
   ]
 } satisfies Record<string, string[]>;

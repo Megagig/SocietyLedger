@@ -13,8 +13,29 @@ import {
   updateMinutesSchema,
   meetingQuerySchema,
 } from './meetings.validation';
+import { PlatformRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { PERMISSIONS } from '../../lib/permissions';
+import { RBACService } from '../../services/rbac.service';
 import { notifyMeetingScheduled, notifyMeetingCancelled, notifyAttendanceMarked } from '../../jobs/meeting-jobs';
+
+/**
+ * Officers (meetings.manage_attendance or members.view_all) and platform super admins may see every member's attendance;
+ * everyone else who can view meetings only gets their own rows. Without this, any member could read the
+ * whole association's attendance through GET /meetings/:id and GET /meetings/:id/attendance.
+ */
+async function canSeeAllAttendance(req: Request): Promise<boolean> {
+  if (!req.user) return false;
+  if (req.user.platformRole === PlatformRole.SUPER_ADMIN) return true;
+  return RBACService.hasAnyPermission(
+    {
+      userId: req.user.id,
+      associationId: req.user.associationId ?? null,
+      platformRole: req.user.platformRole ?? null,
+    },
+    [PERMISSIONS.MEETING_ATTENDANCE, PERMISSIONS.MEMBER_VIEW_ALL]
+  );
+}
 
 export const meetingsController = {
   // ==================== MEETING CRUD ====================
@@ -154,9 +175,14 @@ export const meetingsController = {
       // Get attendance stats
       const attendanceStats = await meetingsService.getAttendanceStats(associationId, meetingId);
 
+      const seeAll = await canSeeAllAttendance(req);
+      const attendances = seeAll
+        ? meeting.attendances
+        : meeting.attendances.filter((a) => a.memberId === req.user?.memberId);
+
       return res.status(200).json({
         success: true,
-        data: { ...meeting, attendanceStats },
+        data: { ...meeting, attendances, attendanceStats },
       });
     } catch (error) {
       console.error('Error fetching meeting:', error);
@@ -623,10 +649,12 @@ export const meetingsController = {
         });
       }
 
-      const [attendance, stats] = await Promise.all([
+      const [allAttendance, stats, seeAll] = await Promise.all([
         meetingsService.getMeetingAttendance(associationId, meetingId),
         meetingsService.getAttendanceStats(associationId, meetingId),
+        canSeeAllAttendance(req),
       ]);
+      const attendance = seeAll ? allAttendance : allAttendance.filter((a) => a.memberId === req.user?.memberId);
 
       return res.status(200).json({
         success: true,
@@ -927,10 +955,29 @@ export const meetingsController = {
     }
   },
 
+  /** GET /meetings/my-attendance — the caller's own per-meeting attendance rows. */
+  async getMyAttendance(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const memberId = req.user?.memberId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const records = memberId ? await meetingsService.getMyAttendance(associationId, memberId) : [];
+
+      return res.status(200).json({ success: true, data: { records } });
+    } catch (error) {
+      console.error('Error fetching my attendance:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch attendance' });
+    }
+  },
+
   async getMemberAttendanceHistory(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      const memberId = req.query.memberId ? parseInt(req.query.memberId as string) : undefined;
+      const requestedMemberId = req.query.memberId ? parseInt(req.query.memberId as string) : undefined;
 
       if (!associationId) {
         return res.status(400).json({
@@ -938,6 +985,13 @@ export const meetingsController = {
           message: 'Association ID is required',
         });
       }
+
+      // Non-officers only ever get their own totals, whatever `memberId` they pass.
+      const seeAll = await canSeeAllAttendance(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({ success: true, data: [] });
+      }
+      const memberId = seeAll ? requestedMemberId : req.user?.memberId;
 
       const history = await meetingsService.getMemberAttendanceHistory(associationId, memberId);
 

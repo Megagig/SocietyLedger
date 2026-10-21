@@ -11,3 +11,6 @@ export * from './Skeleton';
 export * from './Spinner';
 export * from './StatusChip';
 export * from './Text';
+export * from './FilterChip';
+export * from './StatTile';
+export * from './ProgressRing';

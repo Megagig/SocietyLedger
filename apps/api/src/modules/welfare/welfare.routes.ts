@@ -58,7 +58,7 @@ router.get(
  */
 router.get(
   '/my-profile',
-  requirePermission(PERMISSIONS.WELFARE_VIEW),
+  requireAnyPermission([PERMISSIONS.WELFARE_VIEW, PERMISSIONS.WELFARE_VIEW_OWN]),
   welfareController.getMemberWelfareProfile
 );
 
@@ -82,7 +82,7 @@ router.get(
  */
 router.get(
   '/funds',
-  requireAnyPermission([PERMISSIONS.WELFARE_VIEW, PERMISSIONS.WELFARE_MANAGE]),
+  requireAnyPermission([PERMISSIONS.WELFARE_VIEW, PERMISSIONS.WELFARE_MANAGE, PERMISSIONS.WELFARE_VIEW_OWN]),
   welfareController.listFunds
 );
 
@@ -136,7 +136,11 @@ router.delete(
  */
 router.get(
   '/contributions',
-  requireAnyPermission([PERMISSIONS.WELFARE_CONTRIBUTION_VIEW, PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE]),
+  requireAnyPermission([
+    PERMISSIONS.WELFARE_CONTRIBUTION_VIEW,
+    PERMISSIONS.WELFARE_CONTRIBUTION_MANAGE,
+    PERMISSIONS.WELFARE_VIEW_OWN, // members: the controller scopes this to their own records
+  ]),
   welfareController.listContributions
 );
 
@@ -180,7 +184,11 @@ router.post(
  */
 router.get(
   '/payouts',
-  requireAnyPermission([PERMISSIONS.WELFARE_PAYOUT_VIEW, PERMISSIONS.WELFARE_PAYOUT_APPROVE]),
+  requireAnyPermission([
+    PERMISSIONS.WELFARE_PAYOUT_VIEW,
+    PERMISSIONS.WELFARE_PAYOUT_APPROVE,
+    PERMISSIONS.WELFARE_VIEW_OWN, // members: the controller scopes this to their own records
+  ]),
   welfareController.listPayoutRequests
 );
 
@@ -190,7 +198,7 @@ router.get(
  */
 router.post(
   '/payouts',
-  requirePermission(PERMISSIONS.WELFARE_PAYOUT_REQUEST),
+  requireAnyPermission([PERMISSIONS.WELFARE_PAYOUT_REQUEST, PERMISSIONS.WELFARE_REQUEST_OWN]),
   welfareController.createPayoutRequest
 );
 
@@ -200,7 +208,7 @@ router.post(
  */
 router.post(
   '/payouts/bereavement',
-  requirePermission(PERMISSIONS.WELFARE_PAYOUT_REQUEST),
+  requireAnyPermission([PERMISSIONS.WELFARE_PAYOUT_REQUEST, PERMISSIONS.WELFARE_REQUEST_OWN]),
   welfareController.createBereavementRequest
 );
 
@@ -230,7 +238,7 @@ router.post(
  */
 router.post(
   '/payouts/:id/cancel',
-  requirePermission(PERMISSIONS.WELFARE_PAYOUT_REQUEST),
+  requireAnyPermission([PERMISSIONS.WELFARE_PAYOUT_REQUEST, PERMISSIONS.WELFARE_REQUEST_OWN]),
   welfareController.cancelPayoutRequest
 );
 

@@ -4,6 +4,7 @@ import { PaystackService } from './paystack.service';
 import { PaystackWebhookEvent } from './paystack.types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { resolvePaidPlan } from '../../../services/subscription-plan.service';
 
 /**
  * Handle Paystack webhook events
@@ -254,8 +255,11 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
   const amountPaid = PaystackService.koboToNaira(amount);
 
   try {
+    // Which plan was actually paid for (checkout metadata), not just the one currently on the row.
+    const paidPlan = await resolvePaidPlan(metadata, subscription);
+
     // Calculate new period dates
-    const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
+    const periodMonths = paidPlan.billingCycle === 'MONTHLY' ? 1 : 12;
     const currentDate = new Date();
     const periodEnd = new Date(currentDate);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
@@ -277,9 +281,12 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
         where: { id: subscription.id },
         data: {
           status: 'ACTIVE',
+          planId: paidPlan.planId,
+          billingCycle: paidPlan.billingCycle,
           currentPeriodStart: currentDate,
           currentPeriodEnd: periodEnd,
           renewalDate: periodEnd,
+          ...(paidPlan.isPlanChange ? { pendingPlanId: null, pendingBillingCycle: null } : {}),
         },
       }),
 
@@ -289,6 +296,7 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
         data: {
           subscriptionExpiresAt: periodEnd,
           status: 'ACTIVE',
+          ...(paidPlan.tier ? { tier: paidPlan.tier } : {}),
         },
       }),
 
@@ -305,8 +313,8 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
             amount: amountPaid,
             provider: 'paystack',
             subscriptionId: subscription.id,
-            planId: subscription.planId,
-            billingCycle: subscription.billingCycle,
+            planId: paidPlan.planId,
+            billingCycle: paidPlan.billingCycle,
             periodEnd: periodEnd.toISOString(),
           },
         },

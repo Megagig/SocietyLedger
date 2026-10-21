@@ -18,7 +18,30 @@ import {
   disbursePayoutSchema,
   payoutQuerySchema,
 } from './welfare.validation';
+import { PlatformRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { PERMISSIONS } from '../../lib/permissions';
+import { RBACService } from '../../services/rbac.service';
+
+/**
+ * Officers (members.view_all, or payments.approve for payout review) and super admins see every member's
+ * welfare records; a member only ever gets their own — whatever `memberId` they pass. The list endpoints used
+ * to trust the client's `memberId` query param outright.
+ */
+async function canSeeAllWelfare(req: Request): Promise<boolean> {
+  if (!req.user) return false;
+  if (req.user.platformRole === PlatformRole.SUPER_ADMIN) return true;
+  return RBACService.hasAnyPermission(
+    {
+      userId: req.user.id,
+      associationId: req.user.associationId ?? null,
+      platformRole: req.user.platformRole ?? null,
+    },
+    [PERMISSIONS.MEMBER_VIEW_ALL, PERMISSIONS.WELFARE_PAYOUT_APPROVE]
+  );
+}
+
+const EMPTY_PAGE_INFO = (page: number, limit: number) => ({ page, limit, totalCount: 0, totalPages: 0, hasMore: false });
 
 export const welfareController = {
   // ==========================================
@@ -319,11 +342,18 @@ export const welfareController = {
       }
 
       const queryParams = contributionQuerySchema.parse(req.query);
+      const seeAll = await canSeeAllWelfare(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { contributions: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
       const result = await welfareService.listContributions(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
         fundId: queryParams.fundId ? parseInt(queryParams.fundId) : undefined,
-        memberId: queryParams.memberId ? parseInt(queryParams.memberId) : undefined,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
         status: queryParams.status,
         startDate: queryParams.startDate,
         endDate: queryParams.endDate,
@@ -513,11 +543,18 @@ export const welfareController = {
       }
 
       const queryParams = payoutQuerySchema.parse(req.query);
+      const seeAll = await canSeeAllWelfare(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { requests: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
       const result = await welfareService.listPayoutRequests(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
         fundId: queryParams.fundId ? parseInt(queryParams.fundId) : undefined,
-        memberId: queryParams.memberId ? parseInt(queryParams.memberId) : undefined,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
         status: queryParams.status,
         payoutType: queryParams.payoutType,
         startDate: queryParams.startDate,

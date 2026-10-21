@@ -226,7 +226,7 @@ export default function PayScreen() {
                   <Text variant="body-strong">Pay with Paystack</Text>
                 </View>
                 <Text variant="body" tone="secondary">
-                  You'll be redirected to Paystack's secure checkout page to complete your payment.
+                  You&apos;ll be redirected to Paystack&apos;s secure checkout page to complete your payment.
                   Cards, bank transfer, and USSD are all accepted.
                 </Text>
               </View>

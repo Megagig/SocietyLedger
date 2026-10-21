@@ -339,6 +339,19 @@ const PERMISSION_REGISTRY = [
     module: "Voting",
     examples: ["POST /api/voting/polls/:id/respond"]
   },
+  // Welfare (member self-service)
+  {
+    key: "welfare.view_own",
+    description: "View your own welfare profile, contributions and payout requests, and the funds you can request from.",
+    module: "Welfare",
+    examples: ["GET /api/welfare/my-profile", "GET /api/welfare/funds", "GET /api/welfare/payouts (own only)"]
+  },
+  {
+    key: "welfare.request_own",
+    description: "Submit and cancel your own welfare payout requests.",
+    module: "Welfare",
+    examples: ["POST /api/welfare/payouts", "POST /api/welfare/payouts/:id/cancel"]
+  },
   // Meetings
   {
     key: "meetings.manage_minutes",

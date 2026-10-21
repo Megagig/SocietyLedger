@@ -36,6 +36,12 @@ router.get('/recent',
   meetingsController.getRecent
 );
 
+// Get the caller's own per-meeting attendance
+router.get('/my-attendance',
+  requirePermission(PERMISSIONS.MEETING_VIEW),
+  meetingsController.getMyAttendance
+);
+
 // Get member attendance history
 router.get('/attendance-history',
   requirePermission(PERMISSIONS.MEETING_VIEW),

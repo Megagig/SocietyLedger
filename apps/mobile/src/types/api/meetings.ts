@@ -101,3 +101,32 @@ export type MeetingDetailDTO = MeetingBaseDTO & {
   minutes: MeetingMinutesDTO | null;
   attendanceStats: AttendanceStatsDTO;
 };
+
+/**
+ * GET /meetings/attendance-history?memberId — verified against meetings.service.ts
+ * getMemberAttendanceHistory (2026-10-21). One entry per member, so with `memberId` the array
+ * has 0 or 1 items (0 = no attendance records yet). `late` also counts toward `attended`.
+ */
+export type MemberAttendanceHistoryDTO = {
+  memberId: number;
+  memberName: string;
+  totalMeetings: number;
+  attended: number;
+  absent: number;
+  apologies: number;
+  late: number;
+  attendanceRate: number;
+};
+
+/** One row of GET /meetings/my-attendance — the caller's own attendance for one meeting (newest first, max 100). */
+export type MyAttendanceRecordDTO = {
+  meetingId: number;
+  title: string;
+  meetingType: MeetingType;
+  startTime: IsoDateString;
+  status: AttendanceStatus;
+  checkInTime: IsoDateString | null;
+  apologyReason: string | null;
+};
+
+export type MyAttendanceResponseDTO = { records: MyAttendanceRecordDTO[] };

@@ -22,7 +22,7 @@ export type ScreenHeaderProps = {
 export function ScreenHeader({ title, large = false, onBack, backLabel, rightActions, leftAction, showDivider = false }: ScreenHeaderProps) {
   return (
     <View
-      className={cn('h-[52px] flex-row items-center bg-bg px-4', showDivider && 'border-b border-border')}
+      className={cn('h-[52px] flex-row items-center bg-bg', showDivider && 'border-b border-border')}
     >
       <View className="flex-row items-center gap-1">
         {onBack ? <IconButton icon={ChevronLeft} onPress={onBack} accessibilityLabel={backLabel ?? 'Back'} /> : leftAction}

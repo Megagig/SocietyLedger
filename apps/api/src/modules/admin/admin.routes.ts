@@ -120,6 +120,8 @@ router.post('/tenants/:associationId/force-logout', (req, res) => platformCtrl.f
 router.patch('/tenants/:associationId/security', (req, res) => platformCtrl.updateSecuritySettings(req as any, res));
 
 // Module & Feature Management (Phase 19.3)
+router.get('/plans', (req, res) => platformCtrl.listPlans(req as any, res));
+router.post('/tenants/:associationId/plan', (req, res) => platformCtrl.changeTenantPlan(req as any, res));
 router.get('/modules', (req, res) => platformCtrl.getAllModules(req as any, res));
 router.get('/features', (req, res) => platformCtrl.getAllFeatures(req as any, res));
 router.get('/tenants/:associationId/modules', (req, res) => platformCtrl.getModulesAndFeatures(req as any, res));

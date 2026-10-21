@@ -10,12 +10,15 @@ import { useThemeTokens } from '@/providers/ThemeProvider';
  * `micro` label. Active: icon + label `primary`, with a 32×4 `primary` pill above the icon (no
  * filled background blob). Inactive: `text-secondary`.
  *
+ * Pressing a tab emits `tabPress` (navigating only if it isn't already focused) so tapping the active tab returns its
+ * nested stack to the first screen — the stock behaviour a custom `tabBar` has to reproduce itself.
+ *
  * `state.routes`/`descriptors` arrive already filtered to visible tabs — Expo Router's
  * `useVisibleTabsWithRedirect` (driving the Manage tab's `href`-conditional visibility in
  * `(tabs)/_layout.tsx`) excludes hidden routes before they ever reach this component, so no
  * manual hidden-tab filtering is needed here.
  */
-export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabBarProps) {
+export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { color } = useThemeTokens();
 
   return (
@@ -29,7 +32,12 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
         return (
           <Pressable
             key={route.key}
-            onPress={() => navigateToTab(route.key)}
+            onPress={() => {
+              // Same contract as the stock tab bar: always emit `tabPress`. A nested Stack listens for it and pops to its
+              // first screen when its tab is already focused — without it, a tab stays stuck on whichever sub-screen was opened.
+              const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+              if (!focused && !event.defaultPrevented) navigateToTab(route.key);
+            }}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={label}

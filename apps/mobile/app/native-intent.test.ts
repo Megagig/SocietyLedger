@@ -35,8 +35,8 @@ describe('redirectSystemPath', () => {
     expect(redirectSystemPath({ path, initial: false })).toBe(path);
   });
 
-  it('leaves a payments-return link unchanged (not wired to a screen until F2.8)', () => {
+  it('routes a payments-return link to the transaction screen for that reference (F2.8)', () => {
     const path = 'societyledger://payments/return?reference=abc&status=success';
-    expect(redirectSystemPath({ path, initial: false })).toBe(path);
+    expect(redirectSystemPath({ path, initial: false })).toBe('/(app)/(tabs)/money/transaction/abc');
   });
 });

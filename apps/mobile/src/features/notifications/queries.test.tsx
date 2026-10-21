@@ -14,6 +14,10 @@ jest.mock('@/lib/storage', () => {
   };
 });
 
+// `sonner-native` is ESM-only under Jest; `@/lib/push` drags in router/constants/MMKV — neither matters for query tests.
+jest.mock('sonner-native', () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
+jest.mock('@/lib/push', () => ({ setBadgeCount: jest.fn() }));
+
 const mockList = jest.fn();
 jest.mock('@/api/endpoints/notifications', () => ({ notificationsApi: { list: mockList } }));
 

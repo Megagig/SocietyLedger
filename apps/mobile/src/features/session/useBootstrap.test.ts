@@ -14,6 +14,18 @@ jest.mock('@/lib/secure', () => ({
   clearTokens: mockClearTokens,
 }));
 
+// The members endpoint pulls in the API client → tenant store → real MMKV (native, unavailable under Jest).
+jest.mock('@/lib/storage', () => {
+  const map = new Map<string, string>();
+  return {
+    storage: {
+      getString: (key: string) => map.get(key),
+      set: (key: string, value: string) => map.set(key, String(value)),
+      remove: (key: string) => map.delete(key),
+    },
+  };
+});
+
 const mockGetMe = jest.fn();
 jest.mock('@/api/endpoints/auth', () => ({ authApi: { getMe: mockGetMe } }));
 

@@ -150,7 +150,11 @@ export const PERMISSIONS = {
   WELFARE_PAYOUT_REQUEST: 'ledger.create',
   WELFARE_PAYOUT_APPROVE: 'payments.approve',
   WELFARE_PAYOUT_DISBURSE: 'payments.approve',
-  
+  // Member self-service: a member's own welfare profile/contributions/requests and filing a request.
+  // Distinct from the officer-level `ledger.*` keys above, which members must never hold.
+  WELFARE_VIEW_OWN: 'welfare.view_own',
+  WELFARE_REQUEST_OWN: 'welfare.request_own',
+
   // SMS & Bulk Communication
   SMS_VIEW: 'communication.sms.view',
   SMS_SEND: 'communication.sms.send',

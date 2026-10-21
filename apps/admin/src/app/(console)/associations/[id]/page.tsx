@@ -23,6 +23,9 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { ErrorState } from '@/components/ErrorState';
 import { ConfirmDestructive } from '@/components/ConfirmDestructive';
 import { ReasonField } from '@/components/ReasonField';
+import { ChangePlanCard } from '@/components/ChangePlanCard';
+import { TenantModulesManager } from '@/components/TenantModulesManager';
+import { tenantUrl } from '@/lib/tenant-url';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,13 +63,6 @@ interface AssociationStats {
   activeMembers: number;
   totalRevenue: number;
   pendingTransactions: number;
-}
-
-interface EnabledModule {
-  moduleId: string;
-  moduleName: string;
-  enabledAt: string;
-  usageCount?: number;
 }
 
 interface AuditLog {
@@ -157,7 +153,7 @@ function OverviewTab({
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Subdomain</Text>
                 <Anchor
-                  href={`https://${detail.subdomain}.societyledger.com.ng`}
+                  href={tenantUrl(detail.subdomain)}
                   target="_blank"
                   rel="noopener noreferrer"
                   size="sm"
@@ -247,9 +243,11 @@ function BillingTab({ associationId }: { associationId: number }) {
   if (q.isError) return <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} />;
 
   const subs = q.data!.association.subscriptions ?? [];
+  const liveSub = subs.find((s) => s.status === 'ACTIVE' || s.status === 'TRIALING') ?? subs[0];
 
   return (
     <Stack gap="lg">
+      <ChangePlanCard associationId={associationId} currentPlanName={liveSub?.plan.name} />
       {subs.length === 0 ? (
         <Text size="sm" c="dimmed">No subscription records found.</Text>
       ) : (
@@ -298,50 +296,6 @@ function BillingTab({ associationId }: { associationId: number }) {
           </Card>
         ))
       )}
-    </Stack>
-  );
-}
-
-function ModulesTab({ associationId }: { associationId: number }) {
-  const q = useQuery({
-    queryKey: ['assoc-modules', associationId],
-    queryFn: () =>
-      bff<{ modules: EnabledModule[] }>(`admin/associations/${associationId}/modules`),
-  });
-
-  if (q.isLoading) {
-    return (
-      <Stack gap="sm">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} h={60} radius="md" />)}
-      </Stack>
-    );
-  }
-  if (q.isError) return <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} />;
-
-  const modules = q.data?.modules ?? [];
-
-  return modules.length === 0 ? (
-    <Text size="sm" c="dimmed">No modules enabled for this association.</Text>
-  ) : (
-    <Stack gap="sm">
-      {modules.map((m) => (
-        <Card
-          key={m.moduleId}
-          style={{ backgroundColor: 'var(--admin-surface)', border: '1px solid var(--admin-border)' }}
-          p="md"
-          radius="md"
-        >
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" fw={600}>{m.moduleName}</Text>
-              <Text size="xs" c="dimmed">Enabled {fmtDate(m.enabledAt)}</Text>
-            </Stack>
-            {m.usageCount !== undefined && (
-              <Text size="sm" c="dimmed">{m.usageCount.toLocaleString()} events</Text>
-            )}
-          </Group>
-        </Card>
-      ))}
     </Stack>
   );
 }
@@ -460,9 +414,7 @@ function ImpersonateModal({
     onSuccess: (data) => {
       notifications.show({ message: `Impersonation session started for ${associationName}`, color: 'blue' });
       onClose();
-      // Derive base domain from admin hostname (admin.foo.com → foo.com)
-      const baseDomain = window.location.hostname.split('.').slice(1).join('.');
-      const handoffUrl = `https://${data.subdomain}.${baseDomain}/auth/impersonate?code=${data.handoffCode}`;
+      const handoffUrl = tenantUrl(data.subdomain, `/auth/impersonate?code=${data.handoffCode}`);
       window.open(handoffUrl, '_blank', 'noopener,noreferrer');
     },
     onError: (err: Error) => {
@@ -665,7 +617,7 @@ function AssociationDetailContent() {
           <BillingTab associationId={associationId} />
         </Tabs.Panel>
         <Tabs.Panel value="modules">
-          <ModulesTab associationId={associationId} />
+          <TenantModulesManager associationId={associationId} />
         </Tabs.Panel>
         <Tabs.Panel value="security">
           <SecurityTab detail={association} />

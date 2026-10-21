@@ -1,6 +1,6 @@
 import { client } from '../client';
 import { unwrap } from '../envelope';
-import type { LoginResponseDTO, MeResponseDTO } from '@/types/api/auth';
+import type { LoginResponseDTO, MeResponseDTO, SessionsResponseDTO } from '@/types/api/auth';
 
 export type LoginPayload = { email: string; password: string };
 export type VerifyEmailPayload = { email: string; code: string };
@@ -8,6 +8,7 @@ export type ResendVerificationPayload = { email: string };
 export type ForgotPasswordPayload = { email: string };
 export type ResetPasswordPayload = { token: string; password: string };
 export type LogoutPayload = { refreshToken?: string };
+export type ChangePasswordPayload = { currentPassword: string; newPassword: string };
 
 export const authApi = {
   /** GET /auth/me — verified against auth.controller.ts (2026-10-19, types/api/auth.ts). */
@@ -53,5 +54,21 @@ export const authApi = {
    * wipes local state regardless of whether this call succeeds. */
   async logout(payload: LogoutPayload): Promise<void> {
     await unwrap<undefined>(client.post('/auth/logout', payload));
+  },
+
+  /** GET /auth/sessions — verified against auth.ts types (2026-10-19). Lists active refresh-token
+   * families; no X-Tenant needed (auth namespace). */
+  async getSessions(): Promise<SessionsResponseDTO> {
+    return unwrap<SessionsResponseDTO>(client.get('/auth/sessions'));
+  },
+
+  /** DELETE /auth/sessions/:familyId — revoke one session by its family id. */
+  async revokeSession(familyId: string): Promise<void> {
+    await unwrap<undefined>(client.delete(`/auth/sessions/${familyId}`));
+  },
+
+  /** POST /auth/change-password — requires current password for re-auth. */
+  async changePassword(payload: ChangePasswordPayload): Promise<void> {
+    await unwrap<undefined>(client.post('/auth/change-password', payload));
   },
 };

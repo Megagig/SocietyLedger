@@ -15,6 +15,9 @@ jest.mock('@/lib/secure', () => ({
   clearTokens: mockClearTokens,
 }));
 
+// F3.1 — logout also unregisters the push token; that path needs native modules + storage helpers.
+jest.mock('@/lib/push', () => ({ unregisterPushToken: jest.fn(async () => undefined) }));
+
 const mockLogout = jest.fn();
 jest.mock('@/api/endpoints/auth', () => ({ authApi: { logout: mockLogout } }));
 

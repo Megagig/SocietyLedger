@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Bell, Building2, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { toast } from 'sonner-native';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { IconButton } from '@/components/ui/IconButton';
@@ -26,10 +25,12 @@ import { UpcomingObligationsList } from '@/features/home/components/UpcomingObli
 import { useAssociationDashboard } from '@/features/dashboard/queries';
 import { useMemberFinanceSummary, useMemberPayments } from '@/features/memberFinance/queries';
 import { useUpcomingMeetings } from '@/features/meetings/queries';
-import { useAnnouncements } from '@/features/notifications/queries';
+import { useAnnouncements, useUnreadCount } from '@/features/notifications/queries';
+import { triggerPushPermissionPrompt } from '@/hooks/usePushSetup';
 import { useMe } from '@/features/session/queries';
 import { useActiveVoting } from '@/features/voting/queries';
 import { useCan } from '@/hooks/useCan';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { formatMoney, toDecimal } from '@/lib/money';
 import { t, type TranslationKey } from '@/lib/i18n';
 import { useThemeTokens } from '@/providers/ThemeProvider';
@@ -58,8 +59,8 @@ export default function HomeScreen() {
 
   const me = useMe(true);
   const isOfficer = useCan('FINANCE_VIEW');
-  const canViewMeetings = useCan('MEETING_VIEW');
-  const canViewVoting = useCan('ELECTION_VIEW');
+  const canViewMeetings = useModuleAccess('MEETING_VIEW', 'meetings');
+  const canViewVoting = useModuleAccess('ELECTION_VIEW', 'voting');
 
   const summaryQuery = useMemberFinanceSummary();
   const paymentsQuery = useMemberPayments();
@@ -67,6 +68,13 @@ export default function HomeScreen() {
   const votingQuery = useActiveVoting();
   const announcementsQuery = useAnnouncements(3);
   const dashboardQuery = useAssociationDashboard(isOfficer);
+  const unreadCountQuery = useUnreadCount();
+  const unreadCount = unreadCountQuery.data?.unreadCount ?? 0;
+
+  // F3.1 — trigger OS push permission prompt on first real data render
+  useEffect(() => {
+    triggerPushPermissionPrompt().catch(() => {});
+  }, []);
 
   const upcomingMeetingsCount = meetingsQuery.data?.length ?? 0;
 
@@ -107,7 +115,14 @@ export default function HomeScreen() {
           size={40}
           colorSeed={member?.id ?? tenant?.name}
         />
-        <IconButton icon={Bell} accessibilityLabel="Notifications" onPress={() => router.push('/(app)/notifications')} />
+        <View>
+          <IconButton icon={Bell} accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`} onPress={() => router.push('/(app)/notifications')} />
+          {unreadCount > 0 && (
+            <View className="absolute -right-0.5 -top-0.5 min-w-[16px] items-center justify-center rounded-full bg-danger px-1">
+              <Text variant="micro" tone="inverse" align="center">{unreadCount > 99 ? '99+' : String(unreadCount)}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Me | Association toggle — officers only */}
@@ -244,14 +259,14 @@ export default function HomeScreen() {
             <UpcomingMeetingCard
               query={meetingsQuery}
               canView={canViewMeetings}
-              onPress={() => toast(t('home.meeting.comingSoon'))}
+              onPress={(meeting) => router.push(`/(app)/(tabs)/community/meetings/${meeting.id}` as never)}
             />
 
             <ActiveVoteCard
               query={votingQuery}
               canView={canViewVoting}
-              onPressElection={() => toast(t('home.vote.comingSoon'))}
-              onPressPoll={() => toast(t('home.vote.comingSoon'))}
+              onPressElection={(id) => router.push(`/(app)/(tabs)/community/elections/${id}` as never)}
+              onPressPoll={(id) => router.push(`/(app)/(tabs)/community/polls/${id}` as never)}
             />
 
             <Section title={t('home.payments.title')} onSeeAll={() => router.push('/(app)/(tabs)/money/payments' as never)}>
@@ -259,7 +274,7 @@ export default function HomeScreen() {
             </Section>
 
             <Section title={t('home.announcements.title')} onSeeAll={() => router.push('/(app)/notifications')}>
-              <AnnouncementsList query={announcementsQuery} onPressAnnouncement={() => toast(t('home.announcements.detailComingSoon'))} />
+              <AnnouncementsList query={announcementsQuery} onPressAnnouncement={() => router.push('/(app)/(tabs)/community/announcements' as never)} />
             </Section>
           </>
         )}

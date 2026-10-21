@@ -148,6 +148,9 @@ export const PERMISSIONS = {
   WELFARE_PAYOUT_REQUEST: 'ledger.create',
   WELFARE_PAYOUT_APPROVE: 'payments.approve',
   WELFARE_PAYOUT_DISBURSE: 'payments.approve',
+  // Member self-service (own record only) — what the `member` role actually holds; the ledger.* keys above are officer-level.
+  WELFARE_VIEW_OWN: 'welfare.view_own',
+  WELFARE_REQUEST_OWN: 'welfare.request_own',
 
   // SMS & Bulk Communication
   SMS_VIEW: 'communication.sms.view',
@@ -246,3 +249,8 @@ export function canAny(permissions: string[], aliases: PermissionAlias[]): boole
 export function canAll(permissions: string[], aliases: PermissionAlias[]): boolean {
   return aliases.every((alias) => can(permissions, alias));
 }
+
+/** Seeing welfare: officers via ledger.view, members via welfare.view_own. */
+export const WELFARE_VIEW_ACCESS: PermissionAlias[] = ['WELFARE_VIEW', 'WELFARE_VIEW_OWN'];
+/** Filing a welfare request: officers via ledger.create, members via welfare.request_own. */
+export const WELFARE_REQUEST_ACCESS: PermissionAlias[] = ['WELFARE_PAYOUT_REQUEST', 'WELFARE_REQUEST_OWN'];

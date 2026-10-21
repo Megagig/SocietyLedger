@@ -1,8 +1,12 @@
+import { useEffect } from 'react';
 import { Redirect, Stack } from 'expo-router';
+import { AppState } from 'react-native';
 
 import { PrivacyOverlay } from '@/components/feedback/PrivacyOverlay';
 import { useAutoLockTimer } from '@/hooks/useAutoLockTimer';
+import { usePushSetup } from '@/hooks/usePushSetup';
 import { useAppLockStore } from '@/stores/appLock';
+import { useModulesStore } from '@/stores/modules';
 import { usePrefsStore } from '@/stores/prefs';
 import { useSessionStore } from '@/stores/session';
 
@@ -28,6 +32,16 @@ export default function AppLayout() {
   const isLocked = useAppLockStore((state) => state.isLocked);
   const biometricsEnabled = usePrefsStore((state) => state.biometricsEnabled);
   useAutoLockTimer();
+  usePushSetup();
+
+  // A plan upgrade/downgrade can change which modules the tenant has; `modules` only remembers "disabled"
+  // answers for this session, so forget them whenever the app returns to the foreground and re-probe.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') useModulesStore.getState().reset();
+    });
+    return () => sub.remove();
+  }, []);
 
   if (status !== 'authenticated') {
     return <Redirect href="/(auth)/welcome" />;

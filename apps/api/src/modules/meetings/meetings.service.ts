@@ -501,6 +501,35 @@ export const meetingsService = {
 
   // ==================== ANALYTICS ====================
 
+  /**
+   * One member's own attendance, one row per meeting (newest first). Backs the mobile "My Attendance"
+   * history list — `getMemberAttendanceHistory` only returns per-member totals, never per-meeting rows.
+   */
+  async getMyAttendance(associationId: number, memberId: number) {
+    const rows = await prisma.meetingAttendance.findMany({
+      where: { memberId, meeting: { associationId } },
+      orderBy: { meeting: { startTime: 'desc' } },
+      take: 100,
+      select: {
+        meetingId: true,
+        status: true,
+        checkInTime: true,
+        apologyReason: true,
+        meeting: { select: { title: true, meetingType: true, startTime: true } },
+      },
+    });
+
+    return rows.map((r) => ({
+      meetingId: r.meetingId,
+      title: r.meeting.title,
+      meetingType: r.meeting.meetingType,
+      startTime: r.meeting.startTime,
+      status: r.status,
+      checkInTime: r.checkInTime,
+      apologyReason: r.apologyReason,
+    }));
+  },
+
   async getMemberAttendanceHistory(
     associationId: number,
     memberId?: number

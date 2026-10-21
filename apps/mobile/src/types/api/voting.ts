@@ -1,11 +1,6 @@
 /**
- * Voting (member-visible) — `/api/voting/*` (tenant required, even though `voting.routes.ts`
- * has no explicit tenant middleware call — the global one still applies) — api-contract.md §9.
- *
- * Only the 3 endpoints api-contract.md verified (dashboard, active, elections/:id) are typed
- * here. `GET /voting/elections` (the plain list, used by screen C5) was NOT re-verified against
- * controller source in that pass — don't type it from memory; verify against
- * voting.controller.ts/voting.service.ts when the feature that needs it starts (F3.5+).
+ * Voting (member-visible) — `/api/voting/*` (tenant required) — api-contract.md §9.
+ * Extended at F3.5/F3.6 with list shapes verified against voting.service.ts 2026-10-21.
  */
 import type { ElectionType, ElectionStatus, CandidateStatus } from './enums';
 import type { IsoDateString } from './common';
@@ -63,6 +58,107 @@ export type ActivePollDTO = {
 export type ActiveVotingItemsDTO = {
   activeElections: ActiveElectionDTO[];
   activePolls: ActivePollDTO[];
+};
+
+/** Pagination wrapper returned by list endpoints. */
+export type VotingPaginationDTO = {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+  hasMore: boolean;
+};
+
+/** Election list item — from listElections service (F3.5). Verified 2026-10-21. */
+export type ElectionListItemDTO = {
+  id: number;
+  associationId: number;
+  title: string;
+  description: string | null;
+  electionType: ElectionType;
+  status: ElectionStatus;
+  nominationStartDate: IsoDateString | null;
+  nominationEndDate: IsoDateString | null;
+  votingStartDate: IsoDateString;
+  votingEndDate: IsoDateString;
+  maxVotesPerMember: number;
+  allowAbstention: boolean;
+  isAnonymous: boolean;
+  requiresQuorum: boolean;
+  quorumPercentage: number | null;
+  eligibleVoterCount: number;
+  totalVotesCast: number;
+  createdAt: IsoDateString;
+  updatedAt: IsoDateString;
+  positions: { id: number; title: string }[];
+  _count: { votes: number; candidates: number };
+};
+
+export type ElectionsListResponseDTO = {
+  elections: ElectionListItemDTO[];
+  pagination: VotingPaginationDTO;
+};
+
+/** Poll list item — from listPolls service (F3.6). Verified 2026-10-21. */
+export type PollListItemDTO = {
+  id: number;
+  associationId: number;
+  title: string;
+  description: string | null;
+  pollType: string;
+  status: string;
+  startDate: IsoDateString;
+  endDate: IsoDateString;
+  allowMultipleVotes: boolean;
+  isAnonymous: boolean;
+  createdAt: IsoDateString;
+  options: { id: number; optionText: string }[];
+  _count: { responses: number };
+};
+
+export type PollsListResponseDTO = {
+  polls: PollListItemDTO[];
+  pagination: VotingPaginationDTO;
+};
+
+export type PollOptionDetailDTO = {
+  id: number;
+  pollId: number;
+  optionText: string;
+  orderNumber: number;
+};
+
+/** GET /voting/polls/:id — full poll row with options (F3.6). Verified 2026-10-21. */
+export type PollDetailDTO = {
+  id: number;
+  associationId: number;
+  title: string;
+  description: string | null;
+  pollType: string;
+  status: string;
+  startDate: IsoDateString;
+  endDate: IsoDateString;
+  allowMultipleVotes: boolean;
+  isAnonymous: boolean;
+  createdAt: IsoDateString;
+  options: PollOptionDetailDTO[];
+  creator: { id: number; email: string };
+  _count: { responses: number };
+};
+
+export type CastVotePayload = {
+  positionId?: number | null;
+  candidateId?: number | null;
+  isAbstention?: boolean;
+};
+
+export type BulkCastVotePayload = {
+  votes: { positionId: number; candidateId?: number | null; isAbstention?: boolean }[];
+};
+
+export type SelfNominatePayload = {
+  positionId?: number | null;
+  manifesto?: string | null;
 };
 
 export type CandidateMemberRefDTO = { id: number; memberId: string; firstName: string; lastName: string };
@@ -138,4 +234,14 @@ export type ElectionDetailDTO = {
   candidates: CandidateDTO[];
   creator: VotingUserRefDTO;
   _count: { votes: number; candidates: number };
+};
+
+/** GET /voting/elections/:id/voter-status — verified against voting.service.ts getVoterStatus (2026-10-21). */
+export type VoterStatusDTO = {
+  electionId: number;
+  memberId: number;
+  hasVoted: boolean;
+  votedPositions: (number | null)[];
+  pendingPositions: { id: number; title: string }[];
+  totalPositions: number;
 };
