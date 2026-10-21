@@ -49,7 +49,7 @@ export default function ApplicationDetailPage() {
   const [disburseOpened, { open: openDisburse, close: closeDisburse }] = useDisclosure(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [reviewData, setReviewData] = useState({ comments: '', rejectionReason: '' });
-  const [disburseData, setDisburseData] = useState({ disbursementMethod: 'BANK_TRANSFER', reference: '', notes: '' });
+  const [disburseData, setDisburseData] = useState({ disbursementMethod: 'bank_transfer', reference: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => { if (params.id) fetchApplication(); }, [params.id]);
@@ -229,7 +229,7 @@ export default function ApplicationDetailPage() {
             <p className="font-medium">{application.memberName || 'Unknown'}</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrency(application.amount)}</p>
           </div>
-          <Select label="Disbursement Method" data={[{ value: 'BANK_TRANSFER', label: 'Bank Transfer' }, { value: 'CASH', label: 'Cash' }, { value: 'CHEQUE', label: 'Cheque' }, { value: 'SAVINGS_CREDIT', label: 'Credit to Savings' }]} value={disburseData.disbursementMethod} onChange={(v) => setDisburseData({ ...disburseData, disbursementMethod: v || 'BANK_TRANSFER' })} />
+          <Select label="Disbursement Method" data={[{ value: 'bank_transfer', label: 'Bank Transfer' }, { value: 'cash', label: 'Cash' }, { value: 'cheque', label: 'Cheque' }]} value={disburseData.disbursementMethod} onChange={(v) => setDisburseData({ ...disburseData, disbursementMethod: v || 'bank_transfer' })} />
           <Textarea label="Reference" placeholder="Transaction reference (optional)" value={disburseData.reference} onChange={(e) => setDisburseData({ ...disburseData, reference: e.target.value })} />
           <Textarea label="Notes" placeholder="Additional notes (optional)" value={disburseData.notes} onChange={(e) => setDisburseData({ ...disburseData, notes: e.target.value })} />
           <div className="flex justify-end gap-3 pt-4">

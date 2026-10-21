@@ -1365,6 +1365,21 @@ _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs UR
 - **`/dashboard/cooperatives/loan-repayments`** (officer, `payments.approve`): same Awaiting/Approved/Rejected queue pattern as Savings Deposits; approve records the repayment and releases held savings pro-rata. Sidebar + AdminSidebar entry "Loan Repayments".
 
 
+## Mobile Phase 4 — Savings (F4.1, 2026-10-21)
+- **`money/savings/index.tsx` (M15):** plain `Card` summary (total savings `h1` `Money`; when held > 0 a held / available split + one-line explainer — `Passbook` stays reserved for the account detail), then `SectionCard`s: **Accounts** (`ListItem` + `IconCircle` + balance + `StatusChip`, chevron to detail) and **My deposits** (`DepositRow`s). A warning caption totals pending deposits. States: `ModuleLockedScreen`, `NoMemberProfile`, no-access `EmptyState`, `ErrorState`, skeletons.
+- **`money/savings/[id].tsx` (M16):** `Passbook` (label "Current balance", stamp = account status), primary **Make a deposit** button (active account + `cooperatives.savings_deposit_own`), Summary `SectionCard`, non-approved deposits for the account, History (credit/debit coloured with `color.success`/`color.danger`, running balance, "Load more"). The account comes from the profile query (it only lists the caller's own accounts), not a second fetch.
+- **`money/savings/deposit.tsx`:** form screen like `welfare/request` — `SelectSheet` account, `AmountField`, `DateField` (max today), reference, `FileAttachField` receipt (required; uses `superRefine`, not `refine`, so the nullable default type-checks), note; `StickyFooter` submit. Success toast says the deposit shows once an officer confirms.
+- **`features/cooperatives/components/DepositRow`:** amount + `StatusChip` (labels from `labels.ts`, same wording as web), rejection reason in `danger` caption, "View receipt" ghost button that opens the presigned URL with `Linking`.
+- **`features/cooperatives/components/PayToCard`:** "Pay to" `SectionCard` of the cooperative's bank accounts (`Building2` lead, `Copy` trailing → `Clipboard.setStringAsync` + toast). Renders nothing when loading / errored / empty. Used on the deposit and pay-loan screens.
+
+## Mobile Phase 4 — Loans (F4.2, 2026-10-21)
+- **`money/loans/index.tsx` (M17):** primary **Apply for a loan** button (apply access), `SectionCard` **Loans** of pressable loan cards (product + loan number + `StatusChip`, outstanding `h3` `Money`, next payment, `LoanProgressBar`, "% repaid", warning `Badge` for payments awaiting confirmation) and **Applications** rows (amount, status, guarantor statuses, rejection reason in `danger`).
+- **`money/loans/[id].tsx` (M18):** `Passbook` (outstanding balance, stamp = loan status) + `LoanProgressBar`, **Pay this loan** (active/overdue + `cooperatives.repay_own`), Terms, non-approved payments (`RepaymentRequestRow`), recorded payments, repayment schedule rows (due date, principal/interest, total + `StatusChip`).
+- **`money/loans/pay.tsx`:** same form as the savings deposit (PayToCard, `AmountField` capped at outstanding, `DateField`, reference, required `FileAttachField`, note, `StickyFooter` submit).
+- **`money/loans/apply.tsx` (M19):** one screen, local step state — step title + "Step n of 4"; product cards are pressable `Card`s (selected = `border-primary` + check; unavailable = 60% opacity with a danger reason); amount/tenure fields with inline `danger` caption errors and an estimate `Card` (monthly, interest, total, fee, "held" note, labelled *Estimate*); guarantors via `SearchField` + `SectionCard` of add/remove `ListItem`s; review `SectionCard`s; `StickyFooter` Continue / Submit.
+- **Shared:** `LoanProgressBar` (+ `repaidPercent`) — thin track, the fill width is the only inline style. `RepaymentRequestRow` mirrors `DepositRow`. Loan math lives in `features/cooperatives/loanMath.ts` (`estimateLoan`, `borrowingLimit`, `heldSavingsFor`) and mirrors `calculateLoanRepayment` in the API.
+- **Wording rule:** deposit status is always *Awaiting confirmation / Confirmed / Not approved* (never Pending/Approved/Rejected) to match the web.
+
 ---
 
 ## Retired

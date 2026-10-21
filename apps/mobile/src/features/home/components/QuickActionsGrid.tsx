@@ -6,7 +6,7 @@ import { toast } from 'sonner-native';
 
 import { Text } from '@/components/ui/Text';
 import { t, type TranslationKey } from '@/lib/i18n';
-import { can, canAny, type PermissionAlias } from '@/lib/permissions';
+import { can, canAny, COOPERATIVE_LOANS_APPLY_ACCESS, COOPERATIVE_SAVINGS_VIEW_ACCESS, type PermissionAlias } from '@/lib/permissions';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { useSessionStore } from '@/stores/session';
 import type { ColorToken } from '@/theme/tokens';
@@ -59,7 +59,8 @@ const ACTIONS: QuickAction[] = [
     key: 'savings',
     icon: PiggyBank,
     label: t('home.quickActions.savings'),
-    permission: 'COOPERATIVE_SAVINGS_VIEW',
+    permission: COOPERATIVE_SAVINGS_VIEW_ACCESS,
+    route: '/money/savings',
     comingSoonKey: 'home.quickActions.savingsComingSoon',
     iconBgToken: 'warningSoft',
     iconColorToken: 'warning',
@@ -68,7 +69,8 @@ const ACTIONS: QuickAction[] = [
     key: 'applyLoan',
     icon: HandCoins,
     label: t('home.quickActions.applyLoan'),
-    permission: 'COOPERATIVE_LOANS_APPLY',
+    permission: COOPERATIVE_LOANS_APPLY_ACCESS,
+    route: '/money/loans/apply',
     comingSoonKey: 'home.quickActions.applyLoanComingSoon',
     iconBgToken: 'primarySoft',
     iconColorToken: 'primary',

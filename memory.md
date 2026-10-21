@@ -1,54 +1,53 @@
-# Memory — Mobile Phase 3 follow-ups, billing/permission fixes, tab fix
+# Memory — Mobile Phase 4 groundwork (cooperatives API + web + docs)
 
-Last updated: 2026-10-21
+Last updated: 2026-10-21, evening
 
 ## What was built
 
-**Mobile (apps/mobile)**
-- Community tab rebuilt to web parity: `community/_layout.tsx` (Stack — its absence made every sub-screen bounce to Home), Meetings (`meetings/index`, new `meetings/attendance.tsx` = C4 My Attendance with `ProgressRing`), Voting (`elections/index` = "My Voting"), Polls (search + `FilterDropdown` status/type), Welfare hub + new `welfare/contributions`, `welfare/requests`, Announcements (paginated, expandable).
-- New shared UI: `FilterChip`, `StatTile`, `IconCircle`, `ProgressRing`, `SectionCard`, `InlineEmpty`, `forms/FilterDropdown`, `feedback/ModuleLockedScreen`, `feedback/NoMemberProfile`, `ErrorState` (takes `error`, says "Can't reach the server" for network errors). Notifications inbox got filters/search/bulk select/pagination.
-- Hooks: `useModuleAccess` / `useModuleDisabled` (permission AND module entitlement), `useMemberId`. Queries stop firing for disabled modules or member-less accounts; screens show `ModuleLocked` / `NoMemberProfile` instead of generic errors.
-- `TabBar` now emits `tabPress` (tap active tab → nested stack pops to top); Community has `popToTopOnBlur`. `ScreenHeader` lost its duplicate `px-4`.
-- `expo-notifications` only loaded after `requireOptionalNativeModule('ExpoPushTokenManager')` probe (lazy `loadNotifications()` in `lib/push.ts`) — dev build without it no longer crashes/logs errors.
-- Jest: `sonner-native` stub via moduleNameMapper; push/storage mocks in session + layout tests. 40 suites / 196 tests pass; tsc + eslint clean.
+Phase 4 (F4.1–F4.5, "Cooperatives & support") was architected, then the whole **API + web + docs groundwork** was built so mobile can follow. **No mobile screens exist yet; F4.1–F4.5 are NOT ticked in `context/progress-tracker.md`** (a "Phase 4 backend groundwork" note sits above them). `ui-registry.md` has a "Cooperatives savings & loans" web section.
 
 **API (apps/api)**
-- `services/subscription-plan.service.ts` (`resolvePaidPlan`, `setTenantPlan`, `tierForPlanCode`) — verify (Paystack/Nomba) + Paystack webhook now apply the plan actually paid for (checkout metadata `planId`+`subscriptionId`) and sync `association.tier`.
-- Admin endpoints `GET /admin/plans`, `POST /admin/tenants/:id/plan`; meetings: `GET /meetings/my-attendance`; attendance data scoped to own rows unless `meetings.manage_attendance` or `members.view_all`.
-- Welfare: new own-scoped permissions `welfare.view_own` / `welfare.request_own` (routes accept officer OR own; list endpoints server-scoped to the member). Registered in `rbac-seed.ts`, `PERMISSIONS`, default `member` role mapping.
-- Tests: `__tests__/payments/subscription-plan.service.test.ts`, `__tests__/meetings/attendance-scoping.test.ts`, `__tests__/welfare/welfare-scoping.test.ts`.
+- Own-scoped permissions `cooperatives.view_own | apply_own | guarantor_own | savings_deposit_own | repay_own` (`lib/permissions.ts`, `role-permission-mapping.ts`, `rbac-seed.ts`). Member gets all five; admin/treasurer/financial_secretary get the last two. Backfill: `scripts/grant-member-cooperatives-permissions.ts` (**run on dev only**).
+- `cooperatives.controller.ts`: `canSeeAllCooperatives` (members.view_all / either manage key) — loans, applications, savings txns, repayments, deposits, repayment requests are server-scoped to the caller's member; single-record GETs 404 others'. Closed two money holes: `POST /savings-transactions` and `POST /loan-repayments` were open to `ledger.view`, now officer-only.
+- Savings deposits by receipt: `SavingsDepositRequest` (migration `20261021_add_savings_deposit_requests`); `POST/GET /cooperatives/savings-deposits`, `/:id/receipt?format=json`, `/:id/approve`, `/:id/reject`. Claim-then-credit, reverts to PENDING on failure, in-app notification to member.
+- Loan repayments by receipt: `LoanRepaymentRequest` (migration `20261021_add_loan_repayment_requests`); same shape under `/loan-repayment-requests`. Capped at outstanding (checked at submit and approve); approve calls `processLoanRepayment`.
+- Savings-to-loan rule + lien: reuses existing `LoanProduct.maxLoanToSavingsRatio` (2 = up to twice savings), new `lockSavings`; `SavingsLien` (migration `20261021_add_savings_liens`); logic in `modules/cooperatives/savings-lien.ts`. Hold = principal ÷ ratio at disbursement, released pro-rata with principal repaid; rule checked on apply, approve, disburse against *available* savings (balance − liens); held savings can't be withdrawn. `/my-profile` returns `lockedSavings`/`availableSavings`.
+- `GET /cooperatives/guarantor-candidates?search=` (names only) — members can't list `/members`.
+- Tests: `__tests__/cooperatives/{cooperatives-scoping,savings-deposit.service,savings-lien,loan-repayment-request.service}.test.ts` (all pass; 83 across cooperatives+welfare+meetings).
 
-**Admin (apps/admin)**
-- `ChangePlanCard` (Subscription tab), `TenantModulesManager` (Modules tab: every module, source plan/default/override, toggle with reason, "Reset to plan"), `lib/tenant-url.ts` + `NEXT_PUBLIC_TENANT_URL_TEMPLATE` for tenant links and impersonation hand-off.
+**Web (apps/web)**
+- `my-savings` rebuilt (receipt-upload deposit, My Deposits, held vs available, activity; direct Deposit/Withdraw removed). `my-loans`: Pay Now (receipt upload) + My Payments; officers keep Record Payment. New officer queues `/dashboard/cooperatives/savings-deposits` and `/loan-repayments` (+ Sidebar/AdminSidebar entries). `loan-products` now editable with Savings rule (multiplier + hold switch). `apply` shows borrowing limit/held amount, guarantor search via candidates endpoint.
+- `/dashboard/cooperatives` landing: officers (`ledger.view`/`payments.approve`) get the old dashboard; everyone else gets new `MemberOverview.tsx`; "Overview" link added to `MemberSidebar`.
+
+**Docs (apps/docs)** — 5 new pages under `content/docs/cooperatives/` (depositing-into-your-savings, approving-savings-deposits, paying-your-loan, approving-loan-repayments, savings-rule-and-held-savings), registered in `scripts/sitemap-data.ts` + `meta.json`; fixed now-false text in loan-products, applying-for-a-loan, repayments-and-schedules, reviewing-and-disbursing-loans, deposits-and-withdrawals, member-guide/savings-and-loans, cooperatives-welfare-faq; release-notes entry; reference pages regenerated (fixed `scripts/reference/build-permissions.ts` path to `src/lib/role-permission-mapping.ts`). Build, `check:frontmatter` (204/0 failed), `check:links` (390/0 broken) all pass.
 
 ## Decisions made
 
-- **Officer attendance marking (GV3/GV4/GV6) deliberately stays in Phase 5 (F5.8)** — user asked to keep phases in order. Do not build early.
-- Welfare for members uses dedicated `_own` permissions, never `ledger.*` (officer keys). Officer "see all" = `members.view_all` (+ `payments.approve` for payouts).
-- "Module disabled" answers are session-only in `stores/modules`; reset on app foreground and via "Check again".
-- `bg-primarySoft`-style camelCase classes and `h-px`/`gap-1.5`/plain `rounded` don't exist in this Tailwind config — use kebab tokens (`bg-primary-soft`), arbitrary px values, `Divider`.
-- Don't run `prettier --write` (no config; it rewrote files to double quotes).
+- Savings deposits and loan repayments are **never self-credited**: member uploads receipt → pending → officer confirms money landed → only then the balance/loan moves (owner-approved, incl. repayments).
+- **Lien (hold), not debit**: savings stay in the account; per-loan-product multiplier set by each cooperative's admin in Loan Products. No extra "lien amount" setting — derived as principal ÷ multiplier.
+- Officer approval of mobile-side deposits/repayments stays web-only for now (mobile officer tooling is Phase 5/6).
+- Don't run `prettier --write`; edit CRLF files via scripts/Edit, not shell one-liners (scratch helpers lived in the session scratchpad).
 
 ## Problems solved
 
-- "We couldn't load this" on Community screens = API `403 MODULE_DISABLED` (tenant plan lacked meetings/voting/welfare), not a bug. Plan upgrade "didn't apply" because verify/webhook ignored plain-checkout `planId` metadata.
-- Admin account has no member record → `/welfare/my-profile` 400 and attendance never loads; use a member account for member screens.
-- Members saw no welfare: member role lacks `ledger.view` → fixed via own-scoped permissions.
-- Tenant link pointed at production domain; fixed via template env (dev: `http://{subdomain}.localhost:3000`).
-- Shell quoting repeatedly corrupted template literals/CRLF edits — use Edit/Write tools or script files, not `node -e` with backticks.
+- "No visible change / `…is not a function`" in the browser = **web dev server (Next, port 3000) running since before the edits**; fix is stop it, `rm -rf apps/web/.next`, `pnpm -F @societyledger/web dev`, hard refresh. Happened twice.
+- `prisma generate` EPERM on `query_engine-windows.dll.node` = a node process (stray Jest / dev server) holding the DLL; stop it, regenerate, restart API (API port is **4001**, web 3000, subdomain `oko-youth-forum`).
+- Members couldn't use cooperatives at all: web mapped to `ledger.view_own` but API required `ledger.view`; and couldn't pick guarantors (`GET /members` needs `members.view`).
+- Docs `check:links` validates against `scripts/sitemap-data.ts`, not `out/` — new pages must be registered there.
 
 ## Current state
 
-All of the above works and is tested at unit level; **nothing verified on a physical device this session**. Dev DB: tenant 15 (Oko Youth Forum) upgraded to Enterprise; member permissions backfilled via `scripts/grant-member-welfare-permissions.ts` (5 member roles). Tenant 15 has **zero meetings**, so attendance screens show empty states until a meeting is created on the web. Known pre-existing lint warnings remain in a few untouched files. Admin app has no ESLint config; admin `tsc` has 2 pre-existing type errors in untouched files.
+All of the above is implemented and unit/type/build-checked; **nothing has been click-tested in a browser**. The user was about to restart the web dev server to confirm the landing-page 403 (`/cooperatives/dashboard`) is gone for a member (DB shows that member has no officer keys, so the new page shouldn't call it). The test member (turningpointcodes@gmail.com, tenant 15 Oko Youth Forum) has **no savings account** — an officer must create one (All Savings) and set a product's multiplier before the new UI shows. Docs new pages use `<Screenshot pending>` placeholders and `lastVerified: 2026-10-21` though steps were not click-verified. Nothing is committed.
 
 ## Next session starts with
 
-1. Restart API (permission cache is 5 min), admin dev server (new env var), and Metro; sign out/in on phone, then smoke-test: Community → each screen → tap Community tab returns to hub; Welfare as a member; module toggles in admin.
-2. Create a meeting + attendance on the web for tenant 15 and confirm mobile Meetings tiles / My Attendance populate.
-3. Then Phase 4 per `context/build-plan.md` (officer work incl. F5.8 attendance only when its phase arrives).
+1. Ask the user how their click-through went (checklist: officer creates savings account + sets multiplier 2 → member deposits with receipt → officer approves → apply shows ₦200k limit → disburse holds ₦100k → member pays loan with receipt → officer approves → hold releases). Fix what breaks.
+2. Before docs deploy: capture the pending screenshots and click-verify the steps in the 5 new docs pages.
+3. Then mobile F4.1–F4.5 (Savings, Loans & apply, Guarantor requests, Help center, Support tickets), reusing `useModuleAccess`/`useMemberId`/`ModuleLockedScreen`/`NoMemberProfile`/`ErrorState`; mobile savings/loan screens must follow the receipt-upload + lien model above. Tick tracker + update ui-registry per feature.
 
 ## Open questions
 
-- Run `scripts/grant-member-welfare-permissions.ts` on every non-dev environment before release (production not yet done).
-- Poll detail still lacks per-option results (not built).
-- Whether to also give Money/Profile `popToTopOnBlur` (only Community has it).
+- Run `grant-member-cooperatives-permissions.ts` (and the earlier welfare one) on every non-dev environment before release.
+- `multi-tenancy/subdomain` and `isolation` Jest suites fail (full-server integration tests against dev DB); cause never investigated, and they must not be run casually (they write to the dev DB).
+- Web aliases `COOPERATIVE_SAVINGS_MANAGE` to `payments.approve`, so a financial secretary (API allows) won't see the Savings Deposits sidebar item — pre-existing alias mismatch.
+- Poll detail still lacks per-option results; whether Money/Profile tabs get `popToTopOnBlur` (only Community has it).

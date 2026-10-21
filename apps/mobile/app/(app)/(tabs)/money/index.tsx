@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { Bell, BookOpen, CreditCard, FileText, Gift, HandCoins, ShieldAlert, TrendingDown, TrendingUp } from 'lucide-react-native';
+import { Bell, BookOpen, CreditCard, FileText, Gift, HandCoins, PiggyBank, ShieldAlert, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { IconButton } from '@/components/ui/IconButton';
@@ -16,7 +16,10 @@ import { tokens } from '@/theme/tokens';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { useMemberFinanceSummary } from '@/features/memberFinance/queries';
 import { useMyLedgerSummary } from '@/features/memberLedger/queries';
+import { useCan } from '@/hooks/useCan';
+import { useModuleDisabled } from '@/hooks/useModuleAccess';
 import { formatDate } from '@/lib/dates';
+import { COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
 import { formatMoney, toDecimal } from '@/lib/money';
 
 function entrySign(entryType: string): '+' | '–' {
@@ -26,6 +29,9 @@ function entrySign(entryType: string): '+' | '–' {
 export default function MoneyScreen() {
   const router = useRouter();
   const { color } = useThemeTokens();
+
+  const canViewSavings = useCan(COOPERATIVE_SAVINGS_VIEW_ACCESS);
+  const cooperativesLocked = useModuleDisabled('cooperatives');
 
   const summaryQuery = useMemberFinanceSummary();
   const ledgerQuery = useMyLedgerSummary();
@@ -104,6 +110,28 @@ export default function MoneyScreen() {
             />
           </ListGroup>
         </Section>
+
+        {/* Cooperative savings — hidden for members without cooperatives access or once the plan's module is off */}
+        {canViewSavings && !cooperativesLocked ? (
+          <Section title="Cooperative">
+            <ListGroup>
+              <ListItem
+                leading={<PiggyBank size={20} color={color.warning} strokeWidth={1.75} />}
+                title="My Savings"
+                meta="Balance, deposits & history"
+                showChevron
+                onPress={() => router.push('/money/savings' as never)}
+              />
+              <ListItem
+                leading={<HandCoins size={20} color={color.primary} strokeWidth={1.75} />}
+                title="My Loans"
+                meta="Balances, payments & applications"
+                showChevron
+                onPress={() => router.push('/money/loans' as never)}
+              />
+            </ListGroup>
+          </Section>
+        ) : null}
 
         {/* Breakdown — dues, levies, penalties, donations */}
         <Section title="Breakdown">

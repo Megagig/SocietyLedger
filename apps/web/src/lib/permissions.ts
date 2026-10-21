@@ -136,7 +136,7 @@ export const PERMISSIONS = {
   // Feature-specific (mapped to core permissions)
   COOPERATIVE_VIEW: 'ledger.view_own', // Members view their own cooperative data
   COOPERATIVE_SAVINGS_VIEW: 'ledger.view_own', // Members view their own savings
-  COOPERATIVE_SAVINGS_MANAGE: 'payments.approve', // Admin manages all savings
+  COOPERATIVE_SAVINGS_MANAGE: 'ledger.create', // Officers manage all savings — same key the API enforces (apps/api/src/lib/permissions.ts); admin, treasurer, financial secretary
   COOPERATIVE_LOANS_VIEW: 'ledger.view_own', // Members view their own loans
   COOPERATIVE_LOANS_APPLY: 'members.view_own', // Members can apply for loans
   COOPERATIVE_LOANS_MANAGE: 'payments.approve', // Admin manages loan applications

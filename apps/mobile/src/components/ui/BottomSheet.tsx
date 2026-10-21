@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, type ReactNode } from 'react';
 import { View } from 'react-native';
-import { BottomSheetBackdrop, BottomSheetModal, type BottomSheetBackdropProps, type BottomSheetModalProps } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView, type BottomSheetBackdropProps, type BottomSheetModalProps } from '@gorhom/bottom-sheet';
 import { X } from 'lucide-react-native';
 
 import { IconButton } from '@/components/ui/IconButton';
@@ -51,13 +51,17 @@ export const BottomSheet = forwardRef<BottomSheetModal, BottomSheetProps>(functi
       backdropComponent={renderBackdrop}
       style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }}
     >
-      {title ? (
-        <View className="flex-row items-center justify-between px-4 pb-2">
-          <Text variant="h2">{title}</Text>
-          <IconButton icon={X} accessibilityLabel="Close" onPress={() => localRef.current?.dismiss()} />
-        </View>
-      ) : null}
-      <View className="flex-1 px-4">{children}</View>
+      {/* enableDynamicSizing only gets a content height from gorhom's own BottomSheetView (or its scrollables). A plain
+          View is never measured, the detents stay empty, and present() silently shows nothing. */}
+      <BottomSheetView>
+        {title ? (
+          <View className="flex-row items-center justify-between px-4 pb-2">
+            <Text variant="h2">{title}</Text>
+            <IconButton icon={X} accessibilityLabel="Close" onPress={() => localRef.current?.dismiss()} />
+          </View>
+        ) : null}
+        <View className="px-4">{children}</View>
+      </BottomSheetView>
     </BottomSheetModal>
   );
 });

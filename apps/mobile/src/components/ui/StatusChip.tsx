@@ -17,7 +17,12 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   completed: 'success',
   disbursed: 'success',
   won: 'success',
+  paid_off: 'success',
+  accepted: 'success',
   // pending (warning)
+  pending_guarantors: 'warning',
+  pending_review: 'warning',
+  pending_approval: 'warning',
   pending: 'warning',
   partial: 'warning',
   submitted: 'warning',
@@ -34,7 +39,10 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   suspended: 'danger',
   absent: 'danger',
   defaulted: 'danger',
+  declined: 'danger',
   // neutral
+  written_off: 'neutral',
+  released: 'neutral',
   draft: 'neutral',
   closed: 'neutral',
   inactive: 'neutral',

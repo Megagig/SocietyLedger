@@ -127,6 +127,13 @@ export const PERMISSIONS = {
   COOPERATIVE_LOANS_MANAGE: 'payments.approve',
   COOPERATIVE_GUARANTOR: 'ledger.view',
 
+  // Member-own cooperatives keys (apps/api/src/lib/permissions.ts) — members hold these, not ledger.*.
+  COOPERATIVE_VIEW_OWN: 'cooperatives.view_own',
+  COOPERATIVE_APPLY_OWN: 'cooperatives.apply_own',
+  COOPERATIVE_GUARANTOR_OWN: 'cooperatives.guarantor_own',
+  COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own',
+  COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own',
+
   // Member Self-Service Finance
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
 
@@ -249,6 +256,17 @@ export function canAny(permissions: string[], aliases: PermissionAlias[]): boole
 export function canAll(permissions: string[], aliases: PermissionAlias[]): boolean {
   return aliases.every((alias) => can(permissions, alias));
 }
+
+/** Seeing own savings: members via cooperatives.view_own, officers via ledger.view. */
+export const COOPERATIVE_SAVINGS_VIEW_ACCESS: PermissionAlias[] = ['COOPERATIVE_VIEW_OWN', 'COOPERATIVE_SAVINGS_VIEW'];
+/** Seeing own loans and applications: members via cooperatives.view_own, officers via ledger.view. */
+export const COOPERATIVE_LOANS_VIEW_ACCESS: PermissionAlias[] = ['COOPERATIVE_VIEW_OWN', 'COOPERATIVE_LOANS_VIEW'];
+/** Applying for a loan — the API accepts the officer key or cooperatives.apply_own. */
+export const COOPERATIVE_LOANS_APPLY_ACCESS: PermissionAlias[] = ['COOPERATIVE_APPLY_OWN', 'COOPERATIVE_LOANS_APPLY'];
+/** Declaring a loan payment with a receipt — the API gates POST /cooperatives/loan-repayment-requests on this one key only. */
+export const COOPERATIVE_LOAN_REPAY_ACCESS: PermissionAlias = 'COOPERATIVE_REPAY_OWN';
+/** Declaring a deposit with a receipt — the API gates POST /cooperatives/savings-deposits on this one key only. */
+export const COOPERATIVE_SAVINGS_DEPOSIT_ACCESS: PermissionAlias = 'COOPERATIVE_SAVINGS_DEPOSIT_OWN';
 
 /** Seeing welfare: officers via ledger.view, members via welfare.view_own. */
 export const WELFARE_VIEW_ACCESS: PermissionAlias[] = ['WELFARE_VIEW', 'WELFARE_VIEW_OWN'];

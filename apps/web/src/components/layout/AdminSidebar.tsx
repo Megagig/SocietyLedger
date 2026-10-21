@@ -467,13 +467,13 @@ export function AdminSidebar() {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
       badge: 'Enterprise',
-      permission: PERMISSIONS.COOPERATIVE_VIEW,
+      permission: [PERMISSIONS.COOPERATIVE_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_LOANS_MANAGE],
       children: [
         {
           label: 'Dashboard',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/cooperatives',
-          permission: PERMISSIONS.COOPERATIVE_VIEW,
+          permission: [PERMISSIONS.COOPERATIVE_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_LOANS_MANAGE],
         },
         {
           label: 'All Savings',
