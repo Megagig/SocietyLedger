@@ -482,6 +482,18 @@ export function AdminSidebar() {
           permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
         },
         {
+          label: 'Savings Deposits',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/cooperatives/savings-deposits',
+          permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+        },
+        {
+          label: 'Loan Repayments',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/cooperatives/loan-repayments',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
+        },
+        {
           label: 'All Loans',
           icon: <IconWallet size={18} />,
           href: '/dashboard/cooperatives/loans',

@@ -18,8 +18,40 @@ import {
   loanRepaymentQuerySchema,
   loanQuerySchema,
   disburseLoanSchema,
+  createSavingsDepositSchema,
+  savingsDepositQuerySchema,
+  rejectSavingsDepositSchema,
+  createLoanRepaymentRequestSchema,
+  loanRepaymentRequestQuerySchema,
 } from './cooperatives.validation';
 import { z } from 'zod';
+import path from 'path';
+import { prisma } from '../../lib/prisma';
+import { uploadFile, getPresignedUrl } from '../../lib/storage';
+import { PlatformRole } from '@prisma/client';
+import { PERMISSIONS } from '../../lib/permissions';
+import { RBACService } from '../../services/rbac.service';
+
+/**
+ * Officers (members.view_all, or either cooperatives manage key) and super admins see every member's
+ * savings, loans and repayments. A member holding only the cooperatives.*_own keys only ever gets their
+ * own, whatever `memberId` they pass — these endpoints used to trust the client's `memberId` outright,
+ * and the single-record ones had no ownership check at all.
+ */
+async function canSeeAllCooperatives(req: Request): Promise<boolean> {
+  if (!req.user) return false;
+  if (req.user.platformRole === PlatformRole.SUPER_ADMIN) return true;
+  return RBACService.hasAnyPermission(
+    {
+      userId: req.user.id,
+      associationId: req.user.associationId ?? null,
+      platformRole: req.user.platformRole ?? null,
+    },
+    [PERMISSIONS.MEMBER_VIEW_ALL, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]
+  );
+}
+
+const EMPTY_PAGE_INFO = (page: number, limit: number) => ({ page, limit, totalCount: 0, totalPages: 0, hasMore: false });
 
 // ============================================
 // COOPERATIVES CONTROLLER - Phase 8.5
@@ -110,6 +142,10 @@ export const cooperativesController = {
       const accountId = parseInt(req.params.id);
       const account = await cooperativesService.getSavingsAccount(associationId, accountId);
 
+      if (account && !(await canSeeAllCooperatives(req)) && account.memberId !== req.user?.memberId) {
+        return res.status(404).json({ success: false, message: 'Savings account not found' });
+      }
+
       if (!account) {
         return res.status(404).json({ success: false, message: 'Savings account not found' });
       }
@@ -170,12 +206,21 @@ export const cooperativesController = {
 
       const queryParams = savingsTransactionQuerySchema.parse(req.query);
 
+      const seeAll = await canSeeAllCooperatives(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { transactions: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
+
       const result = await cooperativesService.getSavingsTransactions(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
         savingsAccountId: queryParams.savingsAccountId
           ? parseInt(queryParams.savingsAccountId)
           : undefined,
+        memberId: seeAll ? undefined : req.user?.memberId,
         type: queryParams.type,
         startDate: queryParams.startDate ? new Date(queryParams.startDate) : undefined,
         endDate: queryParams.endDate ? new Date(queryParams.endDate) : undefined,
@@ -191,6 +236,377 @@ export const cooperativesController = {
       }
       console.error('Error getting savings transactions:', error);
       return res.status(500).json({ success: false, message: 'Failed to get savings transactions' });
+    }
+  },
+
+  // ==========================================
+  // SAVINGS DEPOSIT REQUEST ENDPOINTS
+  // ==========================================
+
+  /**
+   * A member declares a deposit they paid to the cooperative, with the bank receipt attached.
+   * POST /api/cooperatives/savings-deposits  (multipart: file + fields)
+   */
+  async createSavingsDeposit(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const memberId = req.user?.memberId;
+      if (!associationId || !req.user) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+      if (!memberId) {
+        return res.status(400).json({ success: false, message: 'Member profile not found' });
+      }
+
+      const data = createSavingsDepositSchema.parse(req.body);
+
+      const file = req.file;
+      if (!file?.buffer) {
+        return res.status(400).json({ success: false, message: 'Attach your bank receipt (a photo or PDF)' });
+      }
+
+      // Checked before the upload so a bad request never leaves an orphaned file in storage.
+      await cooperativesService.assertOwnActiveSavingsAccount(associationId, memberId, data.savingsAccountId);
+
+      const ext = path.extname(file.originalname) || '';
+      const storageKey = `savings-deposits/${associationId}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+      await uploadFile(storageKey, file.buffer, file.mimetype);
+
+      const deposit = await cooperativesService.createSavingsDepositRequest(associationId, memberId, data, {
+        filename: file.originalname,
+        filepath: storageKey,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: req.user.id,
+          action: 'UPLOAD',
+          tableName: 'savings_deposit_requests',
+          recordId: deposit.id,
+          newValues: { savingsAccountId: data.savingsAccountId, amount: data.amount, filename: file.originalname },
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Deposit submitted. It will show in your savings once an officer confirms the payment.',
+        data: deposit,
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error creating savings deposit request:', error);
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * List deposit requests. A member gets only their own; officers get everyone's (filterable).
+   * GET /api/cooperatives/savings-deposits
+   */
+  async getSavingsDeposits(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const queryParams = savingsDepositQuerySchema.parse(req.query);
+      const page = parseInt(queryParams.page);
+      const limit = parseInt(queryParams.limit);
+
+      const seeAll = await canSeeAllCooperatives(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({ success: true, data: { deposits: [], pagination: EMPTY_PAGE_INFO(page, limit) } });
+      }
+
+      const result = await cooperativesService.listSavingsDepositRequests(associationId, {
+        page,
+        limit,
+        status: queryParams.status,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
+        savingsAccountId: queryParams.savingsAccountId ? parseInt(queryParams.savingsAccountId) : undefined,
+      });
+
+      return res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error getting savings deposit requests:', error);
+      return res.status(500).json({ success: false, message: 'Failed to get savings deposits' });
+    }
+  },
+
+  /**
+   * The receipt for a deposit request. The owner or an officer only. Redirects to a short-lived storage
+   * URL; `?format=json` returns { url } instead, for clients that can't follow a redirect with their auth.
+   * GET /api/cooperatives/savings-deposits/:id/receipt
+   */
+  async getSavingsDepositReceipt(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const row = await cooperativesService.getSavingsDepositRow(associationId, parseInt(req.params.id));
+      if (!row || (!(await canSeeAllCooperatives(req)) && row.memberId !== req.user?.memberId)) {
+        return res.status(404).json({ success: false, message: 'Deposit request not found' });
+      }
+
+      const url = await getPresignedUrl(row.filepath);
+      if (req.query.format === 'json') {
+        return res.status(200).json({ success: true, data: { url, filename: row.filename, mimeType: row.mimeType } });
+      }
+      return res.redirect(url);
+    } catch (error) {
+      console.error('Error getting savings deposit receipt:', error);
+      return res.status(500).json({ success: false, message: 'Failed to get receipt' });
+    }
+  },
+
+  /**
+   * Officer confirms the money landed: credits the member's savings.
+   * POST /api/cooperatives/savings-deposits/:id/approve
+   */
+  async approveSavingsDeposit(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const deposit = await cooperativesService.approveSavingsDepositRequest(
+        associationId,
+        parseInt(req.params.id),
+        userId
+      );
+
+      return res.status(200).json({ success: true, message: 'Deposit approved and added to savings', data: deposit });
+    } catch (error: any) {
+      console.error('Error approving savings deposit:', error);
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * POST /api/cooperatives/savings-deposits/:id/reject
+   */
+  async rejectSavingsDeposit(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const { reason } = rejectSavingsDepositSchema.parse(req.body);
+      const deposit = await cooperativesService.rejectSavingsDepositRequest(
+        associationId,
+        parseInt(req.params.id),
+        userId,
+        reason
+      );
+
+      return res.status(200).json({ success: true, message: 'Deposit rejected', data: deposit });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error rejecting savings deposit:', error);
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  // ==========================================
+  // LOAN REPAYMENT REQUEST ENDPOINTS
+  // ==========================================
+
+  /**
+   * A member declares a payment towards their own loan, with the bank receipt attached.
+   * POST /api/cooperatives/loan-repayment-requests  (multipart: file + fields)
+   */
+  async createLoanRepaymentRequest(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const memberId = req.user?.memberId;
+      if (!associationId || !req.user) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+      if (!memberId) {
+        return res.status(400).json({ success: false, message: 'Member profile not found' });
+      }
+
+      const data = createLoanRepaymentRequestSchema.parse(req.body);
+
+      const file = req.file;
+      if (!file?.buffer) {
+        return res.status(400).json({ success: false, message: 'Attach your bank receipt (a photo or PDF)' });
+      }
+
+      // Checked before the upload so a bad request never leaves an orphaned file in storage.
+      await cooperativesService.assertOwnOpenLoanForRepayment(associationId, memberId, data.loanId, data.amount);
+
+      const ext = path.extname(file.originalname) || '';
+      const storageKey = `loan-repayments/${associationId}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+      await uploadFile(storageKey, file.buffer, file.mimetype);
+
+      const request = await cooperativesService.createLoanRepaymentRequest(associationId, memberId, data, {
+        filename: file.originalname,
+        filepath: storageKey,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          associationId,
+          userId: req.user.id,
+          action: 'UPLOAD',
+          tableName: 'loan_repayment_requests',
+          recordId: request.id,
+          newValues: { loanId: data.loanId, amount: data.amount, filename: file.originalname },
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Repayment submitted. It will be recorded once an officer confirms the payment.',
+        data: request,
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error creating loan repayment request:', error);
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * List repayment requests. A member gets only their own; officers get everyone's (filterable).
+   * GET /api/cooperatives/loan-repayment-requests
+   */
+  async getLoanRepaymentRequests(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const queryParams = loanRepaymentRequestQuerySchema.parse(req.query);
+      const page = parseInt(queryParams.page);
+      const limit = parseInt(queryParams.limit);
+
+      const seeAll = await canSeeAllCooperatives(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res
+          .status(200)
+          .json({ success: true, data: { repaymentRequests: [], pagination: EMPTY_PAGE_INFO(page, limit) } });
+      }
+
+      const result = await cooperativesService.listLoanRepaymentRequests(associationId, {
+        page,
+        limit,
+        status: queryParams.status,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
+        loanId: queryParams.loanId ? parseInt(queryParams.loanId) : undefined,
+      });
+
+      return res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error getting loan repayment requests:', error);
+      return res.status(500).json({ success: false, message: 'Failed to get repayment requests' });
+    }
+  },
+
+  /**
+   * The receipt for a repayment request. The owner or an officer only; `?format=json` returns { url }.
+   * GET /api/cooperatives/loan-repayment-requests/:id/receipt
+   */
+  async getLoanRepaymentRequestReceipt(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const row = await cooperativesService.getLoanRepaymentRequestRow(associationId, parseInt(req.params.id));
+      if (!row || (!(await canSeeAllCooperatives(req)) && row.memberId !== req.user?.memberId)) {
+        return res.status(404).json({ success: false, message: 'Repayment request not found' });
+      }
+
+      const url = await getPresignedUrl(row.filepath);
+      if (req.query.format === 'json') {
+        return res.status(200).json({ success: true, data: { url, filename: row.filename, mimeType: row.mimeType } });
+      }
+      return res.redirect(url);
+    } catch (error) {
+      console.error('Error getting loan repayment receipt:', error);
+      return res.status(500).json({ success: false, message: 'Failed to get receipt' });
+    }
+  },
+
+  /**
+   * Officer confirms the money landed: records the repayment on the loan.
+   * POST /api/cooperatives/loan-repayment-requests/:id/approve
+   */
+  async approveLoanRepaymentRequest(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const request = await cooperativesService.approveLoanRepaymentRequest(
+        associationId,
+        parseInt(req.params.id),
+        userId
+      );
+
+      return res.status(200).json({ success: true, message: 'Repayment recorded', data: request });
+    } catch (error: any) {
+      console.error('Error approving loan repayment request:', error);
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * POST /api/cooperatives/loan-repayment-requests/:id/reject
+   */
+  async rejectLoanRepaymentRequest(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      const { reason } = rejectSavingsDepositSchema.parse(req.body);
+      const request = await cooperativesService.rejectLoanRepaymentRequest(
+        associationId,
+        parseInt(req.params.id),
+        userId,
+        reason
+      );
+
+      return res.status(200).json({ success: true, message: 'Repayment rejected', data: request });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      console.error('Error rejecting loan repayment request:', error);
+      return res.status(400).json({ success: false, message: error.message });
     }
   },
 
@@ -348,10 +764,18 @@ export const cooperativesController = {
 
       const queryParams = loanApplicationQuerySchema.parse(req.query);
 
+      const seeAll = await canSeeAllCooperatives(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { applications: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
+
       const result = await cooperativesService.getLoanApplications(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
-        memberId: queryParams.memberId ? parseInt(queryParams.memberId) : undefined,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
         status: queryParams.status,
         loanProductId: queryParams.loanProductId ? parseInt(queryParams.loanProductId) : undefined,
         startDate: queryParams.startDate ? new Date(queryParams.startDate) : undefined,
@@ -387,6 +811,10 @@ export const cooperativesController = {
 
       const applicationId = parseInt(req.params.id);
       const application = await cooperativesService.getLoanApplication(associationId, applicationId);
+
+      if (application && !(await canSeeAllCooperatives(req)) && application.memberId !== req.user?.memberId) {
+        return res.status(404).json({ success: false, message: 'Loan application not found' });
+      }
 
       if (!application) {
         return res.status(404).json({ success: false, message: 'Loan application not found' });
@@ -481,6 +909,31 @@ export const cooperativesController = {
   // ==========================================
   // GUARANTOR ENDPOINTS
   // ==========================================
+
+  /**
+   * Search members to ask as guarantors (names and member numbers only).
+   * GET /api/cooperatives/guarantor-candidates?search=
+   */
+  async getGuarantorCandidates(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const memberId = req.user?.memberId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      if (!memberId) {
+        return res.status(200).json({ success: true, data: { members: [] } });
+      }
+
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+      const members = await cooperativesService.searchGuarantorCandidates(associationId, memberId, search);
+
+      return res.status(200).json({ success: true, data: { members } });
+    } catch (error) {
+      console.error('Error searching guarantor candidates:', error);
+      return res.status(500).json({ success: false, message: 'Failed to search members' });
+    }
+  },
 
   /**
    * Respond to a guarantor request
@@ -581,10 +1034,18 @@ export const cooperativesController = {
 
       const queryParams = loanQuerySchema.parse(req.query);
 
+      const seeAll = await canSeeAllCooperatives(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { loans: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
+
       const result = await cooperativesService.getLoans(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
-        memberId: queryParams.memberId ? parseInt(queryParams.memberId) : undefined,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
         status: queryParams.status,
         loanProductId: queryParams.loanProductId ? parseInt(queryParams.loanProductId) : undefined,
         search: queryParams.search,
@@ -618,6 +1079,10 @@ export const cooperativesController = {
 
       const loanId = parseInt(req.params.id);
       const loan = await cooperativesService.getLoan(associationId, loanId);
+
+      if (loan && !(await canSeeAllCooperatives(req)) && loan.memberId !== req.user?.memberId) {
+        return res.status(404).json({ success: false, message: 'Loan not found' });
+      }
 
       if (!loan) {
         return res.status(404).json({ success: false, message: 'Loan not found' });
@@ -675,10 +1140,19 @@ export const cooperativesController = {
 
       const queryParams = loanRepaymentQuerySchema.parse(req.query);
 
+      const seeAll = await canSeeAllCooperatives(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { repayments: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
+
       const result = await cooperativesService.getLoanRepayments(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
         loanId: queryParams.loanId ? parseInt(queryParams.loanId) : undefined,
+        memberId: seeAll ? undefined : req.user?.memberId,
         startDate: queryParams.startDate ? new Date(queryParams.startDate) : undefined,
         endDate: queryParams.endDate ? new Date(queryParams.endDate) : undefined,
       });

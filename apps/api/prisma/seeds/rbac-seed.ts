@@ -352,6 +352,37 @@ const PERMISSION_REGISTRY = [
     module: "Welfare",
     examples: ["POST /api/welfare/payouts", "POST /api/welfare/payouts/:id/cancel"]
   },
+  // Cooperatives (member self-service)
+  {
+    key: "cooperatives.view_own",
+    description: "View your own cooperative profile, savings accounts, loans, loan applications and repayments, and the loan products on offer.",
+    module: "Cooperatives",
+    examples: ["GET /api/cooperatives/my-profile", "GET /api/cooperatives/loans (own only)", "GET /api/cooperatives/loan-products"]
+  },
+  {
+    key: "cooperatives.apply_own",
+    description: "Apply for a cooperative loan.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/loan-applications"]
+  },
+  {
+    key: "cooperatives.guarantor_own",
+    description: "See and answer requests to guarantee another member's loan.",
+    module: "Cooperatives",
+    examples: ["GET /api/cooperatives/guarantor-requests/pending", "POST /api/cooperatives/guarantor-requests/:id/respond"]
+  },
+  {
+    key: "cooperatives.savings_deposit_own",
+    description: "Declare a savings deposit you paid to the cooperative, with a receipt, for an officer to approve.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/savings-deposits"]
+  },
+  {
+    key: "cooperatives.repay_own",
+    description: "Declare a payment you made towards your own loan, with a receipt, for an officer to confirm.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/loan-repayment-requests"]
+  },
   // Meetings
   {
     key: "meetings.manage_minutes",

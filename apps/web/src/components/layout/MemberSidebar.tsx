@@ -168,6 +168,11 @@ export function MemberSidebar() {
       // badge: 'Enterprise',
       children: [
         {
+          label: 'Overview',
+          icon: <IconLayoutDashboard size={18} />,
+          href: '/dashboard/cooperatives',
+        },
+        {
           label: 'My Savings',
           icon: <IconCurrencyNaira size={18} />,
           href: '/dashboard/cooperatives/my-savings',

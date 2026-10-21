@@ -1,62 +1,54 @@
-# Memory — Mobile Phase 2: H1/H2 Home Dashboard Enhancement (complete)
+# Memory — Mobile Phase 3 follow-ups, billing/permission fixes, tab fix
 
 Last updated: 2026-10-21
 
 ## What was built
 
-**H1/H2 — Enhanced Home/Dashboard screen — member + officer views**
+**Mobile (apps/mobile)**
+- Community tab rebuilt to web parity: `community/_layout.tsx` (Stack — its absence made every sub-screen bounce to Home), Meetings (`meetings/index`, new `meetings/attendance.tsx` = C4 My Attendance with `ProgressRing`), Voting (`elections/index` = "My Voting"), Polls (search + `FilterDropdown` status/type), Welfare hub + new `welfare/contributions`, `welfare/requests`, Announcements (paginated, expandable).
+- New shared UI: `FilterChip`, `StatTile`, `IconCircle`, `ProgressRing`, `SectionCard`, `InlineEmpty`, `forms/FilterDropdown`, `feedback/ModuleLockedScreen`, `feedback/NoMemberProfile`, `ErrorState` (takes `error`, says "Can't reach the server" for network errors). Notifications inbox got filters/search/bulk select/pagination.
+- Hooks: `useModuleAccess` / `useModuleDisabled` (permission AND module entitlement), `useMemberId`. Queries stop firing for disabled modules or member-less accounts; screens show `ModuleLocked` / `NoMemberProfile` instead of generic errors.
+- `TabBar` now emits `tabPress` (tap active tab → nested stack pops to top); Community has `popToTopOnBlur`. `ScreenHeader` lost its duplicate `px-4`.
+- `expo-notifications` only loaded after `requireOptionalNativeModule('ExpoPushTokenManager')` probe (lazy `loadNotifications()` in `lib/push.ts`) — dev build without it no longer crashes/logs errors.
+- Jest: `sonner-native` stub via moduleNameMapper; push/storage mocks in session + layout tests. 40 suites / 196 tests pass; tsc + eslint clean.
 
-New files created:
+**API (apps/api)**
+- `services/subscription-plan.service.ts` (`resolvePaidPlan`, `setTenantPlan`, `tierForPlanCode`) — verify (Paystack/Nomba) + Paystack webhook now apply the plan actually paid for (checkout metadata `planId`+`subscriptionId`) and sync `association.tier`.
+- Admin endpoints `GET /admin/plans`, `POST /admin/tenants/:id/plan`; meetings: `GET /meetings/my-attendance`; attendance data scoped to own rows unless `meetings.manage_attendance` or `members.view_all`.
+- Welfare: new own-scoped permissions `welfare.view_own` / `welfare.request_own` (routes accept officer OR own; list endpoints server-scoped to the member). Registered in `rbac-seed.ts`, `PERMISSIONS`, default `member` role mapping.
+- Tests: `__tests__/payments/subscription-plan.service.test.ts`, `__tests__/meetings/attendance-scoping.test.ts`, `__tests__/welfare/welfare-scoping.test.ts`.
 
-- `apps/mobile/src/api/endpoints/dashboard.ts` — `dashboardApi.getOverview()` calls `GET /api/dashboard/overview`. Exports full `DashboardOverviewDTO` type with nested types: `MemberStats`, `FinancialSummary`, `RevenueTrendItem`, `PaymentMethodItem`, `RecentTransaction`, `QuickStats`.
-- `apps/mobile/src/features/dashboard/queries.ts` — `useAssociationDashboard(enabled)` TanStack Query hook; key: `dashboardKeys.overview(tenant)`; staleTime 5 min; gated on `enabled` (pass `isOfficer`).
-- `apps/mobile/src/features/home/components/MemberStatRow.tsx` — 2×2 stat grid (Outstanding Balance, Paid This Month, Next Due Date, Upcoming Meetings). Each tile: 38×38 icon badge (Wallet/CheckCircle2/Calendar/Users from lucide), value with semantic color (danger/success/warning/info), caption label. Height 104px skeleton.
-- `apps/mobile/src/features/home/components/RecentActivityList.tsx` — Member recent transactions from `summaryQuery.data.recentTransactions` with `StatusBadge` (paid/overdue/partial/pending).
-- `apps/mobile/src/features/home/components/UpcomingObligationsList.tsx` — Member upcoming obligations from `summaryQuery.data.upcomingPayments`. Overdue items: red border + `dangerSoft` bg + left accent bar. Uses `date-fns` `isPast`/`isToday`.
-- `apps/mobile/src/features/home/components/OfficerStatRow.tsx` — 2×2 officer stat grid (Total Members/Users/info, Total Revenue/TrendingUp/success, Pending/Clock/warning, Overdue/AlertTriangle/danger). 88px skeleton, 32×32 icon badge.
-- `apps/mobile/src/features/home/components/RevenueChart.tsx` — `BarChart` from `react-native-gifted-charts`. Dynamic Y-max, ₦k labels, theme-aware colors, 140px height, `isAnimated`.
-- `apps/mobile/src/features/home/components/PaymentMethodsChart.tsx` — `PieChart` with `donut` prop, `innerRadius={44}`, `radius={72}`. Inline legend + `centerLabelComponent` showing method count.
-- `apps/mobile/src/features/home/components/AssociationRecentTransactions.tsx` — All-member transaction list. Avatar (size 32), memberName, category, amount, status badge. Card with row dividers.
-
-Modified files:
-
-- `apps/mobile/app/(app)/(tabs)/home/index.tsx` — REWRITTEN. Officers get a "My View | Association" two-button toggle (default: 'me'). Heading below toggle updates to "My Dashboard" or "Association Overview" to clearly label the current view. Member view: BalanceCard → MemberStatRow → QuickActionsGrid → Recent Activity → Upcoming Obligations → UpcomingMeetingCard → ActiveVoteCard → Recent Payments → Announcements. Officer Association view: OfficerStatRow → RevenueChart → PaymentMethodsChart → Quick Stats card (QuickStatRow) → Recent Transactions.
-- `apps/mobile/src/features/home/components/QuickActionsGrid.tsx` — Each action tile now has its own color-coded icon badge: pay=successSoft/success, uploadProof=infoSoft/info, statement=accentSoft/accent, savings=warningSoft/warning, applyLoan=primarySoft/primary, support=dangerSoft/danger. 50×50 icon badge, borderRadius 16, subtle card shadow. Uses `ColorToken` type from `@/theme/tokens`.
+**Admin (apps/admin)**
+- `ChangePlanCard` (Subscription tab), `TenantModulesManager` (Modules tab: every module, source plan/default/override, toggle with reason, "Reset to plan"), `lib/tenant-url.ts` + `NEXT_PUBLIC_TENANT_URL_TEMPLATE` for tenant links and impersonation hand-off.
 
 ## Decisions made
 
-- **`BarChart` over `LineChart`** — `react-native-gifted-charts` `LineChart` with area fill triggers the linear-gradient crash. `BarChart` doesn't use gradient fills and is more readable on mobile for monthly revenue.
-- **`expo-linear-gradient` is a required peer dep** — `react-native-gifted-charts` v1.4.81 eagerly requires a gradient package at module load time (in `AnimatedThreeDBar/index.js`), even when only using `BarChart` or `PieChart`. Install `expo-linear-gradient` in the mobile workspace or the entire gifted-charts module crashes.
-- **Officer toggle default = 'me'** — Officers see their personal view first; they switch to Association. Heading below toggle always names the current view to prevent label confusion.
-- **Toggle button labels = "My View" / "Association"** — Short labels (navigation), with a `h2` heading below that says "My Dashboard" or "Association Overview" (content label). Avoids confusion between button text and view name.
-- **Inactive toggle tab text = `color.textSecondary`** — `color.text` (white in dark mode) made inactive tabs look equally prominent as active. `textSecondary` makes the unselected tab recede visually.
-- **`ColorToken` type** — `keyof typeof tokens.light.color` — use it for icon badge color token names in `QuickActionsGrid` and anywhere a color prop should reference the token system.
-- **`AvatarSize` = 32 | 40 | 64 only** — No other values are valid. Use 32 for list rows, 40 for headers.
+- **Officer attendance marking (GV3/GV4/GV6) deliberately stays in Phase 5 (F5.8)** — user asked to keep phases in order. Do not build early.
+- Welfare for members uses dedicated `_own` permissions, never `ledger.*` (officer keys). Officer "see all" = `members.view_all` (+ `payments.approve` for payouts).
+- "Module disabled" answers are session-only in `stores/modules`; reset on app foreground and via "Check again".
+- `bg-primarySoft`-style camelCase classes and `h-px`/`gap-1.5`/plain `rounded` don't exist in this Tailwind config — use kebab tokens (`bg-primary-soft`), arbitrary px values, `Divider`.
+- Don't run `prettier --write` (no config; it rewrote files to double quotes).
 
 ## Problems solved
 
-- **`react-native-gifted-charts` gradient crash** — Install `expo-linear-gradient` in the mobile workspace. Root cause: the library's `AnimatedThreeDBar` eagerly loads a gradient module at bundle time, crashing the entire `gifted-charts` module. This cascaded to a missing default export error on `home/index.tsx` and then `ErrorBoundary undefined` in the tab navigator.
-- **Hooks in conditional branch** — `useThemeTokens()` was called inside an `if (items.length === 0)` branch in `RecentActivityList.tsx`. Fix: moved the empty-state to render after the hook call, using `<Text tone="secondary">` which handles theming internally.
-- **Toggle invisible inactive tab in dark mode** — `backgroundColor: 'transparent'` on a dark `surfaceSunken` container made white text disappear. Fix: inactive tabs use `color.surfaceRaised` background + `color.border` border with `color.textSecondary` text.
-- **`decimal.js` TS2307** — The installed library is `decimal.js-light`. Always import `type { Decimal } from 'decimal.js-light'`.
+- "We couldn't load this" on Community screens = API `403 MODULE_DISABLED` (tenant plan lacked meetings/voting/welfare), not a bug. Plan upgrade "didn't apply" because verify/webhook ignored plain-checkout `planId` metadata.
+- Admin account has no member record → `/welfare/my-profile` 400 and attendance never loads; use a member account for member screens.
+- Members saw no welfare: member role lacks `ledger.view` → fixed via own-scoped permissions.
+- Tenant link pointed at production domain; fixed via template env (dev: `http://{subdomain}.localhost:3000`).
+- Shell quoting repeatedly corrupted template literals/CRLF edits — use Edit/Write tools or script files, not `node -e` with backticks.
 
 ## Current state
 
-- **F2.1–F2.7 + H1/H2 home dashboard: complete.** Member and officer dashboards fully implemented with charts, stat cards, activity lists, and the Me/Association toggle.
-- `expo-linear-gradient` installed in `apps/mobile`.
-- `react-native-gifted-charts` installed in `apps/mobile`.
-- `type-check` was clean as of the previous F2.7 session; no new TS errors introduced (verified by reviewing imports and `ColorToken` type correctness).
-- Toggle default is 'me' (personal view); officers can switch to 'association'.
-- Section heading below toggle clearly labels the current view.
+All of the above works and is tested at unit level; **nothing verified on a physical device this session**. Dev DB: tenant 15 (Oko Youth Forum) upgraded to Enterprise; member permissions backfilled via `scripts/grant-member-welfare-permissions.ts` (5 member roles). Tenant 15 has **zero meetings**, so attendance screens show empty states until a meeting is created on the web. Known pre-existing lint warnings remain in a few untouched files. Admin app has no ESLint config; admin `tsc` has 2 pre-existing type errors in untouched files.
 
 ## Next session starts with
 
-**F2.8 — Pay online with Paystack**  
-Run `/architect F2.8` first before implementing.  
-Pay buttons on dues/levies/penalties screens route to `/money/pay` (stub with `as never` cast) — this is the screen to build next.
+1. Restart API (permission cache is 5 min), admin dev server (new env var), and Metro; sign out/in on phone, then smoke-test: Community → each screen → tap Community tab returns to hub; Welfare as a member; module toggles in admin.
+2. Create a meeting + attendance on the web for tenant 15 and confirm mobile Meetings tiles / My Attendance populate.
+3. Then Phase 4 per `context/build-plan.md` (officer work incl. F5.8 attendance only when its phase arrives).
 
 ## Open questions
 
-- Pre-existing test suite failure (`Cannot find module 'babel-preset-expo'`): 36 suites affected, unrelated to H/F2.x — investigate before Milestone M1.
-- Real member profile photo: needs `Member.photoUrl` DB field + migration + upload endpoint. Deferred.
-- `context/progress-tracker.md` — should be updated to mark H1/H2 complete and set Next Feature = F2.8.
+- Run `scripts/grant-member-welfare-permissions.ts` on every non-dev environment before release (production not yet done).
+- Poll detail still lacks per-option results (not built).
+- Whether to also give Money/Profile `popToTopOnBlur` (only Community has it).

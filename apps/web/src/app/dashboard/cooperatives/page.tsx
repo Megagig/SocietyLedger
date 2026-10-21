@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCooperativeDashboard } from '@/lib/api/cooperatives';
+import { usePermissions } from '@/hooks/usePermissions';
+import MemberOverview from './MemberOverview';
 import { 
   IconWallet, IconCurrencyNaira, IconAlertTriangle,
   IconArrowRight, IconTrendingUp, IconTrendingDown,
@@ -39,7 +41,7 @@ interface DashboardData {
   };
 }
 
-export default function CooperativesDashboardPage() {
+function OfficerDashboard() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -342,4 +344,24 @@ export default function CooperativesDashboardPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * The association-wide dashboard is officer-only on the server (ledger.view or payments.approve), so a plain
+ * member used to land on "Failed to fetch cooperative dashboard". Members get their own overview instead; the
+ * check mirrors the API's, so the screen always matches what the server will allow.
+ */
+export default function CooperativesDashboardPage() {
+  const { permissions, isHydrated } = usePermissions();
+
+  if (!isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  const isOfficer = permissions.includes('ledger.view') || permissions.includes('payments.approve');
+  return isOfficer ? <OfficerDashboard /> : <MemberOverview />;
 }

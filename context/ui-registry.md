@@ -1356,6 +1356,15 @@ Not reusable UI components; the pieces behind `build-plan.md`'s D1.7 bullet, whi
 
 _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs URL helper; from A2.12/A3.1: `/auth/impersonate` exchange page, updated ContextIndicator banner)_
 
+## Cooperatives savings & loans (Phase 4 web groundwork, 2026-10-21)
+- **`/dashboard/cooperatives/my-savings`** (member): total card with *held against your loan* / *available* split; per-account **Make a Deposit** (gated on `cooperatives.savings_deposit_own`) opens a modal with the cooperative's bank accounts (copy buttons), amount, payment date, receipt `FileInput` (image/PDF, 5MB), reference, note. **My Deposits** list (Awaiting confirmation / Confirmed / Not approved + reason + receipt link) and **Recent Activity**. The old direct Deposit/Withdraw buttons are gone (the API refuses them).
+- **`/dashboard/cooperatives/savings-deposits`** (officer, `payments.approve`): Awaiting/Approved/Rejected `SegmentedControl` queue; View receipt (presigned link), Approve (confirm modal: only after seeing the money), Reject (required reason modal). Sidebar + AdminSidebar entry "Savings Deposits".
+- **`/dashboard/cooperatives/loan-products`:** products can now be **edited** (Edit button reuses the create modal; Active switch in edit mode). New *Savings rule* block: **Savings multiplier** (2 = up to twice available savings; empty/0 = none) and **Hold savings while the loan is running** switch with a worked example. Card shows the rule.
+- **`/dashboard/cooperatives/apply`:** product cards and the amount step show *you can borrow up to ₦X* (min of product cap and multiplier × available savings); amount input capped; the held-savings amount is shown on the amount and review steps. Guarantors now come from `GET /cooperatives/guarantor-candidates` (names only) — a plain member cannot list the member directory.
+- **`/dashboard/cooperatives/my-loans`:** **Pay Now** (gated on `cooperatives.repay_own`) opens a declare-payment modal (loan summary, cooperative bank accounts with copy, amount capped at what is owed, date, receipt `FileInput`, reference, note); **My Payments** list with Awaiting confirmation / Confirmed / Not approved + reason + receipt link. Officers also get **Record Payment** (direct entry, `payments.approve`).
+- **`/dashboard/cooperatives/loan-repayments`** (officer, `payments.approve`): same Awaiting/Approved/Rejected queue pattern as Savings Deposits; approve records the repayment and releases held savings pro-rata. Sidebar + AdminSidebar entry "Loan Repayments".
+
+
 ---
 
 ## Retired

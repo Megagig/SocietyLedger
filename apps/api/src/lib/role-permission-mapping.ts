@@ -24,6 +24,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
+    // Officers are members too: they can declare a deposit into their own savings.
+    "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "system.cron.view", "system.cron.trigger"
   ],
   treasurer: [
@@ -36,6 +38,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
+    // Officers are members too: they can declare a deposit into their own savings.
+    "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "communication.sms.view",
     "notifications.view",
     "settings.view"
@@ -49,6 +53,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
+    // Officers are members too: they can declare a deposit into their own savings.
+    "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "communication.sms.view",
     "notifications.view",
     "settings.view"
@@ -62,6 +68,7 @@ export const ROLE_PERMISSION_MAPPING = {
     "notifications.view",
     "exports.view_history",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
-    "welfare.view_own", "welfare.request_own"
+    "welfare.view_own", "welfare.request_own",
+    "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own"
   ]
 } satisfies Record<string, string[]>;

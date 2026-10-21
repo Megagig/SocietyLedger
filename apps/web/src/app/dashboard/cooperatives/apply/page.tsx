@@ -25,6 +25,16 @@ interface LoanProduct {
   requiresGuarantor: boolean;
   minGuarantors: number;
   processingFeePercent: string;
+  /** e.g. "2.00": a member can borrow up to this many times their available savings. null = no savings rule. */
+  maxLoanToSavingsRatio?: string | null;
+  /** When true, principal / ratio of the member's savings is held until the loan is repaid. */
+  lockSavings?: boolean;
+}
+
+interface SavingsPosition {
+  total: number;
+  locked: number;
+  available: number;
 }
 
 interface Member {
@@ -46,6 +56,7 @@ export default function ApplyForLoanPage() {
   const [loanProducts, setLoanProducts] = useState<LoanProduct[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [eligibility, setEligibility] = useState<LoanEligibility | null>(null);
+  const [savings, setSavings] = useState<SavingsPosition>({ total: 0, locked: 0, available: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -72,24 +83,60 @@ export default function ApplyForLoanPage() {
 
   const fetchData = async () => {
     try {
-      const [productsRes, profileRes, membersRes] = await Promise.all([
+      const [productsRes, profileRes] = await Promise.all([
         getLoanProducts({ isActive: true }),
         getMyCooperativeProfile(),
-        apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members?limit=1000`)
       ]);
       
       setLoanProducts(productsRes.data.products || []);
       setEligibility(profileRes.data.loanEligibility);
+      setSavings({
+        total: Number(profileRes.data.totalSavings || 0),
+        locked: Number(profileRes.data.lockedSavings || 0),
+        available: Number(profileRes.data.availableSavings ?? profileRes.data.totalSavings ?? 0),
+      });
       
-      if (membersRes.ok) {
-        const membersData = await membersRes.json();
-        setMembers(membersData.data.members || []);
-      }
+      await searchGuarantors('');
     } catch (err: any) {
       toast.error(err.message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Members can't list the member directory, so guarantors come from a names-only search. Everyone seen so far
+  // is remembered, so already-picked guarantors keep their names as the search results change.
+  const searchGuarantors = async (term: string) => {
+    try {
+      const res = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/cooperatives/guarantor-candidates?search=${encodeURIComponent(term)}`
+      );
+      if (!res.ok) return;
+      const found: Member[] = (await res.json()).data.members || [];
+      setMembers((prev) => {
+        const byId = new Map(prev.map((m) => [m.id, m]));
+        found.forEach((m) => byId.set(m.id, m));
+        return Array.from(byId.values());
+      });
+    } catch {
+      // Guarantor search is a convenience; the form still works with whoever was found before.
+    }
+  };
+
+  /** The most this member can borrow on a product: its own cap, and (if it has a savings rule) ratio × available savings. */
+  const maxBorrowable = (product: LoanProduct) => {
+    const productMax = parseFloat(product.maxAmount);
+    const ratio = product.maxLoanToSavingsRatio ? parseFloat(product.maxLoanToSavingsRatio) : 0;
+    if (!ratio || ratio <= 0) return { max: productMax, bySavings: false };
+    const bySavings = Math.floor(savings.available * ratio * 100) / 100;
+    return { max: Math.min(productMax, bySavings), bySavings: bySavings < productMax };
+  };
+
+  /** Savings that will be held against this loan amount (principal / ratio), when the product holds savings. */
+  const heldFor = (product: LoanProduct | null, amount: number) => {
+    const ratio = product?.maxLoanToSavingsRatio ? parseFloat(product.maxLoanToSavingsRatio) : 0;
+    if (!product || !product.lockSavings || !ratio || !amount) return 0;
+    return Math.round((amount / ratio) * 100) / 100;
   };
 
   const handleProductChange = (productId: string | null) => {
@@ -170,7 +217,12 @@ export default function ApplyForLoanPage() {
   const canProceed = () => {
     switch (activeStep) {
       case 0: return !!formData.loanProductId;
-      case 1: return !!formData.amount && !!formData.tenureMonths;
+      case 1: {
+        if (!formData.amount || !formData.tenureMonths) return false;
+        if (!selectedProduct) return false;
+        const amount = parseFloat(formData.amount);
+        return amount >= parseFloat(selectedProduct.minAmount) && amount <= maxBorrowable(selectedProduct).max;
+      }
       case 2: return !!formData.purpose && (!selectedProduct?.requiresGuarantor || formData.guarantorIds.length >= (selectedProduct?.minGuarantors || 0));
       default: return true;
     }
@@ -237,6 +289,12 @@ export default function ApplyForLoanPage() {
                       <p><span className="text-gray-500">Amount:</span> {formatCurrency(product.minAmount)} - {formatCurrency(product.maxAmount)}</p>
                       <p><span className="text-gray-500">Interest:</span> {product.interestRate}% ({product.interestType.replace(/_/g, ' ')})</p>
                       <p><span className="text-gray-500">Tenure:</span> {product.minTenureMonths} - {product.maxTenureMonths} months</p>
+                      {product.maxLoanToSavingsRatio && parseFloat(product.maxLoanToSavingsRatio) > 0 && (
+                        <p className="text-teal-700 dark:text-teal-300">
+                          <span className="text-gray-500">Savings rule:</span> up to {parseFloat(product.maxLoanToSavingsRatio)}× your savings
+                          {' '}— you can borrow up to <strong>{formatCurrency(maxBorrowable(product).max)}</strong>
+                        </p>
+                      )}
                       {product.requiresGuarantor && (
                         <p className="text-amber-600"><span className="text-gray-500">Guarantors:</span> {product.minGuarantors} required</p>
                       )}
@@ -274,6 +332,27 @@ export default function ApplyForLoanPage() {
               </div>
             )}
 
+            {selectedProduct?.maxLoanToSavingsRatio && parseFloat(selectedProduct.maxLoanToSavingsRatio) > 0 && (
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20 text-sm space-y-1">
+                <p className="font-medium text-teal-800 dark:text-teal-200">
+                  This cooperative lets you borrow up to {parseFloat(selectedProduct.maxLoanToSavingsRatio)}× your available savings.
+                </p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  Your savings: {formatCurrency(savings.total)}
+                  {savings.locked > 0 && <> · held against another loan: {formatCurrency(savings.locked)}</>}
+                  {' '}· available: <strong>{formatCurrency(savings.available)}</strong>
+                </p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  You can borrow up to <strong>{formatCurrency(maxBorrowable(selectedProduct).max)}</strong> on this product.
+                </p>
+                {maxBorrowable(selectedProduct).max < parseFloat(selectedProduct.minAmount) && (
+                  <p className="text-red-600">
+                    That is below the smallest loan on this product ({formatCurrency(selectedProduct.minAmount)}). Save more, or choose another product.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               <NumberInput
                 label="Loan Amount"
@@ -282,7 +361,7 @@ export default function ApplyForLoanPage() {
                 value={formData.amount ? parseFloat(formData.amount) : ''}
                 onChange={(v) => setFormData({ ...formData, amount: v?.toString() || '' })}
                 min={selectedProduct ? parseFloat(selectedProduct.minAmount) : 0}
-                max={selectedProduct ? parseFloat(selectedProduct.maxAmount) : undefined}
+                max={selectedProduct ? maxBorrowable(selectedProduct).max : undefined}
                 thousandSeparator=","
                 required
               />
@@ -296,6 +375,13 @@ export default function ApplyForLoanPage() {
                 required
               />
             </div>
+
+            {heldFor(selectedProduct, parseFloat(formData.amount || '0')) > 0 && (
+              <p className="mt-4 text-sm text-gray-700 dark:text-gray-300">
+                If this loan is approved, <strong>{formatCurrency(heldFor(selectedProduct, parseFloat(formData.amount || '0')))}</strong> of
+                your savings will be held until you repay it. It stays in your account, but you can&apos;t withdraw it meanwhile.
+              </p>
+            )}
 
             {calculations && (
               <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -347,7 +433,10 @@ export default function ApplyForLoanPage() {
                     data={members.map(m => ({ value: m.id.toString(), label: `${m.firstName} ${m.lastName} (${m.memberId})` }))}
                     value={formData.guarantorIds}
                     onChange={(v) => setFormData({ ...formData, guarantorIds: v })}
+                    onSearchChange={(term) => searchGuarantors(term)}
+                    filter={({ options }) => options}
                     searchable
+                    nothingFoundMessage="No members found"
                   />
                   {formData.guarantorIds.length < selectedProduct.minGuarantors && (
                     <p className="text-sm text-amber-600 mt-1">
@@ -399,6 +488,16 @@ export default function ApplyForLoanPage() {
                     <p className="text-xs sm:text-sm text-gray-500">Total Repayment</p>
                     <p className="text-lg sm:text-xl font-bold text-amber-600">{formatCurrency(calculations.totalRepayment.toFixed(2))}</p>
                   </div>
+                </div>
+              )}
+
+              {heldFor(selectedProduct, parseFloat(formData.amount || '0')) > 0 && (
+                <div className="p-3 sm:p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
+                  <h4 className="font-medium mb-1 text-sm sm:text-base">Savings held against this loan</h4>
+                  <p className="text-sm">
+                    {formatCurrency(heldFor(selectedProduct, parseFloat(formData.amount || '0')))} is held from your savings once the loan is paid out,
+                    and released as you repay.
+                  </p>
                 </div>
               )}
 

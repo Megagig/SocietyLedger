@@ -66,6 +66,9 @@ model Association {
   paymentProofs              PaymentProof[]
   // Phase 8.5: Cooperatives & Loans
   savingsAccounts            SavingsAccount[]
+  savingsDepositRequests     SavingsDepositRequest[]
+  loanRepaymentRequests      LoanRepaymentRequest[]
+  savingsLiens               SavingsLien[]
   savingsTransactions        SavingsTransaction[]
   loanProducts               LoanProduct[]
   loanApplications           LoanApplication[]
@@ -279,6 +282,9 @@ model Member {
   paymentProofs                PaymentProof[]
   // Phase 8.5: Cooperatives & Loans
   savingsAccounts              SavingsAccount[]
+  savingsDepositRequests       SavingsDepositRequest[]
+  loanRepaymentRequests        LoanRepaymentRequest[]
+  savingsLiens                 SavingsLien[]
   loanApplications             LoanApplication[]
   guaranteedLoans              LoanGuarantor[]
   loans                        Loan[]
@@ -1365,6 +1371,7 @@ model SavingsAccount {
   association         Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
   member              Member               @relation(fields: [memberId], references: [id], onDelete: Cascade)
   transactions        SavingsTransaction[]
+  depositRequests     SavingsDepositRequest[]
 
   @@unique([associationId, accountNumber])
   @@index([associationId, status])
@@ -1400,6 +1407,114 @@ model SavingsTransaction {
   @@map("savings_transactions")
 }
 
+// A member's claim that they paid money into the cooperative's bank account, with a receipt attached.
+// It is pending until an officer confirms the money landed; only approval creates the real
+// SavingsTransaction and raises the balance (the balance never moves on a pending request).
+model SavingsDepositRequest {
+  id                   Int                  @id @default(autoincrement())
+  associationId        Int                  @map("association_id")
+  savingsAccountId     Int                  @map("savings_account_id")
+  memberId             Int                  @map("member_id")
+  amount               Decimal              @db.Decimal(12, 2)
+  paymentDate          DateTime             @map("payment_date")
+  bankAccountId        Int?                 @map("bank_account_id")
+  reference            String?
+  memberNote           String?              @map("member_note")
+  filename             String
+  filepath             String // MinIO object key
+  fileSize             Int?                 @map("file_size")
+  mimeType             String?              @map("mime_type")
+  status               SavingsDepositStatus @default(PENDING)
+  reviewedBy           Int?                 @map("reviewed_by")
+  reviewedAt           DateTime?            @map("reviewed_at")
+  rejectionReason      String?              @map("rejection_reason")
+  savingsTransactionId Int?                 @map("savings_transaction_id")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  association    Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  savingsAccount SavingsAccount @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
+  member         Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, status])
+  @@index([memberId])
+  @@index([savingsAccountId])
+  @@map("savings_deposit_requests")
+}
+
+enum SavingsDepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Part of a member's savings held against an active loan. It is created when the loan is disbursed and
+// released as the principal is repaid; while it is outstanding it cannot be withdrawn or borrowed against
+// again. The savings balance itself is untouched — available = balance - outstanding liens.
+model SavingsLien {
+  id             Int              @id @default(autoincrement())
+  associationId  Int              @map("association_id")
+  memberId       Int              @map("member_id")
+  loanId         Int              @unique @map("loan_id")
+  amount         Decimal          @db.Decimal(12, 2)
+  releasedAmount Decimal          @default(0) @map("released_amount") @db.Decimal(12, 2)
+  status         SavingsLienStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  loan        Loan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, memberId, status])
+  @@map("savings_liens")
+}
+
+enum SavingsLienStatus {
+  ACTIVE
+  RELEASED
+}
+
+// A member's claim that they paid money towards a loan, with a receipt attached. Pending until an officer
+// confirms the money landed; only approval records the real LoanRepayment (which also releases held savings).
+model LoanRepaymentRequest {
+  id              Int                        @id @default(autoincrement())
+  associationId   Int                        @map("association_id")
+  loanId          Int                        @map("loan_id")
+  memberId        Int                        @map("member_id")
+  amount          Decimal                    @db.Decimal(12, 2)
+  paymentDate     DateTime                   @map("payment_date")
+  bankAccountId   Int?                       @map("bank_account_id")
+  reference       String?
+  memberNote      String?                    @map("member_note")
+  filename        String
+  filepath        String // MinIO object key
+  fileSize        Int?                       @map("file_size")
+  mimeType        String?                    @map("mime_type")
+  status          LoanRepaymentRequestStatus @default(PENDING)
+  reviewedBy      Int?                       @map("reviewed_by")
+  reviewedAt      DateTime?                  @map("reviewed_at")
+  rejectionReason String?                    @map("rejection_reason")
+  loanRepaymentId Int?                       @map("loan_repayment_id")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  loan        Loan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, status])
+  @@index([memberId])
+  @@index([loanId])
+  @@map("loan_repayment_requests")
+}
+
+enum LoanRepaymentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // Loan Product
 model LoanProduct {
   id                    Int               @id @default(autoincrement())
@@ -1417,6 +1532,9 @@ model LoanProduct {
   requiresGuarantor     Boolean           @default(true) @map("requires_guarantor")
   minGuarantors         Int               @default(1) @map("min_guarantors")
   maxLoanToSavingsRatio Decimal?          @map("max_loan_to_savings_ratio") @db.Decimal(5, 2)
+  // When set together with the ratio, disbursing a loan puts principal / ratio of the member's savings on
+  // hold (a SavingsLien) until the loan is repaid. The balance is never debited — it is held, not spent.
+  lockSavings           Boolean           @default(true) @map("lock_savings")
   gracePeriodDays       Int               @default(0) @map("grace_period_days")
   lateFeePercent        Decimal           @default(0) @map("late_fee_percent") @db.Decimal(5, 2)
   lateFeeFixed          Decimal           @default(0) @map("late_fee_fixed") @db.Decimal(10, 2)
@@ -1540,6 +1658,8 @@ model Loan {
   loanProduct        LoanProduct             @relation(fields: [loanProductId], references: [id])
   repaymentSchedule  LoanRepaymentSchedule[]
   repayments         LoanRepayment[]
+  savingsLien        SavingsLien?
+  repaymentRequests  LoanRepaymentRequest[]
 
   @@unique([associationId, loanNumber])
   @@index([associationId, status])

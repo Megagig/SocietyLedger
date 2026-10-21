@@ -4,19 +4,27 @@ description: "Your savings account balance, applying for a loan, and responding 
 type: concept
 audience: ["member"]
 platforms: ["web"]
-covers: ["/dashboard/cooperatives/my-*", "M15", "M16", "M17", "M18", "M19", "M20"]
+covers: ["/dashboard/cooperatives", "/dashboard/cooperatives/my-*", "M15", "M16", "M17", "M18", "M19", "M20"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/cooperatives/applying-for-a-loan", "/docs/cooperatives/guarantors"]
+lastVerified: "2026-10-21"
+related: ["/docs/cooperatives/depositing-into-your-savings", "/docs/cooperatives/paying-your-loan", "/docs/cooperatives/savings-rule-and-held-savings", "/docs/cooperatives/applying-for-a-loan", "/docs/cooperatives/guarantors"]
 ---
 
 If your association runs a cooperative, this is where you check your savings balance, apply for a loan, and respond when someone asks you to guarantee theirs.
 
 ## How it works
 
-<Screenshot src="/images/member-guide/savings-and-loans-1.webp" alt="My Savings page showing an account's Current Balance, Total Deposits, Total Withdrawals and Interest Earned, with Deposit and Withdraw buttons" />
+**Cooperatives → Overview** is your starting point: your total savings, what you owe, how much you can borrow, and anything waiting for an officer to confirm, with shortcuts to everything below.
 
-**My Savings** lists every savings account opened for you — an officer opens the account, and deposits and withdrawals both appear in its history. **My Loans** shows anything you've borrowed, or lets you apply for a new one if you have none active.
+<Screenshot pending="Cooperatives overview page for a member showing Total savings, Loans you owe, You can borrow up to, and shortcut cards" />
+
+**My Savings** lists every savings account opened for you. It shows your total balance and — if part of your savings is held against a loan — how much is held and how much is available.
+
+<Screenshot pending="My Savings page showing an account's Current Balance, Total Deposits, Total Withdrawals, a Make a Deposit button, and the My Deposits list" />
+
+To save, pay into the cooperative's bank account and select **Make a Deposit** to upload your receipt. It's added once an officer confirms it — see [Depositing into your savings](/docs/cooperatives/depositing-into-your-savings). Only an officer can record a withdrawal.
+
+**My Loans** shows anything you've borrowed, with a **Pay Now** button to declare a repayment with your receipt ([Paying towards your loan](/docs/cooperatives/paying-your-loan)), or lets you apply for a new one if you have none active.
 
 <Screenshot src="/images/member-guide/savings-and-loans-2.webp" alt="My Loans page with no active loans and an Apply for Loan button" />
 
@@ -24,8 +32,8 @@ If your association runs a cooperative, this is where you check your savings bal
 
 <Steps>
 <Step>Go to <MenuPath items={["Cooperatives", "Apply"]} />.</Step>
-<Step>Choose a **Loan Product** — its interest rate, tenure range and how many guarantors it needs are shown upfront.</Step>
-<Step>Enter the **Amount** and **Tenure**, your **Purpose**, and name the required number of **Guarantors** from your member list.</Step>
+<Step>Choose a **Loan Product** — its interest rate, tenure range and how many guarantors it needs are shown upfront, and, if it lends against savings, how much you can borrow.</Step>
+<Step>Enter the **Amount** and **Tenure**, your **Purpose**, and name the required number of **Guarantors** — search for them by name or member number.</Step>
 <Step>Review and submit.</Step>
 </Steps>
 
@@ -35,13 +43,9 @@ Your application then waits for your named guarantors to accept, before an offic
 
 ### Respond to a guarantor request
 
-If another member names you as a guarantor on their loan, it's meant to appear under <MenuPath items={["Cooperatives", "Guarantors"]} /> for you to accept or decline.
+If another member names you as a guarantor on their loan, it appears under <MenuPath items={["Cooperatives", "Guarantors"]} /> for you to accept or decline.
 
 <Screenshot src="/images/member-guide/savings-and-loans-4-pending.webp" alt="Guarantor Requests page showing no pending requests" />
-
-<Callout type="note" title="Still rolling out">
-Guarantor requests don't reliably show up on this screen yet. If someone has named you as a guarantor, an officer can confirm your request's status in the meantime.
-</Callout>
 
 ## Why it matters
 

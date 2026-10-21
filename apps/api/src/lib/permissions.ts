@@ -128,6 +128,14 @@ export const PERMISSIONS = {
   COOPERATIVE_LOANS_APPLY: 'ledger.create',
   COOPERATIVE_LOANS_MANAGE: 'payments.approve',
   COOPERATIVE_GUARANTOR: 'ledger.view',
+  // Member self-service: a member's own savings/loans/applications, applying, answering guarantor requests
+  // and declaring a savings deposit. Distinct from the officer-level `ledger.*` keys above, which members
+  // must never hold (R0.2).
+  COOPERATIVE_VIEW_OWN: 'cooperatives.view_own',
+  COOPERATIVE_APPLY_OWN: 'cooperatives.apply_own',
+  COOPERATIVE_GUARANTOR_OWN: 'cooperatives.guarantor_own',
+  COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own',
+  COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own',
   
   // Member Self-Service Finance
   MEMBER_FINANCE_VIEW: 'ledger.view_own',

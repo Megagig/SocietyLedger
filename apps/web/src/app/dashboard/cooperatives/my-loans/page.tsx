@@ -2,14 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Modal, NumberInput, Select, Textarea, Button, Badge, Progress } from '@mantine/core';
+import { Modal, NumberInput, Select, Textarea, TextInput, FileInput, Button, Badge, Progress, Alert, CopyButton, ActionIcon, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { 
   IconWallet, IconCurrencyNaira, IconCalendar, IconAlertTriangle,
-  IconCheck, IconClock
+  IconCheck, IconClock, IconUpload, IconInfoCircle, IconCopy, IconReceipt
 } from '@tabler/icons-react';
-import { getMyCooperativeProfile, processLoanRepayment } from '@/lib/api/cooperatives';
+import {
+  getMyCooperativeProfile, processLoanRepayment, submitLoanRepaymentRequest, getLoanRepaymentRequests,
+  getLoanRepaymentReceiptUrl, type LoanRepaymentRequest
+} from '@/lib/api/cooperatives';
+import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 
 interface Loan {
   id: number;
@@ -35,21 +41,55 @@ interface MemberProfile {
   totalOutstandingLoans: string;
 }
 
+interface BankAccount {
+  id: number;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  isDefault: boolean;
+}
+
+const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const emptyDeclaration = { amount: '', paymentDate: todayISO(), reference: '', memberNote: '' };
+
 export default function MyLoansPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  // Recording a repayment moves money, so only an officer can do it directly. A member instead pays the
+  // cooperative's bank account and declares the payment with a receipt; an officer confirms it.
+  const { can } = usePermissions();
+  const canRecordRepayment = can(PERMISSIONS.COOPERATIVE_LOANS_MANAGE);
+  const canDeclareRepayment = can(PERMISSIONS.COOPERATIVE_REPAY_OWN);
+  const [declareOpened, { open: openDeclare, close: closeDeclare }] = useDisclosure(false);
+  const [declaration, setDeclaration] = useState(emptyDeclaration);
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [requests, setRequests] = useState<LoanRepaymentRequest[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [repaymentOpened, { open: openRepayment, close: closeRepayment }] = useDisclosure(false);
   const [repaymentData, setRepaymentData] = useState({ amount: '', paymentMethod: 'CASH', reference: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => { fetchProfile(); }, []);
+  useEffect(() => {
+    fetchProfile();
+    // Bank accounts are optional context for the declaration form — the page works without them.
+    apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/me/bank-accounts`)
+      .then(async (res) => {
+        if (res.ok) setBankAccounts((await res.json()).data.accounts || []);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const fetchProfile = async () => {
     try {
-      const result = await getMyCooperativeProfile();
+      const [result, requestsRes] = await Promise.all([
+        getMyCooperativeProfile(),
+        getLoanRepaymentRequests({ limit: 20 }),
+      ]);
       setProfile(result.data);
+      setRequests(requestsRes.data.repaymentRequests || []);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -81,6 +121,97 @@ export default function MyLoansPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const startDeclare = (loan: Loan, suggestedAmount?: string) => {
+    setSelectedLoan(loan);
+    setDeclaration({ ...emptyDeclaration, paymentDate: todayISO(), amount: suggestedAmount ? String(parseFloat(suggestedAmount)) : '' });
+    setReceipt(null);
+    openDeclare();
+  };
+
+  const handleDeclare = async () => {
+    if (!selectedLoan) return;
+    const amount = parseFloat(declaration.amount);
+    if (!amount || amount <= 0) {
+      toast.error('Enter the amount you paid');
+      return;
+    }
+    if (amount > Number(selectedLoan.outstandingBalance)) {
+      toast.error('That is more than you still owe on this loan');
+      return;
+    }
+    if (!receipt) {
+      toast.error('Attach your bank receipt (a photo or PDF)');
+      return;
+    }
+    if (receipt.size > MAX_RECEIPT_BYTES) {
+      toast.error('The receipt must be 5MB or smaller');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await submitLoanRepaymentRequest({
+        loanId: selectedLoan.id,
+        amount,
+        paymentDate: declaration.paymentDate,
+        reference: declaration.reference || undefined,
+        memberNote: declaration.memberNote || undefined,
+        file: receipt,
+      });
+      toast.success('Payment submitted. It will be recorded once an officer confirms it.');
+      closeDeclare();
+      setSelectedLoan(null);
+      await fetchProfile();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const viewReceipt = async (request: LoanRepaymentRequest) => {
+    try {
+      const { url } = await getLoanRepaymentReceiptUrl(request.id);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const requestStatusColor = (status: LoanRepaymentRequest['status']) =>
+    status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'yellow';
+  const requestStatusLabel = (status: LoanRepaymentRequest['status']) =>
+    status === 'APPROVED' ? 'Confirmed' : status === 'REJECTED' ? 'Not approved' : 'Awaiting confirmation';
+
+  /** A member declares a payment with a receipt; an officer can also record one directly. Others are told how to repay. */
+  const renderPayActions = (loan: Loan, color: 'green' | 'red', suggestedAmount?: string) => {
+    if (!canDeclareRepayment && !canRecordRepayment) {
+      return (
+        <p className="text-xs sm:text-sm text-gray-500 sm:max-w-xs">
+          Pay into the cooperative&apos;s bank account and give your receipt to an officer, who will record it.
+        </p>
+      );
+    }
+    return (
+      <div className="flex flex-col sm:flex-row gap-2">
+        {canDeclareRepayment && (
+          <Button color={color} onClick={() => startDeclare(loan, suggestedAmount)} className="w-full sm:w-auto">
+            Pay Now
+          </Button>
+        )}
+        {canRecordRepayment && (
+          <Button
+            color={color}
+            variant={canDeclareRepayment ? 'outline' : 'filled'}
+            onClick={() => { setSelectedLoan(loan); setRepaymentData({ ...repaymentData, amount: suggestedAmount ?? '' }); openRepayment(); }}
+            className="w-full sm:w-auto"
+          >
+            Record Payment
+          </Button>
+        )}
+      </div>
+    );
   };
 
   const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
@@ -210,9 +341,7 @@ export default function MyLoansPage() {
                       <p className="text-sm sm:text-base font-medium">{formatDate(loan.nextPaymentDate)} - {formatCurrency(loan.nextPaymentAmount)}</p>
                     </div>
                   </div>
-                  <Button color="green" onClick={() => { setSelectedLoan(loan); setRepaymentData({ ...repaymentData, amount: loan.nextPaymentAmount }); openRepayment(); }} className="w-full sm:w-auto">
-                    Pay Now
-                  </Button>
+                  {renderPayActions(loan, 'green', loan.nextPaymentAmount)}
                 </div>
               )}
 
@@ -225,9 +354,7 @@ export default function MyLoansPage() {
                       <p className="text-xs sm:text-sm text-gray-500">Please make a payment as soon as possible</p>
                     </div>
                   </div>
-                  <Button color="red" onClick={() => { setSelectedLoan(loan); openRepayment(); }} className="w-full sm:w-auto">
-                    Make Payment
-                  </Button>
+                  {renderPayActions(loan, 'red')}
                 </div>
               )}
             </div>
@@ -236,8 +363,137 @@ export default function MyLoansPage() {
       )}
 
 
-      {/* Repayment Modal */}
-      <Modal opened={repaymentOpened} onClose={closeRepayment} title="Make Loan Repayment" size="md">
+      {/* Payments I have declared */}
+      {requests.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="font-semibold text-gray-900 dark:text-white">My Payments</h2>
+            <p className="text-sm text-gray-500">A payment counts towards your loan only after an officer confirms it.</p>
+          </div>
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {requests.map((request) => (
+              <div key={request.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">{formatCurrency(request.amount)}</p>
+                  <p className="text-sm text-gray-500">
+                    Paid {formatDate(request.paymentDate)} · Loan {request.loanNumber}
+                    {request.reference ? ` · Ref ${request.reference}` : ''}
+                  </p>
+                  {request.status === 'REJECTED' && request.rejectionReason && (
+                    <p className="text-sm text-red-600 mt-1">Reason: {request.rejectionReason}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge color={requestStatusColor(request.status)}>{requestStatusLabel(request.status)}</Badge>
+                  {request.hasReceipt && (
+                    <Button variant="subtle" size="xs" leftSection={<IconReceipt size={14} />} onClick={() => viewReceipt(request)}>
+                      Receipt
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Declare a payment (member) */}
+      <Modal opened={declareOpened} onClose={closeDeclare} title="Pay Towards Your Loan" size="md">
+        <div className="space-y-4">
+          {selectedLoan && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <p className="font-medium">{selectedLoan.loanNumber}</p>
+              <p className="text-sm text-gray-500">{selectedLoan.loanProduct.name}</p>
+              <div className="flex justify-between mt-2">
+                <span className="text-sm text-gray-500">You still owe:</span>
+                <span className="font-semibold text-red-600">{formatCurrency(selectedLoan.outstandingBalance)}</span>
+              </div>
+            </div>
+          )}
+
+          <Alert icon={<IconInfoCircle size={18} />} color="blue" variant="light">
+            <ol className="list-decimal pl-4 space-y-1 text-sm">
+              <li>Pay the amount into the cooperative&apos;s bank account.</li>
+              <li>Fill in the amount and attach your bank receipt below.</li>
+              <li>An officer confirms the money arrived, then it is recorded on your loan.</li>
+            </ol>
+          </Alert>
+
+          {bankAccounts.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Pay into</p>
+              {bankAccounts.map((bank) => (
+                <div key={bank.id} className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg flex items-center justify-between">
+                  <div className="text-sm">
+                    <p className="font-medium">{bank.bankName}</p>
+                    <p className="text-gray-500">{bank.accountName}</p>
+                    <p className="font-mono">{bank.accountNumber}</p>
+                  </div>
+                  <CopyButton value={bank.accountNumber} timeout={2000}>
+                    {({ copied, copy }) => (
+                      <Tooltip label={copied ? 'Copied' : 'Copy account number'}>
+                        <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy} aria-label="Copy account number">
+                          {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                        </ActionIcon>
+                      </Tooltip>
+                    )}
+                  </CopyButton>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <NumberInput
+            label="Amount you paid"
+            placeholder="Enter amount"
+            leftSection={<IconCurrencyNaira size={16} />}
+            value={declaration.amount ? parseFloat(declaration.amount) : ''}
+            onChange={(v) => setDeclaration({ ...declaration, amount: v?.toString() || '' })}
+            thousandSeparator=","
+            decimalScale={2}
+            min={0}
+            required
+          />
+          <TextInput
+            type="date"
+            label="Date of payment"
+            value={declaration.paymentDate}
+            max={todayISO()}
+            onChange={(e) => setDeclaration({ ...declaration, paymentDate: e.target.value })}
+            required
+          />
+          <FileInput
+            label="Bank receipt"
+            description="A photo or PDF of your transfer receipt (max 5MB)"
+            placeholder="Choose a file"
+            leftSection={<IconUpload size={16} />}
+            accept="image/jpeg,image/png,image/gif,application/pdf"
+            value={receipt}
+            onChange={setReceipt}
+            clearable
+            required
+          />
+          <TextInput
+            label="Transfer reference (optional)"
+            placeholder="Reference on your receipt"
+            value={declaration.reference}
+            onChange={(e) => setDeclaration({ ...declaration, reference: e.target.value })}
+          />
+          <Textarea
+            label="Note (optional)"
+            placeholder="Anything the officer should know"
+            value={declaration.memberNote}
+            onChange={(e) => setDeclaration({ ...declaration, memberNote: e.target.value })}
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={closeDeclare}>Cancel</Button>
+            <Button onClick={handleDeclare} loading={isSubmitting} color="green">Submit Payment</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Repayment Modal (officers recording a payment directly) */}
+      <Modal opened={repaymentOpened} onClose={closeRepayment} title="Record Loan Repayment" size="md">
         <div className="space-y-4">
           {selectedLoan && (
             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">

@@ -4,11 +4,16 @@
   "pages": [
     "savings-accounts",
     "deposits-and-withdrawals",
+    "depositing-into-your-savings",
+    "approving-savings-deposits",
     "loan-products",
+    "savings-rule-and-held-savings",
     "applying-for-a-loan",
     "guarantors",
     "reviewing-and-disbursing-loans",
     "repayments-and-schedules",
+    "paying-your-loan",
+    "approving-loan-repayments",
     "member-cooperative-profile"
   ]
 }

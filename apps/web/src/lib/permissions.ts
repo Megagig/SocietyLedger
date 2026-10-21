@@ -141,6 +141,8 @@ export const PERMISSIONS = {
   COOPERATIVE_LOANS_APPLY: 'members.view_own', // Members can apply for loans
   COOPERATIVE_LOANS_MANAGE: 'payments.approve', // Admin manages loan applications
   COOPERATIVE_GUARANTOR: 'members.view_own', // Members can see guarantor requests
+  COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own', // Declare a savings deposit with a receipt
+  COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own', // Declare a payment towards your own loan with a receipt
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
   MEETING_VIEW: 'members.view_own', // Members can view meetings
   MEETING_CREATE: 'members.create',

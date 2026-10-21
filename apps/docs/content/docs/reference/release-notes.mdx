@@ -5,11 +5,17 @@ type: reference
 audience: ["all"]
 platforms: ["web", "mobile"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-21"
 ---
 
 This page lists notable changes to SocietyLedger as they ship — new features, meaningful fixes, and anything that changes how an existing screen works. Entries are added here as each release goes out.
 
 ## Reference
 
-Nothing has been published here yet. Check back after the next release.
+### Cooperatives: deposits, repayments and savings rules
+
+- **Members can deposit and repay in the app.** Pay the cooperative's bank account, upload the receipt, and an officer confirms it before it counts. See [Depositing into your savings](/docs/cooperatives/depositing-into-your-savings) and [Paying towards your loan](/docs/cooperatives/paying-your-loan). Officers review them under **Savings Deposits** and **Loan Repayments** — see [Approving member savings deposits](/docs/cooperatives/approving-savings-deposits) and [Approving member loan repayments](/docs/cooperatives/approving-loan-repayments).
+- **Lend against savings, your cooperative's way.** Each loan product can have a **Savings multiplier** (1×, 2×, 3× …) and hold part of a member's savings while a loan runs. Loan products can now be **edited**. See [Your savings rule and held savings](/docs/cooperatives/savings-rule-and-held-savings).
+- **Members see their own cooperative overview** under **Cooperatives → Overview**, instead of an error.
+- **Fixed:** members couldn't see or respond to guarantor requests, or search for guarantors when applying, because those screens needed officer-level access. They can now.
+- **Security:** members could previously post a deposit or loan repayment straight onto their own balance without an officer confirming the money. Only officers can now record these directly, and each member's cooperative data is visible only to them (and to officers).

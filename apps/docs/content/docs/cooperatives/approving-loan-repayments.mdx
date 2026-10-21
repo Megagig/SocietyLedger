@@ -1,0 +1,41 @@
+---
+title: "Approving member loan repayments"
+description: "Check the bank statement, then confirm or reject a loan payment a member has declared."
+type: task
+audience: ["officer"]
+platforms: ["web"]
+covers: ["/dashboard/cooperatives/loan-repayments"]
+status: published
+lastVerified: "2026-10-21"
+related: ["/docs/cooperatives/paying-your-loan", "/docs/cooperatives/repayments-and-schedules"]
+---
+
+Members can pay towards their loans by transferring to the cooperative's bank account and uploading the receipt. Each payment waits here until you confirm the money arrived.
+
+## Before you start
+
+You need the **Administrator** or **Treasurer** role, and the cooperative's bank statement to hand.
+
+<Callout type="warning" title="Only approve money you can see">
+Approving records the repayment on the loan immediately and can't be undone from this screen. Match the amount and date to your bank statement, not just the uploaded receipt.
+</Callout>
+
+## Review a payment
+
+<Steps>
+<Step>Go to <MenuPath items={["Cooperatives", "Loan Repayments"]} />. The **Awaiting** tab lists payments that need a decision.</Step>
+<Step>Read the member, loan number, amount, date and any reference or note. Select **View receipt** to open the uploaded file.</Step>
+<Step>Select **Approve** if the money arrived — confirm with **Yes, record repayment**.</Step>
+<Step>Or select **Reject**, give the member a **Reason**, and confirm.</Step>
+</Steps>
+
+<Screenshot pending="Loan Repayments page, Awaiting tab, showing a member's ₦50,000 payment on a loan with View receipt, Approve and Reject buttons" />
+
+## What happens next
+
+- **Approved** — the repayment is recorded on the loan like any other (interest first, then principal), the outstanding balance and next payment update, and any savings held against the loan are released in proportion. The member is notified.
+- **Rejected** — nothing is recorded. The member is notified and shown your reason.
+
+If the loan has been paid down since the member submitted — so the payment is now more than they owe — the approval is refused and the payment stays in the **Awaiting** tab for you to reject or sort out. A payment can only be reviewed once.
+
+You can still record a repayment directly, without a member's receipt, from <MenuPath items={["Cooperatives", "Loans"]} />. See [Repayments and repayment schedules](/docs/cooperatives/repayments-and-schedules).
