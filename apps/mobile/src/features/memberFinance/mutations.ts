@@ -54,7 +54,7 @@ export function useSubmitPaymentProof() {
       if (notes) formData.append('notes', notes);
 
       const { client } = await import('@/api/client');
-      const res = await client.post('/nigerian-payments/proofs', formData, {
+      const res = await client.post('/payments/nigerian/proofs', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       if (!res.data?.success) throw new Error(res.data?.message ?? 'Upload failed');

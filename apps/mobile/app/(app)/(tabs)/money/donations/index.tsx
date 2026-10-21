@@ -156,9 +156,11 @@ export default function DonationsScreen() {
       {/* Only show sticky footer when there are donations — empty state has its own CTA */}
       {hasDonations && (
         <StickyFooter>
-          <Button variant="gradient" size="lg" fullWidth onPress={() => sheetRef.current?.present()}>
-            Make a donation
-          </Button>
+          <View style={{ flex: 1 }}>
+            <Button variant="gradient" size="lg" fullWidth onPress={() => sheetRef.current?.present()}>
+              Make a donation
+            </Button>
+          </View>
         </StickyFooter>
       )}
       </View>

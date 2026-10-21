@@ -98,7 +98,7 @@ export function Button({
   // would otherwise share (and fight over) the same definition.
   const gradientId = `btn-gradient-${useId()}`;
 
-  return (
+  const pressable = (
     <Pressable
       onPress={isDisabled ? undefined : onPress}
       disabled={isDisabled}
@@ -109,6 +109,11 @@ export function Button({
       style={({ pressed }) => ({
         transform: [{ scale: pressed && !isDisabled ? 0.97 : 1 }],
         ...(variant === 'gradient' ? { borderRadius: sizeConfig.radius } : null),
+        // Inline style wins over any NativeWind base-reset alignSelf.
+        // The wrapper View above already sets alignSelf:'stretch' for the layout;
+        // this redundant stretch here ensures NativeWind's potential alignSelf:'flex-start'
+        // base reset on Pressable doesn't shrink it to content size inside the wrapper.
+        ...(fullWidth ? { alignSelf: 'stretch' as const } : null),
       })}
       className={cn(
         'flex-row items-center justify-center rounded-md',
@@ -119,10 +124,7 @@ export function Button({
         // gradient layer below — leaving the button's ends unpainted and visually off-centre.
         // The label carries the padding instead.
         variant === 'gradient' && 'px-0',
-        // w-full handles row-layout parents (StickyFooter etc.) via explicit 100% width;
-        // self-stretch handles column-layout parents where Yoga's percentage-width calculation
-        // can drift next to horizontal ScrollViews on Android. Together they cover both cases.
-        fullWidth ? 'w-full self-stretch' : 'self-auto',
+        !fullWidth && 'self-auto',
         isDisabled && !loading && 'opacity-40',
       )}
     >
@@ -158,4 +160,14 @@ export function Button({
       ) : null}
     </Pressable>
   );
+
+  // For fullWidth buttons, a plain-RN View wrapper with alignSelf:'stretch' is the only
+  // reliable way to fill the parent's width on Android. NativeWind's compiled class styles
+  // on Pressable can be overridden by the framework's own style passes; a View's inline style
+  // is applied directly by Yoga and cannot be overridden. The Pressable inside fills the
+  // wrapper via View's default alignItems:'stretch'.
+  if (fullWidth) {
+    return <View style={{ alignSelf: 'stretch' }}>{pressable}</View>;
+  }
+  return pressable;
 }

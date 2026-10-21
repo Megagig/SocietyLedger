@@ -4,7 +4,6 @@
 
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
 import { nigerianPaymentsController } from './nigerian-payments.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
@@ -13,22 +12,11 @@ import { PERMISSIONS } from '../../lib/permissions';
 
 const router: Router = Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/payment-proofs/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
+// Files go to memory — the controller streams the buffer to MinIO immediately
+// after. No file ever lands on the server's local disk.
 const upload = multer({
-  storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -211,6 +199,12 @@ router.get('/proofs/:id',
 router.post('/proofs/:id/verify',
   requirePermission(PERMISSIONS.PAYMENT_CONFIRM),
   nigerianPaymentsController.verifyPaymentProof
+);
+
+// Generate presigned download URL for a proof file — redirects browser to MinIO
+router.get('/proofs/:id/download',
+  requireAnyPermission([PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENTS_VIEW_OWN]),
+  nigerianPaymentsController.downloadPaymentProof
 );
 
 // ==========================================

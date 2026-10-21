@@ -19,7 +19,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { StickyFooter } from '@/components/layout/StickyFooter';
 import { useInitializePaystackPayment, useSubmitPaymentProof } from '@/features/memberFinance/mutations';
-import { useMemberLevies, usePaymentInfo } from '@/features/memberFinance/queries';
+import { useMemberDues, useMemberLevies, usePaymentInfo } from '@/features/memberFinance/queries';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
 const PAYSTACK_MOBILE_CALLBACK = 'https://api.societyledger.app/api/payments/mobile-return';
@@ -43,20 +43,28 @@ export default function PayScreen() {
   const { color } = useThemeTokens();
   const paymentInfoQuery = usePaymentInfo();
   const leviesQuery = useMemberLevies();
+  const duesQuery = useMemberDues();
 
   const initMutation = useInitializePaystackPayment();
   const proofMutation = useSubmitPaymentProof();
 
-  // Find the levy for this transaction
+  // Levies have transactionId; dues use their own id as the payment reference.
   const levy = leviesQuery.data?.find((l) => l.transactionId === transactionId);
-  const amount = levy ? levy.balance : null;
-  const levyName = levy?.campaign.name ?? '—';
+  const due = !levy ? (duesQuery.data?.find((d) => d.id === transactionId) ?? null) : null;
+
+  const amount = levy?.balance ?? due?.balance ?? null;
+  const itemName = levy?.campaign.name ?? due?.category.name ?? '—';
+
+  // Paystack requires a server-side transactionId which only levies expose.
+  const supportsOnlinePayment = !!levy;
+  // When online payment isn't available (dues), force the bank tab.
+  const effectiveTab = supportsOnlinePayment ? activeTab : 'bank';
 
   const paymentInfo = paymentInfoQuery.data;
   const bankAccounts = paymentInfo?.bankAccounts ?? [];
   const paystackEnabled = paymentInfo?.paystackEnabled ?? false;
 
-  const isLoading = leviesQuery.isPending || paymentInfoQuery.isPending;
+  const isLoading = leviesQuery.isPending || paymentInfoQuery.isPending || (!levy && duesQuery.isPending);
   const isError = leviesQuery.isError || paymentInfoQuery.isError;
 
   async function handlePayOnline() {
@@ -149,14 +157,23 @@ export default function PayScreen() {
     );
   }
 
-  if (!levy || !amount || amount.lte(0)) {
+  if (!levy && !due) {
+    return (
+      <Screen edges={['top']}>
+        <ScreenHeader title="Pay" onBack={() => router.back()} />
+        <EmptyState icon={AlertCircle} title="Item not found" description="Could not find this payment item. Pull down to retry." />
+      </Screen>
+    );
+  }
+
+  if (!amount || amount.lte(0)) {
     return (
       <Screen edges={['top']}>
         <ScreenHeader title="Pay" onBack={() => router.back()} />
         <EmptyState
           icon={Check}
           title="Already paid"
-          description="This levy has no outstanding balance."
+          description="This item has no outstanding balance."
         />
       </Screen>
     );
@@ -169,35 +186,37 @@ export default function PayScreen() {
 
       {/* Summary card */}
       <View className="mx-4 mb-6 rounded-2xl overflow-hidden bg-surface-raised p-5 gap-1">
-        <Text variant="caption" tone="secondary" className="uppercase tracking-wide">{levyName}</Text>
+        <Text variant="caption" tone="secondary" className="uppercase tracking-wide">{itemName}</Text>
         <Money value={amount} size="display" />
         <Text variant="caption" tone="secondary">Outstanding balance</Text>
       </View>
 
-      {/* Tab switcher */}
+      {/* Tab switcher — only show online tab if Paystack is supported for this item */}
       <View className="flex-row mx-4 mb-6 rounded-xl overflow-hidden bg-surface-raised">
+        {supportsOnlinePayment && (
+          <TouchableOpacity
+            className="flex-1 py-3 items-center"
+            style={{ backgroundColor: effectiveTab === 'online' ? color.primary : 'transparent' }}
+            onPress={() => setActiveTab('online')}
+          >
+            <Text variant="body-strong" style={{ color: effectiveTab === 'online' ? '#fff' : color.textSecondary }}>
+              Pay online
+            </Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           className="flex-1 py-3 items-center"
-          style={{ backgroundColor: activeTab === 'online' ? color.primary : 'transparent' }}
-          onPress={() => setActiveTab('online')}
-        >
-          <Text variant="body-strong" style={{ color: activeTab === 'online' ? '#fff' : color.textSecondary }}>
-            Pay online
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="flex-1 py-3 items-center"
-          style={{ backgroundColor: activeTab === 'bank' ? color.primary : 'transparent' }}
+          style={{ backgroundColor: effectiveTab === 'bank' ? color.primary : 'transparent' }}
           onPress={() => setActiveTab('bank')}
         >
-          <Text variant="body-strong" style={{ color: activeTab === 'bank' ? '#fff' : color.textSecondary }}>
+          <Text variant="body-strong" style={{ color: effectiveTab === 'bank' ? '#fff' : color.textSecondary }}>
             Bank transfer
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Online tab */}
-      {activeTab === 'online' && (
+      {activeTab === 'online' && supportsOnlinePayment && (
         <View className="gap-4">
           {paystackEnabled ? (
             <>
@@ -219,7 +238,7 @@ export default function PayScreen() {
                 disabled={initMutation.isPending}
                 loading={initMutation.isPending}
               >
-                {`Pay ${formatMoney(amount)} now`}
+                {`Pay ${formatMoney(amount!)} now`}
               </Button>
             </>
           ) : (
@@ -233,7 +252,7 @@ export default function PayScreen() {
       )}
 
       {/* Bank transfer tab */}
-      {activeTab === 'bank' && (
+      {effectiveTab === 'bank' && (
         <View className="gap-4" style={{ paddingBottom: 96 }}>
           {bankAccounts.length === 0 ? (
             <View className="px-4">
@@ -329,18 +348,20 @@ export default function PayScreen() {
       )}
 
     </Screen>
-    {activeTab === 'bank' && (
+    {effectiveTab === 'bank' && (
       <StickyFooter>
-        <Button
-          variant="gradient"
-          size="lg"
-          fullWidth
-          onPress={handleSubmitProof}
-          disabled={proofMutation.isPending}
-          loading={proofMutation.isPending}
-        >
-          Submit payment proof
-        </Button>
+        <View style={{ flex: 1 }}>
+          <Button
+            variant="gradient"
+            size="lg"
+            fullWidth
+            onPress={handleSubmitProof}
+            disabled={proofMutation.isPending}
+            loading={proofMutation.isPending}
+          >
+            Submit payment proof
+          </Button>
+        </View>
       </StickyFooter>
     )}
     </View>

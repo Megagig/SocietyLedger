@@ -314,8 +314,9 @@ export default function PaymentVerificationQueue() {
                 <Text
                   fw={500}
                   component="a"
-                  href={`${process.env.NEXT_PUBLIC_API_URL}/${selectedProof.filepath?.replace(/\\/g, '/')}`}
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/api/payments/nigerian/proofs/${selectedProof.id}/download`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="underline"
                 >
                   {selectedProof.filename}

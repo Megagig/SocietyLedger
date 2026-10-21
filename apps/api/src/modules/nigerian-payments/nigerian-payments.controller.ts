@@ -4,7 +4,9 @@
 
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import path from 'path';
 import { prisma } from '../../lib/prisma';
+import { uploadFile, getPresignedUrl } from '../../lib/storage';
 import { nigerianPaymentsService } from './nigerian-payments.service';
 import {
   createBankAccountSchema,
@@ -756,6 +758,15 @@ export const nigerianPaymentsController = {
         });
       }
 
+      // Upload the file buffer to MinIO. The returned key is stored in the DB;
+      // the server's local disk is never written to.
+      let storageKey: string | undefined;
+      if (file?.buffer) {
+        const ext = path.extname(file.originalname) || '';
+        storageKey = `payment-proofs/${associationId}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+        await uploadFile(storageKey, file.buffer, file.mimetype);
+      }
+
       // R7.2 (G17): confirm every declared transaction actually belongs to this
       // member and is genuinely outstanding — without this, any member could
       // submit a proof for someone else's transaction.
@@ -782,7 +793,7 @@ export const nigerianPaymentsController = {
         bankTransferId: data.bankTransferId,
         paymentMethod: data.paymentMethod || (file ? 'bank_transfer' : undefined),
         filename: file?.originalname,
-        filepath: file?.path,
+        filepath: storageKey,   // MinIO object key, not a local path
         fileSize: file?.size,
         mimeType: file?.mimetype,
         declarationNote: data.declarationNote,
@@ -917,6 +928,37 @@ export const nigerianPaymentsController = {
     } catch (error) {
       console.error('Error fetching payment proof:', error);
       return res.status(500).json({ success: false, message: 'Failed to fetch payment proof' });
+    }
+  },
+
+  async downloadPaymentProof(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const proof = await prisma.paymentProof.findFirst({
+        where: { id: parseInt(id), associationId },
+      });
+
+      if (!proof) {
+        return res.status(404).json({ success: false, message: 'Payment proof not found' });
+      }
+
+      if (!proof.filepath) {
+        return res.status(404).json({ success: false, message: 'No file attached to this proof' });
+      }
+
+      // Generate a 1-hour presigned URL and redirect the browser directly to MinIO.
+      // The file is never proxied through the API server — MinIO streams it directly.
+      const url = await getPresignedUrl(proof.filepath);
+      return res.redirect(url);
+    } catch (error) {
+      console.error('Error generating download URL:', error);
+      return res.status(500).json({ success: false, message: 'Failed to generate download URL' });
     }
   },
 

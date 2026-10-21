@@ -29,22 +29,32 @@ export function Screen({ children, scroll = true, refreshing, onRefresh, keyboar
   };
 
   // ui-rules.md §2 — 16dp gutter, content max width 560dp centred on tablets.
-  const contentClassName = cn('w-full max-w-[560px] self-center px-4', className);
+  // IMPORTANT: These must be plain RN inline styles, NOT NativeWind contentContainerClassName.
+  // NativeWind's percentage-width handling inside a ScrollView's content container is
+  // unreliable on Android — w-full / self-stretch on children doesn't fill the full width,
+  // causing asymmetric gaps. Yoga resolves plain inline style={{ width:'100%' }} correctly.
+  const innerStyle = {
+    width: '100%' as const,
+    maxWidth: 560,
+    alignSelf: 'center' as const,
+    paddingHorizontal: 16,
+  };
 
   const content = scroll ? (
     <ScrollView
       className="flex-1 bg-bg"
-      contentContainerClassName={contentClassName}
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
       refreshControl={
         onRefresh ? <RefreshControl refreshing={refreshing ?? false} onRefresh={onRefresh} tintColor={color.primary} /> : undefined
       }
     >
-      {children}
+      <View style={innerStyle} className={className}>
+        {children}
+      </View>
     </ScrollView>
   ) : (
-    <View className={cn('flex-1 bg-bg', contentClassName)}>{children}</View>
+    <View className={cn('flex-1 bg-bg', className)} style={innerStyle}>{children}</View>
   );
 
   return (

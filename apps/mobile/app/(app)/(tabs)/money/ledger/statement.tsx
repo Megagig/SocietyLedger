@@ -247,15 +247,17 @@ export default function StatementScreen() {
 
     </Screen>
     <StickyFooter>
-      <Button
-        variant="gradient"
-        size="lg"
-        fullWidth
-        disabled={!statement || statementQuery.isPending || !isCustomValid}
-        onPress={handleShare}
-      >
-        Share statement
-      </Button>
+      <View style={{ flex: 1 }}>
+        <Button
+          variant="gradient"
+          size="lg"
+          fullWidth
+          disabled={!statement || statementQuery.isPending || !isCustomValid}
+          onPress={handleShare}
+        >
+          Share statement
+        </Button>
+      </View>
     </StickyFooter>
     </View>
   );

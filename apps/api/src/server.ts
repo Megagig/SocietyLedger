@@ -13,6 +13,7 @@ import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/paymen
 import { startPushReceiptsJob, stopPushReceiptsJob } from './services/push.service';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
+import { ensureBucketExists } from './lib/storage';
 import { standardRateLimit, authRateLimit, sessionRateLimit } from './middleware/rate-limit.middleware';
 
 // Load environment variables
@@ -256,6 +257,9 @@ if (process.env.NODE_ENV !== 'test') {
         console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
         console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
         
+        // Ensure MinIO bucket exists (no-op if already created)
+        ensureBucketExists().catch((err) => console.warn('[storage] MinIO bucket init failed:', err));
+
         // Start cron jobs
         startSubscriptionJobs();
         startMeetingJobs();

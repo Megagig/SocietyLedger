@@ -26,6 +26,8 @@
     "debug:accounting": "tsx ../../scripts/debug-association-accounting.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1154.0",
+    "@aws-sdk/s3-request-presigner": "^3.1154.0",
     "@prisma/client": "^5.0.0",
     "@societyledger/shared": "workspace:*",
     "@types/bcryptjs": "^2.4.0",

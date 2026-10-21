@@ -1,0 +1,44 @@
+# MinIO object storage service for Dokploy deployment.
+#
+# HOW TO USE IN DOKPLOY:
+# 1. In your Dokploy project, add a new "Docker Compose" service.
+# 2. Paste this file's contents (or point Dokploy at this file).
+# 3. Set these env vars on the MinIO service in Dokploy:
+#      MINIO_ROOT_USER     → your chosen admin username  (e.g. societyledger)
+#      MINIO_ROOT_PASSWORD → a strong password (16+ chars)
+# 4. Create a domain in Dokploy for MinIO:
+#      Port 9000 → files.yourdomain.com  (API — the API server talks to this)
+#      Port 9001 → minio-console.yourdomain.com  (Admin UI — for you only)
+# 5. Add these env vars to your API service in Dokploy:
+#      MINIO_ENDPOINT=http://minio:9000   ← internal Docker network name
+#      MINIO_ACCESS_KEY=societyledger
+#      MINIO_SECRET_KEY=<your strong password>
+#      MINIO_BUCKET=societyledger
+#      MINIO_REGION=us-east-1
+#
+# IMPORTANT: MINIO_ENDPOINT uses the Docker service name "minio" (not localhost)
+# because the API container and MinIO container are on the same Docker network.
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: societyledger-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"   # S3 API (API server connects here)
+      - "9001:9001"   # MinIO Console (browser admin UI)
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  minio_data:
+    driver: local

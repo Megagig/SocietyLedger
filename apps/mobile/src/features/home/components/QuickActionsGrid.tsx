@@ -9,20 +9,21 @@ import { t, type TranslationKey } from '@/lib/i18n';
 import { can, canAny, type PermissionAlias } from '@/lib/permissions';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { useSessionStore } from '@/stores/session';
+import type { ColorToken } from '@/theme/tokens';
 
 type QuickAction = {
   key: string;
   icon: LucideIcon;
   label: string;
-  /** Omitted = visible to every member (e.g. Support) — never gated on an empty alias list. */
   permission?: PermissionAlias | PermissionAlias[];
-  /** When set, pressing this tile navigates instead of showing a coming-soon toast. */
   route?: string;
   comingSoonKey: TranslationKey;
+  /** Token name for the icon background — e.g. 'successSoft'. */
+  iconBgToken: ColorToken;
+  /** Token name for the icon color. */
+  iconColorToken: ColorToken;
 };
 
-// F2.8/F2.9 done: pay, uploadProof, and statement now navigate to real screens.
-// Savings, loans, and support are still genuinely unbuilt (F4.x) — kept as toasts.
 const ACTIONS: QuickAction[] = [
   {
     key: 'pay',
@@ -31,6 +32,8 @@ const ACTIONS: QuickAction[] = [
     permission: ['MEMBER_FINANCE_VIEW', 'LEDGER_VIEW', 'LEDGER_VIEW_ALL'],
     route: '/(app)/(tabs)/money',
     comingSoonKey: 'home.quickActions.payComingSoon',
+    iconBgToken: 'successSoft',
+    iconColorToken: 'success',
   },
   {
     key: 'uploadProof',
@@ -39,6 +42,8 @@ const ACTIONS: QuickAction[] = [
     permission: ['MEMBER_FINANCE_VIEW', 'LEDGER_VIEW', 'LEDGER_VIEW_ALL'],
     route: '/(app)/(tabs)/money/levies',
     comingSoonKey: 'home.quickActions.uploadProofComingSoon',
+    iconBgToken: 'infoSoft',
+    iconColorToken: 'info',
   },
   {
     key: 'statement',
@@ -47,6 +52,8 @@ const ACTIONS: QuickAction[] = [
     permission: ['MEMBER_FINANCE_VIEW', 'LEDGER_VIEW', 'LEDGER_VIEW_ALL'],
     route: '/money/ledger/statement',
     comingSoonKey: 'home.quickActions.statementComingSoon',
+    iconBgToken: 'accentSoft',
+    iconColorToken: 'accent',
   },
   {
     key: 'savings',
@@ -54,6 +61,8 @@ const ACTIONS: QuickAction[] = [
     label: t('home.quickActions.savings'),
     permission: 'COOPERATIVE_SAVINGS_VIEW',
     comingSoonKey: 'home.quickActions.savingsComingSoon',
+    iconBgToken: 'warningSoft',
+    iconColorToken: 'warning',
   },
   {
     key: 'applyLoan',
@@ -61,29 +70,28 @@ const ACTIONS: QuickAction[] = [
     label: t('home.quickActions.applyLoan'),
     permission: 'COOPERATIVE_LOANS_APPLY',
     comingSoonKey: 'home.quickActions.applyLoanComingSoon',
+    iconBgToken: 'primarySoft',
+    iconColorToken: 'primary',
   },
-  { key: 'support', icon: LifeBuoy, label: t('home.quickActions.support'), comingSoonKey: 'home.quickActions.supportComingSoon' },
+  {
+    key: 'support',
+    icon: LifeBuoy,
+    label: t('home.quickActions.support'),
+    comingSoonKey: 'home.quickActions.supportComingSoon',
+    iconBgToken: 'dangerSoft',
+    iconColorToken: 'danger',
+  },
 ];
 
 const COLUMNS = 3;
-const GAP = 12;
+const GAP = 10;
 
-// Stable reference — see useCan's own note: `?? []` would allocate per call and break
-// useSyncExternalStore's referential-stability requirement.
 const EMPTY_PERMISSIONS: string[] = [];
 
 /**
  * ui-rules.md §5.4 — "3-column grid, tile = icon in primary-soft tile + caption label, max 6
- * tiles."
- *
- * Laid out as explicit rows of three with each cell `flex: 1`, rather than a wrapping container
- * of percentage-width tiles. Percentage widths do not resolve reliably for these children — they
- * were silently ignored, letting the tiles size to content and pack five to a row — and adding a
- * `gap` on a wrapping container pushes the track past 100% so the last tile drops to its own row.
- * Equal-flex cells inside a fixed row avoid both failure modes.
- *
- * Permissions are resolved from the session store once here instead of a `useCan` per tile, so
- * the visible set is known before layout; a hook per tile would have to run inside the row map.
+ * tiles." Each tile gets its own color scheme via `iconBgToken`/`iconColorToken` so the grid
+ * reads as a palette rather than a monochrome block.
  */
 export function QuickActionsGrid() {
   const permissions = useSessionStore((state) => state.user?.permissions ?? EMPTY_PERMISSIONS);
@@ -108,7 +116,6 @@ export function QuickActionsGrid() {
               <QuickActionTile action={action} />
             </View>
           ))}
-          {/* Keeps the final row's tiles the same width as a full row's instead of stretching. */}
           {Array.from({ length: COLUMNS - row.length }, (_, index) => (
             <View key={`filler-${index}`} style={{ flex: 1 }} />
           ))}
@@ -121,40 +128,55 @@ export function QuickActionsGrid() {
 function QuickActionTile({ action }: { action: QuickAction }) {
   const { color } = useThemeTokens();
 
+  const iconBg = color[action.iconBgToken];
+  const iconColor = color[action.iconColorToken];
+
   return (
     <Pressable
       onPress={() => action.route ? router.push(action.route as never) : toast(t(action.comingSoonKey))}
       accessibilityRole="button"
       accessibilityLabel={action.label}
       testID={`quick-action-${action.key}`}
-      style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.72 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
     >
-      {/* Column layout, and the label never gets `flex: 1` — inside a row that sizes it to zero
-       * and the text disappears. `minHeight` keeps one- and two-line labels the same tile height. */}
       <View
         style={{
           alignItems: 'center',
-          paddingVertical: 16,
+          paddingVertical: 18,
           paddingHorizontal: 6,
-          borderRadius: 18,
+          borderRadius: 20,
           borderWidth: 1,
           borderColor: color.border,
           backgroundColor: color.surfaceRaised,
+          // Subtle shadow to lift the tile
+          shadowColor: color.overlay,
+          shadowOffset: { width: 0, height: 2 },
+          shadowRadius: 6,
+          shadowOpacity: 0.05,
+          elevation: 2,
         }}
       >
         <View
           style={{
-            height: 46,
-            width: 46,
+            height: 50,
+            width: 50,
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 15,
-            backgroundColor: color.primarySoft,
+            borderRadius: 16,
+            backgroundColor: iconBg,
           }}
         >
-          <action.icon size={23} color={color.primary} strokeWidth={1.9} />
+          <action.icon size={24} color={iconColor} strokeWidth={1.8} />
         </View>
-        <Text variant="caption" align="center" numberOfLines={2} style={{ marginTop: 10, minHeight: 32 }}>
+        <Text
+          variant="caption"
+          align="center"
+          numberOfLines={2}
+          style={{ marginTop: 10, minHeight: 30, color: color.text }}
+        >
           {action.label}
         </Text>
       </View>

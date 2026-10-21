@@ -78,6 +78,7 @@ export default function DuesScreen() {
 
   const totalOutstanding = dues.reduce((sum, d) => (d.status !== 'paid' ? sum + Number(d.balance) : sum), 0);
   const hasOutstanding = totalOutstanding > 0;
+  const firstUnpaidDue = dues.find((d) => d.status !== 'paid');
 
   return (
     <Screen edges={['top']} refreshing={duesQuery.isRefetching} onRefresh={() => duesQuery.refetch()}>
@@ -105,8 +106,15 @@ export default function DuesScreen() {
           <View className="flex-1">
             <SegmentedControl options={STATUS_OPTIONS} value={filter} onChange={setFilter} />
           </View>
-          {hasOutstanding && (
-            <Button size="sm" onPress={() => router.push('/money/pay' as never)}>Pay all</Button>
+          {firstUnpaidDue && (
+            <Button
+              size="sm"
+              onPress={() =>
+                router.push({ pathname: '/money/pay' as never, params: { transactionId: firstUnpaidDue.id } })
+              }
+            >
+              Pay now
+            </Button>
           )}
         </View>
 

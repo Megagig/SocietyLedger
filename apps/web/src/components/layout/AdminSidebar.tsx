@@ -295,6 +295,12 @@ export function AdminSidebar() {
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments/nigerian',
         },
+        {
+          label: 'Payment Proofs',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/payments/nigerian/verification',
+          permission: PERMISSIONS.PAYMENT_RECORD,
+        },
       ],
     },
     {
