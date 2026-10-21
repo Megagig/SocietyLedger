@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { Banknote, FileText, FileUp, HandCoins, LifeBuoy, PiggyBank, type LucideIcon } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { toast } from 'sonner-native';
 
 import { Text } from '@/components/ui/Text';
@@ -15,18 +16,20 @@ type QuickAction = {
   label: string;
   /** Omitted = visible to every member (e.g. Support) — never gated on an empty alias list. */
   permission?: PermissionAlias | PermissionAlias[];
+  /** When set, pressing this tile navigates instead of showing a coming-soon toast. */
+  route?: string;
   comingSoonKey: TranslationKey;
 };
 
-// None of M2/M4/M7/M15/M19/P9 exist yet (F2.6–F2.9, F4.1/F4.2, F4.5) — every tile is a
-// "coming soon" toast for now, same pattern F2.1's Welcome screen used for "Create an
-// association". The permission filtering itself is real, per H1's own spec.
+// F2.8/F2.9 done: pay, uploadProof, and statement now navigate to real screens.
+// Savings, loans, and support are still genuinely unbuilt (F4.x) — kept as toasts.
 const ACTIONS: QuickAction[] = [
   {
     key: 'pay',
     icon: Banknote,
     label: t('home.quickActions.pay'),
     permission: ['MEMBER_FINANCE_VIEW', 'LEDGER_VIEW', 'LEDGER_VIEW_ALL'],
+    route: '/(app)/(tabs)/money',
     comingSoonKey: 'home.quickActions.payComingSoon',
   },
   {
@@ -34,6 +37,7 @@ const ACTIONS: QuickAction[] = [
     icon: FileUp,
     label: t('home.quickActions.uploadProof'),
     permission: ['MEMBER_FINANCE_VIEW', 'LEDGER_VIEW', 'LEDGER_VIEW_ALL'],
+    route: '/(app)/(tabs)/money/levies',
     comingSoonKey: 'home.quickActions.uploadProofComingSoon',
   },
   {
@@ -41,6 +45,7 @@ const ACTIONS: QuickAction[] = [
     icon: FileText,
     label: t('home.quickActions.statement'),
     permission: ['MEMBER_FINANCE_VIEW', 'LEDGER_VIEW', 'LEDGER_VIEW_ALL'],
+    route: '/money/ledger/statement',
     comingSoonKey: 'home.quickActions.statementComingSoon',
   },
   {
@@ -118,7 +123,7 @@ function QuickActionTile({ action }: { action: QuickAction }) {
 
   return (
     <Pressable
-      onPress={() => toast(t(action.comingSoonKey))}
+      onPress={() => action.route ? router.push(action.route as never) : toast(t(action.comingSoonKey))}
       accessibilityRole="button"
       accessibilityLabel={action.label}
       testID={`quick-action-${action.key}`}

@@ -272,6 +272,12 @@ export class AuthController {
         };
       }
 
+      // Ensure the user has a UserRole row — admin-created users may not have one
+      // because the RBAC migration only ran once. Self-heals on every login until fixed.
+      if (tokenAssociationId && user.role) {
+        await RBACService.ensureUserRoles(user.id, tokenAssociationId, user.role);
+      }
+
       // Resolve user permissions from database
       const rbacContext: RBACContext = {
         userId: user.id,
@@ -971,6 +977,10 @@ export class AuthController {
       if (!user) {
         res.status(401).json({ success: false, message: 'Invalid refresh token', code: 'REFRESH_TOKEN_INVALID' });
         return;
+      }
+
+      if (result.associationId && user.role) {
+        await RBACService.ensureUserRoles(user.id, result.associationId, user.role);
       }
 
       const token = generateToken(

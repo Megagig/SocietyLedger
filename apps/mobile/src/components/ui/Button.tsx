@@ -119,7 +119,10 @@ export function Button({
         // gradient layer below — leaving the button's ends unpainted and visually off-centre.
         // The label carries the padding instead.
         variant === 'gradient' && 'px-0',
-        fullWidth ? 'w-full' : 'self-auto',
+        // w-full handles row-layout parents (StickyFooter etc.) via explicit 100% width;
+        // self-stretch handles column-layout parents where Yoga's percentage-width calculation
+        // can drift next to horizontal ScrollViews on Android. Together they cover both cases.
+        fullWidth ? 'w-full self-stretch' : 'self-auto',
         isDisabled && !loading && 'opacity-40',
       )}
     >
@@ -140,6 +143,9 @@ export function Button({
           variant={sizeConfig.textVariant}
           tone={LABEL_TONE[variant]}
           className={cn('font-semibold', variant === 'onPassbook' && 'text-passbook')}
+          // Inline style beats NativeWind class order — avoids text-text (white) winning
+          // over text-passbook (dark green) on the white onPassbook background.
+          style={variant === 'onPassbook' ? { color: color.passbook } : undefined}
           numberOfLines={1}
         >
           {children}

@@ -17,6 +17,7 @@ import {
 } from './nigerian-payments.types';
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
+import { memberLedgerService } from '../member-finance/member-ledger.service';
 
 export const nigerianPaymentsService = {
   // ==========================================
@@ -515,6 +516,13 @@ export const nigerianPaymentsService = {
         console.error('Accounting sync failed (non-critical):', syncError);
         // Don't throw - payment creation succeeded
       }
+
+      // Ledger sync: create CREDIT entry for the auto-reconciled payment
+      try {
+        await memberLedgerService.createFromPayment(payment.id, userId);
+      } catch (ledgerError) {
+        console.error('Ledger sync failed (non-critical):', ledgerError);
+      }
     }
 
     return reconciliation;
@@ -843,6 +851,7 @@ export const nigerianPaymentsService = {
             });
 
             accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
+            accountingSyncs.push(() => memberLedgerService.createFromPayment(payment.id, userId).then(() => {}));
           }
         } else if (updated.transactionId && updated.transaction) {
           // Single bank-transfer-linked proof path — only runs when transactionIds is empty
@@ -878,6 +887,7 @@ export const nigerianPaymentsService = {
           });
 
           accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
+          accountingSyncs.push(() => memberLedgerService.createFromPayment(payment.id, userId).then(() => {}));
         }
 
         if (updated.bankTransferId) {

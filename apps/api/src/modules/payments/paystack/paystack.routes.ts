@@ -3,7 +3,7 @@ import { paystackController } from './paystack.controller';
 import { handlePaystackWebhook } from './paystack.webhook';
 import { authMiddleware } from '../../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../../middleware/tenant.middleware';
-import { requirePermission } from '../../../middleware/rbac';
+import { requirePermission, requireAnyPermission } from '../../../middleware/rbac';
 import { PERMISSIONS } from '../../../lib/permissions';
 
 const router: Router = Router();
@@ -22,21 +22,21 @@ router.post('/webhook', handlePaystackWebhook);
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
-// Initialize payment
+// Initialize payment — members (PAYMENTS_VIEW_OWN) and officers both allowed
 router.post('/initialize',
-  requirePermission(PERMISSIONS.PAYMENT_CREATE),
+  requireAnyPermission([PERMISSIONS.PAYMENT_CREATE, PERMISSIONS.PAYMENTS_VIEW_OWN]),
   paystackController.initializePayment
 );
 
-// Verify payment after redirect
+// Verify payment after redirect — members need this to confirm their own checkout
 router.get('/verify/:reference',
-  requirePermission(PERMISSIONS.PAYMENT_VIEW),
+  requireAnyPermission([PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENTS_VIEW_OWN]),
   paystackController.verifyPayment
 );
 
 // Get payment status
 router.get('/status/:reference',
-  requirePermission(PERMISSIONS.PAYMENT_VIEW),
+  requireAnyPermission([PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENTS_VIEW_OWN]),
   paystackController.getPaymentStatus
 );
 

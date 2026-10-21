@@ -30,6 +30,21 @@ const donationSchema = z.object({
   isAnonymous: z.boolean().default(false),
 });
 
+// Auto-links an admin-created member (userId: null) to the logged-in user by email on first
+// access. Once linked, subsequent lookups find them by userId directly.
+async function findAndAutoLinkMember(userId: number, associationId: number, userEmail?: string) {
+  let member = await prisma.member.findFirst({ where: { userId, associationId } });
+  if (!member && userEmail) {
+    const byEmail = await prisma.member.findFirst({
+      where: { email: userEmail, associationId, userId: null },
+    });
+    if (byEmail) {
+      member = await prisma.member.update({ where: { id: byEmail.id }, data: { userId } });
+    }
+  }
+  return member;
+}
+
 export const memberFinanceController = {
   // Get member's finance summary (overview)
   async getFinanceSummary(req: Request, res: Response) {
@@ -42,9 +57,7 @@ export const memberFinanceController = {
       }
 
       // Get member record for this user
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       // If user is not a member, return empty summary (they might be admin without member profile)
       if (!member) {
@@ -234,9 +247,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -295,9 +306,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -315,7 +324,7 @@ export const memberFinanceController = {
               targetAmount: true,
               deadline: true,
               status: true,
-              category: { select: { id: true, name: true } },
+              category: { select: { id: true, name: true, type: true } },
             },
           },
           transaction: {
@@ -327,26 +336,76 @@ export const memberFinanceController = {
         orderBy: { campaign: { deadline: 'asc' } },
       });
 
-      const levies = assignments.map(assignment => {
-        const paid = assignment.transaction?.payments.reduce(
-          (sum, p) => sum.plus(p.amountPaid),
-          new Decimal(0)
-        ) || new Decimal(0);
-        const balance = new Decimal(assignment.amount).minus(paid);
-        const isOverdue = assignment.campaign.deadline && new Date(assignment.campaign.deadline) < new Date() && balance.greaterThan(0);
-
-        return {
-          id: assignment.id,
-          campaign: assignment.campaign,
-          amount: Number(assignment.amount),
-          paid: Number(paid),
-          balance: Number(balance),
-          status: assignment.status,
-          isOverdue,
-          transactionId: assignment.transactionId,
-          assignedAt: assignment.assignedAt,
-        };
+      // Also include levy transactions that were created directly (not via a campaign assignment).
+      // The finance summary counts these too, so the levies screen must show them for parity.
+      const assignedTransactionIds = new Set(
+        assignments.map(a => a.transactionId).filter((id): id is number => id !== null)
+      );
+      const orphanLevyTxns = await prisma.transaction.findMany({
+        where: {
+          memberId: member.id,
+          associationId,
+          category: { type: 'levy' },
+          // Only rows with no campaign assignment (levyAssignment relation is null)
+          levyAssignment: null,
+        },
+        include: {
+          category: { select: { id: true, name: true, type: true } },
+          payments: { select: { id: true, amountPaid: true, paymentDate: true, paymentMethod: true } },
+        },
+        orderBy: { dueDate: 'asc' },
       });
+
+      const levies = [
+        ...assignments.map(assignment => {
+          const paid = assignment.transaction?.payments.reduce(
+            (sum, p) => sum.plus(p.amountPaid),
+            new Decimal(0)
+          ) ?? new Decimal(0);
+          const balance = new Decimal(assignment.amount).minus(paid);
+          const isOverdue = assignment.campaign.deadline && new Date(assignment.campaign.deadline) < new Date() && balance.greaterThan(0);
+
+          return {
+            id: assignment.id,
+            campaign: assignment.campaign,
+            amount: Number(assignment.amount),
+            paid: Number(paid),
+            balance: Number(balance),
+            status: assignment.status,
+            isOverdue,
+            transactionId: assignment.transactionId,
+            assignedAt: assignment.assignedAt,
+          };
+        }),
+        // Orphan levy transactions — synthesise a campaign-like shape from the transaction
+        ...orphanLevyTxns
+          .filter(txn => !assignedTransactionIds.has(txn.id))
+          .map(txn => {
+            const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+            const balance = new Decimal(txn.amount).minus(paid);
+            const isOverdue = txn.dueDate && new Date(txn.dueDate) < new Date() && balance.greaterThan(0);
+
+            return {
+              id: -txn.id, // negative to avoid colliding with real assignment ids
+              campaign: {
+                id: 0,
+                name: txn.notes?.replace(/^Levy Campaign:\s*/i, '') || txn.category.name,
+                description: null,
+                targetAmount: Number(txn.amount),
+                deadline: txn.dueDate ? txn.dueDate.toISOString() : null,
+                status: txn.status,
+                category: txn.category,
+              },
+              amount: Number(txn.amount),
+              paid: Number(paid),
+              balance: Number(balance),
+              status: txn.status,
+              isOverdue,
+              transactionId: txn.id,
+              assignedAt: txn.createdAt.toISOString(),
+            };
+          }),
+      ];
 
       return res.status(200).json({
         success: true,
@@ -368,9 +427,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -427,9 +484,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -493,9 +548,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -601,9 +654,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -668,9 +719,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -771,9 +820,7 @@ export const memberFinanceController = {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
 
-      const member = await prisma.member.findFirst({
-        where: { userId, associationId },
-      });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
 
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
@@ -1077,6 +1124,38 @@ export const memberFinanceController = {
     } catch (error) {
       console.error('Error checking member profile:', error);
       return res.status(500).json({ success: false, message: 'Failed to check member profile' });
+    }
+  },
+
+  // F2.8/F2.9: single call that gives the pay screen everything it needs before
+  // the member chooses a method — Paystack availability + the association's
+  // bank accounts to display for bank transfer.
+  async getPaymentInfo(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const [paystackEnabled, bankAccounts] = await Promise.all([
+        SettingsService.getSetting(associationId, 'integrations', 'paystackEnabled'),
+        prisma.associationBankAccount.findMany({
+          where: { associationId, isActive: true },
+          select: { id: true, bankName: true, accountName: true, accountNumber: true, isDefault: true },
+          orderBy: { isDefault: 'desc' },
+        }),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          paystackEnabled: paystackEnabled !== false,
+          bankAccounts,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching payment info:', error);
+      return res.status(500).json({ success: false, message: 'Failed to fetch payment info' });
     }
   },
 };

@@ -36,6 +36,7 @@ export function Screen({ children, scroll = true, refreshing, onRefresh, keyboar
       className="flex-1 bg-bg"
       contentContainerClassName={contentClassName}
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
       refreshControl={
         onRefresh ? <RefreshControl refreshing={refreshing ?? false} onRefresh={onRefresh} tintColor={color.primary} /> : undefined
       }
@@ -49,7 +50,7 @@ export function Screen({ children, scroll = true, refreshing, onRefresh, keyboar
   return (
     <View className="flex-1 bg-bg" style={insetStyle}>
       {keyboard ? (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+        <KeyboardAvoidingView behavior="padding" className="flex-1">
           {content}
         </KeyboardAvoidingView>
       ) : (

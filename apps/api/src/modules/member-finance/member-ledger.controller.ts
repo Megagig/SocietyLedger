@@ -3,6 +3,33 @@ import { prisma } from '../../lib/prisma';
 import { memberLedgerService, LedgerReportOptions } from './member-ledger.service';
 import { z } from 'zod';
 
+// Shared with member-finance.controller.ts — auto-links admin-created members on first access.
+async function findAndAutoLinkMember(userId: number, associationId: number, userEmail?: string) {
+  let member = await prisma.member.findFirst({ where: { userId, associationId } });
+  if (!member && userEmail) {
+    const byEmail = await prisma.member.findFirst({
+      where: { email: userEmail, associationId, userId: null },
+    });
+    if (byEmail) {
+      member = await prisma.member.update({ where: { id: byEmail.id }, data: { userId } });
+    }
+  }
+  return member;
+}
+
+// Auto-syncs the memberFinancialLedger from Transaction data on first access.
+// Idempotent — skips if entries already exist; swallows errors so the screen
+// degrades to empty rather than crashing.
+async function autoSyncLedgerIfEmpty(associationId: number, memberId: number, userId: number) {
+  const count = await prisma.memberFinancialLedger.count({ where: { associationId, memberId } });
+  if (count > 0) return;
+  try {
+    await memberLedgerService.syncExistingTransactions(associationId, memberId, userId);
+  } catch {
+    // non-critical — continue with empty ledger
+  }
+}
+
 // Ledger category enum (matches Prisma schema)
 const LedgerCategoryEnum = z.enum([
   'DUES', 'LEVY', 'PENALTY', 'DONATION', 'REFUND', 'WAIVER', 
@@ -32,10 +59,12 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }
+      // First access: populate ledger from existing transactions so it's never empty.
+      await autoSyncLedgerIfEmpty(associationId, member.id, userId);
       const summary = await memberLedgerService.getMemberLedgerSummary(associationId, member.id);
       return res.status(200).json({ success: true, data: summary });
     } catch (error) {
@@ -51,10 +80,11 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }
+      await autoSyncLedgerIfEmpty(associationId, member.id, userId);
       const params = dateRangeSchema.parse(req.query);
       const options: LedgerReportOptions = {
         associationId, memberId: member.id,
@@ -79,7 +109,7 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }
@@ -102,7 +132,7 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }

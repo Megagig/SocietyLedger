@@ -9,7 +9,17 @@ import { useSessionStore } from '@/stores/session';
 import { useTenantStore } from '@/stores/tenant';
 import { ApiError } from './errors';
 
-const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000'}/api`;
+// In dev, derive the host from the Expo dev server so the URL survives network changes.
+// In production, use the built-in env var.
+function resolveApiUrl(): string {
+  if (__DEV__) {
+    const expoHost = Constants.expoConfig?.hostUri?.split(':')[0];
+    if (expoHost) return `http://${expoHost}:4001/api`;
+  }
+  return `${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4001'}/api`;
+}
+
+const BASE_URL = resolveApiUrl();
 
 // architecture.md §13 — "<version>+<build>".
 function appVersionHeader(): string {

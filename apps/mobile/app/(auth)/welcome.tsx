@@ -26,6 +26,7 @@ export default function WelcomeScreen() {
 
       <View
         style={{
+          width: '100%',
           paddingHorizontal: 16,
           paddingBottom: insets.bottom + 16,
           gap: 12,

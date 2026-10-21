@@ -55,17 +55,27 @@ export type QueryProviderProps = { children: ReactNode };
 
 /**
  * `PersistQueryClientProvider` wraps `QueryClientProvider` — `shouldDehydrateQuery` allow-lists
- * `PERSISTED_DOMAINS` only. **Not yet implemented:** library-docs.md's "only first pages" nuance
- * for persisted infinite queries — no `useInfiniteQuery` exists yet to validate it against;
- * revisit when the first paginated list feature lands.
+ * `PERSISTED_DOMAINS` only, and only for `success` queries. TanStack Query's own default dehydrates
+ * only success queries; overriding `shouldDehydrateQuery` bypasses that default, so we must
+ * enforce it explicitly. Persisting `pending` queries causes "dehydrated as pending ended up
+ * rejecting" console errors when the rehydrated promise rejects (e.g. plan-gated module, member
+ * profile not found). Only first-page infinite query persistence (library-docs.md nuance) is not
+ * yet enforced — revisit if paginated caches grow large in MMKV.
  */
 export function QueryProvider({ children }: QueryProviderProps) {
   const [persistOptions] = useState(() => ({
     persister,
+    // Bump this string whenever the dehydration domain list or shouldDehydrateQuery logic changes —
+    // it invalidates the MMKV cache so stale entries from before the change don't replay.
+    buster: 'v2',
     dehydrateOptions: {
-      shouldDehydrateQuery: (query: { queryKey: readonly unknown[] }) => {
+      shouldDehydrateQuery: (query: { queryKey: readonly unknown[]; state: { status: string } }) => {
         const domain = query.queryKey[1];
-        return typeof domain === 'string' && PERSISTED_DOMAINS.includes(domain);
+        return (
+          typeof domain === 'string' &&
+          PERSISTED_DOMAINS.includes(domain) &&
+          query.state.status === 'success'
+        );
       },
     },
   }));

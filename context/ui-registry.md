@@ -681,6 +681,149 @@ following the `passbook` pattern: present in **both** `tokens.ts` theme objects 
 `association`, `login`, `register`, `forgot-password`, `reset-password` (`AuthBrandMark`, restyled
 to the gold-rimmed tile + letterspaced wordmark + accent rule).
 
+## Mobile Phase 2 — Money overview & ledger (F2.6, 2026-10-21)
+
+5 screens in `app/(app)/(tabs)/money/`: `index.tsx` (M1), `ledger/index.tsx` (M6),
+`ledger/statement.tsx` (M7), `payments.tsx` (M13), `transaction/[id].tsx` (M14).
+New API layer: `src/api/endpoints/memberLedger.ts` + `src/features/memberLedger/queries.ts`.
+
+### Route paths — nested index.tsx behaviour
+Expo Router registers a nested `index.tsx` (one that is not the tab's own index) at the
+**directory path without `/index`**. The `router.d.ts` shows `/money/ledger`, not `/money/ledger/index`.
+Only the tab-root `index.tsx` files (e.g. `money/index.tsx`) map to `/money`. Always check
+`.expo/types/router.d.ts` before hardcoding a path.
+
+### Money Overview (M1) — `app/(app)/(tabs)/money/index.tsx`
+- **`Passbook` card** at top with `label="Ledger balance"`, `amount` from ledger `currentBalance`
+  (falls back to `toDecimal(summary.totalOutstanding)` while ledger is loading).
+- **`stampLabel`** is either `"N OVERDUE"` or `"PAID UP"` — derived from `summary.overdueCount`.
+- **Recent activity**: up to 3 `recentEntries` from ledger summary, each as a `ListItem` with a
+  trailing `<View>` showing sign+amount (raw `formatMoney()` in `<Text>`) and running balance
+  (`<Money>` component). **Do not nest `<Money>` inside `<Text>`** — `Money` renders its own `<Text>`.
+- Quick-links to `/money/ledger`, `/money/payments`, `/money/ledger/statement`.
+
+### My Ledger (M6) — `app/(app)/(tabs)/money/ledger/index.tsx`
+- **Paginated `FlatList<ListItem>`** where `ListItem = MonthHeader | EntryItem`. Month grouping is
+  done client-side in `groupByMonth()` from a flat stream of `DecimalisedEntry[]` (all pages flat-mapped).
+- **Balance strip** above the list: currentBalance, totalDebits, totalCredits.
+- **Sign + colour**: DEBIT entries use `color.danger`, CREDIT entries use `color.success`.
+  Amount is `{isCredit ? '+' : '–'}{formatMoney(entry.amount)}` inside `<Text style={{color}}>`.
+  Running balance uses `<Money value={entry.runningBalance} size="caption" tone="secondary" />`.
+- **Infinite scroll**: `onEndReached` → `entriesQuery.fetchNextPage()` (only if `hasNextPage && !isFetchingNextPage`).
+- `ListFooterComponent` must be `undefined` (not `null`) when there is nothing to show — FlatList's
+  prop type does not accept `null`.
+- `getItemLayout` returns `length: 56` for both entry rows and month headers (good enough approximation;
+  exact sizes would need measurement).
+- Statement navigation: `router.push('/money/ledger/statement')` via `IconButton` in `ScreenHeader.rightActions`.
+
+### Statement (M7) — `app/(app)/(tabs)/money/ledger/statement.tsx`
+- **4 preset periods** in a `as const` array: 1 / 3 / 6 / 12 months ago → today (computed at
+  module-evaluation time, so dates are stable for the session).
+- `const period = PERIODS[selectedIndex]!` — non-null assertion is safe because `selectedIndex` is
+  bounded to `[0, PERIODS.length - 1]` by the `setSelectedIndex` calls.
+- **Share**: uses `Share.share()` from React Native core (`import { Share } from 'react-native'`).
+  **`expo-sharing` is not installed in this project.** The share payload is a plain text string
+  built from statement data — no file system involved.
+- `StickyFooter` with "Share statement" button disabled until the statement query resolves.
+
+### Payment History (M13) — `app/(app)/(tabs)/money/payments.tsx`
+- `FlatList<Payment>` where `Payment` is derived via `Awaited<ReturnType<typeof memberFinanceApi.getPayments>>[number]`.
+- `METHOD_LABELS: Record<string, string>` maps the API's snake_case method keys to display strings
+  with a `?? payment.paymentMethod` fallback.
+- `StatusChip status="paid"` on every row — all payments returned by this endpoint are confirmed.
+- **`@shopify/flash-list` is not installed.** Always use `FlatList` from `react-native`.
+
+### Transaction Detail (M14) — `app/(app)/(tabs)/money/transaction/[id].tsx`
+- `useLocalSearchParams<{ id: string }>()` extracts the dynamic segment.
+- Data comes from `useMemberOutstanding()` — finds the item by `Number(id)`. No dedicated detail
+  endpoint exists; the outstanding list is the source of truth.
+- `EmptyState` (with `AlertCircle` icon) if the item is not found or the query is still loading.
+- `Skeleton radius="lg"` (not `"xl"` — `SkeletonRadius = 'xs'|'sm'|'md'|'lg'|'full'`).
+
+### `memberLedgerApi` — `src/api/endpoints/memberLedger.ts`
+- **3 methods:** `getLedgerSummary()`, `getLedgerEntries(params?)`, `getStatement(startDate, endDate)`.
+- All `MoneyValue` fields are converted via `toDecimal()` before returning — callers receive `Decimal`.
+- `decimaliseEntry()` is a private helper applied to each entry in both `getLedgerEntries` and `getLedgerSummary.recentEntries`.
+
+### TanStack Query hooks — `src/features/memberLedger/queries.ts`
+- `useMyLedgerSummary()` — `useQuery`, key `[tenant, 'memberLedger', 'summary']`.
+- `useMyLedgerEntries(filters?)` — `useInfiniteQuery`, `initialPageParam: 1`,
+  `getNextPageParam: (lastPage) => page < totalPages ? page + 1 : undefined`.
+- `useMyStatement(startDate, endDate)` — `useQuery`, `enabled: Boolean(startDate && endDate)`.
+- `useMemberOutstanding()` — lives in `src/features/memberFinance/queries.ts` (calls `memberFinanceApi.getOutstanding()`).
+
+### G18 — Ledger sync gap (fixed alongside F2.6)
+`memberLedgerService.createFromTransaction()` (DEBIT) and `createFromPayment()` (CREDIT) existed
+but were never called. Wired into 5 paths — all wrapped in non-critical try/catch so a ledger
+failure never rolls back the payment:
+1. `finance.controller.ts` — `createTransaction` (after accounting sync)
+2. `finance.controller.ts` — `recordPayment` (after cache invalidation)
+3. `finance.controller.ts` — bulk payments loop (per-payment, alongside accounting sync)
+4. `nigerian-payments.service.ts` — reconciliation auto-match (after `onPaymentRecorded`)
+5. `nigerian-payments.service.ts` — proof verification (added to `accountingSyncs` array via `.then(() => {})` to satisfy `Promise<void>` typing)
+
+Existing data can be backfilled via admin `POST /ledger/bulk-sync`.
+
+## Mobile Phase 2 — Dues, levies, penalties, donations (F2.7, 2026-10-21)
+
+5 screens in `app/(app)/(tabs)/money/`: `dues.tsx` (M8), `levies.tsx` (M9), `penalties.tsx` (M10),
+`donations/index.tsx` (M11+M12). M1 (`index.tsx`) updated with Breakdown section.
+New: `src/types/api/memberFinance.ts` extended with 5 DTOs; `src/api/endpoints/memberFinance.ts`
+extended with 5 methods; `src/features/memberFinance/queries.ts` extended with 4 hooks;
+`src/features/memberFinance/mutations.ts` (new) with `useMakeDonation()`.
+
+### My Dues (M8) — `app/(app)/(tabs)/money/dues.tsx`
+- **Status filter**: 3-way `SegmentedControl` (All / Unpaid / Paid) — client-side only.
+- **Outstanding banner**: red `bg-danger/10` when `totalOutstanding > 0`; green `bg-success/10` + "Your account is clear" when zero. Mirrors web's dynamic summary card exactly.
+- **Pay now per row**: rendered inside `View.items-end` inside a custom row View (not `ListItem.trailing`) so the button can stack below the amount + StatusChip. Pay button routes to `/money/pay?transactionId=<id>` (F2.8 placeholder, `as never` until typed route exists).
+- **DueRow** is a custom `View` (not `ListItem`) rendered inside `ListGroup` children — `ListGroup` wraps any children with dividers/border, not just `ListItem`s.
+- `Decimal` is imported from `decimal.js-light` (not `decimal.js` — not installed).
+
+### My Levies (M9) — `app/(app)/(tabs)/money/levies.tsx`
+- **Progress bar**: custom `View`-based bar — `h-1.5 w-full rounded-full bg-border` outer, `bg-primary h-full rounded-full` inner with `width: pct%`. No separate library.
+- `paid%` is computed as `Math.round((Number(paid) / Number(amount)) * 100)`.
+- **Contribute now** button: routes to `/money/pay?transactionId=<item.transactionId>` when `transactionId` is non-null. When null (no transaction linked), shows a disabled "Contact admin to pay" button — no navigation.
+
+### My Penalties (M10) — `app/(app)/(tabs)/money/penalties.tsx`
+- Same dynamic banner pattern as M8 (danger/success). `reason` field from API (sourced from txn.notes) shown in meta; falls back to `referenceNumber`.
+
+### My Donations + Donate (M11+M12) — `app/(app)/(tabs)/money/donations/index.tsx`
+- **M11** (list) + **M12** (donate form) combined in one screen — parity with web's single page + Modal. Mobile uses `BottomSheet` (from `@gorhom/bottom-sheet`, requires `BottomSheetModalProvider` at app root) instead of a Modal.
+- **Cause picker**: `SelectSheet` bound to `categoryId` field; options sourced from `donationCategories[]` returned by `GET /members/me/donations` — the member-safe source (NOT the officer-scoped `GET /finance/advanced/donations/allocations`).
+- **`isAnonymous`**: `Switch` component (RHF-bound).
+- **`paymentMethod`**: hardcoded `'bank_transfer'` — no picker. Matches web implementation exactly.
+- **`onSubmit`** is a sync function calling `makeDonation.mutate()` — NOT `async/await`. Using `async` would cause a TS type error on `Button.onPress` (expects `(event) => void`, not `Promise<void>`).
+- Pattern for calling `handleSubmit` on `Button.onPress`: `onPress={() => handleSubmit(onSubmit)()}`.
+
+### Money Overview (M1) — Breakdown section added
+- 4 new `ListItem` rows in a new "Breakdown" `Section` below the existing quick-links rail.
+- `meta` strings pull live outstanding amounts from `useMemberFinanceSummary()` data when available.
+- Routes use `as never` cast until F2.7's new routes appear in `router.d.ts` (dev server regenerates it on next `expo start`).
+
+## Mobile Phase 2 — Pay online + bank transfer (F2.8 + F2.9, 2026-10-21)
+
+New screens: `app/(app)/(tabs)/money/pay.tsx` (M2/M3/M4/M5) and
+`app/(app)/(tabs)/money/transaction/[reference].tsx` (payment result, Paystack verify).
+API: RBAC fixed on Paystack `initialize`/`verify` routes (added `PAYMENTS_VIEW_OWN`);
+new `GET /members/me/payment-info` returns `{ paystackEnabled, bankAccounts[] }`.
+New hooks: `useInitializePaystackPayment`, `useSubmitPaymentProof`, `usePaymentInfo`,
+`useVerifyPaystackPayment`. `+native-intent.tsx` now routes `paymentsReturn` deep link to
+`/money/transaction/[reference]`.
+
+### Pay screen (M2/M4) — `app/(app)/(tabs)/money/pay.tsx`
+- Receives `transactionId` param; finds levy in cached levies query.
+- **Tab switcher**: two `TouchableOpacity` tabs — "Pay online" / "Bank transfer" — styled with `backgroundColor: color.primary` (active) vs transparent.
+- **Online tab**: disabled state when `paystackEnabled === false` (EmptyState). When enabled: "Pay ₦X now" button calls `useInitializePaystackPayment`, then `WebBrowser.openAuthSessionAsync(authorizationUrl, 'societyledger://')`. On success, parses `reference` from returned URL and calls `router.replace('/money/transaction/[reference]')`.
+- **Bank transfer tab**: lists active bank accounts with copy-to-clipboard per row. Attach receipt via `expo-image-picker` (gallery/camera) or `expo-document-picker` (PDF). Plain `TextInput` for optional notes (not RHF — use this pattern for non-form inputs). "Submit payment proof" calls `useSubmitPaymentProof` (multipart/form-data POST to `/nigerian-payments/proofs`).
+- **Guards**: loading + error state; "Already paid" state when balance ≤ 0.
+
+### Payment Result (M5) — `app/(app)/(tabs)/money/transaction/[reference].tsx`
+- **Web parity** with `/dashboard/finance/payments/verify/page.tsx`: shows amount paid, receipt number, reference, transaction status badge, payment date on success. Shows error message + gateway response on failure.
+- **Loading state**: skeleton hero + skeleton list items (no spinner-only screen).
+- **Done** navigates `router.replace('/(app)/(tabs)/money')` and invalidates `summary`, `levies`, `outstanding` query keys.
+- **Try again**: calls `verifyQuery.refetch()` — does not re-initialize the payment.
+- Route param is `reference` (alphanumeric Paystack reference), not `id` (numeric). Lives alongside existing `[id].tsx` (transaction detail) in same directory — Expo Router resolves by param name.
+
 ## Shared feature components (used by 2+ screens)
 - **`SupportCard`** — `pending` (approval-delay message) and `blocked` (access-reason message).
 

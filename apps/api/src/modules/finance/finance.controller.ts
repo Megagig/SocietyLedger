@@ -9,6 +9,7 @@ import { accountingIntegrationService } from '../../services/accounting-integrat
 import { sendEmail } from '../../lib/email';
 import { SettingsService } from '../settings/settings.service';
 import { dispatchNotification } from '../../services/notification-preferences.service';
+import { memberLedgerService } from '../member-finance/member-ledger.service';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -738,6 +739,13 @@ export const financeController = {
       } catch (syncError) {
         console.error('Accounting sync failed (non-critical):', syncError);
         // Don't throw - transaction creation succeeded
+      }
+
+      // Ledger sync: create DEBIT entry so the member ledger reflects this obligation
+      try {
+        await memberLedgerService.createFromTransaction(transaction.id, req.user!.id);
+      } catch (ledgerError) {
+        console.error('Ledger sync failed (non-critical):', ledgerError);
       }
 
       return res.status(201).json({
@@ -1781,6 +1789,13 @@ export const financeController = {
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onPaymentChange(associationId);
 
+      // Ledger sync: create CREDIT entry for this payment
+      try {
+        await memberLedgerService.createFromPayment(payment.id, req.user!.id);
+      } catch (ledgerError) {
+        console.error('Ledger sync failed (non-critical):', ledgerError);
+      }
+
       // Fetch full payment with transaction relations for accounting sync + receipt email
       const fullPayment = await prisma.payment.findUnique({
         where: { id: payment.id },
@@ -1976,8 +1991,13 @@ export const financeController = {
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onPaymentChange(associationId);
 
-      // Accounting integration: Sync all payments to accounting module
+      // Ledger + accounting sync for all bulk payments
       for (const payment of result) {
+        try {
+          await memberLedgerService.createFromPayment(payment.id, req.user!.id);
+        } catch (ledgerError) {
+          console.error(`Ledger sync failed for payment ${payment.id} (non-critical):`, ledgerError);
+        }
         try {
           // Fetch full payment with transaction relations for accounting sync
           const fullPayment = await prisma.payment.findUnique({
@@ -1996,7 +2016,6 @@ export const financeController = {
           }
         } catch (syncError) {
           console.error(`Accounting sync failed for payment ${payment.id} (non-critical):`, syncError);
-          // Continue with other payments
         }
       }
 

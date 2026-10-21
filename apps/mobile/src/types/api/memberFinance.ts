@@ -1,5 +1,86 @@
 /** Member finance self-service — real path `/api/members/me/*`, no `X-Tenant` needed — api-contract.md §4. */
 import type { MoneyValue, IsoDateString } from './common';
+
+/** GET /members/me/dues — verified against member-finance.controller.ts getDues. */
+export type DueDTO = {
+  id: number;
+  referenceNumber: string;
+  category: FinanceCategoryRefDTO;
+  amount: number;
+  paid: number;
+  balance: number;
+  dueDate: IsoDateString;
+  status: string;
+  isOverdue: boolean;
+  payments: { id: number; amount: number; paymentDate: IsoDateString }[];
+  createdAt: IsoDateString;
+};
+
+export type DuesResponseDTO = { dues: DueDTO[] };
+
+/** GET /members/me/levies — verified against member-finance.controller.ts getLevies. */
+export type LevyCampaignDTO = {
+  id: number;
+  name: string;
+  description: string | null;
+  targetAmount: MoneyValue;
+  deadline: IsoDateString | null;
+  status: string;
+  category: FinanceCategoryRefDTO;
+};
+
+export type LevyAssignmentDTO = {
+  id: number;
+  campaign: LevyCampaignDTO;
+  amount: number;
+  paid: number;
+  balance: number;
+  status: string;
+  isOverdue: boolean;
+  transactionId: number | null;
+  assignedAt: IsoDateString;
+};
+
+export type LeviesResponseDTO = { levies: LevyAssignmentDTO[] };
+
+/** GET /members/me/penalties — verified against member-finance.controller.ts getPenalties. */
+export type PenaltyDTO = {
+  id: number;
+  referenceNumber: string;
+  category: FinanceCategoryRefDTO;
+  amount: number;
+  paid: number;
+  balance: number;
+  reason: string | null;
+  status: string;
+  payments: { id: number; amount: number; paymentDate: IsoDateString }[];
+  createdAt: IsoDateString;
+};
+
+export type PenaltiesResponseDTO = { penalties: PenaltyDTO[] };
+
+/** Donation cause picker — sourced from `donationCategories[]` in GET /members/me/donations. */
+export type DonationCategoryDTO = {
+  id: number;
+  name: string;
+  description: string | null;
+};
+
+/** GET /members/me/donations — verified against member-finance.controller.ts getDonations. */
+export type DonationDTO = {
+  id: number;
+  category: FinanceCategoryRefDTO;
+  amount: number;
+  isAnonymous: boolean;
+  reference: string | null;
+  notes: string | null;
+  createdAt: IsoDateString;
+};
+
+export type DonationsResponseDTO = {
+  donations: DonationDTO[];
+  donationCategories: DonationCategoryDTO[];
+};
 import type { PaymentProofDTO } from './nigerianPayments';
 
 /** `FinancialCategory.type` is a free-form `String` column (not a Prisma enum). */
@@ -137,4 +218,10 @@ export type MemberPaymentDTO = {
  */
 export type MemberPaymentsResponseDTO = {
   payments: MemberPaymentDTO[];
+};
+
+/** GET /members/me/payment-info — F2.8/F2.9 (2026-10-21). */
+export type PaymentInfoDTO = {
+  paystackEnabled: boolean;
+  bankAccounts: MemberBankAccountDTO[];
 };

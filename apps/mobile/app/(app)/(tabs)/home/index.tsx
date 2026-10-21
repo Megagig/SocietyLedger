@@ -98,7 +98,7 @@ export default function HomeScreen() {
 
       {/* Bottom padding clears the floating tab bar — without it the last section is cut off. */}
       <View className="gap-6" style={{ paddingBottom: tokens.layout.tabBarHeight + 24 }}>
-        <BalanceCard query={summaryQuery} onPay={() => toast(t('home.balance.payComingSoon'))} />
+        <BalanceCard query={summaryQuery} onPay={() => router.push('/(app)/(tabs)/money' as never)} />
 
         <QuickActionsGrid />
 
@@ -115,8 +115,8 @@ export default function HomeScreen() {
           onPressPoll={() => toast(t('home.vote.comingSoon'))}
         />
 
-        <Section title={t('home.payments.title')} onSeeAll={() => toast(t('home.payments.seeAllComingSoon'))}>
-          <RecentPaymentsList query={paymentsQuery} onPressPayment={() => toast(t('home.payments.detailComingSoon'))} />
+        <Section title={t('home.payments.title')} onSeeAll={() => router.push('/(app)/(tabs)/money/payments' as never)}>
+          <RecentPaymentsList query={paymentsQuery} onPressPayment={() => router.push('/(app)/(tabs)/money/payments' as never)} />
         </Section>
 
         <Section title={t('home.announcements.title')} onSeeAll={() => router.push('/(app)/notifications')}>

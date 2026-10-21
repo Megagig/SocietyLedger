@@ -93,6 +93,12 @@ router.post('/donate',
   memberFinanceController.makeDonation
 );
 
+// F2.8/F2.9: payment method availability + bank accounts for the pay screen
+router.get('/payment-info',
+  requireAnyPermission(viewPermissions),
+  memberFinanceController.getPaymentInfo
+);
+
 // Check if current user has a member profile
 router.get('/profile',
   requireAnyPermission(viewPermissions),

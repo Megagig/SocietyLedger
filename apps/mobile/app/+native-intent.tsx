@@ -12,8 +12,8 @@ import { parseDeepLink } from '@/lib/linking';
  * `tenant` param so the screen can resolve and set the tenant store before rendering its form
  * ("set tenant from link first", build-plan.md F2.3). `invite` doesn't need this: its target
  * screen derives the tenant from `GET /member-invites/verify`'s own response instead (the
- * server-confirmed association, not a client-supplied param). `paymentsReturn` (F2.8) and
- * `notifications` (F3.x) aren't wired to a screen yet, so they fall through unchanged.
+ * server-confirmed association, not a client-supplied param). `paymentsReturn` (F2.8) routes to
+ * the payment result screen. `notifications` (F3.x) isn't wired to a screen yet.
  */
 export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
   try {
@@ -27,6 +27,7 @@ export function redirectSystemPath({ path }: { path: string; initial: boolean })
       case 'resetPassword':
         return `/(auth)/reset-password?token=${encodeURIComponent(deepLink.token)}&tenant=${encodeURIComponent(deepLink.tenant)}`;
       case 'paymentsReturn':
+        return `/(app)/(tabs)/money/transaction/${encodeURIComponent(deepLink.reference)}`;
       case 'notifications':
         return path;
       default:
