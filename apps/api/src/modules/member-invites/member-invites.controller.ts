@@ -30,6 +30,7 @@ import {
   hashToken,
   sendVerificationEmail,
 } from '../auth/auth.service';
+import { SettingsService } from '../settings/settings.service';
 import prisma from '../../lib/prisma';
 
 // Validation schemas
@@ -582,6 +583,20 @@ export const memberInviteController = {
         res.status(400).json({
           success: false,
           message: 'Missing tenant context. Please access via your association subdomain.',
+        });
+        return;
+      }
+
+      // Mobile Phase 2 (F2.3) finding: this endpoint produces a real Member (unlike
+      // `/auth/register`, which only creates a bare User) but never checked the association's
+      // own self-registration toggle — same gate as `/auth/register` (G52), applied here too so
+      // both self-signup entry points respect it consistently.
+      const selfSignupEnabled = await SettingsService.getSetting(tenantId, 'members_access', 'selfSignupEnabled');
+      if (!selfSignupEnabled) {
+        res.status(403).json({
+          success: false,
+          code: 'SELF_SIGNUP_DISABLED',
+          message: 'Self-registration is not enabled for this association. Please contact an administrator for an invite.',
         });
         return;
       }

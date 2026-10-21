@@ -9,6 +9,13 @@ module.exports = defineConfig([
     },
   },
   {
+    // Standalone Node codegen scripts (not app code — lib/logger.ts doesn't apply here).
+    files: ['scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     ignores: ['dist/*', '.expo/*', 'node_modules/*'],
   },
 ]);

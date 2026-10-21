@@ -3,7 +3,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import { createMMKV } from 'react-native-mmkv';
 
 import {
   Manrope_400Regular,
@@ -13,6 +12,7 @@ import {
   Manrope_800ExtraBold,
 } from '@expo-google-fonts/manrope';
 
+import { storage } from '@/lib/storage';
 import { tokens, type ThemeMode } from '@/theme/tokens';
 
 type ColorSchemePreference = ThemeMode | 'system';
@@ -25,17 +25,12 @@ type ThemeContextValue = {
 
 const THEME_STORAGE_KEY = 'prefs.themeMode';
 
-// Dedicated instance for this one preference key. The shared MMKV wrapper
-// (src/lib/storage.ts) lands in a later feature (F1.6) — this gets folded
-// into it then without changing ThemeProvider's public API.
-const themeStorage = createMMKV({ id: 'societyledger' });
-
 function parsePreference(stored: string | undefined): ColorSchemePreference {
   return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
 }
 
 function subscribeToThemeStorage(onStoreChange: () => void) {
-  const listener = themeStorage.addOnValueChangedListener((changedKey) => {
+  const listener = storage.addOnValueChangedListener((changedKey) => {
     if (changedKey === THEME_STORAGE_KEY) {
       onStoreChange();
     }
@@ -44,7 +39,7 @@ function subscribeToThemeStorage(onStoreChange: () => void) {
 }
 
 function getThemeStorageSnapshot(): ColorSchemePreference {
-  return parsePreference(themeStorage.getString(THEME_STORAGE_KEY));
+  return parsePreference(storage.getString(THEME_STORAGE_KEY));
 }
 
 // Never touches storage — Expo Router's static-export prerendering runs on
@@ -93,7 +88,7 @@ export function ThemeProvider({ children, fallback = null }: ThemeProviderProps)
   const scheme: ThemeMode = colorScheme === 'dark' ? 'dark' : 'light';
 
   const setPreference = useCallback((next: ColorSchemePreference) => {
-    themeStorage.set(THEME_STORAGE_KEY, next);
+    storage.set(THEME_STORAGE_KEY, next);
     // Triggers subscribeToThemeStorage's listener synchronously, which
     // updates `preference` via useSyncExternalStore — no local setState here.
   }, []);

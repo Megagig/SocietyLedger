@@ -41,7 +41,9 @@ function getEmailConfig() {
   return {
     FROM_EMAIL: process.env.EMAIL_FROM,
     REPLY_TO: process.env.EMAIL_REPLY_TO,
-    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO,
+    // Templates render this into `mailto:` links, so it must never be undefined — an unset
+    // EMAIL_REPLY_TO would otherwise ship "mailto:undefined" in every outgoing email.
+    SUPPORT_EMAIL: process.env.EMAIL_REPLY_TO || 'support@societyledger.com.ng',
     WEBSITE_URL: process.env.APP_URL || 'https://societyledger.com',
   };
 }
@@ -165,7 +167,9 @@ function getTemplateContent(template: string, data: Record<string, any>): string
   // Get config inside function to ensure environment variables are loaded
   const config = getEmailConfig();
   const { SUPPORT_EMAIL, WEBSITE_URL } = config;
-  
+  // Digits only — `wa.me` rejects spaces and a leading '+'.
+  const SUPPORT_WHATSAPP_NUMBER = process.env.SUPPORT_WHATSAPP_NUMBER || '2348060374755';
+
   const baseStyle = `
     <style>
       body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f5; }
@@ -563,7 +567,8 @@ function getTemplateContent(template: string, data: Record<string, any>): string
             </ul>
             
             <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
-              If you have any questions, please contact your association administrator.
+              If you have any questions, please contact your association administrator, or
+              <a href="https://wa.me/${SUPPORT_WHATSAPP_NUMBER}" style="color: #059669; font-weight: 600;">message us on WhatsApp</a>.
             </p>
           </div>
           <div class="footer">

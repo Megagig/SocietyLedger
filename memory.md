@@ -1,68 +1,52 @@
-# Memory — Production deploy debugging + post-launch admin/impersonation remediation
+# Memory — Mobile Phase 1: Foundation (F1.3–F1.8, all complete) + Phase 1 retro review
 
-Last updated: 2026-10-19
+Last updated: 2026-10-20
 
 ## What was built
 
-**Infrastructure root-cause fix** (`docker-compose.dokploy.yml`): hand-written Traefik Docker labels for `admin`/`docs`/`web` were a second, parallel routing config fighting Dokploy's own native per-app **Domains tab** (the mechanism that made `api` reliable the whole time — it only ever had `dokploy.domain`/`dokploy.port` labels). This was the root cause of a multi-hour "multiple Services" / 502 / no-cert saga. Fixed: `admin`/`docs` now use the same `dokploy.domain`/`dokploy.port` pattern as `api`; `web`'s router (renamed `sl-tenant`) now matches **only** tenant subdomains via `HostRegexp`, never the apex domain, so it can never overlap with Dokploy's native "web" domain entry.
+**F1.3 — API types & enums**: `src/types/api/*.ts` (11 hand-written DTO files, verified against real controllers, not `packages/shared`'s stale types) + generated `src/types/api/enums.ts` (59 real Prisma enums via new `scripts/gen-enums.ts`, idempotent, `--check` mode). Closes gap G2.
 
-**Two Prisma migration-drift gaps** found and fixed (fields existed in `schema.prisma`, added via `db push` in dev, never had a migration file, so `prisma migrate deploy` never created them in production — P2022 on every request touching them):
-- `transactions.last_reminder_sent_at` — migration `20261019_add_transaction_last_reminder_sent_at`
-- `payment_proofs.transaction_ids`/`declaration_note`/`payment_method` + nullable file fields — migration `20261019_add_payment_proof_multi_transaction_declare`
+**F1.4/F1.5 — Core UI kit**: `src/components/ui/*` (Text, Button, IconButton, Card, Badge, StatusChip, Avatar, Divider, Skeleton, Money, Spinner, BottomSheet), `layout/*` (Screen, ScreenHeader, Section, ListItem/ListGroup, StickyFooter), `forms/*` (FieldShell, TextField, PasswordField, OtpInput, AmountField, DateField, SelectSheet, SearchField, Checkbox, Switch, SegmentedControl, FileAttachField), `feedback/*` (EmptyState, ErrorState, OfflineBanner, ModuleLocked, SubscriptionInactive, NoPermission, ConfirmSheet) — ~28 components total, all registered in `ui-registry.md`. Dev-only gallery at `app/(dev)/gallery.tsx`. `@react-native-community/datetimepicker` was the one owner-approved new dependency outside the pre-documented list.
 
-**Env var wiring gaps** (set in Dokploy's project-level Environment tab, but never referenced in the relevant service's `environment:` block in `docker-compose.dokploy.yml` — Dokploy only injects what a service explicitly asks for via `${VAR}`): `EMAIL_FROM`/`EMAIL_REPLY_TO` (api service) — fixed in compose. `ADMIN_URL` — was never set at all in Dokploy; user added it directly.
+**F1.6 — Storage, permissions & utilities**: `src/lib/{cn,docs,storage,secure,money,dates,i18n,permissions}.ts` + `en.json`, `src/hooks/{useCan,useOnline,useAppState}.ts`. 100% test coverage on money/dates/permissions (real `--coverage` run). Found a live, unfixed drift in `apps/web`'s own permissions copy (logged as gap G94, out of mobile's scope).
 
-**Admin bug fixes** (all were "built but never wired" or field-name-mismatch bugs, not logic bugs):
-- Analytics page crash: `ModuleAdoption` interface used `moduleId`/`moduleName`/`activeCount`/`totalEnabled`, API actually returns `code`/`name`/`enabledCount` + top-level `totalAssociations`
-- Action log stats crash: backend never computed `actionsToday`/`uniqueAdmins`/`mostCommonAction` — now computed in `platform-action-log.service.ts`
-- Action logs list "Invalid Date": backend returned raw `platform_action_logs` rows (`createdAt`, bare `actorId`/`associationId` ints, `pagination.total` nested, no `description`) while UI expected `performedAt`/`admin`/`association` objects/top-level totals — `getActionLogs` in `platform-admin.controller.ts` now batch-fetches and maps correctly
-- `/blog/new`, `/blog/[id]/edit`, `/help/new`, `/help/[id]/edit` all 404'd — never built despite being marked done. Built `BlogPostForm`/`DocPageForm` (`apps/admin/src/components/forms/`), registered in `ui-registry.md`
-- Blog's "New category" / Help's "New section" modals had been silently broken since they shipped (sent `{ name }` only; `slug` is a required unique column with no default) — now slugify client-side
-- `BlogCategory.postCount`/`DocSection.pageCount` → actually `_count.posts`/`_count.pages`
+**F1.7 — API client & error handling**: `src/api/{client,errors,envelope}.ts` (axios, single-flight token refresh, 401/403/429 handling), `src/providers/QueryProvider.tsx` (TanStack Query v5 + MMKV persister), `src/stores/{tenant,modules}.ts` (new) + `stores/session.ts` expanded to its real shape (`user`, `status`, `requiresOnboarding`). **Major finding**: `msw` (originally documented as the mocking tool for all future tests) doesn't actually work in this project — no `msw/native` export, ESM-only deps, and axios resolves to its browser build under `jest-expo` so none of msw's interception points apply. Replaced with `axios-mock-adapter` project-wide; `library-docs.md`/`code-standards.md §13` corrected.
 
-**Full security event audit log built from scratch** — the Audit Log page was designed against a security-event concept (severity, actor type, IP/user-agent) that never existed server-side; only a generic record-change table did. Added `SecurityEventLog` model + migration (`20261019_add_security_event_log`), `apps/api/src/lib/security-audit-log.ts` (`logSecurityEvent()`, fire-and-forget, never throws), rewired `GET /admin/audit-logs`. Instrumented: login success/failure/suspended-denied, impersonation start/end, association suspend/reactivate, user approve/reject.
+**F1.8 — App shell & navigation skeleton**: `app/index.tsx` is now the real splash/redirect (`<Redirect href="/(app)/(tabs)/home" />` — the F1.2 design-tokens proof screen moved to `app/(dev)/tokens.tsx`). `app/(app)/_layout.tsx` is the one auth guard. `app/(app)/(tabs)/_layout.tsx` — 5 tabs via `Tabs` from `expo-router/tabs` (the root `expo-router` export is deprecated in SDK 58), custom `TabBar` component, Manage tab gated by new `lib/permissions.ts` export `MANAGE_TAB_PERMISSIONS`. 5 tab-root placeholder screens + a notifications placeholder (the header bell's target). New `src/lib/linking.ts` (zod-validated `societyledger://` deep-link parser, via newly-pinned `expo-linking`) — not wired into `+native-intent.tsx` yet (deferred to F2.3). Deliberately **not** built: 11 of 12 `(auth)` screens (only `welcome.tsx` exists), the `(lock)`/`onboarding` groups, any modal-presented route — none are referenced by anything built yet.
 
-**Admin logout button** — `DELETE /bff/session` already existed and worked; just had no UI. Added to `AppShell.tsx` sidebar.
-
-**Platform admin invite flow built from scratch** (owner chose email-link invite, not direct creation w/ temp password): `PlatformAdminInvite` model + migration (`20261019_add_platform_admin_invites`), `POST /api/admin/platform-admins/invite` (+ list/revoke), public `GET/POST /api/admin/auth/invite/:token`/`/accept` (no session — invitee doesn't have one), new admin `/admins` page, public `/invite/[token]` accept page with its own `/bff/invite/*` proxy routes (added `/invite` to `middleware.ts`'s `PUBLIC_PATHS`), new `platform-admin-invite` email template.
-
-**Impersonation — four separate root causes found and fixed, in sequence** (each was real; fixing one revealed the next):
-1. `startImpersonation()` (`apps/web/src/store/authStore.ts`) never set `isAuthenticated: true`
-2. `router.replace('/dashboard')` could serve a stale Next.js App Router response cached before the cookie existed → switched to `window.location.href` hard navigation in `apps/web/src/app/auth/impersonate/page.tsx`
-3. The hard navigation then exposed a **hydration race**: `AuthenticatedLayout`/`ProtectedRoute` called `checkAuth()`/redirected before Zustand's `persist` middleware finished rehydrating `auth-storage` from localStorage (the store already had an unused `_hasHydrated` flag) — both now wait for it
-4. **The actual final root cause**: `GET /api/auth/me` queried `prisma.user.findFirst({ where: { id: userId, associationId: tenantId } })` — during impersonation `userId` is the super admin's own id, `tenantId` is the impersonated association's id (resolved from subdomain), which never matches the admin's real `associationId` column by design. Query returned null → 404 → `checkAuth()`'s catch block wiped the session. Fixed: query by `id` alone (`authMiddleware` already enforces real tenant isolation with its own correct `SUPER_ADMIN` bypass). Also fixed in the same function: the response always showed the fake "SocietyLedger Platform" association for any `SUPER_ADMIN`, even while impersonating — now gated on `!isImpersonating`.
-
-**Tooling fix**: found that local `npx tsc --noEmit -p tsconfig.json` checks had been giving false "clean" results all session due to a stale incremental `.tsbuildinfo` cache — a `new Map(arr.map(a => [a.id, a]))` tuple-inference error (missing `as const`) only surfaced in the actual `tsconfig.prod.json` build. Fixed the error, added `*.tsbuildinfo` to `.gitignore`, untracked the 3 previously-committed ones.
+**Phase 1 retro review** (`/review`, full three-layer audit of F1.1–F1.8 before starting Phase 2): zero layer-boundary violations, zero hardcoded-hex/raw-Tailwind violations, zero doc-vs-code drift anywhere. Found and fixed 6 issues same-session (see Problems solved).
 
 ## Decisions made
 
-- **Traefik/Dokploy routing**: never hand-write Docker labels for a domain Dokploy's native per-app Domains tab already manages (apex/admin/docs domains) — only hand-write for what that simple UI can't do (wildcard tenant subdomains), and scope that router so it can never overlap with a native entry.
-- **Audit Log**: build the real security event model properly rather than adapting the UI down to the existing generic table — owner's explicit choice when asked.
-- **Admin invite**: email-link flow, not direct account creation with a temp password — owner's explicit choice when asked.
-- **Prisma JSON fields in TS**: cast with `Prisma.InputJsonValue`, not `any`, when a loosely-typed `Record<string, unknown>` won't satisfy the generated input type.
+- **`axios-mock-adapter`, not `msw`, is the project's testing-mock convention** for all future API-mocking tests — a hard requirement discovered by direct evidence, not a preference.
+- **`Tabs` must be imported from `expo-router/tabs`**, not the root `expo-router` export (deprecated in SDK 58).
+- **Typed-routes (`.expo/types/router.d.ts`) only regenerate via the live `expo start` dev server**, never `expo export` — adding a new route and immediately running `tsc` will show a phantom error until `expo start` has run at least once.
+- **Test files must never be placed inside `app/`** — Expo Router treats every file there as a route, and Metro will bundle it for real on a device, crashing if it imports a Jest-only package. Fixed project-wide via `metro.config.js`'s `resolver.blockList` (excludes `*.test.ts(x)`/`*.spec.ts(x)` everywhere, not just `__tests__/`), so colocated tests next to `app/`-level files (e.g. `_layout.test.tsx`) are now safe.
+- **`(app)/_layout.tsx`'s guard treats `'idle'` and `'unauthenticated'` the same** (both redirect to `/(auth)/welcome`) — there's no code path yet that tells a "still booting" session apart from "confirmed signed out"; that's F2.4's job.
+- **BottomSheet's `onDismiss` prop means "notify after the sheet closed by any means"**, never "close the sheet" — the close button must call the ref's `.dismiss()` directly (this was the bug, now fixed).
 
 ## Problems solved
 
-- Pattern seen repeatedly across admin pages (analytics, action logs, blog, help): frontend TS interfaces were built against an assumed/planned API response shape that drifted from what the backend actually returns. Always verify the real controller response shape, don't trust the frontend interface.
-- Env vars set in Dokploy's Environment tab do **not** automatically reach a service's container — `docker-compose.dokploy.yml` must explicitly list `VAR: ${VAR}` in that specific service's `environment:` block.
-- Prisma schema/migration drift: a field added to `schema.prisma` via `db push` in dev (or by hand) with no matching migration file silently never reaches production, since `prisma migrate deploy` (run automatically in `apps/api/docker-entrypoint.sh`) only applies tracked migrations.
-- Local `tsc --noEmit -p tsconfig.json` can give false "clean" results from a stale incremental `.tsbuildinfo` cache. For a trustworthy check, either delete `tsconfig.tsbuildinfo` first or check against `tsconfig.prod.json` (what the actual Docker build runs) — note `tsconfig.prod.json` has `strict: false`/`noEmitOnError: false`/wrapped in `|| true` in the Dockerfile, so most type errors there are cosmetic and non-blocking; only a hard Docker-level failure actually stops the build.
+- **`expo-linking`'s `Linking.parse()` crashes under Jest's default `expo-constants` auto-mock** (`Cannot read properties of undefined (reading 'replace')`) even for a bare parse call — fixed with a targeted `jest.mock('expo-constants', ...)` setting `executionEnvironment: 'bare'`.
+- **`@testing-library/react-native@14.1.0`'s `renderHook()` is `async`**, same breaking change as `render()` — an un-awaited call silently destructures `{ result: undefined }`.
+- **A real dev-server crash on a physical Android device**: `app/(app)/_layout.test.tsx` got bundled by Metro for real (every file in `app/` is a route) and crashed importing `@testing-library/react-native` (needs Node's `console`, unavailable to Metro's RN resolver). Fixed via the `metro.config.js` blockList change above — confirmed fixed by re-requesting the exact failing bundle URL and getting HTTP 200.
+- **BottomSheet's close (X) button was non-functional** in all 3 real usages (`SelectSheet`, `FileAttachField`, `ConfirmSheet`) — only fired an optional callback, never called `.dismiss()`. Fixed with an internal ref + `useImperativeHandle`.
+- **`FileAttachField`'s camera/photos/files pickers silently no-op'd on a denied permission** — now show feedback through the field's existing helper-text slot.
+- **Checkbox/Switch tap targets were under the 44dp minimum** — `Checkbox` got `hitSlop={8}`; `Switch`'s whole row is now pressable (confirmed RN's touch responder gives the inner native `Switch` exclusive capture of direct taps, so this doesn't double-toggle).
+- **Tried sharing `app.config.ts`'s splash-color hex with `tokens.ts` via a direct import** — reverted after confirming (via a real `expo export` run) that Expo's config loader only transpiles `app.config.ts` itself, not its transitive local TS imports. Kept the literal with a comment instead.
 
 ## Current state
 
-- **Infra/routing**: confirmed working — subdomains load with valid HTTPS, wildcard cert via Cloudflare DNS-01 issued successfully.
-- **Email sending**: confirmed working (EMAIL_FROM wired correctly, invite emails arrived).
-- **Dashboard/finance-summary/payment-proofs 500s**: fixed, not yet re-confirmed by user after the latest deploy.
-- **Blog/Help CMS create/edit, Audit Log page, admin logout, admin invite**: all built and pushed, **not yet confirmed working** by the user — the deploy that should carry them (and the 4th impersonation fix) **failed**.
-- **Impersonation**: all 4 fixes pushed (latest: commit `3496091`), **not yet confirmed working** — same failed deploy.
-- **Latest commit pushed**: `64915d2` (Map tuple `as const` fix, found while investigating the failed deploy).
-- **BLOCKING**: the Dokploy deployment that should include all of the above **failed**. The user pasted a 50,000-character build log that got truncated mid-way through a long list of **pre-existing, non-fatal** TS warnings (tolerated by `|| true` + `noEmitOnError: false` in the API's `build:prod` step) — confirmed these aren't the real cause. The actual fatal error is further down in the log, past the truncation point. **Was waiting on the user to paste the tail of the log (last 30-50 lines) when the session ended.**
+- **Mobile Phase 1 (Foundation, F1.1–F1.8) is 100% complete and reviewed clean.** `type-check`, `lint`, full test suite (17 suites / 107 tests), and `expo export -p web` (31 routes) all pass.
+- The user is currently running `eas build --platform android --profile development` themselves to rebuild their physical device's dev client — it was stale (missing `expo-secure-store`/`@react-native-community/datetimepicker` native modules added at F1.5/F1.6). Once that finishes and is installed, their device should run cleanly; this isn't something that can be verified from this environment (no adb/device access here).
+- Everything in `context/{progress-tracker,ui-registry,library-docs,code-standards}.md` is up to date with this session's work, including all the findings above.
 
 ## Next session starts with
 
-**Get the tail of the failed deployment log** (ask the user to scroll to the bottom in Dokploy, or use "Download logs") to find the actual fatal error — it's not the API's TS warnings (those are tolerated). Likely candidates: a `pnpm build` failure in `web`/`admin`/`docs` (those are NOT wrapped in `|| true`, unlike the API), or a container failing to start after a successful image build. Once found and fixed, redeploy and have the user re-verify, in order: impersonation (full flow, pathfinder or similar), Blog CMS create/edit, Help Content create/edit, Audit Log page, admin logout, admin invite end-to-end (send → email → accept → login), Action Logs page.
+1. **Confirm the user's new dev-client build installed successfully** and the app now runs on their physical Android device without the native-module errors, if not already confirmed by the time this session resumes.
+2. **F2.1 — Welcome & association selection** (screens A1–A3): splash redirect logic refinement, Welcome carousel, Association Code screen with debounced lookup + recent associations, logo URL resolution. This is the actual start of Mobile Phase 2.
+3. Low-priority/deferred, not blocking: wiring `lib/linking.ts` into `+native-intent.tsx` (waits for F2.3's Accept Invite/Reset Password screens to exist); building the remaining 11 `(auth)` screens as their real features land in F2.1–F2.3.
 
 ## Open questions
 
-- Root cause of the current failed deployment — unresolved when session ended.
-- Whether `git push` failing with `ssh: connect to host ssh.github.com port 443: Connection timed out` (happened several times this session, always succeeded on immediate retry) is a recurring local network flake worth a standing note, or was coincidental.
+- None blocking. The one external dependency (the user's own EAS build + device install) is outside this session's control but doesn't block starting F2.1's code — only blocks the user's own on-device manual testing.

@@ -198,7 +198,7 @@ export const memberFinanceApi = {
 ## 13. Testing
 - Unit: all `lib/*` pure functions (money, dates, permissions, linking, push routing map).
 - Component: RTL for UI kit primitives with variants, and for key feature components (BalanceCard, OutstandingList, Ballot).
-- Integration: msw-mocked screen tests for the critical flows (login error routing, pay flow, proof submit, vote).
+- Integration: `axios-mock-adapter`-mocked screen tests for the critical flows (login error routing, pay flow, proof submit, vote) — **not `msw`** (originally documented here; confirmed unusable in this project at F1.7, see `library-docs.md`'s "Testing stack" for the full diagnosis).
 - E2E: Maestro YAML under `e2e/` (Phase 9).
 - Test names: `it('shows ModuleLocked when API returns MODULE_DISABLED')`.
 - No snapshot tests of whole screens (brittle); targeted snapshots of primitives only.

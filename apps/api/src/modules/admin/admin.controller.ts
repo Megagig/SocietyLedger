@@ -835,7 +835,11 @@ export class AdminController {
         ...requestContext(req),
       });
 
-      // Send notification email
+      // The approval itself already committed, so a delivery failure must not fail the request —
+      // but it is reported back so the admin can tell the member another way instead of assuming
+      // they were notified.
+      let emailSent = true;
+      let emailError: string | undefined;
       try {
         await sendApprovalNotificationEmail(
           user.email,
@@ -844,13 +848,17 @@ export class AdminController {
           rejectionReason,
           user.association?.subdomain
         );
-      } catch (emailError) {
-        console.error('Failed to send approval notification email:', emailError);
+      } catch (err) {
+        emailSent = false;
+        emailError = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`Failed to send approval notification email to ${user.email}:`, err);
       }
 
       return res.json({
         success: true,
         message: result.message,
+        emailSent,
+        emailError,
       });
     } catch (error) {
       console.error('Update approval error:', error);

@@ -22,6 +22,8 @@ module.exports = {
       focus: v('focus'),
       passbook: { DEFAULT: v('passbook'), stamp: v('passbook-stamp') },
       'on-passbook': { DEFAULT: v('on-passbook'), muted: v('on-passbook-muted') },
+      'cta-gradient': { from: v('cta-gradient-from'), to: v('cta-gradient-to') },
+      'on-cta-gradient': v('on-cta-gradient'),
     },
     spacing: { 0: '0px', 0.5: '2px', 1: '4px', 2: '8px', 3: '12px', 4: '16px', 5: '20px', 6: '24px', 8: '32px', 10: '40px', 12: '48px', 16: '64px' },
     borderRadius: { none: '0px', xs: '4px', sm: '8px', md: '12px', lg: '16px', xl: '24px', full: '9999px' },
