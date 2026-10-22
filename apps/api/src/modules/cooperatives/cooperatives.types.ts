@@ -202,6 +202,18 @@ export interface LoanGuarantorResponse {
 
 export type GuarantorStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'RELEASED';
 
+/** A guarantee the member accepted, plus the loan it backs. Loan fields are null until the loan is disbursed. */
+export interface GuaranteedLoanResponse extends LoanGuarantorResponse {
+  applicationNumber: string;
+  applicantName: string;
+  productName: string;
+  applicationStatus: string;
+  loanNumber: string | null;
+  principalAmount: Decimal | null;
+  outstandingBalance: Decimal | null;
+  loanStatus: LoanStatus | null;
+}
+
 export interface PendingGuarantorRequestResponse {
   id: number;
   status: GuarantorStatus;
@@ -346,7 +358,7 @@ export interface MemberCooperativeProfile {
   activeLoans: LoanResponse[];
   totalOutstandingLoans: Decimal;
   guarantorExposure: Decimal;
-  guaranteedLoans: LoanGuarantorResponse[];
+  guaranteedLoans: GuaranteedLoanResponse[];
   loanEligibility: {
     maxLoanAmount: Decimal;
     eligibleProducts: LoanProductResponse[];

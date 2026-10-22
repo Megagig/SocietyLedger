@@ -152,7 +152,7 @@ export default function ApplyForLoanScreen() {
 
   return (
     <Screen edges={['top', 'bottom']} keyboard>
-      <ScreenHeader title="Apply for a loan" onBack={back} />
+      <ScreenHeader title="Apply for a loan" onBack={back} docsKey="M19" />
 
       <View className="gap-5 pb-6">
         <View className="gap-1">

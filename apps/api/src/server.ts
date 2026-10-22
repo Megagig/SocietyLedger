@@ -55,6 +55,7 @@ import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import helpRoutes from './modules/help/help.routes';
 import aiHelpRoutes from './modules/help/ai-help.routes';
 import supportRoutes from './modules/support/support.routes';
+import platformSupportRoutes from './modules/support/support-platform.routes';
 import blogPublicRoutes from './modules/blog/blog-public.routes';
 import blogAdminRoutes from './modules/blog/blog-admin.routes';
 import documentationPublicRoutes from './modules/documentation/documentation-public.routes';
@@ -155,6 +156,8 @@ app.use('/api/docs', documentationPublicRoutes);
 app.use('/api/admin/blog', blogAdminRoutes);
 app.use('/api/admin/docs', documentationAdminRoutes);
 app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admin console BFF
+// Tier 2 support tickets — SUPPORT_AGENT as well as SUPER_ADMIN, so it must be mounted before the SUPER_ADMIN-only /api/admin router
+app.use('/api/admin/support', platformSupportRoutes);
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);

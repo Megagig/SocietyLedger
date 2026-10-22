@@ -261,6 +261,9 @@ export const API_ROUTES = {
     TICKET_REOPEN: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/reopen`,
     TICKET_STATS: `${API_BASE_URL}/api/support/tickets/stats`,
     TICKET_COUNT: `${API_BASE_URL}/api/support/tickets/count`,
+    ATTACHMENT: (id: number) => `${API_BASE_URL}/api/support/attachments/${id}`,
+    PLATFORM_TICKETS: `${API_BASE_URL}/api/support/platform-tickets`,
+    TICKET_ESCALATE: (id: number) => `${API_BASE_URL}/api/support/tickets/${id}/escalate`,
   },
   // Phase 3.6: Nigerian Payments UI
   NIGERIAN_PAYMENTS: {

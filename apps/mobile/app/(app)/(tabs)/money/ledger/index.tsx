@@ -127,6 +127,7 @@ export default function LedgerScreen() {
     <Screen edges={['top']} scroll={false} refreshing={refreshing} onRefresh={handleRefresh}>
       <ScreenHeader
         title="My Ledger"
+        docsKey="M6"
         onBack={() => router.back()}
         rightActions={
           <IconButton

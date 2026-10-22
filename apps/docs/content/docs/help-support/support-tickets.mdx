@@ -1,45 +1,80 @@
 ---
 title: "Opening and following a support ticket"
-description: "Submit a ticket, with AI suggesting articles and a category as you type."
+description: "Send a question to your association's admins, attach photos or PDFs, and follow the replies — on the web or in the mobile app."
 type: task
 audience: ["all"]
-platforms: ["web"]
-covers: ["/dashboard/help/tickets*", "P8", "P9", "P10"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/help/tickets*", "profile/help/tickets*", "P8", "P9", "P10"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/help-support/in-app-help-center", "/docs/help-support/contacting-support"]
+lastVerified: "2026-10-22"
+related: ["/docs/help-support/in-app-help-center", "/docs/help-support/contacting-support", "/docs/help-support/handling-support-tickets"]
 ---
 
-A support ticket reaches SocietyLedger directly — for anything the help centre's articles and FAQs don't answer.
+A support ticket is a question you send to **your own association's admins and officers** — they hold your membership and payment records, so they're the ones who can look into it and act. It's for anything the help centre's articles and FAQs don't answer.
+
+<Callout type="note" title="Who answers your ticket">
+Tickets go to the admins of the association you belong to, not to SocietyLedger's own team. If something is wrong with the app itself — it crashes, or you can't sign in before you've been approved — use **Contact support** in the help centre instead, which opens a chat with SocietyLedger. If you're an association admin, see [Handling support tickets](/docs/help-support/handling-support-tickets) for answering your members and contacting SocietyLedger.
+</Callout>
 
 ## Before you start
 
-Every signed-in user can open a ticket.
+Every signed-in user can open a ticket and see their own. You can only ever see your own tickets — not other members'.
 
 ## Open a ticket
 
+### On the web
+
 <Steps>
-<Step>Go to <MenuPath items={["Help", "Tickets"]} /> and select <UiLabel>New Ticket</UiLabel>.</Step>
+<Step>Go to <MenuPath items={["Help & Support", "My Tickets"]} /> and select <UiLabel>New Ticket</UiLabel>.</Step>
 <Step>Enter a **Subject** and **Description**. As you type (20+ characters), relevant help articles may appear — worth checking before you submit, in case one already answers your question.</Step>
 <Step>Set a **Category** (Access & Login, Payments, Reports, Members, Technical, Bug Report, Feature Request, Other) and **Priority** — both may be pre-filled automatically based on your description.</Step>
+<Step>Optionally attach up to three files.</Step>
 <Step>Select <UiLabel>Submit</UiLabel>.</Step>
 </Steps>
 
 <Screenshot src="/images/help-support/support-tickets-1.webp" alt="New Ticket form with subject, description, category and priority fields" />
 
+### In the mobile app
+
+<Steps>
+<Step>Go to <MenuPath items={["Profile", "Help & support", "My tickets"]} /> and tap **New ticket** (or **Open a new ticket** on the Help & support screen).</Step>
+<Step>Enter a **Subject** (at least 5 characters) and describe the problem (at least 10). Suggested help articles appear under the description while you type.</Step>
+<Step>Choose a **Category** and **Priority**. If the app guesses a category from your description, it fills it in — change it if it's wrong.</Step>
+<Step>Tap **Attach files** to add up to three photos or PDFs, using the camera, your photos or your files.</Step>
+<Step>Tap **Send ticket**.</Step>
+</Steps>
+
+<Screenshot pending="New ticket screen in the mobile app: subject, description, suggested articles, category, priority and attachments" />
+
+## Attachments
+
+Attach screenshots, receipts or documents so your association can see exactly what you see.
+
+- Up to **3 files** per ticket or reply.
+- **Photos or PDFs**, up to **5MB** each.
+- If a file can't be uploaded, your ticket or reply is still sent — you'll be told which files didn't make it, and you can attach them again in a reply.
+
+Tap a file on the ticket to open it. Only you and your association's admins can open files on your ticket.
+
 ## Follow a ticket
 
 <Steps>
-<Step>Go to <MenuPath items={["Help", "Tickets"]} /> and open yours from the list.</Step>
-<Step>Add a message any time to continue the conversation.</Step>
+<Step>Go to <MenuPath items={["Help & Support", "My Tickets"]} /> on the web, or <MenuPath items={["Profile", "Help & support", "My tickets"]} /> in the app, and open yours from the list.</Step>
+<Step>Read the replies and add a message any time to continue the conversation — you can attach files to a reply too.</Step>
 </Steps>
+
+In the app, **Open** tickets are listed first and **Closed** ones are on their own tab. A ticket marked **Waiting on you** is waiting for your reply.
+
+<Screenshot pending="Ticket thread in the mobile app: the conversation, a reply box with an attach button, and Close this ticket" />
+
+## Close or reopen a ticket
+
+If your question is sorted, close the ticket. If you still need help later, reopen a resolved or closed ticket and it goes back to your association's admins. You can only close and reopen your own tickets.
+
+## Get notified
+
+You're told when your association replies to your ticket — an in-app notification, a push notification in the app (which opens the ticket), and an email. Your association's admins are told the same way when a ticket arrives or you reply. Which of these you receive follows your notification preferences.
 
 <Callout type="note" title="Article suggestions and auto-categorization are AI-assisted">
 Both only appear when the AI service is configured and available — without it, the form still works normally, you just fill in category and priority yourself.
 </Callout>
-
-## What happens next
-
-Your ticket gets a reference number and a status (Open, In Progress, Waiting on You, Waiting on Staff, Resolved, Closed) you can track from the ticket list.
-
-## Related

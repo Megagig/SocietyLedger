@@ -34,7 +34,7 @@ interface LoanApplicationDetail {
   memberName: string;
   loanProductId: number;
   loanProductName: string;
-  guarantors: Array<{ id: number; status: string; guaranteeAmount: string; guarantorMemberId: number; guarantorName: string }>;
+  guarantors: Array<{ id: number; status: string; guaranteeAmount: string; guarantorMemberId: number; guarantorName: string; declineReason?: string | null }>;
   reviewedBy?: number;
   approvedBy?: number;
 }
@@ -169,6 +169,7 @@ export default function ApplicationDetailPage() {
                     <div>
                       <p className="font-medium">{g.guarantorName || 'Unknown'}</p>
                       <p className="text-sm text-gray-500">Guarantor ID: {g.guarantorMemberId || 'N/A'}</p>
+                      {g.status === 'DECLINED' && g.declineReason && <p className="text-sm text-red-600">Reason: {g.declineReason}</p>}
                     </div>
                     <div className="text-right">
                       <Badge color={getGuarantorStatusColor(g.status)}>{g.status}</Badge>

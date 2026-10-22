@@ -83,6 +83,22 @@ export const DOCS_LINKS: Record<string, string> = {
   '/dashboard/cooperatives/apply': '/docs/cooperatives/applying-for-a-loan',
   M19: '/docs/cooperatives/applying-for-a-loan',
 
+  // Member cooperatives screens (mobile M15–M20, web equivalents) and the officer queues that confirm their receipts.
+  '/dashboard/cooperatives/my-savings': '/docs/cooperatives/depositing-into-your-savings',
+  M15: '/docs/cooperatives/depositing-into-your-savings',
+  M16: '/docs/cooperatives/depositing-into-your-savings',
+
+  '/dashboard/cooperatives/my-loans': '/docs/cooperatives/paying-your-loan',
+  M17: '/docs/cooperatives/paying-your-loan',
+  M18: '/docs/cooperatives/paying-your-loan',
+
+  '/dashboard/cooperatives/guarantors': '/docs/cooperatives/guarantors',
+  M20: '/docs/cooperatives/guarantors',
+
+  '/dashboard/cooperatives/savings-deposits': '/docs/cooperatives/approving-savings-deposits',
+  '/dashboard/cooperatives/loan-repayments': '/docs/cooperatives/approving-loan-repayments',
+  '/dashboard/cooperatives/loan-products': '/docs/cooperatives/loan-products',
+
   '/dashboard/cooperatives/applications': '/docs/cooperatives/reviewing-and-disbursing-loans',
   CP4: '/docs/cooperatives/reviewing-and-disbursing-loans',
 
@@ -107,6 +123,14 @@ export const DOCS_LINKS: Record<string, string> = {
 
   '/dashboard/help': '/docs/help-support/in-app-help-center',
   P5: '/docs/help-support/in-app-help-center',
+
+  '/dashboard/help/tickets': '/docs/help-support/support-tickets',
+  '/dashboard/help/tickets/new': '/docs/help-support/support-tickets',
+  '/dashboard/help/tickets/[id]': '/docs/help-support/support-tickets',
+  P8: '/docs/help-support/support-tickets',
+  P9: '/docs/help-support/support-tickets',
+  P10: '/docs/help-support/support-tickets',
+  ST11: '/docs/help-support/support-tickets',
 };
 
 /** The mobile app must never deep-link into plan-billing docs (architecture.md §15.4). */

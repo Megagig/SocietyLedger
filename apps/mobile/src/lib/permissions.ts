@@ -206,6 +206,7 @@ export const PERMISSIONS = {
   SUPPORT_VIEW_ALL: 'support.view_all',
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
+  SUPPORT_ESCALATE: 'support.escalate',
 } as const;
 
 export type PermissionAlias = keyof typeof PERMISSIONS;
@@ -272,3 +273,5 @@ export const COOPERATIVE_SAVINGS_DEPOSIT_ACCESS: PermissionAlias = 'COOPERATIVE_
 export const WELFARE_VIEW_ACCESS: PermissionAlias[] = ['WELFARE_VIEW', 'WELFARE_VIEW_OWN'];
 /** Filing a welfare request: officers via ledger.create, members via welfare.request_own. */
 export const WELFARE_REQUEST_ACCESS: PermissionAlias[] = ['WELFARE_PAYOUT_REQUEST', 'WELFARE_REQUEST_OWN'];
+/** Answering guarantor requests — members via cooperatives.guarantor_own, officers via ledger.view. */
+export const COOPERATIVE_GUARANTOR_ACCESS: PermissionAlias[] = ['COOPERATIVE_GUARANTOR_OWN', 'COOPERATIVE_GUARANTOR'];

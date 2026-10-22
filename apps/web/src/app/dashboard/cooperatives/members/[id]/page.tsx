@@ -15,7 +15,7 @@ interface CooperativeProfile {
   activeLoans: { id: number; loanNumber: string; principalAmount: string; outstandingBalance: string; status: string }[];
   totalOutstandingLoans: string;
   guarantorExposure: string;
-  guaranteedLoans: { id: number; loanNumber: string; principalAmount: string; status: string }[];
+  guaranteedLoans: { id: number; loanNumber: string | null; applicationNumber: string; principalAmount: string | null; loanStatus: string | null; applicationStatus: string }[];
   loanEligibility: { maxLoanAmount: string; eligibleProducts: { id: number; name: string }[]; reasons: string[] };
   creditScore: number;
   memberSince: string;
@@ -193,9 +193,9 @@ export default function MemberCooperativeProfilePage() {
             <Table.Tbody>
               {profile.guaranteedLoans.map((loan) => (
                 <Table.Tr key={loan.id}>
-                  <Table.Td>{loan.loanNumber}</Table.Td>
-                  <Table.Td>{formatCurrency(loan.principalAmount)}</Table.Td>
-                  <Table.Td><Badge size="sm">{loan.status}</Badge></Table.Td>
+                  <Table.Td>{loan.loanNumber ?? loan.applicationNumber}</Table.Td>
+                  <Table.Td>{formatCurrency(loan.principalAmount ?? 0)}</Table.Td>
+                  <Table.Td><Badge size="sm">{(loan.loanStatus ?? loan.applicationStatus).replace(/_/g, ' ')}</Badge></Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

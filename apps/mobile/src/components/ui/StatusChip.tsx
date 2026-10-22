@@ -18,9 +18,11 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   disbursed: 'success',
   won: 'success',
   paid_off: 'success',
+  resolved: 'success',
   accepted: 'success',
   // pending (warning)
   pending_guarantors: 'warning',
+  waiting_on_user: 'warning',
   pending_review: 'warning',
   pending_approval: 'warning',
   pending: 'warning',

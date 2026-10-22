@@ -2919,6 +2919,9 @@ model SupportTicket {
   category                TicketCategory
   priority                TicketPriority     @default(MEDIUM)
   status                  TicketStatus       @default(OPEN)
+  audience                TicketAudience     @default(ASSOCIATION)
+  // Set on a Tier 2 ticket an officer opened by escalating a member's ticket (the member's ticket is never shared)
+  escalatedFromId         Int?               @map("escalated_from_id")
   // AI-generated fields
   aiCategory              String?            @map("ai_category")
   aiCategoryConfidence    Float?             @map("ai_category_confidence")
@@ -2937,10 +2940,14 @@ model SupportTicket {
   association             Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
   user                    User               @relation("TicketCreator", fields: [userId], references: [id])
   assignedTo              User?              @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  escalatedFrom           SupportTicket?     @relation("TicketEscalation", fields: [escalatedFromId], references: [id], onDelete: SetNull)
+  escalations             SupportTicket[]    @relation("TicketEscalation")
   responses               TicketResponse[]
   attachments             TicketAttachment[]
 
   @@index([associationId, status])
+  @@index([audience, status])
+  @@index([escalatedFromId])
   @@index([userId])
   @@index([assignedToId])
   @@index([category])
@@ -3003,7 +3010,16 @@ enum TicketCategory {
   TECHNICAL // Technical issues, bugs
   BUG // Bug reports
   FEATURE_REQUEST // Feature requests
+  BILLING // Subscription, plans, invoices (Tier 2: association admin to SocietyLedger)
+  DATA // Data corrections and imports (Tier 2)
   OTHER // Other inquiries
+}
+
+// Who a ticket is for. ASSOCIATION = a member asking their own association's admins (Tier 1);
+// PLATFORM = an association admin asking SocietyLedger support (Tier 2).
+enum TicketAudience {
+  ASSOCIATION
+  PLATFORM
 }
 
 // Ticket Priority Enum

@@ -23,9 +23,20 @@ import {
   TICKET_PRIORITY_LABELS,
   getStatusColor,
   getPriorityColor,
+  getStatusLabel,
+  MEMBER_CATEGORIES,
+  PLATFORM_CATEGORIES,
 } from '@/lib/api/support';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 export default function TicketsPage() {
+  const { can } = usePermissions();
+  const canEscalate = can(PERMISSIONS.SUPPORT_ESCALATE);
+  const isStaff = can(PERMISSIONS.SUPPORT_VIEW_ALL);
+  // Association admins have two lists: the member tickets they handle, and their own tickets to SocietyLedger.
+  const [scope, setScope] = useState<'association' | 'platform'>('association');
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -44,12 +55,13 @@ export default function TicketsPage() {
 
   useEffect(() => {
     loadTickets();
-  }, [statusFilter, categoryFilter, priorityFilter, page]);
+  }, [statusFilter, categoryFilter, priorityFilter, page, scope]);
 
   async function loadTickets() {
     setLoading(true);
     try {
       const result = await listTickets({
+        audience: scope === 'platform' ? 'PLATFORM' : undefined,
         status: statusFilter || undefined,
         category: categoryFilter || undefined,
         priority: priorityFilter || undefined,
@@ -103,6 +115,8 @@ export default function TicketsPage() {
     return ticket.user?.email || 'Unknown';
   }
 
+  const categoryOptions = (scope === 'platform' ? PLATFORM_CATEGORIES : MEMBER_CATEGORIES).map((value) => [value, TICKET_CATEGORY_LABELS[value]] as const);
+
   const statusColors: Record<string, string> = {
     blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     yellow: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -118,21 +132,46 @@ export default function TicketsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Support Tickets
           </h1>
+            <HelpLink />
+          </div>
           <p className="text-gray-600 dark:text-gray-400">
             View and manage your support requests
           </p>
         </div>
         <Link
-          href="/dashboard/help/tickets/new"
+          href={scope === 'platform' ? '/dashboard/help/tickets/new?to=platform' : '/dashboard/help/tickets/new'}
           className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors"
         >
           <IconPlus size={20} />
-          New Ticket
+          {scope === 'platform' ? 'Contact SocietyLedger' : 'New Ticket'}
         </Link>
       </div>
+
+      {/* Which list: member tickets I handle, or my own tickets to SocietyLedger (association admins only) */}
+      {canEscalate && (
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 mb-6 bg-white dark:bg-gray-800">
+          {([['association', 'Association tickets'], ['platform', 'Contact SocietyLedger']] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setScope(value);
+                setCategoryFilter('');
+                setPage(0);
+              }}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                scope === value ? 'bg-teal-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Search & Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
@@ -191,7 +230,7 @@ export default function TicketsPage() {
                 className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
               >
                 <option value="">All Categories</option>
-                {Object.entries(TICKET_CATEGORY_LABELS).map(([value, label]) => (
+                {categoryOptions.map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
@@ -263,7 +302,7 @@ export default function TicketsPage() {
                         {ticket.ticketNumber}
                       </span>
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[getStatusColor(ticket.status)]}`}>
-                        {TICKET_STATUS_LABELS[ticket.status]}
+                        {getStatusLabel(ticket.status, isStaff && scope === 'association')}
                       </span>
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[getPriorityColor(ticket.priority)]}`}>
                         {TICKET_PRIORITY_LABELS[ticket.priority]}

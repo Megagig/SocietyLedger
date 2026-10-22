@@ -81,6 +81,11 @@ function ApplicationRow({ application }: { application: LoanApplicationDTO }) {
           {`Guarantors: ${application.guarantors.map((g) => `${g.guarantorName} (${g.status.toLowerCase()})`).join(', ')}`}
         </Text>
       ) : null}
+      {application.guarantors
+        .filter((g) => g.status === 'DECLINED' && g.declineReason)
+        .map((g) => (
+          <Text key={g.id} variant="caption" tone="danger">{`${g.guarantorName} declined: ${g.declineReason}`}</Text>
+        ))}
       {application.status === 'REJECTED' && application.rejectionReason ? (
         <Text variant="caption" tone="danger">{`Reason: ${application.rejectionReason}`}</Text>
       ) : null}
@@ -135,7 +140,7 @@ export default function MyLoansScreen() {
 
   return (
     <Screen edges={['top']} refreshing={loansQuery.isRefetching || applicationsQuery.isRefetching} onRefresh={refresh}>
-      <ScreenHeader title="My Loans" onBack={() => router.back()} />
+      <ScreenHeader title="My Loans" onBack={() => router.back()} docsKey="M17" />
 
       <View className="gap-4 pb-6">
         {canApply ? (

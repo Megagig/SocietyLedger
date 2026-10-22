@@ -288,6 +288,13 @@ export function routePushNotification(data: PushData, currentTenantId?: number):
       router.push('/(app)/(tabs)/community/announcements' as never);
       break;
 
+    case 'support.ticket_created':
+    case 'support.ticket_member_reply':
+      // Staff: a member opened a ticket or replied — open it in the support desk.
+      if (entityId) router.push(`/(app)/(tabs)/manage/support/${entityId}` as never);
+      else router.push('/(app)/(tabs)/manage/support' as never);
+      break;
+
     case 'support.ticket_reply':
       if (entityId) router.push(`/(app)/(tabs)/profile/help/tickets/${entityId}` as never);
       else router.push('/(app)/(tabs)/profile' as never);

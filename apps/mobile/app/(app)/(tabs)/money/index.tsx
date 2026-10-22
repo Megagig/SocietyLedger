@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { Bell, BookOpen, CreditCard, FileText, Gift, HandCoins, PiggyBank, ShieldAlert, TrendingDown, TrendingUp } from 'lucide-react-native';
+import { Bell, BookOpen, CreditCard, FileText, Gift, HandCoins, PiggyBank, ShieldAlert, TrendingDown, TrendingUp, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { IconButton } from '@/components/ui/IconButton';
@@ -19,7 +19,7 @@ import { useMyLedgerSummary } from '@/features/memberLedger/queries';
 import { useCan } from '@/hooks/useCan';
 import { useModuleDisabled } from '@/hooks/useModuleAccess';
 import { formatDate } from '@/lib/dates';
-import { COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
+import { COOPERATIVE_GUARANTOR_ACCESS, COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
 import { formatMoney, toDecimal } from '@/lib/money';
 
 function entrySign(entryType: string): '+' | '–' {
@@ -31,6 +31,7 @@ export default function MoneyScreen() {
   const { color } = useThemeTokens();
 
   const canViewSavings = useCan(COOPERATIVE_SAVINGS_VIEW_ACCESS);
+  const canGuarantee = useCan(COOPERATIVE_GUARANTOR_ACCESS);
   const cooperativesLocked = useModuleDisabled('cooperatives');
 
   const summaryQuery = useMemberFinanceSummary();
@@ -60,6 +61,7 @@ export default function MoneyScreen() {
       <ScreenHeader
         large
         title="Money"
+        docsKey="M1"
         rightActions={
           <IconButton
             icon={Bell}
@@ -129,6 +131,15 @@ export default function MoneyScreen() {
                 showChevron
                 onPress={() => router.push('/money/loans' as never)}
               />
+              {canGuarantee ? (
+                <ListItem
+                  leading={<Users size={20} color={color.primary} strokeWidth={1.75} />}
+                  title="Guarantor Requests"
+                  meta="Answer requests & see loans you guarantee"
+                  showChevron
+                  onPress={() => router.push('/money/guarantor-requests' as never)}
+                />
+              ) : null}
             </ListGroup>
           </Section>
         ) : null}

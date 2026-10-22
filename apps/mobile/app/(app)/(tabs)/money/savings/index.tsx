@@ -70,7 +70,7 @@ export default function MySavingsScreen() {
 
   return (
     <Screen edges={['top']} refreshing={refreshing} onRefresh={refresh}>
-      <ScreenHeader title="My Savings" onBack={() => router.back()} />
+      <ScreenHeader title="My Savings" onBack={() => router.back()} docsKey="M15" />
 
       {profileQuery.isPending ? (
         <View className="gap-4">

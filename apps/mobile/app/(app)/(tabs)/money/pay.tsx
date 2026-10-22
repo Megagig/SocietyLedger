@@ -182,7 +182,7 @@ export default function PayScreen() {
   return (
     <View style={{ flex: 1 }}>
     <Screen edges={['top']}>
-      <ScreenHeader title="Make Payment" onBack={() => router.back()} />
+      <ScreenHeader title="Make Payment" onBack={() => router.back()} docsKey="M2" />
 
       {/* Summary card */}
       <View className="mx-4 mb-6 rounded-2xl overflow-hidden bg-surface-raised p-5 gap-1">

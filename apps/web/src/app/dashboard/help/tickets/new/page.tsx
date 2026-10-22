@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   IconArrowLeft,
@@ -13,6 +13,9 @@ import {
 } from '@tabler/icons-react';
 import {
   createTicket,
+  createPlatformTicket,
+  MEMBER_CATEGORIES,
+  PLATFORM_CATEGORIES,
   categorizeTicket,
   TicketCategory,
   TicketPriority,
@@ -21,6 +24,9 @@ import {
   CategorizationResult,
 } from '@/lib/api/support';
 import { suggestArticles, ArticleSuggestion } from '@/lib/api/help';
+import { AttachmentPicker } from '@/components/support/AttachmentPicker';
+import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 // Debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -39,8 +45,11 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-export default function NewTicketPage() {
+function NewTicketForm() {
   const router = useRouter();
+  // /new?to=platform is an association admin's own ticket to SocietyLedger support (Tier 2).
+  const isPlatform = useSearchParams().get('to') === 'platform';
+  const categoryOptions = (isPlatform ? PLATFORM_CATEGORIES : MEMBER_CATEGORIES).map((value) => [value, TICKET_CATEGORY_LABELS[value]] as const);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +58,7 @@ export default function NewTicketPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<TicketCategory>('OTHER');
   const [priority, setPriority] = useState<TicketPriority>('MEDIUM');
+  const [files, setFiles] = useState<File[]>([]);
 
   // AI features
   const [aiSuggestions, setAiSuggestions] = useState<ArticleSuggestion[]>([]);
@@ -111,7 +121,8 @@ export default function NewTicketPage() {
 
     setSubmitting(true);
     try {
-      const ticket = await createTicket({
+      const submit = isPlatform ? createPlatformTicket : createTicket;
+      const ticket = await submit({
         subject: subject.trim(),
         description: description.trim(),
         category,
@@ -119,8 +130,9 @@ export default function NewTicketPage() {
         // Include AI data if available
         aiCategory: aiCategorization?.category,
         aiCategoryConfidence: aiCategorization?.confidence,
-      });
+      }, files);
 
+      if (ticket.attachmentError) toast.error(ticket.attachmentError);
       router.push(`/dashboard/help/tickets/${ticket.id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to create ticket');
@@ -140,11 +152,16 @@ export default function NewTicketPage() {
           <IconArrowLeft size={20} />
           Back to Tickets
         </Link>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          Create Support Ticket
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          {isPlatform ? 'Contact SocietyLedger' : 'Create Support Ticket'}
         </h1>
+          <HelpLink />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">
-          Describe your issue and we'll help you resolve it
+          {isPlatform
+            ? "Ask SocietyLedger's support team about billing, bugs, modules, data or features"
+            : "Describe your issue and we'll help you resolve it"}
         </p>
       </div>
 
@@ -191,7 +208,7 @@ export default function NewTicketPage() {
                   onChange={(e) => setCategory(e.target.value as TicketCategory)}
                   className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 >
-                  {Object.entries(TICKET_CATEGORY_LABELS).map(([value, label]) => (
+                  {categoryOptions.map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
@@ -236,6 +253,11 @@ export default function NewTicketPage() {
               </div>
             </div>
 
+            {/* Attachments */}
+            <div className="mb-6">
+              <AttachmentPicker files={files} onChange={setFiles} disabled={submitting} />
+            </div>
+
             {/* AI couldn't help checkbox */}
             <div className="mb-6">
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
@@ -270,7 +292,7 @@ export default function NewTicketPage() {
                 ) : (
                   <>
                     <IconSend size={18} />
-                    Create Ticket
+                    {isPlatform ? 'Send to SocietyLedger' : 'Create Ticket'}
                   </>
                 )}
               </button>
@@ -364,5 +386,13 @@ export default function NewTicketPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NewTicketPage() {
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto text-gray-500">Loading...</div>}>
+      <NewTicketForm />
+    </Suspense>
   );
 }

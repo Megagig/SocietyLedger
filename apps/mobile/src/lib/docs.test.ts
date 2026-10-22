@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 
-import { docsUrl, getDocsPathForScreen, openDocs } from './docs';
+import { docsUrl, getDocsPathForScreen, openDocs, openUserManual } from './docs';
 
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),
@@ -59,5 +59,23 @@ describe('openDocs', () => {
     const opened = await openDocs('NOT_A_REAL_SCREEN');
     expect(opened).toBe(false);
     expect(WebBrowser.openBrowserAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('cooperatives screens and the user manual', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('maps the member cooperatives screens to their docs pages', () => {
+    expect(getDocsPathForScreen('M15')).toBe('/docs/cooperatives/depositing-into-your-savings');
+    expect(getDocsPathForScreen('M16')).toBe('/docs/cooperatives/depositing-into-your-savings');
+    expect(getDocsPathForScreen('M17')).toBe('/docs/cooperatives/paying-your-loan');
+    expect(getDocsPathForScreen('M18')).toBe('/docs/cooperatives/paying-your-loan');
+    expect(getDocsPathForScreen('M19')).toBe('/docs/cooperatives/applying-for-a-loan');
+    expect(getDocsPathForScreen('M20')).toBe('/docs/cooperatives/guarantors');
+  });
+
+  it('opens the docs home in the in-app browser for the user manual', async () => {
+    await openUserManual('profile');
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(expect.stringMatching(/\/docs\?utm_source=mobile&utm_medium=profile$/));
   });
 });

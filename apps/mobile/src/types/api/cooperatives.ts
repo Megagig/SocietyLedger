@@ -26,7 +26,23 @@ export type SavingsAccountDTO = {
   notes: string | null;
 };
 
-/** GET /cooperatives/my-profile — only the savings slice is typed here; loans are typed at F4.2. */
+/** A guarantee the member accepted, with the loan it backs. Loan fields are null until an officer pays the loan out. */
+export type GuaranteedLoanDTO = {
+  id: number;
+  loanApplicationId: number;
+  guaranteeAmount: MoneyValue;
+  acceptedAt: IsoDateString | null;
+  applicationNumber: string;
+  applicantName: string;
+  productName: string;
+  applicationStatus: string;
+  loanNumber: string | null;
+  principalAmount: MoneyValue | null;
+  outstandingBalance: MoneyValue | null;
+  loanStatus: string | null;
+};
+
+/** GET /cooperatives/my-profile — the savings and guarantee slices; loans come from /cooperatives/loans. */
 export type CooperativeProfileDTO = {
   memberId: number;
   memberName: string;
@@ -36,6 +52,10 @@ export type CooperativeProfileDTO = {
   lockedSavings: MoneyValue;
   /** totalSavings − lockedSavings. */
   availableSavings: MoneyValue;
+  /** Loans the member has agreed to guarantee. */
+  guaranteedLoans: GuaranteedLoanDTO[];
+  /** Total guaranteed on loans that are currently active. */
+  guarantorExposure: MoneyValue;
 };
 
 export type SavingsTransactionDTO = {

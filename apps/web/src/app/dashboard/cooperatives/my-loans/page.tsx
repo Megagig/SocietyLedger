@@ -16,6 +16,7 @@ import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface Loan {
   id: number;
@@ -245,9 +246,12 @@ export default function MyLoansPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             My Loans
           </h1>
+            <HelpLink />
+          </div>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">View your loans and make repayments</p>
         </div>
         <Button onClick={() => router.push('/dashboard/cooperatives/apply')} leftSection={<IconWallet size={16} />} className="w-full sm:w-auto">

@@ -46,6 +46,12 @@ const HELP_PERMISSIONS = [
     module: 'Help & Support',
     examples: ['POST /api/support/tickets/:id/responses', 'Ticket responses'],
   },
+  {
+    key: 'support.escalate',
+    description: "Contact SocietyLedger support on the association's behalf, and escalate a member's ticket to it.",
+    module: 'Help & Support',
+    examples: ['POST /api/support/platform-tickets', 'POST /api/support/tickets/:id/escalate'],
+  },
 ];
 
 // Role permission mapping for help & support
@@ -58,6 +64,7 @@ const ROLE_HELP_PERMISSIONS = {
     'support.view_all',
     'support.manage',
     'support.respond',
+    'support.escalate',
   ],
   treasurer: [
     'help.view',

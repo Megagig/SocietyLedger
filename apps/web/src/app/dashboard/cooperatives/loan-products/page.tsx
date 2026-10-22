@@ -6,6 +6,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconPlus, IconSearch, IconReceipt, IconEdit, IconCurrencyNaira } from '@tabler/icons-react';
 import { getLoanProducts, createLoanProduct, updateLoanProduct } from '@/lib/api/cooperatives';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface LoanProduct {
   id: number;
@@ -169,9 +170,12 @@ export default function LoanProductsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
             Loan Products
           </h1>
+            <HelpLink />
+          </div>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Configure loan types and terms</p>
         </div>
         <button onClick={startCreate} className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg hover:from-teal-600 hover:to-green-600 transition-all w-full sm:w-auto">

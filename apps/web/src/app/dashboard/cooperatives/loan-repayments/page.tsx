@@ -9,6 +9,7 @@ import {
   type LoanRepaymentRequest, type SavingsDepositStatus
 } from '@/lib/api/cooperatives';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 const STATUS_TABS: { value: SavingsDepositStatus; label: string }[] = [
   { value: 'PENDING', label: 'Awaiting' },
@@ -117,9 +118,12 @@ export default function LoanRepaymentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           Loan Repayments
         </h1>
+          <HelpLink />
+        </div>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Members declare the loan payments they made into the cooperative&apos;s bank account. Check your statement, then approve to record the repayment on their loan.
         </p>

@@ -26,7 +26,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     // Officers are members too: they can declare a deposit into their own savings.
     "cooperatives.savings_deposit_own", "cooperatives.repay_own",
-    "system.cron.view", "system.cron.trigger"
+    "system.cron.view", "system.cron.trigger",
+    "help.view", "help.manage", "support.create", "support.view_own", "support.view_all", "support.manage", "support.respond", "support.escalate"
   ],
   treasurer: [
     "members.view", "members.view_all",
@@ -42,7 +43,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "communication.sms.view",
     "notifications.view",
-    "settings.view"
+    "settings.view",
+    "help.view", "support.create", "support.view_own"
   ],
   financial_secretary: [
     "members.view", "members.view_all",
@@ -57,7 +59,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "communication.sms.view",
     "notifications.view",
-    "settings.view"
+    "settings.view",
+    "help.view", "support.create", "support.view_own"
   ],
   member: [
     "members.view_own", "members.edit_own",
@@ -69,6 +72,7 @@ export const ROLE_PERMISSION_MAPPING = {
     "exports.view_history",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     "welfare.view_own", "welfare.request_own",
-    "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own"
+    "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own",
+    "help.view", "support.create", "support.view_own"
   ]
 } satisfies Record<string, string[]>;

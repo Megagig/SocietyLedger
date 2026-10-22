@@ -8,6 +8,7 @@ import { supportController } from './support.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
+import { attachFiles } from './support-upload';
 
 const router: Router = Router();
 
@@ -59,6 +60,7 @@ router.get(
 router.post(
   '/tickets',
   requirePermission(PERMISSIONS.SUPPORT_CREATE),
+  attachFiles,
   supportController.createTicket
 );
 
@@ -66,6 +68,27 @@ router.post(
  * Get ticket by ID
  * GET /api/support/tickets/:id
  */
+/**
+ * Get a link to open one attachment
+ * GET /api/support/attachments/:id
+ */
+/**
+ * Contact SocietyLedger support (Tier 2) — an association admin's own ticket to the platform
+ * POST /api/support/platform-tickets
+ */
+router.post(
+  '/platform-tickets',
+  requirePermission(PERMISSIONS.SUPPORT_ESCALATE),
+  attachFiles,
+  supportController.createPlatformTicket
+);
+
+router.get(
+  '/attachments/:id',
+  requireAnyPermission([PERMISSIONS.SUPPORT_VIEW_OWN, PERMISSIONS.SUPPORT_VIEW_ALL]),
+  supportController.getAttachment
+);
+
 router.get(
   '/tickets/:id',
   requireAnyPermission([PERMISSIONS.SUPPORT_VIEW_OWN, PERMISSIONS.SUPPORT_VIEW_ALL]),
@@ -89,6 +112,7 @@ router.patch(
 router.post(
   '/tickets/:id/respond',
   requireAnyPermission([PERMISSIONS.SUPPORT_CREATE, PERMISSIONS.SUPPORT_RESPOND]),
+  attachFiles,
   supportController.addResponse
 );
 
@@ -96,6 +120,17 @@ router.post(
  * Close ticket
  * POST /api/support/tickets/:id/close
  */
+/**
+ * Escalate a member's ticket to SocietyLedger support (opens a new Tier 2 ticket; shares nothing of the member's)
+ * POST /api/support/tickets/:id/escalate
+ */
+router.post(
+  '/tickets/:id/escalate',
+  requirePermission(PERMISSIONS.SUPPORT_ESCALATE),
+  attachFiles,
+  supportController.escalateTicket
+);
+
 router.post(
   '/tickets/:id/close',
   requireAnyPermission([PERMISSIONS.SUPPORT_CREATE, PERMISSIONS.SUPPORT_MANAGE]),

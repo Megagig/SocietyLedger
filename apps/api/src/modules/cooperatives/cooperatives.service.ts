@@ -1,4 +1,6 @@
 import { prisma } from '../../lib/prisma';
+import { dispatchNotification } from '../../services/notification-preferences.service';
+import { escapeHtml } from '../../lib/escape-html';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
   SavingsAccountInput,
@@ -15,6 +17,7 @@ import {
   LoanApplicationInput,
   LoanApplicationResponse,
   LoanGuarantorResponse,
+  GuaranteedLoanResponse,
   PendingGuarantorRequestResponse,
   LoanResponse,
   LoanRepaymentInput,
@@ -1155,6 +1158,11 @@ export const cooperativesService = {
           guaranteeAmount: new Decimal(guaranteeAmountPerPerson),
         })),
       });
+
+      // Tell each guarantor (in-app + push + email). Not awaited: the applicant shouldn't wait on the email provider.
+      void this.notifyGuarantorsRequested(associationId, application.id, data.guarantorIds, data.amount / data.guarantorIds.length).catch((error) =>
+        console.error('Guarantor request notification failed (non-critical):', error)
+      );
     }
 
     // Fetch updated application with guarantors
@@ -1594,6 +1602,7 @@ export const cooperativesService = {
     });
 
     // Check if all required guarantors have accepted
+    let movedToReview = false;
     if (action === 'accept') {
       const application = await prisma.loanApplication.findUnique({
         where: { id: guarantor.loanApplicationId },
@@ -1610,11 +1619,124 @@ export const cooperativesService = {
             where: { id: application.id },
             data: { status: 'PENDING_REVIEW' },
           });
+          movedToReview = true;
         }
       }
     }
 
+    // Tell the applicant (in-app + push + email). Not awaited, never fails the response.
+    void this.notifyGuarantorResponse(associationId, guarantor.loanApplicationId, updated, action, declineReason, movedToReview).catch((error) =>
+      console.error('Guarantor response notification failed (non-critical):', error)
+    );
+
     return this.formatLoanGuarantorResponse(updated);
+  },
+
+  /**
+   * Tells each named guarantor they have a request waiting: in-app, push (opens Guarantor Requests on mobile) and
+   * email. Members with no linked user account are skipped; recipients' notification preferences are respected.
+   */
+  async notifyGuarantorsRequested(associationId: number, applicationId: number, guarantorMemberIds: number[], amountEach: number) {
+    const application = await prisma.loanApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        member: { select: { firstName: true, lastName: true } },
+        loanProduct: { select: { name: true } },
+        association: { select: { name: true } },
+      },
+    });
+    if (!application) return;
+
+    const guarantors = await prisma.member.findMany({
+      where: { id: { in: guarantorMemberIds }, associationId },
+      select: { firstName: true, lastName: true, userId: true },
+    });
+
+    const applicantName = `${application.member.firstName} ${application.member.lastName}`;
+    const share = Number(amountEach).toLocaleString('en-NG');
+    const amount = Number(application.amount).toLocaleString('en-NG');
+
+    for (const guarantor of guarantors) {
+      if (!guarantor.userId) continue;
+      try {
+        await dispatchNotification({
+          associationId,
+          userId: guarantor.userId,
+          title: 'Guarantor request',
+          message: `${applicantName} has asked you to guarantee their ${application.loanProduct.name} of ₦${amount}. Your share would be ₦${share}.`,
+          kind: 'approval',
+          entityId: application.id,
+          pushType: 'guarantor.requested',
+          sendEmail: true,
+          emailSubject: `${applicantName} has asked you to guarantee a loan`,
+          emailTemplate: 'guarantor-request',
+          emailData: {
+            guarantorName: escapeHtml(`${guarantor.firstName} ${guarantor.lastName}`),
+            applicantName: escapeHtml(applicantName),
+            associationName: escapeHtml(application.association.name),
+            productName: escapeHtml(application.loanProduct.name),
+            loanAmount: Number(application.amount),
+            guaranteeAmount: Number(amountEach),
+            purpose: escapeHtml(application.purpose),
+          },
+        });
+      } catch (error) {
+        console.error(`Guarantor request notification failed for user ${guarantor.userId} (non-critical):`, error);
+      }
+    }
+  },
+
+  /**
+   * Tells the applicant a guarantor accepted or declined (with the reason), and when the application has moved on
+   * to the officers because enough guarantors have accepted.
+   */
+  async notifyGuarantorResponse(
+    associationId: number,
+    applicationId: number,
+    guarantor: { guarantorMember?: { firstName: string; lastName: string } | null },
+    action: 'accept' | 'decline',
+    declineReason: string | undefined,
+    movedToReview: boolean
+  ) {
+    const application = await prisma.loanApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        member: { select: { firstName: true, lastName: true, userId: true } },
+        loanProduct: { select: { name: true } },
+        association: { select: { name: true } },
+      },
+    });
+    if (!application?.member.userId) return;
+
+    const guarantorName = guarantor.guarantorMember ? `${guarantor.guarantorMember.firstName} ${guarantor.guarantorMember.lastName}` : 'A guarantor';
+    const accepted = action === 'accept';
+    const title = accepted ? 'Guarantor accepted' : 'Guarantor declined';
+    const message = accepted
+      ? `${guarantorName} agreed to guarantee your ${application.loanProduct.name} application.${movedToReview ? ' All the guarantors you need have accepted, so your application is now with the officers for review.' : ''}`
+      : `${guarantorName} declined to guarantee your ${application.loanProduct.name} application${declineReason ? `: ${declineReason}` : '.'}`;
+
+    await dispatchNotification({
+      associationId,
+      userId: application.member.userId,
+      title,
+      message,
+      kind: 'system',
+      entityId: application.id,
+      pushType: 'loan.application_updated',
+      sendEmail: true,
+      emailSubject: `${title} on your loan application`,
+      emailTemplate: 'guarantor-response',
+      emailData: {
+        applicantName: escapeHtml(application.member.firstName),
+        associationName: escapeHtml(application.association.name),
+        productName: escapeHtml(application.loanProduct.name),
+        guarantorName: escapeHtml(guarantorName),
+        accepted,
+        movedToReview,
+        declineReason: declineReason ? escapeHtml(declineReason) : '',
+        applicationNumber: escapeHtml(application.applicationNumber),
+      },
+    });
   },
 
   /**
@@ -2169,7 +2291,11 @@ export const cooperativesService = {
       include: {
         guarantorMember: { select: { firstName: true, lastName: true } },
         loanApplication: {
-          include: { loan: true },
+          include: {
+            loan: true,
+            member: { select: { firstName: true, lastName: true } },
+            loanProduct: { select: { name: true } },
+          },
         },
       },
     });
@@ -2268,7 +2394,7 @@ export const cooperativesService = {
       activeLoans: loans.map(l => this.formatLoanResponse(l)),
       totalOutstandingLoans,
       guarantorExposure,
-      guaranteedLoans: guaranteedLoans.map(g => this.formatLoanGuarantorResponse(g)),
+      guaranteedLoans: guaranteedLoans.map(g => this.formatGuaranteedLoanResponse(g)),
       loanEligibility: {
         maxLoanAmount,
         eligibleProducts,
@@ -2399,6 +2525,26 @@ export const cooperativesService = {
       approvedAt: application.approvedAt,
       rejectionReason: application.rejectionReason,
       disbursedAt: application.disbursedAt,
+    };
+  },
+
+  /**
+   * A guarantee the member has accepted, with enough about the loan to show it ("₦25,000 on Austin Anthony's
+   * Emergency Loan, ₦80,000 still owed"). The loan fields are null until an officer has paid the loan out.
+   */
+  formatGuaranteedLoanResponse(guarantor: any): GuaranteedLoanResponse {
+    const application = guarantor.loanApplication;
+    const loan = application?.loan ?? null;
+    return {
+      ...this.formatLoanGuarantorResponse(guarantor),
+      applicationNumber: application?.applicationNumber ?? '',
+      applicantName: application?.member ? `${application.member.firstName} ${application.member.lastName}` : '',
+      productName: application?.loanProduct?.name ?? '',
+      loanNumber: loan?.loanNumber ?? null,
+      principalAmount: loan?.principalAmount ?? application?.amount ?? null,
+      outstandingBalance: loan?.outstandingBalance ?? null,
+      loanStatus: loan?.status ?? null,
+      applicationStatus: application?.status ?? '',
     };
   },
 

@@ -70,6 +70,7 @@ export const PERMISSIONS = {
   SUPPORT_VIEW_ALL: 'support.view_all',
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
+  SUPPORT_ESCALATE: 'support.escalate',
   
   // Nigerian Payments Management (Phase 3.6)
   PAYMENT_RECORD: 'payments.nigerian.record',

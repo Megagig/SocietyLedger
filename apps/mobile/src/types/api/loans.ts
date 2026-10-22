@@ -168,3 +168,20 @@ export type SubmitLoanRepaymentPayload = {
 
 /** GET /cooperatives/guarantor-candidates — names only; members can't list /members. */
 export type GuarantorCandidateDTO = { id: number; firstName: string; lastName: string; memberId: string };
+
+/** GET /cooperatives/guarantor-requests/pending — requests where the caller is a guarantor and hasn't answered. */
+export type GuarantorRequestDTO = {
+  id: number;
+  status: GuarantorStatus;
+  guaranteedAmount: MoneyValue;
+  createdAt: IsoDateString;
+  loanApplication: {
+    id: number;
+    amount: MoneyValue;
+    purpose: string;
+    member: { firstName: string; lastName: string; membershipId: string };
+    loanProduct: { name: string };
+  };
+};
+
+export type RespondToGuarantorRequestPayload = { action: 'accept' } | { action: 'decline'; declineReason: string };

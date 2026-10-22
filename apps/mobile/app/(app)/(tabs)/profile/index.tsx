@@ -1,4 +1,4 @@
-import { Bell, HelpCircle, Info, LogOut, Moon, Repeat, ShieldCheck, User } from 'lucide-react-native';
+import { BookOpen, Bell, HelpCircle, Info, LogOut, Moon, Repeat, ShieldCheck, User } from 'lucide-react-native';
 import { router, useRouter } from 'expo-router';
 import { View } from 'react-native';
 
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { useLogout } from '@/features/session/mutations';
 import { useProfile } from '@/features/session/queries';
+import { openUserManual } from '@/lib/docs';
 import { t } from '@/lib/i18n';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
@@ -119,8 +120,16 @@ export default function ProfileScreen() {
             leading={<HelpCircle size={20} color={color.textSecondary} strokeWidth={1.75} />}
             title={t('profile.helpRow')}
             showChevron
-            onPress={() => expoRouter.push('/(app)/(tabs)/profile/about' as never)}
+            onPress={() => expoRouter.push('/(app)/(tabs)/profile/help' as never)}
             testID="profile-help"
+          />
+          <ListItem
+            leading={<BookOpen size={20} color={color.textSecondary} strokeWidth={1.75} />}
+            title="User manual"
+            meta="Step-by-step guides on our docs site"
+            showChevron
+            onPress={() => void openUserManual('profile')}
+            testID="profile-user-manual"
           />
           <ListItem
             leading={<Info size={20} color={color.textSecondary} strokeWidth={1.75} />}

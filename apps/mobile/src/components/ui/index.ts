@@ -14,3 +14,4 @@ export * from './Text';
 export * from './FilterChip';
 export * from './StatTile';
 export * from './ProgressRing';
+export * from './SummaryHero';

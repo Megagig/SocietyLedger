@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { loansApi } from '@/api/endpoints/loans';
+import { guarantorsApi, loansApi } from '@/api/endpoints/loans';
 import { useMemberId } from '@/hooks/useMemberId';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useTenantKey } from '@/hooks/useTenantKey';
-import { COOPERATIVE_LOANS_APPLY_ACCESS, COOPERATIVE_LOANS_VIEW_ACCESS } from '@/lib/permissions';
-import type { CreateLoanApplicationPayload, SubmitLoanRepaymentPayload } from '@/types/api/loans';
+import { COOPERATIVE_GUARANTOR_ACCESS, COOPERATIVE_LOANS_APPLY_ACCESS, COOPERATIVE_LOANS_VIEW_ACCESS } from '@/lib/permissions';
+import type { CreateLoanApplicationPayload, RespondToGuarantorRequestPayload, SubmitLoanRepaymentPayload } from '@/types/api/loans';
 import { cooperativesKeys } from './queries';
 
 export const loanKeys = {
@@ -15,6 +15,7 @@ export const loanKeys = {
   applications: (tenant: string) => [...loanKeys.all(tenant), 'applications'] as const,
   products: (tenant: string) => [...loanKeys.all(tenant), 'products'] as const,
   repayments: (tenant: string, loanId: number) => [...loanKeys.all(tenant), 'repayments', loanId] as const,
+  guarantorRequests: (tenant: string) => [...loanKeys.all(tenant), 'guarantor-requests'] as const,
   repaymentRequests: (tenant: string, loanId?: number) => [...loanKeys.all(tenant), 'repayment-requests', loanId ?? 'all'] as const,
 };
 
@@ -102,6 +103,32 @@ export function useSubmitLoanRepayment() {
     mutationFn: (payload: SubmitLoanRepaymentPayload) => loansApi.submitRepaymentRequest(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...loanKeys.all(tenant), 'repayment-requests'] });
+    },
+  });
+}
+
+/** Guarantor requests waiting for the caller's answer. */
+export function useGuarantorRequests() {
+  const tenant = useTenantKey();
+  const access = useModuleAccess(COOPERATIVE_GUARANTOR_ACCESS, 'cooperatives');
+  const memberId = useMemberId();
+  return useQuery({
+    queryKey: loanKeys.guarantorRequests(tenant),
+    queryFn: () => guarantorsApi.listPending(),
+    enabled: access && memberId !== undefined,
+  });
+}
+
+/** Accept or decline. Refreshes the pending list, the member's guarantees (profile) and their own applications. */
+export function useRespondToGuarantorRequest() {
+  const queryClient = useQueryClient();
+  const tenant = useTenantKey();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: RespondToGuarantorRequestPayload }) => guarantorsApi.respond(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: loanKeys.guarantorRequests(tenant) });
+      queryClient.invalidateQueries({ queryKey: cooperativesKeys.profile(tenant) });
+      queryClient.invalidateQueries({ queryKey: loanKeys.applications(tenant) });
     },
   });
 }

@@ -3,6 +3,7 @@ import { unwrap } from '../envelope';
 import type {
   CreateLoanApplicationPayload,
   GuarantorCandidateDTO,
+  GuarantorRequestDTO,
   LoanApplicationDTO,
   LoanApplicationsResponseDTO,
   LoanDTO,
@@ -11,6 +12,7 @@ import type {
   LoanRepaymentRequestsResponseDTO,
   LoanRepaymentsResponseDTO,
   LoansResponseDTO,
+  RespondToGuarantorRequestPayload,
   SubmitLoanRepaymentPayload,
 } from '@/types/api/loans';
 
@@ -77,5 +79,21 @@ export const loansApi = {
   /** GET /cooperatives/loan-repayment-requests/:id/receipt?format=json */
   async getRepaymentRequestReceiptUrl(id: number): Promise<{ url: string; filename: string }> {
     return unwrap(client.get(`/cooperatives/loan-repayment-requests/${id}/receipt`, { params: { format: 'json' } }));
+  },
+};
+
+/** Guarantor side of `/cooperatives/*`. The server scopes both calls to the caller's own member. */
+export const guarantorsApi = {
+  /** GET /cooperatives/guarantor-requests/pending → { requests } */
+  async listPending(): Promise<GuarantorRequestDTO[]> {
+    const { requests } = await unwrap<{ requests: GuarantorRequestDTO[] }>(client.get('/cooperatives/guarantor-requests/pending'));
+    return requests;
+  },
+
+  /** POST /cooperatives/guarantor-requests/:id/respond — accept records consent only; decline needs a reason (the API rejects it without one). */
+  async respond(id: number, payload: RespondToGuarantorRequestPayload) {
+    return unwrap<unknown>(
+      client.post(`/cooperatives/guarantor-requests/${id}/respond`, payload.action === 'decline' ? { action: 'decline', declineReason: payload.declineReason } : { action: 'accept' }),
+    );
   },
 };

@@ -15,6 +15,7 @@ import { apiGet } from '@/utils/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface SavingsAccount {
   id: number;
@@ -188,9 +189,12 @@ export default function MySavingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           My Savings
         </h1>
+          <HelpLink />
+        </div>
         <p className="text-gray-600 dark:text-gray-400">Your cooperative savings accounts and deposits</p>
       </div>
 

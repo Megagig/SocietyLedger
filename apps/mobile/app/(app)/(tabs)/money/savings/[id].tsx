@@ -113,7 +113,7 @@ export default function SavingsAccountScreen() {
       refreshing={profileQuery.isRefetching || transactionsQuery.isRefetching || depositsQuery.isRefetching}
       onRefresh={refresh}
     >
-      <ScreenHeader title={ACCOUNT_TYPE_LABELS[account.accountType]} onBack={back} />
+      <ScreenHeader title={ACCOUNT_TYPE_LABELS[account.accountType]} onBack={back} docsKey="M16" />
 
       <View className="gap-6 pb-6">
         <Passbook

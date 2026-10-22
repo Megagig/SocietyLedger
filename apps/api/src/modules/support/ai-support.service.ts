@@ -66,6 +66,8 @@ export const aiSupportService = {
       TECHNICAL: 'Technical issues, system errors, performance problems',
       BUG: 'Software bugs, unexpected behavior, crashes',
       FEATURE_REQUEST: 'New feature requests, enhancement suggestions',
+      BILLING: 'Subscription, plan, invoice and billing questions for the association',
+      DATA: 'Data corrections, imports and bulk changes for the association',
       OTHER: 'General inquiries that don\'t fit other categories',
     };
 
@@ -326,6 +328,8 @@ Choose tone based on the issue:
       TECHNICAL: ['error', 'slow', 'loading', 'crash', 'not working', 'broken', 'issue'],
       BUG: ['bug', 'glitch', 'wrong', 'incorrect', 'mistake', 'unexpected'],
       FEATURE_REQUEST: ['feature', 'request', 'suggest', 'would be nice', 'add', 'improve', 'enhancement'],
+      BILLING: ['subscription', 'plan', 'billing', 'invoice', 'renew', 'upgrade', 'downgrade', 'trial'],
+      DATA: ['import', 'correct', 'duplicate', 'merge', 'bulk', 'migrate', 'restore'],
       OTHER: [],
     };
 

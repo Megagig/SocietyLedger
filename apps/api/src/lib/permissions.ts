@@ -214,6 +214,7 @@ export const PERMISSIONS = {
   SUPPORT_VIEW_ALL: 'support.view_all',
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
+  SUPPORT_ESCALATE: 'support.escalate',
   
   // Documentation (old DB-backed CMS, superseded by apps/docs at D6.3 — see G57).
   // Referenced by real, mounted admin routes (documentation.routes.ts) but never seeded

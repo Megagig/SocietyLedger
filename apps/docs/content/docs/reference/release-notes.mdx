@@ -5,12 +5,42 @@ type: reference
 audience: ["all"]
 platforms: ["web", "mobile"]
 status: published
-lastVerified: "2026-10-21"
+lastVerified: "2026-10-22"
 ---
 
 This page lists notable changes to SocietyLedger as they ship — new features, meaningful fixes, and anything that changes how an existing screen works. Entries are added here as each release goes out.
 
 ## Reference
+
+### Contact SocietyLedger, escalation and the support desk
+
+- **Association admins can contact SocietyLedger support** from **Help & Support → My Tickets → Contact SocietyLedger** on the web, and **Manage → Support tickets → To SocietyLedger** in the app — for billing, bugs, modules, data corrections and feature requests. SocietyLedger's team answers from a new ticket inbox in the admin console, and you're notified of every reply.
+- **Escalate a member's ticket** without sharing it: you write a summary in your own words, SocietyLedger sees only that, and the member isn't told. See [Handling support tickets](/docs/help-support/handling-support-tickets).
+- **A support desk in the app.** Admins and officers can answer member tickets from **Manage → Support tickets**: reply, leave internal notes, assign, change status and get a suggested reply. The web ticket page gained the same internal notes, status change, **Assign to me** and **Suggest a reply**.
+- **Clearer wording.** On the web, members now see **Waiting on you** and **Waiting on support**, as in the app; staff keep **Waiting on User**.
+- **Clarified:** [Contacting SocietyLedger support](/docs/help-support/contacting-support) now explains who to contact for what — your association for your own account, SocietyLedger for the platform.
+
+### Support tickets in the app, with attachments
+
+- **Open and follow tickets in the mobile app.** Profile → Help & support → My tickets: your tickets (Open and Closed), a chat-style thread, reply, close and reopen, and a new-ticket form with suggested help articles. See [Opening and following a support ticket](/docs/help-support/support-tickets).
+- **Attach files** (up to three photos or PDFs, 5MB each) to a new ticket and to replies — on the web and in the app.
+- **You're told about replies.** Your association's reply reaches you by in-app notification, push and email; admins are told when a ticket arrives or you reply.
+- **Tickets go to your association's admins.** The support-tickets page now says so — it used to say tickets reach SocietyLedger directly.
+- **Fixed (security):** members could list other members' tickets by adding a user filter, and could close or reopen anyone's ticket. Members can now only see and change their own.
+- **Fixed:** creating a ticket failed with "Permission denied" because the support permissions were never granted to the default roles.
+
+### Help centre on mobile, and "?" links on more screens
+
+- **Help & support in the app.** Profile → Help & support has search, featured articles, browse by category, popular questions, a full **FAQs** screen with search, and articles you can rate. **User manual** opens this documentation site. See [The in-app help centre](/docs/help-support/in-app-help-center).
+- **"?" on the screen you're on.** Screens for savings, loans, guarantor requests, paying, your ledger and your Money overview now have a **?** that opens the matching manual page. The web has the same link on My Savings, My Loans, Guarantor Requests and the officer queues for savings deposits and loan repayments.
+- **Fixed:** on the web, choosing a category under **Browse by Category** in the Help Centre led to an empty page. It now lists the articles in that category — including categories such as Governance.
+
+### Guarantor requests: notifications, mobile and My guarantees
+
+- **Guarantors are told straight away.** When someone names you as a guarantor you get an in-app notification, a push on mobile, and an email. Borrowers are notified the same way when a guarantor accepts or declines, including the reason, and when their application moves on to the officers. See [Guarantors](/docs/cooperatives/guarantors).
+- **Answer requests in the mobile app.** **Money → Guarantor Requests** has the same Accept and Decline flow as the web, with the liability warning and a required reason to decline.
+- **My guarantees.** Web and mobile now show the total you guarantee on active loans and each loan behind it.
+- **Fixed:** an officer's view of a member's profile showed blanks for the loans that member guarantees. It now shows the loan number, principal and status.
 
 ### Cooperatives: deposits, repayments and savings rules
 

@@ -28,3 +28,8 @@ export async function openDocs(screenId: string, surface?: string): Promise<bool
   await WebBrowser.openBrowserAsync(docsUrl(path, surface));
   return true;
 }
+
+/** Opens the docs site's home (the "User manual" rows — ui-rules.md §12) in the in-app browser. */
+export async function openUserManual(surface: string = 'user_manual'): Promise<void> {
+  await WebBrowser.openBrowserAsync(docsUrl('/docs', surface));
+}

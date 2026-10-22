@@ -98,7 +98,7 @@ export default function LoanDetailScreen() {
 
   return (
     <Screen edges={['top']} refreshing={loanQuery.isRefetching || repaymentsQuery.isRefetching || requestsQuery.isRefetching} onRefresh={refresh}>
-      <ScreenHeader title={loan.loanProductName} onBack={back} />
+      <ScreenHeader title={loan.loanProductName} onBack={back} docsKey="M18" />
 
       <View className="gap-6 pb-6">
         <Passbook

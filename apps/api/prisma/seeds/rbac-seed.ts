@@ -383,6 +383,55 @@ const PERMISSION_REGISTRY = [
     module: "Cooperatives",
     examples: ["POST /api/cooperatives/loan-repayment-requests"]
   },
+  // Help & Support
+  {
+    key: "help.view",
+    description: "Use the help centre's AI answers and article suggestions (reading articles and FAQs needs no permission).",
+    module: "Help & Support",
+    examples: ["POST /api/help/ai/answer", "POST /api/help/ai/suggest-articles"]
+  },
+  {
+    key: "help.manage",
+    description: "Create, edit and delete help articles and FAQs.",
+    module: "Help & Support",
+    examples: ["POST /api/help/articles", "PUT /api/help/faqs/:id"]
+  },
+  {
+    key: "support.create",
+    description: "Open support tickets, and reply to, close or reopen your own.",
+    module: "Help & Support",
+    examples: ["POST /api/support/tickets", "POST /api/support/tickets/:id/respond"]
+  },
+  {
+    key: "support.view_own",
+    description: "View your own support tickets.",
+    module: "Help & Support",
+    examples: ["GET /api/support/tickets", "GET /api/support/tickets/:id"]
+  },
+  {
+    key: "support.view_all",
+    description: "View every support ticket in the association.",
+    module: "Help & Support",
+    examples: ["GET /api/support/tickets (all)", "GET /api/support/tickets/stats"]
+  },
+  {
+    key: "support.manage",
+    description: "Manage support tickets: assign, update status, close and reopen any ticket.",
+    module: "Help & Support",
+    examples: ["PUT /api/support/tickets/:id"]
+  },
+  {
+    key: "support.respond",
+    description: "Reply to support tickets as staff.",
+    module: "Help & Support",
+    examples: ["POST /api/support/tickets/:id/respond"]
+  },
+  {
+    key: "support.escalate",
+    description: "Contact SocietyLedger support on the association's behalf, and escalate a member's ticket to it.",
+    module: "Help & Support",
+    examples: ["POST /api/support/platform-tickets", "POST /api/support/tickets/:id/escalate"]
+  },
   // Meetings
   {
     key: "meetings.manage_minutes",

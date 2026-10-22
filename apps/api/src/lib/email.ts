@@ -640,6 +640,157 @@ function getTemplateContent(template: string, data: Record<string, any>): string
       </html>
     `,
 
+    'guarantor-request': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🤝 Guarantor Request</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.guarantorName}!</h2>
+            <p><strong>${data.applicantName}</strong> has asked you to guarantee a loan from <strong>${data.associationName}</strong>.</p>
+
+            <div class="highlight-box">
+              <strong>Loan Details</strong><br><br>
+              <strong>Loan Product:</strong> ${data.productName}<br>
+              <strong>Loan Amount:</strong> ₦${Number(data.loanAmount).toLocaleString()}<br>
+              <strong>Your Guarantee:</strong> ₦${Number(data.guaranteeAmount).toLocaleString()}<br>
+              <strong>Purpose:</strong> ${data.purpose}
+            </div>
+
+            <p>By accepting, you agree to guarantee this loan. If the borrower defaults, you may be liable for your share. You can accept, or decline with a reason.</p>
+
+            <center>
+              <a href="${WEBSITE_URL}/dashboard/cooperatives/guarantors" class="button">Review Request</a>
+            </center>
+
+            <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">
+              You can also answer this request in the SocietyLedger app under Money → Guarantor Requests.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'guarantor-response': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${data.accepted ? '✅ Guarantor Accepted' : '❌ Guarantor Declined'}</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.applicantName}!</h2>
+            ${data.accepted
+              ? `<p><strong>${data.guarantorName}</strong> agreed to guarantee your <strong>${data.productName}</strong> application (${data.applicationNumber}) with <strong>${data.associationName}</strong>.</p>`
+              : `<p><strong>${data.guarantorName}</strong> declined to guarantee your <strong>${data.productName}</strong> application (${data.applicationNumber}) with <strong>${data.associationName}</strong>.</p>`
+            }
+            ${!data.accepted && data.declineReason
+              ? `<div class="highlight-box"><strong>Their reason</strong><br><br>${data.declineReason}</div>`
+              : ''
+            }
+            ${data.movedToReview
+              ? '<p class="success">All the guarantors you need have accepted, so your application is now with the officers for review.</p>'
+              : ''
+            }
+            ${!data.accepted
+              ? '<p>You may need to choose another guarantor before your application can move forward. Contact your association if you need help.</p>'
+              : ''
+            }
+
+            <center>
+              <a href="${WEBSITE_URL}/dashboard/cooperatives/my-loans" class="button">View My Loans</a>
+            </center>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'support-ticket-new': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${data.platform ? '🎫 New Platform Ticket' : '🎫 New Support Ticket'}</h1>
+          </div>
+          <div class="content">
+            <p>${data.platform
+              ? '<strong>' + data.openerName + '</strong> at <strong>' + data.associationName + '</strong> opened a ticket for SocietyLedger support' + (data.escalated ? ' (escalated from a member ticket).' : '.')
+              : '<strong>' + data.openerName + '</strong> opened a support ticket with <strong>' + data.associationName + '</strong>.'}</p>
+
+            <div class="highlight-box">
+              <strong>${data.ticketNumber}</strong><br><br>
+              <strong>Subject:</strong> ${data.subject}<br>
+              <strong>Category:</strong> ${data.category}<br>
+              <strong>Priority:</strong> ${data.priority}
+            </div>
+
+            <center>
+              <a href="${data.url || WEBSITE_URL + '/dashboard/help/tickets'}" class="button">${data.platform ? 'Open in Admin Console' : 'Open Tickets'}</a>
+            </center>
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
+    'support-ticket-reply': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>💬 ${data.fromStaff ? 'Reply on Your Ticket' : 'Member Reply'}</h1>
+          </div>
+          <div class="content">
+            <p>${data.fromStaff
+              ? (data.staffLabel || 'Your association') + ' replied to your support ticket.'
+              : (data.customerLabel || 'A member') + ' replied to a support ticket you are handling.'}</p>
+
+            <div class="highlight-box">
+              <strong>${data.ticketNumber} — ${data.subject}</strong><br><br>
+              ${data.excerpt}
+            </div>
+
+            <center>
+              <a href="${data.url || WEBSITE_URL + data.path}" class="button">View Ticket</a>
+            </center>
+
+            ${data.fromStaff
+              ? '<p style="color: #6b7280; font-size: 14px; margin-top: 32px;">You can also reply in the SocietyLedger app under Profile → Help &amp; support → My tickets.</p>'
+              : ''}
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
     'announcement': (data) => `
       <!DOCTYPE html>
       <html>

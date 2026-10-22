@@ -2,7 +2,7 @@
 // PHASE 21: SUPPORT TICKET TYPES
 // ============================================
 
-import { TicketCategory, TicketPriority, TicketStatus } from '@prisma/client';
+import { TicketAudience, TicketCategory, TicketPriority, TicketStatus } from '@prisma/client';
 
 // ============================================
 // TICKET TYPES
@@ -12,6 +12,8 @@ export interface SupportTicket {
   id: number;
   associationId: number;
   userId: number;
+  /** ASSOCIATION = a member asking their own association; PLATFORM = an association admin asking SocietyLedger. */
+  audience?: TicketAudience;
   ticketNumber: string;
   subject: string;
   description: string;
@@ -125,6 +127,7 @@ export interface AddResponseRequest {
 }
 
 export interface TicketListParams {
+  audience?: TicketAudience;
   status?: TicketStatus | TicketStatus[];
   category?: TicketCategory;
   priority?: TicketPriority;
