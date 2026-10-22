@@ -491,6 +491,7 @@ model Notification {
   message       String
   type          String
   entityId      Int?        @map("entity_id") // F0.2: the entity (payment, meeting, election...) this notification is about, for push deep-link routing. Nullable — existing rows and writers that don't pass one are unaffected.
+  pushType      String?     @map("push_type") // Deep-link type (same vocabulary as the push `data.type`), so the inbox can route a tap to the right screen. Null on older rows.
   isRead        Boolean     @default(false) @map("is_read")
   createdAt     DateTime    @default(now()) @map("created_at")
   association   Association @relation(fields: [associationId], references: [id])

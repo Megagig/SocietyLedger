@@ -761,7 +761,7 @@ export function AdminSidebar() {
           permission: undefined,
         },
         {
-          label: 'My Tickets',
+          label: 'Support Tickets',
           icon: <IconTicket size={18} />,
           href: '/dashboard/help/tickets',
           permission: undefined,

@@ -84,7 +84,7 @@ export default function NotificationsScreen() {
       return;
     }
     if (!notif.isRead) markRead.mutate(notif.id);
-    const type = pushTypeForKind(notif.type);
+    const type = notif.pushType ?? pushTypeForKind(notif.type);
     if (type) routePushNotification({ type, entityId: notif.entityId ?? undefined }, tenantId);
   }
 

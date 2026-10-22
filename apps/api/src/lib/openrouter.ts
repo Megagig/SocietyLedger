@@ -64,7 +64,8 @@ interface OpenRouterEmbeddingResponse {
 
 const OPENROUTER_CONFIG = {
   baseUrl: 'https://openrouter.ai/api/v1',
-  defaultModel: 'openai/gpt-4-turbo-preview',
+  // OpenRouter retires models over time (gpt-4-turbo-preview already is); set OPENROUTER_MODEL to pin one, otherwise its auto-router picks an available model.
+  defaultModel: process.env.OPENROUTER_MODEL || 'openrouter/auto',
   embeddingModel: 'openai/text-embedding-ada-002',
   maxRetries: 3,
   retryDelay: 1000,

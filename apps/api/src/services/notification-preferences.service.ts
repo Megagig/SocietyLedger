@@ -140,9 +140,11 @@ export async function dispatchNotification(options: DispatchOptions): Promise<{
 
   const result = { inAppCreated: false, emailSent: false, smsSent: false };
 
+  const pushType = options.pushType ?? KIND_TO_PUSH_TYPE[kind];
+
   if (channelAllowed(pref, kind, 'inApp')) {
     await prisma.notification.create({
-      data: { associationId, userId, title, message, type: kind, entityId },
+      data: { associationId, userId, title, message, type: kind, entityId, pushType },
     });
     result.inAppCreated = true;
 
@@ -154,7 +156,7 @@ export async function dispatchNotification(options: DispatchOptions): Promise<{
       await sendPushToUsers([userId], {
         title,
         body: message,
-        data: { type: options.pushType ?? KIND_TO_PUSH_TYPE[kind], entityId },
+        data: { type: pushType, entityId },
         channelId: KIND_TO_PUSH_CHANNEL[kind],
       });
     }

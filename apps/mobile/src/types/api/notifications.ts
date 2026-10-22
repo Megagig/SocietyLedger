@@ -17,6 +17,8 @@ export type NotificationDTO = {
   message: string;
   type: NotificationType;
   entityId: number | null;
+  /** Deep-link type (same vocabulary as the push `data.type`); null on rows written before it existed. */
+  pushType?: string | null;
   isRead: boolean;
   createdAt: IsoDateString;
 };

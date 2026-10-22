@@ -235,6 +235,8 @@ export interface Notification {
   title: string;
   message: string;
   type: 'payment_due' | 'payment_received' | 'system';
+  entityId?: number | null;
+  pushType?: string | null;
   isRead: boolean;
   createdAt: Date;
 }

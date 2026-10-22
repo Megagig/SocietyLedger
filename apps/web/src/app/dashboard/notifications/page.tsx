@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { notificationHref } from '@/lib/notification-link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/lib/api/notifications';
 import { IconBell, IconCheck, IconTrash, IconSearch, IconFilter, IconX } from '@tabler/icons-react';
@@ -8,6 +10,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 
 export default function NotificationsCenterPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
@@ -399,6 +402,17 @@ export default function NotificationsCenterPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                       {notification.message}
                     </p>
+                    {notificationHref(notification.pushType, notification.entityId) && (
+                      <button
+                        onClick={() => {
+                          if (!notification.isRead) markAsReadMutation.mutate(notification.id);
+                          router.push(notificationHref(notification.pushType, notification.entityId) as string);
+                        }}
+                        className="mt-2 text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
+                      >
+                        View details →
+                      </button>
+                    )}
                     <div className="flex items-center gap-2 mt-3">
                       {!notification.isRead && (
                         <button

@@ -41,6 +41,7 @@ export default function TicketsPage() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [needsReply, setNeedsReply] = useState(0);
   
   // Filters
   const [search, setSearch] = useState('');
@@ -52,6 +53,14 @@ export default function TicketsPage() {
   // Pagination
   const [page, setPage] = useState(0);
   const limit = 20;
+
+  // Staff: how many member tickets are waiting on a first answer.
+  useEffect(() => {
+    if (!isStaff) return;
+    listTickets({ status: 'OPEN' as TicketStatus, limit: 1, offset: 0 })
+      .then((r) => setNeedsReply(r.total))
+      .catch(() => setNeedsReply(0));
+  }, [isStaff, tickets]);
 
   useEffect(() => {
     loadTickets();
@@ -134,12 +143,21 @@ export default function TicketsPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-            Support Tickets
+            {isStaff ? (scope === 'platform' ? 'Tickets to SocietyLedger' : 'Member Support Tickets') : 'Support Tickets'}
           </h1>
             <HelpLink />
           </div>
           <p className="text-gray-600 dark:text-gray-400">
-            View and manage your support requests
+            {isStaff
+              ? scope === 'platform'
+                ? 'Tickets you sent to the SocietyLedger team'
+                : 'Tickets raised by your members — open one to reply, assign it or change its status'
+              : 'View and manage your support requests'}
+            {isStaff && scope === 'association' && needsReply > 0 && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                {needsReply} need a reply
+              </span>
+            )}
           </p>
         </div>
         <Link

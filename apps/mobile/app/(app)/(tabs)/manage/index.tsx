@@ -1,5 +1,7 @@
 import { Bell, Briefcase, LifeBuoy } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { View } from 'react-native';
 
 import { EmptyState } from '@/components/feedback/EmptyState';
@@ -11,6 +13,7 @@ import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { SUPPORT_STAFF_ACCESS, useStaffTickets } from '@/features/support/queries';
+import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
 
 // project-overview.md §6.8/§6.9 — members, finance, payments verification, accounting, reports,
@@ -20,6 +23,14 @@ import { useCan } from '@/hooks/useCan';
 // Sections appear here as each officer tool ships; Support is the first.
 export default function ManageScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  // Permissions come from the session (/auth/me); re-check them whenever the hub opens so a role granted
+  // after sign-in shows up without a full sign-out.
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.me() });
+    }, [queryClient]),
+  );
   const canSupport = useCan(SUPPORT_STAFF_ACCESS);
   const ticketsQuery = useStaffTickets();
   const needsReply = (ticketsQuery.data?.tickets ?? []).filter((t) => t.status === 'OPEN' || t.status === 'WAITING_ON_STAFF').length;

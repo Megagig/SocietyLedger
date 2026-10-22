@@ -301,7 +301,8 @@ export function routePushNotification(data: PushData, currentTenantId?: number):
       break;
 
     case 'user.approval_pending':
-      router.push('/(app)/(tabs)/manage/members/approvals' as never);
+      // No dedicated approvals screen on mobile yet — land on the Manage hub.
+      router.push('/(app)/(tabs)/manage' as never);
       break;
 
     default:

@@ -794,7 +794,7 @@ export function Sidebar() {
           href: '/dashboard/help/faqs',
         },
         {
-          label: 'My Tickets',
+          label: 'Support Tickets',
           icon: <IconTicket size={18} />,
           href: '/dashboard/help/tickets',
         },

@@ -1412,3 +1412,6 @@ _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs UR
 
 ## Retired
 _(none)_
+
+- **Notification row "View details →"** (web `dashboard/notifications`): small teal text button above Mark read / Delete, shown only when `notificationHref(pushType, entityId)` resolves; marks the row read then navigates.
+- **"n need a reply" pill** (web `help/tickets` header, staff only): `rounded-full bg-amber-100 text-amber-800` (dark: `bg-amber-900/30 text-amber-300`) inline after the subtitle.

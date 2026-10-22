@@ -1,16 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { apiGet, apiPost, apiPatch, apiDelete as apiDeleteRequest } from '@/utils/api';
+import { apiGet, apiPost, apiPut, apiDelete as apiDeleteRequest } from '@/utils/api';
 import { API_ROUTES } from '@/utils/constants';
 import { IconBell, IconCheck, IconTrash } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import { notificationHref } from '@/lib/notification-link';
 
 interface Notification {
   id: number;
   title: string;
   message: string;
   type: string;
+  entityId?: number | null;
+  pushType?: string | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -23,6 +27,7 @@ export function NotificationBell() {
   const [hasAssociation, setHasAssociation] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuthStore();
+  const router = useRouter();
 
   const canFetchNotifications = !!user?.associationId;
 
@@ -84,7 +89,7 @@ export function NotificationBell() {
 
   const markAsRead = async (id: number) => {
     try {
-      const response = await apiPatch(API_ROUTES.NOTIFICATIONS.MARK_READ(id), {});
+      const response = await apiPut(API_ROUTES.NOTIFICATIONS.MARK_READ(id), {});
       if (response.ok) {
         setNotifications(notifications.map(n => 
           n.id === id ? { ...n, isRead: true } : n
@@ -98,7 +103,7 @@ export function NotificationBell() {
 
   const markAllAsRead = async () => {
     try {
-      const response = await apiPatch(API_ROUTES.NOTIFICATIONS.MARK_ALL_READ, {});
+      const response = await apiPut(API_ROUTES.NOTIFICATIONS.MARK_ALL_READ, {});
       if (response.ok) {
         setNotifications(notifications.map(n => ({ ...n, isRead: true })));
         setUnreadCount(0);
@@ -106,6 +111,14 @@ export function NotificationBell() {
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
+  };
+
+  const openNotification = (n: Notification) => {
+    const href = notificationHref(n.pushType, n.entityId);
+    if (!href) return;
+    if (!n.isRead) void markAsRead(n.id);
+    setIsOpen(false);
+    router.push(href);
   };
 
   const deleteNotification = async (id: number) => {
@@ -200,7 +213,8 @@ export function NotificationBell() {
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                  onClick={() => openNotification(notification)}
+                  className={`${notificationHref(notification.pushType, notification.entityId) ? 'cursor-pointer ' : ''}px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
                     !notification.isRead ? 'bg-teal-50/50 dark:bg-teal-900/10' : ''
                   }`}
                 >
@@ -225,14 +239,14 @@ export function NotificationBell() {
                       <div className="flex items-center gap-2 mt-2">
                         {!notification.isRead && (
                           <button
-                            onClick={() => markAsRead(notification.id)}
+                            onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
                             className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 flex items-center gap-1"
                           >
                             <IconCheck size={14} /> Mark read
                           </button>
                         )}
                         <button
-                          onClick={() => deleteNotification(notification.id)}
+                          onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
                           className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1"
                         >
                           <IconTrash size={14} /> Delete

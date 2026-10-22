@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { supportController } from './support.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
+import { requirePermission, requireAnyPermission, attachPermissions } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { attachFiles } from './support-upload';
 
@@ -14,6 +14,8 @@ const router: Router = Router();
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
+// The controller decides staff-vs-member scoping from req.permissions, which only this middleware sets.
+router.use(attachPermissions());
 
 // ==========================================
 // STATISTICS (must be before :id routes)

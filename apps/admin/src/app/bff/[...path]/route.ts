@@ -33,7 +33,7 @@ async function handler(req: NextRequest, { params }: { params: { path: string[] 
   }
 
   const url = new URL(`${API_URL}/api/${apiPath}`);
-  req.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v));
+  req.nextUrl.searchParams.forEach((v, k) => url.searchParams.append(k, v));
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,

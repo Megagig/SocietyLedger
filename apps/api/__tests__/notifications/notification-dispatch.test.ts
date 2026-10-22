@@ -49,7 +49,7 @@ describe('dispatchNotification (F0.2 push additions)', () => {
 
     expect(result.inAppCreated).toBe(true);
     expect(notificationCreate).toHaveBeenCalledWith({
-      data: { associationId: 1, userId: 10, title: 'Payment received', message: 'Thanks', type: 'payment_received', entityId: 555 },
+      data: { associationId: 1, userId: 10, title: 'Payment received', message: 'Thanks', type: 'payment_received', entityId: 555, pushType: 'payment.received' },
     });
     expect(sendPushMock).toHaveBeenCalledWith([10], {
       title: 'Payment received',
