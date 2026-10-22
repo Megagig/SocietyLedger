@@ -1,12 +1,12 @@
 ---
 title: "Choosing which notifications you get"
-description: "Pick which events notify you, by email, SMS or in-app — though these toggles don't act on anything yet."
+description: "Pick which events notify you, by email, SMS or in-app, and open what a notification is about."
 type: task
 audience: ["member"]
 platforms: ["web"]
 covers: ["/dashboard/notifications/preferences", "N2"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-23"
 related: ["/docs/core-concepts/notifications-and-channels"]
 ---
 
@@ -26,10 +26,14 @@ You need the **view notifications** permission, which every member has by defaul
 
 <Screenshot src="/images/member-guide/notification-preferences-1.webp" alt="Notification Preferences page listing notification types with Email, SMS and In-App toggles, and a Quiet Hours section with start and end time fields" />
 
-<Callout type="danger" title="These toggles don't change anything yet">
-Your choices save and this screen correctly shows them back to you, but nothing that actually sends a notification anywhere in SocietyLedger checks them yet — confirmed by reading every notification sender in the codebase. You'll keep getting every notification through every channel regardless of what you turn off here, and quiet hours aren't respected either. Preferences are also stored in server memory rather than a database, so they're lost on every server restart.
+<Callout type="warning" title="What the toggles do — and don't — control">
+Your choices are saved to your account and applied when SocietyLedger sends you a payment, support-ticket, guarantor, savings-deposit or loan-repayment notification: a type you switch off for a channel isn't sent on that channel. A few senders don't check them yet — meeting reminders and platform announcements arrive regardless. **Quiet Hours** are saved but not applied yet, so notifications still arrive overnight.
 </Callout>
+
+## Open what a notification is about
+
+Tap a notification in the app, or select **View details →** on the web (in the notification bell or on the Notifications page), to go straight to the item it's about — a support ticket, a guarantor request, your savings or loans, or the announcement. Older notifications that don't point anywhere simply stay in the list.
 
 ## What happens next
 
-Your choices are saved, but — as the callout above explains — they don't change which notifications you actually receive today.
+Your choices are saved and used for the next notification of that type. Anything you switched off for a channel stops arriving there, apart from the senders listed above.

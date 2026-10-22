@@ -1,53 +1,46 @@
-# Memory — Mobile Phase 4 groundwork (cooperatives API + web + docs)
+# Memory — Mobile Phase 4 complete (Cooperatives & support), ready for Phase 5
 
-Last updated: 2026-10-21, evening
+Last updated: 2026-10-23
 
 ## What was built
 
-Phase 4 (F4.1–F4.5, "Cooperatives & support") was architected, then the whole **API + web + docs groundwork** was built so mobile can follow. **No mobile screens exist yet; F4.1–F4.5 are NOT ticked in `context/progress-tracker.md`** (a "Phase 4 backend groundwork" note sits above them). `ui-registry.md` has a "Cooperatives savings & loans" web section.
+Phase 4 (F4.1–F4.6) is built on API, web, mobile and docs, reviewed with `/review`, and every finding fixed except one (see Open questions). Per-feature detail lives in `context/progress-tracker.md` (rows dated 2026-10-21 to 2026-10-23) and `context/ui-registry.md` — not repeated here.
 
-**API (apps/api)**
-- Own-scoped permissions `cooperatives.view_own | apply_own | guarantor_own | savings_deposit_own | repay_own` (`lib/permissions.ts`, `role-permission-mapping.ts`, `rbac-seed.ts`). Member gets all five; admin/treasurer/financial_secretary get the last two. Backfill: `scripts/grant-member-cooperatives-permissions.ts` (**run on dev only**).
-- `cooperatives.controller.ts`: `canSeeAllCooperatives` (members.view_all / either manage key) — loans, applications, savings txns, repayments, deposits, repayment requests are server-scoped to the caller's member; single-record GETs 404 others'. Closed two money holes: `POST /savings-transactions` and `POST /loan-repayments` were open to `ledger.view`, now officer-only.
-- Savings deposits by receipt: `SavingsDepositRequest` (migration `20261021_add_savings_deposit_requests`); `POST/GET /cooperatives/savings-deposits`, `/:id/receipt?format=json`, `/:id/approve`, `/:id/reject`. Claim-then-credit, reverts to PENDING on failure, in-app notification to member.
-- Loan repayments by receipt: `LoanRepaymentRequest` (migration `20261021_add_loan_repayment_requests`); same shape under `/loan-repayment-requests`. Capped at outstanding (checked at submit and approve); approve calls `processLoanRepayment`.
-- Savings-to-loan rule + lien: reuses existing `LoanProduct.maxLoanToSavingsRatio` (2 = up to twice savings), new `lockSavings`; `SavingsLien` (migration `20261021_add_savings_liens`); logic in `modules/cooperatives/savings-lien.ts`. Hold = principal ÷ ratio at disbursement, released pro-rata with principal repaid; rule checked on apply, approve, disburse against *available* savings (balance − liens); held savings can't be withdrawn. `/my-profile` returns `lockedSavings`/`availableSavings`.
-- `GET /cooperatives/guarantor-candidates?search=` (names only) — members can't list `/members`.
-- Tests: `__tests__/cooperatives/{cooperatives-scoping,savings-deposit.service,savings-lien,loan-repayment-request.service}.test.ts` (all pass; 83 across cooperatives+welfare+meetings).
-
-**Web (apps/web)**
-- `my-savings` rebuilt (receipt-upload deposit, My Deposits, held vs available, activity; direct Deposit/Withdraw removed). `my-loans`: Pay Now (receipt upload) + My Payments; officers keep Record Payment. New officer queues `/dashboard/cooperatives/savings-deposits` and `/loan-repayments` (+ Sidebar/AdminSidebar entries). `loan-products` now editable with Savings rule (multiplier + hold switch). `apply` shows borrowing limit/held amount, guarantor search via candidates endpoint.
-- `/dashboard/cooperatives` landing: officers (`ledger.view`/`payments.approve`) get the old dashboard; everyone else gets new `MemberOverview.tsx`; "Overview" link added to `MemberSidebar`.
-
-**Docs (apps/docs)** — 5 new pages under `content/docs/cooperatives/` (depositing-into-your-savings, approving-savings-deposits, paying-your-loan, approving-loan-repayments, savings-rule-and-held-savings), registered in `scripts/sitemap-data.ts` + `meta.json`; fixed now-false text in loan-products, applying-for-a-loan, repayments-and-schedules, reviewing-and-disbursing-loans, deposits-and-withdrawals, member-guide/savings-and-loans, cooperatives-welfare-faq; release-notes entry; reference pages regenerated (fixed `scripts/reference/build-permissions.ts` path to `src/lib/role-permission-mapping.ts`). Build, `check:frontmatter` (204/0 failed), `check:links` (390/0 broken) all pass.
+- **F4.1 Savings, F4.2 Loans & apply, F4.3 Guarantor requests, F4.4 Help centre & FAQs** — mobile screens under `apps/mobile/app/(app)/(tabs)/money/*` and `profile/help/*`; web pages under `apps/web/src/app/dashboard/{cooperatives,help}`.
+- **F4.5 Support tickets Tier 1** (member ↔ association admins, attachments, notifications) and **F4.6 Tier 2** (association admin ↔ SocietyLedger: platform inbox in the admin console at `apps/admin/src/app/(console)/support`, escalate, "Contact SocietyLedger", mobile staff desk at `manage/support/*`).
+- **Review round (2026-10-23):**
+  - Notifications now persist a deep-link type: new nullable `Notification.pushType` column (migrations `20261023_add_notification_push_type` and `20261023_backfill_notification_push_type`). `dispatchNotification` writes it; the mobile inbox routes on `notif.pushType ?? pushTypeForKind(type)`; web has `apps/web/src/lib/notification-link.ts` plus "View details →" on the bell dropdown and the Notifications page.
+  - `cooperativesService.notifyApprovers` alerts officers (holders of `ledger.create` for savings, `payments.approve` for loans) when a member submits a deposit, repayment or loan application; deposit/repayment decisions go through `dispatchNotification` (`savings.deposit_decision`, `loan.repayment_decision`).
+  - Docs: `mobile-app/*` (9 pages) written for real; `support.escalate` added to the permissions reference; release notes updated; three pages that wrongly said notification preferences do nothing were corrected; `.env.example` documents `OPENROUTER_API_KEY` / `OPENROUTER_MODEL`.
+- Last regression run: API 208 tests (22 suites, multi-tenancy excluded), mobile 270 (57 suites), API/mobile/web typecheck clean, mobile and touched-web lint clean, docs frontmatter 205/0 failed, links 420/0 broken, docs build passes.
 
 ## Decisions made
 
-- Savings deposits and loan repayments are **never self-credited**: member uploads receipt → pending → officer confirms money landed → only then the balance/loan moves (owner-approved, incl. repayments).
-- **Lien (hold), not debit**: savings stay in the account; per-loan-product multiplier set by each cooperative's admin in Loan Products. No extra "lien amount" setting — derived as principal ÷ multiplier.
-- Officer approval of mobile-side deposits/repayments stays web-only for now (mobile officer tooling is Phase 5/6).
-- Don't run `prettier --write`; edit CRLF files via scripts/Edit, not shell one-liners (scratch helpers lived in the session scratchpad).
+- Tier 2 tickets are visible only to the admin who opened them; platform staff (`platformRole` SUPER_ADMIN / SUPPORT_AGENT) answer from the admin console; escalation never shares the member's ticket.
+- Officer approval screens (savings deposits, loan repayments, loan applications) stay web-only until Phase 5; mobile officer alerts land on the Manage hub.
+- OpenRouter model is configurable via `OPENROUTER_MODEL`, defaulting to `openrouter/auto` because `openai/gpt-4-turbo-preview` was retired.
+- Notification preferences are applied only to senders that use `dispatchNotification`; quiet hours are stored but not enforced; meeting reminder jobs and tenant announcements bypass preferences.
 
 ## Problems solved
 
-- "No visible change / `…is not a function`" in the browser = **web dev server (Next, port 3000) running since before the edits**; fix is stop it, `rm -rf apps/web/.next`, `pnpm -F @societyledger/web dev`, hard refresh. Happened twice.
-- `prisma generate` EPERM on `query_engine-windows.dll.node` = a node process (stray Jest / dev server) holding the DLL; stop it, regenerate, restart API (API port is **4001**, web 3000, subdomain `oko-youth-forum`).
-- Members couldn't use cooperatives at all: web mapped to `ledger.view_own` but API required `ledger.view`; and couldn't pick guarantors (`GET /members` needs `members.view`).
-- Docs `check:links` validates against `scripts/sitemap-data.ts`, not `out/` — new pages must be registered there.
+- Support routes never installed `attachPermissions()`, so `req.permissions` was undefined and admins saw only their own tickets — fixed in `support.routes.ts` (regression test `support-routes-permissions.test.ts`).
+- Web bell dropdown used PATCH for mark-read; the API route is PUT.
+- Admin console BFF proxy used `searchParams.set`, collapsing repeated `status` params; now `append`.
+- "Suggest a reply": needs `OPENROUTER_API_KEY`; model output isn't always clean JSON, so `parseSuggestionJson` tolerates prose, fences and truncation.
+- `prisma generate` EPERM while the dev API runs — stop the API, generate, restart. The user runs the API themselves; free port 4001 with `Get-NetTCPConnection -LocalPort 4001 -State Listen | ForEach-Object { taskkill /PID $_.OwningProcess /T /F }`.
+- Heredocs and `node -e` with `$` or nested quotes corrupt files — write scripts to the scratchpad with the Write tool, and preserve CRLF when patching.
 
 ## Current state
 
-All of the above is implemented and unit/type/build-checked; **nothing has been click-tested in a browser**. The user was about to restart the web dev server to confirm the landing-page 403 (`/cooperatives/dashboard`) is gone for a member (DB shows that member has no officer keys, so the new page shouldn't call it). The test member (turningpointcodes@gmail.com, tenant 15 Oko Youth Forum) has **no savings account** — an officer must create one (All Savings) and set a product's multiplier before the new UI shows. Docs new pages use `<Screenshot pending>` placeholders and `lastVerified: 2026-10-21` though steps were not click-verified. Nothing is committed.
+Everything above works in tests. Not verified on a device or in a browser this round: new officer alerts, notification taps, the new mobile docs pages' accuracy against a real device. The web new-ticket page has never been viewed in a browser. 12 docs screenshots are still `pending` placeholders.
 
 ## Next session starts with
 
-1. Ask the user how their click-through went (checklist: officer creates savings account + sets multiplier 2 → member deposits with receipt → officer approves → apply shows ₦200k limit → disburse holds ₦100k → member pays loan with receipt → officer approves → hold releases). Fix what breaks.
-2. Before docs deploy: capture the pending screenshots and click-verify the steps in the 5 new docs pages.
-3. Then mobile F4.1–F4.5 (Savings, Loans & apply, Guarantor requests, Help center, Support tickets), reusing `useModuleAccess`/`useMemberId`/`ModuleLockedScreen`/`NoMemberProfile`/`ErrorState`; mobile savings/loan screens must follow the receipt-upload + lien model above. Tick tracker + update ui-registry per feature.
+Mobile Phase 5 (officer features), starting with `/architect` for the first Phase 5 feature in `context/build-plan.md` (F5.x; officer attendance F5.8 is already planned there). Before that, on every non-local environment: run `prisma migrate deploy`, run the `help-permissions` seed, set `OPENROUTER_API_KEY`, rebuild `packages/shared`, and have users sign in again. Restart Metro with `npx expo start -c`.
 
 ## Open questions
 
-- Run `grant-member-cooperatives-permissions.ts` (and the earlier welfare one) on every non-dev environment before release.
-- `multi-tenancy/subdomain` and `isolation` Jest suites fail (full-server integration tests against dev DB); cause never investigated, and they must not be run casually (they write to the dev DB).
-- Web aliases `COOPERATIVE_SAVINGS_MANAGE` to `payments.approve`, so a financial secretary (API allows) won't see the Savings Deposits sidebar item — pre-existing alias mismatch.
-- Poll detail still lacks per-option results; whether Money/Profile tabs get `popToTopOnBlur` (only Community has it).
+- `apps/api/__tests__/multi-tenancy/{isolation,subdomain}.test.ts` can't run: they import the live server and write real associations/users to the configured DB, and `otplib` is ES-module only. They need a dedicated test database — decision pending. My aborted runs left test associations 16 and 19 and users `admin1@test.com` / `admin2@test.com` in the dev DB (audit-log rows reference them, so they were not deleted).
+- Whether to hide "Suggest a reply" when the AI key is missing, or reword its message.
+- Whether to make meeting reminders and tenant announcements respect notification preferences, and enforce quiet hours.
+- Store links for the "Getting the app" docs page are unknown (beta is invitation-only).

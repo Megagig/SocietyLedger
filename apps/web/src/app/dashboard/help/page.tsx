@@ -316,7 +316,7 @@ export default function HelpPage() {
               </div>
             </div>
             <p className="text-white/90 text-sm mb-4">
-              Can't find what you're looking for? Our support team is here to help.
+              Can&apos;t find what you&apos;re looking for? Our support team is here to help.
             </p>
             <div className="flex items-center gap-3">
               <Link

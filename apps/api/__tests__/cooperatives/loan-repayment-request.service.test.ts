@@ -16,6 +16,9 @@ const mockPrisma = {
   notification: { create: jest.fn() },
 };
 jest.mock('../../src/lib/prisma', () => ({ prisma: mockPrisma }));
+const mockDispatch = jest.fn();
+jest.mock('../../src/services/notification-preferences.service', () => ({ dispatchNotification: (...args: unknown[]) => mockDispatch(...args) }));
+
 jest.mock('../../src/services/accounting-integration.service', () => ({ accountingIntegrationService: {} }));
 
 import { Decimal } from '@prisma/client/runtime/library';
@@ -158,13 +161,13 @@ describe('approveLoanRepaymentRequest', () => {
 
   it("tells the member, and a notification failure doesn't fail the approval", async () => {
     mockPrisma.loanRepaymentRequest.updateMany.mockResolvedValue({ count: 1 });
-    mockPrisma.notification.create.mockRejectedValue(new Error('db down'));
+    mockDispatch.mockRejectedValue(new Error('db down'));
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await expect(cooperativesService.approveLoanRepaymentRequest(15, 8, 2)).resolves.toBeDefined();
 
-    expect(mockPrisma.notification.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ userId: 7, type: 'loan.repayment_confirmed', entityId: 8 }) })
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 7, kind: 'system', pushType: 'loan.repayment_decision', entityId: 8 })
     );
     errorSpy.mockRestore();
   });
@@ -183,8 +186,8 @@ describe('rejectLoanRepaymentRequest', () => {
         data: expect.objectContaining({ status: 'REJECTED', rejectionReason: 'No matching credit on the statement' }),
       })
     );
-    expect(mockPrisma.notification.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ type: 'loan.repayment_rejected' }) })
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ pushType: 'loan.repayment_decision', title: 'Loan repayment not approved' })
     );
   });
 

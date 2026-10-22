@@ -271,8 +271,21 @@ export function routePushNotification(data: PushData, currentTenantId?: number):
       router.push('/(app)/(tabs)/community/welfare' as never);
       break;
 
+    // Officer alerts about something a member submitted. The approval screens are web-only until Phase 5, so
+    // these land on the Manage hub rather than a route that doesn't exist yet.
     case 'loan.application_submitted':
-      if (entityId) router.push(`/(app)/(tabs)/manage/cooperatives/applications/${entityId}` as never);
+    case 'loan.repayment_submitted':
+    case 'savings.deposit_submitted':
+    case 'support.platform_ticket':
+      router.push('/(app)/(tabs)/manage' as never);
+      break;
+
+    case 'savings.deposit_decision':
+      router.push('/(app)/(tabs)/money/savings' as never);
+      break;
+
+    case 'loan.repayment_decision':
+      router.push('/(app)/(tabs)/money/loans' as never);
       break;
 
     case 'loan.application_updated':

@@ -267,7 +267,7 @@ function NewTicketForm() {
                   onChange={(e) => setAiCouldntHelp(e.target.checked)}
                   className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                 />
-                I've checked the help articles but couldn't find a solution
+                I&apos;ve checked the help articles but couldn&apos;t find a solution
               </label>
             </div>
 

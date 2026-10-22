@@ -5,6 +5,16 @@ export function notificationHref(pushType?: string | null, entityId?: number | n
     case 'support.ticket_member_reply':
     case 'support.ticket_reply':
       return entityId ? `/dashboard/help/tickets/${entityId}` : '/dashboard/help/tickets';
+    case 'savings.deposit_submitted':
+      return '/dashboard/cooperatives/savings-deposits';
+    case 'savings.deposit_decision':
+      return '/dashboard/cooperatives/my-savings';
+    case 'loan.repayment_submitted':
+      return '/dashboard/cooperatives/loan-repayments';
+    case 'loan.repayment_decision':
+      return '/dashboard/cooperatives/my-loans';
+    case 'loan.application_submitted':
+      return entityId ? `/dashboard/cooperatives/applications/${entityId}` : '/dashboard/cooperatives/applications';
     case 'guarantor.requested':
       return '/dashboard/cooperatives/guarantors';
     case 'loan.application_updated':

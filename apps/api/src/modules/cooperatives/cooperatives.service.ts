@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
 import { dispatchNotification } from '../../services/notification-preferences.service';
+import { PERMISSIONS } from '../../lib/permissions';
 import { escapeHtml } from '../../lib/escape-html';
 import { Decimal } from '@prisma/client/runtime/library';
 import {
@@ -467,6 +468,14 @@ export const cooperativesService = {
       include: this.savingsDepositInclude,
     });
 
+    void this.notifyApprovers(associationId, [PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE], {
+      memberId,
+      entityId: created.id,
+      pushType: 'savings.deposit_submitted',
+      title: 'Savings deposit awaiting confirmation',
+      what: (name) => `${name} submitted a ₦${Number(data.amount).toLocaleString('en-NG')} savings deposit to confirm.`,
+    });
+
     return this.formatSavingsDepositResponse(created);
   },
 
@@ -584,24 +593,68 @@ export const cooperativesService = {
     return this.formatSavingsDepositResponse(rejected);
   },
 
+  /**
+   * Tell the officers who can approve something that a member just submitted it (in-app + push). Best-effort, never
+   * throws. Approvers are whoever holds one of `permissionKeys` through an active role in the association.
+   */
+  async notifyApprovers(
+    associationId: number,
+    permissionKeys: string[],
+    alert: { memberId: number; title: string; what: (memberName: string) => string; entityId: number; pushType: string }
+  ) {
+    try {
+      const [member, rows] = await Promise.all([
+        prisma.member.findUnique({ where: { id: alert.memberId }, select: { userId: true, firstName: true, lastName: true } }),
+        prisma.userRole.findMany({
+          where: {
+            associationId,
+            isActive: true,
+            user: { isActive: true },
+            role: { isActive: true, permissions: { some: { permission: { key: { in: permissionKeys } } } } },
+          },
+          select: { userId: true },
+          distinct: ['userId'],
+        }),
+      ]);
+      const memberName = member ? `${member.firstName} ${member.lastName}`.trim() : 'A member';
+      for (const { userId } of rows) {
+        if (userId === member?.userId) continue;
+        try {
+          await dispatchNotification({
+            associationId,
+            userId,
+            kind: 'approval',
+            entityId: alert.entityId,
+            pushType: alert.pushType,
+            title: alert.title,
+            message: alert.what(memberName),
+          });
+        } catch (error) {
+          console.error(`Approver notification failed for user ${userId} (non-critical):`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Approver notification failed (non-critical):', error);
+    }
+  },
+
   /** Best-effort in-app notification to the member; never fails the review. */
   async notifyDepositDecision(request: any, decision: 'approved' | 'rejected') {
     try {
       const member = await prisma.member.findUnique({ where: { id: request.memberId }, select: { userId: true } });
       if (!member?.userId) return;
       const amount = Number(request.amount).toLocaleString('en-NG');
-      await prisma.notification.create({
-        data: {
-          associationId: request.associationId,
-          userId: member.userId,
-          type: decision === 'approved' ? 'savings.deposit_approved' : 'savings.deposit_rejected',
-          entityId: request.id,
-          title: decision === 'approved' ? 'Savings deposit approved' : 'Savings deposit rejected',
-          message:
-            decision === 'approved'
-              ? `Your savings deposit of ₦${amount} has been confirmed and added to your savings.`
-              : `Your savings deposit of ₦${amount} was not approved${request.rejectionReason ? `: ${request.rejectionReason}` : '.'}`,
-        },
+      await dispatchNotification({
+        associationId: request.associationId,
+        userId: member.userId,
+        kind: 'system',
+        entityId: request.id,
+        pushType: 'savings.deposit_decision',
+        title: decision === 'approved' ? 'Savings deposit approved' : 'Savings deposit rejected',
+        message:
+          decision === 'approved'
+            ? `Your savings deposit of ₦${amount} has been confirmed and added to your savings.`
+            : `Your savings deposit of ₦${amount} was not approved${request.rejectionReason ? `: ${request.rejectionReason}` : '.'}`,
       });
     } catch (error) {
       console.error('Deposit decision notification failed (non-critical):', error);
@@ -690,6 +743,14 @@ export const cooperativesService = {
         mimeType: receipt.mimeType,
       },
       include: this.loanRepaymentRequestInclude,
+    });
+
+    void this.notifyApprovers(associationId, [PERMISSIONS.COOPERATIVE_LOANS_MANAGE], {
+      memberId,
+      entityId: created.id,
+      pushType: 'loan.repayment_submitted',
+      title: 'Loan repayment awaiting confirmation',
+      what: (name) => `${name} submitted a ₦${Number(data.amount).toLocaleString('en-NG')} loan repayment to confirm.`,
     });
 
     return this.formatLoanRepaymentRequestResponse(created);
@@ -810,18 +871,17 @@ export const cooperativesService = {
       if (!member?.userId) return;
       const amount = Number(request.amount).toLocaleString('en-NG');
       const loanNumber = request.loan?.loanNumber ?? '';
-      await prisma.notification.create({
-        data: {
-          associationId: request.associationId,
-          userId: member.userId,
-          type: decision === 'approved' ? 'loan.repayment_confirmed' : 'loan.repayment_rejected',
-          entityId: request.id,
-          title: decision === 'approved' ? 'Loan repayment confirmed' : 'Loan repayment not approved',
-          message:
-            decision === 'approved'
-              ? `Your repayment of ₦${amount} on loan ${loanNumber} has been confirmed.`
-              : `Your repayment of ₦${amount} on loan ${loanNumber} was not approved${request.rejectionReason ? `: ${request.rejectionReason}` : '.'}`,
-        },
+      await dispatchNotification({
+        associationId: request.associationId,
+        userId: member.userId,
+        kind: 'system',
+        entityId: request.id,
+        pushType: 'loan.repayment_decision',
+        title: decision === 'approved' ? 'Loan repayment confirmed' : 'Loan repayment not approved',
+        message:
+          decision === 'approved'
+            ? `Your repayment of ₦${amount} on loan ${loanNumber} has been confirmed.`
+            : `Your repayment of ₦${amount} on loan ${loanNumber} was not approved${request.rejectionReason ? `: ${request.rejectionReason}` : '.'}`,
       });
     } catch (error) {
       console.error('Repayment decision notification failed (non-critical):', error);
@@ -1164,6 +1224,14 @@ export const cooperativesService = {
         console.error('Guarantor request notification failed (non-critical):', error)
       );
     }
+
+    void this.notifyApprovers(associationId, [PERMISSIONS.COOPERATIVE_LOANS_MANAGE], {
+      memberId,
+      entityId: application.id,
+      pushType: 'loan.application_submitted',
+      title: 'New loan application',
+      what: (name) => `${name} applied for a ₦${Number(data.amount).toLocaleString('en-NG')} loan.`,
+    });
 
     // Fetch updated application with guarantors
     const updatedApplication = await prisma.loanApplication.findUnique({
