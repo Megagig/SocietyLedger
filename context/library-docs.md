@@ -184,7 +184,9 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 - `Clipboard.setStringAsync(value)` (async — `await` it). **Confirmed at F2.2:** A12's only real use so far (copying `admin.societyledger.com.ng` for platform staff) — a plain string copy, no `Clipboard.getStringAsync()` read anywhere yet.
 
 ## @shopify/flash-list
-- Always set `estimatedItemSize`; use `ItemSeparatorComponent` from `components/layout/ListSeparator`; `ListEmptyComponent` = `EmptyState`; footer spinner when `isFetchingNextPage`.
+- **Installed at F5.2 (2026-10-24): `@shopify/flash-list` 2.3.2** (owner-approved; `expo install`). **v2 sizes rows itself — do not pass `estimatedItemSize`** (v1 only). `components/layout/ListSeparator` was never built: rows that need to read as one group draw their own edges and hairline (see `MemberRow`'s `position` prop). Use `ListEmptyComponent` = `EmptyState`; footer spinner when `isFetchingNextPage`; `onEndReached` guarded by `hasNextPage && !isFetchingNextPage`.
+- Put anything that holds focus (a `SearchField`) **outside** the list, not in `ListHeaderComponent` as an inline function — it would remount and drop focus on every render. A header *element* (stats tiles) is fine.
+- Under Jest, a file that imports `@gorhom/bottom-sheet` (even transitively) can't load — keep pure helpers out of sheet files so they stay testable (`countActiveFilters` lives in `features/members/labels.ts` for that reason).
 
 ## @gorhom/bottom-sheet
 - `BottomSheetModalProvider` at root. Wrapper `components/ui/BottomSheet.tsx` with snap points `['50%','90%']` default, backdrop, dynamic sizing for short content, keyboard handling `keyboardBehavior="interactive"`.

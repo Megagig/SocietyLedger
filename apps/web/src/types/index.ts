@@ -49,6 +49,7 @@ export interface Member {
   occupation?: string | null;
   category: string;
   status: string;
+  loginStatus?: string;
   joinDate?: string;
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;

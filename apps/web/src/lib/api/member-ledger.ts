@@ -84,6 +84,17 @@ export interface MemberBalance {
 // MEMBER SELF-SERVICE ENDPOINTS
 // ============================================
 
+/**
+ * The API answers `{ data: { entries, pagination: { totalPages } } }`; the pages expect `{ data: entries[], pagination: { pages } }`.
+ * Accepts either, so it keeps working if the endpoint is ever flattened.
+ */
+function normalizeEntriesResponse(body: any): { data: LedgerEntry[]; pagination: any } {
+  const payload = body?.data;
+  const entries: LedgerEntry[] = Array.isArray(payload) ? payload : payload?.entries ?? [];
+  const pagination = body?.pagination ?? payload?.pagination;
+  return { data: entries, pagination: pagination ? { ...pagination, pages: pagination.pages ?? pagination.totalPages ?? 1 } : undefined };
+}
+
 export async function getMyLedgerSummary(): Promise<{ data: LedgerSummary }> {
   const response = await apiGet(`${API_URL}/api/member-ledger/my-ledger/summary`);
   if (!response.ok) {
@@ -114,7 +125,7 @@ export async function getMyLedgerEntries(params?: {
     const error = await response.json();
     throw new Error(error.message || 'Failed to fetch ledger entries');
   }
-  return response.json();
+  return normalizeEntriesResponse(await response.json());
 }
 
 export async function getMyStatement(params: {
@@ -214,6 +225,7 @@ export async function getMemberLedgerEntries(memberId: number, params?: {
     const error = await response.json();
     throw new Error(error.message || 'Failed to fetch member ledger entries');
   }
+  // Left raw on purpose: the admin member-ledger page reads `data.entries` itself.
   return response.json();
 }
 

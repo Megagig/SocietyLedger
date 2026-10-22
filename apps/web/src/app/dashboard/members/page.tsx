@@ -12,6 +12,19 @@ import { toast } from '@/lib/toast';
 import { Search, Plus, Edit, Trash2, Eye, UserPlus } from 'lucide-react';
 import { HelpLink } from '@/components/docs/HelpLink';
 
+interface MemberStats {
+  totalMembers: number;
+  activeMembers: number;
+  newThisMonth: number;
+  withLogin: number;
+}
+
+const LOGIN_LABELS: Record<string, string> = {
+  active: 'Can sign in',
+  invited: 'Invited',
+  no_login: 'No login',
+};
+
 export default function MembersPage() {
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
@@ -22,6 +35,8 @@ export default function MembersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [loginFilter, setLoginFilter] = useState('');
+  const [stats, setStats] = useState<MemberStats | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -29,7 +44,21 @@ export default function MembersPage() {
 
   useEffect(() => {
     fetchMembers();
-  }, [search, statusFilter, categoryFilter, page, limit]);
+  }, [search, statusFilter, categoryFilter, loginFilter, page, limit]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/stats`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setStats(data.data);
+      } catch (error) {
+        console.error('Error fetching member stats:', error);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const fetchMembers = async () => {
     setIsLoading(true);
@@ -40,6 +69,7 @@ export default function MembersPage() {
         ...(search && { search }),
         ...(statusFilter && { status: statusFilter }),
         ...(categoryFilter && { category: categoryFilter }),
+        ...(loginFilter && { loginStatus: loginFilter }),
       });
 
       const response = await apiGet(
@@ -147,9 +177,26 @@ export default function MembersPage() {
         </div>
       </div>
 
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[
+            { label: 'Total members', value: stats.totalMembers },
+            { label: 'Active', value: stats.activeMembers },
+            { label: 'New this month', value: stats.newThisMonth },
+            { label: 'Can sign in', value: stats.withLogin },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{stat.label}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
             <div className="relative">
@@ -181,6 +228,7 @@ export default function MembersPage() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="suspended">Suspended</option>
+              <option value="terminated">Terminated</option>
             </select>
           </div>
 
@@ -199,6 +247,23 @@ export default function MembersPage() {
               <option value="executive">Executive</option>
               <option value="honorary">Honorary</option>
               <option value="student">Student</option>
+            </select>
+          </div>
+
+          {/* Login Filter */}
+          <div>
+            <select
+              value={loginFilter}
+              onChange={(e) => {
+                setLoginFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Logins</option>
+              <option value="active">Can sign in</option>
+              <option value="invited">Invited</option>
+              <option value="no_login">No login</option>
             </select>
           </div>
         </div>
@@ -236,6 +301,7 @@ export default function MembersPage() {
                     <div className="flex flex-col gap-1 items-end">
                       {getStatusBadge(member.status)}
                       <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{member.category}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}</span>
                     </div>
                   </div>
                   
@@ -298,6 +364,9 @@ export default function MembersPage() {
                       Category
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Login
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -322,6 +391,9 @@ export default function MembersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 capitalize">
                         {member.category}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        {LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <button
