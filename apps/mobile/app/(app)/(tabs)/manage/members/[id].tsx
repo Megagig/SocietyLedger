@@ -1,8 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { Pencil } from 'lucide-react-native';
+import { useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { toast } from 'sonner-native';
 
+import { ApiError } from '@/api/errors';
+import { ConfirmSheet } from '@/components/feedback/ConfirmSheet';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { NoPermission } from '@/components/feedback/NoPermission';
 import { Screen } from '@/components/layout/Screen';
@@ -11,16 +15,20 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/FilterChip';
+import { IconButton } from '@/components/ui/IconButton';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { mailUrl, openContactUrl, telUrl, whatsappUrl } from '@/features/members/contact';
 import { loginStatusLabel, loginStatusTone, memberFullName, statusLabel } from '@/features/members/labels';
+import { useDisableMember, useEnableMember } from '@/features/members/mutations';
 import {
   MEMBER_ATTENDANCE_ACCESS,
   MEMBER_COOPERATIVE_ACCESS,
   MEMBER_FINANCE_ACCESS,
   MEMBER_WELFARE_ACCESS,
+  MEMBERS_DISABLE_ACCESS,
+  MEMBERS_EDIT_ACCESS,
   MEMBERS_VIEW_ACCESS,
   useMember,
 } from '@/features/members/queries';
@@ -53,9 +61,15 @@ export default function MemberDetailScreen() {
   const canAttendance = useModuleAccess(MEMBER_ATTENDANCE_ACCESS, 'meetings');
   const canCooperative = useModuleAccess(MEMBER_COOPERATIVE_ACCESS, 'cooperatives');
   const canWelfare = useModuleAccess(MEMBER_WELFARE_ACCESS, 'welfare');
+  const canEdit = useCan(MEMBERS_EDIT_ACCESS);
+  const canDisable = useCan(MEMBERS_DISABLE_ACCESS);
   const [tab, setTab] = useState<TabKey>('profile');
+  const disableSheetRef = useRef<BottomSheetModal>(null);
 
   const query = useMember(id);
+  const disable = useDisableMember(id);
+  const enable = useEnableMember(id);
+  const failMessage = (error: unknown) => toast.error(error instanceof ApiError ? error.message : 'Could not update the member. Try again.');
   const back = () => router.back();
 
   if (!canView) {
@@ -82,7 +96,16 @@ export default function MemberDetailScreen() {
 
   return (
     <Screen edges={['top']} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
-      <ScreenHeader title={member ? memberFullName(member) : 'Member'} onBack={back} docsKey="MG2" />
+      <ScreenHeader
+        title={member ? memberFullName(member) : 'Member'}
+        onBack={back}
+        docsKey="MG2"
+        rightActions={
+          member && canEdit ? (
+            <IconButton icon={Pencil} accessibilityLabel="Edit member" onPress={() => router.push(`/(app)/(tabs)/manage/members/form?id=${member.id}` as never)} testID="member-edit" />
+          ) : undefined
+        }
+      />
 
       {query.isPending ? (
         <View className="gap-4 pb-6">
@@ -146,8 +169,39 @@ export default function MemberDetailScreen() {
           {tab === 'attendance' ? <MemberAttendanceTab memberId={member.id} /> : null}
           {tab === 'cooperative' ? <MemberCooperativeTab memberId={member.id} /> : null}
           {tab === 'welfare' ? <MemberWelfareTab memberId={member.id} /> : null}
+
+          {/* Disabling needs members.disable; enabling is a status edit, so it needs members.edit (the API checks the same). */}
+          {(member.status === 'terminated' ? canEdit : canDisable) ? (
+            <View className="mt-6 border-t border-border pt-6">
+              {member.status === 'terminated' ? (
+                <Button variant="soft" loading={enable.isPending} onPress={() => enable.mutate(undefined, { onSuccess: () => toast.success('Member enabled'), onError: failMessage })} testID="member-enable">
+                  Enable member
+                </Button>
+              ) : (
+                <Button variant="danger-ghost" onPress={() => disableSheetRef.current?.present()} testID="member-disable">
+                  Disable member
+                </Button>
+              )}
+            </View>
+          ) : null}
         </View>
       )}
+
+      <ConfirmSheet
+        ref={disableSheetRef}
+        title="Disable this member?"
+        description={`${member ? memberFullName(member) : 'They'} won't be able to sign in, and they're marked Disabled. You can enable them again any time.`}
+        confirmLabel="Disable member"
+        onConfirm={() =>
+          disable.mutate(undefined, {
+            onSuccess: () => {
+              disableSheetRef.current?.dismiss();
+              toast.success('Member disabled');
+            },
+            onError: failMessage,
+          })
+        }
+      />
     </Screen>
   );
 }

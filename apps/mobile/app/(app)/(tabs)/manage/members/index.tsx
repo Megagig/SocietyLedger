@@ -1,9 +1,9 @@
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { SlidersHorizontal, Users } from 'lucide-react-native';
+import { MailPlus, SlidersHorizontal, UserCheck, UserPlus, Users } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -20,8 +20,17 @@ import { Text } from '@/components/ui/Text';
 import { MemberFilterSheet } from '@/features/members/components/MemberFilterSheet';
 import { countActiveFilters, type MemberFilterValues } from '@/features/members/labels';
 import { MemberRow } from '@/features/members/components/MemberRow';
-import { MEMBERS_VIEW_ACCESS, useMembersList, useMemberStats } from '@/features/members/queries';
+import {
+  MEMBERS_APPROVE_ACCESS,
+  MEMBERS_CREATE_ACCESS,
+  MEMBERS_INVITE_ACCESS,
+  MEMBERS_VIEW_ACCESS,
+  useMembersList,
+  useMemberStats,
+  usePendingApprovalCount,
+} from '@/features/members/queries';
 import { useCan } from '@/hooks/useCan';
+import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { MemberListItemDTO } from '@/types/api/membersManage';
 
 function positionOf(index: number, count: number): 'first' | 'middle' | 'last' | 'only' {
@@ -33,7 +42,12 @@ function positionOf(index: number, count: number): 'first' | 'middle' | 'last' |
 /** project-overview.md §6.9 MG1 — the member directory: counts, search, filters and an infinite name-ordered list. */
 export default function MembersListScreen() {
   const router = useRouter();
+  const { color } = useThemeTokens();
   const canView = useCan(MEMBERS_VIEW_ACCESS);
+  const canAdd = useCan(MEMBERS_CREATE_ACCESS);
+  const canInvite = useCan(MEMBERS_INVITE_ACCESS);
+  const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
+  const waitingCount = usePendingApprovalCount().data ?? 0;
   const filterSheetRef = useRef<BottomSheetModal>(null);
 
   const [search, setSearch] = useState('');
@@ -61,6 +75,23 @@ export default function MembersListScreen() {
 
   const header = (
     <View className="gap-4 pb-4">
+      {canApprove && waitingCount > 0 ? (
+        <Pressable
+          onPress={() => router.push('/(app)/(tabs)/manage/members/approvals' as never)}
+          accessibilityRole="button"
+          accessibilityLabel={`${waitingCount} waiting for approval`}
+          className="flex-row items-center gap-3 rounded-lg bg-warning-soft px-4 py-3"
+          testID="members-approvals-banner"
+        >
+          <UserCheck size={20} color={color.warning} strokeWidth={1.75} />
+          <Text variant="body-strong" className="flex-1">
+            {waitingCount === 1 ? '1 person is waiting for approval' : `${waitingCount} people are waiting for approval`}
+          </Text>
+          <Text variant="label" tone="primary">
+            Review
+          </Text>
+        </Pressable>
+      ) : null}
       {stats ? (
         <View className="flex-row gap-3">
           <StatTile label="Members" value={String(stats.totalMembers)} tone="primary" testID="members-stat-total" />
@@ -78,7 +109,17 @@ export default function MembersListScreen() {
 
   return (
     <Screen edges={['top']} scroll={false}>
-      <ScreenHeader title="Members" onBack={back} docsKey="MG1" />
+      <ScreenHeader
+        title="Members"
+        onBack={back}
+        docsKey="MG1"
+        rightActions={
+          <>
+            {canInvite ? <IconButton icon={MailPlus} accessibilityLabel="Invite members" onPress={() => router.push('/(app)/(tabs)/manage/members/invite' as never)} testID="members-invite" /> : null}
+            {canAdd ? <IconButton icon={UserPlus} accessibilityLabel="Add member" onPress={() => router.push('/(app)/(tabs)/manage/members/form' as never)} testID="members-add" /> : null}
+          </>
+        }
+      />
 
       <View className="flex-row items-center gap-2 pb-3">
         <View className="flex-1">

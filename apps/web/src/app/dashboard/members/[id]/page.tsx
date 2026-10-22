@@ -8,7 +8,7 @@ import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { mailHref, telHref, whatsappHref } from '@/lib/contact';
 import { Can, usePermissions } from '@/hooks/usePermissions';
-import { apiGet, apiDelete } from '@/utils/api';
+import { apiGet, apiDelete, apiPatch } from '@/utils/api';
 import { toast } from '@/lib/toast';
 
 interface MemberDetails {
@@ -134,15 +134,16 @@ export default function MemberDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDisable = async () => {
     modals.openConfirmModal({
-      title: 'Delete Member',
+      title: 'Disable Member',
       children: (
         <Text size="sm">
-          Are you sure you want to delete this member? This action cannot be undone.
+          {member?.firstName} {member?.lastName} won&apos;t be able to sign in, and they&apos;re marked Disabled.
+          You can enable them again any time.
         </Text>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      labels: { confirm: 'Disable member', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
         try {
@@ -153,16 +154,35 @@ export default function MemberDetailPage() {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.message || 'Failed to delete member');
+            throw new Error(data.message || 'Failed to disable member');
           }
 
-          toast.success('Member deleted successfully');
-          router.push('/dashboard/members');
+          toast.success('Member disabled');
+          fetchMember();
         } catch (error: any) {
-          toast.error(error.message || 'Failed to delete member');
+          toast.error(error.message || 'Failed to disable member');
         }
       },
     });
+  };
+
+  const handleEnable = async () => {
+    try {
+      const response = await apiPatch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`,
+        { status: 'active' }
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to enable member');
+      }
+
+      toast.success('Member enabled');
+      fetchMember();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to enable member');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -175,7 +195,7 @@ export default function MemberDetailPage() {
 
     return (
       <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${badges[status] || badges.active}`}>
-        {status}
+        {status === 'terminated' ? 'disabled' : status}
       </span>
     );
   };
@@ -312,15 +332,26 @@ export default function MemberDetailPage() {
             </button>
           </Can>
 
-          <Can permission={PERMISSIONS.MEMBER_DELETE}>
-            <button
-              onClick={handleDelete}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete</span>
-            </button>
-          </Can>
+          {member.status === 'terminated' ? (
+            <Can permission={PERMISSIONS.MEMBER_EDIT}>
+              <button
+                onClick={handleEnable}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <span>Enable member</span>
+              </button>
+            </Can>
+          ) : (
+            <Can permission={PERMISSIONS.MEMBER_DELETE}>
+              <button
+                onClick={handleDisable}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Disable</span>
+              </button>
+            </Can>
+          )}
         </div>
       </div>
 

@@ -32,6 +32,7 @@ import {
 } from '../auth/auth.service';
 import { SettingsService } from '../settings/settings.service';
 import prisma from '../../lib/prisma';
+import { notifyApprovalPending } from '../../services/approval-notifications';
 
 // Validation schemas
 const inviteMemberSchema = z.object({
@@ -89,7 +90,9 @@ export const memberInviteController = {
         phone,
       });
 
-      // Send invite email
+      // Send invite email. The invite itself is already saved, so a delivery failure doesn't fail the request —
+      // but it is reported (`emailSent`) so the officer can resend instead of assuming the member got it.
+      let emailSent = false;
       if (invite.email) {
         try {
           await sendMemberInviteEmail(
@@ -100,9 +103,9 @@ export const memberInviteController = {
             invite.association.subdomain,
             invite.inviteTokenExpiresAt
           );
+          emailSent = true;
         } catch (emailError) {
           console.error('Failed to send invite email:', emailError);
-          // Don't fail the invite if email fails
         }
       }
 
@@ -124,8 +127,9 @@ export const memberInviteController = {
 
       res.status(201).json({
         success: true,
-        message: 'Invite sent successfully',
+        message: emailSent ? 'Invite sent successfully' : 'Invite created, but the email could not be sent. Try resending it.',
         data: {
+          emailSent,
           invite: {
             id: invite.id,
             memberId: invite.memberId,
@@ -172,7 +176,7 @@ export const memberInviteController = {
 
       const { memberIds } = bulkInviteSchema.parse(req.body);
 
-      const results: { memberId: number; success: boolean; message: string }[] = [];
+      const results: { memberId: number; success: boolean; emailSent?: boolean; message: string }[] = [];
 
       for (const memberId of memberIds) {
         try {
@@ -183,6 +187,7 @@ export const memberInviteController = {
           });
 
           // Send invite email
+          let emailSent = false;
           if (invite.email) {
             try {
               await sendMemberInviteEmail(
@@ -193,12 +198,18 @@ export const memberInviteController = {
                 invite.association.subdomain,
                 invite.inviteTokenExpiresAt
               );
+              emailSent = true;
             } catch (emailError) {
               console.error(`Failed to send invite email for member ${memberId}:`, emailError);
             }
           }
 
-          results.push({ memberId, success: true, message: 'Invite sent' });
+          results.push({
+            memberId,
+            success: true,
+            emailSent,
+            message: emailSent ? 'Invite sent' : 'Invite created, but the email could not be sent. Try resending it.',
+          });
         } catch (error: any) {
           results.push({ memberId, success: false, message: error.message });
         }
@@ -417,6 +428,7 @@ export const memberInviteController = {
       const { invite, token } = await resendInvite(inviteId, associationId, userId);
 
       // Send invite email
+      let emailSent = false;
       if (invite.email) {
         try {
           await sendMemberInviteEmail(
@@ -427,6 +439,7 @@ export const memberInviteController = {
             invite.association.subdomain,
             invite.inviteTokenExpiresAt
           );
+          emailSent = true;
         } catch (emailError) {
           console.error('Failed to send invite email:', emailError);
         }
@@ -434,8 +447,9 @@ export const memberInviteController = {
 
       res.status(200).json({
         success: true,
-        message: 'Invite resent successfully',
+        message: emailSent ? 'Invite resent successfully' : 'Invite renewed, but the email could not be sent. Try again shortly.',
         data: {
+          emailSent,
           invite: {
             id: invite.id,
             email: invite.email,
@@ -542,7 +556,7 @@ export const memberInviteController = {
 
       const search = req.query.search as string | undefined;
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 500);
 
       const { members, total } = await getInvitableMembers(associationId, {
         search,
@@ -611,6 +625,9 @@ export const memberInviteController = {
         phone,
         associationId: tenantId,
       });
+
+      // Approvers get a push so the new member isn't left waiting (fire-and-forget).
+      void notifyApprovalPending(tenantId, { userId: user.id, name: `${firstName} ${lastName}`.trim() });
 
       // Generate and send verification code
       const verificationCode = generateVerificationCode();

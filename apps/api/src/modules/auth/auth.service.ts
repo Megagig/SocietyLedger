@@ -9,6 +9,7 @@ import prisma from '../../lib/prisma';
 import { sendEmail } from '../../lib/email';
 import { hashPassword } from '../../lib/auth';
 import { revokeAllForUser } from '../../services/refresh-token.service';
+import { notifyApprovalPending } from '../../services/approval-notifications';
 
 const VERIFICATION_CODE_EXPIRY_MINUTES = 15;
 const PASSWORD_RESET_EXPIRY_MINUTES = 60;
@@ -176,6 +177,12 @@ export async function createUserWithVerification(data: {
       },
     },
   });
+
+  // A member's registration waits for an approver — tell them (fire-and-forget). Association owners (role admin) have no approver yet.
+  if (role === 'member') {
+    const name = [firstName, lastName].filter(Boolean).join(' ').trim() || email;
+    void notifyApprovalPending(associationId, { userId: user.id, name });
+  }
 
   // Return the plain code for sending via email
   return { user, verificationCode };

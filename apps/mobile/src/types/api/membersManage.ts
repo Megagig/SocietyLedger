@@ -84,3 +84,89 @@ export type MemberWelfareProfileDTO = {
   payoutCount: number;
   pendingRequests: number;
 };
+
+/** POST /members, PATCH /members/:id — empty strings are sent as null by the form layer; `memberId` is only read on create when the association turned automatic IDs off. */
+export type MemberFormPayload = {
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+  dateOfBirth?: IsoDateString | null;
+  gender: 'male' | 'female' | 'other';
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  occupation?: string | null;
+  category: MemberCategory;
+  status: MemberStatus;
+  joinDate: IsoDateString;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelationship?: string | null;
+  notes?: string | null;
+  memberId?: string | null;
+};
+
+/** GET /settings/members_access (needs settings.view) — only the field the member form reads. */
+export type MembersAccessSettingsDTO = { memberIdAutoGenerate?: boolean };
+
+/** GET /member-invites/invitable — members with an email, no login yet, not terminated. */
+export type InvitableMemberDTO = MemberSelfDTO & {
+  invites: { id: number; status: string; inviteTokenExpiresAt: IsoDateString; createdAt: IsoDateString }[];
+};
+
+export type InvitableListDTO = {
+  members: InvitableMemberDTO[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+};
+
+/** GET /member-invites/pending */
+export type PendingInviteDTO = {
+  id: number;
+  memberId: number;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  inviteTokenExpiresAt: IsoDateString;
+  createdAt: IsoDateString;
+  member: { id: number; firstName: string; lastName: string; email: string | null; memberId: string };
+  invitedBy: { id: number; email: string } | null;
+};
+
+/** POST /member-invites/bulk-invite → `data` */
+export type BulkInviteResultDTO = {
+  results: { memberId: number; success: boolean; emailSent?: boolean; message: string }[];
+};
+
+/** Result of sending or resending one invite. `emailSent: false` means the invite exists but the email didn't go out. */
+export type InviteSendResult = { emailSent: boolean; message: string };
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+/** GET /members/approvals */
+export type ApprovalDTO = {
+  id: number;
+  userId: number;
+  approvalStatus: ApprovalStatus | string;
+  createdAt: IsoDateString;
+  approvalDate: IsoDateString | null;
+  rejectionReason: string | null;
+  user: {
+    id: number;
+    email: string;
+    role: string;
+    emailVerified: boolean;
+    isActive: boolean;
+    createdAt: IsoDateString;
+    member: { id: number; memberId: string; firstName: string; lastName: string; phone: string | null } | null;
+  };
+  approvedBy: { id: number; email: string } | null;
+};
+
+export type ApprovalListDTO = { approvals: ApprovalDTO[]; total: number; page: number; limit: number; totalPages: number };
+
+export type ApprovalListParams = { status: ApprovalStatus; page: number; limit: number; search?: string };
+
+/** PATCH /members/approvals/:userId — the API answers `emailSent: false` when the decision saved but the member's email didn't go out. */
+export type ApprovalDecisionResult = { message: string; emailSent: boolean };

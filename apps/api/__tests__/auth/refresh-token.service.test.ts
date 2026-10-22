@@ -114,6 +114,21 @@ describe('rotateRefreshToken', () => {
     expect(result).toEqual({ ok: false, reason: 'user_inactive' });
   });
 
+  it('[disabled member] rejects a terminated member, but not a suspended one', async () => {
+    refreshTokenFindUnique.mockResolvedValue({
+      id: 1, userId: 10, associationId: 2, familyId: 'family-a', revokedAt: null, expiresAt: new Date(Date.now() + 100000),
+    });
+    userFindUnique.mockResolvedValue({ ...activeUser, member: { status: 'terminated' } });
+    expect(await rotateRefreshToken('valid-token-terminated-member')).toEqual({ ok: false, reason: 'member_disabled' });
+
+    // Suspended usually means behind on dues — they must still get in to pay, so it gets past this check.
+    userFindUnique.mockResolvedValue({ ...activeUser, member: { status: 'suspended' } });
+    mockTx.refreshToken.update.mockResolvedValue({});
+    mockTx.refreshToken.create.mockResolvedValue({ id: 2 });
+    const result = await rotateRefreshToken('valid-token-suspended-member');
+    expect(result.ok).toBe(true);
+  });
+
   it('[suspended association] rejects when the association is suspended', async () => {
     refreshTokenFindUnique.mockResolvedValue({
       id: 1, userId: 10, associationId: 2, familyId: 'family-a', revokedAt: null, expiresAt: new Date(Date.now() + 100000),

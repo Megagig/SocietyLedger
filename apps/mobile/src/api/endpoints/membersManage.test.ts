@@ -1,5 +1,15 @@
 const mockGet = jest.fn();
-jest.mock('../client', () => ({ client: { get: (...args: unknown[]) => mockGet(...args) } }));
+const mockPost = jest.fn();
+const mockPatch = jest.fn();
+const mockDelete = jest.fn();
+jest.mock('../client', () => ({
+  client: {
+    get: (...args: unknown[]) => mockGet(...args),
+    post: (...args: unknown[]) => mockPost(...args),
+    patch: (...args: unknown[]) => mockPatch(...args),
+    delete: (...args: unknown[]) => mockDelete(...args),
+  },
+}));
 
 import { membersManageApi } from './membersManage';
 

@@ -130,6 +130,10 @@ export default function PendingApprovalsPage() {
       const json = await response.json();
       if (json.success) {
         toast.success(status === 'approved' ? 'Member approved' : 'Registration rejected');
+        // The decision is saved even when the email isn't — say so, so the officer can tell the person another way.
+        if (json.emailSent === false) {
+          toast.warning("The decision was saved, but we couldn't email them. Let them know yourself.");
+        }
         fetchApprovals();
       } else {
         toast.error(json.message || 'Action failed');

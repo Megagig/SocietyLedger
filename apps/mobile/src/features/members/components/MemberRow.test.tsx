@@ -51,7 +51,7 @@ describe('MemberRow', () => {
     const row = member();
     await render(<MemberRow member={row} position="middle" onPress={onPress} />);
 
-    fireEvent.press(screen.getByTestId('member-row-12'));
+    await fireEvent.press(screen.getByTestId('member-row-12'));
 
     expect(onPress).toHaveBeenCalledWith(row);
   });

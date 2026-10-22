@@ -5,7 +5,7 @@ import { useCan } from '@/hooks/useCan';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useTenantKey } from '@/hooks/useTenantKey';
 import type { PermissionAlias } from '@/lib/permissions';
-import type { MemberListParams } from '@/types/api/membersManage';
+import type { ApprovalStatus, MemberListParams } from '@/types/api/membersManage';
 
 export const membersKeys = {
   all: (tenant: string) => [tenant, 'members'] as const,
@@ -80,4 +80,78 @@ export function useMemberWelfare(id: number, active: boolean) {
   const tenant = useTenantKey();
   const enabled = useModuleAccess(MEMBER_WELFARE_ACCESS, 'welfare') && active && Number.isFinite(id);
   return useQuery({ queryKey: membersKeys.welfare(tenant, id), queryFn: () => membersManageApi.getWelfareProfile(id), enabled });
+}
+
+/** Disabling (and re-enabling, via edit) a member. */
+export const MEMBERS_DISABLE_ACCESS: PermissionAlias = 'MEMBER_DISABLE';
+/** Inviting members to activate a login — the API checks `members.create`. */
+export const MEMBERS_INVITE_ACCESS: PermissionAlias = 'USER_CREATE';
+/** Approving self-registrations — the API checks `members.edit_all`. */
+export const MEMBERS_APPROVE_ACCESS: PermissionAlias = 'MEMBER_EDIT_ALL';
+
+export const approvalKeys = {
+  all: (tenant: string) => [tenant, 'member-approvals'] as const,
+  list: (tenant: string, status: ApprovalStatus, search: string) => [...approvalKeys.all(tenant), 'list', status, search] as const,
+  pendingCount: (tenant: string) => [...approvalKeys.all(tenant), 'pending-count'] as const,
+};
+
+export const inviteKeys = {
+  all: (tenant: string) => [tenant, 'member-invites'] as const,
+  invitable: (tenant: string, search: string) => [...inviteKeys.all(tenant), 'invitable', search] as const,
+  pending: (tenant: string) => [...inviteKeys.all(tenant), 'pending'] as const,
+};
+
+export const MEMBERS_ACCESS_SETTINGS_KEY = (tenant: string) => [tenant, 'settings', 'members_access'] as const;
+
+/** Whether new members get an automatic ID. Officers without `settings.view` can't read it, so they're assumed to be on automatic IDs — the form then shows the server's message if that guess is wrong. */
+export function useMemberIdAutoGenerate(): boolean {
+  const tenant = useTenantKey();
+  const enabled = useCan('SETTINGS_VIEW');
+  const query = useQuery({ queryKey: MEMBERS_ACCESS_SETTINGS_KEY(tenant), queryFn: membersManageApi.getMembersAccessSettings, enabled });
+  return query.data?.memberIdAutoGenerate !== false;
+}
+
+/** Members who can be invited (email on file, no login yet), name order. */
+export function useInvitableMembers(search: string) {
+  const tenant = useTenantKey();
+  const enabled = useCan(MEMBERS_INVITE_ACCESS);
+  return useInfiniteQuery({
+    queryKey: inviteKeys.invitable(tenant, search),
+    queryFn: ({ pageParam }) => membersManageApi.listInvitable({ page: pageParam, limit: MEMBERS_PAGE_SIZE, search: search || undefined }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.pagination.page < last.pagination.totalPages ? last.pagination.page + 1 : undefined),
+    enabled,
+  });
+}
+
+export function usePendingInvites() {
+  const tenant = useTenantKey();
+  const enabled = useCan(MEMBERS_INVITE_ACCESS);
+  return useQuery({ queryKey: inviteKeys.pending(tenant), queryFn: membersManageApi.listPendingInvites, enabled });
+}
+
+/** Self-registrations by decision status; pending first by default. */
+export function useApprovals(status: ApprovalStatus, search: string) {
+  const tenant = useTenantKey();
+  const enabled = useCan(MEMBERS_APPROVE_ACCESS);
+  return useInfiniteQuery({
+    queryKey: approvalKeys.list(tenant, status, search),
+    queryFn: ({ pageParam }) => membersManageApi.listApprovals({ status, page: pageParam, limit: MEMBERS_PAGE_SIZE, search: search || undefined }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
+    enabled,
+  });
+}
+
+/** How many registrations are waiting — the badge on the Manage hub. */
+export function usePendingApprovalCount() {
+  const tenant = useTenantKey();
+  const enabled = useCan(MEMBERS_APPROVE_ACCESS);
+  return useQuery({
+    queryKey: approvalKeys.pendingCount(tenant),
+    queryFn: () => membersManageApi.listApprovals({ status: 'pending', page: 1, limit: 1 }),
+    select: (data) => data.total,
+    enabled,
+    refetchInterval: 60_000,
+  });
 }

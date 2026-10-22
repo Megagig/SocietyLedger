@@ -114,8 +114,9 @@ export async function createMemberInvite(data: {
   const inviteEmail = email || member.email;
   const invitePhone = phone || member.phone;
 
-  if (!inviteEmail && !invitePhone) {
-    throw new Error('Member must have an email or phone number to receive invite');
+  // Invites go out by email only (SMS invites arrive with the SMS module) — a phone number alone would get nothing.
+  if (!inviteEmail) {
+    throw new Error('This member has no email address. Add an email to the member to invite them to sign in.');
   }
 
   // Revoke any existing pending invites for this member
@@ -557,10 +558,7 @@ export async function getInvitableMembers(
     userId: null, // No user account
     loginStatus: { in: ['no_login', 'invited'] },
     status: { in: ['active', 'inactive'] }, // Not terminated/exited
-    OR: [
-      { email: { not: null } },
-      { phone: { not: null } },
-    ],
+    email: { not: null }, // Invites go out by email only
   };
 
   if (search) {

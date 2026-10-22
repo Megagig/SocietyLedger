@@ -14,6 +14,7 @@ import {
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
 import { SettingsService } from '../settings/settings.service';
+import { isMemberDisabled, MEMBER_DISABLED_CODE, MEMBER_DISABLED_MESSAGE } from '../../lib/member-access';
 import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
 import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
 import {
@@ -78,6 +79,7 @@ export class AuthController {
             member: {
               select: {
                 id: true,
+                status: true,
                 firstName: true,
                 lastName: true,
                 memberId: true,
@@ -208,6 +210,16 @@ export class AuthController {
           });
           return;
         }
+      }
+
+      // A disabled (terminated) member can't sign in; re-activating the member restores access.
+      if (!user.platformRole && isMemberDisabled((user.member as { status?: string } | null)?.status)) {
+        res.status(401).json({
+          success: false,
+          message: MEMBER_DISABLED_MESSAGE,
+          code: MEMBER_DISABLED_CODE,
+        });
+        return;
       }
 
       // Check if user is active
@@ -961,6 +973,7 @@ export class AuthController {
           expired: 'Refresh token expired',
           user_inactive: 'Account is no longer active',
           association_inactive: 'Association is no longer active',
+          member_disabled: MEMBER_DISABLED_MESSAGE,
         };
         res.status(401).json({
           success: false,

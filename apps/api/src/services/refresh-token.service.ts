@@ -8,6 +8,7 @@
  */
 import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma';
+import { isMemberDisabled } from '../lib/member-access';
 import { generateRefreshToken, hashRefreshToken } from '../lib/auth';
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -49,7 +50,7 @@ export async function issueRefreshToken(params: {
 
 export type RotateResult =
   | { ok: true; userId: number; associationId: number | null; refreshToken: IssuedRefreshToken }
-  | { ok: false; reason: 'invalid' | 'expired' | 'user_inactive' | 'association_inactive' };
+  | { ok: false; reason: 'invalid' | 'expired' | 'user_inactive' | 'association_inactive' | 'member_disabled' };
 
 /**
  * Verifies a presented refresh token and, if valid, rotates it: the old row
@@ -76,11 +77,14 @@ export async function rotateRefreshToken(plainToken: string): Promise<RotateResu
 
   const user = await prisma.user.findUnique({
     where: { id: existing.userId },
-    include: { userApproval: true, association: { select: { status: true } } },
+    include: { userApproval: true, association: { select: { status: true } }, member: { select: { status: true } } },
   });
 
   if (!user || !user.isActive) {
     return { ok: false, reason: 'user_inactive' };
+  }
+  if (!user.platformRole && isMemberDisabled(user.member?.status)) {
+    return { ok: false, reason: 'member_disabled' };
   }
   if (!user.platformRole && user.userApproval && user.userApproval.approvalStatus !== 'approved') {
     return { ok: false, reason: 'user_inactive' };

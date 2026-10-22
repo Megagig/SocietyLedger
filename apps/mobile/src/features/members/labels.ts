@@ -4,7 +4,7 @@ export const STATUS_LABELS: Record<MemberStatus, string> = {
   active: 'Active',
   inactive: 'Inactive',
   suspended: 'Suspended',
-  terminated: 'Terminated',
+  terminated: 'Disabled',
 };
 
 export const CATEGORY_LABELS: Record<MemberCategory, string> = {

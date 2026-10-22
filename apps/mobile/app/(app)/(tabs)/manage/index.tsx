@@ -1,4 +1,4 @@
-import { Bell, Briefcase, LifeBuoy, Users } from 'lucide-react-native';
+import { Bell, Briefcase, LifeBuoy, MailPlus, UserCheck, Users } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -12,7 +12,7 @@ import { Section } from '@/components/layout/Section';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
-import { MEMBERS_VIEW_ACCESS, useMemberStats } from '@/features/members/queries';
+import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, usePendingApprovalCount, useMemberStats } from '@/features/members/queries';
 import { SUPPORT_STAFF_ACCESS, useStaffTickets } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
@@ -34,6 +34,9 @@ export default function ManageScreen() {
   );
   const canSupport = useCan(SUPPORT_STAFF_ACCESS);
   const canMembers = useCan(MEMBERS_VIEW_ACCESS);
+  const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
+  const canInvite = useCan(MEMBERS_INVITE_ACCESS);
+  const waitingApprovals = usePendingApprovalCount().data ?? 0;
   const ticketsQuery = useStaffTickets();
   const statsQuery = useMemberStats();
   const needsReply = (ticketsQuery.data?.tickets ?? []).filter((t) => t.status === 'OPEN' || t.status === 'WAITING_ON_STAFF').length;
@@ -62,6 +65,27 @@ export default function ManageScreen() {
                   onPress={() => router.push('/(app)/(tabs)/manage/members' as never)}
                   testID="manage-members"
                 />
+                {canApprove ? (
+                  <ListItem
+                    leading={<IconCircle icon={UserCheck} tone="warning" />}
+                    title="Pending approvals"
+                    meta="People who registered themselves"
+                    trailing={waitingApprovals > 0 ? <Badge tone="warning">{`${waitingApprovals} waiting`}</Badge> : undefined}
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/members/approvals' as never)}
+                    testID="manage-approvals"
+                  />
+                ) : null}
+                {canInvite ? (
+                  <ListItem
+                    leading={<IconCircle icon={MailPlus} tone="info" />}
+                    title="Invite members"
+                    meta="Email members a link to activate their login"
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/members/invite' as never)}
+                    testID="manage-invite"
+                  />
+                ) : null}
               </ListGroup>
             </Section>
           ) : null}
