@@ -43,6 +43,7 @@ export function VoidAndReplaceModal({ transaction, onClose, onSuccess }: VoidAnd
       notes: transaction.notes || '',
     },
   });
+  const [password, setPassword] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,11 +84,16 @@ export function VoidAndReplaceModal({ transaction, onClose, onSuccess }: VoidAnd
       return;
     }
 
+    if (!password) {
+      toast.error('Enter your password to confirm');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await apiPost(
         `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions/${transaction.id}/void-and-replace`,
-        formData
+        { ...formData, password }
       );
 
       const data = await response.json();
@@ -155,6 +161,21 @@ export function VoidAndReplaceModal({ transaction, onClose, onSuccess }: VoidAnd
                   minLength={10}
                 />
                 <p className="text-xs text-gray-500 mt-1">Minimum 10 characters required for audit trail</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Your password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">Voiding changes what a member owes, so we ask you to confirm it is you.</p>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">

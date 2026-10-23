@@ -1,4 +1,4 @@
-import { Banknote, Bell, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
+import { Banknote, Bell, Wallet, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -12,6 +12,7 @@ import { Section } from '@/components/layout/Section';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { FINANCE_VIEW_ACCESS, useChargeStats } from '@/features/finance/queries';
 import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features/cash/queries';
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, usePendingApprovalCount, useMemberStats } from '@/features/members/queries';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS, usePendingProofCount, usePendingTransferCount } from '@/features/nigerianPayments/queries';
@@ -42,6 +43,8 @@ export default function ManageScreen() {
   const waitingProofs = (usePendingProofCount().data ?? 0) + (usePendingTransferCount().data ?? 0);
   const waitingApprovals = usePendingApprovalCount().data ?? 0;
   const canCash = useCan(CASH_ANY_ACCESS);
+  const canFinance = useCan(FINANCE_VIEW_ACCESS);
+  const overdueCharges = Number(useChargeStats().data?.byStatus?.overdue?.count ?? 0);
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
   const cashOverview = useCashOverview().data;
   const cashToLodge = cashOverview?.mine?.readyToLodge ?? 0;
@@ -60,7 +63,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -95,6 +98,22 @@ export default function ManageScreen() {
                     testID="manage-invite"
                   />
                 ) : null}
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canFinance ? (
+            <Section title="Finance">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={Wallet} tone={overdueCharges > 0 ? 'warning' : 'primary'} />}
+                  title="Finance"
+                  meta="Collections, charges and recording payments"
+                  trailing={overdueCharges > 0 ? <Badge tone="warning">{`${overdueCharges} overdue`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/finance' as never)}
+                  testID="manage-finance"
+                />
               </ListGroup>
             </Section>
           ) : null}

@@ -42,10 +42,10 @@ const checkOverdueLodgments = cron.schedule(
     const sent = await remindOverdueLodgments();
     console.log(`✓ Overdue cash lodgment check done (${sent} reminder${sent === 1 ? '' : 's'})`);
   },
-  { scheduled: false },
 );
 
 export function startCashLodgmentJobs() {
+  // node-cron starts a task as soon as it is scheduled (same as the meeting and subscription jobs); start() is a no-op then.
   checkOverdueLodgments.start();
   console.log('✓ Cash lodgment reminder job started (runs daily at 08:00)');
 }

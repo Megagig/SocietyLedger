@@ -43,6 +43,9 @@ export const DOCS_LINKS: Record<string, string> = {
   '/dashboard/members/invite': '/docs/members/inviting-members-to-log-in',
   MG4: '/docs/members/inviting-members-to-log-in',
 
+  '/dashboard/finance/overview': '/docs/finance/finance-overview',
+  FN1: '/docs/finance/finance-overview',
+  FN5: '/docs/finance/recording-a-payment',
   '/dashboard/finance/transactions': '/docs/finance/creating-charges',
   FN2: '/docs/finance/creating-charges',
   FN3: '/docs/finance/creating-charges',

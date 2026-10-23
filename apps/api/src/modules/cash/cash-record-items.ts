@@ -62,6 +62,7 @@ export async function recordDuesItem(ctx: Context, item: CashItemInput): Promise
     include: { payments: true, category: { select: { name: true, type: true } } },
   });
   if (!transaction) throw new CashRuleError('INVALID_ITEM', 'That charge was not found for this member.');
+  if (transaction.isVoided) throw new CashRuleError('INVALID_ITEM', 'That charge was voided, so it can no longer be paid.');
   if (transaction.category.type === 'donation') {
     throw new CashRuleError('INVALID_ITEM', 'Donation pledges are not collected here. Record the gift as a donation instead.');
   }

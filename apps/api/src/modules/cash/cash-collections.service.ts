@@ -166,7 +166,7 @@ export const cashCollectionsService = {
 
     const [charges, savings, loans, funds, categories, allocations] = await Promise.all([
       prisma.transaction.findMany({
-        where: { associationId, memberId, status: { in: ['pending', 'partial', 'overdue'] }, category: { type: { not: 'donation' } } },
+        where: { associationId, memberId, isVoided: false, status: { in: ['pending', 'partial', 'overdue'] }, category: { type: { not: 'donation' } } },
         include: { payments: { select: { amountPaid: true } }, category: { select: { name: true, type: true } } },
         orderBy: { dueDate: 'asc' },
       }),

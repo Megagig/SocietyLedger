@@ -10,6 +10,8 @@ import { sendEmail } from '../../lib/email';
 import { SettingsService } from '../settings/settings.service';
 import { dispatchNotification } from '../../services/notification-preferences.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
+import { cashBackedMessage, findCashBackingReceipts } from './cash-guard';
+import { verifyPassword } from '../../lib/auth';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -78,6 +80,7 @@ const editTransactionSchema = z.object({
 
 // Void and replace schema (for paid transactions)
 const voidAndReplaceSchema = z.object({
+  password: z.string().min(1, 'Enter your password to confirm'),
   voidReason: z.string().min(10, 'Please provide a detailed reason for voiding (min 10 characters)'),
   newTransaction: z.object({
     memberId: z.number().int().positive(),
@@ -955,6 +958,11 @@ export const financeController = {
         return res.status(404).json({ success: false, message: 'Transaction not found' });
       }
 
+      const cashReceipts = await findCashBackingReceipts(associationId, [transaction.id]);
+      if (cashReceipts.length > 0) {
+        return res.status(409).json({ success: false, code: 'CASH_BACKED', message: cashBackedMessage(cashReceipts) });
+      }
+
       // Don't allow deleting transactions with payments unless forceDelete is true
       if (transaction.payments.length > 0 && !forceDelete) {
         return res.status(400).json({
@@ -1034,6 +1042,11 @@ export const financeController = {
           found: transactions.length,
           requested: validatedData.transactionIds.length,
         });
+      }
+
+      const cashReceipts = await findCashBackingReceipts(associationId, validatedData.transactionIds);
+      if (cashReceipts.length > 0) {
+        return res.status(409).json({ success: false, code: 'CASH_BACKED', message: cashBackedMessage(cashReceipts) });
       }
 
       // Check for transactions with payments
@@ -1234,6 +1247,12 @@ export const financeController = {
       }
 
       const validatedData = voidAndReplaceSchema.parse(req.body);
+
+      // Re-authentication: voiding rewrites what a member owes, so the officer proves it is them at the keyboard.
+      const actor = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+      if (!actor?.passwordHash || !(await verifyPassword(validatedData.password, actor.passwordHash))) {
+        return res.status(403).json({ success: false, code: 'REAUTH_FAILED', message: 'That password is not correct.' });
+      }
 
       // Fetch the original transaction
       const originalTransaction = await prisma.transaction.findFirst({
@@ -1618,7 +1637,7 @@ export const financeController = {
       const [byStatus, byType, totals] = await Promise.all([
         prisma.transaction.groupBy({
           by: ['status'],
-          where: { associationId },
+          where: { associationId, isVoided: false },
           _count: { id: true },
           _sum: { amount: true },
         }),
@@ -1626,11 +1645,11 @@ export const financeController = {
           SELECT fc.type, COUNT(t.id)::int as count, COALESCE(SUM(t.amount), 0) as total
           FROM transactions t
           JOIN financial_categories fc ON t.category_id = fc.id
-          WHERE t.association_id = ${associationId}
+          WHERE t.association_id = ${associationId} AND t.is_voided = false
           GROUP BY fc.type
         ` as Promise<Array<{ type: string; count: number; total: Decimal }>>,
         prisma.transaction.aggregate({
-          where: { associationId },
+          where: { associationId, isVoided: false },
           _sum: { amount: true },
           _count: { id: true },
         }),
@@ -1638,7 +1657,7 @@ export const financeController = {
 
       // Get total payments
       const totalPayments = await prisma.payment.aggregate({
-        where: { associationId },
+        where: { associationId, transaction: { isVoided: false } },
         _sum: { amountPaid: true },
       });
 
@@ -1688,6 +1707,10 @@ export const financeController = {
 
       if (!transaction) {
         return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+
+      if (transaction.isVoided) {
+        return res.status(400).json({ success: false, message: 'This charge was voided, so it can no longer be paid. Pay its replacement instead.' });
       }
 
       // R4.6/G53: Payment Settings' enabledChannels was saved but never
@@ -1898,6 +1921,7 @@ export const financeController = {
 
       // Filter out already fully paid transactions
       const unpaidTransactions = transactions.filter(txn => {
+        if (txn.isVoided) return false;
         const currentPaid = txn.payments.reduce(
           (sum, p) => sum.plus(p.amountPaid),
           new Decimal(0)
@@ -2210,7 +2234,7 @@ export const financeController = {
         prisma.member.count({ where: { associationId, status: 'active' } }),
         prisma.financialCategory.count({ where: { associationId, isActive: true } }),
         prisma.transaction.aggregate({
-          where: { associationId, createdAt: { gte: startOfMonth, lte: endOfMonth } },
+          where: { associationId, isVoided: false, createdAt: { gte: startOfMonth, lte: endOfMonth } },
           _sum: { amount: true },
           _count: { id: true },
         }),
@@ -2220,7 +2244,7 @@ export const financeController = {
           _count: { id: true },
         }),
         prisma.transaction.count({
-          where: { associationId, status: 'overdue' },
+          where: { associationId, isVoided: false, status: 'overdue' },
         }),
         prisma.payment.findMany({
           where: { associationId },
@@ -2241,12 +2265,12 @@ export const financeController = {
       // not every payment ever made (G22: summing all-time payments against only the
       // still-outstanding transactions' total produced a large negative figure)
       const allTransactions = await prisma.transaction.aggregate({
-        where: { associationId, status: { in: ['pending', 'overdue', 'partial'] } },
+        where: { associationId, isVoided: false, status: { in: ['pending', 'overdue', 'partial'] } },
         _sum: { amount: true },
       });
 
       const allPayments = await prisma.payment.aggregate({
-        where: { associationId, transaction: { status: { in: ['pending', 'overdue', 'partial'] } } },
+        where: { associationId, transaction: { isVoided: false, status: { in: ['pending', 'overdue', 'partial'] } } },
         _sum: { amountPaid: true },
       });
 
@@ -2300,6 +2324,7 @@ export const financeController = {
         where: {
           id: { in: transactionIds },
           associationId,
+          isVoided: false,
           status: { in: ['pending', 'overdue', 'partial'] },
         },
         include: {
@@ -2455,6 +2480,7 @@ export const financeController = {
       const transactions = await prisma.transaction.findMany({
         where: {
           associationId,
+          isVoided: false,
           status: statusCondition,
         },
         include: {

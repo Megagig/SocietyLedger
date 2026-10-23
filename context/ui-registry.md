@@ -1421,6 +1421,16 @@ _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs UR
 - **Screens:** `members/invite.tsx` (`SegmentedControl` Invite | Pending (n); Invite tab has a one-line email-only note, `SearchField`, a `FlashList` of `InviteMemberRow`s and a `StickyFooter` "Send n invites" that appears once something is selected), `members/approvals.tsx` (`SegmentedControl` Pending | Approved | Rejected, `SearchField`, `FlashList` of `ApprovalRow`s), `members/form.tsx` (`StickyFooter` "Save member"). Member detail: pencil `IconButton` in the header; at the foot, separated by a top rule, **Disable member** (`danger-ghost`) or **Enable member** (`soft`). Members list: `MailPlus` and `UserPlus` header icons and a `warning-soft` banner row "n people are waiting for approval · Review". Manage hub: **Pending approvals** (`warning` `Badge` "n waiting") and **Invite members** rows.
 - **Wording rule:** a `terminated` member is shown as **Disabled** everywhere; the action is "Disable member" / "Enable member".
 
+## Mobile Phase 5 — Finance (F5.6, 2026-10-24)
+
+Built from existing primitives; nothing new in `components/ui`.
+
+- **`ChargeRow`:** grouped-edge row like `TransferRow` — member name, category, "Due …" (or created) date; the amount (`Money`) over a `StatusChip` (Unpaid / Part paid / Paid / Overdue; a voided charge reads **Voided** with the `cancelled` chip and a dimmed name); a part-paid charge adds "₦x left".
+- **Overview (FN1):** `SummaryHero` (display `Money` + three stat pills), a `bg-warning-soft` overdue banner, a `ListGroup` of actions, and the billed-by-kind donut (`PieChart` from gifted-charts, `chart` palette, legend beside it).
+- **Charges list (FN2):** three `StatTile`s, `SearchField`, two horizontal `FilterChip` rows (status, kind).
+- **Charge detail (FN3):** centred amount + chip, `FactRow` details, payments as `ListItem`s; Record payment in `StickyFooter`; ⋮ `IconButton` opens a `BottomSheet` of actions (secondary Edit / Void and replace, danger Delete) and Delete confirms in a `ConfirmSheet` then shows a toast with an **Undo** action (sonner-native `action`).
+- **Forms (FN4 / edit / FN5):** shared `ChargeFormFields` (category `SelectSheet`, `AmountField`, `DateField`, note); `MemberPickerField` for one member and `MembersMultiPickerSheet` (search + tick rows, "Done · n chosen") for many; void-and-replace uses a `bg-warning-soft` explainer and `PasswordField`; record payment lists open charges as radio cards (`border-primary bg-primary-soft` when chosen).
+
 ## Mobile Phase 5 — Cash collections & lodgments (F5.5b, 2026-10-24)
 
 Built from existing primitives; nothing new in `components/ui`.
