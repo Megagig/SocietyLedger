@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Badge, Select, Table, Pagination, Tabs } from '@mantine/core';
+import { Badge, Button, Group, Modal, Select, Table, Pagination, Tabs, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import {
   IconFileAnalytics, IconCurrencyNaira, IconArrowUpRight, IconArrowDownRight,
@@ -61,6 +61,7 @@ export default function MemberLedgerDetailPage() {
   ]);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [confirmingSync, setConfirmingSync] = useState(false);
 
   useEffect(() => {
     if (memberId) {
@@ -132,8 +133,9 @@ export default function MemberLedgerDetailPage() {
   const handleSync = async () => {
     try {
       setIsSyncing(true);
+      setConfirmingSync(false);
       const result = await syncMemberLedger(memberId);
-      toast.success(`Synced ${result.data.synced} entries`);
+      toast.success(`Ledger rebuilt (${result.data.entriesCreated} entries)`);
       fetchSummary();
       if (activeTab === 'entries') fetchEntries();
     } catch (err: any) {
@@ -221,7 +223,7 @@ export default function MemberLedgerDetailPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={handleSync}
+            onClick={() => setConfirmingSync(true)}
             disabled={isSyncing}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           >
@@ -563,6 +565,20 @@ export default function MemberLedgerDetailPage() {
           </div>
         </Tabs.Panel>
       </Tabs>
+
+      <Modal opened={confirmingSync} onClose={() => setConfirmingSync(false)} title="Rebuild this ledger?" centered>
+        <Text size="sm">
+          The ledger is rebuilt from this member&apos;s charges and payments. Use it when the balance looks wrong. A charge that was voided is not counted as owed.
+        </Text>
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={() => setConfirmingSync(false)}>
+            Not now
+          </Button>
+          <Button onClick={handleSync} loading={isSyncing}>
+            Rebuild ledger
+          </Button>
+        </Group>
+      </Modal>
     </div>
   );
 }

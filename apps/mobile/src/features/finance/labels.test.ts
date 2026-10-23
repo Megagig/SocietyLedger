@@ -1,5 +1,5 @@
 import type { ChargeListItemDTO } from '@/types/api/financeManage';
-import { chargeCanDelete, chargeCanEdit, chargeCanPay, chargeCanVoid, chargeStatusKey, chargeStatusLabel, collectionRate } from './labels';
+import { chargeCanDelete, chargeCanEdit, chargeCanPay, chargeCanVoid, chargeStatusKey, chargeStatusLabel, collectionRate, isChargeOverdue } from './labels';
 
 type Charge = Pick<ChargeListItemDTO, 'status' | 'isVoided' | 'totalPaid' | 'balance'>;
 const charge = (over: Partial<Charge> = {}): Charge => ({ status: 'pending', isVoided: false, totalPaid: '0', balance: '5000', ...over });
@@ -41,5 +41,25 @@ describe('collectionRate', () => {
     expect(collectionRate(75, 25)).toBe(75);
     expect(collectionRate(0, 0)).toBe(0);
     expect(collectionRate(100, 0)).toBe(100);
+  });
+});
+
+describe('an unpaid charge past its due date reads as Overdue', () => {
+  const now = new Date('2026-10-24T12:00:00.000Z');
+  const past = '2026-10-20T00:00:00.000Z';
+  const future = '2026-11-20T00:00:00.000Z';
+
+  it('even while its stored status still says pending', () => {
+    const late = { status: 'pending', isVoided: false, dueDate: past };
+    expect(chargeStatusLabel(late, now)).toBe('Overdue');
+    expect(chargeStatusKey(late, now)).toBe('overdue');
+    expect(isChargeOverdue({ ...late, status: 'partial' }, now)).toBe(true);
+  });
+
+  it('but not before the due date, once paid, or when voided', () => {
+    expect(chargeStatusLabel({ status: 'pending', isVoided: false, dueDate: future }, now)).toBe('Unpaid');
+    expect(isChargeOverdue({ status: 'paid', isVoided: false, dueDate: past }, now)).toBe(false);
+    expect(chargeStatusLabel({ status: 'pending', isVoided: true, dueDate: past }, now)).toBe('Voided');
+    expect(isChargeOverdue({ status: 'pending', isVoided: false, dueDate: null }, now)).toBe(false);
   });
 });

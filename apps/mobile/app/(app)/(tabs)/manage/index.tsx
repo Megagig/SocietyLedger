@@ -44,7 +44,7 @@ export default function ManageScreen() {
   const waitingApprovals = usePendingApprovalCount().data ?? 0;
   const canCash = useCan(CASH_ANY_ACCESS);
   const canFinance = useCan(FINANCE_VIEW_ACCESS);
-  const overdueCharges = Number(useChargeStats().data?.byStatus?.overdue?.count ?? 0);
+  const overdueCharges = Number(useChargeStats().data?.overdue?.count ?? 0);
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
   const cashOverview = useCashOverview().data;
   const cashToLodge = cashOverview?.mine?.readyToLodge ?? 0;

@@ -28,6 +28,8 @@ export type ChargeStatsDTO = {
   totalAmount: MoneyValue;
   totalPaid: MoneyValue;
   totalOutstanding: MoneyValue;
+  /** Charges still owed and past their due date, counted by the date (the stored status can lag). */
+  overdue: { count: number; amount: MoneyValue };
   byStatus: Record<string, { count: number; amount: MoneyValue }>;
   byType: Record<string, { count: number; amount: MoneyValue }>;
 };

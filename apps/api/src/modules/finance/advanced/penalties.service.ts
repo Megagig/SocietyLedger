@@ -1,6 +1,7 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { syncLedgerDebit } from '../ledger-sync';
 import { SettingsService } from '../../settings/settings.service';
 
 // ============================================
@@ -453,6 +454,9 @@ export const penaltiesService = {
           data: { status: 'overdue' },
         });
       }
+
+      // The member now owes the penalty — put it on their ledger (otherwise paying it later shows as a lone credit).
+      await syncLedgerDebit(penaltyTxn.id, userId);
 
       // G45: auto-applied penalties create a Transaction directly, bypassing
       // finance.controller.ts's sync hook — wire it here so penalties sync

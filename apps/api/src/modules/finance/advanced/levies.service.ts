@@ -1,6 +1,7 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { syncLedgerDebit } from '../ledger-sync';
 
 // ============================================
 // LEVY CAMPAIGN SERVICE (TASK-ADV-001, TASK-ADV-002)
@@ -363,6 +364,9 @@ export const leviesService = {
           },
         });
         transactionId = transaction.id;
+
+        // The member now owes this levy — put it on their ledger so a later payment offsets it instead of standing alone as a credit.
+        await syncLedgerDebit(transaction.id, userId);
 
         // G45: levy campaign assignment creates a Transaction directly,
         // bypassing finance.controller.ts's sync hook — wire it here too.

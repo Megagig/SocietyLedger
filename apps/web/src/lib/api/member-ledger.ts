@@ -245,8 +245,12 @@ export async function getMemberStatement(memberId: number, params: {
   return response.json();
 }
 
-export async function syncMemberLedger(memberId: number): Promise<{ data: { synced: number } }> {
-  const response = await apiPost(`${API_URL}/api/member-ledger/ledger/${memberId}/sync`, {});
+/**
+ * Rebuilds one member's ledger from their charges and payments. It always forces the rebuild: without `force` the API refuses for a member
+ * who already has entries, which is exactly the member who needs fixing. Voided charges add no debit.
+ */
+export async function syncMemberLedger(memberId: number): Promise<{ data: { entriesCreated: number } }> {
+  const response = await apiPost(`${API_URL}/api/member-ledger/ledger/${memberId}/sync?force=true`, {});
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to sync member ledger');

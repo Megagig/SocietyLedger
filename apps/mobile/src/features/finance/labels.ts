@@ -1,6 +1,13 @@
 import type { ChargeDetailDTO, ChargeKind, ChargeListItemDTO, ChargeStatus, ManualPaymentMethod } from '@/types/api/financeManage';
 
-type ChargeLike = Pick<ChargeListItemDTO, 'status' | 'isVoided' | 'totalPaid' | 'balance'>;
+type ChargeLike = Pick<ChargeListItemDTO, 'status' | 'isVoided' | 'totalPaid' | 'balance'> & { dueDate?: string | null };
+
+/** A charge still owed and past its due date is overdue, even if its stored status hasn't been updated yet. */
+export function isChargeOverdue(charge: Pick<ChargeLike, 'status' | 'isVoided' | 'dueDate'>, now: Date = new Date()): boolean {
+  if (charge.isVoided || !charge.dueDate) return false;
+  if (!['pending', 'partial', 'overdue'].includes(charge.status)) return false;
+  return new Date(charge.dueDate).getTime() < now.getTime();
+}
 
 export const CHARGE_STATUS_LABELS: Record<ChargeStatus, string> = {
   pending: 'Unpaid',
@@ -32,14 +39,16 @@ export const PAYMENT_METHOD_LABELS: Record<ManualPaymentMethod, string> = {
 export const PAYMENT_METHOD_OPTIONS = (Object.keys(PAYMENT_METHOD_LABELS) as ManualPaymentMethod[]).map((value) => ({ value, label: PAYMENT_METHOD_LABELS[value] }));
 
 /** What to show for a charge's state: a voided charge reads "Voided" whatever its old status was. */
-export function chargeStatusLabel(charge: Pick<ChargeLike, 'status' | 'isVoided'>): string {
+export function chargeStatusLabel(charge: Pick<ChargeLike, 'status' | 'isVoided' | 'dueDate'>, now: Date = new Date()): string {
   if (charge.isVoided) return 'Voided';
+  if (isChargeOverdue(charge, now)) return CHARGE_STATUS_LABELS.overdue;
   return CHARGE_STATUS_LABELS[charge.status as ChargeStatus] ?? charge.status;
 }
 
 /** The key `StatusChip` understands for a charge. */
-export function chargeStatusKey(charge: Pick<ChargeLike, 'status' | 'isVoided'>): string {
-  return charge.isVoided ? 'cancelled' : charge.status;
+export function chargeStatusKey(charge: Pick<ChargeLike, 'status' | 'isVoided' | 'dueDate'>, now: Date = new Date()): string {
+  if (charge.isVoided) return 'cancelled';
+  return isChargeOverdue(charge, now) ? 'overdue' : charge.status;
 }
 
 const paid = (charge: ChargeLike) => Number(charge.totalPaid) > 0;

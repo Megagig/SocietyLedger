@@ -276,6 +276,10 @@ export const memberLedgerController = {
       });
       return res.status(200).json({ success: true, message: `Successfully synced ${result.entriesCreated} ledger entries`, data: result });
     } catch (error: any) {
+      // A refusal to overwrite existing entries is the caller's choice to make (send force=true), not a server failure.
+      if (typeof error?.message === 'string' && error.message.startsWith('Member already has ledger entries')) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
       console.error('Error syncing member ledger:', error);
       return res.status(500).json({ success: false, message: error.message || 'Failed to sync ledger' });
     }

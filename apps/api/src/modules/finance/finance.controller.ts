@@ -13,6 +13,8 @@ import { memberLedgerService } from '../member-finance/member-ledger.service';
 import { cashBackedMessage, findCashBackingReceipts } from './cash-guard';
 import { verifyPassword } from '../../lib/auth';
 import { reminderText, splitByCooldown } from './reminder-rules';
+import { isOverdue, overdueWhere } from './overdue-rules';
+import { syncLedgerDebit } from './ledger-sync';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -543,7 +545,9 @@ export const financeController = {
         where.categoryId = parseInt(queryParams.categoryId);
       }
 
-      if (queryParams.status) {
+      if (queryParams.status === 'overdue') {
+        Object.assign(where, overdueWhere());
+      } else if (queryParams.status) {
         where.status = queryParams.status;
       }
 
@@ -836,6 +840,8 @@ export const financeController = {
 
       // Accounting integration: Sync all transactions to accounting module
       for (const transaction of transactions) {
+        await syncLedgerDebit(transaction.id, req.user!.id);
+
         try {
           // Fetch full transaction with relations for accounting sync
           const fullTransaction = await prisma.transaction.findUnique({
@@ -1662,6 +1668,9 @@ export const financeController = {
         _sum: { amountPaid: true },
       });
 
+      // Overdue by due date (the stored status lags until the overdue job runs).
+      const overdueNow = await prisma.transaction.aggregate({ where: { associationId, ...overdueWhere() }, _count: { id: true }, _sum: { amount: true } });
+
       return res.status(200).json({
         success: true,
         data: {
@@ -1669,6 +1678,7 @@ export const financeController = {
           totalAmount: totals._sum.amount || 0,
           totalPaid: totalPayments._sum.amountPaid || 0,
           totalOutstanding: (totals._sum.amount || new Decimal(0)).minus(totalPayments._sum.amountPaid || 0),
+          overdue: { count: overdueNow._count.id, amount: overdueNow._sum.amount || 0 },
           byStatus: byStatus.reduce((acc, item) => {
             acc[item.status] = { count: item._count.id, amount: item._sum.amount || 0 };
             return acc;
@@ -2245,7 +2255,7 @@ export const financeController = {
           _count: { id: true },
         }),
         prisma.transaction.count({
-          where: { associationId, isVoided: false, status: 'overdue' },
+          where: { associationId, ...overdueWhere() },
         }),
         prisma.payment.findMany({
           where: { associationId },
@@ -2512,13 +2522,9 @@ export const financeController = {
         ? { in: ['pending', 'overdue', 'partial'] }
         : status;
 
-      // Get all pending/overdue transactions grouped by member
+      // Get all pending/overdue transactions grouped by member. "Overdue" is decided by the due date, not the stored status.
       const transactions = await prisma.transaction.findMany({
-        where: {
-          associationId,
-          isVoided: false,
-          status: statusCondition,
-        },
+        where: status === 'overdue' ? { associationId, ...overdueWhere() } : { associationId, isVoided: false, status: statusCondition },
         include: {
           member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true, phone: true, userId: true } },
           category: { select: { id: true, name: true, type: true } },
@@ -2589,7 +2595,7 @@ export const financeController = {
         });
 
         memberMap[txn.member.id].totalOutstanding += balance;
-        if (txn.status === 'overdue') {
+        if (isOverdue(txn)) {
           memberMap[txn.member.id].overdueCount++;
         }
       });
@@ -2604,7 +2610,7 @@ export const financeController = {
             totalMembers: members.length,
             totalOutstanding: members.reduce((sum, m) => sum + m.totalOutstanding, 0),
             totalTransactions: transactions.length,
-            overdueTransactions: transactions.filter(t => t.status === 'overdue').length,
+            overdueTransactions: transactions.filter(t => isOverdue(t)).length,
           },
         },
       });
