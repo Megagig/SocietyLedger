@@ -153,7 +153,7 @@ export default function FinanceOverviewScreen() {
                       <Text variant="caption" tone="secondary">
                         Billed
                       </Text>
-                      <Text variant="label">{formatMoney(typeTotal, { compact: true })}</Text>
+                      <Text variant="label">{formatMoney(typeTotal)}</Text>
                     </View>
                   )}
                 />

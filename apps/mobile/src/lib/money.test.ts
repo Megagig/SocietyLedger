@@ -59,26 +59,16 @@ describe('formatMoney', () => {
     expect(formatMoney(-500, { creditLabel: 'Refund' })).toBe('Refund ₦500.00');
   });
 
-  describe('compact', () => {
-    it('formats thousands as ₦<n>k', () => {
-      expect(formatMoney(25000, { compact: true })).toBe('₦25k');
+  describe('never abbreviates', () => {
+    it('writes thousands and millions out in full', () => {
+      expect(formatMoney(10000)).toBe('₦10,000.00');
+      expect(formatMoney(25000)).toBe('₦25,000.00');
+      expect(formatMoney(1200000)).toBe('₦1,200,000.00');
+      expect(formatMoney(5000000)).toBe('₦5,000,000.00');
     });
 
-    it('formats millions as ₦<n>m', () => {
-      expect(formatMoney(1200000, { compact: true })).toBe('₦1.2m');
-    });
-
-    it('drops a trailing .0', () => {
-      expect(formatMoney(5000000, { compact: true })).toBe('₦5m');
-      expect(formatMoney(5000, { compact: true })).toBe('₦5k');
-    });
-
-    it('leaves sub-1,000 values uncompacted', () => {
-      expect(formatMoney(999, { compact: true })).toBe('₦999');
-    });
-
-    it('compacts a negative value with the credit label too', () => {
-      expect(formatMoney(-1200000, { compact: true })).toBe('Credit ₦1.2m');
+    it('writes a credit out in full too', () => {
+      expect(formatMoney(-1200000)).toBe('Credit ₦1,200,000.00');
     });
   });
 });

@@ -97,7 +97,7 @@ export function OfficerStatRow({ dashboardQuery }: Props) {
         />
         <OfficerStatTile
           label="Total Revenue"
-          value={formatMoney(totalRevenue, { compact: true })}
+          value={formatMoney(totalRevenue)}
           icon={TrendingUp}
           iconColor={color.success}
           iconBg={color.successSoft}

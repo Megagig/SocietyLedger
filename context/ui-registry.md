@@ -252,14 +252,14 @@ Not reusable UI components, but the typing foundation every future `api/endpoint
 - **Path:** `src/components/ui/Money.tsx`
 - **Added / changed:** F1.4 (2026-10-20) · F1.6 (2026-10-20: now imports `formatMoney` from `@/lib/money` instead of owning its own copy; props unchanged)
 - **Purpose:** The only way to display a monetary amount (ui-rules.md §5.16, code-standards.md §11 rule #10 — money is never a float).
-- **Props:** `value: string|number|Decimal` · `size?: TextVariant` (default `body-strong`) · `tone?: TextTone` (default `default`) · `compact?: boolean` (₦25k/₦1.2m — charts/KPI tiles only) · `creditLabel?: string` (default `"Credit"`) · `testID?`
+- **Props:** `value: string|number|Decimal` · `size?: TextVariant` (default `body-strong`) · `tone?: TextTone` (default `default`) · `creditLabel?: string` (default `"Credit"`) · `testID?`
 - **Tokens used:** forces `fontVariant: ['tabular-nums']` via `Text`'s `style` escape hatch, regardless of `size`
 - **Used in:** gallery; will be used by every amount in the app
 - **Example:**
   ```tsx
   <Money value={summary.outstanding} size="display" tone="onPassbook" />
   ```
-- **Notes:** `formatMoney()`/`toDecimal()`/`sumMoney()` now live in `src/lib/money.ts` (F1.6) — see that module's entry below for detail; `Money.test.tsx` was trimmed to component-rendering checks only, with formatting edge cases (negative/credit, compact, decimal-precision) moved to `lib/money.test.ts`. Negative values render as `"<creditLabel> <abs amount>"` (e.g. `"Credit ₦2,000.00"`) — ui-rules.md §5.16's prose says "leading minus and the word context" but its own example shows no minus sign; the concrete example was treated as ground truth over the ambiguous prose.
+- **Notes:** `formatMoney()`/`toDecimal()`/`sumMoney()` now live in `src/lib/money.ts` (F1.6) — see that module's entry below for detail; `Money.test.tsx` was trimmed to component-rendering checks only, with formatting edge cases (negative/credit, decimal-precision) moved to `lib/money.test.ts`. Negative values render as `"<creditLabel> <abs amount>"` (e.g. `"Credit ₦2,000.00"`) — ui-rules.md §5.16's prose says "leading minus and the word context" but its own example shows no minus sign; the concrete example was treated as ground truth over the ambiguous prose.
 
 ### Spinner
 - **Surface:** mobile

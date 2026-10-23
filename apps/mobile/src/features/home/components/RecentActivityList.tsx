@@ -105,7 +105,7 @@ function ActivityRow({ item }: { item: FinanceSummaryDTO['recentTransactions'][n
       </View>
       <View style={{ alignItems: 'flex-end', gap: 4 }}>
         <Text variant="label" style={{ color: color.text }}>
-          {formatMoney(amount, { compact: true })}
+          {formatMoney(amount)}
         </Text>
         <StatusBadge status={item.status} />
       </View>

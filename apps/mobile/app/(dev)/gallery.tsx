@@ -219,7 +219,7 @@ export default function GalleryScreen() {
             <View className="gap-2">
               <Money value={25000} size="display" />
               <Money value={-2000} />
-              <Money value={1250000} compact size="num-lg" />
+              <Money value={1250000} size="num-lg" />
               <Money value="25.5" tone="danger" />
             </View>
           </Section>

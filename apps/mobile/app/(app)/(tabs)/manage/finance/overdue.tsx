@@ -110,7 +110,7 @@ export default function OverdueScreen() {
         {summary ? (
           <View className="flex-row gap-2">
             <StatTile label="Members" value={String(summary.totalMembers)} tone="primary" />
-            <StatTile label="Owed" value={formatMoney(summary.totalOutstanding, { compact: true })} tone="warning" />
+            <StatTile label="Owed" value={formatMoney(summary.totalOutstanding)} tone="warning" />
             <StatTile label="Overdue charges" value={String(summary.overdueTransactions)} tone="info" />
           </View>
         ) : null}

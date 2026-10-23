@@ -69,8 +69,8 @@ export default function ChargesScreen() {
         {stats ? (
           <View className="flex-row gap-2">
             <StatTile label="Charges" value={String(stats.totalTransactions)} tone="primary" />
-            <StatTile label="Billed" value={formatMoney(stats.totalAmount, { compact: true })} tone="info" />
-            <StatTile label="Outstanding" value={formatMoney(Math.max(0, Number(stats.totalOutstanding)), { compact: true })} tone="warning" />
+            <StatTile label="Billed" value={formatMoney(stats.totalAmount)} tone="info" />
+            <StatTile label="Outstanding" value={formatMoney(Math.max(0, Number(stats.totalOutstanding)))} tone="warning" />
           </View>
         ) : null}
         <SearchField value={search} onChangeText={setSearch} placeholder="Search member, reference or note" />

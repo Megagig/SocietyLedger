@@ -237,15 +237,12 @@ export default function HomeScreen() {
                   />
                   <QuickStatRow
                     label="This Month"
-                    value={formatMoney(
-                      toDecimal(dashboardQuery.data.quickStats.thisMonthRevenue),
-                      { compact: true },
-                    )}
+                    value={formatMoney(toDecimal(dashboardQuery.data.quickStats.thisMonthRevenue))}
                     change={dashboardQuery.data.quickStats.thisMonthRevenueChange}
                   />
                   <QuickStatRow
                     label="Outstanding Dues"
-                    value={formatMoney(toDecimal(dashboardQuery.data.financialSummary.outstandingDues), { compact: true })}
+                    value={formatMoney(toDecimal(dashboardQuery.data.financialSummary.outstandingDues))}
                   />
                   <QuickStatRow
                     label="Collection Rate"

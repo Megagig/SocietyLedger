@@ -102,7 +102,7 @@ function TransactionRow({ tx, isLast }: { tx: RecentTransaction; isLast: boolean
         </Text>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 4 }}>
-        <Text variant="label">{formatMoney(amount, { compact: true })}</Text>
+        <Text variant="label">{formatMoney(amount)}</Text>
         <View style={{ backgroundColor: statusBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 }}>
           <Text variant="caption" style={{ color: statusColor, textTransform: 'capitalize' }}>
             {tx.status}

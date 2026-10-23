@@ -80,7 +80,7 @@ function ObligationRow({ item }: { item: FinanceSummaryDTO['upcomingPayments'][n
         </Text>
       </View>
       <Text variant="label" style={{ color: overdue ? color.danger : color.text }}>
-        {formatMoney(balance, { compact: true })}
+        {formatMoney(balance)}
       </Text>
     </View>
   );

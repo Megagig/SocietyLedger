@@ -4,6 +4,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 
 import { Text } from '@/components/ui/Text';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { insertThousands } from '@/lib/money';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { DashboardOverviewDTO } from '@/api/endpoints/dashboard';
 
@@ -77,12 +78,10 @@ export function RevenueChart({ dashboardQuery }: Props) {
         yAxisTextStyle={{ color: color.textSecondary, fontSize: 9 }}
         noOfSections={4}
         maxValue={yAxisMax}
-        yAxisLabelPrefix="₦"
-        yAxisLabelSuffix={maxValue >= 1000 ? 'k' : ''}
+        yAxisLabelWidth={76}
         formatYLabel={(v) => {
           const n = parseFloat(v);
-          if (isNaN(n)) return v;
-          return maxValue >= 1000 ? (n / 1000).toFixed(0) : v;
+          return Number.isNaN(n) ? v : `₦${insertThousands(String(Math.round(n)))}`;
         }}
         height={140}
         barBorderRadius={6}

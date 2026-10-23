@@ -102,7 +102,7 @@ export function MemberStatRow({ summaryQuery, upcomingMeetingsCount }: Props) {
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <StatTile
           label="Outstanding Balance"
-          value={formatMoney(outstanding, { compact: true })}
+          value={formatMoney(outstanding)}
           icon={Wallet}
           iconBg={hasOutstanding ? color.dangerSoft : color.successSoft}
           iconColor={hasOutstanding ? color.danger : color.success}
@@ -110,7 +110,7 @@ export function MemberStatRow({ summaryQuery, upcomingMeetingsCount }: Props) {
         />
         <StatTile
           label="Paid This Month"
-          value={formatMoney(paidThisMonth, { compact: true })}
+          value={formatMoney(paidThisMonth)}
           icon={CheckCircle2}
           iconBg={color.successSoft}
           iconColor={color.success}

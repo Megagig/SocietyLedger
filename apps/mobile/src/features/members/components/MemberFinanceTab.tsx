@@ -22,9 +22,9 @@ export function MemberFinanceTab({ memberId }: { memberId: number }) {
       ) : data ? (
         <View className="gap-6">
           <View className="flex-row gap-3">
-            <StatTile label="Charged" value={formatMoney(data.summary.totalDues, { compact: true })} tone="info" />
-            <StatTile label="Paid" value={formatMoney(data.summary.totalPaid, { compact: true })} tone="success" />
-            <StatTile label="Owes" value={formatMoney(data.summary.balance, { compact: true })} tone={toDecimal(data.summary.balance).gt(0) ? 'warning' : 'primary'} />
+            <StatTile label="Charged" value={formatMoney(data.summary.totalDues)} tone="info" />
+            <StatTile label="Paid" value={formatMoney(data.summary.totalPaid)} tone="success" />
+            <StatTile label="Owes" value={formatMoney(data.summary.balance)} tone={toDecimal(data.summary.balance).gt(0) ? 'warning' : 'primary'} />
           </View>
           <ListGroup>
             <FactRow label="Unpaid charges" value={String(data.summary.pendingCount)} />
