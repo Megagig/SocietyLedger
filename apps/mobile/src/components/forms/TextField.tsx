@@ -1,8 +1,9 @@
-import { TextInput, type KeyboardTypeOptions, type TextInputProps } from 'react-native';
+import { type KeyboardTypeOptions, type TextInputProps } from 'react-native';
 import { useController, type FieldValues } from 'react-hook-form';
 
 import { cn } from '@/lib/cn';
 import { useThemeTokens } from '@/providers/ThemeProvider';
+import { FieldInput } from './FieldInput';
 import { FieldShell, type RHFControlProps } from './FieldShell';
 
 export type TextFieldProps<TFieldValues extends FieldValues = FieldValues> = RHFControlProps<TFieldValues> & {
@@ -41,7 +42,7 @@ export function TextField<TFieldValues extends FieldValues = FieldValues>({
 
   return (
     <FieldShell label={label} helper={helper} error={fieldState.error?.message}>
-      <TextInput
+      <FieldInput
         testID={testID}
         value={(field.value as string | undefined) ?? ''}
         onChangeText={field.onChange}

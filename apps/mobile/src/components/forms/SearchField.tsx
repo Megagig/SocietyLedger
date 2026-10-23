@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 
 import { IconButton } from '@/components/ui/IconButton';
 import { useThemeTokens } from '@/providers/ThemeProvider';
+import { FieldInput } from './FieldInput';
 
 export type SearchFieldProps = {
   value: string;
@@ -47,7 +48,7 @@ export function SearchField({ value, onChangeText, placeholder = 'Search', debou
   return (
     <View className="h-11 flex-row items-center gap-2 rounded-md bg-surface-sunken px-3">
       <Search size={18} color={color.textTertiary} strokeWidth={1.75} />
-      <TextInput
+      <FieldInput
         testID={testID}
         value={draft}
         onChangeText={handleChangeText}

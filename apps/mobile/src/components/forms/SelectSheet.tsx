@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, TextInput, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { ChevronDown, Search } from 'lucide-react-native';
 import { useController, type FieldValues } from 'react-hook-form';
@@ -8,6 +8,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/Text';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { FieldShell, type RHFControlProps } from './FieldShell';
+import { FieldInput } from './FieldInput';
 
 export type SelectOption = { label: string; value: string };
 
@@ -65,7 +66,7 @@ export function SelectSheet<TFieldValues extends FieldValues = FieldValues>({
         {searchable ? (
           <View className="mb-3 h-11 flex-row items-center gap-2 rounded-md bg-surface-sunken px-3">
             <Search size={18} color={color.textTertiary} strokeWidth={1.75} />
-            <TextInput
+            <FieldInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search"

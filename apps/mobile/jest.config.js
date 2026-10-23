@@ -48,6 +48,7 @@ module.exports = {
   moduleNameMapper: {
     ...(expoPreset.moduleNameMapper ?? {}),
     '^sonner-native$': '<rootDir>/src/test-utils/sonner-native.stub.js',
+    '^@gorhom/bottom-sheet$': '<rootDir>/src/test-utils/bottom-sheet.stub.js',
   },
   transformIgnorePatterns: [baseIgnorePattern.replace(/\)\)$/, '|lucide-react-native))'), ...restIgnorePatterns],
 };

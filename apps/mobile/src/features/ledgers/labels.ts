@@ -48,3 +48,20 @@ export function statementPresets(now: Date = new Date()): StatementPreset[] {
     { label: 'Everything', startDate: '2000-01-01', endDate: iso(now) },
   ];
 }
+
+/** The yyyy-mm-dd day of an ISO timestamp, as the statement endpoint wants it. */
+export function toDay(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+/**
+ * Why a custom statement range can't be shared yet, or null when it can: both dates chosen, the start not after the end, and
+ * neither in the future (a statement can only cover what has happened).
+ */
+export function customRangeProblem(from: string, to: string, now: Date = new Date()): string | null {
+  if (!from || !to) return 'Choose both dates.';
+  if (toDay(from) > toDay(to)) return 'The start date must be on or before the end date.';
+  const today = now.toISOString().slice(0, 10);
+  if (toDay(to) > today) return 'The end date can’t be in the future.';
+  return null;
+}

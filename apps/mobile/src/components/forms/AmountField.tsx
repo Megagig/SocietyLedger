@@ -1,9 +1,10 @@
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useController, type FieldValues } from 'react-hook-form';
 
 import { Text } from '@/components/ui/Text';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { FieldShell, type RHFControlProps } from './FieldShell';
+import { FieldInput } from './FieldInput';
 
 export type AmountFieldProps<TFieldValues extends FieldValues = FieldValues> = RHFControlProps<TFieldValues> & {
   label?: string;
@@ -51,7 +52,7 @@ export function AmountField<TFieldValues extends FieldValues = FieldValues>({
         ].join(' ')}
       >
         <Text variant="h2">₦</Text>
-        <TextInput
+        <FieldInput
           testID={testID}
           value={formatDigits(raw)}
           onChangeText={(text) => field.onChange(sanitize(text.replace(/,/g, '')))}
