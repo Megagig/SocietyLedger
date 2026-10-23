@@ -85,6 +85,16 @@ describe('recording a transfer', () => {
   });
 });
 
+describe('who recorded it', () => {
+  it('keeps the recording officer on the transfer', async () => {
+    mockPrisma.associationBankAccount.findFirst.mockResolvedValue({ id: 2, isActive: true });
+    mockPrisma.bankTransfer.findFirst.mockResolvedValue(null);
+    mockPrisma.bankTransfer.create.mockResolvedValue({ id: 1 });
+    await service.createBankTransfer(1, { ...base, bankAccountId: 2 } as never, 7);
+    expect(mockPrisma.bankTransfer.create.mock.calls.at(-1)?.[0].data.recordedBy).toBe(7);
+  });
+});
+
 describe('editing a transfer', () => {
   it('can never set the status — that is only for the verify endpoint', () => {
     const parsed = updateBankTransferSchema.parse({ status: 'VERIFIED', notes: 'sneaky', amount: 500 });
@@ -121,7 +131,7 @@ describe('verifying or rejecting a transfer', () => {
     await service.verifyBankTransfer(9, 1, 5, 'VERIFIED', 'On the statement');
 
     const call = mockPrisma.bankTransfer.updateMany.mock.calls[0]?.[0];
-    expect(call.where).toEqual({ id: 9, associationId: 1, status: 'PENDING' });
+    expect(call.where).toEqual({ id: 9, associationId: 1, status: 'PENDING', OR: [{ recordedBy: null }, { recordedBy: { not: 5 } }] });
     expect(call.data).toMatchObject({ status: 'VERIFIED', verifiedBy: 5, notes: 'On the statement' });
   });
 
@@ -136,6 +146,15 @@ describe('verifying or rejecting a transfer', () => {
 
     expect((error as BankRuleError).code).toBe('ALREADY_DECIDED');
     expect((error as BankRuleError).message).toContain(status.toLowerCase());
+  });
+
+  it('refuses the officer who recorded the transfer, but not an older transfer with no recorder', async () => {
+    mockPrisma.bankTransfer.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.bankTransfer.findFirst.mockResolvedValue({ status: 'PENDING', recordedBy: 5 });
+    expect(await codeOf(service.verifyBankTransfer(9, 1, 5, 'VERIFIED'))).toBe('OWN_TRANSFER');
+    // Someone else is told it was already decided, not that it was their own.
+    mockPrisma.bankTransfer.findFirst.mockResolvedValue({ status: 'VERIFIED', recordedBy: 5 });
+    expect(await codeOf(service.verifyBankTransfer(9, 1, 5, 'VERIFIED'))).toBe('ALREADY_DECIDED');
   });
 
   it("404s a transfer of another association", async () => {

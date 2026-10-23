@@ -166,7 +166,7 @@ export default function AssociationSignupPage() {
                 Your association <span className="font-semibold">{formData.associationName}</span> has been created!
               </p>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                We've sent a verification code to <span className="font-semibold">{formData.email}</span>. Please verify your email to continue.
+                We&apos;ve sent a verification code to <span className="font-semibold">{formData.email}</span>. Please verify your email to continue.
               </p>
               <div className="bg-blue-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Your association URL:</p>

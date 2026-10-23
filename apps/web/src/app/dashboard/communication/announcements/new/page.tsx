@@ -68,7 +68,7 @@ export default function CreateAnnouncementPage() {
   return (
     <Can
       permission={PERMISSIONS.NOTIFICATION_SEND}
-      fallback={<Alert color="red">You don't have permission to create announcements</Alert>}
+      fallback={<Alert color="red">You don&apos;t have permission to create announcements</Alert>}
     >
       <Stack gap="lg">
         <Group justify="space-between">

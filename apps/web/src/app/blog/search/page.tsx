@@ -111,7 +111,7 @@ export default function BlogSearchPage() {
             <div className="text-center py-20">
               <IconSearch size={64} className="mx-auto mb-4 text-gray-400" />
               <Text size="lg" c="dimmed">
-                No results found for "{query}"
+                No results found for &quot;{query}&quot;
               </Text>
               <Text size="sm" c="dimmed" mt="sm">
                 Try different keywords or browse our categories.
@@ -120,7 +120,7 @@ export default function BlogSearchPage() {
           ) : (
             <>
               <Text size="sm" c="dimmed" mb="md">
-                Found {posts.length} {posts.length === 1 ? 'result' : 'results'} for "{query}"
+                Found {posts.length} {posts.length === 1 ? 'result' : 'results'} for &quot;{query}&quot;
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
                 {posts.map((post) => (

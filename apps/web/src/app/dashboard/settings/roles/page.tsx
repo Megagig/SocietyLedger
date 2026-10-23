@@ -156,7 +156,7 @@ export default function RolesPage() {
       title: 'Delete Role',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the role "{role.displayName}"? 
+          Are you sure you want to delete the role &quot;{role.displayName}&quot;? 
           This action cannot be undone.
         </Text>
       ),

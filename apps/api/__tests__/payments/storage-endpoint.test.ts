@@ -38,3 +38,20 @@ describe('resolvePublicEndpoint', () => {
     expect(resolvePublicEndpoint({ endpoint: 'http://localhost:9000', nodeEnv: 'development' })).toBe('http://localhost:9000');
   });
 });
+
+describe('storageConfigProblem', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { storageConfigProblem } = require('../../src/lib/storage');
+
+  it('flags an internal storage address in production when no public address is set', () => {
+    for (const endpoint of ['http://minio:9000', 'http://localhost:9000', 'http://10.0.0.5:9000', 'http://192.168.1.4:9000', 'http://172.20.0.2:9000']) {
+      expect(storageConfigProblem({ NODE_ENV: 'production', MINIO_ENDPOINT: endpoint })).toContain('MINIO_PUBLIC_ENDPOINT');
+    }
+  });
+
+  it('is fine when a public address is set, when the endpoint is already public, or outside production', () => {
+    expect(storageConfigProblem({ NODE_ENV: 'production', MINIO_ENDPOINT: 'http://minio:9000', MINIO_PUBLIC_ENDPOINT: 'https://files.example.com' })).toBeNull();
+    expect(storageConfigProblem({ NODE_ENV: 'production', MINIO_ENDPOINT: 'https://files.example.com' })).toBeNull();
+    expect(storageConfigProblem({ NODE_ENV: 'development', MINIO_ENDPOINT: 'http://localhost:9000' })).toBeNull();
+  });
+});

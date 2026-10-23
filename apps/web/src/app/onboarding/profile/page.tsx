@@ -89,7 +89,7 @@ export default function ProfileSetupPage() {
             Association Profile
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Customize your association's branding and appearance
+            Customize your association&apos;s branding and appearance
           </p>
         </div>
 

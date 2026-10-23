@@ -340,7 +340,7 @@ export default function MakePaymentPage() {
                 </Button>
 
                 <Alert icon={<IconInfoCircle size={16} />} color="gray" variant="light">
-                  This won't show as paid until an officer reviews and approves what you submit.
+                  This won&apos;t show as paid until an officer reviews and approves what you submit.
                 </Alert>
               </div>
             </div>

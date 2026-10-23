@@ -108,7 +108,7 @@ export default function SettingsPage() {
           Association Settings
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Configure your association's preferences and settings
+          Configure your association&apos;s preferences and settings
         </p>
       </div>
 

@@ -1181,6 +1181,7 @@ model BankTransfer {
   narration           String?
   status              BankTransferStatus      @default(PENDING)
   reconciliationId    Int?                    @map("reconciliation_id")
+  recordedBy          Int?                    @map("recorded_by") // The officer who entered it; they cannot also verify it
   verifiedBy          Int?                    @map("verified_by")
   verifiedAt          DateTime?               @map("verified_at")
   notes               String?

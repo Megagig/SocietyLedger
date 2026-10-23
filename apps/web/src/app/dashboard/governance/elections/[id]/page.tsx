@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { usePrompt } from '@/hooks/usePrompt';
 import {
   IconArrowLeft,
   IconEdit,
@@ -89,6 +90,7 @@ export default function ElectionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { prompt, element: promptElement } = usePrompt();
   const electionId = parseInt(params.id as string);
   const [selectedVotes, setSelectedVotes] = useState<Record<number, number | 'abstain'>>({});
   const [addCandidateFor, setAddCandidateFor] = useState<number | null>(null); // positionId
@@ -267,10 +269,10 @@ export default function ElectionDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const handleAddPosition = () => {
-    const title = window.prompt('Position title (e.g., President)');
-    if (!title?.trim()) return;
-    addPositionMutation.mutate({ title: title.trim(), maxCandidates: 1 });
+  const handleAddPosition = async () => {
+    const title = await prompt({ title: 'Add a position', label: 'Position title', placeholder: 'e.g. President', confirmLabel: 'Add position' });
+    if (!title) return;
+    addPositionMutation.mutate({ title, maxCandidates: 1 });
   };
 
   if (isLoading) {
@@ -305,6 +307,7 @@ export default function ElectionDetailPage() {
 
   return (
     <div className="space-y-6">
+      {promptElement}
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">

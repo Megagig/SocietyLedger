@@ -7,7 +7,8 @@ export type BankRuleErrorCode =
   | 'DUPLICATE_REFERENCE'
   | 'DUPLICATE_ACCOUNT'
   | 'LAST_ACCOUNT'
-  | 'INACTIVE_DEFAULT';
+  | 'INACTIVE_DEFAULT'
+  | 'OWN_TRANSFER';
 
 /** Why a bank account or transfer change was refused — the controller turns each code into the right HTTP status. */
 export class BankRuleError extends Error {
@@ -28,6 +29,7 @@ export const BANK_RULE_STATUS: Record<BankRuleErrorCode, number> = {
   DUPLICATE_ACCOUNT: 400,
   LAST_ACCOUNT: 409,
   INACTIVE_DEFAULT: 400,
+  OWN_TRANSFER: 403,
 };
 
 /** A transfer reference compared the way people read it: spaces trimmed, case ignored ("TRF123" and "trf123 " are the same). */

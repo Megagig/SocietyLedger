@@ -12,7 +12,7 @@ import { uploadFile, getPresignedUrl } from '../../lib/storage';
 import { RBACService } from '../../services/rbac.service';
 import { notifyProofDecided, notifyProofSubmitted, notifyTransferRecorded } from '../../services/payment-proof-notifications';
 import { BANK_RULE_STATUS, BankRuleError } from './bank-rules';
-import { nigerianPaymentsService } from './nigerian-payments.service';
+import { nigerianPaymentsService, ReconciliationDecisionError } from './nigerian-payments.service';
 import { PROOF_DECISION_STATUS, ProofDecisionError } from './payment-proof-decision';
 import {
   createBankAccountSchema,
@@ -329,7 +329,7 @@ export const nigerianPaymentsController = {
       const data = createBankTransferSchema.parse(req.body);
 
       // The service checks the links belong to this association and that the reference is free (ignoring case and spaces).
-      const transfer = await nigerianPaymentsService.createBankTransfer(associationId, data);
+      const transfer = await nigerianPaymentsService.createBankTransfer(associationId, data, req.user!.id);
 
       // Officers who can verify are told one is waiting — fire-and-forget.
       void notifyTransferRecorded(associationId, {
@@ -669,6 +669,9 @@ export const nigerianPaymentsController = {
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      if (error instanceof ReconciliationDecisionError) {
+        return res.status(409).json({ success: false, message: error.message, code: 'ALREADY_DECIDED' });
       }
       console.error('Error confirming reconciliation:', error);
       return res.status(500).json({ success: false, message: 'Failed to confirm reconciliation' });

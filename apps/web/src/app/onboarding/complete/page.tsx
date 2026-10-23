@@ -115,7 +115,7 @@ export default function CompletePage() {
             <CheckIcon className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            🎉 You're All Set!
+            🎉 You&apos;re All Set!
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-md mx-auto">
             Your association is ready to go. Start managing your members and finances with ease.

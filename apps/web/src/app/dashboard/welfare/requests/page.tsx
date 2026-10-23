@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
+import { usePrompt } from '@/hooks/usePrompt';
 import { HelpLink } from '@/components/docs/HelpLink';
 import {
   IconHeart, IconPlus, IconCheck, IconX, IconCash,
@@ -49,6 +50,7 @@ export default function PayoutRequestsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
+  const { prompt, element: promptElement } = usePrompt();
   
   const [requests, setRequests] = useState<WelfarePayoutRequest[]>([]);
   const [funds, setFunds] = useState<WelfareFund[]>([]);
@@ -176,8 +178,30 @@ export default function PayoutRequestsPage() {
     return colors[status] || colors.PENDING;
   };
 
+  const askRejectReason = async (id: number) => {
+    const reason = await prompt({ title: 'Reject this request', label: 'Reason for rejecting', multiline: true, confirmLabel: 'Reject' });
+    if (reason) handleReview(id, 'REJECTED', undefined, reason);
+  };
+
+  const askDisbursementMethod = async (id: number) => {
+    const method = await prompt({
+      title: 'Disburse this payout',
+      label: 'How is it being paid?',
+      initialValue: 'bank_transfer',
+      confirmLabel: 'Disburse',
+      choices: [
+        { value: 'bank_transfer', label: 'Bank transfer' },
+        { value: 'cash', label: 'Cash' },
+        { value: 'cheque', label: 'Cheque' },
+        { value: 'mobile_money', label: 'Mobile money' },
+      ],
+    });
+    if (method) handleDisburse(id, method);
+  };
+
   return (
     <div className="space-y-6">
+      {promptElement}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
@@ -311,10 +335,7 @@ export default function PayoutRequestsPage() {
                           <IconCheck size={18} />
                         </button>
                         <button
-                          onClick={() => {
-                            const reason = prompt('Enter rejection reason:');
-                            if (reason) handleReview(request.id, 'REJECTED', undefined, reason);
-                          }}
+                          onClick={() => askRejectReason(request.id)}
                           className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                           title="Reject"
                         >
@@ -324,10 +345,7 @@ export default function PayoutRequestsPage() {
                     )}
                     {canDisburse && request.status === 'APPROVED' && (
                       <button
-                        onClick={() => {
-                          const method = prompt('Enter disbursement method (cash, bank_transfer, etc.):');
-                          if (method) handleDisburse(request.id, method);
-                        }}
+                        onClick={() => askDisbursementMethod(request.id)}
                         className="p-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
                         title="Disburse"
                       >
@@ -424,10 +442,7 @@ export default function PayoutRequestsPage() {
                                 <IconCheck size={18} />
                               </button>
                               <button
-                                onClick={() => {
-                                  const reason = prompt('Enter rejection reason:');
-                                  if (reason) handleReview(request.id, 'REJECTED', undefined, reason);
-                                }}
+                                onClick={() => askRejectReason(request.id)}
                                 className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                                 title="Reject"
                               >
@@ -437,10 +452,7 @@ export default function PayoutRequestsPage() {
                           )}
                           {canDisburse && request.status === 'APPROVED' && (
                             <button
-                              onClick={() => {
-                                const method = prompt('Enter disbursement method (cash, bank_transfer, etc.):');
-                                if (method) handleDisburse(request.id, method);
-                              }}
+                              onClick={() => askDisbursementMethod(request.id)}
                               className="p-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded"
                               title="Disburse"
                             >

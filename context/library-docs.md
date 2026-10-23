@@ -24,7 +24,7 @@
 | @shopify/flash-list | lists | _SDK-matched_ |
 | react-native-reanimated, react-native-gesture-handler | animation/gesture | _SDK-matched_ |
 | @gorhom/bottom-sheet | sheets | **^5.2.14** — pinned at F1.5. `BottomSheetModalProvider` mounted once at the app root (`app/_layout.tsx`), inside `GestureHandlerRootView` (also newly wired at the root — `react-native-gesture-handler` was already a dependency since F1.1 but nothing had required the root wrapper until a real bottom sheet existed). |
-| victory-native, @shopify/react-native-skia | charts | _latest compatible_ |
+| react-native-gifted-charts | charts (replaces the planned victory-native) | ^1.4.81 |
 | lucide-react-native, react-native-svg | icons | **lucide-react-native ^1.60.0, react-native-svg 15.16.0** — pinned at F1.4 (`expo install`-resolved, SDK-56-compatible). Ships ESM-only for the `"react-native"`/`"import"` export conditions (no CJS alternative on that condition) — needed a Jest config fix, see "Testing stack" below and `ui-registry.md`'s "Dev tooling & known gaps (F1.4)". |
 | sonner-native | toasts | **^0.27.0** — pinned at F1.5. Named exports only: `import { Toaster, toast } from 'sonner-native'` (no default export). `<Toaster />` mounted once in `app/_layout.tsx`. |
 | date-fns | dates | **^4.1.0** — pinned at F1.6, confirmed same major as web. `lib/dates.ts`'s `formatDate(iso, variant)` covers the 5 variants code-standards.md §11 names (`short`/`long`/`relative`/`time`/`monthYear`); no `date-fns-tz` (deferred — see that module's own note). |
@@ -193,8 +193,9 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 - Use for: filters, pickers (`SelectSheet`), confirmations (`ConfirmSheet`), quick actions.
 - **Confirmed/built at F1.5:** `BottomSheet` is a `forwardRef<BottomSheetModal, BottomSheetProps>` — callers own a `useRef<BottomSheetModal>` and call `.present()`/`.dismiss()` themselves (no imperative wrapper hook built). `ConfirmSheet` forwards its own ref to an internal one via `useImperativeHandle` so it can both expose `.present()`/`.dismiss()` to the caller **and** use the same ref internally for its "Keep it" button. `BottomSheetModalProvider` needs `GestureHandlerRootView` as an ancestor (also newly wired at the app root this feature — `react-native-gesture-handler` was a dependency since F1.1 but nothing had required the root wrapper before). `enableDynamicSizing` is passed alongside fixed `snapPoints` (gorhom v5 supports both together) — not independently verified against a real long-content sheet yet, since nothing has used `SelectSheet`/`FileAttachField` on a real screen through F1.5.
 
-## victory-native (Skia)
-- Only through wrappers in `components/charts/` (`LineChart`, `BarChart`, `DonutChart`, `StackedBarChart`, `ProgressRing`) which take plain data + token-derived colours from `useThemeTokens().chart`.
+## react-native-gifted-charts
+(Replaces the originally planned victory-native, which was never installed.)
+- Used by the Home and Finance chart components in `features/home/components` and `features/finance/components`; keep any new chart behind a small component that takes plain data. (`LineChart`, `BarChart`, `DonutChart`, `StackedBarChart`, `ProgressRing`) which take plain data + token-derived colours from `useThemeTokens().chart`.
 - Data arrays converted from Decimal to number **only** inside chart wrappers (display precision acceptable).
 - Charts have an accessible text summary (`accessibilityLabel`) and a "View as list" fallback for screen readers.
 

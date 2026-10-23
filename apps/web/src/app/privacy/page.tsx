@@ -35,7 +35,7 @@ export default function PrivacyPage() {
           <div className="glass-strong p-10 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 prose prose-lg dark:prose-invert max-w-none">
             <h2>1. Introduction</h2>
             <p>
-              SocietyLedger ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our association management platform.
+              SocietyLedger (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our association management platform.
             </p>
 
             <h2>2. Information We Collect</h2>
@@ -100,14 +100,14 @@ export default function PrivacyPage() {
               We use cookies and similar tracking technologies to track activity on our service and hold certain information. You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent.
             </p>
 
-            <h2>9. Children's Privacy</h2>
+            <h2>9. Children&apos;s Privacy</h2>
             <p>
               Our service is not intended for children under 13. We do not knowingly collect personal information from children under 13. If you become aware that a child has provided us with personal information, please contact us.
             </p>
 
             <h2>10. Changes to This Policy</h2>
             <p>
-              We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.
+              We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &quot;Last Updated&quot; date.
             </p>
 
             <h2>11. Contact Us</h2>

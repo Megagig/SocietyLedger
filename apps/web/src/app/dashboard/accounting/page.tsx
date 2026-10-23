@@ -152,7 +152,7 @@ export default function AccountingPage() {
           {isPermissionError ? (
             <div>
               <Text size="sm" mb="xs">
-                You don't have permission to view accounting data. This feature is available to:
+                You don&apos;t have permission to view accounting data. This feature is available to:
               </Text>
               <ul className="list-disc list-inside text-sm space-y-1">
                 <li>Administrators</li>

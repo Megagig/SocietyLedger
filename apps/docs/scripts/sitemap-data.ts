@@ -382,7 +382,7 @@ export const sections: SectionDef[] = [
       { slug: 'finding-your-way-around', title: 'Finding your way around: tabs and menus', type: 'platform', audience: ['all'], platforms: ['mobile'], covers: [] },
       { slug: 'paying-on-mobile', title: 'Paying on your phone', type: 'platform', audience: ['member'], platforms: ['mobile'], covers: ['M2', 'M3', 'M4', 'M5'] },
       { slug: 'push-notifications', title: 'Push notifications', type: 'platform', audience: ['all'], platforms: ['mobile'], covers: ['N2'] },
-      { slug: 'officer-tasks-on-the-go', title: 'Officer tasks on the go', type: 'platform', audience: ['officer'], platforms: ['mobile'], covers: ['PY3', 'GV4', 'CP4'] },
+      { slug: 'officer-tasks-on-the-go', title: 'Officer tasks on the go', type: 'platform', audience: ['officer'], platforms: ['mobile'], covers: ['manage*', 'H2', 'PY3', 'GV4'] },
       { slug: 'offline-and-saved-data', title: 'Using the app with poor or no internet', type: 'platform', audience: ['all'], platforms: ['mobile'], covers: [] },
       { slug: 'whats-web-only', title: 'What you still do on the web', type: 'platform', audience: ['all'], platforms: ['mobile'], covers: [] },
       { slug: 'updating-the-app', title: 'Keeping the app up to date', type: 'platform', audience: ['all'], platforms: ['mobile'], covers: [] },

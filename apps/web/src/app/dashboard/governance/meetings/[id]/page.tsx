@@ -21,6 +21,7 @@ import {
 } from '@/lib/api/meetings';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { useConfirm } from '@/hooks/useConfirm';
+import { usePrompt } from '@/hooks/usePrompt';
 import {
   IconArrowLeft,
   IconEdit,
@@ -48,6 +49,7 @@ const ATTENDANCE_STATUS_OPTIONS: { value: AttendanceStatus; label: string; color
 
 export default function MeetingDetailPage() {
   const { confirm, element: confirmElement } = useConfirm();
+  const { prompt, element: promptElement } = usePrompt();
   const router = useRouter();
   const params = useParams();
   const meetingId = parseInt(params.id as string);
@@ -198,12 +200,12 @@ export default function MeetingDetailPage() {
   };
 
   const handleAddAgendaItem = async () => {
-    const title = window.prompt('Agenda item title');
-    if (!title?.trim()) return;
+    const title = await prompt({ title: 'Add an agenda item', label: 'Agenda item title', confirmLabel: 'Add item' });
+    if (!title) return;
     try {
       await addAgendaItem(meetingId, {
         orderNumber: (meeting?.agendaItems?.length || 0) + 1,
-        title: title.trim(),
+        title,
       });
       await fetchMeeting();
     } catch (err: any) {
@@ -212,10 +214,10 @@ export default function MeetingDetailPage() {
   };
 
   const handleEditAgendaItem = async (agendaId: number, currentTitle: string) => {
-    const title = window.prompt('Agenda item title', currentTitle);
-    if (!title?.trim()) return;
+    const title = await prompt({ title: 'Edit agenda item', label: 'Agenda item title', initialValue: currentTitle });
+    if (!title) return;
     try {
-      await updateAgendaItem(meetingId, agendaId, { title: title.trim() });
+      await updateAgendaItem(meetingId, agendaId, { title });
       await fetchMeeting();
     } catch (err: any) {
       setError(err.message);
@@ -275,6 +277,7 @@ export default function MeetingDetailPage() {
   return (
     <div className="space-y-6">
       {confirmElement}
+      {promptElement}
       {/* Header */}
       <div className="flex items-center gap-4">
         <button

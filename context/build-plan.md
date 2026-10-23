@@ -527,7 +527,7 @@ ASSOCIATION ADMIN ──ticket (billing, bugs, modules, data)──▶ SOCIETYLE
 *Goal: the highest-value officer tasks: members, payments verification, finance basics, attendance.*
 
 ### F5.1 Manage tab hub & Home — Association — Manage index, H2
-- Permission/module-driven sections with pending badges; association KPIs, charts (victory-native wrappers in `components/charts`), needs-attention list.
+- Permission/module-driven sections with pending badges; association KPIs, charts (react-native-gifted-charts, as built — see architecture.md), needs-attention list.
 
 ### F5.2 Members list & detail — MG1, MG2
 - Search, filters, infinite list, detail tabs, call/WhatsApp/email intents.

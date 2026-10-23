@@ -23,7 +23,7 @@ export default function VerificationPage() {
           </div>
           <Title order={2} ta="center">Access Denied</Title>
           <Text size="sm" c="dimmed" ta="center">
-            You don't have permission to access the payment verification page.
+            You don&apos;t have permission to access the payment verification page.
             Please contact your administrator if you believe you should have access.
           </Text>
           <Text size="xs" c="dimmed" ta="center">

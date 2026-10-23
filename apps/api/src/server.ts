@@ -53,6 +53,7 @@ import votingRoutes from './modules/voting/voting.routes';
 import rbacRoutes from './modules/rbac/rbac.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import modulesRoutes from './modules/modules/modules.routes';
+import { storageConfigProblem } from './lib/storage';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import helpRoutes from './modules/help/help.routes';
 import aiHelpRoutes from './modules/help/ai-help.routes';
@@ -255,6 +256,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start server unless running under test
 if (process.env.NODE_ENV !== 'test') {
+  const storageProblem = storageConfigProblem(process.env);
+  if (storageProblem) console.error('⚠️  Storage misconfigured: ' + storageProblem);
+
   // Phase 12: Initialize Redis before starting server
   initializeRedis()
     .then(() => {

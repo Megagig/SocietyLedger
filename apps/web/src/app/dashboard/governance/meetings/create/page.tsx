@@ -348,7 +348,7 @@ export default function CreateMeetingPage() {
             </div>
           ) : (
             <p className="text-center text-gray-500 py-8">
-              No agenda items yet. Click "Add Item" to create one.
+              No agenda items yet. Click &quot;Add Item&quot; to create one.
             </p>
           )}
         </div>

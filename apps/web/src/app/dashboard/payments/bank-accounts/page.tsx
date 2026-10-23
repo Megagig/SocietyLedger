@@ -213,7 +213,7 @@ export default function BankAccountsPage() {
   }));
 
   return (
-    <Can anyPermissions={[PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_RECORD, PERMISSIONS.PAYMENT_VIEW]} fallback={<Alert color="red">You don't have permission to manage bank accounts</Alert>}>
+    <Can anyPermissions={[PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_RECORD, PERMISSIONS.PAYMENT_VIEW]} fallback={<Alert color="red">You don&apos;t have permission to manage bank accounts</Alert>}>
       <Stack gap="lg">
         <Group justify="space-between">
           <div>

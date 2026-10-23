@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
           Admin Dashboard
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Welcome back, {user?.email?.split('@')[0] || 'Admin'}! Here's your association overview
+          Welcome back, {user?.email?.split('@')[0] || 'Admin'}! Here&apos;s your association overview
         </p>
       </div>
 

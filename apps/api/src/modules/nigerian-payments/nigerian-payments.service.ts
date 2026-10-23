@@ -18,8 +18,17 @@ import {
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
+import { cacheInvalidationService } from '../../services/cache-invalidation.service';
 import { decidePaymentProof, targetTransactionIds } from './payment-proof-decision';
 import { assertNotLastActiveAccount, assertReferenceFree, assertTransferLinks, BankRuleError, promoteNewDefault } from './bank-rules';
+
+/** Thrown when a reconciliation was already confirmed or disputed. The controller answers 409. */
+export class ReconciliationDecisionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReconciliationDecisionError';
+  }
+}
 
 export const nigerianPaymentsService = {
   // ==========================================
@@ -148,13 +157,14 @@ export const nigerianPaymentsService = {
   // TASK-PAY-001: BANK TRANSFER TRACKING
   // ==========================================
 
-  async createBankTransfer(associationId: number, data: BankTransferInput) {
+  async createBankTransfer(associationId: number, data: BankTransferInput, recordedBy?: number) {
     await assertTransferLinks(associationId, { bankAccountId: data.bankAccountId, memberId: data.memberId, transactionId: data.transactionId });
     await assertReferenceFree(associationId, data.reference);
 
     return prisma.bankTransfer.create({
       data: {
         associationId,
+        recordedBy,
         transactionId: data.transactionId,
         bankAccountId: data.bankAccountId,
         memberId: data.memberId,
@@ -219,13 +229,17 @@ export const nigerianPaymentsService = {
    */
   async verifyBankTransfer(id: number, associationId: number, userId: number, status: 'VERIFIED' | 'REJECTED', notes?: string) {
     const claimed = await prisma.bankTransfer.updateMany({
-      where: { id, associationId, status: 'PENDING' },
+      // Whoever recorded a transfer can't also decide it (a transfer with no recorder, from before this was kept, can be decided by anyone allowed to).
+      where: { id, associationId, status: 'PENDING', OR: [{ recordedBy: null }, { recordedBy: { not: userId } }] },
       data: { status, verifiedBy: userId, verifiedAt: new Date(), notes: notes || undefined },
     });
 
     if (claimed.count === 0) {
-      const current = await prisma.bankTransfer.findFirst({ where: { id, associationId }, select: { status: true } });
+      const current = await prisma.bankTransfer.findFirst({ where: { id, associationId }, select: { status: true, recordedBy: true } });
       if (!current) throw new BankRuleError('NOT_FOUND', 'Bank transfer not found');
+      if (current.status === 'PENDING' && current.recordedBy === userId) {
+        throw new BankRuleError('OWN_TRANSFER', "You can't verify or reject a bank transfer you recorded yourself. Ask another officer.");
+      }
       throw new BankRuleError('ALREADY_DECIDED', `This transfer is already ${current.status.toLowerCase()}. It can't be decided again.`);
     }
 
@@ -531,14 +545,17 @@ export const nigerianPaymentsService = {
   },
 
   async confirmReconciliation(id: number, associationId: number, userId: number, status: 'CONFIRMED' | 'DISPUTED', notes?: string) {
-    const reconciliation = await prisma.paymentReconciliation.update({
+    // Claim the decision first: only a PENDING reconciliation can be decided, and only once. Without this, confirming
+    // twice (a double tap, two officers, a retry) recorded the payment twice, and a disputed one could be confirmed later.
+    const claimed = await prisma.paymentReconciliation.updateMany({
+      where: { id, associationId, status: 'PENDING' },
+      data: { status, reconciledBy: userId, reconciledAt: new Date(), notes: notes || undefined },
+    });
+    if (claimed.count === 0) {
+      throw new ReconciliationDecisionError('This reconciliation has already been decided.');
+    }
+    const reconciliation = await prisma.paymentReconciliation.findUniqueOrThrow({
       where: { id },
-      data: {
-        status,
-        reconciledBy: userId,
-        reconciledAt: new Date(),
-        notes: notes || undefined,
-      },
       include: {
         transaction: true,
       },
@@ -592,6 +609,8 @@ export const nigerianPaymentsService = {
       } catch (ledgerError) {
         console.error('Ledger sync failed (non-critical):', ledgerError);
       }
+
+      await cacheInvalidationService.onPaymentChange(associationId).catch((e) => console.error('Cache invalidation failed (non-critical):', e));
     }
 
     return reconciliation;

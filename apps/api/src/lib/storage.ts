@@ -114,3 +114,24 @@ export async function getPresignedUrl(key: string, expiresInSeconds = 3600, requ
 
   return getSignedUrl(clientFor(endpoint), new GetObjectCommand({ Bucket: STORAGE_BUCKET, Key: key }), { expiresIn: expiresInSeconds });
 }
+
+/**
+ * In production, a signed link made from an internal storage address (`http://minio:9000`, localhost, a private IP) can't be opened
+ * by a phone or browser, so every receipt, slip and attachment would silently fail to load. Returns what is wrong, or null when fine.
+ */
+export function storageConfigProblem(env: { NODE_ENV?: string; MINIO_ENDPOINT?: string; MINIO_PUBLIC_ENDPOINT?: string }): string | null {
+  if (env.NODE_ENV !== 'production' || env.MINIO_PUBLIC_ENDPOINT || !env.MINIO_ENDPOINT) return null;
+  let host: string;
+  try {
+    host = new URL(env.MINIO_ENDPOINT).hostname;
+  } catch {
+    return 'MINIO_ENDPOINT is not a valid URL.';
+  }
+  const internal =
+    LOOPBACK_HOSTS.has(host) ||
+    !host.includes('.') || // a Docker service name such as "minio"
+    /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
+  return internal
+    ? `MINIO_ENDPOINT (${env.MINIO_ENDPOINT}) is an internal address and MINIO_PUBLIC_ENDPOINT is not set, so receipts, lodgment slips and ticket attachments will not open on phones or browsers. Set MINIO_PUBLIC_ENDPOINT to the address people can reach.`
+    : null;
+}

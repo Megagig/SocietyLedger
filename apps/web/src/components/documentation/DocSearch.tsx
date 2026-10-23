@@ -137,7 +137,7 @@ export function DocSearch({ onResultClick }: DocSearchProps) {
               ))
             ) : (
               <Text size="sm" c="dimmed" ta="center" py="md">
-                No results found for "{query}"
+                No results found for &quot;{query}&quot;
               </Text>
             )}
           </Stack>

@@ -211,7 +211,7 @@ export default function HelpContentManagementPage() {
   async function handleDeleteArticle(article: HelpArticle) {
     modals.openConfirmModal({
       title: 'Delete Article',
-      children: <Text size="sm">Are you sure you want to delete "{article.title}"?</Text>,
+      children: <Text size="sm">Are you sure you want to delete &quot;{article.title}&quot;?</Text>,
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {

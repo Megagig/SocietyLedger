@@ -1,5 +1,6 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../lib/prisma';
+import { cacheInvalidationService } from '../../services/cache-invalidation.service';
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
 import type { PaymentProofVerification } from './nigerian-payments.types';
@@ -135,6 +136,9 @@ export async function decidePaymentProof(id: number, associationId: number, user
       include: { transaction: true, bankTransfer: true, member: { select: { id: true, userId: true, memberId: true, firstName: true, lastName: true } } },
     });
   });
+
+  // A verified proof records payments, so the dashboard and reports must not keep showing the old figures.
+  if (proof.status === 'APPROVED') await cacheInvalidationService.onPaymentChange(associationId).catch((e) => console.error('Cache invalidation failed (non-critical):', e));
 
   for (const sync of accountingSyncs) {
     try {

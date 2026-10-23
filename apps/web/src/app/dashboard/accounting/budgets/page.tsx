@@ -249,7 +249,7 @@ export default function BudgetsPage() {
       {budgets.length === 0 ? (
         <Alert icon={<IconCalculator size={20} />} title="No Budgets Found" color="blue">
           <Text size="sm">
-            No budgets found. Click "New Budget" to create your first budget.
+            No budgets found. Click &quot;New Budget&quot; to create your first budget.
           </Text>
         </Alert>
       ) : (

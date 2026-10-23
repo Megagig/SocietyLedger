@@ -83,7 +83,7 @@ export default function TestimonialsPage() {
               </span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Trusted by hundreds of associations across Nigeria. Here's what they have to say about SocietyLedger.
+              Trusted by hundreds of associations across Nigeria. Here&apos;s what they have to say about SocietyLedger.
             </p>
           </div>
         </Container>
@@ -100,7 +100,7 @@ export default function TestimonialsPage() {
                   ))}
                 </div>
                 <p className="text-lg text-gray-700 dark:text-gray-300 mb-6 leading-relaxed italic">
-                  "{testimonial.quote}"
+                  &quot;{testimonial.quote}&quot;
                 </p>
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-white font-bold text-lg">

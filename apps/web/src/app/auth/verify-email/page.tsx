@@ -290,7 +290,7 @@ export default function VerifyEmailPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Didn't receive the code?
+              Didn&apos;t receive the code?
             </p>
             <button
               onClick={handleResendCode}

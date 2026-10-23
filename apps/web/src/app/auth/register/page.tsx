@@ -115,7 +115,7 @@ export default function RegisterPage() {
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Check Your Email</h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                We've sent a verification code to your email address. Please check your inbox and enter the code to verify your account.
+                We&apos;ve sent a verification code to your email address. Please check your inbox and enter the code to verify your account.
               </p>
               <Link
                 href={`/auth/verify-email?email=${encodeURIComponent(formData.email)}`}
@@ -124,7 +124,7 @@ export default function RegisterPage() {
                 Enter Verification Code
               </Link>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                Didn't receive the email? Check your spam folder or request a new code on the verification page.
+                Didn&apos;t receive the email? Check your spam folder or request a new code on the verification page.
               </p>
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function RegisterPage() {
           {!tenant && (
             <div className="mt-3 p-3 bg-amber-50 rounded-lg">
               <p className="text-sm text-amber-700 dark:text-amber-300">
-                To register as a member, access your association's subdomain first.
+                To register as a member, access your association&apos;s subdomain first.
               </p>
               <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
                 Want to create a new association?{' '}

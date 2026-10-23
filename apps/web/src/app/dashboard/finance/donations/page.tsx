@@ -1183,7 +1183,7 @@ export default function DonationsPage() {
               {selectedReceipt.donorMessage && (
                 <div className="pt-2">
                   <span className="text-gray-500 text-sm">Message:</span>
-                  <p className="text-sm italic mt-1">"{selectedReceipt.donorMessage}"</p>
+                  <p className="text-sm italic mt-1">&quot;{selectedReceipt.donorMessage}&quot;</p>
                 </div>
               )}
             </div>
@@ -1254,7 +1254,7 @@ export default function DonationsPage() {
               
               {printReceiptData.donorMessage && (
                 <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg mt-4 text-green-800 dark:text-green-200 italic">
-                  "{printReceiptData.donorMessage}"
+                  &quot;{printReceiptData.donorMessage}&quot;
                 </div>
               )}
               

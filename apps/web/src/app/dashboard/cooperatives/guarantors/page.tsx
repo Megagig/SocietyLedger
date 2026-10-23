@@ -129,7 +129,7 @@ export default function GuarantorsPage() {
           <IconUsers size={40} className="mx-auto text-gray-400 mb-4 sm:hidden" />
           <IconUsers size={48} className="mx-auto text-gray-400 mb-4 hidden sm:block" />
           <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No Pending Requests</h3>
-          <p className="text-sm sm:text-base text-gray-500">You don't have any pending guarantor requests at this time.</p>
+          <p className="text-sm sm:text-base text-gray-500">You don&apos;t have any pending guarantor requests at this time.</p>
         </div>
       ) : (
         <div className="grid gap-4">

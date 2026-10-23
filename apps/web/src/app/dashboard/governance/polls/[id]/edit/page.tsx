@@ -129,7 +129,7 @@ export default function EditPollPage() {
         </div>
 
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Poll type and options can't be changed after creation — delete and recreate the poll if you need a different type.
+          Poll type and options can&apos;t be changed after creation — delete and recreate the poll if you need a different type.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

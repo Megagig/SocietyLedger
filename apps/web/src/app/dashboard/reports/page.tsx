@@ -148,7 +148,7 @@ export default function ReportsPage() {
           {(summaryError as any)?.response?.status === 403 ? (
             <div>
               <Text size="sm" mb="xs">
-                You don't have permission to view financial reports. This feature is available to:
+                You don&apos;t have permission to view financial reports. This feature is available to:
               </Text>
               <ul className="list-disc list-inside text-sm space-y-1">
                 <li>Administrators</li>

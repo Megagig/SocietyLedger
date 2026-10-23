@@ -205,7 +205,7 @@ export default function AssociationProfilePage() {
           Association Profile
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-          Manage your association's identity and branding
+          Manage your association&apos;s identity and branding
         </p>
       </div>
 

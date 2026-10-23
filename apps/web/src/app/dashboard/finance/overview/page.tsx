@@ -91,7 +91,7 @@ export default function FinanceOverviewPage() {
           Financial Overview
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Track your association's financial health
+          Track your association&apos;s financial health
         </p>
       </div>
 

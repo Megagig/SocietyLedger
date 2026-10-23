@@ -231,7 +231,7 @@ export default function ChartOfAccountsPage() {
           Chart of Accounts
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Manage your association's account structure
+          Manage your association&apos;s account structure
         </p>
       </div>
 
@@ -277,7 +277,7 @@ export default function ChartOfAccountsPage() {
       {accounts.length === 0 ? (
         <Alert icon={<IconReceipt size={20} />} title="No Accounts Found" color="blue">
           <Text size="sm" mb="md">
-            Your chart of accounts is empty. Click "Initialize Standard Accounts" to set up a standard chart of accounts, or add accounts manually.
+            Your chart of accounts is empty. Click &quot;Initialize Standard Accounts&quot; to set up a standard chart of accounts, or add accounts manually.
           </Text>
         </Alert>
       ) : (

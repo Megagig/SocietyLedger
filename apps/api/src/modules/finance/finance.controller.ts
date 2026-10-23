@@ -15,6 +15,7 @@ import { verifyPassword } from '../../lib/auth';
 import { reminderText, splitByCooldown } from './reminder-rules';
 import { isOverdue, overdueWhere } from './overdue-rules';
 import { syncLedgerDebit } from './ledger-sync';
+import { restoreChargeExtras } from './restore-rules';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -1546,6 +1547,9 @@ export const financeController = {
           },
         });
 
+        // Bring back its payments and donation record too, so a charge that was paid is not restored as paid with nothing behind it.
+        await restoreChargeExtras(associationId, restored.id, txnData, req.user!.id);
+
         await prisma.auditLog.create({
           data: {
             associationId,
@@ -1607,6 +1611,10 @@ export const financeController = {
             })
           )
         );
+
+        for (const [index, charge] of restored.entries()) {
+          await restoreChargeExtras(associationId, charge.id, txnsData[index], req.user!.id);
+        }
 
         await prisma.auditLog.create({
           data: {

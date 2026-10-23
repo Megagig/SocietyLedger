@@ -63,7 +63,7 @@ export default function NigerianPaymentsDashboard() {
       description: 'Record and track bank transfers',
       icon: <IconTransfer size={32} />,
       color: 'green',
-      route: '/dashboard/payments/nigerian/transfers',
+      route: '/dashboard/payments/bank-transfers',
     },
     {
       title: 'Reconciliation',

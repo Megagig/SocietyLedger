@@ -245,7 +245,7 @@ export default function CashFlowPage() {
             <li>There are no posted journal entries affecting cash accounts</li>
           </ul>
           <Text size="sm" mt="sm">
-            Go to Chart of Accounts and click "Initialize" to set up your accounts, then create and post journal entries.
+            Go to Chart of Accounts and click &quot;Initialize&quot; to set up your accounts, then create and post journal entries.
           </Text>
         </Alert>
       )}

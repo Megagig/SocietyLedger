@@ -100,7 +100,7 @@ export default function BalanceSheetPage() {
             Balance Sheet
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            View your association's financial position
+            View your association&apos;s financial position
           </p>
         </div>
         <Alert icon={<IconWallet size={20} />} title="Unable to Load Report" color="red">
@@ -119,7 +119,7 @@ export default function BalanceSheetPage() {
           Balance Sheet
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          View your association's financial position
+          View your association&apos;s financial position
         </p>
       </div>
 
@@ -154,7 +154,7 @@ export default function BalanceSheetPage() {
             <li>There are no posted journal entries</li>
           </ul>
           <Text size="sm" mt="sm">
-            Go to Chart of Accounts and click "Initialize" to set up your accounts, then create and post journal entries.
+            Go to Chart of Accounts and click &quot;Initialize&quot; to set up your accounts, then create and post journal entries.
           </Text>
         </Alert>
       )}

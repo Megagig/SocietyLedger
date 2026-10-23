@@ -283,7 +283,7 @@ export default function JournalEntriesPage() {
       {entries.length === 0 ? (
         <Alert icon={<IconFileAnalytics size={20} />} title="No Entries Found" color="blue">
           <Text size="sm">
-            No journal entries found. Click "New Entry" to create your first journal entry.
+            No journal entries found. Click &quot;New Entry&quot; to create your first journal entry.
           </Text>
         </Alert>
       ) : (

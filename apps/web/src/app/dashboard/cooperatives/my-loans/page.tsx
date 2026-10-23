@@ -281,7 +281,7 @@ export default function MyLoansPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
           <IconCheck size={48} className="mx-auto text-green-500 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Active Loans</h3>
-          <p className="text-gray-500 mb-4">You don't have any active loans. Need funds? Apply for a loan today!</p>
+          <p className="text-gray-500 mb-4">You don&apos;t have any active loans. Need funds? Apply for a loan today!</p>
           <Button onClick={() => router.push('/dashboard/cooperatives/apply')}>Apply for Loan</Button>
         </div>
       ) : (

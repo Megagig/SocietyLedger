@@ -13,7 +13,7 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 export const ATTENTION_LINES: Record<AttentionKey, AttentionLine> = {
   memberApprovals: { label: (n) => `${plural(n, 'new member', 'new members')} to approve`, href: '/dashboard/settings/pending-approvals' },
   paymentProofs: { label: (n) => `${plural(n, 'payment proof', 'payment proofs')} to verify`, href: '/dashboard/payments/nigerian/verification' },
-  bankTransfers: { label: (n) => `${plural(n, 'bank transfer', 'bank transfers')} to confirm`, href: '/dashboard/payments/nigerian/transfers' },
+  bankTransfers: { label: (n) => `${plural(n, 'bank transfer', 'bank transfers')} to confirm`, href: '/dashboard/payments/bank-transfers' },
   cashLodgments: { label: (n) => `${plural(n, 'cash lodgment', 'cash lodgments')} to check`, href: '/dashboard/cash/lodgments' },
   overdueCharges: { label: (n) => `${plural(n, 'charge', 'charges')} overdue`, href: '/dashboard/finance/overdue', urgent: true },
   supportTickets: { label: (n) => `${plural(n, 'support ticket', 'support tickets')} need a reply`, href: '/dashboard/help/tickets' },

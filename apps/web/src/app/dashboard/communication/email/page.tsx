@@ -64,7 +64,7 @@ export default function EmailCampaignsPage() {
           <div>
             <h3 className="font-semibold text-purple-800 dark:text-purple-200 text-sm sm:text-base">Email Integration</h3>
             <p className="text-xs sm:text-sm text-purple-700 dark:text-purple-300 mt-1">
-              Email campaigns use your association's configured email provider (Resend). 
+              Email campaigns use your association&apos;s configured email provider (Resend). 
               Members receive emails at their registered email addresses.
             </p>
           </div>
