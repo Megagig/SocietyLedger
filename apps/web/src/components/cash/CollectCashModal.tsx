@@ -121,7 +121,11 @@ export function CollectCashModal({ collectionId, opened, onClose, onRecorded }: 
         placeholder="0"
         inputMode="decimal"
         value={amounts[row.key] ?? ''}
-        onChange={(e) => setAmounts((a) => ({ ...a, [row.key]: e.currentTarget.value.replace(/[^0-9.,]/g, '') }))}
+        onChange={(e) => {
+          // Read the value now: React clears the event before a state updater runs.
+          const text = e.currentTarget.value.replace(/[^0-9.,]/g, '');
+          setAmounts((a) => ({ ...a, [row.key]: text }));
+        }}
         error={draft.problems[row.label]}
         aria-label={`Amount for ${row.label}`}
       />
@@ -244,13 +248,10 @@ export function CollectCashModal({ collectionId, opened, onClose, onRecorded }: 
                   placeholder="0"
                   inputMode="decimal"
                   value={donation?.amount ?? ''}
-                  onChange={(e) =>
-                    setDonation((d) => ({
-                      categoryId: d?.categoryId ?? categories[0]!.id,
-                      allocationId: d?.allocationId ?? null,
-                      amount: e.currentTarget.value.replace(/[^0-9.,]/g, ''),
-                    }))
-                  }
+                  onChange={(e) => {
+                    const text = e.currentTarget.value.replace(/[^0-9.,]/g, '');
+                    setDonation((d) => ({ categoryId: d?.categoryId ?? categories[0]!.id, allocationId: d?.allocationId ?? null, amount: text }));
+                  }}
                   error={draft.problems.Donation}
                 />
               </Stack>
