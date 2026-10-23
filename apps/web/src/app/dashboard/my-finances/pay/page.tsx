@@ -10,7 +10,7 @@ import { HelpLink } from '@/components/docs/HelpLink';
 
 interface OutstandingItem {
   id: number;
-  type: 'dues' | 'levy' | 'penalty';
+  type: 'dues' | 'levy' | 'penalty' | 'donation';
   category: { name: string };
   amount: number;
   balance: number;
@@ -167,6 +167,7 @@ export default function MakePaymentPage() {
       case 'dues': return 'blue';
       case 'levy': return 'purple';
       case 'penalty': return 'red';
+      case 'donation': return 'pink';
       default: return 'gray';
     }
   };
@@ -238,7 +239,7 @@ export default function MakePaymentPage() {
                             {item.campaign?.name || item.category.name}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <Badge color={getTypeColor(item.type)} size="sm">{item.type}</Badge>
+                            <Badge color={getTypeColor(item.type)} size="sm">{item.type === 'donation' ? 'pledge' : item.type}</Badge>
                             {item.dueDate && (
                               <span className="text-xs text-gray-500">Due: {formatDate(item.dueDate)}</span>
                             )}

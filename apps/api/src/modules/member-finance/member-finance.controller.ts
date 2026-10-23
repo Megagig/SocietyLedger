@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
+import { donationFigures } from './donation-rules';
 import { Decimal } from '@prisma/client/runtime/library';
 import { SettingsService } from '../settings/settings.service';
 
@@ -495,6 +496,7 @@ export const memberFinanceController = {
         where: {
           memberId: member.id,
           associationId,
+          isVoided: false, // a cancelled pledge is no longer owed
           category: { type: 'donation' },
         },
         include: {
@@ -512,14 +514,17 @@ export const memberFinanceController = {
       });
 
       const donations = transactions.map(txn => {
-        const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+        const figures = donationFigures(txn);
 
         return {
           id: txn.id,
           referenceNumber: txn.referenceNumber,
           category: txn.category,
-          amount: Number(txn.amount), // Use transaction amount, not just paid amount
-          amountPaid: Number(paid),   // Also include paid amount for reference
+          amount: figures.amount, // the amount given or pledged
+          amountPaid: figures.amountPaid,
+          balance: figures.balance, // still to pay on a pledge
+          isPledge: figures.isPledge,
+          dueDate: txn.dueDate,
           purpose: txn.category.name,
           isAnonymous: txn.donationRecord?.isAnonymous || false,
           receiptNumber: txn.donationRecord?.receiptNumber,
@@ -665,6 +670,7 @@ export const memberFinanceController = {
         where: {
           memberId: member.id,
           associationId,
+          isVoided: false,
           status: { in: ['pending', 'overdue', 'partial'] },
         },
         include: {

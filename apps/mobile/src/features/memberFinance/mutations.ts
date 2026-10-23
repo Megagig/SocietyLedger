@@ -64,6 +64,7 @@ export function useSubmitPaymentProof() {
       queryClient.invalidateQueries({ queryKey: memberFinanceKeys.levies(tenant) });
       queryClient.invalidateQueries({ queryKey: memberFinanceKeys.summary(tenant) });
       queryClient.invalidateQueries({ queryKey: memberFinanceKeys.outstanding(tenant) });
+      queryClient.invalidateQueries({ queryKey: memberFinanceKeys.donations(tenant) });
     },
   });
 }

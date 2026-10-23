@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../../lib/prisma';
+import { userOwnsCharge } from '../charge-ownership';
 import { PaystackService } from './paystack.service';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -46,13 +47,14 @@ export const paystackController = {
       const transaction = await prisma.transaction.findFirst({
         where: { id: validatedData.transactionId, associationId },
         include: {
-          member: { select: { id: true, firstName: true, lastName: true, email: true } },
+          member: { select: { id: true, userId: true, firstName: true, lastName: true, email: true } },
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { amountPaid: true } },
         },
       });
 
-      if (!transaction) {
+      // Only the member the charge belongs to can start an online payment for it (a 404, so nobody learns another member's charge exists).
+      if (!transaction || transaction.isVoided || !userOwnsCharge(req.user, transaction.member)) {
         return res.status(404).json({ success: false, message: 'Transaction not found' });
       }
 

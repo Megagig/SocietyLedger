@@ -84,6 +84,8 @@ export const memberFinanceApi = {
       donations: data.donations.map((d) => ({
         ...d,
         amount: toDecimal(d.amount),
+        amountPaid: toDecimal(d.amountPaid),
+        balance: toDecimal(d.balance),
       })),
       donationCategories: data.donationCategories,
     };

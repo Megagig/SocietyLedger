@@ -1,8 +1,11 @@
 import { FlatList, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { Heart } from 'lucide-react-native';
 import type { Decimal } from 'decimal.js-light';
+import type { DonationDTO } from '@/types/api/memberFinance';
 
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Money } from '@/components/ui/Money';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -13,26 +16,33 @@ import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { StickyFooter } from '@/components/layout/StickyFooter';
+import { donationTotals } from '@/features/memberFinance/donations';
 import { useMemberDonations } from '@/features/memberFinance/queries';
 import { formatDate } from '@/lib/dates';
-import { toDecimal } from '@/lib/money';
 import { tokens } from '@/theme/tokens';
 
-type DonationItem = {
-  id: number;
-  category: { id: number; name: string; type: string };
-  amount: Decimal;
-  isAnonymous: boolean;
-  notes: string | null;
-  createdAt: string;
-};
+// The API's donation with its money fields turned into decimals (see `memberFinanceApi.getDonations`).
+type DonationItem = Omit<DonationDTO, 'amount' | 'amountPaid' | 'balance'> & { amount: Decimal; amountPaid: Decimal; balance: Decimal };
 
 function DonationRow({ item }: { item: DonationItem }) {
+  const when = item.isPledge && item.dueDate ? `Pledged · due ${formatDate(item.dueDate, 'short')}` : formatDate(item.createdAt, 'short');
   return (
     <ListItem
       title={item.category.name}
-      meta={`${formatDate(item.createdAt, 'short')}${item.isAnonymous ? ' · Anonymous' : ''}`}
-      trailing={<Money value={item.amount} size="body-strong" />}
+      meta={`${when}${item.isAnonymous ? ' · Anonymous' : ''}`}
+      trailing={
+        item.isPledge ? (
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <Money value={item.balance} size="body-strong" />
+            <Badge tone="warning">{item.amountPaid.gt(0) ? 'Part paid · Pay' : 'To pay · Pay now'}</Badge>
+          </View>
+        ) : (
+          <Money value={item.amountPaid} size="body-strong" />
+        )
+      }
+      showChevron={item.isPledge}
+      onPress={item.isPledge ? () => router.push({ pathname: '/(app)/(tabs)/money/pay' as never, params: { transactionId: String(item.id) } }) : undefined}
+      testID={`donation-${item.id}`}
     />
   );
 }
@@ -40,9 +50,17 @@ function DonationRow({ item }: { item: DonationItem }) {
 export default function DonationsScreen() {
   const donationsQuery = useMemberDonations();
 
+  // A pledge may have been paid online while this screen was behind another; re-read when it comes back into view.
+  const { refetch } = donationsQuery;
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
+
   const donations = donationsQuery.data?.donations ?? [];
 
-  const totalDonated = donations.reduce((sum, d) => sum + Number(d.amount), 0);
+  const { donated, pledged, pledgeCount } = donationTotals(donations);
 
   const hasDonations = donations.length > 0;
 
@@ -65,7 +83,15 @@ export default function DonationsScreen() {
               <Text variant="caption" tone="secondary">
                 Total donated
               </Text>
-              <Money value={toDecimal(totalDonated)} size="h2" />
+              <Money value={donated} size="h2" />
+              {pledgeCount > 0 ? (
+                <View className="mt-3 flex-row items-center justify-between" testID="donations-pledged">
+                  <Text variant="caption" tone="secondary">
+                    {pledgeCount === 1 ? 'Pledged, still to pay' : `${pledgeCount} pledges, still to pay`}
+                  </Text>
+                  <Money value={pledged} size="body-strong" tone="warning" />
+                </View>
+              ) : null}
             </View>
           ) : null}
 

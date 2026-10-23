@@ -69,11 +69,18 @@ export type DonationCategoryDTO = {
 /** GET /members/me/donations — verified against member-finance.controller.ts getDonations. */
 export type DonationDTO = {
   id: number;
+  referenceNumber: string | null;
   category: FinanceCategoryRefDTO;
+  /** The amount given, or pledged. */
   amount: number;
+  amountPaid: number;
+  /** Still to pay on a pledge; 0 once paid. */
+  balance: number;
+  /** A pledge: promised, not (fully) paid yet. Not money donated until paid. */
+  isPledge: boolean;
+  dueDate: IsoDateString | null;
   isAnonymous: boolean;
-  reference: string | null;
-  notes: string | null;
+  receiptNumber?: string | null;
   createdAt: IsoDateString;
 };
 
@@ -90,7 +97,7 @@ export type FinanceCategoryRefDTO = {
   type: string;
 };
 
-export type OutstandingItemType = 'dues' | 'levy' | 'penalty';
+export type OutstandingItemType = 'dues' | 'levy' | 'penalty' | 'donation';
 
 export type UpcomingPaymentDTO = {
   id: number;

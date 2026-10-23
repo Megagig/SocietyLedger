@@ -19,7 +19,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { StickyFooter } from '@/components/layout/StickyFooter';
 import { useInitializePaystackPayment, useSubmitPaymentProof } from '@/features/memberFinance/mutations';
-import { useMemberDues, useMemberLevies, usePaymentInfo } from '@/features/memberFinance/queries';
+import { useMemberDues, useMemberLevies, useMemberOutstanding, usePaymentInfo } from '@/features/memberFinance/queries';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
 const PAYSTACK_MOBILE_CALLBACK = 'https://api.societyledger.app/api/payments/mobile-return';
@@ -44,6 +44,7 @@ export default function PayScreen() {
   const paymentInfoQuery = usePaymentInfo();
   const leviesQuery = useMemberLevies();
   const duesQuery = useMemberDues();
+  const outstandingQuery = useMemberOutstanding();
 
   const initMutation = useInitializePaystackPayment();
   const proofMutation = useSubmitPaymentProof();
@@ -51,12 +52,14 @@ export default function PayScreen() {
   // Levies have transactionId; dues use their own id as the payment reference.
   const levy = leviesQuery.data?.find((l) => l.transactionId === transactionId);
   const due = !levy ? (duesQuery.data?.find((d) => d.id === transactionId) ?? null) : null;
+  // A donation pledge: a charge the member promised, listed in neither levies nor dues.
+  const pledge = !levy && !due ? (outstandingQuery.data?.find((item) => item.id === transactionId && item.type === 'donation') ?? null) : null;
 
-  const amount = levy?.balance ?? due?.balance ?? null;
-  const itemName = levy?.campaign.name ?? due?.category.name ?? '—';
+  const amount = levy?.balance ?? due?.balance ?? pledge?.balance ?? null;
+  const itemName = levy?.campaign.name ?? due?.category.name ?? (pledge ? `${pledge.category.name} pledge` : '—');
 
-  // Paystack requires a server-side transactionId which only levies expose.
-  const supportsOnlinePayment = !!levy;
+  // Paystack takes any charge's id; levies and pledges can be paid online (dues still go by bank transfer).
+  const supportsOnlinePayment = !!levy || !!pledge;
   // When online payment isn't available (dues), force the bank tab.
   const effectiveTab = supportsOnlinePayment ? activeTab : 'bank';
 
@@ -64,7 +67,7 @@ export default function PayScreen() {
   const bankAccounts = paymentInfo?.bankAccounts ?? [];
   const paystackEnabled = paymentInfo?.paystackEnabled ?? false;
 
-  const isLoading = leviesQuery.isPending || paymentInfoQuery.isPending || (!levy && duesQuery.isPending);
+  const isLoading = leviesQuery.isPending || paymentInfoQuery.isPending || (!levy && (duesQuery.isPending || (!due && outstandingQuery.isPending)));
   const isError = leviesQuery.isError || paymentInfoQuery.isError;
 
   async function handlePayOnline() {
@@ -157,7 +160,7 @@ export default function PayScreen() {
     );
   }
 
-  if (!levy && !due) {
+  if (!levy && !due && !pledge) {
     return (
       <Screen edges={['top']}>
         <ScreenHeader title="Pay" onBack={() => router.back()} />
