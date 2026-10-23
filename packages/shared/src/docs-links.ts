@@ -60,6 +60,11 @@ export const DOCS_LINKS: Record<string, string> = {
   '/dashboard/finance/overdue': '/docs/finance/overdue-and-reminders',
   FN12: '/docs/finance/overdue-and-reminders',
 
+  '/dashboard/finance/member-ledger': '/docs/finance/member-ledgers',
+  '/dashboard/finance/member-ledger/[memberId]': '/docs/finance/member-ledgers',
+  FN13: '/docs/finance/member-ledgers',
+  FN14: '/docs/finance/member-ledgers',
+
   '/dashboard/payments/nigerian/verification': '/docs/payments/verifying-payment-proofs',
   '/dashboard/payments/verification': '/docs/payments/verifying-payment-proofs',
   PY1: '/docs/payments/verifying-payment-proofs',

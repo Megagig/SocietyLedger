@@ -635,9 +635,10 @@ export const memberLedgerService = {
       // For dues/levies/penalties: Transaction creates DEBIT (what is owed), payment creates CREDIT (payment made)
       const isDonation = txn.category.type === 'donation';
       
-      // Only create transaction entry for non-donation types (dues, levies, penalties)
-      // Donations don't create a debt - they are voluntary payments
-      if (!isDonation) {
+      // Only create transaction entry for non-donation types (dues, levies, penalties).
+      // A voided charge is no longer owed — its replacement carries the debt — so it adds no debit; any payments
+      // already made against it were real money received and still count as credits below.
+      if (!isDonation && !txn.isVoided) {
         entries.push({
           associationId,
           memberId,

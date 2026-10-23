@@ -397,10 +397,15 @@ export const memberLedgerController = {
         prisma.member.findMany({ where: whereClause, select: { id: true, memberId: true, firstName: true, lastName: true, email: true, status: true }, skip: (page - 1) * limit, take: limit, orderBy: { lastName: 'asc' } }),
         prisma.member.count({ where: whereClause }),
       ]);
-      const membersWithBalances = await Promise.all(members.map(async (m) => {
-        const balance = await memberLedgerService.getMemberBalance(associationId, m.id);
-        return { ...m, balance };
-      }));
+      // One query for the latest running balance of every member on the page (it used to be one query per member).
+      const latest = members.length === 0 ? [] : await prisma.memberFinancialLedger.findMany({
+        where: { associationId, memberId: { in: members.map((m) => m.id) } },
+        orderBy: [{ memberId: 'asc' }, { createdAt: 'desc' }],
+        distinct: ['memberId'],
+        select: { memberId: true, runningBalance: true },
+      });
+      const balanceByMember = new Map(latest.map((row) => [row.memberId, Number(row.runningBalance)]));
+      const membersWithBalances = members.map((m) => ({ ...m, balance: balanceByMember.get(m.id) ?? 0 }));
       return res.status(200).json({ success: true, data: { members: membersWithBalances, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } } });
     } catch (error) {
       console.error('Error fetching member balances:', error);

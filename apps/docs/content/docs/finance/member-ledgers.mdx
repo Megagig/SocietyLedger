@@ -3,10 +3,10 @@ title: "Member ledgers and statements"
 description: "Every member's balance in one place — and why you may need to sync it first."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/finance/member-ledger*", "FN13", "FN14"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-24"
 related: ["/docs/finance/editing-voiding-and-deleting", "/docs/member-guide/your-statement"]
 ---
 
@@ -23,6 +23,19 @@ Member ledger balances don't update automatically when charges and payments happ
 </Callout>
 
 <Screenshot src="/images/finance/member-ledgers-2-after-sync.webp" alt="Member Ledgers page after running Sync All Ledgers, now showing real outstanding balances for several members" />
+
+## In the app
+
+Go to <MenuPath items={["Manage", "Finance", "Member ledgers"]} /> and search for a member. A red amount is what they **owe**, a green one is **credit** in their favour, and **Settled** means nothing is owed. Open a member to see their balance, what they've been charged and paid, and every entry.
+
+From the **⋮** menu:
+
+- **Share statement** — choose *This year*, *Last 3 months* or *Everything*, and send it through WhatsApp, email or any app on your phone. It goes as text, not a PDF file.
+- **Rebuild this ledger** — if you have the approve-payments permission, this rebuilds the member's ledger from their charges and payments. Use it when a balance looks wrong.
+
+<Callout type="note" title="Voided charges aren't counted as owed">
+When a charge is voided and replaced, only the replacement counts towards what the member owes. Any payments already made on the voided charge still count as money received. Rebuilding a ledger after a void now gives the right balance.
+</Callout>
 
 ## Why it matters
 

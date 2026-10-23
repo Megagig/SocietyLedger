@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { AlertCircle, HandCoins, ListChecks, PlusCircle, Wallet } from 'lucide-react-native';
+import { AlertCircle, BellRing, BookOpen, HandCoins, ListChecks, PlusCircle, Wallet } from 'lucide-react-native';
 import { PieChart } from 'react-native-gifted-charts';
 import { Pressable, View } from 'react-native';
 
@@ -115,6 +115,16 @@ export default function FinanceOverviewScreen() {
                 onPress={() => go('transactions')}
                 testID="finance-charges"
               />
+              <ListItem
+                leading={<IconCircle icon={BellRing} tone={data.overview.overdueTransactions > 0 ? 'warning' : 'primary'} />}
+                title="Overdue and reminders"
+                meta="Who owes, and remind them"
+                trailing={data.overview.overdueTransactions > 0 ? <Badge tone="warning">{`${data.overview.overdueTransactions} overdue`}</Badge> : undefined}
+                showChevron
+                onPress={() => go('overdue')}
+                testID="finance-overdue-link"
+              />
+              <ListItem leading={<IconCircle icon={BookOpen} tone="primary" />} title="Member ledgers" meta="Each member's statement of account" showChevron onPress={() => go('ledgers')} testID="finance-ledgers" />
               {canCreate ? (
                 <ListItem leading={<IconCircle icon={PlusCircle} tone="info" />} title="Charge members" meta="One member, or many at once" showChevron onPress={() => go('transactions/new')} testID="finance-new-charge" />
               ) : null}

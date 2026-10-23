@@ -12,6 +12,9 @@ import type {
   FinanceDashboardDTO,
   RecordPaymentPayload,
   RecordPaymentResultDTO,
+  ReminderMembersDTO,
+  ReminderScope,
+  SendRemindersResultDTO,
   VoidReplacePayload,
 } from '@/types/api/financeManage';
 
@@ -78,5 +81,20 @@ export const financeManageApi = {
   /** POST /finance/payments — records money a member paid against a charge. 400 when it exceeds the balance or the charge was voided. */
   async recordPayment(payload: RecordPaymentPayload): Promise<RecordPaymentResultDTO> {
     return unwrap<RecordPaymentResultDTO>(client.post('/finance/payments', payload));
+  },
+
+  /** GET /finance/reminders/members — members who still owe, biggest balance first; `overdue` keeps only those past their due date. */
+  async listReminderMembers(scope: ReminderScope): Promise<ReminderMembersDTO> {
+    return unwrap<ReminderMembersDTO>(client.get('/finance/reminders/members', { params: { status: scope } }));
+  },
+
+  /**
+   * POST /finance/reminders/send — reminds the members who own these charges: an in-app notification and push for members with a
+   * login, and email for those with one. A charge reminded in the last 24 hours is skipped. Needs `ledger.edit`.
+   */
+  async sendReminders(payload: { transactionIds: number[]; message?: string }): Promise<SendRemindersResultDTO & { message: string }> {
+    const response = await client.post('/finance/reminders/send', payload);
+    const body = response.data as { success: boolean; message: string; data: SendRemindersResultDTO };
+    return { ...body.data, message: body.message };
   },
 };

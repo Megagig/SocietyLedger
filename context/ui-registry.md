@@ -1421,6 +1421,16 @@ _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs UR
 - **Screens:** `members/invite.tsx` (`SegmentedControl` Invite | Pending (n); Invite tab has a one-line email-only note, `SearchField`, a `FlashList` of `InviteMemberRow`s and a `StickyFooter` "Send n invites" that appears once something is selected), `members/approvals.tsx` (`SegmentedControl` Pending | Approved | Rejected, `SearchField`, `FlashList` of `ApprovalRow`s), `members/form.tsx` (`StickyFooter` "Save member"). Member detail: pencil `IconButton` in the header; at the foot, separated by a top rule, **Disable member** (`danger-ghost`) or **Enable member** (`soft`). Members list: `MailPlus` and `UserPlus` header icons and a `warning-soft` banner row "n people are waiting for approval · Review". Manage hub: **Pending approvals** (`warning` `Badge` "n waiting") and **Invite members** rows.
 - **Wording rule:** a `terminated` member is shown as **Disabled** everywhere; the action is "Disable member" / "Enable member".
 
+## Mobile Phase 5 — Overdue, reminders & member ledgers (F5.7, 2026-10-24)
+
+Built from existing primitives; nothing new in `components/ui`.
+
+- **`OverdueMemberRow`:** grouped-edge row with an optional leading checkbox (24dp, `border-primary bg-primary` with a check when ticked), name, "n days overdue · n charges" (danger when late), a "Reminded 2 days ago" or "No email or login" line, the amount owed (`Money`) and a round `bg-primary-soft` call button when there is a phone.
+- **`ReminderSheet`:** BottomSheet "Remind n members?" explaining the channels and the 24-hour skip, an optional multiline message, and "Not now" / "Send reminders".
+- **Overdue screen:** `SegmentedControl` (Overdue / All unpaid), three `StatTile`s, a `StickyFooter` "Remind n members" that only appears once someone is ticked, "Select all / Clear" as a ghost header button.
+- **`LedgerMemberRow`:** name and member ID with the balance at the right — red "Owes", green "Credit", or plain "Settled".
+- **Ledger detail:** a `bg-surface-sunken` strip (Owes / Charged / Paid), entries with the amount (green when paid) over "Paid" / "Charged", and a ⋮ `BottomSheet` with Share statement (period buttons, then the system share sheet) and Rebuild this ledger (`ConfirmSheet`).
+
 ## Mobile Phase 5 — Finance (F5.6, 2026-10-24)
 
 Built from existing primitives; nothing new in `components/ui`.

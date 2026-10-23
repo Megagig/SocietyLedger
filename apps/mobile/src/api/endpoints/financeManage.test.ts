@@ -68,3 +68,16 @@ describe('financeManageApi', () => {
     expect(mockPost).toHaveBeenCalledWith('/finance/payments', { transactionId: 9, amountPaid: 5000, paymentMethod: 'cash' });
   });
 });
+
+describe('reminders', () => {
+  it('lists members who owe by scope, and sends reminders with the server message', async () => {
+    mockGet.mockReturnValue(ok({ members: [], summary: {} }));
+    await financeManageApi.listReminderMembers('overdue');
+    expect(mockGet).toHaveBeenCalledWith('/finance/reminders/members', { params: { status: 'overdue' } });
+
+    mockPost.mockReturnValue(Promise.resolve({ data: { success: true, message: 'Reminders sent: 2', data: { sent: 2, failed: 0, noContact: 0, skippedRecently: 1, inApp: 2, noEmail: 0, details: [] } } }));
+    const result = await financeManageApi.sendReminders({ transactionIds: [1, 2], message: 'Please pay' });
+    expect(mockPost).toHaveBeenCalledWith('/finance/reminders/send', { transactionIds: [1, 2], message: 'Please pay' });
+    expect(result).toMatchObject({ sent: 2, skippedRecently: 1, message: 'Reminders sent: 2' });
+  });
+});

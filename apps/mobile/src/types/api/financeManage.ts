@@ -91,3 +91,38 @@ export type VoidReplacePayload = { voidReason: string; password: string; newTran
 
 export type RecordPaymentPayload = { transactionId: number; amountPaid: number; paymentMethod?: ManualPaymentMethod; paymentDate?: string; notes?: string | null };
 export type RecordPaymentResultDTO = { payment: { id: number; receiptNumber: string | null }; transactionStatus: string; remainingBalance: MoneyValue };
+
+// ---------------------------------------------------------------- overdue & reminders
+
+export type ReminderMemberDTO = {
+  member: { id: number; memberId: string | null; firstName: string; lastName: string; email: string | null; phone: string | null; hasAccount: boolean };
+  transactions: {
+    id: number;
+    referenceNumber: string;
+    category: string;
+    amount: number;
+    balance: number;
+    dueDate: string | null;
+    status: string;
+    lastReminderSentAt: string | null;
+  }[];
+  totalOutstanding: number;
+  overdueCount: number;
+};
+
+export type ReminderMembersDTO = {
+  members: ReminderMemberDTO[];
+  summary: { totalMembers: number; totalOutstanding: number; totalTransactions: number; overdueTransactions: number };
+};
+
+export type ReminderScope = 'overdue' | 'all';
+
+export type SendRemindersResultDTO = {
+  sent: number;
+  failed: number;
+  noEmail: number;
+  noContact: number;
+  inApp: number;
+  skippedRecently: number;
+  details: { memberId: number; memberName: string; status: string; error?: string }[];
+};

@@ -3,11 +3,11 @@ title: "Following up overdue members"
 description: "See who owes money past their due date, and send them a reminder."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/finance/overdue", "/dashboard/finance/reminders", "FN12"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/finance/penalties-and-late-fees", "/docs/finance/editing-voiding-and-deleting"]
+lastVerified: "2026-10-24"
+related: ["/docs/member-guide/notification-preferences", "/docs/finance/penalties-and-late-fees", "/docs/finance/editing-voiding-and-deleting"]
 ---
 
 Two related screens help you chase overdue payments: a list of what's overdue, and a way to remind the members who owe it.
@@ -24,15 +24,34 @@ Two related screens help you chase overdue payments: a list of what's overdue, a
 
 ## Send reminders
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Finance", "Reminders"]} />.</Step>
 <Step>Filter to **Overdue Only** if you just want the most urgent members.</Step>
 <Step>Select the members to remind, or **Select All**.</Step>
 <Step>Select **Send Reminders**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Finance", "Overdue and reminders"]} />. **Overdue** lists members past their due date, biggest balance first; **All unpaid** also shows members who aren't late yet.</Step>
+<Step>Tick the members, or tap **Select all**. Tap the phone button on a row to call them instead.</Step>
+<Step>Tap **Remind**, add a short message of your own if you like, then **Send reminders**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/finance/overdue-and-reminders-2.webp" alt="Payment Reminders page listing members with outstanding balances, each showing their transaction count and a Select All option" />
 
+## How members are reminded
+
+- A member who has a login gets a **notification in the app** (and a push), saying how much they owe.
+- A member with an email also gets an **email** for each charge they owe.
+- A member with neither can't be reminded here — the list marks them, and you can call them instead.
+
+A charge that was reminded in the **last 24 hours is skipped**, so pressing send twice, or two officers sending at once, doesn't pester anyone. After a send you're told how many members were reminded, how many were skipped and how many couldn't be reached. Charges that were voided aren't included.
+
 ## What happens next
 
-Reminders go out to each selected member through their available channels — nothing changes about their charges, it's a nudge, not an action on the transaction itself.
+Nothing changes about the charges — it's a nudge, not an action on the transaction itself. Your association's automatic reminders (set under notification settings) keep running on their own schedule.

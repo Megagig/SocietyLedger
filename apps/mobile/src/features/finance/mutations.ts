@@ -52,3 +52,9 @@ export function useRecordPayment() {
   const invalidate = useInvalidateFinance();
   return useMutation({ mutationFn: (payload: RecordPaymentPayload) => financeManageApi.recordPayment(payload), onSuccess: invalidate });
 }
+
+/** Send reminders for the chosen charges. It records when each was reminded, so the lists refresh afterwards. */
+export function useSendReminders() {
+  const invalidate = useInvalidateFinance();
+  return useMutation({ mutationFn: (payload: { transactionIds: number[]; message?: string }) => financeManageApi.sendReminders(payload), onSuccess: invalidate });
+}

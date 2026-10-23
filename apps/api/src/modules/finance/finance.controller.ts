@@ -12,6 +12,7 @@ import { dispatchNotification } from '../../services/notification-preferences.se
 import { memberLedgerService } from '../member-finance/member-ledger.service';
 import { cashBackedMessage, findCashBackingReceipts } from './cash-guard';
 import { verifyPassword } from '../../lib/auth';
+import { reminderText, splitByCooldown } from './reminder-rules';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -2328,7 +2329,7 @@ export const financeController = {
           status: { in: ['pending', 'overdue', 'partial'] },
         },
         include: {
-          member: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+          member: { select: { id: true, userId: true, firstName: true, lastName: true, email: true, phone: true } },
           category: { select: { name: true, type: true } },
           payments: { select: { amountPaid: true } },
         },
@@ -2336,6 +2337,16 @@ export const financeController = {
 
       if (transactions.length === 0) {
         return res.status(404).json({ success: false, message: 'No valid transactions found' });
+      }
+
+      // A charge reminded in the last day is skipped (the daily job and other officers update the same marker).
+      const { fresh: transactionsToRemind, recent: recentlyReminded } = splitByCooldown(transactions);
+      if (transactionsToRemind.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: 'These members were all reminded in the last 24 hours, so nothing was sent.',
+          data: { sent: 0, failed: 0, noEmail: 0, noContact: 0, inApp: 0, skippedRecently: recentlyReminded.length, details: [] },
+        });
       }
 
       // Get association details
@@ -2350,7 +2361,7 @@ export const financeController = {
 
       // Group transactions by member for consolidated reminders
       const memberTransactions: Record<number, typeof transactions> = {};
-      transactions.forEach(txn => {
+      transactionsToRemind.forEach(txn => {
         if (!memberTransactions[txn.member.id]) {
           memberTransactions[txn.member.id] = [];
         }
@@ -2361,6 +2372,9 @@ export const financeController = {
         sent: 0,
         failed: 0,
         noEmail: 0,
+        noContact: 0,
+        inApp: 0,
+        skippedRecently: recentlyReminded.length,
         details: [] as { memberId: number; memberName: string; status: string; error?: string }[],
       };
 
@@ -2368,8 +2382,10 @@ export const financeController = {
       for (const [memberId, memberTxns] of Object.entries(memberTransactions)) {
         const member = memberTxns[0].member;
         
-        if (!member.email) {
+        // Reach the member wherever they can be reached: in the app if they have a login, by email if they have one.
+        if (!member.email && !member.userId) {
           results.noEmail++;
+          results.noContact++;
           results.details.push({
             memberId: member.id,
             memberName: `${member.firstName} ${member.lastName}`,
@@ -2385,11 +2401,29 @@ export const financeController = {
             return sum.plus(new Decimal(txn.amount).minus(paid));
           }, new Decimal(0));
 
+          const anyOverdue = memberTxns.some((t) => t.dueDate && t.dueDate.getTime() < Date.now());
+          if (member.userId) {
+            try {
+              const text = reminderText({ count: memberTxns.length, total: totalOutstanding.toNumber(), overdue: anyOverdue, custom: message });
+              const outcome = await dispatchNotification({
+                associationId,
+                userId: member.userId,
+                kind: 'payment_due',
+                pushType: 'dues.reminder',
+                title: text.title,
+                message: text.message,
+              });
+              if (outcome.inAppCreated) results.inApp++;
+            } catch (notifyError) {
+              console.error('In-app reminder failed (non-critical):', notifyError);
+            }
+          }
+
           // G43: real email per transaction — each has its own category/due
           // date, so one reminder per transaction matches the existing
           // payment-reminder/payment-overdue templates' fields correctly
           // rather than forcing several transactions into one summary email.
-          for (const txn of memberTxns) {
+          for (const txn of member.email ? memberTxns : []) {
             const paid = txn.payments.reduce((p, pay) => p.plus(pay.amountPaid), new Decimal(0));
             const txnOutstanding = new Decimal(txn.amount).minus(paid);
             const daysUntilDue = txn.dueDate
@@ -2433,6 +2467,8 @@ export const financeController = {
             },
           });
 
+          await prisma.transaction.updateMany({ where: { id: { in: memberTxns.map((t) => t.id) } }, data: { lastReminderSentAt: new Date() } });
+
           results.sent++;
           results.details.push({
             memberId: member.id,
@@ -2452,7 +2488,7 @@ export const financeController = {
 
       return res.status(200).json({
         success: true,
-        message: `Reminders sent: ${results.sent}, Failed: ${results.failed}, No email: ${results.noEmail}`,
+        message: `Reminders sent: ${results.sent}, Failed: ${results.failed}, No way to reach: ${results.noContact}${results.skippedRecently > 0 ? `, Skipped (reminded in the last 24 hours): ${results.skippedRecently}` : ''}`,
         data: results,
       });
     } catch (error) {
@@ -2484,7 +2520,7 @@ export const financeController = {
           status: statusCondition,
         },
         include: {
-          member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true, phone: true } },
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true, phone: true, userId: true } },
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { amountPaid: true } },
         },
@@ -2500,6 +2536,8 @@ export const financeController = {
           lastName: string;
           email: string | null;
           phone: string | null;
+          /** Whether the member has a login, so an in-app reminder can reach them even without an email. */
+          hasAccount: boolean;
         };
         transactions: Array<{
           id: number;
@@ -2509,6 +2547,7 @@ export const financeController = {
           balance: number;
           dueDate: Date | null;
           status: string;
+          lastReminderSentAt: Date | null;
         }>;
         totalOutstanding: number;
         overdueCount: number;
@@ -2523,7 +2562,15 @@ export const financeController = {
 
         if (!memberMap[txn.member.id]) {
           memberMap[txn.member.id] = {
-            member: txn.member,
+            member: {
+              id: txn.member.id,
+              memberId: txn.member.memberId,
+              firstName: txn.member.firstName,
+              lastName: txn.member.lastName,
+              email: txn.member.email,
+              phone: txn.member.phone,
+              hasAccount: !!txn.member.userId,
+            },
             transactions: [],
             totalOutstanding: 0,
             overdueCount: 0,
@@ -2538,6 +2585,7 @@ export const financeController = {
           balance,
           dueDate: txn.dueDate,
           status: txn.status,
+          lastReminderSentAt: txn.lastReminderSentAt,
         });
 
         memberMap[txn.member.id].totalOutstanding += balance;

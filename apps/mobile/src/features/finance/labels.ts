@@ -69,3 +69,37 @@ export function collectionRate(collected: number, outstanding: number): number {
   if (total <= 0) return 0;
   return Math.round((collected / total) * 100);
 }
+
+// ---------------------------------------------------------------- reminders
+
+/** Whole days a charge is past its due date (0 when not yet due or no due date). */
+export function daysOverdue(dueDate: string | null, now: Date = new Date()): number {
+  if (!dueDate) return 0;
+  const days = Math.floor((now.getTime() - new Date(dueDate).getTime()) / 86_400_000);
+  return days > 0 ? days : 0;
+}
+
+/** "Reminded today / yesterday / 3 days ago", or null when they never were. */
+export function remindedLabel(lastReminderSentAt: string | null, now: Date = new Date()): string | null {
+  if (!lastReminderSentAt) return null;
+  const days = Math.floor((now.getTime() - new Date(lastReminderSentAt).getTime()) / 86_400_000);
+  if (days <= 0) return 'Reminded today';
+  return days === 1 ? 'Reminded yesterday' : `Reminded ${days} days ago`;
+}
+
+/** The newest reminder across a member's charges. */
+export function lastRemindedAt(transactions: { lastReminderSentAt: string | null }[]): string | null {
+  const stamps = transactions.map((t) => t.lastReminderSentAt).filter((v): v is string => v !== null);
+  if (stamps.length === 0) return null;
+  return stamps.reduce((a, b) => (new Date(a) > new Date(b) ? a : b));
+}
+
+/** A one-line, honest summary of what a send did, for the toast. */
+export function reminderOutcomeSummary(result: { sent: number; failed: number; noContact: number; skippedRecently: number }): string {
+  const parts: string[] = [];
+  if (result.sent > 0) parts.push(`Reminded ${result.sent} ${result.sent === 1 ? 'member' : 'members'}`);
+  if (result.skippedRecently > 0) parts.push(`${result.skippedRecently} ${result.skippedRecently === 1 ? 'charge' : 'charges'} skipped — reminded in the last 24 hours`);
+  if (result.noContact > 0) parts.push(`${result.noContact} can't be reached (no email or login)`);
+  if (result.failed > 0) parts.push(`${result.failed} failed`);
+  return parts.length > 0 ? parts.join(' · ') : 'Nothing was sent.';
+}

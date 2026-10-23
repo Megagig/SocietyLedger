@@ -4,7 +4,7 @@ import { financeManageApi } from '@/api/endpoints/financeManage';
 import { useCan } from '@/hooks/useCan';
 import { useTenantKey } from '@/hooks/useTenantKey';
 import type { PermissionAlias } from '@/lib/permissions';
-import type { ChargeListParams } from '@/types/api/financeManage';
+import type { ChargeListParams, ReminderScope } from '@/types/api/financeManage';
 
 export const financeKeys = {
   all: (tenant: string) => [tenant, 'finance'] as const,
@@ -77,3 +77,17 @@ export function useMemberOpenCharges(memberId: number | null) {
     staleTime: 0,
   });
 }
+
+/** Members who still owe — only the overdue ones, or everyone with an unpaid charge. */
+export function useReminderMembers(scope: ReminderScope) {
+  const tenant = useTenantKey();
+  const enabled = useCan(FINANCE_VIEW_ACCESS);
+  return useQuery({
+    queryKey: [...financeKeys.all(tenant), 'reminder-members', scope] as const,
+    queryFn: () => financeManageApi.listReminderMembers(scope),
+    enabled,
+  });
+}
+
+/** Sending reminders (the API checks `ledger.edit`). */
+export const REMINDERS_SEND_ACCESS: PermissionAlias = 'TRANSACTION_EDIT';
