@@ -1,4 +1,4 @@
-import { Bell, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
+import { Banknote, Bell, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -12,6 +12,7 @@ import { Section } from '@/components/layout/Section';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features/cash/queries';
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, usePendingApprovalCount, useMemberStats } from '@/features/members/queries';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS, usePendingProofCount, usePendingTransferCount } from '@/features/nigerianPayments/queries';
 import { SUPPORT_STAFF_ACCESS, useStaffTickets } from '@/features/support/queries';
@@ -40,6 +41,11 @@ export default function ManageScreen() {
   const canProofs = useCan([PROOFS_VIEW_ACCESS, ...BANK_ACCOUNTS_VIEW_ACCESS]);
   const waitingProofs = (usePendingProofCount().data ?? 0) + (usePendingTransferCount().data ?? 0);
   const waitingApprovals = usePendingApprovalCount().data ?? 0;
+  const canCash = useCan(CASH_ANY_ACCESS);
+  const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
+  const cashOverview = useCashOverview().data;
+  const cashToLodge = cashOverview?.mine?.readyToLodge ?? 0;
+  const cashToVerify = cashOverview?.lodgmentsToVerify ?? 0;
   const ticketsQuery = useStaffTickets();
   const statsQuery = useMemberStats();
   const needsReply = (ticketsQuery.data?.tickets ?? []).filter((t) => t.status === 'OPEN' || t.status === 'WAITING_ON_STAFF').length;
@@ -54,7 +60,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canSupport ? (
+      {canMembers || canProofs || canCash || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -104,6 +110,28 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/payments' as never)}
                   testID="manage-payments"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canCash ? (
+            <Section title="Cash">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={Banknote} tone={cashToLodge > 0 || (canVerifyCash && cashToVerify > 0) ? 'warning' : 'primary'} />}
+                  title="Cash"
+                  meta="Collect cash at meetings, lodge it, and check lodgments"
+                  trailing={
+                    canVerifyCash && cashToVerify > 0 ? (
+                      <Badge tone="warning">{`${cashToVerify} to check`}</Badge>
+                    ) : cashToLodge > 0 ? (
+                      <Badge tone="warning">To lodge</Badge>
+                    ) : undefined
+                  }
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/cash' as never)}
+                  testID="manage-cash"
                 />
               </ListGroup>
             </Section>

@@ -1,12 +1,12 @@
 ---
 title: "Payment settings"
-description: "Which payment channels you list, and why this page doesn't control what actually works."
+description: "Which payment channels you allow, how partial payments work, and the cash lodgment deadline."
 type: task
 audience: ["admin"]
 platforms: ["web"]
 covers: ["/dashboard/settings/payments", "ST4"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/settings/integrations"]
 ---
 
@@ -26,12 +26,16 @@ You need the **edit settings** permission, which only Administrators have by def
 
 <Screenshot src="/images/settings/payment-settings-1.webp" alt="Payment Settings page with enabled channel toggles, default payment method, and receipt and approval toggles" />
 
-<Callout type="warning" title="Nothing currently reads these values">
-These toggles save correctly but nothing elsewhere checks them — Paystack availability is controlled by whether a gateway key is configured (see [Integrations](/docs/settings/integrations)), not by this page's "Enabled Channels" list, and manual payment recording works the same way regardless of what's toggled here.
+<Callout type="note" title="What these settings do">
+**Enabled Channels** is checked when an officer records a payment: a method you switch off can't be used, and **Cash** must be on to use [Cash collections](/docs/cash/how-cash-collections-work). **Allow Partial Payments** is checked when a payment is less than the balance. Paystack availability is still decided by whether a gateway key is configured (see [Integrations](/docs/settings/integrations)), not by this list.
 </Callout>
+
+## Days to lodge collected cash
+
+When **Cash** is enabled, a **Cash Collections** card appears. Set **Days to lodge collected cash** (3 by default). An officer who still holds cash this many days after closing a collection is reminded, and so are the officers who watch cash.
 
 ## What happens next
 
-Nothing changes elsewhere in the app yet — see the callout above.
+The settings take effect straight away for new payments.
 
 ## Related

@@ -269,6 +269,31 @@ const PERMISSION_REGISTRY = [
     module: "Nigerian Payments",
     examples: ["POST /api/payments/nigerian/import", "Import page"]
   },
+  // Cash collections
+  {
+    key: "cash.collect",
+    description: "Collect cash from members at meetings and record receipts.",
+    module: "Cash Collections",
+    examples: ["POST /api/cash/collections/:id/receipts"]
+  },
+  {
+    key: "cash.lodge",
+    description: "Lodge collected cash into an association bank account.",
+    module: "Cash Collections",
+    examples: ["POST /api/cash/lodgments"]
+  },
+  {
+    key: "cash.verify",
+    description: "Verify a cash lodgment against the bank statement (not your own).",
+    module: "Cash Collections",
+    examples: ["POST /api/cash/lodgments/:id/verify"]
+  },
+  {
+    key: "cash.view",
+    description: "View cash collections, cash in hand and lodgments.",
+    module: "Cash Collections",
+    examples: ["GET /api/cash/overview"]
+  },
   // SMS & Communications
   {
     key: "communication.sms.view",

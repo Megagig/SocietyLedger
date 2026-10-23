@@ -241,6 +241,25 @@ export function routePushNotification(data: PushData, currentTenantId?: number):
       router.push('/(app)/(tabs)/money/payments');
       break;
 
+    // Cash collections: a lodgment waiting for a check, and how a lodgment was decided, open that lodgment.
+    case 'cash.lodgment_pending':
+    case 'cash.lodgment_verified':
+    case 'cash.lodgment_rejected':
+      if (entityId) router.push(`/(app)/(tabs)/manage/cash/lodgments/${entityId}` as never);
+      else router.push('/(app)/(tabs)/manage/cash/lodgments' as never);
+      break;
+
+    // Cash the collector still holds past the deadline.
+    case 'cash.lodgment_overdue':
+      router.push('/(app)/(tabs)/manage/cash' as never);
+      break;
+
+    // A member's cash receipt (or its cancellation) lands in their own payments.
+    case 'cash.receipt':
+    case 'cash.receipt_voided':
+      router.push('/(app)/(tabs)/money/payments');
+      break;
+
     case 'dues.reminder':
     case 'dues.overdue':
     case 'levy.assigned':

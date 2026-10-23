@@ -69,6 +69,9 @@ model Association {
   savingsDepositRequests     SavingsDepositRequest[]
   loanRepaymentRequests      LoanRepaymentRequest[]
   savingsLiens               SavingsLien[]
+  cashCollections             CashCollection[]
+  cashReceipts                CashReceipt[]
+  cashLodgments               CashLodgment[]
   savingsTransactions        SavingsTransaction[]
   loanProducts               LoanProduct[]
   loanApplications           LoanApplication[]
@@ -285,6 +288,7 @@ model Member {
   savingsDepositRequests       SavingsDepositRequest[]
   loanRepaymentRequests        LoanRepaymentRequest[]
   savingsLiens                 SavingsLien[]
+  cashReceipts                CashReceipt[]
   loanApplications             LoanApplication[]
   guaranteedLoans              LoanGuarantor[]
   loans                        Loan[]
@@ -3382,4 +3386,145 @@ model AdminLoginChallenge {
 
   @@index([userId])
   @@map("admin_login_challenges")
+}
+
+// ============================================
+// Cash collections & lodgments
+// ============================================
+// Officers collect cash from members at meetings and later lodge it into an association bank account. Additive: the existing
+// payment, savings, welfare, donation and loan tables are untouched — a receipt item points at the record it created by (kind, source_id).
+
+// One occasion (a meeting or a day) on which an officer collects cash. Owned by the collector.
+model CashCollection {
+  id            Int                  @id @default(autoincrement())
+  associationId Int                  @map("association_id")
+  meetingId     Int?                 @map("meeting_id")
+  title         String
+  collectedBy   Int                  @map("collected_by") // User id of the officer holding the cash
+  status        CashCollectionStatus @default(OPEN)
+  notes         String?
+  openedAt      DateTime             @default(now()) @map("opened_at")
+  closedAt      DateTime?            @map("closed_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  association Association              @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  receipts    CashReceipt[]
+  allocations CashLodgmentAllocation[]
+
+  @@index([associationId, status])
+  @@index([associationId, collectedBy])
+  @@index([meetingId])
+  @@map("cash_collections")
+}
+
+// One member's cash payment inside a collection. It credits the member at once; the idempotency key makes a retry safe.
+model CashReceipt {
+  id             Int               @id @default(autoincrement())
+  associationId  Int               @map("association_id")
+  collectionId   Int               @map("collection_id")
+  memberId       Int               @map("member_id")
+  receiptNumber  String            @unique @map("receipt_number")
+  idempotencyKey String            @map("idempotency_key")
+  totalAmount    Decimal           @map("total_amount") @db.Decimal(12, 2)
+  status         CashReceiptStatus @default(ACTIVE)
+  createdBy      Int               @map("created_by")
+  voidedBy       Int?              @map("voided_by")
+  voidedAt       DateTime?         @map("voided_at")
+  voidReason     String?           @map("void_reason")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  association Association       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  collection  CashCollection    @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  member      Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items       CashReceiptItem[]
+
+  @@unique([associationId, idempotencyKey])
+  @@index([collectionId, status])
+  @@index([associationId, memberId])
+  @@map("cash_receipts")
+}
+
+// What a receipt paid: one line per thing, pointing at the record the existing flow created.
+model CashReceiptItem {
+  id        Int          @id @default(autoincrement())
+  receiptId Int          @map("receipt_id")
+  kind      CashItemKind
+  sourceId  Int?         @map("source_id") // payments / savings_transactions / welfare_contributions / donation_records / loan_repayments id
+  label     String
+  amount    Decimal      @db.Decimal(12, 2)
+
+  receipt CashReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@index([kind, sourceId])
+  @@map("cash_receipt_items")
+}
+
+// Cash paid into an association bank account, with a deposit-slip photo. A different officer verifies it against the statement.
+model CashLodgment {
+  id                Int                @id @default(autoincrement())
+  associationId     Int                @map("association_id")
+  bankAccountId     Int                @map("bank_account_id")
+  lodgedBy          Int                @map("lodged_by")
+  amount            Decimal            @db.Decimal(12, 2)
+  expectedAmount    Decimal            @map("expected_amount") @db.Decimal(12, 2)
+  shortfallReason   String?            @map("shortfall_reason")
+  depositDate       DateTime           @map("deposit_date")
+  bankReference     String?            @map("bank_reference")
+  slipKey           String?            @map("slip_key")
+  status            CashLodgmentStatus @default(PENDING)
+  verifiedBy        Int?               @map("verified_by")
+  verifiedAt        DateTime?          @map("verified_at")
+  rejectionReason   String?            @map("rejection_reason")
+  accountingEntryId Int?               @map("accounting_entry_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  association Association              @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  allocations CashLodgmentAllocation[]
+
+  @@index([associationId, status])
+  @@index([associationId, lodgedBy])
+  @@map("cash_lodgments")
+}
+
+// How much of a lodgment came out of which collection.
+model CashLodgmentAllocation {
+  id           Int     @id @default(autoincrement())
+  lodgmentId   Int     @map("lodgment_id")
+  collectionId Int     @map("collection_id")
+  amount       Decimal @db.Decimal(12, 2)
+
+  lodgment   CashLodgment   @relation(fields: [lodgmentId], references: [id], onDelete: Cascade)
+  collection CashCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([lodgmentId, collectionId])
+  @@index([collectionId])
+  @@map("cash_lodgment_allocations")
+}
+
+enum CashCollectionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashReceiptStatus {
+  ACTIVE
+  VOIDED
+}
+
+enum CashItemKind {
+  DUES
+  LEVY
+  SAVINGS
+  WELFARE
+  DONATION
+  LOAN_REPAYMENT
+}
+
+enum CashLodgmentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }

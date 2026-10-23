@@ -23,6 +23,15 @@ export function notificationHref(pushType?: string | null, entityId?: number | n
     case 'meeting.reminder':
     case 'meeting.cancelled':
       return '/dashboard/governance/meetings';
+    case 'cash.lodgment_pending':
+    case 'cash.lodgment_verified':
+    case 'cash.lodgment_rejected':
+      return entityId ? `/dashboard/cash/lodgments/${entityId}` : '/dashboard/cash/lodgments';
+    case 'cash.lodgment_overdue':
+      return '/dashboard/cash';
+    case 'cash.receipt':
+    case 'cash.receipt_voided':
+      return '/dashboard/my-finances';
     case 'announcement':
       return '/dashboard/communications';
     default:

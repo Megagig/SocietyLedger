@@ -1421,6 +1421,18 @@ _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs UR
 - **Screens:** `members/invite.tsx` (`SegmentedControl` Invite | Pending (n); Invite tab has a one-line email-only note, `SearchField`, a `FlashList` of `InviteMemberRow`s and a `StickyFooter` "Send n invites" that appears once something is selected), `members/approvals.tsx` (`SegmentedControl` Pending | Approved | Rejected, `SearchField`, `FlashList` of `ApprovalRow`s), `members/form.tsx` (`StickyFooter` "Save member"). Member detail: pencil `IconButton` in the header; at the foot, separated by a top rule, **Disable member** (`danger-ghost`) or **Enable member** (`soft`). Members list: `MailPlus` and `UserPlus` header icons and a `warning-soft` banner row "n people are waiting for approval · Review". Manage hub: **Pending approvals** (`warning` `Badge` "n waiting") and **Invite members** rows.
 - **Wording rule:** a `terminated` member is shown as **Disabled** everywhere; the action is "Disable member" / "Enable member".
 
+## Mobile Phase 5 — Cash collections & lodgments (F5.5b, 2026-10-24)
+
+Built from existing primitives; nothing new in `components/ui`.
+
+- **Cash overview (CA1):** `SummaryHero` (display `Money`, three stat pills: ready to lodge / on open collections / lodged, awaiting check), a `bg-warning-soft` overdue banner, `ListGroup` of `ListItem` + `IconCircle` + `Badge`; the officers list is `ListItem` with a `Money` trailing (danger when overdue).
+- **Rows:** `CollectionRow`, `LodgmentRow`, `ReceiptRow` follow `TransferRow` exactly (position prop for grouped FlashList edges, min-h 72, `Money` over `StatusChip`); a voided receipt is dimmed with a `cancelled` chip.
+- **`PayableAmountRow`:** label + hint on the left, a 44dp amount box (`bg-surface-sunken`, `border-border-strong`, `border-danger` on error) on the right, and a `bg-primary-soft` "Fill ₦x" pill while empty.
+- **`ReasonSheet`:** BottomSheet with a required reason (multiline `TextField`) and a danger confirm; used to void a receipt and reject a lodgment.
+- **`SlipCard`:** same pattern as `ProofReceiptCard` (inline image with the always-dark Zoom pill using `onPassbook`, `ImageViewerModal`, PDF via the in-app browser).
+- Detail screens use `FactRow` inside `ListGroup`, `StickyFooter` with the button wrappers placed directly inside it, and `ConfirmSheet` for Verify / Close.
+- Collect cash: the donation category / project and the lodge screen's collection picker use `FilterChip` in a horizontal `ScrollView`.
+
 ## Mobile Phase 5 — Bank transfers & bank accounts (F5.5, 2026-10-24)
 - **`TransferRow`:** grouped-edge row like `ProofRow` — title is the member's name (else the sender's account name, else the sender's bank), "reference · date", the sender's bank; the amount (`Money`, `body-strong`) stacked over a status `StatusChip` (Waiting / Verified / Matched / Rejected) on the right, chevron. **`StatusChip`** gained `matched` → `info`.
 - **`BankAccountRow`:** 40dp `primary-soft` circle with a `Landmark` icon, bank name, the account number grouped as `0123 456 789` (`Text variant="num"`), the account name, and a `primary` "Default" / neutral "Inactive" `Badge` on the right. Pressable only when the officer can edit; sits inside a `ListGroup`. **Bank accounts screen:** an intro line ("Members see these accounts when they pay…"), a `ListGroup` of active accounts, a `FilterChip` "Show inactive accounts", and a `BottomSheet` of actions (**Edit account** `secondary`, **Make default** / **Reactivate** `soft`, **Remove account** `danger-ghost`), with a `ConfirmSheet` before removing.

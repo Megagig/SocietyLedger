@@ -9,6 +9,7 @@ import { tenantMiddleware } from './middleware/tenant.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
+import { startCashLodgmentJobs, stopCashLodgmentJobs } from './jobs/cash-lodgment-jobs';
 import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
 import { startPushReceiptsJob, stopPushReceiptsJob } from './services/push.service';
 // Phase 12: Caching & Performance
@@ -41,6 +42,7 @@ import advancedFinanceRoutes from './modules/finance/advanced/advanced.routes';
 import accountingRoutes from './modules/accounting/accounting.routes';
 import nigerianPaymentsRoutes from './modules/nigerian-payments/nigerian-payments.routes';
 import cooperativesRoutes from './modules/cooperatives/cooperatives.routes';
+import cashRoutes from './modules/cash/cash.routes';
 import memberFinanceRoutes from './modules/member-finance/member-finance.routes';
 import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 import meetingsRoutes from './modules/meetings/meetings.routes';
@@ -217,6 +219,7 @@ app.use('/api/finance/advanced', advancedFinanceRoutes);
 app.use('/api/accounting', accountingRoutes);
 app.use('/api/payments/nigerian', nigerianPaymentsRoutes);
 app.use('/api/cooperatives', cooperativesRoutes);
+app.use('/api/cash', cashRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);
@@ -266,6 +269,7 @@ if (process.env.NODE_ENV !== 'test') {
         // Start cron jobs
         startSubscriptionJobs();
         startMeetingJobs();
+        startCashLodgmentJobs();
         startPaymentReminderJobs();
         startPushReceiptsJob();
       });
@@ -283,6 +287,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGTERM received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopCashLodgmentJobs();
     stopPaymentReminderJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();
@@ -293,6 +298,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGINT received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopCashLodgmentJobs();
     stopPaymentReminderJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();

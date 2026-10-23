@@ -25,6 +25,7 @@ import {
   IconBuildingCommunity,
   IconBadge,
   IconBuildingBank,
+  IconCash,
   IconCalendarEvent,
   IconClipboardCheck,
   IconMessage,
@@ -305,6 +306,13 @@ export function Sidebar() {
           label: 'Reminders',
           icon: <IconBell size={18} />,
           href: '/dashboard/finance/reminders',
+        },
+        {
+          // Cash collected from members at meetings, lodged into the bank and checked by a second officer.
+          label: 'Cash Collections',
+          icon: <IconCash size={18} />,
+          href: '/dashboard/cash',
+          permission: [PERMISSIONS.CASH_COLLECT, PERMISSIONS.CASH_LODGE, PERMISSIONS.CASH_VERIFY, PERMISSIONS.CASH_VIEW],
         },
         {
           label: 'Payment Management',

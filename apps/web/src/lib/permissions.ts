@@ -79,6 +79,12 @@ export const PERMISSIONS = {
   PAYMENT_IMPORT: 'payments.nigerian.import',
   NIGERIAN_PAYMENTS_VIEW: 'payments.nigerian.view',
   
+  // Cash collections & lodgments
+  CASH_COLLECT: 'cash.collect',
+  CASH_LODGE: 'cash.lodge',
+  CASH_VERIFY: 'cash.verify',
+  CASH_VIEW: 'cash.view',
+  
   // SMS & Communications (Phase 6.6)
   SMS_VIEW: 'communication.sms.view',
   SMS_SEND: 'communication.sms.send',

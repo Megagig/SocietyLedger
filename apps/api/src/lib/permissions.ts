@@ -176,6 +176,12 @@ export const PERMISSIONS = {
   PAYMENT_RECONCILE: 'payments.nigerian.reconcile',
   PAYMENT_IMPORT: 'payments.nigerian.import',
   NIGERIAN_PAYMENTS_VIEW: 'payments.nigerian.view',
+
+  // Cash collections & lodgments
+  CASH_COLLECT: 'cash.collect',
+  CASH_LODGE: 'cash.lodge',
+  CASH_VERIFY: 'cash.verify',
+  CASH_VIEW: 'cash.view',
   
   // Notifications & Announcements
   NOTIFICATION_VIEW: 'notifications.view',

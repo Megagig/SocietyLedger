@@ -173,6 +173,12 @@ export const PERMISSIONS = {
   PAYMENT_IMPORT: 'payments.nigerian.import',
   NIGERIAN_PAYMENTS_VIEW: 'payments.nigerian.view',
 
+  // Cash collections & lodgments
+  CASH_COLLECT: 'cash.collect',
+  CASH_LODGE: 'cash.lodge',
+  CASH_VERIFY: 'cash.verify',
+  CASH_VIEW: 'cash.view',
+
   // Notifications & Announcements
   NOTIFICATION_VIEW: 'notifications.view',
   NOTIFICATION_SEND: 'notifications.send',
@@ -226,6 +232,8 @@ export const MANAGE_TAB_PERMISSIONS: PermissionAlias[] = [
   'LEDGER_VIEW',
   'NIGERIAN_PAYMENTS_VIEW',
   'PAYMENT_VERIFY',
+  'CASH_COLLECT',
+  'CASH_VIEW',
   'REPORTS_GENERATE',
   'REPORTS_FINANCIAL_SUMMARY',
   'REPORTS_EXPORT',

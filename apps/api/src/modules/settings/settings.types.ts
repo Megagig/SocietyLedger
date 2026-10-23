@@ -79,6 +79,8 @@ export interface PaymentsSettings {
   minimumPaymentAmount?: number;
   receiptPrefix?: string;
   receiptAutoGenerate: boolean;
+  /** Days an officer has to lodge collected cash before it is flagged as overdue (cash collections). */
+  cashLodgmentDueDays?: number;
 }
 
 // Notifications Settings

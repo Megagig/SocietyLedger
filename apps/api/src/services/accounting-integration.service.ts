@@ -13,6 +13,17 @@
 import { prisma } from '../lib/prisma';
 import { accountingService } from '../modules/accounting/accounting.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { AsyncLocalStorage } from 'async_hooks';
+
+// Cash collected by an officer sits in "Cash in hand" until it is lodged and verified, not in the bank account.
+// Only code running inside runAsCashCollection() sees that; every other caller keeps the default bank account.
+export const CASH_IN_HAND_CODE = '1114';
+const BANK_OPERATING_CODE = '1112';
+const cashCollectionContext = new AsyncLocalStorage<{ active: true }>();
+
+export function runAsCashCollection<T>(fn: () => Promise<T>): Promise<T> {
+  return cashCollectionContext.run({ active: true }, fn);
+}
 
 // ============================================
 // TYPE DEFINITIONS
@@ -74,6 +85,40 @@ export const accountingIntegrationService = {
   },
   
   /**
+   * The account an inflow is debited to: the operating bank account by default, or "Cash in hand"
+   * (created on first use) when called inside a cash collection.
+   */
+  async findInflowAccount(associationId: number) {
+    if (!cashCollectionContext.getStore()?.active) {
+      return this.findAccount(associationId, BANK_OPERATING_CODE);
+    }
+    return this.ensureCashInHandAccount(associationId);
+  },
+
+  async ensureCashInHandAccount(associationId: number) {
+    const existing = await this.findAccount(associationId, CASH_IN_HAND_CODE);
+    if (existing) return existing;
+    const parent = await this.findAccount(associationId, '1110');
+    try {
+      return await prisma.chartOfAccount.create({
+        data: {
+          associationId,
+          code: CASH_IN_HAND_CODE,
+          name: 'Cash in Hand - Officers',
+          type: 'ASSET',
+          subType: 'current_asset',
+          normalBalance: 'DEBIT',
+          isSystemAccount: true,
+          parentId: parent?.id ?? null,
+        },
+      });
+    } catch {
+      // Lost a race with another request creating it.
+      return this.findAccount(associationId, CASH_IN_HAND_CODE);
+    }
+  },
+
+  /**
    * Create and auto-post a journal entry
    */
   async createAndPostJournalEntry(
@@ -122,6 +167,34 @@ export const accountingIntegrationService = {
     }
   },
   
+  /**
+   * Post the mirror image of an already-posted entry (debits and credits swapped), e.g. when a cash receipt is voided.
+   * Does nothing when the original was never posted.
+   */
+  async reverseJournalEntry(associationId: number, userId: number, originalEntryId: number | null | undefined, description: string, reference: string) {
+    if (!originalEntryId) return null;
+    const lines = await prisma.journalEntryLine.findMany({ where: { journalEntryId: originalEntryId } });
+    if (lines.length === 0) return null;
+
+    return this.createAndPostJournalEntry(
+      associationId,
+      userId,
+      {
+        entryDate: new Date().toISOString(),
+        description,
+        reference,
+        lines: lines.map((l) => ({
+          accountId: l.accountId,
+          debitAmount: Number(l.creditAmount),
+          creditAmount: Number(l.debitAmount),
+          description: 'Reversal',
+        })),
+      },
+      'CashReversal',
+      originalEntryId,
+    );
+  },
+
   /**
    * Update sync status on source record
    */
@@ -175,6 +248,14 @@ export const accountingIntegrationService = {
             data: updateData
           });
           break;
+        case 'CashLodgment':
+          await prisma.cashLodgment.update({
+            where: { id: recordId },
+            data: { accountingEntryId: entryId }
+          });
+          break;
+        case 'CashReversal':
+          break; // a reversal has no source row of its own to mark
         default:
           console.warn(`Unknown table name for sync status update: ${tableName}`);
       }
@@ -297,7 +378,7 @@ export const accountingIntegrationService = {
     }
     
     try {
-      const cashAccount = await this.findAccount(payment.associationId, '1112'); // Bank Account - Operating
+      const cashAccount = await this.findInflowAccount(payment.associationId); // Bank Account - Operating (Cash in hand inside a cash collection)
       
       // Determine receivable account based on transaction type
       const categoryType = payment.transaction?.category?.type || 'due';
@@ -341,6 +422,72 @@ export const accountingIntegrationService = {
     }
   },
   
+  /**
+   * A donation collected in cash: debit the inflow account (Cash in hand inside a cash collection), credit Donation Income.
+   * The ordinary donation flow doesn't post to the books; this exists so cash handed over at a meeting is accounted for, and the
+   * later lodgment (cash in hand -> bank) has something to move. Posted against the donation's payment row.
+   */
+  async onCashDonation(payment: any, memberName: string, userId: number) {
+    const hasAccounting = await this.checkAccountingInitialized(payment.associationId);
+    if (!hasAccounting) return;
+
+    const cashAccount = await this.findInflowAccount(payment.associationId);
+    const incomeAccount = await this.findAccount(payment.associationId, '4300'); // Donation Income
+    if (!cashAccount || !incomeAccount) {
+      throw new Error('Required accounts not found (cash, 4300)');
+    }
+
+    await this.createAndPostJournalEntry(
+      payment.associationId,
+      userId,
+      {
+        entryDate: payment.paymentDate.toISOString(),
+        description: `Cash donation - ${memberName}`,
+        reference: payment.receiptNumber,
+        lines: [
+          { accountId: cashAccount.id, debitAmount: Number(payment.amountPaid), creditAmount: 0, description: 'Cash received' },
+          { accountId: incomeAccount.id, debitAmount: 0, creditAmount: Number(payment.amountPaid), description: 'Donation income' },
+        ],
+      },
+      'Payment',
+      payment.id,
+    );
+  },
+
+  /**
+   * A verified cash lodgment: the officer's cash in hand is now in the bank. Debit the operating bank account, credit Cash in hand.
+   */
+  async onCashLodgmentVerified(
+    lodgment: { id: number; associationId: number; amount: any; depositDate: Date; bankReference: string | null },
+    bankName: string,
+    userId: number,
+  ) {
+    const hasAccounting = await this.checkAccountingInitialized(lodgment.associationId);
+    if (!hasAccounting) return null;
+
+    const bankAccount = await this.findAccount(lodgment.associationId, BANK_OPERATING_CODE);
+    const cashInHand = await this.ensureCashInHandAccount(lodgment.associationId);
+    if (!bankAccount || !cashInHand) {
+      throw new Error('Required accounts not found (1112, 1114)');
+    }
+
+    return this.createAndPostJournalEntry(
+      lodgment.associationId,
+      userId,
+      {
+        entryDate: lodgment.depositDate.toISOString(),
+        description: `Cash lodged into ${bankName}`,
+        reference: lodgment.bankReference || `LODGMENT-${lodgment.id}`,
+        lines: [
+          { accountId: bankAccount.id, debitAmount: Number(lodgment.amount), creditAmount: 0, description: 'Cash paid into the bank' },
+          { accountId: cashInHand.id, debitAmount: 0, creditAmount: Number(lodgment.amount), description: 'Cash in hand lodged' },
+        ],
+      },
+      'CashLodgment',
+      lodgment.id,
+    );
+  },
+
   // ==========================================
   // WELFARE MODULE INTEGRATION
   // ==========================================
@@ -357,7 +504,7 @@ export const accountingIntegrationService = {
     }
     
     try {
-      const cashAccount = await this.findAccount(contribution.associationId, '1112'); // Bank Account
+      const cashAccount = await this.findInflowAccount(contribution.associationId); // Bank Account
       const welfareAccount = await this.findAccount(contribution.associationId, '2300'); // Welfare Fund Liability
       
       if (!cashAccount || !welfareAccount) {
@@ -463,13 +610,13 @@ export const accountingIntegrationService = {
     }
     
     try {
-      const cashAccount = await this.findAccount(transaction.associationId, '1112');
+      const cashAccount = await this.findInflowAccount(transaction.associationId);
       const savingsAccount = await this.findAccount(transaction.associationId, '2400'); // Member Savings Liability
-      
+
       if (!cashAccount || !savingsAccount) {
         throw new Error('Required accounts not found (1112, 2400)');
       }
-      
+
       await this.createAndPostJournalEntry(
         transaction.associationId,
         userId,
@@ -613,7 +760,7 @@ export const accountingIntegrationService = {
     }
     
     try {
-      const cashAccount = await this.findAccount(repayment.associationId, '1112');
+      const cashAccount = await this.findInflowAccount(repayment.associationId);
       const loansReceivableAccount = await this.findAccount(repayment.associationId, '1300');
       const interestIncomeAccount = await this.findAccount(repayment.associationId, '4800'); // Loan Interest Income
       

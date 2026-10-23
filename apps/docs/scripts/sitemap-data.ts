@@ -96,6 +96,7 @@ export const sections: SectionDef[] = [
       { slug: 'what-you-owe', title: 'Seeing what you owe', type: 'concept', audience: ['member'], platforms: ['web', 'mobile'], covers: ['/dashboard/my-finances', 'M1', 'M2'] },
       { slug: 'paying-online', title: 'Paying online with card or bank (Paystack)', type: 'task', audience: ['member'], platforms: ['web', 'mobile'], covers: ['/dashboard/my-finances/pay', 'M3', 'M5'] },
       { slug: 'paying-by-bank-transfer', title: 'Paying by bank transfer and uploading proof', type: 'task', audience: ['member'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/bank-transfers/new', 'M4'] },
+      { slug: 'paying-cash-at-meetings', title: 'Paying cash at a meeting', type: 'concept', audience: ['member'], platforms: ['web', 'mobile'], covers: [] },
       { slug: 'your-statement', title: 'Reading and downloading your statement', type: 'task', audience: ['member'], platforms: ['web', 'mobile'], covers: ['/dashboard/my-finances/ledger', 'M6', 'M7'] },
       { slug: 'dues-levies-and-penalties', title: 'Your dues, levies and penalties', type: 'concept', audience: ['member'], platforms: ['web', 'mobile'], covers: ['/dashboard/my-finances/dues', '/dashboard/my-finances/levies', '/dashboard/my-finances/penalties', 'M8', 'M9', 'M10'] },
       { slug: 'making-a-donation', title: 'Making a donation', type: 'task', audience: ['member'], platforms: ['web', 'mobile'], covers: ['/dashboard/my-finances/donations', 'M11', 'M12'] },
@@ -164,6 +165,19 @@ export const sections: SectionDef[] = [
       { slug: 'importing-a-bank-statement', title: 'Importing a bank statement', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/statements', 'PY8'] },
       { slug: 'matching-and-reconciliation', title: 'Matching payments and reconciling', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/reconciliation'] },
       { slug: 'reconciliation-history', title: 'Reconciliation history', type: 'task', audience: ['officer'], platforms: ['web'], covers: ['/dashboard/payments/nigerian/reconciliation-history'] },
+    ],
+  },
+  {
+    slug: 'cash',
+    title: 'Cash collections',
+    icon: 'HandCoins',
+    navGroup: 'Running your association',
+    pages: [
+      { slug: 'index', title: 'Cash collections', type: 'overview', audience: ['officer'], platforms: ['web', 'mobile'], covers: [] },
+      { slug: 'how-cash-collections-work', title: 'How cash collections work', type: 'concept', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/cash', 'CA1'] },
+      { slug: 'collecting-cash-from-members', title: 'Collecting cash from members', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/cash/collections', '/dashboard/cash/collections/[id]', 'CA2', 'CA3', 'CA4', 'CA5'] },
+      { slug: 'lodging-cash-into-the-bank', title: 'Lodging cash into the bank', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/cash/lodge', 'CA6'] },
+      { slug: 'verifying-cash-lodgments', title: 'Verifying cash lodgments', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/cash/lodgments', '/dashboard/cash/lodgments/[id]', 'CA7', 'CA8'] },
     ],
   },
   {

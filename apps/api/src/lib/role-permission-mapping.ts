@@ -15,6 +15,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "ledger.export", "ledger.view_member_statement",
     "payments.view", "payments.view_all", "payments.view_own", "payments.manual_create", "payments.approve", "payments.delete",
     "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.verify", "payments.nigerian.reconcile", "payments.nigerian.import",
+    // Cash collected at meetings: collect, lodge into the bank, verify a lodgment (never your own), view it.
+    "cash.collect", "cash.lodge", "cash.verify", "cash.view",
     "reports.generate", "reports.export", "reports.financial_summary",
     "roles.view", "roles.create", "roles.edit", "roles.assign", "permissions.manage",
     "settings.view", "settings.edit", "settings.billing", "settings.integrations",
@@ -35,6 +37,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "ledger.view_member_statement",
     "payments.view", "payments.view_all", "payments.manual_create", "payments.approve",
     "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.verify", "payments.nigerian.reconcile", "payments.nigerian.import",
+    // Cash collected at meetings: collect, lodge into the bank, verify a lodgment (never your own), view it.
+    "cash.collect", "cash.lodge", "cash.verify", "cash.view",
     "reports.generate", "reports.export", "reports.financial_summary",
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
@@ -51,6 +55,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "ledger.view", "ledger.view_all", "ledger.create", "ledger.edit", "ledger.export",
     "payments.view", "payments.view_all", "payments.manual_create",
     "payments.nigerian.view", "payments.nigerian.record", "payments.nigerian.reconcile", "payments.nigerian.import",
+    // Cash collected at meetings: collect, lodge into the bank, verify a lodgment (never your own), view it.
+    "cash.collect", "cash.lodge", "cash.verify", "cash.view",
     "reports.generate", "reports.export", "reports.financial_summary",
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",

@@ -52,7 +52,8 @@ const DEFAULT_SETTINGS: Record<SettingsCategory, Record<string, any>> = {
     enableManualPayments: true,
     manualPaymentApprovalRequired: true,
     enablePartialPayments: true,
-    receiptAutoGenerate: true
+    receiptAutoGenerate: true,
+    cashLodgmentDueDays: 3
   },
   notifications: {
     emailEnabled: true,

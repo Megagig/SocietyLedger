@@ -63,6 +63,22 @@ export const DOCS_LINKS: Record<string, string> = {
   PY2: '/docs/payments/verifying-payment-proofs',
   PY3: '/docs/payments/verifying-payment-proofs',
 
+  // Cash collected from members at meetings, lodged into the bank, and checked by a second officer.
+  '/dashboard/cash': '/docs/cash/how-cash-collections-work',
+  CA1: '/docs/cash/how-cash-collections-work',
+  '/dashboard/cash/collections': '/docs/cash/collecting-cash-from-members',
+  '/dashboard/cash/collections/[id]': '/docs/cash/collecting-cash-from-members',
+  CA2: '/docs/cash/collecting-cash-from-members',
+  CA3: '/docs/cash/collecting-cash-from-members',
+  CA4: '/docs/cash/collecting-cash-from-members',
+  CA5: '/docs/cash/collecting-cash-from-members',
+  '/dashboard/cash/lodge': '/docs/cash/lodging-cash-into-the-bank',
+  CA6: '/docs/cash/lodging-cash-into-the-bank',
+  '/dashboard/cash/lodgments': '/docs/cash/verifying-cash-lodgments',
+  '/dashboard/cash/lodgments/[id]': '/docs/cash/verifying-cash-lodgments',
+  CA7: '/docs/cash/verifying-cash-lodgments',
+  CA8: '/docs/cash/verifying-cash-lodgments',
+
   '/dashboard/payments/nigerian/reconciliation': '/docs/payments/matching-and-reconciliation',
   PY8: '/docs/payments/matching-and-reconciliation',
 
