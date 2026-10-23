@@ -1421,6 +1421,19 @@ _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs UR
 - **Screens:** `members/invite.tsx` (`SegmentedControl` Invite | Pending (n); Invite tab has a one-line email-only note, `SearchField`, a `FlashList` of `InviteMemberRow`s and a `StickyFooter` "Send n invites" that appears once something is selected), `members/approvals.tsx` (`SegmentedControl` Pending | Approved | Rejected, `SearchField`, `FlashList` of `ApprovalRow`s), `members/form.tsx` (`StickyFooter` "Save member"). Member detail: pencil `IconButton` in the header; at the foot, separated by a top rule, **Disable member** (`danger-ghost`) or **Enable member** (`soft`). Members list: `MailPlus` and `UserPlus` header icons and a `warning-soft` banner row "n people are waiting for approval · Review". Manage hub: **Pending approvals** (`warning` `Badge` "n waiting") and **Invite members** rows.
 - **Wording rule:** a `terminated` member is shown as **Disabled** everywhere; the action is "Disable member" / "Enable member".
 
+## Mobile Phase 5 — Meetings admin & live attendance (F5.8, 2026-10-24)
+
+One new form field; everything else is built from existing primitives.
+
+- **`DateTimeField` (`components/forms`):** an RHF-bound date AND time — two 52dp boxes side by side (date, then time, `bg-surface-sunken`, `border-border-strong`, `border-danger` on error), an optional × to clear. Android opens the date picker, then the time picker, as separate taps; iOS uses the same bottom modal as `DateField` with a spinner. The merge rule lives in `lib/dateTime.ts` (changing the day keeps the time).
+- **`FieldInput` (`components/forms`):** the one text input every field uses — the bottom sheet's own input inside a sheet (so the keyboard lifts the sheet), a plain `TextInput` elsewhere.
+- **`MeetingRow`:** grouped-edge row — title, "date · time", "kind · venue", a status `StatusChip` (Scheduled / In progress / Held / Cancelled) and "n on the list"; a cancelled title is dimmed.
+- **`AttendanceMemberRow`:** name and member ID over four equal 40dp choices (Present, Absent, Excused, Late) as radio buttons. The chosen one is filled with its status colour (`success-soft`, `danger-soft`, `info-soft`, `warning-soft` with the matching border); unmarked members show "Not marked yet". Disabled (60% opacity) for a cancelled meeting.
+- **Attendance screen:** three `StatTile`s (Present / Late / Not marked), a quorum line (`success` when met, `warning` while short), `SearchField`, and a `StickyFooter` "Mark the n not marked as present".
+- **Meeting detail:** centred title + status chip, `FactRow` details, an agenda as `ListItem`s with ↑ ↓ ✎ 🗑 `IconButton`s when editable, an Attendance summary `ListGroup`, a Minutes row, and ⋮ `BottomSheet` actions (Cancel uses `ReasonSheet`, Mark as held `ConfirmSheet`).
+- **Minutes:** a `bg-success-soft` "Approved" banner (fields read-only) or a `bg-warning-soft` "Waiting for approval" banner; the footer shows Save, and Approve only to an officer who did not write them.
+- **Attendance history:** plain divided rows — name, "n of m attended · late · excused · absent", and the rate in `h3` (green from 80%, red under 50%).
+
 ## Mobile Phase 5 — Overdue, reminders & member ledgers (F5.7, 2026-10-24)
 
 Built from existing primitives; nothing new in `components/ui`.

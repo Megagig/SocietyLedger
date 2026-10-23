@@ -3,10 +3,10 @@ title: "Taking attendance (on a laptop or phone)"
 description: "Mark who was present, late, absent or excused — and see quorum update live."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/governance/meetings/[id]", "GV4"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-24"
 related: ["/docs/meetings/scheduling-a-meeting", "/docs/meetings/attendance-history"]
 ---
 
@@ -14,16 +14,30 @@ Mark attendance for a meeting's members, one at a time or all at once. The page 
 
 ## Before you start
 
-You need the **Administrator** role to initialize and mark attendance. There's no requirement that the meeting be in any particular state first — attendance can be taken on a scheduled meeting at any time, before, during or after it happens.
+You need the **manage attendance** permission, which Administrators, Treasurers and Financial Secretaries have by default. Attendance can be taken before, during or after a meeting — but not for a **cancelled** meeting, which never took place. Only members of your association can be marked.
 
 ## Take attendance
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Open the meeting from <MenuPath items={["Governance", "Meetings"]} /> and select the **Attendance** tab.</Step>
 <Step>The first time, select **Initialize Attendance** to create a **Pending** record for every active member.</Step>
 <Step>For each member, use the status dropdown to mark them **Present**, **Late**, **Absent** or **Apology**.</Step>
 <Step>Select **Mark All Present** to set everyone still **Pending** to Present in one action, then adjust the exceptions individually.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Meetings"]} />, open the meeting, then tap **Take attendance**.</Step>
+<Step>The first time, tap **Start the attendance list** to add every active member as *not marked*.</Step>
+<Step>Tap **Present**, **Absent**, **Excused** or **Late** beside each name. The tap shows at once, and if it can't be saved it is put back and you are told.</Step>
+<Step>Search by name or member ID, and tap **Mark the not marked as present** to mark everyone you haven't touched in one go. Anyone you already marked is left as you set them.</Step>
+</Steps>
+
+The counts at the top (Present, Late, Not marked) and the quorum line follow every tap.
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/meetings/taking-attendance-1.webp" alt="Attendance List for a meeting with members marked Present, Late and Apology via status dropdowns, and a Mark All Present button" />
 

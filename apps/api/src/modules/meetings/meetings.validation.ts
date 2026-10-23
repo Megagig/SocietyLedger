@@ -29,7 +29,7 @@ export const createMeetingSchema = z.object({
   endTime: z.string().datetime('Invalid end time').optional().nullable(),
   quorumRequired: z.number().int().positive().optional().nullable(),
   agendaItems: z.array(agendaItemSchema).optional(),
-});
+}).refine((m) => !m.endTime || new Date(m.endTime) > new Date(m.startTime), { message: 'The end time must be after the start time', path: ['endTime'] });
 
 // Update meeting schema
 export const updateMeetingSchema = z.object({
@@ -42,7 +42,7 @@ export const updateMeetingSchema = z.object({
   endTime: z.string().datetime('Invalid end time').optional().nullable(),
   status: meetingStatusEnum.optional(),
   quorumRequired: z.number().int().positive().optional().nullable(),
-});
+}).refine((m) => !m.startTime || !m.endTime || new Date(m.endTime) > new Date(m.startTime), { message: 'The end time must be after the start time', path: ['endTime'] });
 
 // Cancel meeting schema
 export const cancelMeetingSchema = z.object({

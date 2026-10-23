@@ -97,7 +97,12 @@ export const DOCS_LINKS: Record<string, string> = {
   RP1: '/docs/reports/finding-the-report-you-need',
 
   '/dashboard/governance/meetings/[id]': '/docs/meetings/taking-attendance',
+  GV1: '/docs/meetings/scheduling-a-meeting',
+  GV2: '/docs/meetings/scheduling-a-meeting',
+  GV3: '/docs/meetings/taking-attendance',
   GV4: '/docs/meetings/taking-attendance',
+  GV5: '/docs/meetings/minutes',
+  GV6: '/docs/meetings/attendance-history',
 
   '/dashboard/governance/elections/[id]': '/docs/elections/how-elections-work',
   GV9: '/docs/elections/how-elections-work',

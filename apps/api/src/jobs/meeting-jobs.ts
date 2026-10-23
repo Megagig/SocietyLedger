@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { sendEmail } from '../lib/email';
 import { channelAllowed, getPreferences, filterPushEligible } from '../services/notification-preferences.service';
 import { sendPushToUsers } from '../services/push.service';
+import { meetingsService } from '../modules/meetings/meetings.service';
 
 /**
  * Cron Jobs for Meeting Management
@@ -151,6 +152,10 @@ export const checkMeetingReminders = cron.schedule('0 * * * *', async () => {
   console.log('[CRON] Running meeting reminder check...');
   
   try {
+    // Meetings that are over become COMPLETED (nothing else ever set that status).
+    const completed = await meetingsService.completePastMeetings();
+    if (completed > 0) console.log(`[CRON] Marked ${completed} past meeting(s) as completed`);
+
     const now = new Date();
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 

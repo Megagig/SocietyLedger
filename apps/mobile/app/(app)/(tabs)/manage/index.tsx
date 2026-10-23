@@ -1,4 +1,4 @@
-import { Banknote, Bell, Wallet, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
+import { Banknote, Bell, CalendarDays, Wallet, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -13,12 +13,14 @@ import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { FINANCE_VIEW_ACCESS, useChargeStats } from '@/features/finance/queries';
+import { MEETINGS_ADMIN_ACCESS, MEETINGS_MODULE, useMeetingStats } from '@/features/meetingsAdmin/queries';
 import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features/cash/queries';
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, usePendingApprovalCount, useMemberStats } from '@/features/members/queries';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS, usePendingProofCount, usePendingTransferCount } from '@/features/nigerianPayments/queries';
 import { SUPPORT_STAFF_ACCESS, useStaffTickets } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
+import { useModuleDisabled } from '@/hooks/useModuleAccess';
 
 // project-overview.md §6.8/§6.9 — members, finance, payments verification, accounting, reports,
 // meetings/elections/polls/welfare/cooperatives admin, communication, AI, settings, support land
@@ -43,6 +45,9 @@ export default function ManageScreen() {
   const waitingProofs = (usePendingProofCount().data ?? 0) + (usePendingTransferCount().data ?? 0);
   const waitingApprovals = usePendingApprovalCount().data ?? 0;
   const canCash = useCan(CASH_ANY_ACCESS);
+  const meetingsOff = useModuleDisabled(MEETINGS_MODULE);
+  const canMeetings = useCan(MEETINGS_ADMIN_ACCESS) && !meetingsOff;
+  const upcomingMeetings = useMeetingStats().data?.scheduledMeetings ?? 0;
   const canFinance = useCan(FINANCE_VIEW_ACCESS);
   const overdueCharges = Number(useChargeStats().data?.overdue?.count ?? 0);
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
@@ -63,7 +68,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -113,6 +118,22 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/finance' as never)}
                   testID="manage-finance"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canMeetings ? (
+            <Section title="Meetings">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={CalendarDays} tone="primary" />}
+                  title="Meetings"
+                  meta="Schedule, take attendance and write minutes"
+                  trailing={upcomingMeetings > 0 ? <Badge tone="neutral">{`${upcomingMeetings} coming up`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/meetings' as never)}
+                  testID="manage-meetings"
                 />
               </ListGroup>
             </Section>

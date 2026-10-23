@@ -75,6 +75,16 @@ router.patch('/:id',
 );
 
 // Cancel meeting
+router.put('/:id/agenda/reorder',
+  requirePermission(PERMISSIONS.MEETING_EDIT),
+  meetingsController.reorderAgenda
+);
+
+router.post('/:id/complete',
+  requirePermission(PERMISSIONS.MEETING_EDIT),
+  meetingsController.completeMeeting
+);
+
 router.post('/:id/cancel',
   requirePermission(PERMISSIONS.MEETING_DELETE),
   meetingsController.cancelMeeting

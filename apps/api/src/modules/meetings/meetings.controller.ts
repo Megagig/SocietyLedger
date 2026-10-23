@@ -17,6 +17,7 @@ import { PlatformRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { PERMISSIONS } from '../../lib/permissions';
 import { RBACService } from '../../services/rbac.service';
+import { attendanceBlockedReason, cancelBlockedReason } from './meeting-rules';
 import { notifyMeetingScheduled, notifyMeetingCancelled, notifyAttendanceMarked } from '../../jobs/meeting-jobs';
 
 /**
@@ -216,6 +217,10 @@ export const meetingsController = {
         });
       }
 
+      if (validatedData.status === 'CANCELLED' && existingMeeting.status !== 'CANCELLED') {
+        return res.status(400).json({ success: false, code: 'USE_CANCEL', message: 'To cancel a meeting use Cancel meeting, so a reason is recorded and members are told.' });
+      }
+
       const meeting = await meetingsService.updateMeeting(associationId, meetingId, validatedData);
 
       // Create audit log
@@ -267,6 +272,15 @@ export const meetingsController = {
 
       const { reason } = cancelMeetingSchema.parse(req.body);
 
+      const current = await meetingsService.getMeetingById(associationId, meetingId);
+      if (!current) {
+        return res.status(404).json({ success: false, message: 'Meeting not found' });
+      }
+      const blocked = cancelBlockedReason(current.status);
+      if (blocked) {
+        return res.status(409).json({ success: false, code: 'CANCEL_NOT_ALLOWED', message: blocked });
+      }
+
       const meeting = await meetingsService.cancelMeeting(
         associationId,
         meetingId,
@@ -275,10 +289,8 @@ export const meetingsController = {
       );
 
       if (!meeting) {
-        return res.status(404).json({
-          success: false,
-          message: 'Meeting not found',
-        });
+        // Lost a race: someone else cancelled or completed it between the check above and now.
+        return res.status(409).json({ success: false, code: 'CANCEL_NOT_ALLOWED', message: 'This meeting was just cancelled or completed by someone else.' });
       }
 
       // Create audit log
@@ -322,6 +334,56 @@ export const meetingsController = {
     }
   },
 
+  /** Saves a new order for a meeting's agenda in one go: `{ items: [{ id, orderNumber }] }`. */
+  async reorderAgenda(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const meetingId = parseInt(req.params.id);
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      const { items } = z
+        .object({ items: z.array(z.object({ id: z.number().int().positive(), orderNumber: z.number().int().positive() })).min(1) })
+        .parse(req.body);
+      await meetingsService.assertMeetingInAssociation(associationId, meetingId);
+      await meetingsService.reorderAgendaItems(associationId, meetingId, items);
+      return res.status(200).json({ success: true, message: 'Agenda reordered' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      if (error instanceof Error && (error.message === 'Meeting not found' || error.message.startsWith('One or more agenda items'))) {
+        return res.status(404).json({ success: false, message: error.message });
+      }
+      console.error('Error reordering agenda:', error);
+      return res.status(500).json({ success: false, message: 'Failed to reorder the agenda' });
+    }
+  },
+
+  async completeMeeting(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      const meetingId = parseInt(req.params.id);
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Association ID and User ID are required' });
+      }
+      const current = await meetingsService.getMeetingById(associationId, meetingId);
+      if (!current) {
+        return res.status(404).json({ success: false, message: 'Meeting not found' });
+      }
+      const done = await meetingsService.completeMeeting(associationId, meetingId);
+      if (!done) {
+        return res.status(409).json({ success: false, code: 'COMPLETE_NOT_ALLOWED', message: 'Only a scheduled or in-progress meeting can be marked completed.' });
+      }
+      await prisma.auditLog.create({ data: { associationId, userId, action: 'COMPLETE', tableName: 'meetings', recordId: meetingId, newValues: { status: 'COMPLETED' } } });
+      return res.status(200).json({ success: true, message: 'Meeting marked as completed' });
+    } catch (error) {
+      console.error('Error completing meeting:', error);
+      return res.status(500).json({ success: false, message: 'Failed to complete meeting' });
+    }
+  },
+
   async deleteMeeting(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
@@ -333,6 +395,11 @@ export const meetingsController = {
           success: false,
           message: 'Association ID and User ID are required',
         });
+      }
+
+      const collections = await prisma.cashCollection.count({ where: { associationId, meetingId } });
+      if (collections > 0) {
+        return res.status(409).json({ success: false, code: 'HAS_CASH', message: 'Cash was collected at this meeting, so it can\u2019t be deleted. Cancel it instead.' });
       }
 
       const meeting = await meetingsService.deleteMeeting(associationId, meetingId);
@@ -543,6 +610,11 @@ export const meetingsController = {
         });
       }
 
+      const blocked = attendanceBlockedReason(meeting.status);
+      if (blocked) {
+        return res.status(409).json({ success: false, code: 'MEETING_CANCELLED', message: blocked });
+      }
+
       const validatedData = markAttendanceSchema.parse(req.body);
       const attendance = await meetingsService.markAttendance(associationId, meetingId, userId, validatedData);
 
@@ -574,6 +646,9 @@ export const meetingsController = {
           errors: error.errors,
         });
       }
+      if (error instanceof Error && error.message.startsWith('One or more members were not found')) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
       console.error('Error marking attendance:', error);
       return res.status(500).json({
         success: false,
@@ -602,6 +677,11 @@ export const meetingsController = {
           success: false,
           message: 'Meeting not found',
         });
+      }
+
+      const blocked = attendanceBlockedReason(meeting.status);
+      if (blocked) {
+        return res.status(409).json({ success: false, code: 'MEETING_CANCELLED', message: blocked });
       }
 
       const { attendances } = bulkMarkAttendanceSchema.parse(req.body);
@@ -757,6 +837,10 @@ export const meetingsController = {
         });
       }
 
+      if (existingMinutes.approvedAt) {
+        return res.status(409).json({ success: false, code: 'MINUTES_LOCKED', message: 'These minutes were approved, so they can no longer be edited.' });
+      }
+
       const validatedData = updateMinutesSchema.parse(req.body);
       const minutes = await meetingsService.updateMinutes(existingMinutes.id, validatedData);
 
@@ -819,7 +903,14 @@ export const meetingsController = {
         });
       }
 
+      if (existingMinutes.recordedBy === userId) {
+        return res.status(403).json({ success: false, code: 'OWN_MINUTES', message: 'You wrote these minutes, so another officer has to approve them.' });
+      }
+
       const minutes = await meetingsService.approveMinutes(existingMinutes.id, userId);
+      if (!minutes) {
+        return res.status(409).json({ success: false, code: 'ALREADY_APPROVED', message: 'Minutes have already been approved' });
+      }
 
       return res.status(200).json({
         success: true,
