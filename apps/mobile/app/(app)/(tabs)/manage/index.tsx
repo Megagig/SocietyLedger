@@ -12,15 +12,17 @@ import { Section } from '@/components/layout/Section';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
-import { FINANCE_VIEW_ACCESS, useChargeStats } from '@/features/finance/queries';
+import { dashboardKeys, attentionCount, useAttention } from '@/features/dashboard/queries';
+import { FINANCE_VIEW_ACCESS } from '@/features/finance/queries';
 import { MEETINGS_ADMIN_ACCESS, MEETINGS_MODULE, useMeetingStats } from '@/features/meetingsAdmin/queries';
 import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features/cash/queries';
-import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, usePendingApprovalCount, useMemberStats } from '@/features/members/queries';
-import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS, usePendingProofCount, usePendingTransferCount } from '@/features/nigerianPayments/queries';
-import { SUPPORT_STAFF_ACCESS, useStaffTickets } from '@/features/support/queries';
+import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, useMemberStats } from '@/features/members/queries';
+import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS } from '@/features/nigerianPayments/queries';
+import { SUPPORT_STAFF_ACCESS } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
 import { useModuleDisabled } from '@/hooks/useModuleAccess';
+import { useTenantKey } from '@/hooks/useTenantKey';
 
 // project-overview.md §6.8/§6.9 — members, finance, payments verification, accounting, reports,
 // meetings/elections/polls/welfare/cooperatives admin, communication, AI, settings, support land
@@ -30,33 +32,36 @@ import { useModuleDisabled } from '@/hooks/useModuleAccess';
 export default function ManageScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const tenantKey = useTenantKey();
   // Permissions come from the session (/auth/me); re-check them whenever the hub opens so a role granted
   // after sign-in shows up without a full sign-out.
   useFocusEffect(
     useCallback(() => {
       void queryClient.invalidateQueries({ queryKey: sessionKeys.me() });
-    }, [queryClient]),
+      void queryClient.invalidateQueries({ queryKey: dashboardKeys.attention(tenantKey) });
+    }, [queryClient, tenantKey]),
   );
   const canSupport = useCan(SUPPORT_STAFF_ACCESS);
   const canMembers = useCan(MEMBERS_VIEW_ACCESS);
   const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
   const canInvite = useCan(MEMBERS_INVITE_ACCESS);
   const canProofs = useCan([PROOFS_VIEW_ACCESS, ...BANK_ACCOUNTS_VIEW_ACCESS]);
-  const waitingProofs = (usePendingProofCount().data ?? 0) + (usePendingTransferCount().data ?? 0);
-  const waitingApprovals = usePendingApprovalCount().data ?? 0;
+  // One call for every pending badge; the server only counts what this officer may open.
+  const attention = useAttention().data;
+  const waitingProofs = attentionCount(attention, 'paymentProofs') + attentionCount(attention, 'bankTransfers');
+  const waitingApprovals = attentionCount(attention, 'memberApprovals');
   const canCash = useCan(CASH_ANY_ACCESS);
   const meetingsOff = useModuleDisabled(MEETINGS_MODULE);
   const canMeetings = useCan(MEETINGS_ADMIN_ACCESS) && !meetingsOff;
   const upcomingMeetings = useMeetingStats().data?.scheduledMeetings ?? 0;
   const canFinance = useCan(FINANCE_VIEW_ACCESS);
-  const overdueCharges = Number(useChargeStats().data?.overdue?.count ?? 0);
+  const overdueCharges = attentionCount(attention, 'overdueCharges');
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
   const cashOverview = useCashOverview().data;
   const cashToLodge = cashOverview?.mine?.readyToLodge ?? 0;
-  const cashToVerify = cashOverview?.lodgmentsToVerify ?? 0;
-  const ticketsQuery = useStaffTickets();
+  const cashToVerify = attentionCount(attention, 'cashLodgments');
   const statsQuery = useMemberStats();
-  const needsReply = (ticketsQuery.data?.tickets ?? []).filter((t) => t.status === 'OPEN' || t.status === 'WAITING_ON_STAFF').length;
+  const needsReply = attentionCount(attention, 'supportTickets');
 
   return (
     <Screen edges={['top']}>

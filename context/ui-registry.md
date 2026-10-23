@@ -1406,6 +1406,14 @@ _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs UR
 - **Admin console (`apps/admin`):** `/support` is `Tabs` (Tickets | Documentation feedback); the Tickets tab uses `StatCard`s, `FilterBar` and `DataTable`; `/support/tickets/[id]` is a two-column `Grid` (thread with yellow internal notes and teal SocietyLedger replies + reply `Card` with internal-note `Switch` and `FileInput`; status/priority/assignee `Select`s, **Assign to me**, association and opener details).
 - **Web:** list scope toggle (Association tickets | Contact SocietyLedger), `new?to=platform`, `EscalateTicketModal`, and the staff controls (internal note, Move to, Assign to me, Suggest a reply) on the ticket page.
 
+## Mobile Phase 5 — Manage hub & Home (F5.1, 2026-10-24)
+
+No new primitives; built from existing ones.
+
+- **`NeedsAttentionList` (`features/home/components`):** a `Section` titled "Needs your attention" holding a `ListGroup` of `ListItem`s — an `IconCircle` (`warning` or `info`), a sentence such as "3 payment proofs to verify", a count `Badge` (`warning`, `danger` for overdue money) and a chevron. Loading is one 64dp `Skeleton`; empty is a bordered `bg-surface-raised` card with a `success` check and "You're all caught up"; a failed load renders nothing.
+- **Outstanding Dues:** one more `QuickStatRow` in Quick Stats; its change figure is now optional and the percentage is omitted when there isn't one.
+- **Manage hub:** unchanged layout — only the badge numbers now come from the single attention list.
+
 ## Mobile Phase 5 — Members (F5.2, 2026-10-24)
 - **`features/members/components/FactRow`:** label (secondary) left, value right inside a `ListGroup`; `value` renders `–` when empty, `amount` renders through `Money` (`danger` colours an amount owed). The dense key/value row for officer detail screens — reuse it for payment-proof, transaction and ledger details.
 - **`MemberRow`:** `Avatar` + name + "member ID · category" + status `StatusChip` + chevron, as one FlashList row. `position` (`first | middle | last | only`) draws the rounded group edges and hairlines so separately rendered rows still read as one `ListGroup` (there is no `ListSeparator`). Wrapped in `memo`.

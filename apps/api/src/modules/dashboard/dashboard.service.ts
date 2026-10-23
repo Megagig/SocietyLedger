@@ -8,6 +8,7 @@
 
 import { prisma } from '../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { isOverdue } from '../finance/overdue-rules';
 import {
   DashboardOverview,
   MemberStats,
@@ -138,7 +139,7 @@ export const dashboardService = {
 
     // Get all transactions with their payments
     const transactions = await prisma.transaction.findMany({
-      where: { associationId },
+      where: { associationId, isVoided: false }, // a voided charge was cancelled: neither owed nor late
       include: {
         payments: { select: { amountPaid: true, paymentDate: true } },
       },
@@ -163,11 +164,11 @@ export const dashboardService = {
       });
 
       // Count pending and overdue
-      if (txn.status === 'pending' || txn.status === 'partial') {
-        pendingPayments++;
-      }
-      if (txn.status === 'overdue') {
+      // Overdue is decided from the due date, not the stored status (which only changes when the overdue job runs).
+      if (isOverdue(txn)) {
         overduePayments++;
+      } else if (txn.status === 'pending' || txn.status === 'partial') {
+        pendingPayments++;
       }
     });
 

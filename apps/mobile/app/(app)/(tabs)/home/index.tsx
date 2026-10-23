@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Bell, Building2, User } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { IconButton } from '@/components/ui/IconButton';
@@ -13,6 +14,7 @@ import { ActiveVoteCard } from '@/features/home/components/ActiveVoteCard';
 import { AnnouncementsList } from '@/features/home/components/AnnouncementsList';
 import { AssociationRecentTransactions } from '@/features/home/components/AssociationRecentTransactions';
 import { BalanceCard } from '@/features/home/components/BalanceCard';
+import { NeedsAttentionList } from '@/features/home/components/NeedsAttentionList';
 import { MemberStatRow } from '@/features/home/components/MemberStatRow';
 import { OfficerStatRow } from '@/features/home/components/OfficerStatRow';
 import { PaymentMethodsChart } from '@/features/home/components/PaymentMethodsChart';
@@ -22,7 +24,8 @@ import { RecentPaymentsList } from '@/features/home/components/RecentPaymentsLis
 import { RevenueChart } from '@/features/home/components/RevenueChart';
 import { UpcomingMeetingCard } from '@/features/home/components/UpcomingMeetingCard';
 import { UpcomingObligationsList } from '@/features/home/components/UpcomingObligationsList';
-import { useAssociationDashboard } from '@/features/dashboard/queries';
+import { dashboardKeys, useAssociationDashboard, useAttention } from '@/features/dashboard/queries';
+import { useTenantKey } from '@/hooks/useTenantKey';
 import { useMemberFinanceSummary, useMemberPayments } from '@/features/memberFinance/queries';
 import { useUpcomingMeetings } from '@/features/meetings/queries';
 import { useAnnouncements, useUnreadCount } from '@/features/notifications/queries';
@@ -68,6 +71,15 @@ export default function HomeScreen() {
   const votingQuery = useActiveVoting();
   const announcementsQuery = useAnnouncements(3);
   const dashboardQuery = useAssociationDashboard(isOfficer);
+  const attentionQuery = useAttention(isOfficer);
+  const queryClient = useQueryClient();
+  const tenantKey = useTenantKey();
+  // Work gets done on other screens; re-count when Home comes back into view.
+  useFocusEffect(
+    useCallback(() => {
+      if (isOfficer) void queryClient.invalidateQueries({ queryKey: dashboardKeys.attention(tenantKey) });
+    }, [isOfficer, queryClient, tenantKey]),
+  );
   const unreadCountQuery = useUnreadCount();
   const unreadCount = unreadCountQuery.data?.unreadCount ?? 0;
 
@@ -79,7 +91,7 @@ export default function HomeScreen() {
   const upcomingMeetingsCount = meetingsQuery.data?.length ?? 0;
 
   const refreshing = [summaryQuery, paymentsQuery, announcementsQuery].some((q) => q.isRefetching)
-    || (isOfficer && dashboardQuery.isRefetching);
+    || (isOfficer && (dashboardQuery.isRefetching || attentionQuery.isRefetching));
 
   function handleRefresh() {
     summaryQuery.refetch();
@@ -87,7 +99,10 @@ export default function HomeScreen() {
     announcementsQuery.refetch();
     if (canViewMeetings) meetingsQuery.refetch();
     if (canViewVoting) votingQuery.refetch();
-    if (isOfficer) dashboardQuery.refetch();
+    if (isOfficer) {
+      dashboardQuery.refetch();
+      attentionQuery.refetch();
+    }
   }
 
   const member = me.data?.user.member;
@@ -193,6 +208,8 @@ export default function HomeScreen() {
         {showAssociation ? (
           /* ─── Officer Association view ─── */
           <>
+            <NeedsAttentionList attentionQuery={attentionQuery} />
+
             <OfficerStatRow dashboardQuery={dashboardQuery} />
 
             <RevenueChart dashboardQuery={dashboardQuery} />
@@ -225,6 +242,10 @@ export default function HomeScreen() {
                       { compact: true },
                     )}
                     change={dashboardQuery.data.quickStats.thisMonthRevenueChange}
+                  />
+                  <QuickStatRow
+                    label="Outstanding Dues"
+                    value={formatMoney(toDecimal(dashboardQuery.data.financialSummary.outstandingDues), { compact: true })}
                   />
                   <QuickStatRow
                     label="Collection Rate"
@@ -284,9 +305,9 @@ export default function HomeScreen() {
 }
 
 /** Inline Quick Stat row — label, value, and trend indicator. */
-function QuickStatRow({ label, value, change }: { label: string; value: string; change: number }) {
+function QuickStatRow({ label, value, change }: { label: string; value: string; change?: number }) {
   const { color } = useThemeTokens();
-  const up = change >= 0;
+  const up = (change ?? 0) >= 0;
   const changeColor = up ? color.success : color.danger;
   const changeText = `${up ? '+' : ''}${change}%`;
 
@@ -296,7 +317,7 @@ function QuickStatRow({ label, value, change }: { label: string; value: string; 
         <Text variant="caption" tone="secondary">{label}</Text>
         <Text variant="label">{value}</Text>
       </View>
-      <Text variant="caption" style={{ color: changeColor }}>{changeText}</Text>
+      {change === undefined ? null : <Text variant="caption" style={{ color: changeColor }}>{changeText}</Text>}
     </View>
   );
 }

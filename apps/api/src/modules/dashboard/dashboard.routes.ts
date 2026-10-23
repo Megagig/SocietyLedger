@@ -33,4 +33,10 @@ router.use(authMiddleware);
  */
 router.get('/overview', dashboardController.getOverview);
 
+/**
+ * GET /api/dashboard/attention
+ * Counts of work waiting on the signed-in officer (proofs, approvals, overdue charges, ...), limited to what they may open.
+ */
+router.get('/attention', dashboardController.getAttention);
+
 export default router;

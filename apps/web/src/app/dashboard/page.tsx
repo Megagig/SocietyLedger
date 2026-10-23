@@ -7,10 +7,21 @@ import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
+
+  // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['dashboard-overview'],
+    queryFn: getDashboardOverview,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
+    enabled: _hasHydrated && user?.role !== 'member', // members are sent to their own dashboard
+
+  });
 
   // Smart redirect based on user role
   useEffect(() => {
@@ -40,13 +51,6 @@ export default function DashboardPage() {
   if (user?.role === 'member') {
     return <DashboardSkeleton />;
   }
-  // Fetch dashboard data
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['dashboard-overview'],
-    queryFn: getDashboardOverview,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
 
   // Loading state
   if (isLoading) {
@@ -101,10 +105,12 @@ export default function DashboardPage() {
           </h1>
           <HelpLink />
         </div>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here's your overview</p>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here&apos;s your overview</p>
       </div>
 
       <div className="space-y-4 sm:space-y-6">
+        <NeedsAttentionCard />
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
           <StatCard
@@ -372,7 +378,7 @@ function EmptyDashboard() {
           </h1>
           <HelpLink />
         </div>
-        <p className="text-gray-600 dark:text-gray-400">Welcome! Let's get started</p>
+        <p className="text-gray-600 dark:text-gray-400">Welcome! Let&apos;s get started</p>
       </div>
 
       <div className="glass rounded-2xl p-12 shadow-xl text-center">

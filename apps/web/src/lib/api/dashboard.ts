@@ -141,3 +141,36 @@ export function getStatusColor(status: string): string {
       return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
   }
 }
+
+// ============================================
+// NEEDS YOUR ATTENTION
+// ============================================
+
+export type AttentionKey =
+  | 'paymentProofs'
+  | 'bankTransfers'
+  | 'memberApprovals'
+  | 'cashLodgments'
+  | 'overdueCharges'
+  | 'supportTickets'
+  | 'loanApplications'
+  | 'loanRepayments'
+  | 'savingsDeposits'
+  | 'welfarePayouts';
+
+export interface AttentionItem {
+  key: AttentionKey;
+  count: number;
+}
+
+/**
+ * What is waiting on the signed-in officer, one count per queue they may open.
+ * GET /api/dashboard/attention
+ */
+export async function getDashboardAttention(): Promise<AttentionItem[]> {
+  const response = await api.get<{ success: boolean; message?: string; data: { items: AttentionItem[] } }>('/dashboard/attention');
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to fetch what needs attention');
+  }
+  return response.data.data.items;
+}

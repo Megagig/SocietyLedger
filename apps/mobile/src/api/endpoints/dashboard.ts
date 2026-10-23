@@ -73,3 +73,25 @@ export const dashboardApi = {
     return unwrap<DashboardOverviewDTO>(client.get('/dashboard/overview'));
   },
 };
+
+export type AttentionKey =
+  | 'paymentProofs'
+  | 'bankTransfers'
+  | 'memberApprovals'
+  | 'cashLodgments'
+  | 'overdueCharges'
+  | 'supportTickets'
+  | 'loanApplications'
+  | 'loanRepayments'
+  | 'savingsDeposits'
+  | 'welfarePayouts';
+
+export type AttentionItemDTO = { key: AttentionKey; count: number };
+
+export const attentionApi = {
+  /** GET /dashboard/attention — only the queues the caller may open, and only those with something waiting. */
+  async getAttention(): Promise<AttentionItemDTO[]> {
+    const data = await unwrap<{ items: AttentionItemDTO[] }>(client.get('/dashboard/attention'));
+    return data.items;
+  },
+};
