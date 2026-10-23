@@ -355,6 +355,7 @@ export default function CategoriesPage() {
                 <select
                   required
                   value={formData.type}
+                  disabled={!!editingCategory && (editingCategory.usageCount ?? 0) > 0}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
@@ -363,6 +364,11 @@ export default function CategoriesPage() {
                   <option value="donation">Donation</option>
                   <option value="penalty">Penalty</option>
                 </select>
+                {editingCategory && (editingCategory.usageCount ?? 0) > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    The type can&apos;t change because {editingCategory.usageCount} charge(s) or levy campaign(s) already use this category.
+                  </p>
+                )}
               </div>
 
               <div>

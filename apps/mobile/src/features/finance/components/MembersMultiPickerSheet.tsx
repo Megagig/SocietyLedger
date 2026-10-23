@@ -18,16 +18,21 @@ export type PickedMemberRef = { id: number; name: string };
 export type MembersMultiPickerSheetProps = {
   selected: PickedMemberRef[];
   onChange: (members: PickedMemberRef[]) => void;
+  /** Members to leave out of the list (e.g. those already in a levy campaign). */
+  excludeIds?: number[];
 };
 
 /** Choose several members: search the directory and tick as many as you need. Done closes the sheet. */
-export const MembersMultiPickerSheet = forwardRef<BottomSheetModal, MembersMultiPickerSheetProps>(function MembersMultiPickerSheet({ selected, onChange }, ref) {
+export const MembersMultiPickerSheet = forwardRef<BottomSheetModal, MembersMultiPickerSheetProps>(function MembersMultiPickerSheet({ selected, onChange, excludeIds }, ref) {
   const { color } = useThemeTokens();
   const localRef = useRef<BottomSheetModal>(null);
   useImperativeHandle(ref, () => localRef.current as BottomSheetModal, []);
   const [search, setSearch] = useState('');
   const query = useMembersList({ search: search.trim() || undefined, status: 'active' });
-  const members = useMemo(() => query.data?.pages.flatMap((page) => page.members) ?? [], [query.data]);
+  const members = useMemo(() => {
+    const skip = new Set(excludeIds ?? []);
+    return (query.data?.pages.flatMap((page) => page.members) ?? []).filter((m) => !skip.has(m.id));
+  }, [query.data, excludeIds]);
   const chosen = new Set(selected.map((m) => m.id));
 
   const toggle = (id: number, name: string) =>

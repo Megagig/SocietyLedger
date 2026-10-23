@@ -3,10 +3,10 @@ title: "Setting up financial categories"
 description: "Create the dues, levy, donation and penalty categories everything else is charged against."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/finance/categories", "FN6"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/finance/creating-charges", "/docs/finance/setting-up-dues"]
 ---
 
@@ -18,14 +18,34 @@ You need the **create categories** permission, which Administrators and Treasure
 
 ## Create a category
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Finance", "Categories"]} />, then select **Add Category**.</Step>
 <Step>Enter a **Name** and choose a **Type**: Due, Levy, Donation or Penalty.</Step>
 <Step>Set an **Amount** if the category always charges the same amount, and a **Frequency** if it recurs.</Step>
 <Step>Select **Save**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Finance", "Categories"]} />, then tap **+**.</Step>
+<Step>Enter a **Name** and choose a **Type**: Due, Levy, Donation or Penalty.</Step>
+<Step>Set a default **Amount** if the category always charges the same amount, and **How often** it recurs.</Step>
+<Step>Tap **Add category**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/finance/financial-categories-1.webp" alt="Add Category form with Name, Type, Amount and Frequency fields, Type set to Due" />
+
+## Change or switch off a category
+
+Open a category to change its name, default amount, how often it recurs or its description. The list shows how many charges and levy campaigns use each category.
+
+- **The type is locked once anything uses the category.** A dues category with charges on it can't become a penalty category. If you picked the wrong type, add a new category instead.
+- **A new default amount only affects charges raised afterwards.** Charges already raised keep the amount they were raised at.
+- **A category can't be switched off while members still owe charges of that kind.** Switching one off hides it from new charges; the old charges are unaffected, and you can switch it back on at any time.
 
 ## What happens next
 

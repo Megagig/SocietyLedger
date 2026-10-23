@@ -32,7 +32,7 @@ interface LevyCampaign {
   targetAmount: number;
   amountPerMember: number | null;
   deadline: string;
-  status: 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  status: 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'COMPLETED' | 'CANCELLED';
   category: { id: number; name: string };
   _count?: { assignments: number };
   collectedAmount?: number;
@@ -496,6 +496,7 @@ export default function LeviesPage() {
                         </h3>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           campaign.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                          campaign.status === 'CLOSED' ? 'bg-orange-100 text-orange-800' :
                           campaign.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
                           campaign.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
@@ -711,6 +712,7 @@ export default function LeviesPage() {
                 <input
                   type="date"
                   required
+                  min={new Date().toISOString().slice(0, 10)}
                   value={campaignForm.deadline}
                   onChange={(e) => setCampaignForm({ ...campaignForm, deadline: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"

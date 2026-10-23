@@ -7,7 +7,6 @@ import { View } from 'react-native';
 import { toast } from 'sonner-native';
 
 import { ApiError } from '@/api/errors';
-import { membersManageApi } from '@/api/endpoints/membersManage';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { NoPermission } from '@/components/feedback/NoPermission';
 import { SegmentedControl } from '@/components/forms/SegmentedControl';
@@ -18,6 +17,7 @@ import { StickyFooter } from '@/components/layout/StickyFooter';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { allActiveMemberIds } from '@/features/finance/allActiveMemberIds';
 import { ChargeFormFields } from '@/features/finance/components/ChargeFormFields';
 import { MembersMultiPickerSheet, type PickedMemberRef } from '@/features/finance/components/MembersMultiPickerSheet';
 import { useCreateBulkCharges, useCreateCharge } from '@/features/finance/mutations';
@@ -28,17 +28,6 @@ import { useCan } from '@/hooks/useCan';
 
 type Mode = 'single' | 'bulk';
 const singleSchema = buildChargeFormSchema('create');
-
-/** Every active member's id, a page at a time — what "all members" means for a bulk charge. */
-async function allActiveMemberIds(): Promise<number[]> {
-  const ids: number[] = [];
-  for (let page = 1; page <= 50; page++) {
-    const result = await membersManageApi.listMembers({ page, limit: 100, status: 'active' });
-    ids.push(...result.members.map((m) => m.id));
-    if (!result.pagination.hasMore) break;
-  }
-  return ids;
-}
 
 /** project-overview.md §6.9 FN4 — charge one member, or many at once (all active members, or the ones you choose). */
 export default function NewChargeScreen() {

@@ -61,11 +61,15 @@ export default function DuesPage() {
   const fetchData = async () => {
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories?type=due&isActive=true`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories?isActive=true&limit=100`
       );
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
-      setDueCategories(data.data.categories);
+      // Due categories, plus the levy category the officer came here to assign (?categoryId=) so it is already chosen.
+      const wanted = Number(new URLSearchParams(window.location.search).get('categoryId')) || null;
+      const usable: DueCategory[] = data.data.categories.filter((c: DueCategory) => c.type === 'due' || c.id === wanted);
+      setDueCategories(usable);
+      if (wanted && usable.some((c) => c.id === wanted)) setSelectedCategory(wanted);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -75,18 +79,25 @@ export default function DuesPage() {
 
   const fetchMembers = async () => {
     try {
-      const params = new URLSearchParams({
-        limit: '100',
-        ...(memberSearch && { search: memberSearch }),
-        ...(statusFilter && { status: statusFilter }),
-      });
+      const buildParams = (page: number) =>
+        new URLSearchParams({
+          limit: '100',
+          page: String(page),
+          ...(memberSearch && { search: memberSearch }),
+          ...(statusFilter && { status: statusFilter }),
+        });
       
-      const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?${params}`
-      );
-      if (!response.ok) throw new Error('Failed to fetch members');
-      const data = await response.json();
-      setMembers(data.data.members);
+      const all: Member[] = [];
+      for (let page = 1; page <= 50; page++) {
+        const response = await apiGet(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/members?${buildParams(page)}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch members');
+        const data = await response.json();
+        all.push(...data.data.members);
+        if (!data.data.pagination?.hasMore) break;
+      }
+      setMembers(all);
     } catch (err: any) {
       console.error('Error fetching members:', err);
     }

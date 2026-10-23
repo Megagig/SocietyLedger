@@ -3,11 +3,11 @@ title: "Running a levy campaign"
 description: "Set a target, a deadline, and assign a one-off levy to your members."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/finance/levies*", "FN8", "FN9"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/finance/financial-categories", "/docs/finance/overdue-and-reminders"]
+lastVerified: "2026-10-26"
+related: ["/docs/finance/financial-categories", "/docs/finance/overdue-and-reminders", "/docs/finance/editing-voiding-and-deleting"]
 ---
 
 A levy campaign is a one-off collection — a building fund or special project — with its own target and deadline, separate from regular dues.
@@ -18,19 +18,44 @@ You need a **Levy**-type category — see [Setting up financial categories](/doc
 
 ## Start a campaign
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Finance", "Levies"]} />, then the **Campaigns** tab.</Step>
 <Step>Select **New Campaign**.</Step>
-<Step>Choose the levy **Category**, set a **Target Amount** and **Amount per Member**, and a **Deadline**.</Step>
-<Step>Save, then **Assign to Members** to charge everyone who should contribute.</Step>
+<Step>Choose the levy **Category**, set a **Target Amount** and **Amount per Member**, and a **Deadline**. The deadline can't be in the past.</Step>
+<Step>Save, then **Assign Members** to charge everyone who should contribute.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Finance", "Levies"]} />, then the **Campaigns** tab.</Step>
+<Step>Tap **+** to start a campaign.</Step>
+<Step>Choose the **Levy type**, enter the **Total to raise**, the **Amount per member** and a **Deadline**. The deadline can't be in the past.</Step>
+<Step>Tap **Start campaign**, then **Assign members**: all active members, or the ones you choose.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/finance/levy-campaigns-1.webp" alt="Levies Campaigns tab showing an active Building Fund Levy 2026 campaign with its target amount, member count and deadline" />
+
+## What happens next
+
+Each assigned member gets a charge for their share, on their ledger as money they owe, visible in their own account and in [Transactions](/docs/finance/editing-voiding-and-deleting) under the levy's category, tracked the same way as any other charge. You can put more members on the campaign at any time while it is active; members already on it are skipped.
+
+## A levy is a debt
+
+What members were charged stays owed until they pay it, or you waive or void their charge — the campaign itself never makes a debt disappear.
+
+- **Close campaign** stops new members being added. Nothing else changes: members keep being reminded, and the amount they owe stays on their ledger. A closed campaign shows how many members still owe and how much.
+- **Completed** is not something you set. A campaign shows as completed by itself once everyone on it has paid.
+- A campaign can't be reopened once it is closed.
+- To drop what one member owes, open their charge and waive or void it, with a reason. That is always done one member at a time.
+
+### Removing a member by mistake
+
+If you put the wrong member on a campaign, open them in the campaign and choose **Remove**. Their charge is voided and taken off their ledger, so their balance is correct. This isn't possible once they have paid anything — waive or void the charge instead.
 
 <Callout type="note" title="Progress can lag behind real payments">
 A campaign's own progress percentage can read lower than what's actually been collected — if it looks wrong, check [Transactions](/docs/finance/editing-voiding-and-deleting) filtered to the levy's category for the real figures.
 </Callout>
-
-## What happens next
-
-Each assigned member gets a charge for their share, visible in their own account and in [Transactions](/docs/finance/editing-voiding-and-deleting) under the levy's category, tracked the same way as any other charge.

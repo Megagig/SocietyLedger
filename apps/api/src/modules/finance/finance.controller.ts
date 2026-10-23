@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
 // Phase 12: Cache invalidation
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
+import { categoryDeactivateError, categoryTypeChangeError } from './category-rules';
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { sendEmail } from '../../lib/email';
@@ -195,6 +196,7 @@ export const financeController = {
           skip,
           take: limit,
           orderBy: { [queryParams.sortBy]: queryParams.sortOrder },
+          include: { _count: { select: { transactions: true, levyCampaigns: true } } },
         }),
         prisma.financialCategory.count({ where }),
       ]);
@@ -202,7 +204,11 @@ export const financeController = {
       return res.status(200).json({
         success: true,
         data: {
-          categories,
+          // usageCount: how many charges and levy campaigns use the category (its type is locked once that is above 0)
+          categories: categories.map(({ _count, ...category }) => ({
+            ...category,
+            usageCount: _count.transactions + _count.levyCampaigns,
+          })),
           pagination: {
             page,
             limit,
@@ -231,7 +237,7 @@ export const financeController = {
       const category = await prisma.financialCategory.findFirst({
         where: { id: parseInt(id), associationId },
         include: {
-          _count: { select: { transactions: true } },
+          _count: { select: { transactions: true, levyCampaigns: true } },
         },
       });
 
@@ -256,6 +262,7 @@ export const financeController = {
         success: true,
         data: {
           ...category,
+          usageCount: category._count.transactions + category._count.levyCampaigns,
           stats: {
             totalTransactions: stats._count.id,
             totalAmount: stats._sum.amount || 0,
@@ -358,6 +365,25 @@ export const financeController = {
         return res.status(404).json({ success: false, message: 'Category not found' });
       }
 
+      // The type decides how a category's charges behave, so it is locked once anything uses the category.
+      if (validatedData.type !== undefined && validatedData.type !== existing.type) {
+        const [charges, campaigns] = await Promise.all([
+          prisma.transaction.count({ where: { categoryId: existing.id, associationId } }),
+          prisma.levyCampaign.count({ where: { categoryId: existing.id, associationId } }),
+        ]);
+        const typeError = categoryTypeChangeError(existing.type, validatedData.type, { charges, campaigns });
+        if (typeError) return res.status(409).json({ success: false, code: 'CATEGORY_IN_USE', message: typeError });
+      }
+
+      // Switching a category off is the same as deleting it, so the same open-charges rule applies.
+      if (validatedData.isActive === false && existing.isActive) {
+        const openCharges = await prisma.transaction.count({
+          where: { categoryId: existing.id, associationId, isVoided: false, status: { in: ['pending', 'overdue', 'partial'] } },
+        });
+        const deactivateError = categoryDeactivateError(openCharges);
+        if (deactivateError) return res.status(400).json({ success: false, code: 'CATEGORY_HAS_OPEN_CHARGES', message: deactivateError });
+      }
+
       // Check name uniqueness if changing
       if (validatedData.name && validatedData.name !== existing.name) {
         const duplicate = await prisma.financialCategory.findFirst({
@@ -441,7 +467,8 @@ export const financeController = {
         where: {
           categoryId: parseInt(id),
           associationId,
-          status: { in: ['pending', 'overdue'] },
+          isVoided: false,
+          status: { in: ['pending', 'overdue', 'partial'] },
         },
       });
 

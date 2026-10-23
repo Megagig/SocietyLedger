@@ -860,6 +860,7 @@ model LevyCampaignAssignment {
 enum LevyCampaignStatus {
   DRAFT
   ACTIVE
+  CLOSED
   COMPLETED
   CANCELLED
 }

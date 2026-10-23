@@ -31,11 +31,11 @@ function positionOf(index: number, count: number): 'first' | 'middle' | 'last' |
 /** project-overview.md §6.9 FN2 — every charge, newest first, filtered by status and kind, searchable by member or reference. */
 export default function ChargesScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string }>();
+  const params = useLocalSearchParams<{ status?: string; kind?: string }>();
   const canView = useCan(FINANCE_VIEW_ACCESS);
   const canCreate = useCan(CHARGE_CREATE_ACCESS);
   const [status, setStatus] = useState<ChargeStatus | ''>(CHARGE_STATUS_OPTIONS.includes(params.status as ChargeStatus) ? (params.status as ChargeStatus) : '');
-  const [kind, setKind] = useState<ChargeKind | ''>('');
+  const [kind, setKind] = useState<ChargeKind | ''>(CHARGE_KIND_OPTIONS.includes(params.kind as ChargeKind) ? (params.kind as ChargeKind) : '');
   const [search, setSearch] = useState('');
   const term = search.trim();
   const query = useCharges({ status: status || undefined, type: kind || undefined, search: term || undefined });

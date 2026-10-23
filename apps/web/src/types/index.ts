@@ -74,6 +74,8 @@ export interface FinancialCategory {
   frequency?: 'monthly' | 'quarterly' | 'annual' | 'one-time';
   description?: string;
   isActive: boolean;
+  /** Charges and levy campaigns that use this category; its type is locked once this is above 0. */
+  usageCount?: number;
   createdAt: Date;
 }
 

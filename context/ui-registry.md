@@ -1493,6 +1493,16 @@ Built from existing primitives; nothing new in `components/ui`.
 
 - **Wording rule:** deposit status is always *Awaiting confirmation / Confirmed / Not approved* (never Pending/Approved/Rejected) to match the web.
 
+## Mobile Phase 6 — Categories, dues & levies (F6.1, 2026-10-26)
+
+- **`ProgressBar`** (`components/ui`): thin 8dp bar, `bg-surface-sunken` track, `bg-primary` fill (`bg-success` once completed), `progressbar` role with a spoken label. Used for a campaign's collected-vs-target.
+- **`GroupedRow`** (`features/financeSetup/components`): the `ChargeRow` shell as a reusable wrapper — tappable row, hairline separators, `position` first/middle/last/only so separately rendered rows read as one grouped surface; `positionOf(index, count)`.
+- **`CategoryRow`**: name + kind `Badge` (primary) + "Inactive" `Badge` (neutral, row dimmed), default amount via `Money` · frequency, "Used by n charges and campaigns" caption.
+- **`CampaignRow`**: name + `StatusChip` (Active/Closed/Completed/Draft), `ProgressBar`, "₦collected of ₦target", then "category · n/m paid · 12 days left" (a closed or completed campaign shows its deadline date instead of a countdown).
+- **Screens:** `categories/index.tsx` (search, kind chips, active chips, `FlashList` of `CategoryRow`, + in the header), `categories/form.tsx` (sections The category / Default charge / Status; the type becomes read-only text with the reason when locked; danger "Switch this category off" via `ConfirmSheet`), `dues.tsx` ("What to charge" using `ChargeFormFields`, "Who" `SegmentedControl`, summary card in `surface-sunken`), `levies/index.tsx` (three `StatTile`s, `SegmentedControl` Campaigns | Levy types, a 40% actions sheet for a levy type), `levies/campaign-form.tsx`, `levies/assign.tsx`, `levies/[id].tsx` (header with name and status chip, `ProgressBar`, three tiles Assigned / Still owed / Members paid, a `warning-soft` "Closed to new members" card that says the debt stays owed, Details `ListGroup` of `FactRow`s, Members `ListGroup` with status chips; sheets for ⋮ actions, a member's actions, and `ConfirmSheet`s for Close and Remove).
+- **Rule shown in the UI:** closing a campaign is a non-destructive confirm (primary button, "Keep open"); removing a member is a `danger` confirm and only appears while the member has paid nothing.
+- **Web parity:** campaign page "Close campaign" outline button and an orange "Closed to new members" banner; status pill `bg-orange-100 text-orange-800` for Closed; category type `select` disabled with a caption when in use.
+
 ---
 
 ## Retired

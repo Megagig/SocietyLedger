@@ -51,8 +51,16 @@ export const DOCS_LINKS: Record<string, string> = {
   FN3: '/docs/finance/creating-charges',
   FN4: '/docs/finance/creating-charges',
 
+  '/dashboard/finance/categories': '/docs/finance/financial-categories',
+  FN6: '/docs/finance/financial-categories',
+
+  '/dashboard/finance/dues': '/docs/finance/setting-up-dues',
+  FN7: '/docs/finance/setting-up-dues',
+
   '/dashboard/finance/levies': '/docs/finance/levy-campaigns',
+  '/dashboard/finance/levies/[id]': '/docs/finance/levy-campaigns',
   FN8: '/docs/finance/levy-campaigns',
+  FN9: '/docs/finance/levy-campaigns',
 
   '/dashboard/finance/penalties': '/docs/finance/penalties-and-late-fees',
   FN11: '/docs/finance/penalties-and-late-fees',

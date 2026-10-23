@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { AlertCircle, BellRing, BookOpen, HandCoins, ListChecks, PlusCircle, Wallet } from 'lucide-react-native';
+import { AlertCircle, BellRing, BookOpen, CalendarClock, HandCoins, ListChecks, PlusCircle, Rocket, Tags, Wallet } from 'lucide-react-native';
 import { PieChart } from 'react-native-gifted-charts';
 import { Pressable, View } from 'react-native';
 
@@ -128,6 +128,11 @@ export default function FinanceOverviewScreen() {
               {canCreate ? (
                 <ListItem leading={<IconCircle icon={PlusCircle} tone="info" />} title="Charge members" meta="One member, or many at once" showChevron onPress={() => go('transactions/new')} testID="finance-new-charge" />
               ) : null}
+              {canCreate ? (
+                <ListItem leading={<IconCircle icon={CalendarClock} tone="info" />} title="Generate dues" meta="Charge members their dues in one go" showChevron onPress={() => go('dues')} testID="finance-dues" />
+              ) : null}
+              <ListItem leading={<IconCircle icon={Rocket} tone="primary" />} title="Levies" meta="Campaigns and special contributions" showChevron onPress={() => go('levies')} testID="finance-levies" />
+              <ListItem leading={<IconCircle icon={Tags} tone="primary" />} title="Categories" meta="The kinds of dues, levies, donations and penalties" showChevron onPress={() => go('categories')} testID="finance-categories" />
               {canPay ? (
                 <ListItem leading={<IconCircle icon={HandCoins} tone="info" />} title="Record a payment" meta="Money a member paid you directly" showChevron onPress={() => go('payments/new')} testID="finance-new-payment" />
               ) : null}

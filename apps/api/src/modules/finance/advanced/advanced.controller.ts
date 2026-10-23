@@ -3,6 +3,19 @@ import { z } from 'zod';
 import { leviesService } from './levies.service';
 import { donationsService } from './donations.service';
 import { penaltiesService } from './penalties.service';
+import { LevyRuleError } from './levy-rules';
+
+/** A rule the officer broke (wrong state, nothing to do) answers with its own status and code; anything else is a 500. */
+function levyFailure(res: Response, error: any, fallback: string) {
+  if (error instanceof z.ZodError) {
+    return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+  }
+  if (error instanceof LevyRuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message: error?.message || fallback });
+}
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -28,14 +41,19 @@ const updateCampaignSchema = z.object({
   deadline: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid date format',
   }).optional(),
-  status: z.enum(['DRAFT', 'ACTIVE', 'COMPLETED', 'CANCELLED']).optional(),
+  // Officers only start a draft or close an active campaign. Completed is worked out from payments.
+  status: z.enum(['ACTIVE', 'CLOSED']).optional(),
 });
 
-const assignMembersSchema = z.object({
-  memberIds: z.array(z.number().int().positive()).min(1),
-  amount: z.number().positive().optional(),
-  createTransactions: z.boolean().optional().default(true),
-});
+const assignMembersSchema = z
+  .object({
+    memberIds: z.array(z.number().int().positive()).min(1).optional(),
+    /** Every active member, instead of a chosen list. */
+    allActive: z.boolean().optional(),
+    amount: z.number().positive().optional(),
+    createTransactions: z.boolean().optional().default(true),
+  })
+  .refine((v) => v.allActive === true || (v.memberIds && v.memberIds.length > 0), { message: 'Choose members, or all active members.' });
 
 // Donation Schemas
 const createAllocationSchema = z.object({
@@ -116,8 +134,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error creating campaign:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to create campaign' });
+      return levyFailure(res, error, 'Failed to create campaign');
     }
   },
 
@@ -155,11 +172,8 @@ export const advancedController = {
 
       return res.status(200).json({ success: true, data: campaign });
     } catch (error: any) {
-      console.error('Error getting campaign:', error);
-      return res.status(error.message === 'Campaign not found' ? 404 : 500).json({
-        success: false,
-        message: error.message || 'Failed to get campaign',
-      });
+      if (error?.message === 'Campaign not found') return res.status(404).json({ success: false, message: error.message });
+      return levyFailure(res, error, 'Failed to get campaign');
     }
   },
 
@@ -190,8 +204,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error updating campaign:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to update campaign' });
+      return levyFailure(res, error, 'Failed to update campaign');
     }
   },
 
@@ -238,8 +251,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error assigning members:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to assign members' });
+      return levyFailure(res, error, 'Failed to assign members');
     }
   },
 
@@ -261,8 +273,7 @@ export const advancedController = {
         message: 'Assignment removed successfully',
       });
     } catch (error: any) {
-      console.error('Error removing assignment:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to remove assignment' });
+      return levyFailure(res, error, 'Failed to remove assignment');
     }
   },
 
