@@ -1,4 +1,4 @@
-import { Bell, Briefcase, LifeBuoy, MailPlus, UserCheck, Users } from 'lucide-react-native';
+import { Bell, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, usePendingApprovalCount, useMemberStats } from '@/features/members/queries';
+import { PROOFS_VIEW_ACCESS, usePendingProofCount } from '@/features/nigerianPayments/queries';
 import { SUPPORT_STAFF_ACCESS, useStaffTickets } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
@@ -36,6 +37,8 @@ export default function ManageScreen() {
   const canMembers = useCan(MEMBERS_VIEW_ACCESS);
   const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
   const canInvite = useCan(MEMBERS_INVITE_ACCESS);
+  const canProofs = useCan(PROOFS_VIEW_ACCESS);
+  const waitingProofs = usePendingProofCount().data ?? 0;
   const waitingApprovals = usePendingApprovalCount().data ?? 0;
   const ticketsQuery = useStaffTickets();
   const statsQuery = useMemberStats();
@@ -51,7 +54,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canSupport ? (
+      {canMembers || canProofs || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -86,6 +89,22 @@ export default function ManageScreen() {
                     testID="manage-invite"
                   />
                 ) : null}
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canProofs ? (
+            <Section title="Payments">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={ReceiptText} tone={waitingProofs > 0 ? 'warning' : 'primary'} />}
+                  title="Payments"
+                  meta="Verify the payment proofs members send"
+                  trailing={waitingProofs > 0 ? <Badge tone="warning">{`${waitingProofs} waiting`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/payments' as never)}
+                  testID="manage-payments"
+                />
               </ListGroup>
             </Section>
           ) : null}

@@ -18,6 +18,7 @@ import {
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
+import { decidePaymentProof, targetTransactionIds } from './payment-proof-decision';
 
 export const nigerianPaymentsService = {
   // ==========================================
@@ -778,142 +779,9 @@ export const nigerianPaymentsService = {
   // TASK-PAY-008: PAYMENT VERIFICATION WORKFLOW
   // ==========================================
 
-  async verifyPaymentProof(
-    id: number,
-    associationId: number,
-    userId: number,
-    verification: PaymentProofVerification
-  ) {
-    // Accounting syncs run after the DB transaction commits — onPaymentRecorded is
-    // non-critical and must not cause the approval to roll back if it fails.
-    type AccountingSync = () => Promise<void>;
-    const accountingSyncs: AccountingSync[] = [];
-
-    const proof = await prisma.$transaction(async (tx) => {
-      const updated = await tx.paymentProof.update({
-        where: { id },
-        data: {
-          status: verification.status,
-          verifiedBy: userId,
-          verifiedAt: new Date(),
-          rejectionReason: verification.rejectionReason,
-          notes: verification.notes,
-        },
-        include: {
-          transaction: true,
-          bankTransfer: true,
-        },
-      });
-
-      if (verification.status === 'APPROVED') {
-        // R7.2 (G17): transactionIds (multi-item member declaration) and transactionId
-        // (single bank-transfer-linked proof) are mutually exclusive paths. Checking
-        // transactionIds first ensures a proof that carries both fields only processes
-        // payments once — the bank-transfer path (else if) is skipped when declarations
-        // are present, preventing double payment records.
-        if (updated.transactionIds.length > 0) {
-          const transactions = await tx.transaction.findMany({
-            where: { id: { in: updated.transactionIds }, associationId },
-            include: { payments: { select: { amountPaid: true } } },
-          });
-
-          for (const txn of transactions) {
-            const alreadyPaid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
-            const balance = new Decimal(txn.amount).minus(alreadyPaid);
-            if (balance.lessThanOrEqualTo(0)) continue;
-
-            const paymentCount = await tx.payment.count({ where: { associationId } });
-            const payment = await tx.payment.create({
-              data: {
-                associationId,
-                transactionId: txn.id,
-                amountPaid: balance,
-                paymentDate: new Date(),
-                paymentMethod: updated.paymentMethod || 'bank_transfer',
-                receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
-                confirmedBy: userId,
-                confirmedAt: new Date(),
-              },
-              include: {
-                transaction: {
-                  include: {
-                    member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-                    category: { select: { id: true, name: true, type: true } },
-                  },
-                },
-              },
-            });
-
-            await tx.transaction.update({ where: { id: txn.id }, data: { status: 'paid' } });
-            await tx.levyCampaignAssignment.updateMany({
-              where: { transactionId: txn.id },
-              data: { status: 'paid' },
-            });
-
-            accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
-            accountingSyncs.push(() => memberLedgerService.createFromPayment(payment.id, userId).then(() => {}));
-          }
-        } else if (updated.transactionId && updated.transaction) {
-          // Single bank-transfer-linked proof path — only runs when transactionIds is empty
-          await tx.transaction.update({
-            where: { id: updated.transactionId },
-            data: {
-              status: 'paid',
-              paymentDate: new Date(),
-              paymentMethod: 'bank_transfer',
-            },
-          });
-
-          const paymentCount = await tx.payment.count({ where: { associationId } });
-          const payment = await tx.payment.create({
-            data: {
-              associationId,
-              transactionId: updated.transactionId,
-              amountPaid: updated.transaction.amount,
-              paymentDate: new Date(),
-              paymentMethod: 'bank_transfer',
-              receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
-              confirmedBy: userId,
-              confirmedAt: new Date(),
-            },
-            include: {
-              transaction: {
-                include: {
-                  member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-                  category: { select: { id: true, name: true, type: true } },
-                },
-              },
-            },
-          });
-
-          accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
-          accountingSyncs.push(() => memberLedgerService.createFromPayment(payment.id, userId).then(() => {}));
-        }
-
-        if (updated.bankTransferId) {
-          await tx.bankTransfer.update({
-            where: { id: updated.bankTransferId },
-            data: {
-              status: 'VERIFIED',
-              verifiedBy: userId,
-              verifiedAt: new Date(),
-            },
-          });
-        }
-      }
-
-      return updated;
-    });
-
-    for (const sync of accountingSyncs) {
-      try {
-        await sync();
-      } catch (syncError) {
-        console.error('Accounting sync failed (non-critical):', syncError);
-      }
-    }
-
-    return proof;
+  /** Decides a proof once — see payment-proof-decision.ts for the guards (pending only, no self-approval, something to apply). */
+  async verifyPaymentProof(id: number, associationId: number, userId: number, verification: PaymentProofVerification) {
+    return decidePaymentProof(id, associationId, userId, verification);
   },
 
   async getPaymentProofs(
@@ -956,7 +824,8 @@ export const nigerianPaymentsService = {
     ]);
 
     return {
-      proofs,
+      // The storage key stays server-side — clients only learn whether a file is attached and fetch it through the link endpoints.
+      proofs: proofs.map(({ filepath, ...rest }) => ({ ...rest, hasFile: Boolean(filepath) })),
       pagination: {
         page,
         limit,
@@ -967,8 +836,13 @@ export const nigerianPaymentsService = {
     };
   },
 
+  /**
+   * One proof with the charges it asks to settle expanded (`declaredItems`), so the officer can compare them with the bank
+   * statement. `declaredBalance` is what approving will record: each charge's remaining balance, summed — voided and waived
+   * charges and ones already settled count for nothing. `file` is never the storage key, only whether one is attached.
+   */
   async getPaymentProofById(id: number, associationId: number) {
-    return prisma.paymentProof.findFirst({
+    const proof = await prisma.paymentProof.findFirst({
       where: { id, associationId },
       include: {
         transaction: {
@@ -981,6 +855,43 @@ export const nigerianPaymentsService = {
         member: true,
       },
     });
+    if (!proof) return null;
+
+    const ids = targetTransactionIds(proof);
+    const transactions = ids.length
+      ? await prisma.transaction.findMany({
+          where: { id: { in: ids }, associationId },
+          include: { category: { select: { id: true, name: true, type: true } }, payments: { select: { amountPaid: true } } },
+          orderBy: { dueDate: 'asc' },
+        })
+      : [];
+
+    const declaredItems = transactions.map((txn) => {
+      const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+      const remaining = new Decimal(txn.amount).minus(paid);
+      const counts = !txn.isVoided && txn.status !== 'waived' && remaining.greaterThan(0);
+      return {
+        id: txn.id,
+        referenceNumber: txn.referenceNumber,
+        category: txn.category,
+        dueDate: txn.dueDate,
+        status: txn.status,
+        isVoided: txn.isVoided,
+        amount: txn.amount,
+        paid,
+        balance: counts ? remaining : new Decimal(0),
+      };
+    });
+    const declaredBalance = declaredItems.reduce((sum, item) => sum.plus(item.balance), new Decimal(0));
+
+    return {
+      ...proof,
+      // Never expose the storage key — the file is fetched through the short-lived link endpoints.
+      filepath: undefined,
+      hasFile: Boolean(proof.filepath),
+      declaredItems,
+      declaredBalance,
+    };
   },
 
   // ==========================================

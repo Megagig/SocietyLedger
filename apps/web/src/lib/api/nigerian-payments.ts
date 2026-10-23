@@ -101,7 +101,10 @@ export interface PaymentProof {
   bankTransferId: number | null;
   paymentMethod: string | null;
   filename: string | null;
-  filepath: string | null;
+  /** Never sent any more — the storage key stays on the server. Use `hasFile` and `getPaymentProofFileUrl`. */
+  filepath?: string | null;
+  /** Whether a receipt file is attached (lists and the detail endpoint). */
+  hasFile?: boolean;
   fileSize: number | null;
   mimeType: string | null;
   declarationNote: string | null;
@@ -111,8 +114,31 @@ export interface PaymentProof {
   verifiedBy?: number | null;
   rejectionReason?: string | null;
   notes?: string | null;
-  member?: { id: number; memberId: string; firstName: string; lastName: string };
+  member?: { id: number; memberId: string; firstName: string; lastName: string; email?: string | null; phone?: string | null; userId?: number | null };
   transaction?: { id: number; referenceNumber: string; amount: number; status: string } | null;
+  /** Detail endpoint only: the charges this proof asks to settle, each at the balance approving would record. */
+  declaredItems?: PaymentProofDeclaredItem[];
+  /** Detail endpoint only: what approving records in total. */
+  declaredBalance?: string | number;
+}
+
+export interface PaymentProofDeclaredItem {
+  id: number;
+  referenceNumber: string | null;
+  category: { id: number; name: string; type: string };
+  dueDate: string | null;
+  status: string;
+  isVoided: boolean;
+  amount: string | number;
+  paid: string | number;
+  balance: string | number;
+}
+
+export interface PaymentProofFileLink {
+  url: string;
+  filename: string | null;
+  mimeType: string | null;
+  expiresInSeconds: number;
 }
 
 export interface NigerianBank {
@@ -309,6 +335,12 @@ export const nigerianPaymentsApi = {
 
   async getPaymentProof(id: string): Promise<PaymentProof> {
     const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS}/${id}`);
+    return response.data.data;
+  },
+
+  /** A signed link to the receipt, valid for an hour. A bare `/download` link can't carry the auth token, so open this URL instead. */
+  async getPaymentProofFileUrl(id: string | number): Promise<PaymentProofFileLink> {
+    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.PAYMENT_PROOFS}/${id}/file-url`);
     return response.data.data;
   },
 

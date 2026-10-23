@@ -58,6 +58,9 @@ export const DOCS_LINKS: Record<string, string> = {
   FN12: '/docs/finance/overdue-and-reminders',
 
   '/dashboard/payments/nigerian/verification': '/docs/payments/verifying-payment-proofs',
+  '/dashboard/payments/verification': '/docs/payments/verifying-payment-proofs',
+  PY1: '/docs/payments/verifying-payment-proofs',
+  PY2: '/docs/payments/verifying-payment-proofs',
   PY3: '/docs/payments/verifying-payment-proofs',
 
   '/dashboard/payments/nigerian/reconciliation': '/docs/payments/matching-and-reconciliation',

@@ -207,6 +207,13 @@ router.get('/proofs/:id/download',
   nigerianPaymentsController.downloadPaymentProof
 );
 
+// Same short-lived link, as JSON — for the mobile app, which can't follow the redirect above with its auth header.
+// A member only gets the link to a proof they submitted themselves (enforced in the controller).
+router.get('/proofs/:id/file-url',
+  requireAnyPermission([PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENTS_VIEW_OWN]),
+  nigerianPaymentsController.getPaymentProofFileUrl
+);
+
 // ==========================================
 // DASHBOARD ROUTES (TASK-PAY-006)
 // ==========================================

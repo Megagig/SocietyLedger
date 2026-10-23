@@ -103,11 +103,11 @@ export const uploadPaymentProofSchema = z.object({
 
 export const verifyPaymentProofSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
-  rejectionReason: z.string().optional(),
+  rejectionReason: z.string().trim().max(500, 'Keep the reason under 500 characters').optional(),
   notes: z.string().optional(),
 }).refine(
-  (data) => data.status !== 'REJECTED' || data.rejectionReason,
-  { message: 'Rejection reason is required when rejecting' }
+  (data) => data.status !== 'REJECTED' || Boolean(data.rejectionReason),
+  { message: 'Rejection reason is required when rejecting', path: ['rejectionReason'] }
 );
 
 // Query Schemas

@@ -1,35 +1,65 @@
 ---
 title: "Verifying payment proofs"
-description: "Review a bank transfer proof against your bank statement and approve or reject it."
+description: "Check a member's payment proof against your bank statement, then verify or reject it."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/payments/nigerian/verification", "PY2", "PY3"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/payments/verification", "/dashboard/payments/nigerian/verification", "PY1", "PY2", "PY3"]
 status: published
 lastVerified: "2026-10-13"
-related: ["/docs/payments/recording-bank-transfers", "/docs/payments/matching-and-reconciliation"]
+related: ["/docs/payments/recording-bank-transfers", "/docs/payments/matching-and-reconciliation", "/docs/payments/how-members-pay"]
 ---
 
-When a transfer has a proof attached — a screenshot or receipt of the sender's transfer — check it here before confirming the payment.
+When a member says they've paid by bank transfer, cash or another way, they send a payment proof: a receipt, or a short note. Check it against your bank statement here, then verify or reject it.
 
 ## Before you start
 
-You need the **view payments** permission, which Administrators and Treasurers have by default.
+- To see proofs, you need the **view payments** permission.
+- To verify or reject them, you need the **approve payments** permission. Administrators and Treasurers have both by default.
+- You can't verify or reject a proof you sent yourself. Another officer has to.
 
 ## Review a proof
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
-<Step>Go to <MenuPath items={["Payments", "Nigerian", "Verification"]} />.</Step>
-<Step>Filter by status if you have a backlog, and open a proof to review it against your bank statement.</Step>
-<Step>Select **Verify** if it matches, or **Reject** with a reason if it doesn't.</Step>
+<Step>Go to <MenuPath items={["Finance", "Payment Verification"]} />.</Step>
+<Step>On the **Payment Proofs** tab, **Waiting** shows what needs checking. **Verified** and **Rejected** show earlier decisions.</Step>
+<Step>Select **Review** on a proof.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Payments", "Payment proofs"]} />.</Step>
+<Step>**Waiting** shows what needs checking. **Verified** and **Rejected** show earlier decisions.</Step>
+<Step>Select a proof to open it.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/payments/verifying-payment-proofs-1.webp" alt="Payment Verification Queue showing Pending, Verified, Rejected and Total counts, currently empty" />
 
-<Callout type="note" title="Proofs are attached when a transfer is recorded">
-A proof reaches this queue when an officer attaches one while [recording a bank transfer](/docs/payments/recording-bank-transfers) — there's no separate member-facing upload yet.
+The proof shows the receipt and the **charges to match**: the dues and levies the member says they paid, with the amount still owing on each and a total. Compare that total with your bank statement. You can zoom into an image receipt. A PDF receipt opens in your phone or browser's own viewer.
+
+## Verify or reject
+
+- Select **Verify payment** if the money is in your account. You'll be asked to confirm.
+- Select **Reject**, and give a reason, if it isn't. For example, "Only ₦10,000 received." The reason is required.
+
+Verify and Reject are final. A proof can only be decided once.
+
+<Callout type="warning" title="Verify covers every charge on the proof">
+You can't verify just some of the charges. If the money received doesn't cover all of them, reject the proof and say how much you received. The member can then send a new proof for the right charges.
 </Callout>
 
 ## What happens next
 
-A verified proof confirms the transfer; a rejected one notifies whoever submitted it, with your reason.
+When you verify, each charge on the proof is marked paid for the amount still owing, and the payments show in the member's balance and statement. Charges that are already settled, voided or waived are skipped, so nothing is recorded twice.
+
+The member gets a notification either way. If you rejected the proof, it includes your reason so they know what to fix. When a member sends a proof, officers who can verify get a notification too.
+
+## If something looks wrong
+
+- **"This proof isn't linked to any charge."** The member sent a proof without choosing what it pays for, so verifying would record nothing. Reject it with a reason and ask them to send it again.
+- **"Already verified" or "just decided by someone else".** Another officer got there first. Reopen the proof to see the result.
+- **The receipt doesn't load.** The link is only valid for an hour. Close the proof and open it again.

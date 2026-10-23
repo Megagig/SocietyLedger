@@ -5,9 +5,14 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import path from 'path';
+import { PlatformRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { PERMISSIONS } from '../../lib/permissions';
 import { uploadFile, getPresignedUrl } from '../../lib/storage';
+import { RBACService } from '../../services/rbac.service';
+import { notifyProofDecided, notifyProofSubmitted } from '../../services/payment-proof-notifications';
 import { nigerianPaymentsService } from './nigerian-payments.service';
+import { PROOF_DECISION_STATUS, ProofDecisionError } from './payment-proof-decision';
 import {
   createBankAccountSchema,
   updateBankAccountSchema,
@@ -26,6 +31,26 @@ import {
   paymentProofQuerySchema,
 } from './nigerian-payments.validation';
 import { NIGERIAN_BANKS } from './nigerian-payments.types';
+
+/**
+ * The proof a caller may fetch the file of. The route lets members in (payments.view_own), so this is where "own" is enforced:
+ * officers (payments.view) get any proof in the association, everyone else only the ones they submitted. Without it, any
+ * member could read any other member's receipt just by counting proof ids.
+ */
+async function findProofFileForCaller(req: Request, id: number, associationId: number) {
+  const proof = await prisma.paymentProof.findFirst({ where: { id, associationId } });
+  if (!proof || !req.user) return null;
+
+  const isOfficer =
+    req.user.platformRole === PlatformRole.SUPER_ADMIN ||
+    (await RBACService.hasAnyPermission(
+      { userId: req.user.id, associationId: req.user.associationId ?? null, platformRole: req.user.platformRole ?? null },
+      [PERMISSIONS.PAYMENT_VIEW],
+    ));
+  if (isOfficer) return proof;
+
+  return req.user.memberId !== undefined && proof.memberId === req.user.memberId ? proof : null;
+}
 
 export const nigerianPaymentsController = {
   // ==========================================
@@ -811,6 +836,13 @@ export const nigerianPaymentsController = {
         },
       });
 
+      // Officers who can verify proofs are told one is waiting — fire-and-forget.
+      void notifyProofSubmitted(associationId, {
+        id: proof.id,
+        memberUserId: req.user!.id,
+        memberName: `${proof.member.firstName} ${proof.member.lastName}`.trim(),
+      });
+
       return res.status(201).json({
         success: true,
         message: 'Payment proof uploaded successfully',
@@ -863,6 +895,9 @@ export const nigerianPaymentsController = {
         },
       });
 
+      // Tell the member how it went (with the reason, if rejected) — fire-and-forget.
+      void notifyProofDecided(associationId, proof);
+
       return res.status(200).json({
         success: true,
         message: `Payment proof ${data.status.toLowerCase()} successfully`,
@@ -870,7 +905,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof ProofDecisionError) {
+        return res.status(PROOF_DECISION_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error verifying payment proof:', error);
       return res.status(500).json({ success: false, message: 'Failed to verify payment proof' });
@@ -940,9 +978,7 @@ export const nigerianPaymentsController = {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
       }
 
-      const proof = await prisma.paymentProof.findFirst({
-        where: { id: parseInt(id), associationId },
-      });
+      const proof = await findProofFileForCaller(req, parseInt(id), associationId);
 
       if (!proof) {
         return res.status(404).json({ success: false, message: 'Payment proof not found' });
@@ -959,6 +995,37 @@ export const nigerianPaymentsController = {
     } catch (error) {
       console.error('Error generating download URL:', error);
       return res.status(500).json({ success: false, message: 'Failed to generate download URL' });
+    }
+  },
+
+  /**
+   * GET /proofs/:id/file-url — the same short-lived link as /download, but as JSON, for clients (the mobile app) that can't follow
+   * a redirect with their auth header. Officers get any proof in the association; a member only their own.
+   */
+  async getPaymentProofFileUrl(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const proof = await findProofFileForCaller(req, parseInt(req.params.id), associationId);
+      if (!proof) {
+        return res.status(404).json({ success: false, message: 'Payment proof not found' });
+      }
+      if (!proof.filepath) {
+        return res.status(404).json({ success: false, message: 'No file attached to this proof' });
+      }
+
+      const expiresInSeconds = 3600;
+      const url = await getPresignedUrl(proof.filepath, expiresInSeconds);
+      return res.status(200).json({
+        success: true,
+        data: { url, filename: proof.filename, mimeType: proof.mimeType, expiresInSeconds },
+      });
+    } catch (error) {
+      console.error('Error generating proof file link:', error);
+      return res.status(500).json({ success: false, message: 'Failed to generate the file link' });
     }
   },
 
