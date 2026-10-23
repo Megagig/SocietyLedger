@@ -23,8 +23,10 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { smsApi, SMSCampaign, SMSCampaignStatus } from '@/lib/api/sms';
 import { CampaignStatusBadge } from '@/components/communications/CampaignStatusBadge';
+import { useConfirm } from '@/hooks/useConfirm';
 
 export default function CampaignsListPage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<SMSCampaignStatus | null>(null);
@@ -70,7 +72,7 @@ export default function CampaignsListPage() {
   };
 
   const handleDeleteCampaign = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this campaign?')) {
+    if (!(await confirm({ message: 'Are you sure you want to delete this campaign?', danger: true }))) {
       return;
     }
 
@@ -152,6 +154,7 @@ export default function CampaignsListPage() {
 
   return (
     <Container size="xl" py="xl">
+      {confirmElement}
       <Stack gap="xl">
         {/* Header */}
         <Group justify="space-between" align="center">

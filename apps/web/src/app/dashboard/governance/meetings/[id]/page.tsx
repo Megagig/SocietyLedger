@@ -20,6 +20,7 @@ import {
   AttendanceStatus,
 } from '@/lib/api/meetings';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { useConfirm } from '@/hooks/useConfirm';
 import {
   IconArrowLeft,
   IconEdit,
@@ -46,6 +47,7 @@ const ATTENDANCE_STATUS_OPTIONS: { value: AttendanceStatus; label: string; color
 ];
 
 export default function MeetingDetailPage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const router = useRouter();
   const params = useParams();
   const meetingId = parseInt(params.id as string);
@@ -221,7 +223,7 @@ export default function MeetingDetailPage() {
   };
 
   const handleDeleteAgendaItem = async (agendaId: number) => {
-    if (!window.confirm('Remove this agenda item?')) return;
+    if (!(await confirm({ message: 'Remove this agenda item?', danger: true }))) return;
     try {
       await deleteAgendaItem(meetingId, agendaId);
       await fetchMeeting();
@@ -272,6 +274,7 @@ export default function MeetingDetailPage() {
 
   return (
     <div className="space-y-6">
+      {confirmElement}
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
@@ -649,7 +652,7 @@ export default function MeetingDetailPage() {
             <div className="p-12 text-center text-gray-500">
               <IconUsers size={48} className="mx-auto mb-4 text-gray-300" />
               <p>No attendance records yet</p>
-              <p className="text-sm mt-2">Click "Initialize Attendance" to create records for all members</p>
+              <p className="text-sm mt-2">Click &quot;Initialize Attendance&quot; to create records for all members</p>
             </div>
           )}
         </div>

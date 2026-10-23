@@ -6,8 +6,10 @@ import { notificationsApi, Notification } from '@/lib/api/notifications';
 import { IconArchive, IconTrash, IconRefresh, IconSearch, IconFilter } from '@tabler/icons-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
+import { useConfirm } from '@/hooks/useConfirm';
 
 export default function NotificationArchivePage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,14 +48,14 @@ export default function NotificationArchivePage() {
     },
   });
 
-  const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to permanently delete this notification?')) {
+  const handleDelete = async (id: number) => {
+    if (await confirm({ message: 'Are you sure you want to permanently delete this notification?', danger: true })) {
       deleteMutation.mutate(id);
     }
   };
 
-  const handleBulkDelete = () => {
-    if (confirm(`Are you sure you want to permanently delete ${selectedNotifications.length} notification(s)?`)) {
+  const handleBulkDelete = async () => {
+    if ((await confirm({ message: `Are you sure you want to permanently delete ${selectedNotifications.length} notification(s)?`, danger: true }))) {
       bulkDeleteMutation.mutate(selectedNotifications);
     }
   };
@@ -127,6 +129,7 @@ export default function NotificationArchivePage() {
 
   return (
     <div className="space-y-6">
+      {confirmElement}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">

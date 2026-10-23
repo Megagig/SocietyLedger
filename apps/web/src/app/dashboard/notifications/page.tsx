@@ -8,8 +8,10 @@ import { notificationsApi } from '@/lib/api/notifications';
 import { IconBell, IconCheck, IconTrash, IconSearch, IconFilter, IconX } from '@tabler/icons-react';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
+import { useConfirm } from '@/hooks/useConfirm';
 
 export default function NotificationsCenterPage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -97,8 +99,8 @@ export default function NotificationsCenterPage() {
     selectedNotifications.forEach(id => markAsReadMutation.mutate(id));
   };
 
-  const handleBulkDelete = () => {
-    if (confirm(`Are you sure you want to delete ${selectedNotifications.length} notifications?`)) {
+  const handleBulkDelete = async () => {
+    if ((await confirm({ message: `Are you sure you want to delete ${selectedNotifications.length} notifications?`, danger: true }))) {
       bulkDeleteMutation.mutate(selectedNotifications);
     }
   };
@@ -194,6 +196,7 @@ export default function NotificationsCenterPage() {
 
   return (
     <div className="space-y-6">
+      {confirmElement}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -424,8 +427,8 @@ export default function NotificationsCenterPage() {
                         </button>
                       )}
                       <button
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this notification?')) {
+                        onClick={async () => {
+                          if (await confirm({ message: 'Are you sure you want to delete this notification?', danger: true })) {
                             deleteNotificationMutation.mutate(notification.id);
                           }
                         }}

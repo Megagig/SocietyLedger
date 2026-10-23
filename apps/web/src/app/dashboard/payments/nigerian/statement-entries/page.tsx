@@ -25,7 +25,8 @@ import {
   IconCheck,
   IconX
 } from '@tabler/icons-react';
-import nigerianPaymentsApi, { BankStatementEntry } from '@/lib/api/nigerian-payments';
+import nigerianPaymentsApi, { BankStatementEntry } from '@/lib/api/nigerian-payments';
+import { toast } from '@/lib/toast';
 
 export default function StatementEntriesPage() {
   const router = useRouter();
@@ -107,7 +108,7 @@ export default function StatementEntriesPage() {
 
   const handleManualMatch = () => {
     if (selectedEntries.length === 0) {
-      alert('Please select at least one entry to match');
+      toast.error('Please select at least one entry to match');
       return;
     }
     setShowMatchModal(true);

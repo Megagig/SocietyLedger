@@ -87,9 +87,7 @@ export default function ReconciliationHistoryPage() {
 
   const handleDelete = () => {
     if (!showDetailModal) return;
-    if (!confirm('Are you sure you want to delete this reconciliation?')) {
-      return;
-    }
+    // The delete dialog below does the confirming.
     setShowDeleteModal(true);
   };
 

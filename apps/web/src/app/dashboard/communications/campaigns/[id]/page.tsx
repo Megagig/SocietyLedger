@@ -21,8 +21,10 @@ import { notifications } from '@mantine/notifications';
 import { smsApi, SMSCampaign } from '@/lib/api/sms';
 import { CampaignStatusBadge } from '@/components/communications/CampaignStatusBadge';
 import { CampaignProgress } from '@/components/communications/CampaignProgress';
+import { useConfirm } from '@/hooks/useConfirm';
 
 export default function CampaignDetailPage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const router = useRouter();
   const params = useParams();
   const campaignId = Array.isArray(params.id) ? parseInt(params.id[0]) : parseInt(params.id || '0');
@@ -93,22 +95,22 @@ export default function CampaignDetailPage() {
     },
   });
 
-  const handleStart = () => {
-    if (!confirm('Are you sure you want to start this campaign?')) {
+  const handleStart = async () => {
+    if (!(await confirm({ message: 'Are you sure you want to start this campaign?' }))) {
       return;
     }
     startMutation.mutate();
   };
 
-  const handleCancel = () => {
-    if (!confirm('Are you sure you want to cancel this campaign?')) {
+  const handleCancel = async () => {
+    if (!(await confirm({ message: 'Are you sure you want to cancel this campaign?', danger: true }))) {
       return;
     }
     cancelMutation.mutate();
   };
 
-  const handleDelete = () => {
-    if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+  const handleDelete = async () => {
+    if (!(await confirm({ message: 'Are you sure you want to delete this campaign? This action cannot be undone.', danger: true }))) {
       return;
     }
     deleteMutation.mutate();
@@ -145,6 +147,7 @@ export default function CampaignDetailPage() {
 
   return (
     <Container size="xl" py="xl">
+      {confirmElement}
       <LoadingOverlay visible={startMutation.isPending || cancelMutation.isPending || deleteMutation.isPending} />
       <Stack gap="xl">
         {/* Header */}
@@ -274,7 +277,7 @@ export default function CampaignDetailPage() {
         {/* Info */}
         {campaign.status === 'DRAFT' && (
           <Alert color="blue" variant="light">
-            This campaign is a draft. Click "Start Campaign" to begin sending messages.
+            This campaign is a draft. Click &quot;Start Campaign&quot; to begin sending messages.
           </Alert>
         )}
 

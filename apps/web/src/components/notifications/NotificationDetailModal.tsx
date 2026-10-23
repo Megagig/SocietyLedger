@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi, Notification } from '@/lib/api/notifications';
 import { IconX, IconCheck, IconTrash, IconClock, IconUser, IconBuilding } from '@tabler/icons-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { useConfirm } from '@/hooks/useConfirm';
 
 interface NotificationDetailModalProps {
   notification: Notification | null;
@@ -17,6 +18,7 @@ export function NotificationDetailModal({
   isOpen,
   onClose,
 }: NotificationDetailModalProps) {
+  const { confirm, element: confirmElement } = useConfirm();
   const queryClient = useQueryClient();
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -47,8 +49,8 @@ export function NotificationDetailModal({
     }
   };
 
-  const handleDelete = () => {
-    if (notification && confirm('Are you sure you want to delete this notification?')) {
+  const handleDelete = async () => {
+    if (notification && (await confirm({ message: 'Are you sure you want to delete this notification?', danger: true }))) {
       deleteMutation.mutate(notification.id);
     }
   };
@@ -93,6 +95,7 @@ export function NotificationDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {confirmElement}
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"

@@ -24,8 +24,10 @@ import { notifications } from '@mantine/notifications';
 import { smsApi, SMSTemplate, SMSTemplateCategory, CreateTemplateRequest } from '@/lib/api/sms';
 import { TemplateCategory } from '@/components/communications/TemplateCategory';
 import { TemplateEditor } from '@/components/communications/TemplateEditor';
+import { useConfirm } from '@/hooks/useConfirm';
 
 export default function TemplatesListPage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -70,7 +72,7 @@ export default function TemplatesListPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this template?')) {
+    if (!(await confirm({ message: 'Are you sure you want to delete this template?', danger: true }))) {
       return;
     }
 
@@ -197,6 +199,7 @@ export default function TemplatesListPage() {
 
   return (
     <Container size="xl" py="xl">
+      {confirmElement}
       <Stack gap="xl">
         {/* Header */}
         <Group justify="space-between" align="center">

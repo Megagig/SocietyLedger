@@ -23,7 +23,8 @@ import {
   IconSearch
 } from '@tabler/icons-react';
 import nigerianPaymentsApi, { Reconciliation, UnmatchedDashboard } from '@/lib/api/nigerian-payments';
-import { HelpLink } from '@/components/docs/HelpLink';
+import { HelpLink } from '@/components/docs/HelpLink';
+import { toast } from '@/lib/toast';
 
 export default function ReconciliationDashboard() {
   const router = useRouter();
@@ -69,9 +70,9 @@ export default function ReconciliationDashboard() {
       setAutoMatching(true);
       const result = await nigerianPaymentsApi.runAutoMatch();
       if (result.matches.length > 0) {
-        alert(`Found ${result.matches.length} potential matches. Review and apply.`);
+        toast.success(`Found ${result.matches.length} potential matches. Review and apply.`);
       } else {
-        alert('No matches found. Try manual reconciliation.');
+        toast.info('No matches found. Try manual reconciliation.');
       }
       loadDashboard();
     } catch (err: any) {
