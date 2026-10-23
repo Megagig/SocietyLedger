@@ -1503,6 +1503,13 @@ Built from existing primitives; nothing new in `components/ui`.
 - **Rule shown in the UI:** closing a campaign is a non-destructive confirm (primary button, "Keep open"); removing a member is a `danger` confirm and only appears while the member has paid nothing.
 - **Web parity:** campaign page "Close campaign" outline button and an orange "Closed to new members" banner; status pill `bg-orange-100 text-orange-800` for Closed; category type `select` disabled with a caption when in use.
 
+## Mobile Phase 6 — Donations & penalties (F6.2, 2026-10-26)
+
+- **`PagedList`** (`features/financeSetup/components`): a page-at-a-time list for an infinite query — three skeletons while loading, `ErrorState` with retry, pull to refresh, a spinner footer while more load, and the caller's empty state. Used by every tab of Donations and Penalties.
+- **`AllocationRow`:** name + kind `Badge` (primary) + "Inactive" `Badge`, a `ProgressBar` only when there is a target, "₦received of ₦target · n donations". **`DonationRow`:** donor, "cause · fund", date (or "Pledged for <date>"), amount over a `StatusChip` (Received / Pledged / Part paid / Voided). **`RuleRow`:** name + On/Off `Badge` (success / neutral), "₦500.00 flat" or "5% of what is owed (at most …)", "After 7 days · once · All dues and levies". **`WaiverRow`:** member, "penalty · date", the reason, amount on the right.
+- **Screens:** `donations/index.tsx` (three `StatTile`s, `SegmentedControl` Causes | Funds | Recent, a 40% cause actions sheet), `donations/record.tsx` (sections Kind of gift / The gift / Donor; the kind `SegmentedControl` swaps "how it was paid" for the expected date), `donations/allocation-form.tsx`, `donations/receipt.tsx` (amount in `h1`, details in a `ListGroup` of `FactRow`s, sticky **Share receipt**), `penalties/index.tsx` (three tiles, a secondary **Apply late fees now** button, four tabs, actions sheets for a type, a rule and a charged penalty, a `ConfirmSheet` for deleting a rule that says when it is switched off instead), `penalties/rule-form.tsx` (the fee `SegmentedControl` swaps the `AmountField` for a percent `TextField` + cap), `penalties/late-fees.tsx` (a `surface-sunken` headline card, "Who would be charged" `ListGroup`, sticky **Charge n late fees**), `penalties/waive.tsx` (owed amount in `h1`, amount and reason fields).
+- **Rule shown in the UI:** nothing is charged or forgiven without seeing the effect first — late fees are previewed, and the waive amount cannot exceed what is owed.
+
 ---
 
 ## Retired

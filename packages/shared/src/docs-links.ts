@@ -62,6 +62,9 @@ export const DOCS_LINKS: Record<string, string> = {
   FN8: '/docs/finance/levy-campaigns',
   FN9: '/docs/finance/levy-campaigns',
 
+  '/dashboard/finance/donations': '/docs/finance/donations-and-causes',
+  FN10: '/docs/finance/donations-and-causes',
+
   '/dashboard/finance/penalties': '/docs/finance/penalties-and-late-fees',
   FN11: '/docs/finance/penalties-and-late-fees',
 

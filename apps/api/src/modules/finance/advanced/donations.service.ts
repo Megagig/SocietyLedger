@@ -1,5 +1,10 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { cacheInvalidationService } from '../../../services/cache-invalidation.service';
+import { memberLedgerService } from '../../member-finance/member-ledger.service';
+import { RuleError } from '../rule-error';
+import { assertDonationAllowed } from './donation-entry-rules';
 
 // ============================================
 // DONATION SERVICE (TASK-ADV-003, TASK-ADV-004)
@@ -165,7 +170,7 @@ export const donationsService = {
     });
 
     if (!existing) {
-      throw new Error('Allocation not found');
+      throw new RuleError('Allocation not found', 404, 'NOT_FOUND');
     }
 
     const updated = await prisma.donationAllocation.update({
@@ -223,8 +228,15 @@ export const donationsService = {
     });
 
     if (!member) {
-      throw new Error('Member not found');
+      throw new RuleError('Member not found', 404, 'NOT_FOUND');
     }
+
+    assertDonationAllowed({
+      amount: data.amount,
+      memberStatus: member.status,
+      donationType,
+      pledgeDate: data.pledgeDate ? new Date(data.pledgeDate) : null,
+    });
 
     // Verify category is donation type
     const category = await prisma.financialCategory.findFirst({
@@ -232,7 +244,7 @@ export const donationsService = {
     });
 
     if (!category) {
-      throw new Error('Donation category not found or inactive');
+      throw new RuleError('That donation cause was not found, or it is switched off.', 404, 'CAUSE_NOT_FOUND');
     }
 
     // Verify allocation if provided
@@ -242,7 +254,7 @@ export const donationsService = {
       });
 
       if (!allocation) {
-        throw new Error('Donation allocation not found or inactive');
+        throw new RuleError('That fund was not found, or it is switched off.', 404, 'ALLOCATION_NOT_FOUND');
       }
     }
 
@@ -353,6 +365,45 @@ export const donationsService = {
         },
       },
     });
+
+    // The donation reaches the member's ledger and the books like any other charge and payment. A donation is not a debt, so the
+    // ledger only records the money once it is received (an instant donation now; a pledge when it is paid). Best-effort: a sync
+    // problem never undoes a donation that was recorded (a ledger can be rebuilt).
+    if (result.payment) {
+      try {
+        await memberLedgerService.createFromPayment(result.payment.id, userId);
+      } catch (ledgerError) {
+        console.error('Ledger sync failed for donation payment (non-critical):', ledgerError);
+      }
+    }
+    try {
+      const fullTransaction = await prisma.transaction.findUnique({
+        where: { id: result.transaction.id },
+        include: {
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+          category: { select: { id: true, name: true, type: true } },
+        },
+      });
+      if (fullTransaction) await accountingIntegrationService.onTransactionCreated(fullTransaction, userId);
+      if (result.payment) {
+        const fullPayment = await prisma.payment.findUnique({
+          where: { id: result.payment.id },
+          include: {
+            transaction: {
+              include: {
+                member: { select: { id: true, memberId: true, firstName: true, lastName: true, userId: true } },
+                category: { select: { id: true, name: true, type: true } },
+              },
+            },
+          },
+        });
+        if (fullPayment) await accountingIntegrationService.onPaymentRecorded(fullPayment, userId);
+      }
+    } catch (syncError) {
+      console.error('Accounting sync failed for donation (non-critical):', syncError);
+    }
+    await cacheInvalidationService.onTransactionChange(associationId);
+    if (result.payment) await cacheInvalidationService.onPaymentChange(associationId);
 
     return {
       ...result,
@@ -528,6 +579,9 @@ export const donationsService = {
         new Decimal(0)
       ).toNumber(),
       status: d.transaction.status,
+      isVoided: d.transaction.isVoided,
+      dueDate: d.transaction.dueDate,
+      isPledge: d.transaction.status !== 'paid' && d.transaction.payments.length === 0,
       donor: d.isAnonymous
         ? { name: 'Anonymous' }
         : {
@@ -558,7 +612,7 @@ export const donationsService = {
    */
   async getDonationStats(associationId: number, dateRange?: { start: Date; end: Date }) {
     const where: any = {
-      transaction: { associationId },
+      transaction: { associationId, isVoided: false },
     };
 
     if (dateRange) {
@@ -581,6 +635,7 @@ export const donationsService = {
     });
 
     let totalAmount = new Decimal(0);
+    let totalReceived = new Decimal(0);
     const byAllocation: Record<string, { name: string; amount: Decimal; count: number }> = {};
     const byType: Record<string, { amount: Decimal; count: number }> = {};
 
@@ -588,6 +643,7 @@ export const donationsService = {
       // Use transaction amount (not payments) to include pledges
       const amount = new Decimal(d.transaction.amount);
       totalAmount = totalAmount.plus(amount);
+      totalReceived = totalReceived.plus(d.transaction.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0)));
 
       // By allocation
       const allocName = d.allocation?.name || 'Unallocated';
@@ -609,6 +665,9 @@ export const donationsService = {
     return {
       totalDonations: donations.length,
       totalAmount: totalAmount.toNumber(),
+      // received = money actually paid in; the rest of totalAmount is pledged and not yet paid
+      totalReceived: totalReceived.toNumber(),
+      totalPledged: Math.max(0, totalAmount.minus(totalReceived).toNumber()),
       byAllocation: Object.values(byAllocation).map(a => ({
         name: a.name,
         amount: a.amount.toNumber(),

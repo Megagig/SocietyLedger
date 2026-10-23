@@ -1,38 +1,88 @@
 ---
 title: "Donations and causes"
-description: "Set up donation categories and specific causes members can give toward."
+description: "Set up donation causes and funds, record gifts and pledges, and share receipts."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/finance/donations", "FN10"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/finance/financial-categories", "/docs/member-guide/making-a-donation"]
 ---
 
-Donations have two layers: a general donation **category**, and optional specific **allocations** — causes members can direct their giving toward.
+Donations have two layers: a **cause** (a donation category such as "Building fund" that members give to), and optional **funds** (allocations) — named pots a gift can be directed into, with an optional target.
 
 ## Before you start
 
-You need the **create categories** permission, which Administrators and Treasurers have by default.
+You need the **create categories** permission to set up causes and funds, and the **create charges** permission to record a gift. Administrators and Treasurers have both by default.
 
-## Set up a donation category
+## Set up a cause
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Finance", "Donations"]} />.</Step>
 <Step>Select **Create Category**, give it a **Name**, and save.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Finance", "Donations"]} />, on the **Causes** tab.</Step>
+<Step>Tap **+**, give it a **Name**, and tap **Add category**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/finance/donations-and-causes-1.webp" alt="Donations page's Allocations tab, showing an empty state with a Create Allocation button" />
 
-## Create a cause (allocation)
+## Create a fund (allocation)
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Switch to the **Allocations** tab and select **Create Allocation**.</Step>
 <Step>Give it a **Name**, **Description** and, if relevant, a **Target Amount**.</Step>
 <Step>Save.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to the **Funds** tab and tap **+**.</Step>
+<Step>Give it a **Name**, choose its **Kind**, and set a **Target** if you have one.</Step>
+<Step>Tap **Add fund**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## Record a donation
+
+A gift is either **paid now** (money received) or a **pledge** (a promise to give by a date).
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>On a cause, select **Record Donation**.</Step>
+<Step>Choose the member, whether it is an instant payment or a pledge, and the amount. For a pledge, add the date it is expected.</Step>
+<Step>Optionally choose a fund, add the donor's message, or mark it anonymous, then save.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>On the **Causes** tab, tap a cause, then **Record a donation**.</Step>
+<Step>Choose the **Donor**, **Paid now** or **Pledge**, and the **Amount**. Paid now asks how it was paid; a pledge asks for the expected date.</Step>
+<Step>Optionally choose a **Fund**, add a message, or turn on **Anonymous**, then tap **Record donation**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+The donor must be an active member, the amount must be above ₦0, and a pledge date can't be in the past.
 
 ## What happens next
 
-Members can now give toward the category generally, or a specific allocation if you've created one — each donation appears under **Recent Donations** with its receipt number, and in the donor's own [donation history](/docs/member-guide/making-a-donation).
+- **A gift paid now** is added to the member's ledger as a donation, appears under **Recent Donations** with a receipt number, and shows in the donor's own [donation history](/docs/member-guide/making-a-donation).
+- **A pledge** is a charge the member owes until they pay it. It has no receipt yet, and it counts as **pledged**, not **received**, in the totals. When the member pays it, it becomes a received gift.
+- **An anonymous gift** leaves the donor's name off the receipt and the list.
+
+## Receipts
+
+Open a received donation to see its receipt. On the web you can print it; on the phone, tap **Share receipt** to send it as text through your phone's share sheet.

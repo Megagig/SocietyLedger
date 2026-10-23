@@ -3,10 +3,10 @@ title: "Penalties and automatic late fees"
 description: "Set up a rule that charges a late fee automatically when a due goes unpaid."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/finance/penalties", "FN11"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/finance/waiving-a-penalty", "/docs/finance/overdue-and-reminders"]
 ---
 
@@ -14,23 +14,56 @@ A late fee rule applies a penalty automatically once a charge is overdue — you
 
 ## Before you start
 
-You need the **create categories** permission, which Administrators and Treasurers have by default.
+You need the **create categories** permission to set up rules, which Administrators and Treasurers have by default. Applying late fees by hand and waiving a penalty need the **approve payments** permission.
 
 ## Set up a late fee rule
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Finance", "Penalties"]} />, then select **New Rule**.</Step>
 <Step>Name it, and set a **Grace Period** (days after the due date before a fee applies).</Step>
 <Step>Choose a **Fee Type** — a fixed amount or a percentage of the balance — and the fee itself.</Step>
 <Step>Save.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Finance", "Penalties"]} />, open the **Rules** tab and tap **+**.</Step>
+<Step>Name it, and set the **Days overdue before the fee** (the grace period).</Step>
+<Step>Choose **Fixed amount** or **Percentage**, and the fee. A percentage can be at most 100, and can have a cap on a single fee.</Step>
+<Step>Optionally turn on **Repeat the fee** to charge again every few days while it stays unpaid, then tap **Add rule**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/finance/penalties-and-late-fees-1.webp" alt="Penalties page with Penalty Types, Late Fee Rules and Waivers tabs, and an active Late Payment Fee rule" />
 
+You can switch a rule off and on at any time. Deleting a rule that has already charged members switches it off instead, so the penalties it charged and their history stay.
+
+## Who is charged a late fee
+
+A late fee goes to a real overdue **due or levy** that is past its grace period. These are never charged a late fee:
+
+- a **voided** charge, because it is no longer owed;
+- a **donation pledge**, because a pledge is a promise rather than a billed obligation;
+- a **penalty** — a penalty never earns another penalty.
+
+A rule that names one specific category (other than a penalty) applies to that category, so you can choose on purpose to penalise something else. A rule that doesn't repeat charges a charge once, however many times fees are applied.
+
 ## Apply fees to existing overdue charges
 
-New rules only affect charges going forward automatically — for anything already overdue, select **Apply Late Fees** to run the rule against every qualifying charge right now.
+New rules also apply automatically each day. For anything already overdue, **Apply Late Fees** runs the rules right now. You always see what it will do first: how many fees, to how many members, the total, and who — and nobody is charged until you confirm.
+
+<PlatformTabs>
+<PlatformTab>
+Select **Apply Late Fees**, review the list, and confirm.
+</PlatformTab>
+<PlatformTab>
+Tap **Apply late fees now**, review who would be charged, then tap **Charge … late fees**.
+</PlatformTab>
+</PlatformTabs>
 
 ## What happens next
 
-Each affected member gets a new penalty charge, separate from the due that caused it, shown on their account as a **Late Payment Fee** — see [Your dues, levies and penalties](/docs/member-guide/dues-levies-and-penalties) for how it looks to them.
+Each affected member gets a new penalty charge, separate from the due that caused it, shown on their account as a **Late Payment Fee** — see [Your dues, levies and penalties](/docs/member-guide/dues-levies-and-penalties) for how it looks to them. If a penalty shouldn't stand, [waive it](/docs/finance/waiving-a-penalty).

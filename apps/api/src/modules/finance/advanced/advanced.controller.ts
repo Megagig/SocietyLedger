@@ -3,14 +3,14 @@ import { z } from 'zod';
 import { leviesService } from './levies.service';
 import { donationsService } from './donations.service';
 import { penaltiesService } from './penalties.service';
-import { LevyRuleError } from './levy-rules';
+import { RuleError } from '../rule-error';
 
 /** A rule the officer broke (wrong state, nothing to do) answers with its own status and code; anything else is a 500. */
 function levyFailure(res: Response, error: any, fallback: string) {
   if (error instanceof z.ZodError) {
     return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
   }
-  if (error instanceof LevyRuleError) {
+  if (error instanceof RuleError) {
     return res.status(error.status).json({ success: false, code: error.code, message: error.message });
   }
   console.error(fallback, error);
@@ -304,8 +304,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error creating allocation:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to create allocation' });
+      return levyFailure(res, error, 'Failed to create allocation');
     }
   },
 
@@ -354,8 +353,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error updating allocation:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to update allocation' });
+      return levyFailure(res, error, 'Failed to update allocation');
     }
   },
 
@@ -382,8 +380,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error recording donation:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to record donation' });
+      return levyFailure(res, error, 'Failed to record donation');
     }
   },
 
@@ -401,11 +398,8 @@ export const advancedController = {
 
       return res.status(200).json({ success: true, data: receipt });
     } catch (error: any) {
-      console.error('Error getting receipt:', error);
-      return res.status(error.message === 'Donation not found' ? 404 : 500).json({
-        success: false,
-        message: error.message || 'Failed to get receipt',
-      });
+      if (error?.message === 'Donation not found') return res.status(404).json({ success: false, message: error.message });
+      return levyFailure(res, error, 'Failed to get receipt');
     }
   },
 
@@ -478,8 +472,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error creating rule:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to create rule' });
+      return levyFailure(res, error, 'Failed to create rule');
     }
   },
 
@@ -519,11 +512,8 @@ export const advancedController = {
 
       return res.status(200).json({ success: true, data: rule });
     } catch (error: any) {
-      console.error('Error getting rule:', error);
-      return res.status(error.message === 'Rule not found' ? 404 : 500).json({
-        success: false,
-        message: error.message || 'Failed to get rule',
-      });
+      if (error?.message === 'Rule not found') return res.status(404).json({ success: false, message: error.message });
+      return levyFailure(res, error, 'Failed to get rule');
     }
   },
 
@@ -551,8 +541,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error updating rule:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to update rule' });
+      return levyFailure(res, error, 'Failed to update rule');
     }
   },
 
@@ -574,8 +563,7 @@ export const advancedController = {
         message: 'Rule deleted successfully',
       });
     } catch (error: any) {
-      console.error('Error deleting rule:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to delete rule' });
+      return levyFailure(res, error, 'Failed to delete rule');
     }
   },
 
@@ -594,8 +582,21 @@ export const advancedController = {
         data: result,
       });
     } catch (error: any) {
-      console.error('Error applying late fees:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to apply late fees' });
+      return levyFailure(res, error, 'Failed to apply late fees');
+    }
+  },
+
+  /** What "Apply late fees now" would do, without doing it. */
+  async previewLateFees(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID required' });
+      }
+      const preview = await penaltiesService.previewLateFees(associationId, req.user!.id);
+      return res.status(200).json({ success: true, data: preview });
+    } catch (error: any) {
+      return levyFailure(res, error, 'Failed to preview late fees');
     }
   },
 
@@ -623,8 +624,7 @@ export const advancedController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error waiving penalty:', error);
-      return res.status(500).json({ success: false, message: error.message || 'Failed to waive penalty' });
+      return levyFailure(res, error, 'Failed to waive penalty');
     }
   },
 

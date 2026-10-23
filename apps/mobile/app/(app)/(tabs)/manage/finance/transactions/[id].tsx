@@ -22,6 +22,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { chargeCanDelete, chargeCanEdit, chargeCanPay, chargeCanVoid, chargeMemberName, chargeStatusKey, chargeStatusLabel, PAYMENT_METHOD_LABELS } from '@/features/finance/labels';
+import { penaltyCanWaive } from '@/features/donationsPenalties/labels';
+import { PENALTY_APPROVE_ACCESS } from '@/features/donationsPenalties/queries';
 import { useDeleteCharge, useUndoDeleteCharge } from '@/features/finance/mutations';
 import { CHARGE_DELETE_ACCESS, CHARGE_EDIT_ACCESS, FINANCE_VIEW_ACCESS, PAYMENT_RECORD_ACCESS, useCharge } from '@/features/finance/queries';
 import { FactRow } from '@/features/members/components/FactRow';
@@ -38,6 +40,7 @@ export default function ChargeDetailScreen() {
   const canEdit = useCan(CHARGE_EDIT_ACCESS);
   const canDelete = useCan(CHARGE_DELETE_ACCESS);
   const canPay = useCan(PAYMENT_RECORD_ACCESS);
+  const canWaive = useCan(PENALTY_APPROVE_ACCESS);
   const query = useCharge(id);
   const del = useDeleteCharge();
   const undo = useUndoDeleteCharge();
@@ -60,7 +63,8 @@ export default function ChargeDetailScreen() {
   const showVoid = !!charge && canEdit && chargeCanVoid(charge);
   const showDelete = !!charge && canDelete && chargeCanDelete(charge);
   const showPay = !!charge && canPay && chargeCanPay(charge);
-  const hasMore = showEdit || showVoid || showDelete;
+  const showWaive = !!charge && canWaive && penaltyCanWaive(charge);
+  const hasMore = showEdit || showVoid || showDelete || showWaive;
 
   const remove = () => {
     if (!charge) return;
@@ -202,6 +206,18 @@ export default function ChargeDetailScreen() {
               testID="charge-edit"
             >
               Edit charge
+            </Button>
+          ) : null}
+          {showWaive ? (
+            <Button
+              variant="secondary"
+              onPress={() => {
+                actionsRef.current?.dismiss();
+                go(`penalties/waive?id=${id}`);
+              }}
+              testID="charge-waive"
+            >
+              Waive this penalty
             </Button>
           ) : null}
           {showVoid ? (

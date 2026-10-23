@@ -3,6 +3,25 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
 import { syncLedgerDebit } from '../ledger-sync';
 import { SettingsService } from '../../settings/settings.service';
+import { cacheInvalidationService } from '../../../services/cache-invalidation.service';
+import { memberLedgerService } from '../../member-finance/member-ledger.service';
+import { RuleError } from '../rule-error';
+import { assertFeeValid, assertWaivable, daysPastDue, lateFeeDue, pickRule, waiverOutcome } from './penalty-rules';
+
+/** One charge that is due a late fee right now, with the fee worked out. */
+type LateFeePlanItem = {
+  txn: {
+    id: number;
+    memberId: number;
+    status: string;
+    referenceNumber: string | null;
+    category: { name: string };
+    member: { id: number; firstName: string; lastName: string };
+  };
+  rule: { id: number; name: string };
+  penaltyAmount: Decimal;
+  daysOverdue: number;
+};
 
 // ============================================
 // PENALTY SERVICE (TASK-ADV-005, TASK-ADV-006, TASK-ADV-007)
@@ -35,16 +54,11 @@ export const penaltiesService = {
       });
 
       if (!category) {
-        throw new Error('Category not found');
+        throw new RuleError('Category not found', 404, 'NOT_FOUND');
       }
     }
 
-    // Validate percentage-based rules
-    if (data.feeType === 'percentage') {
-      if (data.feeAmount <= 0 || data.feeAmount > 100) {
-        throw new Error('Percentage must be between 0 and 100');
-      }
-    }
+    assertFeeValid(data.feeType, data.feeAmount);
 
     const rule = await prisma.penaltyRule.create({
       data: {
@@ -209,8 +223,9 @@ export const penaltiesService = {
     });
 
     if (!existing) {
-      throw new Error('Rule not found');
+      throw new RuleError('Rule not found', 404, 'NOT_FOUND');
     }
+    assertFeeValid(data.feeType ?? existing.feeType, data.feeAmount ?? Number(existing.feeAmount));
 
     const updated = await prisma.penaltyRule.update({
       where: { id: ruleId },
@@ -310,118 +325,141 @@ export const penaltiesService = {
   },
 
   /**
-   * Apply late fees to overdue transactions (TASK-ADV-006)
-   * This is called by the cron job
+   * The active late-payment rules. With none written, a general rule is derived from Financial Settings (R4.6/G53: enableLateFees,
+   * lateFeeType, lateFeeAmount and defaultGracePeriodDays were saved but never read by anything). `persistFallback` saves that rule
+   * for a real run; a preview only describes it, so looking never changes anything.
    */
-  async applyLateFees(associationId: number, userId: number) {
-    const now = new Date();
-
-    // Get active late payment rules
-    let rules = await prisma.penaltyRule.findMany({
-      where: {
-        associationId,
-        isActive: true,
-        triggerType: 'late_payment',
-      },
+  async loadLateFeeRules(associationId: number, userId: number, persistFallback: boolean) {
+    const rules = await prisma.penaltyRule.findMany({
+      where: { associationId, isActive: true, triggerType: 'late_payment' },
     });
+    if (rules.length > 0) return rules;
 
-    // R4.6/G53: Financial Settings' enableLateFees/lateFeeType/lateFeeAmount/
-    // defaultGracePeriodDays were saved but never read by anything — fall
-    // back to a real general rule derived from them when no officer-defined
-    // PenaltyRule exists yet, so the setting actually does something.
-    if (rules.length === 0) {
-      const financialSettings = await SettingsService.getSettings(associationId, 'financial');
-      if (financialSettings.enableLateFees) {
-        const generalRule = await this.createRule(associationId, userId, {
-          name: 'Default Late Fee (from Financial Settings)',
-          triggerType: 'late_payment',
-          gracePeriodDays: financialSettings.defaultGracePeriodDays ?? 7,
-          feeType: financialSettings.lateFeeType ?? 'fixed',
-          feeAmount: financialSettings.lateFeeAmount ?? 0,
-        });
-        rules = [generalRule];
-      }
-    }
+    const financialSettings = await SettingsService.getSettings(associationId, 'financial');
+    if (!financialSettings.enableLateFees) return rules;
 
-    if (rules.length === 0) {
-      return { applied: 0, totalAmount: 0 };
-    }
+    const spec = {
+      name: 'Default Late Fee (from Financial Settings)',
+      triggerType: 'late_payment' as const,
+      gracePeriodDays: financialSettings.defaultGracePeriodDays ?? 7,
+      feeType: (financialSettings.lateFeeType ?? 'fixed') as 'fixed' | 'percentage',
+      feeAmount: financialSettings.lateFeeAmount ?? 0,
+    };
+    if (persistFallback) return [await this.createRule(associationId, userId, spec)];
+    return [
+      {
+        id: 0, associationId, categoryId: null, description: null, isActive: true, createdAt: new Date(), updatedAt: new Date(),
+        ...spec, feeAmount: new Decimal(spec.feeAmount), maxFeeAmount: null, isCompounding: false, compoundingDays: null,
+      },
+    ] as typeof rules;
+  },
 
-    // Get overdue transactions that haven't had penalties applied yet
-    const overdueTransactions = await prisma.transaction.findMany({
+  /**
+   * Works out which overdue charges are due a late fee right now, and how much, without changing anything. A voided charge, a donation
+   * pledge or any charge that isn't a due or a levy (unless a rule names its category) never earns one.
+   */
+  async planLateFees(associationId: number, userId: number, persistFallback: boolean) {
+    const now = new Date();
+    const rules = await this.loadLateFeeRules(associationId, userId, persistFallback);
+    if (rules.length === 0) return { now, plan: [] as LateFeePlanItem[] };
+
+    const overdue = await prisma.transaction.findMany({
       where: {
         associationId,
+        isVoided: false,
         status: { in: ['pending', 'overdue', 'partial'] },
         dueDate: { lt: now },
       },
       include: {
         category: true,
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
         payments: { select: { amountPaid: true } },
         sourcePenalties: true,
       },
     });
 
+    const plan: LateFeePlanItem[] = [];
+    for (const txn of overdue) {
+      const rule = pickRule(rules, { categoryId: txn.categoryId, categoryType: txn.category.type });
+      if (!rule) continue;
+
+      const lastApplied = txn.sourcePenalties
+        .filter((p) => p.ruleId === rule.id)
+        .reduce<Date | null>((latest, p) => (latest === null || p.appliedAt > latest ? p.appliedAt : latest), null);
+      const due = lateFeeDue(
+        { isVoided: txn.isVoided, status: txn.status, dueDate: txn.dueDate, categoryId: txn.categoryId, categoryType: txn.category.type },
+        rule,
+        lastApplied,
+        now,
+      );
+      if (!due) continue;
+
+      const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+      const outstanding = new Decimal(txn.amount).minus(paid);
+      if (outstanding.lessThanOrEqualTo(0)) continue;
+
+      const penaltyAmount = this.calculateLateFee(outstanding, rule);
+      if (penaltyAmount.lessThanOrEqualTo(0)) continue;
+
+      plan.push({ txn, rule, penaltyAmount, daysOverdue: daysPastDue(txn.dueDate!, now) });
+    }
+    return { now, plan };
+  },
+
+  /**
+   * What "Apply late fees now" would do, without doing it: how many charges, the total, and who. The officer confirms on this before
+   * anyone is charged.
+   */
+  async previewLateFees(associationId: number, userId: number) {
+    const { plan } = await this.planLateFees(associationId, userId, false);
+    const total = plan.reduce((sum, p) => sum.plus(p.penaltyAmount), new Decimal(0));
+    const members = new Set(plan.map((p) => p.txn.memberId));
+    return {
+      count: plan.length,
+      memberCount: members.size,
+      totalAmount: total.toNumber(),
+      items: plan.slice(0, 100).map((p) => ({
+        transactionId: p.txn.id,
+        memberId: p.txn.member.id,
+        memberName: `${p.txn.member.firstName} ${p.txn.member.lastName}`.trim(),
+        chargeName: p.txn.category.name,
+        daysOverdue: p.daysOverdue,
+        ruleName: p.rule.name,
+        penaltyAmount: p.penaltyAmount.toNumber(),
+      })),
+      truncated: plan.length > 100,
+    };
+  },
+
+  /**
+   * Apply late fees to overdue transactions (TASK-ADV-006)
+   * This is called by the cron job, and by an officer after previewing.
+   */
+  async applyLateFees(associationId: number, userId: number) {
+    const { plan } = await this.planLateFees(associationId, userId, true);
+    if (plan.length === 0) return { applied: 0, totalAmount: 0 };
+
     const results: { transactionId: number; penaltyAmount: number; ruleId: number }[] = [];
     const txnCount = await prisma.transaction.count({ where: { associationId } });
-    let penaltyIndex = 0;
 
-    for (const txn of overdueTransactions) {
-      // Find applicable rule (category-specific or general)
-      const applicableRule = rules.find(r => r.categoryId === txn.categoryId) ||
-        rules.find(r => r.categoryId === null);
-
-      if (!applicableRule) continue;
-
-      // Check grace period
-      const dueDate = new Date(txn.dueDate!);
-      const daysPastDue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (daysPastDue <= applicableRule.gracePeriodDays) continue;
-
-      // Check if penalty already applied for this rule
-      const existingPenalty = txn.sourcePenalties.find(p => p.ruleId === applicableRule.id);
-      
-      if (existingPenalty && !applicableRule.isCompounding) continue;
-
-      // For compounding, check if enough days have passed since last penalty
-      if (existingPenalty && applicableRule.isCompounding) {
-        const lastPenaltyDate = new Date(existingPenalty.appliedAt);
-        const daysSinceLastPenalty = Math.floor(
-          (now.getTime() - lastPenaltyDate.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        if (daysSinceLastPenalty < (applicableRule.compoundingDays || 30)) continue;
-      }
-
-      // Calculate outstanding amount
-      const paidAmount = txn.payments.reduce(
-        (sum, p) => sum.plus(p.amountPaid),
-        new Decimal(0)
-      );
-      const outstandingAmount = new Decimal(txn.amount).minus(paidAmount);
-
-      if (outstandingAmount.lessThanOrEqualTo(0)) continue;
-
-      // Calculate penalty
-      const penaltyAmount = this.calculateLateFee(outstandingAmount, applicableRule);
-
-      // Get or create penalty category
-      let penaltyCategory = await prisma.financialCategory.findFirst({
-        where: { associationId, type: 'penalty', name: 'Late Payment Fee' },
+    // The category the fees are charged under, made once.
+    let penaltyCategory = await prisma.financialCategory.findFirst({
+      where: { associationId, type: 'penalty', name: 'Late Payment Fee' },
+    });
+    if (!penaltyCategory) {
+      penaltyCategory = await prisma.financialCategory.create({
+        data: {
+          associationId,
+          name: 'Late Payment Fee',
+          type: 'penalty',
+          description: 'Automatically applied late payment penalty',
+          isActive: true,
+        },
       });
+    }
 
-      if (!penaltyCategory) {
-        penaltyCategory = await prisma.financialCategory.create({
-          data: {
-            associationId,
-            name: 'Late Payment Fee',
-            type: 'penalty',
-            description: 'Automatically applied late payment penalty',
-            isActive: true,
-          },
-        });
-      }
-
+    let penaltyIndex = 0;
+    for (const { txn, rule, penaltyAmount } of plan) {
       // Create penalty transaction and record
       const penaltyTxn = await prisma.transaction.create({
         data: {
@@ -433,14 +471,14 @@ export const penaltiesService = {
           status: 'pending',
           // G71: referenceNumber is genuinely nullable — fall back to the category + id
           // instead of letting it render as a literal "null" in the note text
-          notes: `Late fee for ${txn.referenceNumber || `${txn.category.name} #${txn.id}`} - ${applicableRule.name}`,
+          notes: `Late fee for ${txn.referenceNumber || `${txn.category.name} #${txn.id}`} - ${rule.name}`,
           createdBy: userId,
         },
       });
 
       await prisma.appliedPenalty.create({
         data: {
-          ruleId: applicableRule.id,
+          ruleId: rule.id,
           sourceTransactionId: txn.id,
           penaltyTransactionId: penaltyTxn.id,
           amount: penaltyAmount,
@@ -479,27 +517,27 @@ export const penaltiesService = {
       results.push({
         transactionId: txn.id,
         penaltyAmount: penaltyAmount.toNumber(),
-        ruleId: applicableRule.id,
+        ruleId: rule.id,
       });
 
       penaltyIndex++;
     }
 
-    if (results.length > 0) {
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId,
-          action: 'APPLY_LATE_FEES',
-          tableName: 'applied_penalties',
-          newValues: {
-            count: results.length,
-            totalAmount: results.reduce((sum, r) => sum + r.penaltyAmount, 0),
-            details: results,
-          },
+    await cacheInvalidationService.onTransactionChange(associationId);
+
+    await prisma.auditLog.create({
+      data: {
+        associationId,
+        userId,
+        action: 'APPLY_LATE_FEES',
+        tableName: 'applied_penalties',
+        newValues: {
+          count: results.length,
+          totalAmount: results.reduce((sum, r) => sum + r.penaltyAmount, 0),
+          details: results,
         },
-      });
-    }
+      },
+    });
 
     return {
       applied: results.length,
@@ -509,7 +547,11 @@ export const penaltiesService = {
   },
 
   /**
-   * Waive a penalty (TASK-ADV-007)
+   * Waive a penalty (TASK-ADV-007): forgive some or all of what is still owed on it.
+   *
+   * The penalty charge's amount goes down by what is waived (so balances, overdue lists and reminders are right everywhere), a full
+   * waiver marks it Waived, the member's ledger is credited, and the waiver is kept as history with its reason. Claim-then-act: the
+   * charge is only changed if it is still exactly as it was read, so two officers can't both waive the same penalty.
    */
   async waivePenalty(
     transactionId: number,
@@ -529,42 +571,49 @@ export const penaltiesService = {
     });
 
     if (!transaction) {
-      throw new Error('Transaction not found');
-    }
-
-    if (transaction.category.type !== 'penalty') {
-      throw new Error('Can only waive penalty transactions');
+      throw new RuleError('Penalty not found', 404, 'NOT_FOUND');
     }
 
     const paidAmount = transaction.payments.reduce(
       (sum, p) => sum.plus(p.amountPaid),
       new Decimal(0)
     );
-    const outstandingAmount = new Decimal(transaction.amount).minus(paidAmount);
+    const amount = new Decimal(transaction.amount);
+    const outstandingAmount = amount.minus(paidAmount);
 
-    if (new Decimal(data.waivedAmount).greaterThan(outstandingAmount)) {
-      throw new Error(`Waived amount cannot exceed outstanding balance of ${outstandingAmount}`);
-    }
+    assertWaivable(
+      { categoryType: transaction.category.type, isVoided: transaction.isVoided, status: transaction.status },
+      outstandingAmount,
+      data.waivedAmount,
+    );
+    const { newAmount, fullyWaived } = waiverOutcome(amount, paidAmount, data.waivedAmount);
 
-    // Create waiver record
-    const waiver = await prisma.penaltyWaiver.create({
-      data: {
-        associationId,
-        transactionId,
-        waivedAmount: data.waivedAmount,
-        reason: data.reason,
-        waivedBy: userId,
-      },
+    const waiver = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.transaction.updateMany({
+        where: { id: transactionId, associationId, isVoided: false, status: { not: 'waived' }, amount: transaction.amount },
+        data: { amount: newAmount, ...(fullyWaived ? { status: 'waived' } : {}) },
+      });
+      if (claimed.count === 0) {
+        throw new RuleError('This penalty was just changed. Reload it and try again.', 409, 'CONFLICT');
+      }
+      return tx.penaltyWaiver.create({
+        data: {
+          associationId,
+          transactionId,
+          waivedAmount: data.waivedAmount,
+          reason: data.reason,
+          waivedBy: userId,
+        },
+      });
     });
 
-    // Update transaction status if fully waived
-    const newOutstanding = outstandingAmount.minus(data.waivedAmount);
-    if (newOutstanding.lessThanOrEqualTo(0)) {
-      await prisma.transaction.update({
-        where: { id: transactionId },
-        data: { status: 'waived' },
-      });
+    // The member's ledger gets a credit for what was forgiven (a ledger problem never undoes the waiver; the ledger can be rebuilt).
+    try {
+      await memberLedgerService.createFromWaiver(waiver.id, userId);
+    } catch (ledgerError) {
+      console.error(`Ledger sync failed for waiver ${waiver.id} (non-critical):`, ledgerError);
     }
+    await cacheInvalidationService.onTransactionChange(associationId);
 
     await prisma.auditLog.create({
       data: {
@@ -577,11 +626,14 @@ export const penaltiesService = {
           transactionId,
           waivedAmount: data.waivedAmount,
           reason: data.reason,
+          previousAmount: amount.toNumber(),
+          newAmount: newAmount.toNumber(),
+          fullyWaived,
         },
       },
     });
 
-    return waiver;
+    return { ...waiver, newAmount: newAmount.toNumber(), fullyWaived };
   },
 
   /**

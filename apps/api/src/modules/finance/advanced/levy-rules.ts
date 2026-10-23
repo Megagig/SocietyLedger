@@ -1,17 +1,11 @@
+import { RuleError } from '../rule-error';
+
 /**
  * Levy campaign rules. A levy is a debt: every member assigned to a campaign gets an ordinary charge on their ledger, and that
  * charge stays owed until the member pays or an officer waives or voids it, one member at a time. So closing a campaign only
  * stops new members being added; it never touches the charges already raised.
  */
-export class LevyRuleError extends Error {
-  constructor(
-    message: string,
-    readonly status: 400 | 404 | 409,
-    readonly code: string,
-  ) {
-    super(message);
-  }
-}
+export class LevyRuleError extends RuleError {}
 
 export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'COMPLETED' | 'CANCELLED';
 

@@ -130,7 +130,7 @@ export default function DonationsPage() {
     setIsLoading(true);
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories?type=donation`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories?type=donation&limit=100`
       );
       if (!response.ok) throw new Error('Failed to fetch donations');
       const data = await response.json();
@@ -145,7 +145,7 @@ export default function DonationsPage() {
   const fetchAllocations = async () => {
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/donations/allocations`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/donations/allocations?limit=100`
       );
       if (response.ok) {
         const data = await response.json();
@@ -194,12 +194,17 @@ export default function DonationsPage() {
 
   const fetchMembers = async () => {
     try {
-      const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?status=active&limit=100`
-      );
-      if (!response.ok) throw new Error('Failed to fetch members');
-      const data = await response.json();
-      setMembers(data.data.members);
+      const all: Member[] = [];
+      for (let page = 1; page <= 50; page++) {
+        const response = await apiGet(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/members?status=active&limit=100&page=${page}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch members');
+        const data = await response.json();
+        all.push(...data.data.members);
+        if (!data.data.pagination?.hasMore) break;
+      }
+      setMembers(all);
     } catch (err: any) {
       console.error('Error fetching members:', err);
     }

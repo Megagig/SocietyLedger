@@ -143,6 +143,12 @@ router.delete('/penalties/rules/:id',
   advancedController.deleteRule
 );
 
+// What applying late fees now would do — shown to the officer before they confirm
+router.get('/penalties/late-fees/preview',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  advancedController.previewLateFees
+);
+
 // Apply late fees (manual trigger)
 router.post('/penalties/apply-late-fees',
   requirePermission(PERMISSIONS.FINANCE_APPROVE),

@@ -128,7 +128,7 @@ export default function DuesScreen() {
   return (
     <Screen edges={['top', 'bottom']} keyboard>
       <ScreenHeader
-        title="Generate dues"
+        title={wanted ? 'Charge members' : 'Generate dues'}
         onBack={back}
         docsKey="FN7"
         rightActions={<IconButton icon={ListChecks} accessibilityLabel="See dues charged" onPress={() => router.push('/(app)/(tabs)/manage/finance/transactions?kind=due' as never)} testID="dues-see" />}
