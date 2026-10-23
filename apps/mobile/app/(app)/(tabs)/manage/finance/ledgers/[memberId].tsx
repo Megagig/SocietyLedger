@@ -22,6 +22,7 @@ import { Money } from '@/components/ui/Money';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Spinner } from '@/components/ui/Spinner';
 import { Text } from '@/components/ui/Text';
+import { CustomRangeForm } from '@/features/ledgers/CustomRangeForm';
 import { statementPresets, statementShareText } from '@/features/ledgers/labels';
 import { useResyncLedger } from '@/features/ledgers/mutations';
 import { LEDGERS_RESYNC_ACCESS, LEDGERS_VIEW_ACCESS, useLedgerEntries, useLedgerSummary } from '@/features/ledgers/queries';
@@ -212,7 +213,7 @@ export default function LedgerDetailScreen() {
         </View>
       </BottomSheet>
 
-      <BottomSheet ref={shareRef} title="Share a statement" snapPoints={['40%']}>
+      <BottomSheet ref={shareRef} title="Share a statement" snapPoints={['80%']}>
         <View className="gap-3 pb-6">
           <Text variant="body" tone="secondary">
             Choose the period. It opens your phone&apos;s share menu, so you can send it by WhatsApp, email or message.
@@ -222,6 +223,7 @@ export default function LedgerDetailScreen() {
               {preset.label}
             </Button>
           ))}
+          <CustomRangeForm loading={sharing} onShare={(startDate, endDate) => void shareStatement(startDate, endDate)} />
         </View>
       </BottomSheet>
 

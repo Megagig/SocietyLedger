@@ -1,5 +1,5 @@
 import type { LedgerStatementDTO } from '@/types/api/ledgerManage';
-import { balanceLabel, statementPresets, statementShareText } from './labels';
+import { balanceLabel, customRangeProblem, statementPresets, statementShareText } from './labels';
 
 describe('balanceLabel', () => {
   it('positive is owed, negative is credit, zero is settled', () => {
@@ -39,5 +39,19 @@ describe('statementPresets', () => {
     expect(presets.map((p) => p.label)).toEqual(['This year', 'Last 3 months', 'Everything']);
     expect(presets[0]).toMatchObject({ startDate: '2026-01-01', endDate: '2026-10-24' });
     expect(presets[1]!.startDate).toBe('2026-07-24');
+  });
+});
+
+describe('customRangeProblem', () => {
+  const now = new Date('2026-10-24T10:00:00.000Z');
+  it('accepts a sensible range, including a single day', () => {
+    expect(customRangeProblem('2026-01-01T00:00:00.000Z', '2026-10-24T00:00:00.000Z', now)).toBeNull();
+    expect(customRangeProblem('2026-05-05T00:00:00.000Z', '2026-05-05T00:00:00.000Z', now)).toBeNull();
+  });
+
+  it('says what is wrong: missing dates, backwards, or in the future', () => {
+    expect(customRangeProblem('', '2026-10-24T00:00:00.000Z', now)).toBe('Choose both dates.');
+    expect(customRangeProblem('2026-10-20T00:00:00.000Z', '2026-10-01T00:00:00.000Z', now)).toContain('on or before');
+    expect(customRangeProblem('2026-10-01T00:00:00.000Z', '2026-12-01T00:00:00.000Z', now)).toContain('future');
   });
 });
