@@ -391,6 +391,11 @@ export default function MySavingsPage() {
             </ol>
           </Alert>
 
+          {bankAccounts.length === 0 && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+              Your association hasn&apos;t added a bank account yet. Ask an officer for the payment details.
+            </p>
+          )}
           {bankAccounts.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-medium">Pay into</p>

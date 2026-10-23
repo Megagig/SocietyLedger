@@ -198,18 +198,18 @@ export default function ProofDetailScreen() {
       )}
 
       {showActions ? (
+        // StickyFooter is already a row with a gap, so each button's wrapper sits directly in it (a nested row would shrink to its content
+        // and collapse both buttons to a sliver).
         <StickyFooter>
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Button variant="secondary" fullWidth disabled={decide.isPending} onPress={() => rejectSheetRef.current?.present()} testID="proof-reject">
-                Reject
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button variant="primary" fullWidth disabled={hasNothingToApply || decide.isPending} onPress={() => verifySheetRef.current?.present()} testID="proof-verify">
-                Verify payment
-              </Button>
-            </View>
+          <View className="flex-1">
+            <Button variant="secondary" fullWidth disabled={decide.isPending} onPress={() => rejectSheetRef.current?.present()} testID="proof-reject">
+              Reject
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button variant="primary" fullWidth disabled={hasNothingToApply || decide.isPending} onPress={() => verifySheetRef.current?.present()} testID="proof-verify">
+              Verify payment
+            </Button>
           </View>
         </StickyFooter>
       ) : null}

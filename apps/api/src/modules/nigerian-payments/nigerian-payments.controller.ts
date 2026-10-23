@@ -10,7 +10,8 @@ import { prisma } from '../../lib/prisma';
 import { PERMISSIONS } from '../../lib/permissions';
 import { uploadFile, getPresignedUrl } from '../../lib/storage';
 import { RBACService } from '../../services/rbac.service';
-import { notifyProofDecided, notifyProofSubmitted } from '../../services/payment-proof-notifications';
+import { notifyProofDecided, notifyProofSubmitted, notifyTransferRecorded } from '../../services/payment-proof-notifications';
+import { BANK_RULE_STATUS, BankRuleError } from './bank-rules';
 import { nigerianPaymentsService } from './nigerian-payments.service';
 import { PROOF_DECISION_STATUS, ProofDecisionError } from './payment-proof-decision';
 import {
@@ -146,7 +147,7 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
       }
       console.error('Error creating bank account:', error);
       return res.status(500).json({ success: false, message: 'Failed to create bank account' });
@@ -172,7 +173,7 @@ export const nigerianPaymentsController = {
         return res.status(404).json({ success: false, message: 'Bank account not found' });
       }
 
-      const account = await nigerianPaymentsService.updateBankAccount(parseInt(id), associationId, data);
+      const { account, newDefaultId } = await nigerianPaymentsService.updateBankAccount(parseInt(id), associationId, data);
 
       await prisma.auditLog.create({
         data: {
@@ -188,12 +189,15 @@ export const nigerianPaymentsController = {
 
       return res.status(200).json({
         success: true,
-        message: 'Bank account updated successfully',
-        data: account,
+        message: newDefaultId ? 'Bank account updated. Another account is now the default.' : 'Bank account updated successfully',
+        data: { ...account, newDefaultId },
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error updating bank account:', error);
       return res.status(500).json({ success: false, message: 'Failed to update bank account' });
@@ -217,7 +221,7 @@ export const nigerianPaymentsController = {
         return res.status(404).json({ success: false, message: 'Bank account not found' });
       }
 
-      await nigerianPaymentsService.deleteBankAccount(parseInt(id), associationId);
+      const { outcome, newDefaultId } = await nigerianPaymentsService.deleteBankAccount(parseInt(id), associationId);
 
       await prisma.auditLog.create({
         data: {
@@ -227,14 +231,20 @@ export const nigerianPaymentsController = {
           tableName: 'association_bank_accounts',
           recordId: parseInt(id),
           oldValues: existing,
+          newValues: { outcome, newDefaultId },
         },
       });
 
       return res.status(200).json({
         success: true,
-        message: 'Bank account deleted successfully',
+        // A used account keeps its history, so it is deactivated rather than deleted — say which happened.
+        message: outcome === 'deactivated' ? 'Bank account deactivated. Its transfers and statements are kept.' : 'Bank account deleted successfully',
+        data: { outcome, newDefaultId },
       });
     } catch (error) {
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
+      }
       console.error('Error deleting bank account:', error);
       return res.status(500).json({ success: false, message: 'Failed to delete bank account' });
     }
@@ -318,19 +328,16 @@ export const nigerianPaymentsController = {
 
       const data = createBankTransferSchema.parse(req.body);
 
-      // Check for duplicate reference
-      const existing = await prisma.bankTransfer.findFirst({
-        where: { associationId, reference: data.reference },
-      });
-
-      if (existing) {
-        return res.status(400).json({
-          success: false,
-          message: 'A bank transfer with this reference already exists',
-        });
-      }
-
+      // The service checks the links belong to this association and that the reference is free (ignoring case and spaces).
       const transfer = await nigerianPaymentsService.createBankTransfer(associationId, data);
+
+      // Officers who can verify are told one is waiting — fire-and-forget.
+      void notifyTransferRecorded(associationId, {
+        id: transfer.id,
+        recorderUserId: req.user!.id,
+        amount: transfer.amount.toString(),
+        reference: transfer.reference,
+      });
 
       await prisma.auditLog.create({
         data: {
@@ -350,7 +357,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error creating bank transfer:', error);
       return res.status(500).json({ success: false, message: 'Failed to record bank transfer' });
@@ -404,7 +414,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error updating bank transfer:', error);
       return res.status(500).json({ success: false, message: 'Failed to update bank transfer' });
@@ -457,7 +470,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error verifying bank transfer:', error);
       return res.status(500).json({ success: false, message: 'Failed to verify bank transfer' });
@@ -990,7 +1006,7 @@ export const nigerianPaymentsController = {
 
       // Generate a 1-hour presigned URL and redirect the browser directly to MinIO.
       // The file is never proxied through the API server — MinIO streams it directly.
-      const url = await getPresignedUrl(proof.filepath);
+      const url = await getPresignedUrl(proof.filepath, undefined, req.hostname);
       return res.redirect(url);
     } catch (error) {
       console.error('Error generating download URL:', error);
@@ -1018,7 +1034,7 @@ export const nigerianPaymentsController = {
       }
 
       const expiresInSeconds = 3600;
-      const url = await getPresignedUrl(proof.filepath, expiresInSeconds);
+      const url = await getPresignedUrl(proof.filepath, expiresInSeconds, req.hostname);
       return res.status(200).json({
         success: true,
         data: { url, filename: proof.filename, mimeType: proof.mimeType, expiresInSeconds },

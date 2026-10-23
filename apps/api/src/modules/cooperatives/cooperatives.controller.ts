@@ -359,7 +359,7 @@ export const cooperativesController = {
         return res.status(404).json({ success: false, message: 'Deposit request not found' });
       }
 
-      const url = await getPresignedUrl(row.filepath);
+      const url = await getPresignedUrl(row.filepath, undefined, req.hostname);
       if (req.query.format === 'json') {
         return res.status(200).json({ success: true, data: { url, filename: row.filename, mimeType: row.mimeType } });
       }
@@ -545,7 +545,7 @@ export const cooperativesController = {
         return res.status(404).json({ success: false, message: 'Repayment request not found' });
       }
 
-      const url = await getPresignedUrl(row.filepath);
+      const url = await getPresignedUrl(row.filepath, undefined, req.hostname);
       if (req.query.format === 'json') {
         return res.status(200).json({ success: true, data: { url, filename: row.filename, mimeType: row.mimeType } });
       }

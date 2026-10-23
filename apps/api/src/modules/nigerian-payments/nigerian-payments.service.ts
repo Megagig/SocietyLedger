@@ -19,15 +19,19 @@ import {
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
 import { decidePaymentProof, targetTransactionIds } from './payment-proof-decision';
+import { assertNotLastActiveAccount, assertReferenceFree, assertTransferLinks, BankRuleError, promoteNewDefault } from './bank-rules';
 
 export const nigerianPaymentsService = {
   // ==========================================
   // TASK-PAY-002: BANK ACCOUNT MANAGEMENT
   // ==========================================
 
+  /** The first active account is always the default, so members are never shown an account list with none marked as the one to use. */
   async createBankAccount(associationId: number, data: BankAccountInput) {
-    // If setting as default, unset other defaults first
-    if (data.isDefault) {
+    const activeCount = await prisma.associationBankAccount.count({ where: { associationId, isActive: true } });
+    const makeDefault = Boolean(data.isDefault) || activeCount === 0;
+
+    if (makeDefault) {
       await prisma.associationBankAccount.updateMany({
         where: { associationId, isDefault: true },
         data: { isDefault: false },
@@ -41,49 +45,82 @@ export const nigerianPaymentsService = {
         accountName: data.accountName,
         accountNumber: data.accountNumber,
         bankCode: data.bankCode,
-        isDefault: data.isDefault || false,
+        isDefault: makeDefault,
         description: data.description,
       },
     });
   },
 
-  async updateBankAccount(id: number, associationId: number, data: Partial<BankAccountInput>) {
-    // If setting as default, unset other defaults first
-    if (data.isDefault) {
-      await prisma.associationBankAccount.updateMany({
-        where: { associationId, isDefault: true, id: { not: id } },
-        data: { isDefault: false },
-      });
+  /**
+   * Edits an account. Rules that keep members' "pay to" details sound: a changed account number can't clash with another account; the
+   * last active account can't be deactivated; only an active account can be the default; and the default can't be un-set directly —
+   * it moves by making another account the default.
+   */
+  async updateBankAccount(id: number, associationId: number, data: Partial<BankAccountInput> & { isActive?: boolean }) {
+    const existing = await prisma.associationBankAccount.findFirst({ where: { id, associationId } });
+    if (!existing) throw new BankRuleError('NOT_FOUND', 'Bank account not found');
+
+    if (data.accountNumber && data.accountNumber !== existing.accountNumber) {
+      const clash = await prisma.associationBankAccount.findFirst({ where: { associationId, accountNumber: data.accountNumber, id: { not: id } }, select: { id: true } });
+      if (clash) throw new BankRuleError('DUPLICATE_ACCOUNT', 'A bank account with this account number already exists.');
     }
 
-    return prisma.associationBankAccount.update({
+    const retiring = data.isActive === false && existing.isActive;
+    if (retiring) await assertNotLastActiveAccount(associationId, id);
+
+    const willBeActive = data.isActive ?? existing.isActive;
+    if (data.isDefault === true && !willBeActive) {
+      throw new BankRuleError('INACTIVE_DEFAULT', 'An inactive account can’t be the default. Reactivate it first.');
+    }
+
+    // Making this the default moves the default; a retired account never keeps it.
+    const becomesDefault = !retiring && (data.isDefault === true || existing.isDefault);
+    if (data.isDefault === true && !retiring) {
+      await prisma.associationBankAccount.updateMany({ where: { associationId, isDefault: true, id: { not: id } }, data: { isDefault: false } });
+    }
+
+    const account = await prisma.associationBankAccount.update({
       where: { id },
       data: {
         bankName: data.bankName,
         accountName: data.accountName,
         accountNumber: data.accountNumber,
         bankCode: data.bankCode,
-        isDefault: data.isDefault,
         description: data.description,
+        isActive: data.isActive,
+        isDefault: becomesDefault && willBeActive,
       },
     });
+
+    const newDefaultId = retiring && existing.isDefault ? await promoteNewDefault(associationId) : null;
+    return { account, newDefaultId };
   },
 
+  /**
+   * Removes an account. One that has transfers or statement imports is deactivated (its history stays); one with neither is deleted.
+   * The last active account can't be removed, and if the default goes, the oldest remaining active account becomes the default.
+   */
   async deleteBankAccount(id: number, associationId: number) {
-    // Check if account has any transfers
-    const transferCount = await prisma.bankTransfer.count({
-      where: { bankAccountId: id },
-    });
+    const existing = await prisma.associationBankAccount.findFirst({ where: { id, associationId } });
+    if (!existing) throw new BankRuleError('NOT_FOUND', 'Bank account not found');
+    if (existing.isActive) await assertNotLastActiveAccount(associationId, id);
 
-    if (transferCount > 0) {
-      // Soft delete by deactivating
-      return prisma.associationBankAccount.update({
-        where: { id },
-        data: { isActive: false },
-      });
+    const [transferCount, importCount] = await Promise.all([
+      prisma.bankTransfer.count({ where: { bankAccountId: id } }),
+      prisma.bankStatementImport.count({ where: { bankAccountId: id } }),
+    ]);
+
+    let outcome: 'deleted' | 'deactivated';
+    if (transferCount > 0 || importCount > 0) {
+      await prisma.associationBankAccount.update({ where: { id }, data: { isActive: false, isDefault: false } });
+      outcome = 'deactivated';
+    } else {
+      await prisma.associationBankAccount.delete({ where: { id } });
+      outcome = 'deleted';
     }
 
-    return prisma.associationBankAccount.delete({ where: { id } });
+    const newDefaultId = existing.isDefault ? await promoteNewDefault(associationId) : null;
+    return { outcome, newDefaultId };
   },
 
   async getBankAccounts(associationId: number, isActive?: boolean) {
@@ -112,6 +149,9 @@ export const nigerianPaymentsService = {
   // ==========================================
 
   async createBankTransfer(associationId: number, data: BankTransferInput) {
+    await assertTransferLinks(associationId, { bankAccountId: data.bankAccountId, memberId: data.memberId, transactionId: data.transactionId });
+    await assertReferenceFree(associationId, data.reference);
+
     return prisma.bankTransfer.create({
       data: {
         associationId,
@@ -122,7 +162,7 @@ export const nigerianPaymentsService = {
         senderAccountNumber: data.senderAccountNumber,
         senderAccountName: data.senderAccountName,
         amount: data.amount,
-        reference: data.reference,
+        reference: data.reference.trim(),
         transferDate: new Date(data.transferDate),
         narration: data.narration,
         notes: data.notes,
@@ -142,9 +182,17 @@ export const nigerianPaymentsService = {
     });
   },
 
-  async updateBankTransfer(id: number, associationId: number, data: Partial<BankTransferInput & { status: string }>) {
-    return prisma.bankTransfer.update({
-      where: { id },
+  /**
+   * Edits a transfer that is still waiting. The status is deliberately not editable here — verifying and rejecting go only through
+   * `verifyBankTransfer`, which needs the approve permission — and the update itself only lands on a PENDING transfer, so an edit can't
+   * slip in after someone verified it or after reconciliation matched it.
+   */
+  async updateBankTransfer(id: number, associationId: number, data: Partial<BankTransferInput>) {
+    await assertTransferLinks(associationId, { bankAccountId: data.bankAccountId, memberId: data.memberId, transactionId: data.transactionId });
+    if (data.reference) await assertReferenceFree(associationId, data.reference, id);
+
+    const result = await prisma.bankTransfer.updateMany({
+      where: { id, associationId, status: 'PENDING' },
       data: {
         transactionId: data.transactionId,
         bankAccountId: data.bankAccountId,
@@ -153,25 +201,35 @@ export const nigerianPaymentsService = {
         senderAccountNumber: data.senderAccountNumber,
         senderAccountName: data.senderAccountName,
         amount: data.amount,
-        reference: data.reference,
+        reference: data.reference?.trim(),
         transferDate: data.transferDate ? new Date(data.transferDate) : undefined,
         narration: data.narration,
         notes: data.notes,
-        status: data.status as any,
       },
     });
+    if (result.count === 0) throw new BankRuleError('ALREADY_DECIDED', 'This transfer was already decided or matched, so it can no longer be edited.');
+
+    return prisma.bankTransfer.findUniqueOrThrow({ where: { id } });
   },
 
+  /**
+   * Verifies or rejects a transfer, once. Only a PENDING transfer can be decided — the change is claimed atomically, so a second tap, a
+   * second officer, or a transfer reconciliation already MATCHED can't be overwritten. Verifying confirms the money reached the account;
+   * it records no payment (that happens when a member's proof is verified or a reconciliation is confirmed).
+   */
   async verifyBankTransfer(id: number, associationId: number, userId: number, status: 'VERIFIED' | 'REJECTED', notes?: string) {
-    return prisma.bankTransfer.update({
-      where: { id },
-      data: {
-        status,
-        verifiedBy: userId,
-        verifiedAt: new Date(),
-        notes: notes || undefined,
-      },
+    const claimed = await prisma.bankTransfer.updateMany({
+      where: { id, associationId, status: 'PENDING' },
+      data: { status, verifiedBy: userId, verifiedAt: new Date(), notes: notes || undefined },
     });
+
+    if (claimed.count === 0) {
+      const current = await prisma.bankTransfer.findFirst({ where: { id, associationId }, select: { status: true } });
+      if (!current) throw new BankRuleError('NOT_FOUND', 'Bank transfer not found');
+      throw new BankRuleError('ALREADY_DECIDED', `This transfer is already ${current.status.toLowerCase()}. It can't be decided again.`);
+    }
+
+    return prisma.bankTransfer.findUniqueOrThrow({ where: { id } });
   },
 
   async getBankTransfers(
@@ -239,7 +297,11 @@ export const nigerianPaymentsService = {
     ]);
 
     return {
-      transfers,
+      // A linked proof's storage key stays server-side — clients only learn whether a file is attached.
+      transfers: transfers.map((transfer) => ({
+        ...transfer,
+        paymentProofs: transfer.paymentProofs.map(({ filepath, ...proof }) => ({ ...proof, hasFile: Boolean(filepath) })),
+      })),
       pagination: {
         page,
         limit,
@@ -251,7 +313,7 @@ export const nigerianPaymentsService = {
   },
 
   async getBankTransferById(id: number, associationId: number) {
-    return prisma.bankTransfer.findFirst({
+    const transfer = await prisma.bankTransfer.findFirst({
       where: { id, associationId },
       include: {
         transaction: {
@@ -267,6 +329,12 @@ export const nigerianPaymentsService = {
         paymentProofs: true,
       },
     });
+    if (!transfer) return null;
+
+    return {
+      ...transfer,
+      paymentProofs: transfer.paymentProofs.map(({ filepath, ...proof }) => ({ ...proof, hasFile: Boolean(filepath) })),
+    };
   },
 
 

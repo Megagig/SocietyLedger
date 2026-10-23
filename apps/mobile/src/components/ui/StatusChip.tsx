@@ -56,6 +56,7 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   upcoming: 'info',
   voting_open: 'info',
   open: 'info',
+  matched: 'info',
 };
 
 const TONE_CLASSES: Record<StatusTone, { container: string; text: string }> = {

@@ -68,3 +68,31 @@ describe('notifyProofDecided', () => {
     errorSpy.mockRestore();
   });
 });
+
+describe('notifyTransferRecorded', () => {
+  // imported lazily so the module-level mocks above apply
+  const load = () => import('../../src/services/payment-proof-notifications').then((m) => m.notifyTransferRecorded);
+
+  it('tells every officer who can verify, except the one who recorded it, with the transfer as the deep-link entity', async () => {
+    mockPrisma.userRole.findMany.mockResolvedValue([{ userId: 5 }, { userId: 11 }, { userId: 12 }]);
+    const notifyTransferRecorded = await load();
+
+    await notifyTransferRecorded(15, { id: 31, recorderUserId: 5, amount: '25000', reference: 'TRF-1' });
+
+    expect(mockDispatch).toHaveBeenCalledTimes(2);
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ associationId: 15, userId: 11, kind: 'approval', entityId: 31, pushType: 'bank_transfer.pending' }),
+    );
+    expect(mockDispatch).not.toHaveBeenCalledWith(expect.objectContaining({ userId: 5 }));
+    expect(mockDispatch.mock.calls[0]?.[0].message).toContain('25,000.00');
+    expect(mockDispatch.mock.calls[0]?.[0].message).toContain('TRF-1');
+  });
+
+  it('never throws', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockPrisma.userRole.findMany.mockRejectedValue(new Error('db down'));
+    const notifyTransferRecorded = await load();
+    await expect(notifyTransferRecorded(15, { id: 31, recorderUserId: 5, amount: '1', reference: 'x' })).resolves.toBeUndefined();
+    errorSpy.mockRestore();
+  });
+});

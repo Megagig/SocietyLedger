@@ -101,9 +101,10 @@ export function ProofReceiptCard({ proof }: { proof: ProofDetailDTO }) {
         testID="proof-image"
       >
         <Image source={{ uri: url }} contentFit="contain" style={{ width: '100%', height: 260 }} accessibilityLabel="Payment receipt" />
-        <View className="absolute bottom-2 right-2 flex-row items-center gap-1 rounded-full bg-overlay/70 px-3 py-1.5">
-          <Maximize2 size={14} color={color.textInverse} strokeWidth={2} />
-          <Text variant="caption" tone="inverse">
+        {/* Always-dark pill, so its content uses the always-light token (the `inverse` text is dark in dark mode). */}
+        <View className="absolute bottom-2 right-2 flex-row items-center gap-1 rounded-full bg-overlay/80 px-3 py-1.5">
+          <Maximize2 size={14} color={color.onPassbook} strokeWidth={2} />
+          <Text variant="caption" tone="onPassbook">
             Zoom
           </Text>
         </View>

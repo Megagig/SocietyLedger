@@ -10,7 +10,7 @@ import { useThemeTokens } from '@/providers/ThemeProvider';
 
 /**
  * "Pay to" — the cooperative's bank accounts with tap-to-copy, shown above the receipt upload on the deposit and
- * loan-payment screens. Renders nothing while loading, on error, or when no accounts are set up: the form still
+ * loan-payment screens. Renders nothing while loading or on error; with no accounts set up it says so: the form still
  * works, and the member can ask an officer for the details.
  */
 export function PayToCard() {
@@ -18,7 +18,15 @@ export function PayToCard() {
   const { data } = usePaymentInfo();
   const accounts = data?.bankAccounts ?? [];
 
-  if (accounts.length === 0) return null;
+  // Nothing while loading or on error; once loaded with no accounts, say so (the form still works).
+  if (!data) return null;
+  if (accounts.length === 0) {
+    return (
+      <SectionCard title="Pay to">
+        <ListItem leading={<Building2 size={20} color={color.textTertiary} strokeWidth={1.75} />} title="No bank account yet" meta="Ask an officer of your association for the payment details." />
+      </SectionCard>
+    );
+  }
 
   const copy = async (accountNumber: string) => {
     try {

@@ -1,3 +1,4 @@
+import type { BankTransferStatus } from '@/types/api/enums';
 import type { ProofListItemDTO, ProofStatus } from '@/types/api/paymentProofsManage';
 
 /** The queue's wording: a proof is "Waiting" for an officer, then "Verified" or "Rejected". */
@@ -39,4 +40,29 @@ export function isPdfMime(mimeType: string | null | undefined): boolean {
 export function proofBacking(proof: Pick<ProofListItemDTO, 'hasFile' | 'declarationNote'>): 'file' | 'declaration' | 'none' {
   if (proof.hasFile) return 'file';
   return proof.declarationNote ? 'declaration' : 'none';
+}
+
+/** The transfers list's wording: "Waiting" until an officer confirms it, "Matched" once reconciliation has tied it to a charge. */
+export const TRANSFER_STATUS_LABELS: Record<BankTransferStatus, string> = {
+  PENDING: 'Waiting',
+  VERIFIED: 'Verified',
+  MATCHED: 'Matched',
+  REJECTED: 'Rejected',
+};
+
+export const TRANSFER_STATUS_OPTIONS: BankTransferStatus[] = ['PENDING', 'VERIFIED', 'MATCHED', 'REJECTED'];
+
+/** What Verify actually does — said plainly wherever an officer is about to press it. */
+export const VERIFY_TRANSFER_EXPLAINER =
+  'This confirms the money reached your account. It does not credit the member — do that by verifying their payment proof or matching the transfer in reconciliation.';
+
+/** "0123456789" → "0123 456 789": easier to read out and to check against a statement. */
+export function formatAccountNumber(accountNumber: string): string {
+  const digits = accountNumber.replace(/\D/g, '');
+  if (digits.length !== 10) return accountNumber;
+  return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+}
+
+export function transferMemberName(transfer: { member: { firstName: string; lastName: string } | null }): string | null {
+  return transfer.member ? `${transfer.member.firstName} ${transfer.member.lastName}`.trim() : null;
 }

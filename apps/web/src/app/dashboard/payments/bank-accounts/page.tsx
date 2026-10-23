@@ -145,18 +145,24 @@ export default function BankAccountsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (account: BankAccount) => {
     modals.openConfirmModal({
-      title: 'Delete Bank Account',
-      children: <Text size="sm">Are you sure you want to delete this bank account? This action cannot be undone.</Text>,
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      title: 'Remove Bank Account',
+      children: (
+        <Text size="sm">
+          Members will no longer be told to pay into this account.
+          {account.isDefault ? ' Another account will become the default.' : ''} An account with transfers or statements is kept as inactive
+          instead of being deleted.
+        </Text>
+      ),
+      labels: { confirm: 'Remove account', cancel: 'Keep it' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
         try {
-          await nigerianPaymentsApi.deleteBankAccount(id);
+          const result = await nigerianPaymentsApi.deleteBankAccount(account.id);
           notifications.show({
             title: 'Success',
-            message: 'Bank account deleted successfully',
+            message: result.message,
             color: 'green',
           });
           loadData();
@@ -189,27 +195,42 @@ export default function BankAccountsPage() {
     }
   };
 
+  const handleReactivate = async (account: BankAccount) => {
+    try {
+      await nigerianPaymentsApi.reactivateBankAccount(account.id);
+      notifications.show({ title: 'Success', message: 'Bank account reactivated', color: 'green' });
+      loadData();
+    } catch (error: any) {
+      notifications.show({ title: 'Error', message: error.response?.data?.message || 'Failed to reactivate the account', color: 'red' });
+    }
+  };
+
+  const activeCount = accounts.filter((account) => account.isActive).length;
+
   const bankOptions = banks.map((bank) => ({
     value: bank.code,
     label: bank.name,
   }));
 
   return (
-    <Can permission={PERMISSIONS.PAYMENT_RECORD} fallback={<Alert color="red">You don't have permission to manage bank accounts</Alert>}>
+    <Can anyPermissions={[PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_RECORD, PERMISSIONS.PAYMENT_VIEW]} fallback={<Alert color="red">You don't have permission to manage bank accounts</Alert>}>
       <Stack gap="lg">
         <Group justify="space-between">
           <div>
             <Title order={2}>Bank Accounts</Title>
             <Text size="sm" c="dimmed">
-              Manage your association's bank accounts for payment tracking
+              Members see your active accounts, the default first, when they pay by bank transfer — on the website and in the app. Keep the
+              bank, number and name exactly as your bank has them.
             </Text>
           </div>
-          <Button
-            leftSection={<Plus size={16} />}
-            onClick={() => handleOpenModal()}
-          >
-            Add Bank Account
-          </Button>
+          <Can anyPermissions={[PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]}>
+            <Button
+              leftSection={<Plus size={16} />}
+              onClick={() => handleOpenModal()}
+            >
+              Add Bank Account
+            </Button>
+          </Can>
         </Group>
 
         <Card withBorder padding="lg">
@@ -219,15 +240,17 @@ export default function BankAccountsPage() {
             <Stack align="center" py="xl">
               <Building2 size={48} color="gray" />
               <Text size="sm" c="dimmed" ta="center">
-                No bank accounts yet. Add your first bank account to start tracking payments.
+                No bank accounts yet. Add the account members should pay into. Until you do, they have nowhere to send a transfer.
               </Text>
-              <Button
-                leftSection={<Plus size={16} />}
-                onClick={() => handleOpenModal()}
-                mt="md"
-              >
-                Add Bank Account
-              </Button>
+              <Can anyPermissions={[PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]}>
+                <Button
+                  leftSection={<Plus size={16} />}
+                  onClick={() => handleOpenModal()}
+                  mt="md"
+                >
+                  Add Bank Account
+                </Button>
+              </Can>
             </Stack>
           ) : (
             <Table>
@@ -279,37 +302,48 @@ export default function BankAccountsPage() {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Menu position="bottom-end">
-                        <Menu.Target>
-                          <ActionIcon variant="subtle">
-                            <MoreVertical size={16} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          {!account.isDefault && (
+                      <Can anyPermissions={[PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]}>
+                        <Menu position="bottom-end">
+                          <Menu.Target>
+                            <ActionIcon variant="subtle">
+                              <MoreVertical size={16} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            {account.isActive && !account.isDefault && (
+                              <Menu.Item
+                                leftSection={<Star size={14} />}
+                                onClick={() => handleSetDefault(account)}
+                              >
+                                Set as Default
+                              </Menu.Item>
+                            )}
+                            {!account.isActive && (
+                              <Menu.Item
+                                leftSection={<Check size={14} />}
+                                onClick={() => handleReactivate(account)}
+                              >
+                                Reactivate
+                              </Menu.Item>
+                            )}
                             <Menu.Item
-                              leftSection={<Star size={14} />}
-                              onClick={() => handleSetDefault(account)}
+                              leftSection={<Edit size={14} />}
+                              onClick={() => handleOpenModal(account)}
                             >
-                              Set as Default
+                              Edit
                             </Menu.Item>
-                          )}
-                          <Menu.Item
-                            leftSection={<Edit size={14} />}
-                            onClick={() => handleOpenModal(account)}
-                          >
-                            Edit
-                          </Menu.Item>
-                          <Menu.Divider />
-                          <Menu.Item
-                            leftSection={<Trash2 size={14} />}
-                            color="red"
-                            onClick={() => handleDelete(account.id)}
-                          >
-                            Delete
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
+                            <Menu.Divider />
+                            <Menu.Item
+                              leftSection={<Trash2 size={14} />}
+                              color="red"
+                              disabled={account.isActive && activeCount <= 1}
+                              onClick={() => handleDelete(account)}
+                            >
+                              {account.isActive ? (activeCount <= 1 ? 'Remove (add another account first)' : 'Remove') : 'Delete'}
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Can>
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -363,8 +397,17 @@ export default function BankAccountsPage() {
                 {...form.getInputProps('description')}
               />
 
+              {/* The first account is always the default, and the default only moves by making another account the default. */}
               <Switch
                 label="Set as default account"
+                description={
+                  editingAccount?.isDefault
+                    ? 'This is the default account. To change it, make another account the default.'
+                    : activeCount === 0 && !editingAccount
+                      ? 'Your first account is always the default.'
+                      : 'The default is shown to members first.'
+                }
+                disabled={Boolean(editingAccount?.isDefault) || (activeCount === 0 && !editingAccount)}
                 {...form.getInputProps('isDefault', { type: 'checkbox' })}
               />
 

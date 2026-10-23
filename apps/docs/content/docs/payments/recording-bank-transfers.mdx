@@ -1,33 +1,62 @@
 ---
 title: "Recording and verifying bank transfers"
-description: "Record a bank transfer a member sent, with their proof attached if they have one."
+description: "Record a transfer that landed in your account, then verify it against your bank statement."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/payments/bank-transfers/new", "PY4", "PY5", "PY6"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/payments/bank-transfers", "/dashboard/payments/bank-transfers/new", "/dashboard/payments/nigerian/transfers", "PY4", "PY5", "PY6"]
 status: published
 lastVerified: "2026-10-13"
-related: ["/docs/payments/association-bank-accounts", "/docs/payments/verifying-payment-proofs"]
+related: ["/docs/payments/association-bank-accounts", "/docs/payments/verifying-payment-proofs", "/docs/payments/matching-and-reconciliation"]
 ---
 
-Record a transfer as soon as you see it land in your bank account, with the member's proof attached if they sent you one.
+Record a transfer as soon as you see it land in your bank account. Another officer can then check it against your statement and verify it.
 
 ## Before you start
 
-You need the **record payments** permission, which Administrators and Treasurers have by default.
+- To see and record transfers, you need the **record payments** permission.
+- To verify or reject one, you need the **approve payments** permission. Administrators and Treasurers have both by default.
+- Add your [bank accounts](/docs/payments/association-bank-accounts) first, so a transfer can be tied to the account it landed in.
 
 ## Record a transfer
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
-<Step>Go to <MenuPath items={["Payments", "Bank Transfers", "New"]} />.</Step>
+<Step>Go to <MenuPath items={["Finance", "Payment Management"]} />, select **Bank Transfers**, then select **Record Transfer**.</Step>
 <Step>Select the **Member** if you know who sent it, and the **Receiving Bank Account** it landed in.</Step>
-<Step>Enter the **Sender Bank Name**, **Amount** and **Reference Number** — the sender's account details and a narration are optional.</Step>
-<Step>Attach the member's **Payment Proof** if they sent you one.</Step>
-<Step>Select **Record Transfer**.</Step>
+<Step>Enter the **Sender Bank Name**, **Amount** and **Reference Number**. The sender's account details and a narration are optional.</Step>
+<Step>Attach the member's **Payment Proof** if they sent you one, then select **Record Transfer**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Payments", "Bank transfers"]} />, then select the **+** button.</Step>
+<Step>Enter the **Amount**, the bank's **Reference** and the **Transfer date**, and choose the account it was **Received into**.</Step>
+<Step>Choose the **Sender's bank**, and the **Member** if you know who sent it.</Step>
+<Step>Select **Record transfer**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/payments/recording-bank-transfers-1.webp" alt="Record Bank Transfer form with Member, Receiving Bank Account, Sender Bank Name, Amount, Reference Number fields and a Payment Proof upload" />
 
+A reference can only be used once. "TRF123" and "trf123 " count as the same reference. You can edit a transfer until it has been verified, rejected or matched.
+
+## Verify or reject a transfer
+
+Open a transfer that is **Waiting** and compare it with your bank statement. Select **Verify transfer** if it is there, or **Reject** if it isn't, and give a reason. Both are final.
+
+<Callout type="note" title="Verifying doesn't credit the member">
+Verifying a transfer confirms that the money reached your account. It doesn't record a payment against a member's charges. To credit a member, [verify their payment proof](/docs/payments/verifying-payment-proofs) or match the transfer to a charge in [reconciliation](/docs/payments/matching-and-reconciliation).
+</Callout>
+
 ## What happens next
 
-The transfer is logged for reconciliation, and if a proof was attached, it joins the queue in [Verifying payment proofs](/docs/payments/verifying-payment-proofs).
+Officers who can verify transfers get a notification when you record one, so you aren't left to remember to ask. You aren't notified about a transfer you recorded yourself. The status moves from **Waiting** to **Verified** or **Rejected**, and to **Matched** once reconciliation ties it to a charge.
+
+## If something looks wrong
+
+- **"A bank transfer with this reference already exists."** It may already be recorded. Search the list for the reference.
+- **"This transfer is already verified."** Another officer decided it first. Reopen it to see the result.
+- **"That bank account is no longer active."** Choose another receiving account, or reactivate the account first.

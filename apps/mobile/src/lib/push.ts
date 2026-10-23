@@ -231,7 +231,12 @@ export function routePushNotification(data: PushData, currentTenantId?: number):
       router.push('/(app)/(tabs)/money/payments');
       break;
 
+    // Sent to officers who can verify transfers — opens that transfer (the member-side `verified` stays on their payments).
     case 'bank_transfer.pending':
+      if (entityId) router.push(`/(app)/(tabs)/manage/payments/transfers/${entityId}` as never);
+      else router.push('/(app)/(tabs)/manage/payments/transfers' as never);
+      break;
+
     case 'bank_transfer.verified':
       router.push('/(app)/(tabs)/money/payments');
       break;

@@ -13,12 +13,16 @@ import {
   Loader,
   Alert,
   SimpleGrid,
-  Modal
+  Modal,
+  TextInput,
+  Textarea,
 } from '@mantine/core';
-import { 
-  IconRefresh, 
-  IconEdit, 
-  IconTrash, 
+import { notifications } from '@mantine/notifications';
+import {
+  IconRefresh,
+  IconEdit,
+  IconCheck,
+  IconX,
   IconArrowLeft,
   IconBuildingBank,
   IconUser,
@@ -28,6 +32,9 @@ import {
 } from '@tabler/icons-react';
 import nigerianPaymentsApi, { BankTransfer } from '@/lib/api/nigerian-payments';
 import { TransferStatusBadge } from '@/components/payments/nigerian/TransferStatusBadge';
+import { useTransferDecision } from '@/components/payments/useTransferDecision';
+import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 
 export default function BankTransferDetailPage() {
   const router = useRouter();
@@ -37,6 +44,10 @@ export default function BankTransferDetailPage() {
   const [transfer, setTransfer] = useState<BankTransfer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [edit, setEdit] = useState({ reference: '', amount: '', senderAccountName: '', narration: '', notes: '' });
+  // Verify / Reject: confirmation (or a required reason), the real API call, and a reload afterwards.
+  const decision = useTransferDecision(() => loadTransfer());
 
   useEffect(() => {
     loadTransfer();
@@ -56,14 +67,42 @@ export default function BankTransferDetailPage() {
   };
 
   const handleEdit = () => {
+    if (!transfer) return;
+    setEdit({
+      reference: transfer.reference,
+      amount: String(transfer.amount),
+      senderAccountName: transfer.senderAccountName ?? '',
+      narration: transfer.narration ?? '',
+      notes: transfer.notes ?? '',
+    });
     setShowEditModal(true);
   };
 
-  const handleDelete = () => {
-    if (!confirm('Are you sure you want to delete this bank transfer?')) {
+  // Only a waiting transfer can be edited, and the status can't be changed here — verifying and rejecting are their own actions.
+  const handleSaveEdit = async () => {
+    if (!transfer) return;
+    const amount = Number(edit.amount.replace(/,/g, ''));
+    if (!edit.reference.trim() || !(amount > 0)) {
+      notifications.show({ title: 'Check the details', message: 'Enter a reference and an amount above ₦0.', color: 'red' });
       return;
     }
-    router.push('/dashboard/payments/nigerian/transfers');
+    setSaving(true);
+    try {
+      await nigerianPaymentsApi.updateBankTransfer(transferId, {
+        reference: edit.reference.trim(),
+        amount,
+        senderAccountName: edit.senderAccountName.trim() || undefined,
+        narration: edit.narration.trim() || undefined,
+        notes: edit.notes.trim() || undefined,
+      });
+      notifications.show({ title: 'Success', message: 'Transfer updated', color: 'green' });
+      setShowEditModal(false);
+      loadTransfer();
+    } catch (err: any) {
+      notifications.show({ title: 'Could not save', message: err.response?.data?.message || 'Try again.', color: 'red' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -96,10 +135,15 @@ export default function BankTransferDetailPage() {
         <Button leftSection={<IconArrowLeft size={20} />} variant="subtle" onClick={() => router.push('/dashboard/payments/nigerian/transfers')}>
           Back to Transfers
         </Button>
-        <Button leftSection={<IconEdit size={20} />} onClick={handleEdit}>
-          Edit Transfer
-        </Button>
+        {transfer?.status === 'PENDING' && (
+          <Can permission={PERMISSIONS.PAYMENT_CREATE}>
+            <Button leftSection={<IconEdit size={20} />} onClick={handleEdit}>
+              Edit Transfer
+            </Button>
+          </Can>
+        )}
       </Group>
+      {decision.element}
 
       {error && (
         <Alert color="red" title="Error" icon={<IconRefresh />} mb="md" onClose={() => setError(null)}>
@@ -299,9 +343,16 @@ export default function BankTransferDetailPage() {
             <Button leftSection={<IconRefresh size={20} />} onClick={loadTransfer} variant="subtle">
               Refresh
             </Button>
-            <Button leftSection={<IconTrash size={20} />} color="red" onClick={handleDelete}>
-              Delete Transfer
-            </Button>
+            {transfer.status === 'PENDING' && (
+              <Can permission={PERMISSIONS.PAYMENT_CONFIRM}>
+                <Button leftSection={<IconX size={20} />} color="red" variant="light" onClick={() => decision.start(transfer, 'REJECTED')}>
+                  Reject
+                </Button>
+                <Button leftSection={<IconCheck size={20} />} color="green" onClick={() => decision.start(transfer, 'VERIFIED')}>
+                  Verify transfer
+                </Button>
+              </Can>
+            )}
           </Group>
         </>
       )}
@@ -313,12 +364,19 @@ export default function BankTransferDetailPage() {
         title="Edit Bank Transfer"
         size="lg"
       >
-        <Text>
-          Edit functionality coming soon. This will allow you to modify the transfer details.
-        </Text>
+        <Stack>
+          <TextInput label="Reference" required value={edit.reference} onChange={(e) => setEdit({ ...edit, reference: e.currentTarget.value })} />
+          <TextInput label="Amount (₦)" required value={edit.amount} onChange={(e) => setEdit({ ...edit, amount: e.currentTarget.value })} />
+          <TextInput label="Sender's account name" value={edit.senderAccountName} onChange={(e) => setEdit({ ...edit, senderAccountName: e.currentTarget.value })} />
+          <TextInput label="Narration" value={edit.narration} onChange={(e) => setEdit({ ...edit, narration: e.currentTarget.value })} />
+          <Textarea label="Notes" minRows={2} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.currentTarget.value })} />
+        </Stack>
         <Group justify="flex-end" mt="xl">
-          <Button variant="subtle" onClick={() => setShowEditModal(false)}>
-            Close
+          <Button variant="subtle" onClick={() => setShowEditModal(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button loading={saving} onClick={handleSaveEdit}>
+            Save changes
           </Button>
         </Group>
       </Modal>

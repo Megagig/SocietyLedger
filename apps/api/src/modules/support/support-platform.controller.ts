@@ -143,7 +143,7 @@ export const platformSupportController = {
       const attachment = await platformSupportService.getAttachmentForAccess(attachmentId);
       if (!attachment) return fail(res, 404, 'Attachment not found');
 
-      const url = await getPresignedUrl(attachment.filePath);
+      const url = await getPresignedUrl(attachment.filePath, undefined, req.hostname);
       res.json({ success: true, data: { url, filename: attachment.originalName, mimeType: attachment.mimeType } });
     } catch (error: any) {
       console.error('Error getting platform attachment:', error);

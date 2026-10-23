@@ -66,3 +66,45 @@ export async function notifyProofDecided(
     console.error('Proof-decision notification failed (non-critical):', error);
   }
 }
+
+/**
+ * Tells the officers who can verify transfers that a recorded one is waiting (in-app + push + email, preference-aware). The push opens
+ * that transfer (`bank_transfer.pending`). The officer who recorded it isn't told about their own entry. Best-effort.
+ */
+export async function notifyTransferRecorded(
+  associationId: number,
+  transfer: { id: number; recorderUserId: number; amount: string; reference: string },
+): Promise<void> {
+  try {
+    const rows = await prisma.userRole.findMany({
+      where: {
+        associationId,
+        isActive: true,
+        user: { isActive: true },
+        role: { isActive: true, permissions: { some: { permission: { key: PROOF_APPROVER_PERMISSION_KEY } } } },
+      },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+
+    const amount = Number(transfer.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    for (const { userId } of rows) {
+      if (userId === transfer.recorderUserId) continue;
+      try {
+        await dispatchNotification({
+          associationId,
+          userId,
+          kind: 'approval',
+          entityId: transfer.id,
+          pushType: 'bank_transfer.pending',
+          title: 'Bank transfer waiting',
+          message: `A transfer of ₦${amount} (reference ${transfer.reference}) was recorded and needs verifying.`,
+        });
+      } catch (error) {
+        console.error(`Transfer-recorded notification failed for user ${userId} (non-critical):`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Transfer-recorded notification failed (non-critical):', error);
+  }
+}

@@ -2,7 +2,8 @@ import { ActivityIndicator } from 'react-native';
 
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
-export type SpinnerTone = 'primary' | 'inverse' | 'secondary' | 'danger';
+/** `onDark` is always light — for a spinner on an always-dark surface (image viewer backdrop); `inverse` flips to dark in dark mode. */
+export type SpinnerTone = 'primary' | 'inverse' | 'secondary' | 'danger' | 'onDark';
 export type SpinnerSize = 'sm' | 'lg';
 
 export type SpinnerProps = {
@@ -20,6 +21,7 @@ export function Spinner({ tone = 'primary', size = 'sm' }: SpinnerProps) {
     inverse: color.textInverse,
     secondary: color.textSecondary,
     danger: color.danger,
+    onDark: color.onPassbook,
   }[tone];
 
   return <ActivityIndicator size={size === 'lg' ? 'large' : 'small'} color={resolvedColor} />;

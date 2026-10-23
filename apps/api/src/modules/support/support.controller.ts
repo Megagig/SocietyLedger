@@ -702,7 +702,7 @@ export const supportController = {
         return res.status(404).json({ success: false, error: 'Attachment not found' });
       }
 
-      const url = await getPresignedUrl(attachment.filePath);
+      const url = await getPresignedUrl(attachment.filePath, undefined, req.hostname);
       res.json({ success: true, data: { url, filename: attachment.originalName, mimeType: attachment.mimeType } });
     } catch (error: any) {
       console.error('Error getting attachment:', error);

@@ -30,6 +30,9 @@ import {
   IconX
 } from '@tabler/icons-react';
 import nigerianPaymentsApi, { BankTransfer } from '@/lib/api/nigerian-payments';
+import { useTransferDecision } from '@/components/payments/useTransferDecision';
+import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -52,6 +55,8 @@ export default function BankTransfersList() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const pageSize = 10;
+  // Verify / Reject: confirmation (or a required reason), the real API call, and a reload afterwards.
+  const decision = useTransferDecision(() => loadTransfers());
 
   useEffect(() => {
     loadTransfers();
@@ -126,6 +131,7 @@ export default function BankTransfersList() {
     <div className="p-6">
       <Group justify="space-between" mb="md">
         <Title order={2}>Bank Transfers</Title>
+        {decision.element}
         <Button leftSection={<IconPlus size={20} />} onClick={() => router.push('/dashboard/payments/nigerian/transfers/new')}>
           Record Transfer
         </Button>
@@ -220,14 +226,14 @@ export default function BankTransfersList() {
                             View Details
                           </Menu.Item>
                           {transfer.status === 'PENDING' && (
-                            <>
-                              <Menu.Item leftSection={<IconCheck size={14} />} color="green">
+                            <Can permission={PERMISSIONS.PAYMENT_CONFIRM}>
+                              <Menu.Item leftSection={<IconCheck size={14} />} color="green" onClick={() => decision.start(transfer, 'VERIFIED')}>
                                 Verify
                               </Menu.Item>
-                              <Menu.Item leftSection={<IconX size={14} />} color="red">
+                              <Menu.Item leftSection={<IconX size={14} />} color="red" onClick={() => decision.start(transfer, 'REJECTED')}>
                                 Reject
                               </Menu.Item>
-                            </>
+                            </Can>
                           )}
                         </Menu.Dropdown>
                       </Menu>

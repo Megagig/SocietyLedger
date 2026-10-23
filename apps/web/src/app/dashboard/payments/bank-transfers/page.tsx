@@ -41,7 +41,7 @@ import {
   type BankTransfer,
 } from '@/lib/api/nigerian-payments';
 import { notifications } from '@mantine/notifications';
-import { modals } from '@mantine/modals';
+import { useTransferDecision } from '@/components/payments/useTransferDecision';
 
 export default function BankTransfersPage() {
   const router = useRouter();
@@ -57,6 +57,8 @@ export default function BankTransfersPage() {
   const [uploadModal, setUploadModal] = useState<BankTransfer | null>(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
+  // Verify / Reject: confirmation (or a required reason), the real API call, and a reload afterwards.
+  const decision = useTransferDecision(() => loadTransfers());
 
   useEffect(() => {
     loadTransfers();
@@ -94,34 +96,6 @@ export default function BankTransfersPage() {
   const handleSearch = () => {
     setPage(1);
     loadTransfers();
-  };
-
-  const handleVerify = async (id: string, status: 'VERIFIED' | 'REJECTED') => {
-    const message = status === 'VERIFIED' ? 'verify' : 'reject';
-    
-    modals.openConfirmModal({
-      title: `Confirm ${status === 'VERIFIED' ? 'Verification' : 'Rejection'}`,
-      children: <Text size="sm">Are you sure you want to {message} this transfer?</Text>,
-      labels: { confirm: 'Confirm', cancel: 'Cancel' },
-      confirmProps: { color: status === 'REJECTED' ? 'red' : 'green' },
-      onConfirm: async () => {
-        try {
-          await nigerianPaymentsApi.verifyBankTransfer(id, { verified: status === 'VERIFIED' });
-          notifications.show({
-            title: 'Success',
-            message: `Transfer ${status.toLowerCase()} successfully`,
-            color: 'green',
-          });
-          loadTransfers();
-        } catch (error: any) {
-          notifications.show({
-            title: 'Error',
-            message: error.response?.data?.message || `Failed to ${message} transfer`,
-            color: 'red',
-          });
-        }
-      },
-    });
   };
 
   const handleUploadProof = async () => {
@@ -180,6 +154,7 @@ export default function BankTransfersPage() {
   return (
     <Can permission={PERMISSIONS.PAYMENT_RECORD}>
       <Stack gap="lg">
+        {decision.element}
         <Group justify="space-between">
           <div>
             <Title order={2}>Bank Transfers</Title>
@@ -329,18 +304,18 @@ export default function BankTransfersPage() {
                             </Menu.Item>
                             {transfer.status === 'PENDING' && (
                               <>
-                                <Can permission={PERMISSIONS.PAYMENT_VERIFY}>
+                                <Can permission={PERMISSIONS.PAYMENT_CONFIRM}>
                                   <Menu.Item
                                     leftSection={<CheckCircle size={14} />}
                                     color="green"
-                                    onClick={() => handleVerify(transfer.id, 'VERIFIED')}
+                                    onClick={() => decision.start(transfer, 'VERIFIED')}
                                   >
                                     Verify
                                   </Menu.Item>
                                   <Menu.Item
                                     leftSection={<X size={14} />}
                                     color="red"
-                                    onClick={() => handleVerify(transfer.id, 'REJECTED')}
+                                    onClick={() => decision.start(transfer, 'REJECTED')}
                                   >
                                     Reject
                                   </Menu.Item>

@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useImperativeHandle, useRef, type ReactNode } 
 import { View } from 'react-native';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView, type BottomSheetBackdropProps, type BottomSheetModalProps } from '@gorhom/bottom-sheet';
 import { X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/ui/IconButton';
 import { Text } from '@/components/ui/Text';
@@ -25,6 +26,9 @@ export const BottomSheet = forwardRef<BottomSheetModal, BottomSheetProps>(functi
   ref,
 ) {
   const { color } = useThemeTokens();
+  // With edge-to-edge Android (and the iPhone home indicator) the sheet reaches under the system navigation, so its content needs the
+  // bottom inset as padding — otherwise the last button sits behind the nav bar (seen on Bank accounts' actions sheet).
+  const insets = useSafeAreaInsets();
   // Review finding (F1.8 Phase 1 retro): the close button must call `.dismiss()` on the sheet
   // itself, not just fire the caller's `onDismiss` — that prop is gorhom's own "sheet was
   // dismissed" notification (fires automatically after swipe/backdrop/`.dismiss()`), not a
@@ -53,7 +57,7 @@ export const BottomSheet = forwardRef<BottomSheetModal, BottomSheetProps>(functi
     >
       {/* enableDynamicSizing only gets a content height from gorhom's own BottomSheetView (or its scrollables). A plain
           View is never measured, the detents stay empty, and present() silently shows nothing. */}
-      <BottomSheetView>
+      <BottomSheetView style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}>
         {title ? (
           <View className="flex-row items-center justify-between px-4 pb-2">
             <Text variant="h2">{title}</Text>

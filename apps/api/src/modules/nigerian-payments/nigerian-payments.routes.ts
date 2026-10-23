@@ -35,9 +35,9 @@ router.use(tenantMiddleware);
 // UTILITY ROUTES
 // ==========================================
 
-// Get list of Nigerian banks
+// Get list of Nigerian banks — a static reference list, needed by anyone who adds a bank account or records a transfer
 router.get('/banks',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.FINANCE_VIEW, PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENT_CREATE]),
   nigerianPaymentsController.getNigerianBanks
 );
 
@@ -45,33 +45,36 @@ router.get('/banks',
 // BANK ACCOUNT ROUTES (TASK-PAY-002)
 // ==========================================
 
+// Bank accounts are the association's payment details, so the officers who record payments (treasurer, financial secretary)
+// can manage them as well as the administrator who holds settings.edit. Viewing is open to anyone who handles payments.
+
 // List all bank accounts
 router.get('/bank-accounts',
-  requirePermission(PERMISSIONS.SETTINGS_VIEW),
+  requireAnyPermission([PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_RECORD, PERMISSIONS.PAYMENT_VIEW]),
   nigerianPaymentsController.listBankAccounts
 );
 
 // Get single bank account
 router.get('/bank-accounts/:id',
-  requirePermission(PERMISSIONS.SETTINGS_VIEW),
+  requireAnyPermission([PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_RECORD, PERMISSIONS.PAYMENT_VIEW]),
   nigerianPaymentsController.getBankAccountById
 );
 
 // Create bank account
 router.post('/bank-accounts',
-  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  requireAnyPermission([PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]),
   nigerianPaymentsController.createBankAccount
 );
 
 // Update bank account
 router.patch('/bank-accounts/:id',
-  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  requireAnyPermission([PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]),
   nigerianPaymentsController.updateBankAccount
 );
 
 // Delete bank account
 router.delete('/bank-accounts/:id',
-  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  requireAnyPermission([PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]),
   nigerianPaymentsController.deleteBankAccount
 );
 

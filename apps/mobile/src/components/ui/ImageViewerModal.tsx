@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Modal, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { X } from 'lucide-react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconButton } from '@/components/ui/IconButton';
 import { Spinner } from '@/components/ui/Spinner';
 import { Text } from '@/components/ui/Text';
+import { useThemeTokens } from '@/providers/ThemeProvider';
 import { clampScale, clampTranslate, containedSize, nextDoubleTapScale, shouldDismiss } from '@/lib/imageZoom';
 
 export type ImageViewerModalProps = {
@@ -28,6 +28,7 @@ export function ImageViewerModal({ visible, uri, title, onClose }: ImageViewerMo
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
+  const { color } = useThemeTokens();
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
 
@@ -140,22 +141,24 @@ export function ImageViewerModal({ visible, uri, title, onClose }: ImageViewerMo
 
         {state === 'loading' && uri ? (
           <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-            <Spinner tone="inverse" size="lg" />
+            <Spinner tone="onDark" size="lg" />
           </View>
         ) : null}
         {state === 'error' ? (
           <View pointerEvents="none" className="absolute inset-0 items-center justify-center px-8">
-            <Text variant="body" tone="inverse" align="center">
+            <Text variant="body" tone="onPassbook" align="center">
               We couldn&apos;t load this image. Close it and try again.
             </Text>
           </View>
         ) : null}
 
         <View className="absolute left-0 right-0 flex-row items-center justify-between px-4" style={{ top: insets.top + 8 }} pointerEvents="box-none">
-          <Text variant="body-strong" tone="inverse" numberOfLines={1} className="mr-3 flex-1">
+          <Text variant="body-strong" tone="onPassbook" numberOfLines={1} className="mr-3 flex-1">
             {title ?? ''}
           </Text>
-          <IconButton icon={X} tone="inverse" variant="soft" accessibilityLabel="Close" onPress={onClose} testID="image-viewer-close" />
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8} className="h-11 w-11 items-center justify-center rounded-full bg-on-passbook/20" testID="image-viewer-close">
+            <X size={22} color={color.onPassbook} strokeWidth={2} />
+          </Pressable>
         </View>
       </GestureHandlerRootView>
     </Modal>

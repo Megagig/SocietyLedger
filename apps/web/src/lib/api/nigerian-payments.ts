@@ -32,6 +32,7 @@ export interface BankTransfer {
   reference: string;
   transferDate: string;
   narration?: string;
+  notes?: string;
   memberId?: string;
   member?: {
     id: string;
@@ -176,17 +177,26 @@ export const nigerianPaymentsApi = {
     return response.data.data;
   },
 
-  async updateBankAccount(id: string, data: Partial<BankAccount>): Promise<BankAccount> {
-    const response = await api.put(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`, data);
+  /** PATCH /bank-accounts/:id. `newDefaultId` is set when retiring the default made another account the default. */
+  async updateBankAccount(id: string | number, data: Partial<BankAccount>): Promise<BankAccount & { newDefaultId?: number | null }> {
+    const response = await api.patch(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`, data);
     return response.data.data;
   },
 
-  async deleteBankAccount(id: string): Promise<void> {
-    await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`);
+  /** DELETE /bank-accounts/:id — deletes an unused account, deactivates one with transfers or statements. Refused for the last active account. */
+  async deleteBankAccount(id: string | number): Promise<{ message: string; outcome: 'deleted' | 'deactivated'; newDefaultId: number | null }> {
+    const response = await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`);
+    return { message: response.data.message, ...response.data.data };
   },
 
-  async setDefaultBankAccount(id: string): Promise<BankAccount> {
-    const response = await api.patch(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}/set-default`);
+  /** Making an account the default moves the default (there is no separate set-default route). */
+  async setDefaultBankAccount(id: string | number): Promise<BankAccount> {
+    const response = await api.patch(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`, { isDefault: true });
+    return response.data.data;
+  },
+
+  async reactivateBankAccount(id: string | number): Promise<BankAccount> {
+    const response = await api.patch(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_ACCOUNTS}/${id}`, { isActive: true });
     return response.data.data;
   },
 
@@ -202,7 +212,13 @@ export const nigerianPaymentsApi = {
   }): Promise<{ data: BankTransfer[]; total: number; page: number; limit: number }> {
     const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS, { params });
     const result = response.data.data;
-    return { data: result.transfers || [], total: result.total, page: result.page, limit: result.limit };
+    // The API nests the paging under `pagination` (totalCount, not total) — reading the top level left every list without a count.
+    return {
+      data: result.transfers || [],
+      total: result.pagination?.totalCount ?? 0,
+      page: result.pagination?.page ?? 1,
+      limit: result.pagination?.limit ?? params?.limit ?? 20,
+    };
   },
 
   async getBankTransfer(id: string): Promise<BankTransfer> {
@@ -216,7 +232,8 @@ export const nigerianPaymentsApi = {
   },
 
   async updateBankTransfer(id: string, data: Partial<BankTransfer>): Promise<BankTransfer> {
-    const response = await api.put(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}`, data);
+    // PATCH, as the API defines it — and only a transfer that is still waiting can be edited; the status can't be set here.
+    const response = await api.patch(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}`, data);
     return response.data.data;
   },
 
@@ -224,7 +241,11 @@ export const nigerianPaymentsApi = {
     await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}`);
   },
 
-  async verifyBankTransfer(id: string, data: { verified: boolean; notes?: string }): Promise<BankTransfer> {
+  /**
+   * Verify or reject a waiting transfer, once. Verifying confirms the money reached the account; it records no payment.
+   * The API expects `status`, not a boolean — a rejection should carry the reason in `notes`.
+   */
+  async verifyBankTransfer(id: string | number, data: { status: 'VERIFIED' | 'REJECTED'; notes?: string }): Promise<BankTransfer> {
     const response = await api.post(`${API_ROUTES.NIGERIAN_PAYMENTS.BANK_TRANSFERS}/${id}/verify`, data);
     return response.data.data;
   },
