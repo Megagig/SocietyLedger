@@ -1,20 +1,20 @@
 import { useRouter } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { NoPermission } from '@/components/feedback/NoPermission';
 import { SearchField } from '@/components/forms/SearchField';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
-import { FilterChip } from '@/components/ui/FilterChip';
 import { Money } from '@/components/ui/Money';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { GroupedRow, positionOf, type RowPosition } from '@/features/financeSetup/components/GroupedRow';
 import { PagedList } from '@/features/financeSetup/components/PagedList';
 import { DrillFigure } from '@/features/reports/components/Drill';
+import { OptionDropdown } from '@/features/reports/components/OptionDropdown';
 import { chargesHref } from '@/features/reports/drill';
 import { MEMBER_FILTER_OPTIONS } from '@/features/reports/labels';
 import { useMemberBalances, useReportsAccess } from '@/features/reports/queries';
@@ -83,14 +83,10 @@ export default function MemberBalancesScreen() {
 
       <View className="gap-3 pb-3">
         <SearchField value={search} onChangeText={setSearch} placeholder="Search name, ID or email" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-          {MEMBER_FILTER_OPTIONS.map((o) => (
-            <FilterChip key={o.value} label={o.label} active={status === o.value} onPress={() => setStatus(o.value)} />
-          ))}
-          {SORTS.map((o) => (
-            <FilterChip key={o.value} label={`Sort: ${o.label}`} active={sort === o.value} onPress={() => setSort(o.value)} />
-          ))}
-        </ScrollView>
+        <View className="flex-row gap-3">
+          <OptionDropdown label="Show" value={status} options={MEMBER_FILTER_OPTIONS} onChange={setStatus} testID="rp3-show" />
+          <OptionDropdown label="Sort by" value={sort} options={SORTS} onChange={setSort} testID="rp3-sort" />
+        </View>
       </View>
 
       <PagedList
