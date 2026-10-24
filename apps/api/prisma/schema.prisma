@@ -1159,11 +1159,14 @@ model AssociationBankAccount {
   isDefault        Boolean               @default(false) @map("is_default")
   isActive         Boolean               @default(true) @map("is_active")
   description      String?
+  // How this bank's statement columns were read last time (by header text), so the next import needs no correction
+  statementMapping Json?                 @map("statement_mapping")
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
   association      Association           @relation(fields: [associationId], references: [id])
   bankTransfers    BankTransfer[]
   statementImports BankStatementImport[]
+  statementEntries BankStatementEntry[]
 
   @@unique([associationId, accountNumber])
   @@index([associationId, isActive])
@@ -1217,6 +1220,8 @@ model BankStatementImport {
   totalEntries     Int                    @default(0) @map("total_entries")
   matchedEntries   Int                    @default(0) @map("matched_entries")
   unmatchedEntries Int                    @default(0) @map("unmatched_entries")
+  // Lines that were already imported before (an overlapping or repeated statement) and so were not added again
+  skippedEntries   Int                    @default(0) @map("skipped_entries")
   status           ImportStatus           @default(PROCESSING)
   importedBy       Int                    @map("imported_by")
   createdAt        DateTime               @default(now()) @map("created_at")
@@ -1245,9 +1250,14 @@ model BankStatementEntry {
   matchConfidence       Int?                @map("match_confidence") // 0-100 percentage
   matchedAt             DateTime?           @map("matched_at")
   matchedBy             Int?                @map("matched_by")
+  // Identity of the line (see statement-parser.ts): the same line is never imported twice for one bank account
+  bankAccountId         Int?                @map("bank_account_id")
+  fingerprint           String?
   createdAt             DateTime            @default(now()) @map("created_at")
   import                BankStatementImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  bankAccount           AssociationBankAccount? @relation(fields: [bankAccountId], references: [id])
 
+  @@unique([bankAccountId, fingerprint])
   @@index([importId, matchStatus])
   @@index([reference])
   @@map("bank_statement_entries")
@@ -1265,6 +1275,8 @@ model PaymentReconciliation {
   status           ReconciliationStatus    @default(PENDING)
   reconciledBy     Int?                    @map("reconciled_by")
   reconciledAt     DateTime?               @map("reconciled_at")
+  // Who proposed the match: they cannot also confirm it
+  createdBy        Int?                    @map("created_by")
   notes            String?
   createdAt        DateTime                @default(now()) @map("created_at")
   association      Association             @relation(fields: [associationId], references: [id])

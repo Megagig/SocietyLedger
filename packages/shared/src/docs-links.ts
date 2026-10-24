@@ -100,6 +100,8 @@ export const DOCS_LINKS: Record<string, string> = {
 
   '/dashboard/payments/nigerian/reconciliation': '/docs/payments/matching-and-reconciliation',
   PY8: '/docs/payments/matching-and-reconciliation',
+  '/dashboard/payments/nigerian/statements': '/docs/payments/importing-a-bank-statement',
+  '/dashboard/payments/nigerian/reconciliation-history': '/docs/payments/reconciliation-history',
 
   '/dashboard/accounting/journal-entries': '/docs/accounting-guide/journal-entries',
   AC3: '/docs/accounting-guide/journal-entries',

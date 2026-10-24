@@ -14,7 +14,7 @@ import { Text } from '@/components/ui/Text';
 import { GroupedRow, positionOf, type RowPosition } from '@/features/financeSetup/components/GroupedRow';
 import { PagedList } from '@/features/financeSetup/components/PagedList';
 import { DrillFigure } from '@/features/reports/components/Drill';
-import { OptionDropdown } from '@/features/reports/components/OptionDropdown';
+import { OptionDropdown } from '@/components/forms/OptionDropdown';
 import { chargesHref } from '@/features/reports/drill';
 import { MEMBER_FILTER_OPTIONS } from '@/features/reports/labels';
 import { useMemberBalances, useReportsAccess } from '@/features/reports/queries';

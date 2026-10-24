@@ -2,7 +2,7 @@
 // PHASE 3.5: NIGERIAN PAYMENT FEATURES ROUTES
 // ============================================
 
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import { nigerianPaymentsController } from './nigerian-payments.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
@@ -26,6 +26,16 @@ const upload = multer({
     }
   },
 });
+
+// Statements are CSV or Excel files. The type is decided from the file's contents (statement-file.ts), not from what the client says.
+const statementUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+function receiveStatement(req: Request, res: Response, next: NextFunction) {
+  statementUpload.single('file')(req, res, (error: unknown) => {
+    if (!error) return next();
+    const tooBig = error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE';
+    return res.status(400).json({ success: false, code: tooBig ? 'FILE_TOO_LARGE' : 'BAD_UPLOAD', message: tooBig ? 'The file is larger than 5 MB.' : 'The file could not be uploaded.' });
+  });
+}
 
 // Apply auth and tenant middleware to all routes
 router.use(authMiddleware);
@@ -116,9 +126,17 @@ router.post('/bank-transfers/:id/verify',
 // BANK STATEMENT IMPORT ROUTES (TASK-PAY-005)
 // ==========================================
 
-// Import bank statement
+// Preview a statement: what would be imported, and how its columns were read. Saves nothing.
+router.post('/import-statement/preview',
+  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  receiveStatement,
+  nigerianPaymentsController.previewStatement
+);
+
+// Import a bank statement (CSV or Excel upload). Lines imported before are skipped.
 router.post('/import-statement',
   requirePermission(PERMISSIONS.FINANCE_CREATE),
+  receiveStatement,
   nigerianPaymentsController.importBankStatement
 );
 
@@ -148,6 +166,12 @@ router.post('/reconcile',
 router.post('/reconciliations/:id/confirm',
   requirePermission(PERMISSIONS.FINANCE_APPROVE),
   nigerianPaymentsController.confirmReconciliation
+);
+
+// Ranked suggestions: each unmatched bank line with the charge it most likely paid
+router.get('/reconciliation/suggestions',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  nigerianPaymentsController.getMatchSuggestions
 );
 
 // List reconciliations

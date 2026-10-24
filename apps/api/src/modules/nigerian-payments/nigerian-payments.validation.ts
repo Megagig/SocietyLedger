@@ -65,7 +65,8 @@ export const reconcilePaymentSchema = z.object({
   bankTransferId: z.number().int().positive().optional(),
   statementEntryId: z.number().int().positive().optional(),
   matchType: z.enum(['AUTO_REFERENCE', 'AUTO_AMOUNT', 'MANUAL']),
-  matchedAmount: z.number().positive('Matched amount must be positive'),
+  /** Ignored: the amount is always the bank line's own amount */
+  matchedAmount: z.number().optional(),
   variance: z.number().optional().default(0),
   notes: z.string().optional(),
 });
@@ -133,6 +134,8 @@ export const statementEntryQuerySchema = z.object({
   limit: z.string().optional().default('20'),
   importId: z.string().optional(),
   matchStatus: z.string().optional(),
+  /** Only money received (credit lines): the ones that can pay a charge */
+  creditsOnly: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });

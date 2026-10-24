@@ -1,26 +1,36 @@
 ---
 title: "Reconciliation history"
-description: "Every past reconciliation run, for your own records."
+description: "Every match that was proposed, confirmed or turned down, for your own records."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/payments/nigerian/reconciliation-history"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/payments/nigerian/reconciliation-history", "PY8"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-29"
 related: ["/docs/payments/matching-and-reconciliation"]
 ---
 
-A record of every reconciliation you've run, in case you need to check what was matched and when.
+A record of every match, so you can check what was paired, by whom, and what was decided.
 
 ## Check your history
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Payments", "Nigerian", "Reconciliation History"]} />.</Step>
-<Step>Review past runs, or select **Go to Reconciliation** to start a new one.</Step>
+<Step>Choose **To confirm**, **Confirmed** or **Turned down**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Payments", "Reconciliation"]} /> and open the **Matches** tab.</Step>
+<Step>Choose **To confirm**, **Confirmed** or **Turned down**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/payments/reconciliation-history-1.webp" alt="Reconciliation History page, currently empty, with a link back to the reconciliation dashboard" />
+Each row shows the member and charge, the bank line it was matched to, the amount, and its status. A turned-down match keeps the reason that was given.
 
 ## What happens next
 
-Nothing changes here — this page is a record, not an action. Go to [Matching payments and reconciling](/docs/payments/matching-and-reconciliation) to do the actual work.
+A match under **To confirm** is still waiting: it has recorded nothing. Open [Matching payments and reconciling](/docs/payments/matching-and-reconciliation) to decide it.

@@ -333,6 +333,12 @@ export function Sidebar() {
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments/nigerian',
         },
+        {
+          label: 'Reconciliation',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/payments/nigerian/reconciliation',
+          permission: PERMISSIONS.PAYMENT_CONFIRM,
+        },
       ],
     },
     {

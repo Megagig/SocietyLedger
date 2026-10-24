@@ -309,6 +309,12 @@ export function AdminSidebar() {
           href: '/dashboard/payments/nigerian/verification',
           permission: PERMISSIONS.PAYMENT_RECORD,
         },
+        {
+          label: 'Reconciliation',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/payments/nigerian/reconciliation',
+          permission: PERMISSIONS.PAYMENT_CONFIRM,
+        },
       ],
     },
     {

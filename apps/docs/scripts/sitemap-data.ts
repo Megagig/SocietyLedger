@@ -163,8 +163,8 @@ export const sections: SectionDef[] = [
       { slug: 'verifying-payment-proofs', title: 'Verifying payment proofs', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/verification', 'PY2', 'PY3'] },
       { slug: 'recording-bank-transfers', title: 'Recording and verifying bank transfers', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/transfers*', 'PY4', 'PY5', 'PY6'] },
       { slug: 'importing-a-bank-statement', title: 'Importing a bank statement', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/statements', 'PY8'] },
-      { slug: 'matching-and-reconciliation', title: 'Matching payments and reconciling', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/reconciliation'] },
-      { slug: 'reconciliation-history', title: 'Reconciliation history', type: 'task', audience: ['officer'], platforms: ['web'], covers: ['/dashboard/payments/nigerian/reconciliation-history'] },
+      { slug: 'matching-and-reconciliation', title: 'Matching payments and reconciling', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/reconciliation', 'PY8'] },
+      { slug: 'reconciliation-history', title: 'Reconciliation history', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/payments/nigerian/reconciliation-history', 'PY8'] },
     ],
   },
   {

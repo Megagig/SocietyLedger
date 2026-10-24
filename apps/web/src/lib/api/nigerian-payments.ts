@@ -49,6 +49,88 @@ export interface BankTransfer {
   updatedAt: string;
 }
 
+export type Pagination = { page: number; limit: number; totalCount: number; totalPages: number; hasMore: boolean };
+
+export type ColumnKey = 'date' | 'valueDate' | 'description' | 'reference' | 'debit' | 'credit' | 'amount' | 'balance';
+export type ColumnMapping = Partial<Record<ColumnKey, number>>;
+
+export type StatementUpload = { bankAccountId: number; file: File; mapping?: ColumnMapping; headerRow?: number };
+
+function statementForm(payload: StatementUpload): FormData {
+  const form = new FormData();
+  form.append('bankAccountId', String(payload.bankAccountId));
+  if (payload.mapping) form.append('mapping', JSON.stringify(payload.mapping));
+  if (payload.headerRow !== undefined) form.append('headerRow', String(payload.headerRow));
+  form.append('file', payload.file);
+  return form;
+}
+
+export interface StatementPreview {
+  filename: string;
+  bankAccount: { id: number; bankName: string; accountNumber: string };
+  layout: { headerRow: number; headers: string[]; mapping: ColumnMapping; source: 'saved' | 'detected' | 'manual' };
+  problems: string[];
+  counts: { lines: number; credits: number; debits: number; alreadyImported: number; newLines: number; newCredits: number; newCreditTotal: string | null; unreadable: number };
+  period: { startDate: string | null; endDate: string | null };
+  sample: Array<{ row: number; transactionDate: string; reference: string | null; description: string; debitAmount: string | null; creditAmount: string | null; balance: string | null }>;
+  unreadableRows: Array<{ row: number; reason: string }>;
+  canImport: boolean;
+}
+
+export interface StatementImportRow {
+  id: number;
+  filename: string;
+  importDate: string;
+  startDate: string | null;
+  endDate: string | null;
+  totalEntries: number;
+  matchedEntries: number;
+  unmatchedEntries: number;
+  skippedEntries: number;
+  status: string;
+  bankAccount: { id: number; bankName: string; accountNumber: string };
+}
+
+export interface StatementLine {
+  id: number;
+  transactionDate: string;
+  reference: string | null;
+  description: string;
+  debitAmount: string | number | null;
+  creditAmount: string | number | null;
+  matchStatus: 'UNMATCHED' | 'AUTO_MATCHED' | 'MANUAL_MATCHED' | 'REJECTED';
+  import: { id: number; filename: string; bankAccount: { bankName: string; accountNumber: string } };
+}
+
+export interface MatchSuggestion {
+  source: 'entry' | 'transfer';
+  statementEntryId: number | null;
+  bankTransferId: number | null;
+  line: { amount: string; date: string; reference: string | null; description: string };
+  transactionId: number;
+  charge: { referenceNumber: string | null; categoryName: string; memberId: number; memberNumber: string; memberName: string; amount: string; available: string; dueDate: string | null };
+  confidence: number;
+  matchType: 'AUTO_REFERENCE' | 'AUTO_AMOUNT' | 'MANUAL';
+  reasons: string[];
+  recommended: boolean;
+}
+
+export type MatchRequest = { transactionId: number; statementEntryId?: number; bankTransferId?: number; confidence?: number; matchType: 'AUTO_REFERENCE' | 'AUTO_AMOUNT' | 'MANUAL' };
+
+export interface MatchRecord {
+  id: number;
+  status: 'PENDING' | 'CONFIRMED' | 'DISPUTED';
+  matchType: string;
+  matchedAmount: string | number;
+  createdAt: string;
+  reconciledAt: string | null;
+  createdBy: number | null;
+  notes: string | null;
+  transaction: { id: number; referenceNumber: string | null; amount: string | number; member: { id: number; memberId: string; firstName: string; lastName: string }; category: { id: number; name: string; type: string } };
+  statementEntry: { id: number; transactionDate: string; reference: string | null; description: string; creditAmount: string | number | null } | null;
+  bankTransfers: Array<{ id: number; reference: string; amount: string | number; senderBankName: string }>;
+}
+
 export interface Reconciliation {
   id: string;
   associationId: string;
@@ -251,47 +333,63 @@ export const nigerianPaymentsApi = {
   },
 
   // Reconciliation
-  async getReconciliations(params?: {
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{ data: Reconciliation[]; total: number; page: number; limit: number }> {
-    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS, { params });
-    return response.data;
-  },
 
-  async getReconciliation(id: string): Promise<Reconciliation> {
-    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS}/${id}`);
+
+
+
+
+
+
+  // ---- Bank statement import and reconciliation (the server reads the file; see statement-import.ts in the API)
+
+  /** What importing a statement would do and how its columns were read. Saves nothing. */
+  async previewStatement(payload: StatementUpload): Promise<StatementPreview> {
+    const response = await api.post(`${API_ROUTES.NIGERIAN_PAYMENTS.IMPORT_STATEMENT}/preview`, statementForm(payload), { headers: { 'Content-Type': 'multipart/form-data' } });
     return response.data.data;
   },
 
-  async createReconciliation(data: {
-    bankStatementEntryId?: string;
-    bankTransferId?: string;
-    transactionId?: string;
-  }): Promise<Reconciliation> {
-    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS, data);
+  /** Saves the new lines of a CSV or Excel statement. Lines imported before are skipped. */
+  async importStatement(payload: StatementUpload): Promise<{ import: { id: number }; entriesCreated: number; creditLines: number; alreadyImported: number }> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.IMPORT_STATEMENT, statementForm(payload), { headers: { 'Content-Type': 'multipart/form-data' } });
     return response.data.data;
   },
 
-  async confirmReconciliation(id: string): Promise<Reconciliation> {
-    const response = await api.post(`${API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS}/${id}/confirm`);
+  async getStatementImports(params?: { page?: number; limit?: number }): Promise<{ imports: StatementImportRow[]; pagination: Pagination }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_IMPORTS, { params });
     return response.data.data;
   },
 
-  async deleteReconciliation(id: string): Promise<void> {
-    await api.delete(`${API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS}/${id}`);
+  async getStatementEntries(params?: { matchStatus?: string; creditsOnly?: boolean; importId?: number; page?: number; limit?: number }): Promise<{ entries: StatementLine[]; pagination: Pagination }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_ENTRIES, { params });
+    return response.data.data;
   },
 
-  async runAutoMatch(): Promise<{ matches: Reconciliation[]; total: number }> {
-    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.AUTO_MATCH);
-    return response.data;
+  /** Each unmatched bank line with the charge it most likely paid, and how sure that is. */
+  async getMatchSuggestions(): Promise<{ suggestions: MatchSuggestion[]; counts: { unmatchedLines: number; suggested: number; recommended: number; withoutSuggestion: number } }> {
+    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS.replace(/reconciliations$/, 'reconciliation')}/suggestions`);
+    return response.data.data;
   },
 
-  async applyAutoMatches(matches: Array<{ bankStatementEntryId: string; bankTransferId?: string; transactionId?: string }>): Promise<Reconciliation[]> {
+  /** Proposes each chosen match. Nothing is recorded until another officer confirms. */
+  async applyMatches(matches: MatchRequest[]): Promise<{ results: Array<{ success: boolean; error?: string; reconciliationId?: number }>; successful: number; failed: number }> {
     const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.AUTO_MATCH_APPLY, { matches });
+    return response.data.data;
+  },
+
+  /** One match chosen by hand. The amount is always the bank line's own. */
+  async proposeMatch(match: MatchRequest): Promise<{ id: number }> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS.replace(/reconciliations$/, 'reconcile'), { ...match, matchType: 'MANUAL' });
+    return response.data.data;
+  },
+
+  async getReconciliations(params?: { status?: string; page?: number; limit?: number }): Promise<{ reconciliations: MatchRecord[]; pagination: Pagination }> {
+    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.RECONCILIATIONS, { params });
+    return response.data.data;
+  },
+
+  /** CONFIRMED records the payment (a different officer from the one who proposed it); DISPUTED frees the bank line. */
+  async decideMatch(id: number, status: 'CONFIRMED' | 'DISPUTED', notes?: string): Promise<{ id: number; status: string }> {
+    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.CONFIRM_RECONCILIATION(String(id)), { status, notes });
     return response.data.data;
   },
 
@@ -301,45 +399,9 @@ export const nigerianPaymentsApi = {
   },
 
   // Bank Statements
-  async getStatementImports(params?: {
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{ data: BankStatementImport[]; total: number; page: number; limit: number }> {
-    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_IMPORTS, { params });
-    return response.data;
-  },
 
-  async getStatementImport(id: string): Promise<BankStatementImport> {
-    const response = await api.get(`${API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_IMPORTS}/${id}`);
-    return response.data.data;
-  },
 
-  async importStatement(file: File): Promise<BankStatementImport> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post(API_ROUTES.NIGERIAN_PAYMENTS.IMPORT_STATEMENT, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data.data;
-  },
 
-  async getStatementEntries(params?: {
-    importId?: string;
-    matchStatus?: string;
-    startDate?: string;
-    endDate?: string;
-    amountMin?: number;
-    amountMax?: number;
-    search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{ data: BankStatementEntry[]; total: number; page: number; limit: number }> {
-    const response = await api.get(API_ROUTES.NIGERIAN_PAYMENTS.STATEMENT_ENTRIES, { params });
-    return response.data;
-  },
 
   // Payment Proofs
   async getPaymentProofs(params?: {

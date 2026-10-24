@@ -44,7 +44,8 @@ export default function NigerianPaymentsDashboard() {
       const data = await nigerianPaymentsApi.getUnmatchedDashboard();
       setDashboardData(data);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load dashboard');
+      // The summary is a nicety: the actions below must still be reachable if it can't load
+      setError(err.response?.data?.message || 'Failed to load the summary');
     } finally {
       setLoading(false);
     }
@@ -103,19 +104,6 @@ export default function NigerianPaymentsDashboard() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-6">
-        <Alert color="red" title="Error" icon={<IconRefresh />}>
-          {error}
-          <Button onClick={loadDashboard} variant="light" color="red" size="xs" mt="sm">
-            Retry
-          </Button>
-        </Alert>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6">
       <Title order={2} mb="md">
@@ -124,6 +112,15 @@ export default function NigerianPaymentsDashboard() {
       <Text c="dimmed" mb="xl">
         Manage bank accounts, transfers, reconciliation, and payment verification
       </Text>
+
+      {error ? (
+        <Alert color="yellow" title="The summary could not be loaded" icon={<IconRefresh />} mb="xl">
+          {error}
+          <Button onClick={loadDashboard} variant="light" color="yellow" size="xs" mt="sm">
+            Retry
+          </Button>
+        </Alert>
+      ) : null}
 
       {/* Unmatched Payments Summary */}
       {dashboardData && (

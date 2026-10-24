@@ -13,6 +13,9 @@ import { RBACService } from '../../services/rbac.service';
 import { notifyProofDecided, notifyProofSubmitted, notifyTransferRecorded } from '../../services/payment-proof-notifications';
 import { BANK_RULE_STATUS, BankRuleError } from './bank-rules';
 import { nigerianPaymentsService, ReconciliationDecisionError } from './nigerian-payments.service';
+import { RuleError } from '../finance/rule-error';
+import { importStatement, parseMappingInput, previewStatement } from './statement-import';
+import { suggestMatches } from './reconciliation-engine';
 import { PROOF_DECISION_STATUS, ProofDecisionError } from './payment-proof-decision';
 import {
   createBankAccountSchema,
@@ -51,6 +54,31 @@ async function findProofFileForCaller(req: Request, id: number, associationId: n
   if (isOfficer) return proof;
 
   return req.user.memberId !== undefined && proof.memberId === req.user.memberId ? proof : null;
+}
+
+/** A broken rule keeps its status and code; a bad request is a 400; a decided match is a 409; anything else is logged and a 500. */
+function reconFailure(res: Response, error: unknown, fallback: string) {
+  if (error instanceof z.ZodError) return res.status(400).json({ success: false, message: error.errors[0]?.message ?? 'Validation error', errors: error.errors });
+  if (error instanceof RuleError) return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  if (error instanceof ReconciliationDecisionError) return res.status(409).json({ success: false, code: 'ALREADY_DECIDED', message: error.message });
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message: fallback });
+}
+
+/** The file and choices of an import request (multipart: file, bankAccountId, and optionally mapping and headerRow). */
+function statementRequest(req: Request) {
+  const file = (req as Request & { file?: Express.Multer.File }).file;
+  if (!file) throw new RuleError('Choose a CSV or Excel statement to upload.', 400, 'NO_FILE');
+  const bankAccountId = parseInt(String(req.body?.bankAccountId ?? ''), 10);
+  if (!Number.isInteger(bankAccountId) || bankAccountId <= 0) throw new RuleError('Choose the bank account this statement is for.', 400, 'NO_ACCOUNT');
+  const headerRow = req.body?.headerRow !== undefined && req.body.headerRow !== '' ? parseInt(String(req.body.headerRow), 10) : null;
+  return {
+    bankAccountId,
+    filename: path.basename(file.originalname),
+    buffer: file.buffer,
+    manualMapping: parseMappingInput(req.body?.mapping),
+    headerRow: headerRow !== null && Number.isInteger(headerRow) && headerRow >= 0 ? headerRow : null,
+  };
 }
 
 export const nigerianPaymentsController = {
@@ -484,25 +512,26 @@ export const nigerianPaymentsController = {
   // BANK STATEMENT IMPORT ENDPOINTS (TASK-PAY-005)
   // ==========================================
 
+  /** POST /import-statement/preview — what an import would do, without saving anything. */
+  async previewStatement(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const data = await previewStatement(associationId, statementRequest(req));
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return reconFailure(res, error, 'Failed to read the statement');
+    }
+  },
+
+  /** POST /import-statement — saves the new lines of an uploaded CSV or Excel statement. */
   async importBankStatement(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      if (!associationId) {
-        return res.status(400).json({ success: false, message: 'Association ID is required' });
-      }
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
 
-      const data = importStatementSchema.parse(req.body);
-
-      // Verify bank account exists
-      const bankAccount = await prisma.associationBankAccount.findFirst({
-        where: { id: data.bankAccountId, associationId },
-      });
-
-      if (!bankAccount) {
-        return res.status(404).json({ success: false, message: 'Bank account not found' });
-      }
-
-      const result = await nigerianPaymentsService.importBankStatement(associationId, req.user!.id, data);
+      const input = statementRequest(req);
+      const result = await importStatement(associationId, req.user!.id, input);
 
       await prisma.auditLog.create({
         data: {
@@ -511,21 +540,28 @@ export const nigerianPaymentsController = {
           action: 'IMPORT',
           tableName: 'bank_statement_imports',
           recordId: result.import.id,
-          newValues: { filename: data.filename, entriesCreated: result.entriesCreated },
+          newValues: { filename: input.filename, entriesCreated: result.entriesCreated, alreadyImported: result.alreadyImported },
         },
       });
 
       return res.status(201).json({
         success: true,
-        message: `Bank statement imported successfully with ${result.entriesCreated} entries`,
+        message: `Imported ${result.entriesCreated} lines${result.alreadyImported > 0 ? `, skipped ${result.alreadyImported} already imported` : ''}`,
         data: result,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      console.error('Error importing bank statement:', error);
-      return res.status(500).json({ success: false, message: 'Failed to import bank statement' });
+      return reconFailure(res, error, 'Failed to import bank statement');
+    }
+  },
+
+  /** GET /reconciliation/suggestions — each unmatched bank line with the charge it most likely paid, and how sure that is. */
+  async getMatchSuggestions(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      return res.status(200).json({ success: true, data: await suggestMatches(associationId) });
+    } catch (error) {
+      return reconFailure(res, error, 'Failed to find matches');
     }
   },
 
@@ -567,6 +603,7 @@ export const nigerianPaymentsController = {
         limit,
         importId: query.importId ? parseInt(query.importId) : undefined,
         matchStatus: query.matchStatus,
+        creditsOnly: query.creditsOnly === 'true',
         startDate: query.startDate ? new Date(query.startDate) : undefined,
         endDate: query.endDate ? new Date(query.endDate) : undefined,
       });
@@ -614,11 +651,7 @@ export const nigerianPaymentsController = {
         data: reconciliation,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      console.error('Error reconciling payment:', error);
-      return res.status(500).json({ success: false, message: 'Failed to reconcile payment' });
+      return reconFailure(res, error, 'Failed to reconcile payment');
     }
   },
 
@@ -667,14 +700,7 @@ export const nigerianPaymentsController = {
         data: reconciliation,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      if (error instanceof ReconciliationDecisionError) {
-        return res.status(409).json({ success: false, message: error.message, code: 'ALREADY_DECIDED' });
-      }
-      console.error('Error confirming reconciliation:', error);
-      return res.status(500).json({ success: false, message: 'Failed to confirm reconciliation' });
+      return reconFailure(res, error, 'Failed to confirm reconciliation');
     }
   },
 
@@ -725,8 +751,7 @@ export const nigerianPaymentsController = {
         data: result,
       });
     } catch (error) {
-      console.error('Error auto-matching transactions:', error);
-      return res.status(500).json({ success: false, message: 'Failed to auto-match transactions' });
+      return reconFailure(res, error, 'Failed to auto-match transactions');
     }
   },
 
@@ -764,8 +789,7 @@ export const nigerianPaymentsController = {
         data: { results, successful, failed },
       });
     } catch (error) {
-      console.error('Error applying auto-matches:', error);
-      return res.status(500).json({ success: false, message: 'Failed to apply auto-matches' });
+      return reconFailure(res, error, 'Failed to apply auto-matches');
     }
   },
 

@@ -1,31 +1,63 @@
 ---
 title: "Matching payments and reconciling"
-description: "Match your imported bank statement against recorded payments, automatically or by hand."
+description: "Match the money in your bank statement to charges. One officer proposes, another confirms, and only then is a payment recorded."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/payments/nigerian/reconciliation"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/payments/nigerian/reconciliation", "PY8"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-29"
 related: ["/docs/payments/importing-a-bank-statement", "/docs/payments/reconciliation-history"]
 ---
 
-Reconciliation ties each line in your bank statement to a recorded payment — automatically where it can, by hand where it can't.
+Reconciliation ties each line of money received in your bank statement to the charge it paid. SocietyLedger suggests the matches and shows how sure it is; an officer proposes them, and a second officer confirms.
 
 ## Before you start
 
-[Import a bank statement](/docs/payments/importing-a-bank-statement) first — there's nothing to match against without one.
+- [Import a bank statement](/docs/payments/importing-a-bank-statement) first.
+- Proposing matches needs the **approve payments** permission. The same permission is needed to confirm, but not by the same person.
 
 ## Reconcile
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
-<Step>Go to <MenuPath items={["Payments", "Nigerian", "Reconciliation"]} />.</Step>
-<Step>Select **Run Auto-Match** to match statement entries to payments automatically wherever the amount and reference line up.</Step>
-<Step>Select **View Unmatched Entries** for anything auto-match couldn't resolve, and match those by hand.</Step>
+<Step>Go to <MenuPath items={["Payments", "Nigerian", "Reconciliation"]} />. The **Suggested** tab lists each bank line with the charge it probably paid.</Step>
+<Step>Confident suggestions are ticked. Tick or untick the others, then select **Propose matches**.</Step>
+<Step>On **Unmatched lines**, choose the charge yourself for anything with no suggestion.</Step>
+<Step>On **Matches**, a different officer selects **Confirm** (or **Turn down**).</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Payments", "Reconciliation"]} />. **Suggested** lists each bank line with the charge it probably paid.</Step>
+<Step>Confident suggestions are ticked. Tap to tick or untick the others, then tap **Propose matches**.</Step>
+<Step>On **Unmatched**, tap a line to choose the charge yourself.</Step>
+<Step>On **Matches**, a different officer taps **Confirm** (or **Turn down**).</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/payments/matching-and-reconciliation-1.webp" alt="Payment Reconciliation page with Unmatched Payments and Unmatched Amount stats, and Auto-Match, Manual Reconciliation and Import Statement quick actions" />
+## How the suggestions are made
+
+Each suggestion says why: the charge's reference is in the narration, the member's name is, or the amount is exactly what is owed.
+
+- **Very likely (90% and up):** the reference or the member's name fits, and the amount fits. Ticked for you.
+- **Likely:** the member fits but the amount is only part of what is owed.
+- **Possible:** only the amount fits. It is shown, never ticked, and only when exactly one charge has that amount.
+
+A line is never matched to a charge it can't pay: a line larger than what the charge still owes is refused, and a charge can be filled only up to what it owes.
+
+## The rules that keep the books right
+
+- **The amount is the bank line's own.** It is never typed in and never zero.
+- **One line pays one charge.** A line already matched can't be matched again, even by two officers at once.
+- **Nothing is recorded until a match is confirmed.** Confirming records one payment for the amount that reached the bank, dated the day it arrived. A payment smaller than the charge makes it **part paid**; only a full payment makes it **paid**.
+- **You can't confirm a match you proposed.** A second officer has to check it. You can turn down your own proposal.
+- **Turning a match down frees the line** so it can be matched to the right charge. Nothing is recorded.
+- **Each match is decided once.** Confirming it twice, or turning down one that is confirmed, is refused.
+- A cancelled or waived charge, or one for a disabled member, can't be matched.
 
 ## What happens next
 
-Each match can be decided only once: confirming it records the payment, and confirming it again (a double tap, or a second officer) is refused instead of recording the payment twice. The full set shows up in [Reconciliation history](/docs/payments/reconciliation-history).
+A confirmed match shows in the member's ledger and in [Reports](/docs/reports/finding-the-report-you-need) like any other payment. The full set is in [Reconciliation history](/docs/payments/reconciliation-history).

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Landmark, ReceiptText, Wallet } from 'lucide-react-native';
+import { Landmark, ReceiptText, Scale, Wallet } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { NoPermission } from '@/components/feedback/NoPermission';
@@ -10,6 +10,8 @@ import { Section } from '@/components/layout/Section';
 import { Badge } from '@/components/ui/Badge';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS, TRANSFERS_VIEW_ACCESS, usePendingProofCount, usePendingTransferCount } from '@/features/nigerianPayments/queries';
+import { RECON_ANY_ACCESS } from '@/features/reconciliation/labels';
+import { useWaitingMatchCount } from '@/features/reconciliation/queries';
 import { useCan } from '@/hooks/useCan';
 
 /** project-overview.md §6.9 PY1 — the Payments hub: what is waiting for an officer, and the accounts members pay into. */
@@ -20,9 +22,11 @@ export default function PaymentsHubScreen() {
   const canAccounts = useCan(BANK_ACCOUNTS_VIEW_ACCESS);
   const waitingProofs = usePendingProofCount().data ?? 0;
   const waitingTransfers = usePendingTransferCount().data ?? 0;
+  const canRecon = useCan(RECON_ANY_ACCESS);
+  const waitingMatches = useWaitingMatchCount().data ?? 0;
   const back = () => router.back();
 
-  if (!canProofs && !canTransfers && !canAccounts) {
+  if (!canProofs && !canTransfers && !canAccounts && !canRecon) {
     return (
       <Screen edges={['top']} scroll={false}>
         <ScreenHeader title="Payments" onBack={back} />
@@ -36,7 +40,7 @@ export default function PaymentsHubScreen() {
       <ScreenHeader title="Payments" onBack={back} docsKey="PY1" />
 
       <View className="gap-6 pb-6">
-        {canProofs || canTransfers ? (
+        {canProofs || canTransfers || canRecon ? (
           <Section title="Waiting for you">
             <ListGroup>
               {canProofs ? (
@@ -59,6 +63,17 @@ export default function PaymentsHubScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/payments/transfers' as never)}
                   testID="payments-transfers"
+                />
+              ) : null}
+              {canRecon ? (
+                <ListItem
+                  leading={<IconCircle icon={Scale} tone={waitingMatches > 0 ? 'warning' : 'primary'} />}
+                  title="Reconciliation"
+                  meta="Import your bank statement and match the money to charges"
+                  trailing={waitingMatches > 0 ? <Badge tone="warning">{`${waitingMatches} to confirm`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/payments/reconciliation' as never)}
+                  testID="payments-reconciliation"
                 />
               ) : null}
             </ListGroup>

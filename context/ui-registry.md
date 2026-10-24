@@ -1552,6 +1552,15 @@ Built from existing primitives; nothing new in `components/ui`.
 - **Exports:** a Make-a-file / History `SegmentedControl`; each file is a card with its own button; the share sheet opens as soon as a file is ready; an expired file shows an Expired chip instead of Share.
 - **Rule shown in the UI:** a number is never a dead end — it opens the records that add up to it, and the list says how many and how much, so the two can be compared.
 
+## Mobile Phase 6 — Reconciliation (F6.8, 2026-10-29)
+
+- **Reconciliation screen** (`manage/payments/reconciliation/index.tsx`): a four-way `SegmentedControl` (Suggested, Matches, Unmatched, Imports) under the header, each tab filling the rest of the screen with its own list; a + icon in the header starts an import.
+- **`SuggestionCard`:** a tickable `Card` (primary border when ticked): the money received (success) with a confidence `Badge` (Very likely / Likely / Possible and the percentage), the bank narration and date, then a sunken block "Would pay" with the member, charge, reference and what it still owes, and the reasons underneath. Confident ones are ticked when the screen opens; a footer button says how many and how much, and that nothing is recorded until another officer confirms.
+- **`MatchCard`:** the member and charge with the amount and a `StatusChip`, a sunken block with the bank line, and **Turn down** / **Confirm** buttons while it waits; a match you proposed hides Confirm and says another officer has to.
+- **`LineRow` / `ImportRow`** (`GroupedRow`): an unmatched money-in line (narration, amount, date, account), and an imported statement (file, account, dates, "n to match" or "All matched").
+- **Import screen:** sections Which statement (bank-account dropdown, choose-file button, the file name or the problem), What we found (counts and totals), How the columns were read (one `OptionDropdown` per column, headed by where the choice came from), The first lines; a sticky Import button with a confirm sheet.
+- **Rule shown in the UI:** nothing is recorded until a second officer confirms, and every sheet says exactly what confirming or turning down will do.
+
 ---
 
 ## Retired
