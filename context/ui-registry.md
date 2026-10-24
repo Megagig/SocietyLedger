@@ -1563,6 +1563,8 @@ Built from existing primitives; nothing new in `components/ui`.
 
 ## Mobile Phase 7 — Association settings (F7.2, 2026-10-24)
 
+**Read-only view (2026-10-25):** a settings form for someone who may only view is the same form inside `View` with `opacity-60` and `pointerEvents="none"`, under a `ReadOnlyNote` (`pb-4`, `Text caption secondary`: "You can look at these settings but not change them…"); the `SaveFooter` is not rendered. Payment settings gained a "Text messages (SMS)" `ListItem` with an On/Off `StatusChip` beside the Paystack and Nomba rows.
+
 - **Settings hub** (`manage/settings/index.tsx`): `ListGroup` rows with `IconCircle` leading icons in three sections (Your association, Money and messages, Your plan); a row shows only if the officer holds that screen's permission.
 - **`SettingsScreen`** (`features/settings/components`): the frame every settings screen shares — header, `NoPermission`, three `Skeleton` bars while loading, `ErrorState` with retry; it renders its form only once the saved values are here, so the form starts from them.
 - **`SaveFooter`:** one primary **Save changes** button in the `StickyFooter`, off until the form has changed (`formState.isDirty`).

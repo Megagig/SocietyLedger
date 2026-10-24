@@ -9,15 +9,15 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { AUDIT_ACCESS, ROLES_VIEW_ACCESS } from '@/features/rbac/labels';
-import { PAYMENTS_EDIT_ACCESS, SETTINGS_EDIT_ACCESS, SETTINGS_HUB_ACCESS, SUBSCRIPTION_ACCESS } from '@/features/settings/labels';
+import { PAYMENTS_READ_ACCESS, SETTINGS_HUB_ACCESS, SETTINGS_READ_ACCESS, SUBSCRIPTION_ACCESS } from '@/features/settings/labels';
 import { useCan } from '@/hooks/useCan';
 
 /** project-overview.md §6.9 ST1 — the settings an officer can change, grouped. A row appears only for the settings this officer may open. */
 export default function SettingsHubScreen() {
   const router = useRouter();
   const canAny = useCan(SETTINGS_HUB_ACCESS);
-  const canEdit = useCan(SETTINGS_EDIT_ACCESS);
-  const canPayments = useCan(PAYMENTS_EDIT_ACCESS);
+  const canRead = useCan(SETTINGS_READ_ACCESS);
+  const canPayments = useCan(PAYMENTS_READ_ACCESS);
   const canSubscription = useCan(SUBSCRIPTION_ACCESS);
   const canRoles = useCan(ROLES_VIEW_ACCESS);
   const canAudit = useCan(AUDIT_ACCESS);
@@ -37,7 +37,7 @@ export default function SettingsHubScreen() {
       <ScreenHeader title="Settings" onBack={() => router.back()} docsKey="ST1" />
 
       <View className="gap-6">
-        {canEdit ? (
+        {canRead ? (
           <Section title="Your association">
             <ListGroup>
               <ListItem
@@ -60,10 +60,10 @@ export default function SettingsHubScreen() {
           </Section>
         ) : null}
 
-        {canEdit || canPayments ? (
+        {canRead || canPayments ? (
           <Section title="Money and messages">
             <ListGroup>
-              {canEdit ? (
+              {canRead ? (
                 <ListItem
                   leading={<IconCircle icon={Landmark} tone="primary" />}
                   title="Financial settings"
@@ -83,7 +83,7 @@ export default function SettingsHubScreen() {
                   testID="settings-payments"
                 />
               ) : null}
-              {canEdit ? (
+              {canRead ? (
                 <ListItem
                   leading={<IconCircle icon={Bell} tone="primary" />}
                   title="Reminders and sender"

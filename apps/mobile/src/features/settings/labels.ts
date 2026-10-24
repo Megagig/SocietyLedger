@@ -14,6 +14,9 @@ export const SETTINGS_VIEW_ACCESS: PermissionAlias = 'SETTINGS_VIEW';
 /** Saving a change (`settings.edit`). Payments also accepts `settings.billing`, as the server does. */
 export const SETTINGS_EDIT_ACCESS: PermissionAlias = 'SETTINGS_EDIT';
 export const PAYMENTS_EDIT_ACCESS: PermissionAlias[] = ['SETTINGS_EDIT', 'SETTINGS_BILLING'];
+/** Opening a settings screen to look at it: the server lets `settings.view` read every category. */
+export const SETTINGS_READ_ACCESS: PermissionAlias[] = ['SETTINGS_VIEW', 'SETTINGS_EDIT'];
+export const PAYMENTS_READ_ACCESS: PermissionAlias[] = ['SETTINGS_VIEW', 'SETTINGS_EDIT', 'SETTINGS_BILLING'];
 /** The subscription screen is read-only and shows what billing is (`settings.billing`; `settings.view` is enough on the server). */
 export const SUBSCRIPTION_ACCESS: PermissionAlias[] = ['SETTINGS_BILLING', 'SETTINGS_VIEW'];
 /** Anything that makes Settings appear in Manage: the settings screens, roles, the audit log. */

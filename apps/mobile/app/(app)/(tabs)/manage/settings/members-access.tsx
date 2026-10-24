@@ -13,8 +13,9 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { Text } from '@/components/ui/Text';
 import { SaveFooter } from '@/features/settings/components/SaveFooter';
+import { ReadOnlyNote } from '@/features/settings/components/ReadOnlyNote';
 import { SettingsScreen } from '@/features/settings/components/SettingsScreen';
-import { DEFAULT_ROLE_OPTIONS, inviteLifetimeLabel, SETTINGS_EDIT_ACCESS } from '@/features/settings/labels';
+import { DEFAULT_ROLE_OPTIONS, inviteLifetimeLabel, SETTINGS_EDIT_ACCESS, SETTINGS_READ_ACCESS } from '@/features/settings/labels';
 import { useSaveMembersAccess } from '@/features/settings/mutations';
 import { useMembersAccessSettings } from '@/features/settings/queries';
 import { membersAccessFormSchema, membersAccessToFormValues, toMembersAccessPayload, type MembersAccessFormValues } from '@/features/settings/schemas';
@@ -24,15 +25,16 @@ import type { MembersAccessSettingsDTO } from '@/types/api/settings';
 /** project-overview.md §6.9 ST6 — who can sign themselves up, the role they start with, how long invites last, and how member IDs are made. */
 export default function MembersAccessScreen() {
   const query = useMembersAccessSettings();
-  const allowed = useCan(SETTINGS_EDIT_ACCESS);
+  const allowed = useCan(SETTINGS_READ_ACCESS);
+  const canEdit = useCan(SETTINGS_EDIT_ACCESS);
   return (
     <SettingsScreen title="Members and access" docsKey="ST6" allowed={allowed} query={query}>
-      {(settings) => <MembersAccessForm settings={settings} />}
+      {(settings) => <MembersAccessForm settings={settings} canEdit={canEdit} />}
     </SettingsScreen>
   );
 }
 
-function MembersAccessForm({ settings }: { settings: MembersAccessSettingsDTO }) {
+function MembersAccessForm({ settings, canEdit }: { settings: MembersAccessSettingsDTO; canEdit: boolean }) {
   const router = useRouter();
   const save = useSaveMembersAccess();
   const { control, handleSubmit, formState } = useForm<MembersAccessFormValues>({
@@ -57,7 +59,8 @@ function MembersAccessForm({ settings }: { settings: MembersAccessSettingsDTO })
     <Screen edges={['top', 'bottom']} keyboard>
       <ScreenHeader title="Members and access" onBack={() => router.back()} docsKey="ST6" />
 
-      <View className="gap-6 pb-6">
+      {!canEdit ? <ReadOnlyNote /> : null}
+      <View className={canEdit ? 'gap-6 pb-6' : 'gap-6 pb-6 opacity-60'} pointerEvents={canEdit ? 'auto' : 'none'}>
         <Section title="Signing up">
           <View className="gap-4">
             <Switch control={control} name="selfSignupEnabled" label="Let people sign themselves up" helper="Anyone with your association's address can ask to join" testID="access-signup" />
@@ -91,14 +94,16 @@ function MembersAccessForm({ settings }: { settings: MembersAccessSettingsDTO })
         </Section>
       </View>
 
-      <SaveFooter
-        loading={save.isPending}
-        disabled={!formState.isDirty}
-        onPress={() => {
-          void handleSubmit(submit)();
-        }}
-        testID="access-save"
-      />
+      {canEdit ? (
+        <SaveFooter
+          loading={save.isPending}
+          disabled={!formState.isDirty}
+          onPress={() => {
+            void handleSubmit(submit)();
+          }}
+          testID="access-save"
+        />
+      ) : null}
     </Screen>
   );
 }

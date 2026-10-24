@@ -14,8 +14,9 @@ import { Section } from '@/components/layout/Section';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { SaveFooter } from '@/features/settings/components/SaveFooter';
+import { ReadOnlyNote } from '@/features/settings/components/ReadOnlyNote';
 import { SettingsScreen } from '@/features/settings/components/SettingsScreen';
-import { PAYMENTS_EDIT_ACCESS, PAYMENT_CHANNEL_OPTIONS } from '@/features/settings/labels';
+import { PAYMENTS_EDIT_ACCESS, PAYMENTS_READ_ACCESS, PAYMENT_CHANNEL_OPTIONS } from '@/features/settings/labels';
 import { useSavePayments } from '@/features/settings/mutations';
 import { useIntegrationsSettings, usePaymentsSettings } from '@/features/settings/queries';
 import { paymentsFormSchema, paymentsToFormValues, toPaymentsPayload, type PaymentsFormValues } from '@/features/settings/schemas';
@@ -25,15 +26,16 @@ import type { PaymentsSettingsDTO } from '@/types/api/settings';
 /** project-overview.md §6.9 ST4 — which ways to pay the association accepts, receipts, and cash lodgment. Paystack is switched on from the website. */
 export default function PaymentSettingsScreen() {
   const query = usePaymentsSettings();
-  const allowed = useCan(PAYMENTS_EDIT_ACCESS);
+  const allowed = useCan(PAYMENTS_READ_ACCESS);
+  const canEdit = useCan(PAYMENTS_EDIT_ACCESS);
   return (
     <SettingsScreen title="Payment settings" docsKey="ST4" allowed={allowed} query={query}>
-      {(settings) => <PaymentsForm settings={settings} />}
+      {(settings) => <PaymentsForm settings={settings} canEdit={canEdit} />}
     </SettingsScreen>
   );
 }
 
-function PaymentsForm({ settings }: { settings: PaymentsSettingsDTO }) {
+function PaymentsForm({ settings, canEdit }: { settings: PaymentsSettingsDTO; canEdit: boolean }) {
   const router = useRouter();
   const save = useSavePayments();
   const integrations = useIntegrationsSettings().data;
@@ -57,7 +59,8 @@ function PaymentsForm({ settings }: { settings: PaymentsSettingsDTO }) {
     <Screen edges={['top', 'bottom']} keyboard>
       <ScreenHeader title="Payment settings" onBack={() => router.back()} docsKey="ST4" />
 
-      <View className="gap-6 pb-6">
+      {!canEdit ? <ReadOnlyNote /> : null}
+      <View className={canEdit ? 'gap-6 pb-6' : 'gap-6 pb-6 opacity-60'} pointerEvents={canEdit ? 'auto' : 'none'}>
         <Section title="Ways members can pay">
           <View className="gap-2">
             {PAYMENT_CHANNEL_OPTIONS.map((option) => (
@@ -86,18 +89,21 @@ function PaymentsForm({ settings }: { settings: PaymentsSettingsDTO }) {
           <ListGroup>
             <ListItem title="Card payments (Paystack)" meta="Switched on from the SocietyLedger website" trailing={integrations ? <StatusChip status={integrations.paystackEnabled ? 'active' : 'inactive'} label={integrations.paystackEnabled ? 'On' : 'Off'} /> : undefined} />
             <ListItem title="Bank payments (Nomba)" meta="Switched on from the SocietyLedger website" trailing={integrations ? <StatusChip status={integrations.nombaEnabled ? 'active' : 'inactive'} label={integrations.nombaEnabled ? 'On' : 'Off'} /> : undefined} />
+            <ListItem title="Text messages (SMS)" meta="Reminders and announcements by SMS. Switched on from the SocietyLedger website" trailing={integrations ? <StatusChip status={integrations.smsProvider === 'none' ? 'inactive' : 'active'} label={integrations.smsProvider === 'none' ? 'Off' : 'On'} /> : undefined} testID="pay-sms" />
           </ListGroup>
         </Section>
       </View>
 
-      <SaveFooter
-        loading={save.isPending}
-        disabled={!formState.isDirty}
-        onPress={() => {
-          void handleSubmit(submit)();
-        }}
-        testID="pay-save"
-      />
+      {canEdit ? (
+        <SaveFooter
+          loading={save.isPending}
+          disabled={!formState.isDirty}
+          onPress={() => {
+            void handleSubmit(submit)();
+          }}
+          testID="pay-save"
+        />
+      ) : null}
     </Screen>
   );
 }

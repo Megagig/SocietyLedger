@@ -73,10 +73,19 @@ describe('Financial settings', () => {
     expect(mockSaveFinancial).not.toHaveBeenCalled();
   });
 
-  it('shows no form to an officer without the edit permission', async () => {
+  it('lets an officer who may only view look at the settings, with no way to save', async () => {
     mockAllowed = ['SETTINGS_VIEW'];
     await render(<FinancialSettingsScreen />);
+    expect(screen.getByTestId('settings-read-only')).toBeTruthy();
+    expect(screen.getByText('Charge late fees')).toBeTruthy();
     expect(screen.queryByTestId('fin-save')).toBeNull();
+  });
+
+  it('shows nothing to someone with no settings permission', async () => {
+    mockAllowed = [];
+    await render(<FinancialSettingsScreen />);
+    expect(screen.queryByTestId('fin-late-fees')).toBeNull();
+    expect(screen.queryByTestId('settings-read-only')).toBeNull();
   });
 });
 
@@ -102,13 +111,21 @@ describe('Payment settings', () => {
     await render(<PaymentSettingsScreen />);
     expect(screen.getByText('Card payments (Paystack)')).toBeTruthy();
     expect(screen.getByText('On')).toBeTruthy();
-    expect(screen.getByText('Off')).toBeTruthy();
+    expect(screen.getAllByText('Off')).toHaveLength(2); // Nomba and text messages
   });
 
-  it('a billing officer without the edit permission can still open it', async () => {
+  it('a billing officer without the edit permission can still open it and save', async () => {
     mockAllowed = ['SETTINGS_BILLING'];
     await render(<PaymentSettingsScreen />);
     expect(screen.getByTestId('pay-save')).toBeTruthy();
+  });
+
+  it('shows whether text messages are on, and is read-only for someone who may only view', async () => {
+    mockAllowed = ['SETTINGS_VIEW'];
+    await render(<PaymentSettingsScreen />);
+    expect(screen.getByTestId('pay-sms')).toBeTruthy();
+    expect(screen.getByTestId('settings-read-only')).toBeTruthy();
+    expect(screen.queryByTestId('pay-save')).toBeNull();
   });
 });
 
@@ -120,6 +137,14 @@ describe('Settings hub', () => {
     }
     // settings.view is enough to see the plan, as it is on the server
     expect(screen.getByTestId('settings-subscription')).toBeTruthy();
+  });
+
+  it('shows an officer who may only view every settings screen', async () => {
+    mockAllowed = ['SETTINGS_VIEW'];
+    await render(<SettingsHubScreen />);
+    for (const id of ['association', 'members-access', 'financial', 'payments', 'notifications']) {
+      expect(screen.getByTestId('settings-' + id)).toBeTruthy();
+    }
   });
 
   it('shows a billing officer only payments and the subscription', async () => {

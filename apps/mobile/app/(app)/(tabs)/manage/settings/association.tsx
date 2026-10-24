@@ -12,8 +12,9 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { LogoEditor } from '@/features/settings/components/LogoEditor';
 import { SaveFooter } from '@/features/settings/components/SaveFooter';
+import { ReadOnlyNote } from '@/features/settings/components/ReadOnlyNote';
 import { SettingsScreen } from '@/features/settings/components/SettingsScreen';
-import { ASSOCIATION_TYPE_OPTIONS, SETTINGS_EDIT_ACCESS } from '@/features/settings/labels';
+import { ASSOCIATION_TYPE_OPTIONS, SETTINGS_EDIT_ACCESS, SETTINGS_READ_ACCESS } from '@/features/settings/labels';
 import { useSaveProfile } from '@/features/settings/mutations';
 import { useAssociationProfile } from '@/features/settings/queries';
 import { profileFormSchema, profileToFormValues, toProfilePayload, type ProfileFormValues } from '@/features/settings/schemas';
@@ -23,15 +24,16 @@ import type { AssociationProfileDTO } from '@/types/api/settings';
 /** project-overview.md §6.9 ST2 — the association's name, logo, colour and contact details. */
 export default function AssociationProfileScreen() {
   const query = useAssociationProfile();
-  const allowed = useCan(SETTINGS_EDIT_ACCESS);
+  const allowed = useCan(SETTINGS_READ_ACCESS);
+  const canEdit = useCan(SETTINGS_EDIT_ACCESS);
   return (
     <SettingsScreen title="Association profile" docsKey="ST2" allowed={allowed} query={query}>
-      {(profile) => <ProfileForm profile={profile} />}
+      {(profile) => <ProfileForm profile={profile} canEdit={canEdit} />}
     </SettingsScreen>
   );
 }
 
-function ProfileForm({ profile }: { profile: AssociationProfileDTO }) {
+function ProfileForm({ profile, canEdit }: { profile: AssociationProfileDTO; canEdit: boolean }) {
   const router = useRouter();
   const save = useSaveProfile();
   const { control, handleSubmit, formState } = useForm<ProfileFormValues>({
@@ -53,7 +55,8 @@ function ProfileForm({ profile }: { profile: AssociationProfileDTO }) {
     <Screen edges={['top', 'bottom']} keyboard>
       <ScreenHeader title="Association profile" onBack={() => router.back()} docsKey="ST2" />
 
-      <View className="gap-6 pb-6">
+      {!canEdit ? <ReadOnlyNote /> : null}
+      <View className={canEdit ? 'gap-6 pb-6' : 'gap-6 pb-6 opacity-60'} pointerEvents={canEdit ? 'auto' : 'none'}>
         <Section title="Logo">
           <LogoEditor name={profile.name} logo={profile.logo} tintColor={profile.primaryColor} />
         </Section>
@@ -84,14 +87,16 @@ function ProfileForm({ profile }: { profile: AssociationProfileDTO }) {
         </Section>
       </View>
 
-      <SaveFooter
-        loading={save.isPending}
-        disabled={!formState.isDirty}
-        onPress={() => {
-          void handleSubmit(submit)();
-        }}
-        testID="profile-save"
-      />
+      {canEdit ? (
+        <SaveFooter
+          loading={save.isPending}
+          disabled={!formState.isDirty}
+          onPress={() => {
+            void handleSubmit(submit)();
+          }}
+          testID="profile-save"
+        />
+      ) : null}
     </Screen>
   );
 }

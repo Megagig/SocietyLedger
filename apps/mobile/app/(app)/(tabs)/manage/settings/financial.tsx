@@ -13,8 +13,9 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { Text } from '@/components/ui/Text';
 import { SaveFooter } from '@/features/settings/components/SaveFooter';
+import { ReadOnlyNote } from '@/features/settings/components/ReadOnlyNote';
 import { SettingsScreen } from '@/features/settings/components/SettingsScreen';
-import { LATE_FEE_TYPE_OPTIONS, SETTINGS_EDIT_ACCESS } from '@/features/settings/labels';
+import { LATE_FEE_TYPE_OPTIONS, SETTINGS_EDIT_ACCESS, SETTINGS_READ_ACCESS } from '@/features/settings/labels';
 import { useSaveFinancial } from '@/features/settings/mutations';
 import { useFinancialSettings } from '@/features/settings/queries';
 import { financialFormSchema, financialToFormValues, toFinancialPayload, type FinancialFormValues } from '@/features/settings/schemas';
@@ -24,15 +25,16 @@ import type { FinancialSettingsDTO } from '@/types/api/settings';
 /** project-overview.md §6.9 ST3 — the late-fee fallback, the grace period and whether a charge can be part paid. */
 export default function FinancialSettingsScreen() {
   const query = useFinancialSettings();
-  const allowed = useCan(SETTINGS_EDIT_ACCESS);
+  const allowed = useCan(SETTINGS_READ_ACCESS);
+  const canEdit = useCan(SETTINGS_EDIT_ACCESS);
   return (
     <SettingsScreen title="Financial settings" docsKey="ST3" allowed={allowed} query={query}>
-      {(settings) => <FinancialForm settings={settings} />}
+      {(settings) => <FinancialForm settings={settings} canEdit={canEdit} />}
     </SettingsScreen>
   );
 }
 
-function FinancialForm({ settings }: { settings: FinancialSettingsDTO }) {
+function FinancialForm({ settings, canEdit }: { settings: FinancialSettingsDTO; canEdit: boolean }) {
   const router = useRouter();
   const save = useSaveFinancial();
   const { control, handleSubmit, formState } = useForm<FinancialFormValues>({
@@ -56,7 +58,8 @@ function FinancialForm({ settings }: { settings: FinancialSettingsDTO }) {
     <Screen edges={['top', 'bottom']} keyboard>
       <ScreenHeader title="Financial settings" onBack={() => router.back()} docsKey="ST3" />
 
-      <View className="gap-6 pb-6">
+      {!canEdit ? <ReadOnlyNote /> : null}
+      <View className={canEdit ? 'gap-6 pb-6' : 'gap-6 pb-6 opacity-60'} pointerEvents={canEdit ? 'auto' : 'none'}>
         <Section title="Late fees">
           <View className="gap-4">
             <Switch control={control} name="enableLateFees" label="Charge late fees" helper="Applies to dues and levies that are past their due date" testID="fin-late-fees" />
@@ -85,14 +88,16 @@ function FinancialForm({ settings }: { settings: FinancialSettingsDTO }) {
         </Section>
       </View>
 
-      <SaveFooter
-        loading={save.isPending}
-        disabled={!formState.isDirty}
-        onPress={() => {
-          void handleSubmit(submit)();
-        }}
-        testID="fin-save"
-      />
+      {canEdit ? (
+        <SaveFooter
+          loading={save.isPending}
+          disabled={!formState.isDirty}
+          onPress={() => {
+            void handleSubmit(submit)();
+          }}
+          testID="fin-save"
+        />
+      ) : null}
     </Screen>
   );
 }
