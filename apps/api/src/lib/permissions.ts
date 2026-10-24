@@ -205,11 +205,16 @@ export const PERMISSIONS = {
   
   // Voting & Elections
   ELECTION_VIEW: 'elections.view_own',
-  ELECTION_MANAGE: 'members.create',
+  // The Election Committee runs elections; officers do not. Each is its own key, so a custom role can take any slice.
+  ELECTION_MANAGE: 'elections.manage', // create, edit and delete elections and positions; cancel
+  ELECTION_CANDIDATES: 'elections.candidates.manage', // register, approve and reject candidates
+  ELECTION_RUN: 'elections.run', // open and close nominations and voting
+  ELECTION_RESULTS_VIEW: 'elections.results.view', // see results before they are published
+  ELECTION_RESULTS_PUBLISH: 'elections.results.publish',
   ELECTION_NOMINATE: 'elections.nominate_own',
   ELECTION_VOTE: 'elections.vote_own',
   POLL_VIEW: 'polls.view_own',
-  POLL_MANAGE: 'members.create',
+  POLL_MANAGE: 'polls.manage',
   POLL_VOTE: 'polls.vote_own',
   
   // Help & Support (Phase 21)

@@ -352,6 +352,43 @@ const PERMISSION_REGISTRY = [
     module: "Voting",
     examples: ["POST /api/voting/elections/:id/vote"]
   },
+  // Election Committee: the people chosen to conduct elections, separate from the officers.
+  {
+    key: "elections.manage",
+    description: "Create, edit and delete elections and their positions, and cancel an election.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections", "PUT /api/voting/elections/:id", "POST /api/voting/elections/:id/cancel"]
+  },
+  {
+    key: "elections.candidates.manage",
+    description: "Register candidates, and approve or reject nominations.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/candidates", "POST /api/voting/candidates/:id/approve"]
+  },
+  {
+    key: "elections.run",
+    description: "Open and close nominations and voting.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/start-voting", "POST /api/voting/elections/:id/close-voting"]
+  },
+  {
+    key: "elections.results.view",
+    description: "See an election's results as soon as voting closes, before they are published.",
+    module: "Voting",
+    examples: ["GET /api/voting/elections/:id/results"]
+  },
+  {
+    key: "elections.results.publish",
+    description: "Publish an election's results to the members.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/publish-results"]
+  },
+  {
+    key: "polls.manage",
+    description: "Create, edit, start, close and cancel polls.",
+    module: "Voting",
+    examples: ["POST /api/voting/polls", "POST /api/voting/polls/:id/start"]
+  },
   {
     key: "polls.view_own",
     description: "View polls and their results.",

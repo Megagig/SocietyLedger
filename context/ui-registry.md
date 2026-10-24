@@ -1525,6 +1525,13 @@ Built from existing primitives; nothing new in `components/ui`.
 - **Shared:** the cooperative `ReasonSheet` is reused for every rejection; Home's attention list gained rows for loan applications, loan payments, savings deposits, welfare requests and welfare contributions.
 - **Rule shown in the UI:** nothing is approved or paid out without saying what limits it, and an officer's own items never offer a decision.
 
+## Mobile Phase 6 — Elections & polls admin (F6.3, 2026-10-28)
+
+- **`ElectionRow`** (`features/electionsManage/components`): title (two lines) with a `StatusChip` on the right, "kind · n positions · n candidates", the voting dates, and — only while voting is open — a `ProgressBar` of turnout with "n of N members have voted". **`PollRow`:** the question, "n answers · n answers so far", the end date, status chip. **`CandidateCard`:** name, member number (and position when positions are mixed), manifesto, status chip, a rejection reason, and Reject (secondary) + Approve (primary) only while it is waiting and this member may decide it; otherwise "This is your own nomination…" in secondary text. **`ResultBar`:** name, a `ProgressBar` of the share (`success` for the winner), "n votes · x%", `Trophy` + a success "Winner" badge, or a warning "Level" badge for a tie.
+- **Screens:** `elections/index.tsx` (three `StatTile`s, a "waiting" `ListGroup` that appears only when something is, status `FilterChip`s, `PagedList` with a scrolling `header`), `elections/form.tsx` (sections The election / When / How votes are counted / Positions, `DateTimeField`s, a `useFieldArray` of position titles on create only), `elections/[id].tsx` (title in `h1`, status chip, a four-stage `ProgressBar` line, a `danger-soft` card when cancelled, a `warning-soft` card for waiting nominations, `StatTile`s once voting has started, a "When" `ListGroup`, a Results `ListItem`, one `Section` per position, sticky footer with the next step — "Open voting now" beside it on a draft with approved candidates), `elections/results.tsx`, `polls/*` (the same shapes; answers become bars once the poll is open).
+- **Sheets (`Sheets.tsx`):** `CandidateSheet` (search members → pick → optional manifesto → "waiting for approval from another member of the committee"), `PositionSheet` (add and rename), `PollOptionSheet`; cancel and reject reuse the cooperative `ReasonSheet`, every step and delete reuses `ConfirmSheet` (the step's confirm is non-destructive).
+- **Rule shown in the UI:** one next step at a time; a step the person may not take is not shown; nobody is offered a decision on their own nomination; results and tallies are not shown until the people allowed to see them can.
+
 ---
 
 ## Retired

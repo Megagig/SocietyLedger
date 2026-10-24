@@ -2,6 +2,7 @@
   "title": "Elections & polls",
   "icon": "Vote",
   "pages": [
+    "election-committee",
     "how-elections-work",
     "creating-an-election",
     "nominations-and-candidates",

@@ -172,11 +172,15 @@ export const PERMISSIONS = {
   AI_QUERY: 'reports.generate',
   AI_USAGE_VIEW: 'audit.view',
   ELECTION_VIEW: 'members.view_own', // Members can view and participate in elections
-  ELECTION_MANAGE: 'members.create',
+  ELECTION_MANAGE: 'elections.manage',
+  ELECTION_CANDIDATES: 'elections.candidates.manage',
+  ELECTION_RUN: 'elections.run',
+  ELECTION_RESULTS_VIEW: 'elections.results.view',
+  ELECTION_RESULTS_PUBLISH: 'elections.results.publish',
   ELECTION_NOMINATE: 'members.view_own', // Members can nominate
   ELECTION_VOTE: 'members.view_own', // Members can vote
   POLL_VIEW: 'members.view_own', // Members can view and participate in polls
-  POLL_MANAGE: 'members.create',
+  POLL_MANAGE: 'polls.manage',
   POLL_VOTE: 'members.view_own', // Members can vote in polls
 } as const;
 

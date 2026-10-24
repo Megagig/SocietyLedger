@@ -197,11 +197,15 @@ export const PERMISSIONS = {
 
   // Voting & Elections
   ELECTION_VIEW: 'elections.view_own',
-  ELECTION_MANAGE: 'members.create',
+  ELECTION_MANAGE: 'elections.manage',
+  ELECTION_CANDIDATES: 'elections.candidates.manage',
+  ELECTION_RUN: 'elections.run',
+  ELECTION_RESULTS_VIEW: 'elections.results.view',
+  ELECTION_RESULTS_PUBLISH: 'elections.results.publish',
   ELECTION_NOMINATE: 'elections.nominate_own',
   ELECTION_VOTE: 'elections.vote_own',
   POLL_VIEW: 'polls.view_own',
-  POLL_MANAGE: 'members.create',
+  POLL_MANAGE: 'polls.manage',
   POLL_VOTE: 'polls.vote_own',
 
   // Help & Support
@@ -240,6 +244,10 @@ export const MANAGE_TAB_PERMISSIONS: PermissionAlias[] = [
   'MEETING_CREATE',
   'MEETING_EDIT',
   'ELECTION_MANAGE',
+  'ELECTION_CANDIDATES',
+  'ELECTION_RUN',
+  'ELECTION_RESULTS_VIEW',
+  'ELECTION_RESULTS_PUBLISH',
   'POLL_MANAGE',
   'WELFARE_MANAGE',
   'WELFARE_PAYOUT_APPROVE',

@@ -24,6 +24,28 @@ import {
   addPollOptionSchema,
 } from './voting.validation';
 import { prisma } from '../../lib/prisma';
+import { RuleError } from '../finance/rule-error';
+import { RBACService } from '../../services/rbac.service';
+import { PERMISSIONS } from '../../lib/permissions';
+
+/** Whether the caller holds a permission, so the same screen can show a committee member more than an ordinary member. */
+async function can(req: Request, permission: string): Promise<boolean> {
+  const context = { userId: req.user!.id, associationId: req.user?.associationId ?? null, platformRole: req.user?.platformRole ?? null };
+  return RBACService.hasPermission(context, permission);
+}
+
+/** A rule the committee broke answers with its own status and code; a missing record is a 404; anything else is a 500. */
+function votingFailure(res: Response, error: unknown, fallback: string) {
+  if (error instanceof RuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  const message = error instanceof Error ? error.message : fallback;
+  if (/not found$/i.test(message)) {
+    return res.status(404).json({ success: false, message });
+  }
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message });
+}
 
 export const votingController = {
   // ==========================================
@@ -63,8 +85,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating election:', error);
-      const message = error instanceof Error ? error.message : 'Failed to create election';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to create election');
     }
   },
 
@@ -102,8 +123,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error updating election:', error);
-      const message = error instanceof Error ? error.message : 'Failed to update election';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to update election');
     }
   },
 
@@ -116,7 +136,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
       }
 
-      const election = await votingService.getElection(associationId, parseInt(id));
+      const election = await votingService.getElection(associationId, parseInt(id), await can(req, PERMISSIONS.ELECTION_RESULTS_VIEW));
 
       return res.status(200).json({
         success: true,
@@ -124,8 +144,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error fetching election:', error);
-      const message = error instanceof Error ? error.message : 'Failed to fetch election';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to fetch election');
     }
   },
 
@@ -184,8 +203,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error deleting election:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete election';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to delete election');
     }
   },
 
@@ -223,8 +241,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error starting nominations:', error);
-      const message = error instanceof Error ? error.message : 'Failed to start nominations';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to start nominations');
     }
   },
 
@@ -247,8 +264,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error closing nominations:', error);
-      const message = error instanceof Error ? error.message : 'Failed to close nominations';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to close nominations');
     }
   },
 
@@ -282,8 +298,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error starting voting:', error);
-      const message = error instanceof Error ? error.message : 'Failed to start voting';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to start voting');
     }
   },
 
@@ -317,8 +332,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error closing voting:', error);
-      const message = error instanceof Error ? error.message : 'Failed to close voting';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to close voting');
     }
   },
 
@@ -352,8 +366,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error publishing results:', error);
-      const message = error instanceof Error ? error.message : 'Failed to publish results';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to publish results');
     }
   },
 
@@ -392,8 +405,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error cancelling election:', error);
-      const message = error instanceof Error ? error.message : 'Failed to cancel election';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to cancel election');
     }
   },
 
@@ -423,8 +435,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error adding position:', error);
-      const message = error instanceof Error ? error.message : 'Failed to add position';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to add position');
     }
   },
 
@@ -450,8 +461,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error updating position:', error);
-      const message = error instanceof Error ? error.message : 'Failed to update position';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to update position');
     }
   },
 
@@ -472,8 +482,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error deleting position:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete position';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to delete position');
     }
   },
 
@@ -520,8 +529,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error registering candidate:', error);
-      const message = error instanceof Error ? error.message : 'Failed to register candidate';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to register candidate');
     }
   },
 
@@ -564,8 +572,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error self-nominating:', error);
-      const message = error instanceof Error ? error.message : 'Failed to submit nomination';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to submit nomination');
     }
   },
 
@@ -608,8 +615,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error approving candidate:', error);
-      const message = error instanceof Error ? error.message : 'Failed to process candidate';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to process candidate');
     }
   },
 
@@ -652,8 +658,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error withdrawing candidate:', error);
-      const message = error instanceof Error ? error.message : 'Failed to withdraw candidacy';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to withdraw candidacy');
     }
   },
 
@@ -670,7 +675,7 @@ export const votingController = {
       const candidates = await votingService.listCandidates(associationId, parseInt(electionId), {
         positionId: positionId ? parseInt(positionId as string) : undefined,
         status: status as string | undefined,
-      });
+      }, await can(req, PERMISSIONS.ELECTION_RESULTS_VIEW));
 
       return res.status(200).json({
         success: true,
@@ -678,8 +683,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error listing candidates:', error);
-      const message = error instanceof Error ? error.message : 'Failed to list candidates';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to list candidates');
     }
   },
 
@@ -719,8 +723,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error casting vote:', error);
-      const message = error instanceof Error ? error.message : 'Failed to cast vote';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to cast vote');
     }
   },
 
@@ -755,8 +758,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error casting bulk votes:', error);
-      const message = error instanceof Error ? error.message : 'Failed to cast votes';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to cast votes');
     }
   },
 
@@ -778,8 +780,27 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error getting voter status:', error);
-      const message = error instanceof Error ? error.message : 'Failed to get voter status';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to get voter status');
+    }
+  },
+
+  async searchCandidateMembers(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const members = await votingService.searchCandidateMembers(
+        associationId,
+        typeof req.query.search === 'string' ? req.query.search : undefined,
+        parseInt(req.query.limit as string) || 20,
+      );
+
+      return res.status(200).json({ success: true, data: members });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to search members');
     }
   },
 
@@ -792,7 +813,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
       }
 
-      const results = await votingService.getElectionResults(associationId, parseInt(electionId));
+      const results = await votingService.getElectionResults(associationId, parseInt(electionId), await can(req, PERMISSIONS.ELECTION_RESULTS_VIEW));
 
       return res.status(200).json({
         success: true,
@@ -800,8 +821,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error getting election results:', error);
-      const message = error instanceof Error ? error.message : 'Failed to get election results';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to get election results');
     }
   },
 
@@ -842,8 +862,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating poll:', error);
-      const message = error instanceof Error ? error.message : 'Failed to create poll';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to create poll');
     }
   },
 
@@ -881,8 +900,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error updating poll:', error);
-      const message = error instanceof Error ? error.message : 'Failed to update poll';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to update poll');
     }
   },
 
@@ -895,7 +913,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
       }
 
-      const poll = await votingService.getPoll(associationId, parseInt(id));
+      const poll = await votingService.getPoll(associationId, parseInt(id), await can(req, PERMISSIONS.POLL_MANAGE));
 
       return res.status(200).json({
         success: true,
@@ -903,8 +921,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error fetching poll:', error);
-      const message = error instanceof Error ? error.message : 'Failed to fetch poll';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to fetch poll');
     }
   },
 
@@ -963,8 +980,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error deleting poll:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete poll';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to delete poll');
     }
   },
 
@@ -1002,8 +1018,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error starting poll:', error);
-      const message = error instanceof Error ? error.message : 'Failed to start poll';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to start poll');
     }
   },
 
@@ -1037,8 +1052,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error closing poll:', error);
-      const message = error instanceof Error ? error.message : 'Failed to close poll';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to close poll');
     }
   },
 
@@ -1072,8 +1086,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error cancelling poll:', error);
-      const message = error instanceof Error ? error.message : 'Failed to cancel poll';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to cancel poll');
     }
   },
 
@@ -1103,8 +1116,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error adding poll option:', error);
-      const message = error instanceof Error ? error.message : 'Failed to add option';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to add option');
     }
   },
 
@@ -1125,8 +1137,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error deleting poll option:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete option';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to delete option');
     }
   },
 
@@ -1162,8 +1173,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error submitting poll response:', error);
-      const message = error instanceof Error ? error.message : 'Failed to submit response';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to submit response');
     }
   },
 
@@ -1177,7 +1187,7 @@ export const votingController = {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
       }
 
-      const results = await votingService.getPollResults(associationId, parseInt(pollId), memberId);
+      const results = await votingService.getPollResults(associationId, parseInt(pollId), memberId, await can(req, PERMISSIONS.POLL_MANAGE));
 
       return res.status(200).json({
         success: true,
@@ -1185,8 +1195,7 @@ export const votingController = {
       });
     } catch (error) {
       console.error('Error getting poll results:', error);
-      const message = error instanceof Error ? error.message : 'Failed to get poll results';
-      return res.status(500).json({ success: false, message });
+      return votingFailure(res, error, 'Failed to get poll results');
     }
   },
 

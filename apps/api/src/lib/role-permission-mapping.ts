@@ -7,6 +7,31 @@
  * already had, so every association created through real signup was under-permissioned
  * compared to one seeded directly.
  */
+/** Everything an ordinary member has. The Election Committee are members first, so they keep all of it. */
+const MEMBER_PERMISSIONS = [
+  "members.view_own", "members.edit_own",
+  "ledger.view_own",
+  "payments.view_own",
+  "payments.nigerian.view",
+  "reports.generate",
+  "notifications.view",
+  "exports.view_history",
+  "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
+  "welfare.view_own", "welfare.request_own",
+  "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own",
+  "help.view", "support.create", "support.view_own"
+];
+
+/** What only the Election Committee can do. Officers do not hold these: elections are conducted by people outside the officers. */
+export const ELECTION_COMMITTEE_PERMISSIONS = [
+  "elections.manage",
+  "elections.candidates.manage",
+  "elections.run",
+  "elections.results.view",
+  "elections.results.publish",
+  "polls.manage",
+];
+
 export const ROLE_PERMISSION_MAPPING = {
   admin: [
     "members.view", "members.view_all", "members.view_own", "members.create", "members.edit", "members.edit_all", "members.edit_own",
@@ -26,6 +51,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "exports.financial", "exports.members", "exports.view_history",
     "meetings.manage_minutes", "meetings.manage_attendance",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
+    // Polls are quick association questions, so the Administrator can run them. Elections belong to the Election Committee.
+    "polls.manage",
     // Officers are members too: they can declare a deposit into their own savings.
     "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "system.cron.view", "system.cron.trigger",
@@ -68,17 +95,7 @@ export const ROLE_PERMISSION_MAPPING = {
     "settings.view",
     "help.view", "support.create", "support.view_own"
   ],
-  member: [
-    "members.view_own", "members.edit_own",
-    "ledger.view_own",
-    "payments.view_own",
-    "payments.nigerian.view",
-    "reports.generate",
-    "notifications.view",
-    "exports.view_history",
-    "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
-    "welfare.view_own", "welfare.request_own",
-    "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own",
-    "help.view", "support.create", "support.view_own"
-  ]
+  member: [...MEMBER_PERMISSIONS],
+  // Chosen by the association to conduct elections, outside the officers.
+  election_committee: [...MEMBER_PERMISSIONS, ...ELECTION_COMMITTEE_PERMISSIONS]
 } satisfies Record<string, string[]>;

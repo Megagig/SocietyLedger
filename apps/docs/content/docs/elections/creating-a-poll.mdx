@@ -1,34 +1,47 @@
 ---
 title: "Creating a quick poll"
-description: "Ask members a yes/no, single-choice or multiple-choice question."
+description: "Ask members a yes/no, single-choice or multiple-choice question, on the web or on your phone."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/governance/polls/new", "GV10"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/elections/poll-results"]
+lastVerified: "2026-10-28"
+related: ["/docs/elections/poll-results", "/docs/elections/election-committee"]
 ---
 
 Create a poll for a quick decision — a venue change, a meeting time, anything that doesn't need a full election.
 
 ## Before you start
 
-You need the **Administrator** role.
+You need the **manage polls** permission. The Administrator and the [Election Committee](/docs/elections/election-committee) have it by default.
 
 ## Create the poll
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Governance", "Polls"]} /> and select **New Poll**.</Step>
 <Step>Enter the **Poll Question** and an optional description.</Step>
-<Step>Choose a **Poll Type** — Single Choice, Multiple Choice, Yes/No, or Ranked Choice. Yes/No fills in its two options automatically.</Step>
-<Step>For other types, enter each **Option** — select **Add Option** for more.</Step>
-<Step>Set the **Start Date** and **End Date**.</Step>
-<Step>Choose whether responses are **Anonymous** and whether members can **change their response**, then select **Create Poll**.</Step>
+<Step>Choose a **Poll Type** — Single Choice, Multiple Choice or Yes/No. Yes/No fills in its two options automatically.</Step>
+<Step>For the other types, enter each **Option** — select **Add Option** for more.</Step>
+<Step>Set the **Start Date** and **End Date**, choose whether responses are **Anonymous** and whether members can see results while it is open, then select **Create Poll**.</Step>
 </Steps>
 
 <Screenshot src="/images/elections/creating-a-poll-1.webp" alt="Create New Poll form with a Yes/No question, pre-filled Yes and No options, and start/end date fields" />
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Voting", "Polls"]} /> and tap **+**.</Step>
+<Step>Enter the **Question**, choose **How members answer** — pick one, pick several, or yes or no — and set when it starts and ends.</Step>
+<Step>Add the answers to choose from, and for a multiple-choice poll the most answers a member can pick.</Step>
+<Step>Choose whether answers are secret and whether results show while it is open, then tap **Add poll**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+A poll can be changed until it starts. The end date has to be after the start date, and must still be in the future when you start it.
 
 ## What happens next
 
-The poll is created in **Draft**. Select **Start Poll** on its page when you're ready for members to respond — see [Poll results](/docs/elections/poll-results) for what members and officers see while it's running.
+The poll is created as a **Draft**. Start it when you're ready for members to respond — see [Poll results](/docs/elections/poll-results) for what members and officers see while it's running.

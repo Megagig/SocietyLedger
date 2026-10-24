@@ -34,6 +34,10 @@ export type VotingDashboardDTO = {
   totalPolls: number;
   activePolls: number;
   upcomingElections: number;
+  /** What is waiting for the Election Committee (F6.3). */
+  candidatesAwaitingApproval: number;
+  votingPastEnd: number;
+  resultsToPublish: number;
   averageVoterTurnout: number;
   recentElections: VotingDashboardElectionSummaryDTO[];
   recentPolls: VotingDashboardPollSummaryDTO[];
@@ -139,7 +143,10 @@ export type PollDetailDTO = {
   startDate: IsoDateString;
   endDate: IsoDateString;
   allowMultipleVotes: boolean;
+  maxChoices: number | null;
   isAnonymous: boolean;
+  showResultsBeforeEnd: boolean;
+  totalResponses: number;
   createdAt: IsoDateString;
   options: PollOptionDetailDTO[];
   creator: { id: number; email: string };

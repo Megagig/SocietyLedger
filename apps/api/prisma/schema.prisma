@@ -2575,6 +2575,7 @@ enum ElectionType {
 enum ElectionStatus {
   DRAFT // Being created
   NOMINATIONS_OPEN // Accepting nominations
+  NOMINATIONS_CLOSED // Nominations closed, candidates being finalised before voting
   VOTING_OPEN // Voting in progress
   VOTING_CLOSED // Voting ended, results being processed
   RESULTS_PUBLISHED // Results announced

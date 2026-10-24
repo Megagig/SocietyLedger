@@ -17,6 +17,7 @@ export function PagedList<T>({
   keyOf,
   renderItem,
   empty,
+  header,
   skeletonHeight = 72,
 }: {
   query: Pick<UseInfiniteQueryResult, 'isPending' | 'isError' | 'error' | 'refetch' | 'isRefetching' | 'isFetchingNextPage' | 'hasNextPage' | 'fetchNextPage'>;
@@ -24,6 +25,8 @@ export function PagedList<T>({
   keyOf: (item: T) => string;
   renderItem: (item: T, index: number, count: number) => ReactElement;
   empty: ReactNode;
+  /** Shown above the first row and scrolls with the list (a summary, or filters). */
+  header?: ReactElement;
   skeletonHeight?: number;
 }) {
   if (query.isPending) {
@@ -42,6 +45,7 @@ export function PagedList<T>({
       data={items}
       keyExtractor={keyOf}
       renderItem={({ item, index }) => renderItem(item, index, items.length)}
+      ListHeaderComponent={header}
       ListEmptyComponent={<>{empty}</>}
       ListFooterComponent={
         query.isFetchingNextPage ? (

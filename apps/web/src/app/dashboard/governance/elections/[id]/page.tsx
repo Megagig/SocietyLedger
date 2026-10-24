@@ -36,11 +36,13 @@ import {
   approveCandidate,
   withdrawCandidate,
   addPosition,
+  searchCandidateMembers,
   Election,
   Candidate,
   ElectionStatus
 } from '@/lib/api/voting';
-import { membersApi, Member } from '@/lib/api/members';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
 import { Text, Modal, Select, Textarea, Button } from '@mantine/core';
@@ -55,6 +57,7 @@ function StatusBadge({ status }: { status: ElectionStatus }) {
   const statusConfig: Record<ElectionStatus, { color: string; label: string }> = {
     DRAFT: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', label: 'Draft' },
     NOMINATIONS_OPEN: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Nominations Open' },
+    NOMINATIONS_CLOSED: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', label: 'Nominations Closed' },
     VOTING_OPEN: { color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', label: 'Voting Open' },
     VOTING_CLOSED: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', label: 'Voting Closed' },
     RESULTS_PUBLISHED: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', label: 'Results Published' },
@@ -91,6 +94,12 @@ export default function ElectionDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { prompt, element: promptElement } = usePrompt();
+  const { can } = usePermissions();
+  const canManage = can(PERMISSIONS.ELECTION_MANAGE); // create, edit, positions, cancel
+  const canCandidates = can(PERMISSIONS.ELECTION_CANDIDATES); // register, approve, reject
+  const canRun = can(PERMISSIONS.ELECTION_RUN); // open and close nominations and voting
+  const canPublish = can(PERMISSIONS.ELECTION_RESULTS_PUBLISH);
+  const canSeeEarlyResults = can(PERMISSIONS.ELECTION_RESULTS_VIEW);
   const electionId = parseInt(params.id as string);
   const [selectedVotes, setSelectedVotes] = useState<Record<number, number | 'abstain'>>({});
   const [addCandidateFor, setAddCandidateFor] = useState<number | null>(null); // positionId
@@ -120,10 +129,11 @@ export default function ElectionDetailPage() {
     enabled: !!electionId,
   });
 
+  // The committee can't list members, so they search through the voting module.
   const { data: membersData } = useQuery({
     queryKey: ['members-for-candidate', memberSearch],
-    queryFn: () => membersApi.getMembers({ search: memberSearch, status: 'active', limit: 20 }),
-    enabled: addCandidateFor !== null,
+    queryFn: () => searchCandidateMembers(memberSearch),
+    enabled: addCandidateFor !== null && canCandidates,
   });
 
   const election = electionData?.data;
@@ -177,7 +187,7 @@ export default function ElectionDetailPage() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () => cancelElection(electionId),
+    mutationFn: (reason: string) => cancelElection(electionId, reason),
     onSuccess: () => {
       toast.success('Election cancelled');
       queryClient.invalidateQueries({ queryKey: ['election', electionId] });
@@ -269,6 +279,17 @@ export default function ElectionDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const handleCancel = async () => {
+    const reason = await prompt({
+      title: 'Cancel this election?',
+      label: 'Why is it being cancelled?',
+      placeholder: 'Members will be able to see this',
+      confirmLabel: 'Cancel election',
+    });
+    if (!reason) return;
+    cancelMutation.mutate(reason);
+  };
+
   const handleAddPosition = async () => {
     const title = await prompt({ title: 'Add a position', label: 'Position title', placeholder: 'e.g. President', confirmLabel: 'Add position' });
     if (!title) return;
@@ -304,6 +325,9 @@ export default function ElectionDetailPage() {
     candidatesByPosition[candidate.positionId].push(candidate);
   });
   const approvedCandidateCount = candidates.filter((c: Candidate) => c.status === 'APPROVED').length;
+  const pendingCandidateCount = candidates.filter((c: Candidate) => c.status === 'PENDING').length;
+  // Nominations can be decided until voting opens, even after they have closed.
+  const candidatesCanChange = ['DRAFT', 'NOMINATIONS_OPEN', 'NOMINATIONS_CLOSED'].includes(election.status);
 
   return (
     <div className="space-y-6">
@@ -328,18 +352,20 @@ export default function ElectionDetailPage() {
           </div>
         </div>
         
-        {/* Action Buttons based on status */}
-        <div className="flex gap-2">
+        {/* Action buttons: each is shown only to the people whose role lets them take it */}
+        <div className="flex flex-wrap justify-end gap-2">
           <HelpLink />
-          {election.status === 'DRAFT' && (
+          {election.status === 'DRAFT' && canManage && (
+            <Link
+              href={`/dashboard/governance/elections/${electionId}/edit`}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              <IconEdit size={18} />
+              Edit
+            </Link>
+          )}
+          {election.status === 'DRAFT' && canRun && (
             <>
-              <Link
-                href={`/dashboard/governance/elections/${electionId}/edit`}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                <IconEdit size={18} />
-                Edit
-              </Link>
               <button
                 onClick={() => startNominationsMutation.mutate()}
                 disabled={startNominationsMutation.isPending}
@@ -348,11 +374,7 @@ export default function ElectionDetailPage() {
                 <IconPlayerPlay size={18} />
                 Open Nominations
               </button>
-              {/* G28: startVoting() already accepts DRAFT (post-close-nominations) as
-                  well as NOMINATIONS_OPEN — the backend never produces a real
-                  NOMINATIONS_CLOSED status, so show Start Voting here once there's
-                  at least one approved candidate, instead of waiting for a status
-                  that can never occur. */}
+              {/* An election can go straight to voting from draft when the committee has registered and approved the candidates itself. */}
               {approvedCandidateCount > 0 && (
                 <button
                   onClick={() => startVotingMutation.mutate()}
@@ -365,29 +387,28 @@ export default function ElectionDetailPage() {
               )}
             </>
           )}
-          {election.status === 'NOMINATIONS_OPEN' && (
-            <>
-              <button
-                onClick={() => closeNominationsMutation.mutate()}
-                disabled={closeNominationsMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-              >
-                <IconPlayerStop size={18} />
-                Close Nominations
-              </button>
-              {approvedCandidateCount > 0 && (
-                <button
-                  onClick={() => startVotingMutation.mutate()}
-                  disabled={startVotingMutation.isPending}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  <IconChecklist size={18} />
-                  Start Voting
-                </button>
-              )}
-            </>
+          {election.status === 'NOMINATIONS_OPEN' && canRun && (
+            <button
+              onClick={() => closeNominationsMutation.mutate()}
+              disabled={closeNominationsMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+            >
+              <IconPlayerStop size={18} />
+              Close Nominations
+            </button>
           )}
-          {election.status === 'VOTING_OPEN' && (
+          {election.status === 'NOMINATIONS_CLOSED' && canRun && (
+            <button
+              onClick={() => startVotingMutation.mutate()}
+              disabled={startVotingMutation.isPending || pendingCandidateCount > 0}
+              title={pendingCandidateCount > 0 ? 'Approve or reject the waiting nominations first' : undefined}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              <IconChecklist size={18} />
+              Start Voting
+            </button>
+          )}
+          {election.status === 'VOTING_OPEN' && canRun && (
             <button
               onClick={() => closeVotingMutation.mutate()}
               disabled={closeVotingMutation.isPending}
@@ -397,7 +418,7 @@ export default function ElectionDetailPage() {
               Close Voting
             </button>
           )}
-          {election.status === 'VOTING_CLOSED' && (
+          {election.status === 'VOTING_CLOSED' && canPublish && (
             <button
               onClick={() => publishResultsMutation.mutate()}
               disabled={publishResultsMutation.isPending}
@@ -407,7 +428,7 @@ export default function ElectionDetailPage() {
               Publish Results
             </button>
           )}
-          {(election.status === 'VOTING_CLOSED' || election.status === 'RESULTS_PUBLISHED') && (
+          {(election.status === 'RESULTS_PUBLISHED' || (election.status === 'VOTING_CLOSED' && canSeeEarlyResults)) && (
             <Link
               href={`/dashboard/governance/elections/${electionId}/results`}
               className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
@@ -416,19 +437,9 @@ export default function ElectionDetailPage() {
               View Results
             </Link>
           )}
-          {!['CANCELLED', 'RESULTS_PUBLISHED'].includes(election.status) && (
+          {canManage && !['CANCELLED', 'RESULTS_PUBLISHED'].includes(election.status) && (
             <button
-              onClick={() => {
-                modals.openConfirmModal({
-                  title: 'Cancel Election',
-                  children: <Text size="sm">Are you sure you want to cancel this election?</Text>,
-                  labels: { confirm: 'Cancel Election', cancel: 'Go Back' },
-                  confirmProps: { color: 'red' },
-                  onConfirm: () => {
-                    cancelMutation.mutate();
-                  },
-                });
-              }}
+              onClick={handleCancel}
               disabled={cancelMutation.isPending}
               className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
             >
@@ -438,6 +449,17 @@ export default function ElectionDetailPage() {
           )}
         </div>
       </div>
+
+      {canCandidates && pendingCandidateCount > 0 && ['DRAFT', 'NOMINATIONS_OPEN', 'NOMINATIONS_CLOSED'].includes(election.status) && (
+        <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+          {pendingCandidateCount} {pendingCandidateCount === 1 ? 'nomination is' : 'nominations are'} waiting for a decision. Voting cannot open until each one is approved or rejected.
+        </div>
+      )}
+      {election.status === 'CANCELLED' && election.cancellationReason && (
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300">
+          Cancelled: {election.cancellationReason}
+        </div>
+      )}
 
       {/* Election Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -502,7 +524,7 @@ export default function ElectionDetailPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Positions & Candidates</h2>
-          {election.status === 'DRAFT' && (
+          {election.status === 'DRAFT' && canManage && (
             <button
               onClick={handleAddPosition}
               disabled={addPositionMutation.isPending}
@@ -539,14 +561,16 @@ export default function ElectionDetailPage() {
                       </span>
                       {(election.status === 'DRAFT' || election.status === 'NOMINATIONS_OPEN') && (
                         <>
-                          <button
-                            onClick={() => setAddCandidateFor(position.id)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700"
-                          >
-                            <IconUserPlus size={14} />
-                            Add Candidate
-                          </button>
-                          {!myCandidacy && (
+                          {canCandidates && (
+                            <button
+                              onClick={() => setAddCandidateFor(position.id)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700"
+                            >
+                              <IconUserPlus size={14} />
+                              Add Candidate
+                            </button>
+                          )}
+                          {election.status === 'NOMINATIONS_OPEN' && !myCandidacy && (
                             <button
                               onClick={() => selfNominateMutation.mutate(position.id)}
                               disabled={selfNominateMutation.isPending}
@@ -600,7 +624,10 @@ export default function ElectionDetailPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <CandidateStatusBadge status={candidate.status} />
-                            {candidate.status === 'PENDING' && (election.status === 'DRAFT' || election.status === 'NOMINATIONS_OPEN') && (
+                            {candidate.status === 'PENDING' && candidatesCanChange && canCandidates && candidate.memberId === voterStatus?.memberId && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Another committee member decides this</span>
+                            )}
+                            {candidate.status === 'PENDING' && candidatesCanChange && canCandidates && candidate.memberId !== voterStatus?.memberId && (
                               <>
                                 <button
                                   onClick={(e) => {
@@ -628,7 +655,7 @@ export default function ElectionDetailPage() {
                             {candidate.memberId === voterStatus?.memberId &&
                               candidate.status !== 'WITHDRAWN' &&
                               candidate.status !== 'REJECTED' &&
-                              (election.status === 'DRAFT' || election.status === 'NOMINATIONS_OPEN') && (
+                              candidatesCanChange && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -690,7 +717,7 @@ export default function ElectionDetailPage() {
           <div className="text-center py-8">
             <IconUsers size={48} className="mx-auto mb-4 text-gray-400" />
             <p className="text-gray-600 dark:text-gray-400 mb-4">No positions added yet</p>
-            {election.status === 'DRAFT' && (
+            {election.status === 'DRAFT' && canManage && (
               <button
                 onClick={handleAddPosition}
                 disabled={addPositionMutation.isPending}
@@ -717,7 +744,7 @@ export default function ElectionDetailPage() {
             searchable
             searchValue={memberSearch}
             onSearchChange={setMemberSearch}
-            data={(membersData?.members || []).map((m: Member) => ({
+            data={(membersData?.data || []).map((m) => ({
               value: String(m.id),
               label: `${m.firstName} ${m.lastName} (${m.memberId})`,
             }))}

@@ -33,6 +33,16 @@ router.get(
 );
 
 /**
+ * Find active members to put forward as candidates (the Election Committee has no access to the members list)
+ * GET /api/voting/candidate-members?search=
+ */
+router.get(
+  '/candidate-members',
+  requirePermission(PERMISSIONS.ELECTION_CANDIDATES),
+  votingController.searchCandidateMembers
+);
+
+/**
  * Get active voting items (elections and polls)
  * GET /api/voting/active
  */
@@ -106,7 +116,7 @@ router.delete(
  */
 router.post(
   '/elections/:id/start-nominations',
-  requirePermission(PERMISSIONS.ELECTION_MANAGE),
+  requirePermission(PERMISSIONS.ELECTION_RUN),
   votingController.startNominations
 );
 
@@ -116,7 +126,7 @@ router.post(
  */
 router.post(
   '/elections/:id/close-nominations',
-  requirePermission(PERMISSIONS.ELECTION_MANAGE),
+  requirePermission(PERMISSIONS.ELECTION_RUN),
   votingController.closeNominations
 );
 
@@ -126,7 +136,7 @@ router.post(
  */
 router.post(
   '/elections/:id/start-voting',
-  requirePermission(PERMISSIONS.ELECTION_MANAGE),
+  requirePermission(PERMISSIONS.ELECTION_RUN),
   votingController.startVoting
 );
 
@@ -136,7 +146,7 @@ router.post(
  */
 router.post(
   '/elections/:id/close-voting',
-  requirePermission(PERMISSIONS.ELECTION_MANAGE),
+  requirePermission(PERMISSIONS.ELECTION_RUN),
   votingController.closeVoting
 );
 
@@ -146,7 +156,7 @@ router.post(
  */
 router.post(
   '/elections/:id/publish-results',
-  requirePermission(PERMISSIONS.ELECTION_MANAGE),
+  requirePermission(PERMISSIONS.ELECTION_RESULTS_PUBLISH),
   votingController.publishResults
 );
 
@@ -224,7 +234,7 @@ router.get(
  */
 router.post(
   '/elections/:electionId/candidates',
-  requirePermission(PERMISSIONS.ELECTION_MANAGE),
+  requirePermission(PERMISSIONS.ELECTION_CANDIDATES),
   votingController.registerCandidate
 );
 
@@ -244,7 +254,7 @@ router.post(
  */
 router.post(
   '/candidates/:candidateId/approve',
-  requirePermission(PERMISSIONS.ELECTION_MANAGE),
+  requirePermission(PERMISSIONS.ELECTION_CANDIDATES),
   votingController.approveCandidate
 );
 

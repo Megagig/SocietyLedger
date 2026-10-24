@@ -15,6 +15,8 @@ const prismaMock: any = {
   savingsDepositRequest: { count: count() },
   welfarePayoutRequest: { count: count() },
   welfareContribution: { count: count() },
+  candidate: { count: count() },
+  election: { count: count() },
 };
 jest.mock('../../src/lib/prisma', () => ({ prisma: prismaMock }));
 jest.mock('../../src/services/rbac.service', () => ({ RBACService: { hasAnyPermission: jest.fn() } }));

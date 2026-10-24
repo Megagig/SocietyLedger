@@ -71,6 +71,19 @@ describe('Manage hub', () => {
     expect(screen.getByText('3 waiting')).toBeTruthy();
   });
 
+  it('shows the Voting section, with what is waiting for the Election Committee added up on the Elections row', async () => {
+    mockAttention.mockReturnValue([
+      { key: 'electionNominations', count: 3 },
+      { key: 'electionsToClose', count: 1 },
+      { key: 'electionResults', count: 3 },
+    ]);
+    await render(<ManageScreen />);
+    expect(screen.getByText('Voting')).toBeTruthy();
+    expect(screen.getByText('Elections')).toBeTruthy();
+    expect(screen.getByText('Polls')).toBeTruthy();
+    expect(screen.getByText('7 waiting')).toBeTruthy();
+  });
+
   it('shows no badges when nothing is waiting, and no sections to someone with no permissions', async () => {
     mockAttention.mockReturnValue([]);
     await render(<ManageScreen />);

@@ -20,7 +20,10 @@ export type AttentionKey =
   | 'loanRepayments'
   | 'savingsDeposits'
   | 'welfarePayouts'
-  | 'welfareContributions';
+  | 'welfareContributions'
+  | 'electionNominations'
+  | 'electionsToClose'
+  | 'electionResults';
 
 export interface AttentionItem {
   key: AttentionKey;
@@ -105,6 +108,33 @@ export const ATTENTION_SOURCES: AttentionSource[] = [
       prisma.welfareContribution.count({
         where: { associationId, status: 'PENDING', OR: [{ recordedBy: null }, { recordedBy: { not: userId } }] },
       }),
+  },
+  {
+    // Nominations waiting for a decision before voting opens — not the officer's own, because they can't decide those.
+    key: 'electionNominations',
+    permissions: [PERMISSIONS.ELECTION_CANDIDATES],
+    module: 'voting',
+    count: ({ associationId, userId }) =>
+      prisma.candidate.count({
+        where: {
+          status: 'PENDING',
+          election: { associationId, status: { in: ['DRAFT', 'NOMINATIONS_OPEN', 'NOMINATIONS_CLOSED'] } },
+          NOT: { member: { userId } },
+        },
+      }),
+  },
+  {
+    // Voting that has run past its end date and is still open.
+    key: 'electionsToClose',
+    permissions: [PERMISSIONS.ELECTION_RUN],
+    module: 'voting',
+    count: ({ associationId }) => prisma.election.count({ where: { associationId, status: 'VOTING_OPEN', votingEndDate: { lt: new Date() } } }),
+  },
+  {
+    key: 'electionResults',
+    permissions: [PERMISSIONS.ELECTION_RESULTS_PUBLISH],
+    module: 'voting',
+    count: ({ associationId }) => prisma.election.count({ where: { associationId, status: 'VOTING_CLOSED' } }),
   },
 ];
 

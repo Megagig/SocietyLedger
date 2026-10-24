@@ -54,7 +54,9 @@ export default function ElectionResultsPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{results.electionTitle}</h1>
-            <p className="text-gray-600 dark:text-gray-400">Election Results</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              {results.published === false ? 'Election Results (not published yet — only the Election Committee can see these)' : 'Election Results'}
+            </p>
           </div>
         </div>
         <HelpLink />
@@ -80,8 +82,11 @@ export default function ElectionResultsPage() {
             <span className="text-sm font-medium">Quorum</span>
           </div>
           <p className={`text-lg font-semibold ${results.quorumMet ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {results.quorumMet ? 'Met' : 'Not Met'}
+            {!results.requiresQuorum ? 'Not required' : results.quorumMet ? 'Met' : 'Not Met'}
           </p>
+          {results.requiresQuorum && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{results.quorumPercentage}% of members needed to vote</p>
+          )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 mb-2">
@@ -98,6 +103,11 @@ export default function ElectionResultsPage() {
       {results.positions.map((position) => (
         <div key={position.positionId} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{position.positionTitle}</h2>
+          {position.tied && position.tied.length > 1 && (
+            <p className="mb-3 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+              {position.tied.map((c) => c.memberName).join(' and ')} have the same number of votes, so there is no winner yet. The committee decides what happens next.
+            </p>
+          )}
           <div className="space-y-3">
             {position.candidates.map((candidate) => {
               const isWinner = position.winner?.candidateId === candidate.candidateId;
@@ -125,6 +135,9 @@ export default function ElectionResultsPage() {
               );
             })}
           </div>
+          {!!position.abstentions && (
+            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">{position.abstentions} abstained</p>
+          )}
         </div>
       ))}
 

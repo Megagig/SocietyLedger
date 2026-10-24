@@ -9,9 +9,14 @@ import { useAuthStore } from '@/store/authStore';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
 
+// Only these roles get the officer dashboard (it needs ledger.view). Every other role — the Election Committee, a custom role — is a
+// member first, so it lands on the member dashboard; assigning a role overwrites the legacy `role` field, so it can't be assumed to be 'member'.
+const OFFICER_ROLES = ['admin', 'treasurer', 'financial_secretary'];
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
+  const isOfficer = !!user && OFFICER_ROLES.includes(user.role);
 
   // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -19,7 +24,7 @@ export default function DashboardPage() {
     queryFn: getDashboardOverview,
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: false,
-    enabled: _hasHydrated && user?.role !== 'member', // members are sent to their own dashboard
+    enabled: _hasHydrated && isOfficer, // everyone else is sent to the member dashboard
 
   });
 
@@ -29,16 +34,13 @@ export default function DashboardPage() {
 
     if (user) {
       // Regular Admin/Treasurer/Financial Secretary → Stay here (admin dashboard)
-      if (user.role === 'admin' || user.role === 'treasurer' || user.role === 'financial_secretary') {
+      if (OFFICER_ROLES.includes(user.role)) {
         // Show admin dashboard (current page)
         return;
       }
 
-      // Regular Member → Redirect to member dashboard
-      if (user.role === 'member') {
-        router.replace('/dashboard/member');
-        return;
-      }
+      // Members, the Election Committee and custom roles → member dashboard
+      router.replace('/dashboard/member');
     }
   }, [user, _hasHydrated, router]);
 
@@ -48,7 +50,7 @@ export default function DashboardPage() {
   }
 
   // If member, don't show this page (will redirect)
-  if (user?.role === 'member') {
+  if (user && !isOfficer) {
     return <DashboardSkeleton />;
   }
 

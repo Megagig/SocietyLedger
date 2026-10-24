@@ -1,35 +1,51 @@
 ---
 title: "Opening and closing voting"
-description: "Open the ballot once candidates are approved, and close it when the window ends."
+description: "Open the ballot once every candidate is decided, and close it when the window ends."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["GV9"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/governance/elections/[id]", "GV9"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-28"
 related: ["/docs/elections/nominations-and-candidates", "/docs/elections/publishing-results"]
 ---
 
-Open voting once every position has at least one approved candidate, and close it when your voting window ends.
+Open voting once every position has an approved candidate and no nomination is waiting, and close it when your voting window ends.
 
 ## Before you start
 
-You need the **Administrator** role. Every position should have an approved candidate before you open voting — see [Nominations and candidates](/docs/elections/nominations-and-candidates).
+You need the committee's **open and close** power. See [Nominations and candidates](/docs/elections/nominations-and-candidates) for getting the ballot ready.
 
-<Callout type="danger" title="Contact support to open voting today">
-Closing nominations currently leaves the election showing as **Draft**, and there's no **Start Voting** button on a Draft election in the interface — only **Open Nominations** or **Cancel**. Until this is fixed, ask your platform contact to open voting for you once your candidates are approved.
-</Callout>
+## Open and close
 
-## Vote and close
-
+<PlatformTabs>
+<PlatformTab>
 <Steps>
-<Step>Once voting opens, every eligible member sees the election's positions and their approved candidates.</Step>
-<Step>A member selects a candidate for each position (or **Abstain**, if the election allows it) and selects **Submit Vote** — one submission per position, and it can't be changed afterward.</Step>
-<Step>When your voting window ends, an officer selects **Close Voting** on the election's page.</Step>
+<Step>Open the election from <MenuPath items={["Governance", "Elections"]} />.</Step>
+<Step>If nominations are open, select **Close Nominations**, decide any nominations still waiting, then select **Start Voting**.</Step>
+<Step>When your voting window ends, select **Close Voting**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Open the election from <MenuPath items={["Manage", "Voting", "Elections"]} />.</Step>
+<Step>The button at the bottom is always the next step: **Open nominations**, **Close nominations**, **Open voting**, **Close voting**. Tap it and confirm.</Step>
+<Step>On a draft with approved candidates you can also tap **Open voting now** to skip nominations.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+Opening voting fixes who can vote at that moment: every **active** member. It is refused if a position has no approved candidate, a nomination is still waiting, or the voting end date has already passed.
+
+## While voting is open
+
+A member picks a candidate for each position (or **Abstain**, if the election allows it) and submits. Each position can be voted on once, and a vote can't be changed. Votes are refused after the voting end date, and once voting is closed.
+
+- A ballot must name one approved candidate from that position, or abstain — it can't be blank, and it can't name someone from a different position.
+- When the end date passes, voting stops accepting votes by itself, but the election stays open until the committee closes it. The Home screen and the Manage hub on the phone remind you.
 
 <Screenshot src="/images/elections/running-the-vote-1.webp" alt="Member's view of an open election after voting, showing a green checkmark and 'You have voted for this position' under each position" />
 
 ## What happens next
 
-The election shows as **Voting Closed**. No more votes are accepted. See [Publishing results](/docs/elections/publishing-results) for the next step.
+The election shows as **Voting Closed**. No more votes are accepted, and the number of members who voted is fixed. See [Publishing results](/docs/elections/publishing-results) for the next step.

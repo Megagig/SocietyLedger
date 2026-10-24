@@ -85,7 +85,10 @@ export type AttentionKey =
   | 'loanRepayments'
   | 'savingsDeposits'
   | 'welfarePayouts'
-  | 'welfareContributions';
+  | 'welfareContributions'
+  | 'electionNominations'
+  | 'electionsToClose'
+  | 'electionResults';
 
 export type AttentionItemDTO = { key: AttentionKey; count: number };
 

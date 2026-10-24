@@ -17,6 +17,8 @@ import {
   IconChartPie
 } from '@tabler/icons-react';
 import { getPolls, deletePoll, Poll, PollStatus, PollType } from '@/lib/api/voting';
+import { Can, usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
 import { Text } from '@mantine/core';
@@ -65,6 +67,8 @@ export default function PollsListPage() {
   const [typeFilter, setTypeFilter] = useState<PollType | ''>('');
   const [page, setPage] = useState(1);
   const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const { can } = usePermissions();
+  const canManage = can(PERMISSIONS.POLL_MANAGE);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['polls', { page, search, status: statusFilter, pollType: typeFilter }],
@@ -110,15 +114,19 @@ export default function PollsListPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Polls</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Create and manage polls to gather member opinions</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            {canManage ? 'Create and manage polls to gather member opinions' : 'Answer polls and see the results'}
+          </p>
         </div>
-        <Link
-          href="/dashboard/governance/polls/new"
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors w-full sm:w-auto"
-        >
-          <IconPlus size={18} />
-          New Poll
-        </Link>
+        <Can permission={PERMISSIONS.POLL_MANAGE}>
+          <Link
+            href="/dashboard/governance/polls/new"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors w-full sm:w-auto"
+          >
+            <IconPlus size={18} />
+            New Poll
+          </Link>
+        </Can>
       </div>
 
       {/* Filters */}
@@ -182,9 +190,11 @@ export default function PollsListPage() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             {search || statusFilter || typeFilter 
               ? 'Try adjusting your filters'
-              : 'Get started by creating your first poll'}
+              : canManage
+                ? 'Get started by creating your first poll'
+                : 'There are no polls yet.'}
           </p>
-          {!search && !statusFilter && !typeFilter && (
+          {!search && !statusFilter && !typeFilter && canManage && (
             <Link
               href="/dashboard/governance/polls/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
@@ -252,7 +262,7 @@ export default function PollsListPage() {
                         <IconChartBar size={16} />
                         View Details
                       </Link>
-                      {poll.status === 'DRAFT' && (
+                      {poll.status === 'DRAFT' && canManage && (
                         <Link
                           href={`/dashboard/governance/polls/${poll.id}/edit`}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -264,7 +274,7 @@ export default function PollsListPage() {
                       )}
                       {(poll.status === 'ACTIVE' || poll.status === 'CLOSED') && (
                         <Link
-                          href={`/dashboard/governance/polls/${poll.id}/results`}
+                          href={`/dashboard/governance/polls/${poll.id}`}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                           onClick={() => setOpenMenu(null)}
                         >
@@ -272,7 +282,7 @@ export default function PollsListPage() {
                           View Results
                         </Link>
                       )}
-                      {poll.status === 'DRAFT' && (
+                      {poll.status === 'DRAFT' && canManage && (
                         <button
                           onClick={() => handleDelete(poll.id)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"

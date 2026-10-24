@@ -5,6 +5,9 @@
 import { prisma } from '../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
+import { RuleError } from '../finance/rule-error';
+import * as rules from './voting-rules';
 import {
   CreateElectionInput,
   UpdateElectionInput,
@@ -28,12 +31,138 @@ function generateVoteHash(electionId: number, voterId: number, timestamp: Date):
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
+type Tx = Prisma.TransactionClient;
+
+/** Holds the election's row until the transaction ends, so votes, candidate decisions and the lifecycle can't interleave. */
+async function lockElection(tx: Tx, electionId: number): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM elections WHERE id = ${electionId} FOR UPDATE`;
+}
+
+async function lockPoll(tx: Tx, pollId: number): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM polls WHERE id = ${pollId} FOR UPDATE`;
+}
+
+/**
+ * Moves an election one step, once. The status is part of the update's condition, so of two committee members (or a double
+ * tap) only one gets through; the other is told where the election is now instead of the step running twice.
+ */
+async function claimElection(associationId: number, electionId: number, action: rules.ElectionAction, data: Prisma.ElectionUncheckedUpdateManyInput) {
+  const { count } = await prisma.election.updateMany({
+    where: { id: electionId, associationId, status: { in: rules.ELECTION_TRANSITIONS[action] } },
+    data,
+  });
+
+  if (count !== 1) {
+    const current = await prisma.election.findFirst({ where: { id: electionId, associationId }, select: { status: true } });
+    if (!current) throw new Error('Election not found');
+    rules.assertElectionTransition(action, current.status);
+    throw rules.alreadyMovedOn();
+  }
+
+  return prisma.election.findFirstOrThrow({ where: { id: electionId } });
+}
+
+async function claimPoll(associationId: number, pollId: number, action: rules.PollAction, data: Prisma.PollUncheckedUpdateManyInput) {
+  const { count } = await prisma.poll.updateMany({
+    where: { id: pollId, associationId, status: { in: rules.POLL_TRANSITIONS[action] } },
+    data,
+  });
+
+  if (count !== 1) {
+    const current = await prisma.poll.findFirst({ where: { id: pollId, associationId }, select: { status: true } });
+    if (!current) throw new Error('Poll not found');
+    rules.assertPollTransition(action, current.status);
+    throw rules.alreadyMovedOnPoll();
+  }
+
+  return prisma.poll.findFirstOrThrow({ where: { id: pollId } });
+}
+
+/** Two positions in one election can't share an order number. */
+function positionOrderTaken(error: unknown): unknown {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    return new RuleError('Another position already has that order number.', 409, 'ORDER_TAKEN');
+  }
+  return error;
+}
+
+/** Adds a candidate, either put forward by the committee or by the member themselves. They wait for a decision from someone else. */
+async function addCandidate(
+  associationId: number,
+  electionId: number,
+  memberId: number,
+  data: { positionId?: number | null; manifesto?: string | null; photoUrl?: string | null; nominatedBy?: number },
+  bySelf: boolean,
+) {
+  return prisma.$transaction(async (tx) => {
+    await lockElection(tx, electionId);
+
+    const election = await tx.election.findFirst({
+      where: { id: electionId, associationId },
+      include: { positions: { select: { id: true } } },
+    });
+
+    if (!election) {
+      throw new Error('Election not found');
+    }
+
+    rules.assertCanRegisterCandidate(election.status, bySelf);
+
+    const member = await tx.member.findFirst({
+      where: { id: memberId, associationId, status: 'active' },
+      select: { id: true },
+    });
+
+    if (!member) {
+      throw new RuleError(bySelf ? 'Only active members can stand for election.' : 'That member was not found or is not active.', 400, 'MEMBER_NOT_ELIGIBLE');
+    }
+
+    const positionId = data.positionId ?? null;
+    rules.assertPositionBelongs(positionId, election.positions.map((p) => p.id));
+
+    const existingCandidate = await tx.candidate.findFirst({
+      where: { electionId, positionId, memberId, status: { notIn: ['REJECTED', 'WITHDRAWN'] } },
+      select: { id: true },
+    });
+
+    if (existingCandidate) {
+      throw new RuleError(bySelf ? 'You are already a candidate for this position.' : 'That member is already a candidate for this position.', 409, 'ALREADY_CANDIDATE');
+    }
+
+    return tx.candidate.create({
+      data: {
+        electionId,
+        positionId,
+        memberId,
+        manifesto: data.manifesto,
+        photoUrl: data.photoUrl,
+        nominatedBy: data.nominatedBy,
+        status: 'PENDING',
+      },
+      include: {
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        position: { select: { id: true, title: true } },
+      },
+    });
+  });
+}
+
 export const votingService = {
   // ==========================================
   // ELECTION MANAGEMENT
   // ==========================================
 
   async createElection(associationId: number, userId: number, data: CreateElectionInput) {
+    const votingStart = new Date(data.votingStartDate);
+    const votingEnd = new Date(data.votingEndDate);
+    rules.assertWindow(votingStart, votingEnd);
+    rules.assertNominationWindow(
+      data.nominationStartDate ? new Date(data.nominationStartDate) : null,
+      data.nominationEndDate ? new Date(data.nominationEndDate) : null,
+      votingStart,
+    );
+    rules.assertQuorumSetting(data.requiresQuorum, data.quorumPercentage);
+
     // Get eligible voter count (active members)
     const eligibleVoterCount = await prisma.member.count({
       where: { associationId, status: 'active' },
@@ -47,13 +176,13 @@ export const votingService = {
         electionType: data.electionType,
         nominationStartDate: data.nominationStartDate ? new Date(data.nominationStartDate) : null,
         nominationEndDate: data.nominationEndDate ? new Date(data.nominationEndDate) : null,
-        votingStartDate: new Date(data.votingStartDate),
-        votingEndDate: new Date(data.votingEndDate),
+        votingStartDate: votingStart,
+        votingEndDate: votingEnd,
         maxVotesPerMember: data.maxVotesPerMember ?? 1,
         allowAbstention: data.allowAbstention ?? true,
         isAnonymous: data.isAnonymous ?? true,
         requiresQuorum: data.requiresQuorum ?? false,
-        quorumPercentage: data.quorumPercentage,
+        quorumPercentage: data.requiresQuorum ? data.quorumPercentage : null,
         eligibleVoterCount,
         createdBy: userId,
         positions: data.positions && data.positions.length > 0 ? {
@@ -73,7 +202,6 @@ export const votingService = {
 
     return election;
   },
-
   async updateElection(associationId: number, electionId: number, data: UpdateElectionInput) {
     const election = await prisma.election.findFirst({
       where: { id: electionId, associationId },
@@ -83,12 +211,21 @@ export const votingService = {
       throw new Error('Election not found');
     }
 
-    if (election.status !== 'DRAFT') {
-      throw new Error('Can only edit elections in draft status');
-    }
+    rules.assertEditable(election.status);
 
-    return prisma.election.update({
-      where: { id: electionId },
+    const votingStart = data.votingStartDate ? new Date(data.votingStartDate) : election.votingStartDate;
+    const votingEnd = data.votingEndDate ? new Date(data.votingEndDate) : election.votingEndDate;
+    const nominationStart = data.nominationStartDate ? new Date(data.nominationStartDate) : election.nominationStartDate;
+    const nominationEnd = data.nominationEndDate ? new Date(data.nominationEndDate) : election.nominationEndDate;
+    const requiresQuorum = data.requiresQuorum ?? election.requiresQuorum;
+    const quorumPercentage = data.quorumPercentage ?? election.quorumPercentage;
+    rules.assertWindow(votingStart, votingEnd);
+    rules.assertNominationWindow(nominationStart, nominationEnd, votingStart);
+    rules.assertQuorumSetting(requiresQuorum, quorumPercentage);
+
+    // Claim the draft: if someone opened nominations while this was being edited, nothing is overwritten.
+    const { count } = await prisma.election.updateMany({
+      where: { id: electionId, associationId, status: 'DRAFT' },
       data: {
         title: data.title,
         description: data.description,
@@ -101,15 +238,19 @@ export const votingService = {
         allowAbstention: data.allowAbstention,
         isAnonymous: data.isAnonymous,
         requiresQuorum: data.requiresQuorum,
-        quorumPercentage: data.quorumPercentage,
+        quorumPercentage: requiresQuorum ? quorumPercentage : null,
       },
+    });
+    if (count !== 1) throw rules.alreadyMovedOn();
+
+    return prisma.election.findFirstOrThrow({
+      where: { id: electionId },
       include: {
         positions: { orderBy: { orderNumber: 'asc' } },
       },
     });
   },
-
-  async getElection(associationId: number, electionId: number) {
+  async getElection(associationId: number, electionId: number, canSeeBeforePublishing = false) {
     const election = await prisma.election.findFirst({
       where: { id: electionId, associationId },
       include: {
@@ -142,6 +283,15 @@ export const votingService = {
 
     if (!election) {
       throw new Error('Election not found');
+    }
+
+    // The count of votes each candidate has is the result: it is not handed out while voting is open, or before it is published.
+    if (!rules.tallyVisible(election.status, canSeeBeforePublishing)) {
+      return {
+        ...election,
+        positions: election.positions.map((p) => ({ ...p, candidates: p.candidates.map((c) => ({ ...c, voteCount: 0 })) })),
+        candidates: election.candidates.map((c) => ({ ...c, voteCount: 0 })),
+      };
     }
 
     return election;
@@ -205,20 +355,24 @@ export const votingService = {
   async deleteElection(associationId: number, electionId: number) {
     const election = await prisma.election.findFirst({
       where: { id: electionId, associationId },
+      include: { _count: { select: { votes: true } } },
     });
 
     if (!election) {
       throw new Error('Election not found');
     }
 
-    if (election.status !== 'DRAFT' && election.status !== 'CANCELLED') {
-      throw new Error('Can only delete elections in draft or cancelled status');
+    rules.assertDeletable(election.status);
+    if (election._count.votes > 0) {
+      throw new RuleError('This election has votes. Keep it as a record instead of deleting it.', 409, 'HAS_VOTES');
     }
 
-    await prisma.election.delete({ where: { id: electionId } });
+    const { count } = await prisma.election.deleteMany({
+      where: { id: electionId, associationId, status: { in: ['DRAFT', 'CANCELLED'] } },
+    });
+    if (count !== 1) throw rules.alreadyMovedOn();
     return { success: true };
   },
-
   // ==========================================
   // ELECTION STATUS MANAGEMENT
   // ==========================================
@@ -232,158 +386,129 @@ export const votingService = {
       throw new Error('Election not found');
     }
 
-    if (election.status !== 'DRAFT') {
-      throw new Error('Can only start nominations from draft status');
-    }
-
-    return prisma.election.update({
-      where: { id: electionId },
-      data: {
-        status: 'NOMINATIONS_OPEN',
-        nominationStartDate: election.nominationStartDate || new Date(),
-      },
+    return claimElection(associationId, electionId, 'startNominations', {
+      status: 'NOMINATIONS_OPEN',
+      nominationStartDate: election.nominationStartDate || new Date(),
     });
   },
-
   async closeNominations(associationId: number, electionId: number, userId: number) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-      include: {
-        candidates: { where: { status: 'APPROVED' } },
-      },
-    });
-
-    if (!election) {
-      throw new Error('Election not found');
-    }
-
-    if (election.status !== 'NOMINATIONS_OPEN') {
-      throw new Error('Nominations are not currently open');
-    }
-
-    if (election.candidates.length === 0) {
-      throw new Error('Cannot close nominations without any approved candidates');
-    }
-
-    return prisma.election.update({
-      where: { id: electionId },
-      data: {
-        status: 'DRAFT', // Back to draft until voting starts
-        nominationEndDate: new Date(),
-      },
+    return claimElection(associationId, electionId, 'closeNominations', {
+      status: 'NOMINATIONS_CLOSED',
+      nominationEndDate: new Date(),
     });
   },
-
   async startVoting(associationId: number, electionId: number, userId: number) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-      include: {
-        candidates: { where: { status: 'APPROVED' } },
-      },
-    });
+    return prisma.$transaction(async (tx) => {
+      // Holding the election's row keeps a nomination from being decided while we check that the ballot is complete.
+      await lockElection(tx, electionId);
 
-    if (!election) {
-      throw new Error('Election not found');
-    }
+      const election = await tx.election.findFirst({
+        where: { id: electionId, associationId },
+        include: {
+          positions: { select: { id: true, title: true }, orderBy: { orderNumber: 'asc' } },
+          candidates: { select: { positionId: true, status: true } },
+        },
+      });
 
-    if (election.status !== 'DRAFT' && election.status !== 'NOMINATIONS_OPEN') {
-      throw new Error('Cannot start voting from current status');
-    }
+      if (!election) {
+        throw new Error('Election not found');
+      }
 
-    if (election.candidates.length === 0) {
-      throw new Error('Cannot start voting without any approved candidates');
-    }
+      rules.assertElectionTransition('startVoting', election.status);
 
-    // Update eligible voter count
-    const eligibleVoterCount = await prisma.member.count({
-      where: { associationId, status: 'active' },
-    });
+      const now = new Date();
+      rules.assertReadyForVoting({
+        positions: election.positions,
+        candidates: election.candidates,
+        votingEndDate: election.votingEndDate,
+        now,
+      });
 
-    return prisma.election.update({
-      where: { id: electionId },
-      data: {
-        status: 'VOTING_OPEN',
-        eligibleVoterCount,
-        votingStartDate: new Date(),
-      },
+      // Who can vote is fixed at this moment.
+      const eligibleVoterCount = await tx.member.count({
+        where: { associationId, status: 'active' },
+      });
+
+      const { count } = await tx.election.updateMany({
+        where: { id: electionId, associationId, status: { in: rules.ELECTION_TRANSITIONS.startVoting } },
+        data: { status: 'VOTING_OPEN', eligibleVoterCount, votingStartDate: now },
+      });
+      if (count !== 1) throw rules.alreadyMovedOn();
+
+      return tx.election.findFirstOrThrow({ where: { id: electionId } });
     });
   },
-
   async closeVoting(associationId: number, electionId: number, userId: number) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-    });
+    return prisma.$transaction(async (tx) => {
+      // Votes take the same lock, so every vote in flight finishes first and none can follow the close.
+      await lockElection(tx, electionId);
 
-    if (!election) {
-      throw new Error('Election not found');
-    }
+      const election = await tx.election.findFirst({ where: { id: electionId, associationId } });
 
-    if (election.status !== 'VOTING_OPEN') {
-      throw new Error('Voting is not currently open');
-    }
+      if (!election) {
+        throw new Error('Election not found');
+      }
 
-    // Get total votes cast
-    const totalVotesCast = await prisma.vote.count({
-      where: { electionId },
-    });
+      rules.assertElectionTransition('closeVoting', election.status);
 
-    return prisma.election.update({
-      where: { id: electionId },
-      data: {
-        status: 'VOTING_CLOSED',
-        totalVotesCast,
-        votingEndDate: new Date(),
-      },
+      const voters = await tx.vote.groupBy({ by: ['voterId'], where: { electionId } });
+      const now = new Date();
+
+      const { count } = await tx.election.updateMany({
+        where: { id: electionId, associationId, status: 'VOTING_OPEN' },
+        data: {
+          status: 'VOTING_CLOSED',
+          totalVotesCast: voters.length,
+          votingEndDate: now < election.votingEndDate ? now : undefined,
+        },
+      });
+      if (count !== 1) throw rules.alreadyMovedOn();
+
+      return tx.election.findFirstOrThrow({ where: { id: electionId } });
     });
   },
-
   async publishResults(associationId: number, electionId: number, userId: number) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-    });
+    return prisma.$transaction(async (tx) => {
+      await lockElection(tx, electionId);
 
-    if (!election) {
-      throw new Error('Election not found');
-    }
+      const election = await tx.election.findFirst({ where: { id: electionId, associationId } });
 
-    if (election.status !== 'VOTING_CLOSED') {
-      throw new Error('Voting must be closed before publishing results');
-    }
+      if (!election) {
+        throw new Error('Election not found');
+      }
 
-    return prisma.election.update({
-      where: { id: electionId },
-      data: {
-        status: 'RESULTS_PUBLISHED',
-        publishedBy: userId,
-        publishedAt: new Date(),
-      },
+      rules.assertElectionTransition('publishResults', election.status);
+
+      // Results that did not reach the quorum are not published: the committee cancels and runs the election again.
+      const voters = await tx.vote.groupBy({ by: ['voterId'], where: { electionId } });
+      rules.assertQuorumForPublishing(election.requiresQuorum, election.quorumPercentage, voters.length, election.eligibleVoterCount);
+
+      const { count } = await tx.election.updateMany({
+        where: { id: electionId, associationId, status: 'VOTING_CLOSED' },
+        data: {
+          status: 'RESULTS_PUBLISHED',
+          totalVotesCast: voters.length,
+          publishedBy: userId,
+          publishedAt: new Date(),
+        },
+      });
+      if (count !== 1) throw rules.alreadyMovedOn();
+
+      return tx.election.findFirstOrThrow({ where: { id: electionId } });
     });
   },
-
   async cancelElection(associationId: number, electionId: number, userId: number, reason: string) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-    });
-
-    if (!election) {
-      throw new Error('Election not found');
+    if (!reason || !reason.trim()) {
+      throw new RuleError('Say why the election is being cancelled.', 400, 'REASON_REQUIRED');
     }
 
-    if (election.status === 'RESULTS_PUBLISHED') {
-      throw new Error('Cannot cancel an election after results are published');
-    }
-
-    return prisma.election.update({
-      where: { id: electionId },
-      data: {
-        status: 'CANCELLED',
-        cancelledBy: userId,
-        cancelledAt: new Date(),
-        cancellationReason: reason,
-      },
+    return claimElection(associationId, electionId, 'cancel', {
+      status: 'CANCELLED',
+      cancelledBy: userId,
+      cancelledAt: new Date(),
+      cancellationReason: reason.trim(),
     });
   },
-
   // ==========================================
   // POSITION MANAGEMENT
   // ==========================================
@@ -397,9 +522,7 @@ export const votingService = {
       throw new Error('Election not found');
     }
 
-    if (election.status !== 'DRAFT') {
-      throw new Error('Can only add positions to elections in draft status');
-    }
+    rules.assertEditable(election.status, 'the positions');
 
     // Get next order number
     const lastPosition = await prisma.electionPosition.findFirst({
@@ -409,17 +532,20 @@ export const votingService = {
 
     const orderNumber = data.orderNumber ?? (lastPosition ? lastPosition.orderNumber + 1 : 0);
 
-    return prisma.electionPosition.create({
-      data: {
-        electionId,
-        title: data.title,
-        description: data.description,
-        maxCandidates: data.maxCandidates ?? 1,
-        orderNumber,
-      },
-    });
+    try {
+      return await prisma.electionPosition.create({
+        data: {
+          electionId,
+          title: data.title,
+          description: data.description,
+          maxCandidates: data.maxCandidates ?? 1,
+          orderNumber,
+        },
+      });
+    } catch (error) {
+      throw positionOrderTaken(error);
+    }
   },
-
   async updatePosition(associationId: number, positionId: number, data: UpdatePositionInput) {
     const position = await prisma.electionPosition.findFirst({
       where: { id: positionId },
@@ -430,39 +556,41 @@ export const votingService = {
       throw new Error('Position not found');
     }
 
-    if (position.election.status !== 'DRAFT') {
-      throw new Error('Can only edit positions in elections with draft status');
+    rules.assertEditable(position.election.status, 'the positions');
+
+    try {
+      return await prisma.electionPosition.update({
+        where: { id: positionId },
+        data: {
+          title: data.title,
+          description: data.description,
+          maxCandidates: data.maxCandidates,
+          orderNumber: data.orderNumber,
+        },
+      });
+    } catch (error) {
+      throw positionOrderTaken(error);
     }
-
-    return prisma.electionPosition.update({
-      where: { id: positionId },
-      data: {
-        title: data.title,
-        description: data.description,
-        maxCandidates: data.maxCandidates,
-        orderNumber: data.orderNumber,
-      },
-    });
   },
-
   async deletePosition(associationId: number, positionId: number) {
     const position = await prisma.electionPosition.findFirst({
       where: { id: positionId },
-      include: { election: true },
+      include: { election: true, _count: { select: { candidates: true } } },
     });
 
     if (!position || position.election.associationId !== associationId) {
       throw new Error('Position not found');
     }
 
-    if (position.election.status !== 'DRAFT') {
-      throw new Error('Can only delete positions from elections in draft status');
+    rules.assertEditable(position.election.status, 'the positions');
+
+    if (position._count.candidates > 0) {
+      throw new RuleError('This position has candidates. Remove them first.', 409, 'HAS_CANDIDATES');
     }
 
     await prisma.electionPosition.delete({ where: { id: positionId } });
     return { success: true };
   },
-
   // ==========================================
   // CANDIDATE MANAGEMENT
   // ==========================================
@@ -473,160 +601,76 @@ export const votingService = {
     userId: number,
     data: RegisterCandidateInput
   ) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-    });
-
-    if (!election) {
-      throw new Error('Election not found');
-    }
-
-    if (election.status !== 'DRAFT' && election.status !== 'NOMINATIONS_OPEN') {
-      throw new Error('Nominations are not currently open');
-    }
-
-    // Verify member exists
-    const member = await prisma.member.findFirst({
-      where: { id: data.memberId, associationId, status: 'active' },
-    });
-
-    if (!member) {
-      throw new Error('Member not found or not active');
-    }
-
-    // Check if already a candidate for this position
-    const existingCandidate = await prisma.candidate.findFirst({
-      where: {
-        electionId,
-        positionId: data.positionId,
-        memberId: data.memberId,
-        status: { notIn: ['REJECTED', 'WITHDRAWN'] },
-      },
-    });
-
-    if (existingCandidate) {
-      throw new Error('Member is already a candidate for this position');
-    }
-
-    // Verify position exists if provided
-    if (data.positionId) {
-      const position = await prisma.electionPosition.findFirst({
-        where: { id: data.positionId, electionId },
-      });
-
-      if (!position) {
-        throw new Error('Position not found');
-      }
-    }
-
-    return prisma.candidate.create({
-      data: {
-        electionId,
-        positionId: data.positionId,
-        memberId: data.memberId,
-        manifesto: data.manifesto,
-        photoUrl: data.photoUrl,
-        nominatedBy: userId,
-        status: 'PENDING',
-      },
-      include: {
-        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-        position: { select: { id: true, title: true } },
-      },
-    });
+    return addCandidate(associationId, electionId, data.memberId, { ...data, nominatedBy: userId }, false);
   },
-
   async selfNominate(
     associationId: number,
     electionId: number,
     memberId: number,
     data: SelfNominateInput
   ) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-    });
-
-    if (!election) {
-      throw new Error('Election not found');
-    }
-
-    if (election.status !== 'DRAFT' && election.status !== 'NOMINATIONS_OPEN') {
-      throw new Error('Nominations are not currently open');
-    }
-
-    // Verify member exists and is active
-    const member = await prisma.member.findFirst({
-      where: { id: memberId, associationId, status: 'active' },
-    });
-
-    if (!member) {
-      throw new Error('Member not found or not active');
-    }
-
-    // Check if already a candidate for this position
-    const existingCandidate = await prisma.candidate.findFirst({
-      where: {
-        electionId,
-        positionId: data.positionId,
-        memberId,
-        status: { notIn: ['REJECTED', 'WITHDRAWN'] },
-      },
-    });
-
-    if (existingCandidate) {
-      throw new Error('You are already a candidate for this position');
-    }
-
-    return prisma.candidate.create({
-      data: {
-        electionId,
-        positionId: data.positionId,
-        memberId,
-        manifesto: data.manifesto,
-        photoUrl: data.photoUrl,
-        status: 'PENDING',
-      },
-      include: {
-        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-        position: { select: { id: true, title: true } },
-      },
-    });
+    return addCandidate(associationId, electionId, memberId, data, true);
   },
-
   async approveCandidate(
     associationId: number,
     candidateId: number,
     userId: number,
     data: ApproveCandidateInput
   ) {
-    const candidate = await prisma.candidate.findFirst({
-      where: { id: candidateId },
-      include: { election: true },
-    });
-
-    if (!candidate || candidate.election.associationId !== associationId) {
-      throw new Error('Candidate not found');
+    if (data.status === 'REJECTED' && !data.rejectionReason?.trim()) {
+      throw new RuleError('Say why this nomination is being rejected.', 400, 'REASON_REQUIRED');
     }
 
-    if (candidate.status !== 'PENDING') {
-      throw new Error('Candidate is not pending approval');
-    }
+    return prisma.$transaction(async (tx) => {
+      const found = await tx.candidate.findFirst({
+        where: { id: candidateId },
+        select: { electionId: true, election: { select: { associationId: true } } },
+      });
 
-    return prisma.candidate.update({
-      where: { id: candidateId },
-      data: {
-        status: data.status,
-        approvedBy: userId,
-        approvedAt: new Date(),
-        rejectionReason: data.rejectionReason,
-      },
-      include: {
-        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-        position: { select: { id: true, title: true } },
-      },
+      if (!found || found.election.associationId !== associationId) {
+        throw new Error('Candidate not found');
+      }
+
+      // Same lock as opening voting, so a nomination can't be approved after the ballot has been checked.
+      await lockElection(tx, found.electionId);
+
+      const candidate = await tx.candidate.findFirst({
+        where: { id: candidateId },
+        include: { election: { select: { status: true } } },
+      });
+
+      if (!candidate) {
+        throw new Error('Candidate not found');
+      }
+
+      rules.assertCandidatesCanBeDecided(candidate.election.status);
+
+      // A committee member can't decide their own nomination.
+      const decider = await tx.member.findFirst({ where: { userId, associationId }, select: { id: true } });
+      rules.assertNotOwnNomination(decider?.id, candidate.memberId);
+
+      const { count } = await tx.candidate.updateMany({
+        where: { id: candidateId, status: 'PENDING' },
+        data: {
+          status: data.status,
+          approvedBy: userId,
+          approvedAt: new Date(),
+          rejectionReason: data.status === 'REJECTED' ? data.rejectionReason?.trim() : null,
+        },
+      });
+      if (count !== 1) {
+        throw new RuleError('This nomination was just decided by someone else.', 409, 'ALREADY_DECIDED');
+      }
+
+      return tx.candidate.findFirstOrThrow({
+        where: { id: candidateId },
+        include: {
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+          position: { select: { id: true, title: true } },
+        },
+      });
     });
   },
-
   async withdrawCandidate(
     associationId: number,
     candidateId: number,
@@ -642,27 +686,30 @@ export const votingService = {
       throw new Error('Candidate not found');
     }
 
-    if (candidate.election.status === 'VOTING_CLOSED' || candidate.election.status === 'RESULTS_PUBLISHED') {
-      throw new Error('Cannot withdraw after voting has closed');
-    }
+    rules.assertCanWithdraw(candidate.election.status);
 
-    return prisma.candidate.update({
-      where: { id: candidateId },
+    const { count } = await prisma.candidate.updateMany({
+      where: { id: candidateId, memberId, status: { in: ['PENDING', 'APPROVED'] } },
       data: {
         status: 'WITHDRAWN',
         withdrawnAt: new Date(),
         withdrawalReason: data.withdrawalReason,
       },
     });
-  },
+    if (count !== 1) {
+      throw new RuleError('This nomination has already been decided or withdrawn.', 409, 'ALREADY_DECIDED');
+    }
 
+    return prisma.candidate.findFirstOrThrow({ where: { id: candidateId } });
+  },
   async listCandidates(
     associationId: number,
     electionId: number,
     params: {
       positionId?: number;
       status?: string;
-    }
+    },
+    canSeeBeforePublishing = false,
   ) {
     const election = await prisma.election.findFirst({
       where: { id: electionId, associationId },
@@ -676,14 +723,16 @@ export const votingService = {
     if (params.positionId) where.positionId = params.positionId;
     if (params.status) where.status = params.status;
 
-    return prisma.candidate.findMany({
+    const candidates = await prisma.candidate.findMany({
       where,
       include: {
-        member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true } },
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
         position: { select: { id: true, title: true } },
       },
       orderBy: [{ positionId: 'asc' }, { nominatedAt: 'asc' }],
     });
+
+    return rules.tallyVisible(election.status, canSeeBeforePublishing) ? candidates : candidates.map((c) => ({ ...c, voteCount: 0 }));
   },
 
 
@@ -697,84 +746,77 @@ export const votingService = {
     memberId: number,
     data: CastVoteInput
   ) {
-    const election = await prisma.election.findFirst({
-      where: { id: electionId, associationId },
-    });
-
-    if (!election) {
-      throw new Error('Election not found');
-    }
-
-    if (election.status !== 'VOTING_OPEN') {
-      throw new Error('Voting is not currently open');
-    }
-
-    // Check voting period
     const now = new Date();
-    if (now < election.votingStartDate || now > election.votingEndDate) {
-      throw new Error('Voting is not within the allowed time period');
-    }
-
-    // Verify member is eligible to vote
-    const member = await prisma.member.findFirst({
-      where: { id: memberId, associationId, status: 'active' },
-    });
-
-    if (!member) {
-      throw new Error('Member not found or not eligible to vote');
-    }
-
-    // Check if already voted for this position
-    const existingVote = await prisma.vote.findFirst({
-      where: {
-        electionId,
-        positionId: data.positionId,
-        voterId: memberId,
-      },
-    });
-
-    if (existingVote) {
-      throw new Error('You have already voted for this position');
-    }
-
-    // Validate candidate if not abstaining
-    if (!data.isAbstention && data.candidateId) {
-      const candidate = await prisma.candidate.findFirst({
-        where: {
-          id: data.candidateId,
-          electionId,
-          positionId: data.positionId,
-          status: 'APPROVED',
-        },
-      });
-
-      if (!candidate) {
-        throw new Error('Invalid candidate selection');
-      }
-    }
-
-    // Check if abstention is allowed
-    if (data.isAbstention && !election.allowAbstention) {
-      throw new Error('Abstention is not allowed in this election');
-    }
-
-    // Generate vote hash for verification
-    const voteHash = generateVoteHash(electionId, memberId, now);
 
     const vote = await prisma.$transaction(async (tx) => {
-      // Create vote
+      // One voter at a time per election: the checks below and the write behind them can't be interleaved with another
+      // vote, or with the election being closed, so nobody votes twice and nobody votes after the close.
+      await lockElection(tx, electionId);
+
+      const election = await tx.election.findFirst({
+        where: { id: electionId, associationId },
+        include: { positions: { select: { id: true } } },
+      });
+
+      if (!election) {
+        throw new Error('Election not found');
+      }
+
+      rules.assertVotingOpen({
+        status: election.status,
+        votingStartDate: election.votingStartDate,
+        votingEndDate: election.votingEndDate,
+        now,
+      });
+
+      // Verify member is eligible to vote
+      const member = await tx.member.findFirst({
+        where: { id: memberId, associationId, status: 'active' },
+        select: { id: true },
+      });
+
+      if (!member) {
+        throw new RuleError('Only active members can vote.', 403, 'NOT_ELIGIBLE');
+      }
+
+      const candidate = data.candidateId
+        ? await tx.candidate.findFirst({
+            where: { id: data.candidateId, electionId },
+            select: { id: true, positionId: true, status: true },
+          })
+        : null;
+
+      rules.assertValidBallot({
+        election,
+        positionIds: election.positions.map((p) => p.id),
+        vote: data,
+        candidate,
+      });
+
+      const positionId = data.positionId ?? null;
+
+      const existingVote = await tx.vote.findFirst({
+        where: { electionId, positionId, voterId: memberId },
+        select: { id: true },
+      });
+
+      if (existingVote) {
+        throw new RuleError(positionId === null ? 'You have already voted in this election.' : 'You have already voted for this position.', 409, 'ALREADY_VOTED');
+      }
+
+      const firstVoteInElection = !(await tx.vote.findFirst({ where: { electionId, voterId: memberId }, select: { id: true } }));
+
       const newVote = await tx.vote.create({
         data: {
           electionId,
-          positionId: data.positionId,
+          positionId,
           candidateId: data.isAbstention ? null : data.candidateId,
           voterId: memberId,
-          voteHash,
+          voteHash: generateVoteHash(electionId, memberId, now),
           isAbstention: data.isAbstention ?? false,
         },
       });
 
-      // Update candidate vote count if not abstaining
       if (!data.isAbstention && data.candidateId) {
         await tx.candidate.update({
           where: { id: data.candidateId },
@@ -782,11 +824,13 @@ export const votingService = {
         });
       }
 
-      // Update election total votes
-      await tx.election.update({
-        where: { id: electionId },
-        data: { totalVotesCast: { increment: 1 } },
-      });
+      // The count is of members who have voted, so a member voting for several positions is counted once.
+      if (firstVoteInElection) {
+        await tx.election.update({
+          where: { id: electionId },
+          data: { totalVotesCast: { increment: 1 } },
+        });
+      }
 
       return newVote;
     });
@@ -797,7 +841,6 @@ export const votingService = {
       message: data.isAbstention ? 'Abstention recorded' : 'Vote cast successfully',
     };
   },
-
   async bulkCastVotes(
     associationId: number,
     electionId: number,
@@ -812,9 +855,12 @@ export const votingService = {
       throw new Error('Election not found');
     }
 
-    if (election.status !== 'VOTING_OPEN') {
-      throw new Error('Voting is not currently open');
-    }
+    rules.assertVotingOpen({
+      status: election.status,
+      votingStartDate: election.votingStartDate,
+      votingEndDate: election.votingEndDate,
+      now: new Date(),
+    });
 
     const results = [];
     for (const vote of data.votes) {
@@ -832,7 +878,6 @@ export const votingService = {
 
     return results;
   },
-
   async hasVoted(associationId: number, electionId: number, memberId: number, positionId?: number) {
     const where: any = { electionId, voterId: memberId };
     if (positionId) where.positionId = positionId;
@@ -875,7 +920,7 @@ export const votingService = {
   // ELECTION RESULTS
   // ==========================================
 
-  async getElectionResults(associationId: number, electionId: number) {
+  async getElectionResults(associationId: number, electionId: number, canSeeBeforePublishing = false) {
     const election = await prisma.election.findFirst({
       where: { id: electionId, associationId },
       include: {
@@ -905,22 +950,22 @@ export const votingService = {
       throw new Error('Election not found');
     }
 
-    // Check if results can be viewed
-    if (election.status !== 'VOTING_CLOSED' && election.status !== 'RESULTS_PUBLISHED') {
-      throw new Error('Results are not yet available');
-    }
+    // Until they are published, results are for the committee only; while voting is open there is no tally for anyone.
+    rules.assertResultsVisible(election.status, canSeeBeforePublishing);
 
-    const voterTurnout = election.eligibleVoterCount > 0
-      ? Math.round((election.totalVotesCast / election.eligibleVoterCount) * 100)
-      : 0;
+    const [voters, abstentions] = await Promise.all([
+      prisma.vote.groupBy({ by: ['voterId'], where: { electionId } }),
+      prisma.vote.groupBy({ by: ['positionId'], where: { electionId, isAbstention: true }, _count: { _all: true } }),
+    ]);
+    const abstentionsFor = (positionId: number | null) => abstentions.find((a) => a.positionId === positionId)?._count._all ?? 0;
 
-    const quorumMet = !election.requiresQuorum || 
-      (election.quorumPercentage && voterTurnout >= election.quorumPercentage);
+    const voterTurnout = rules.turnoutPercent(voters.length, election.eligibleVoterCount);
+    const quorumMet = rules.quorumMet(election.requiresQuorum, election.quorumPercentage, voters.length, election.eligibleVoterCount);
 
     // Calculate results per position
     const positionResults = election.positions.map((position) => {
       const totalVotesForPosition = position.candidates.reduce((sum, c) => sum + c.voteCount, 0);
-      
+
       const candidateResults = position.candidates.map((candidate) => ({
         candidateId: candidate.id,
         memberId: candidate.memberId,
@@ -931,18 +976,22 @@ export const votingService = {
           : 0,
       }));
 
-      const winner = candidateResults.length > 0 ? candidateResults[0] : undefined;
+      const { winner, tied } = rules.pickWinner(candidateResults);
 
       return {
         positionId: position.id,
         positionTitle: position.title,
         candidates: candidateResults,
-        winner: winner && winner.voteCount > 0 ? winner : undefined,
+        abstentions: abstentionsFor(position.id),
+        winner,
+        tied,
       };
     });
 
     // Handle elections without positions (general voting)
     let generalResults = undefined;
+    let generalWinner = undefined;
+    let generalTied: typeof positionResults[number]['candidates'] = [];
     if (election.candidates.length > 0) {
       const totalVotes = election.candidates.reduce((sum, c) => sum + c.voteCount, 0);
       generalResults = election.candidates.map((candidate) => ({
@@ -954,18 +1003,25 @@ export const votingService = {
           ? Math.round((candidate.voteCount / totalVotes) * 100)
           : 0,
       }));
+      ({ winner: generalWinner, tied: generalTied } = rules.pickWinner(generalResults));
     }
 
     return {
       electionId: election.id,
       electionTitle: election.title,
       status: election.status,
+      published: election.status === 'RESULTS_PUBLISHED',
       totalEligibleVoters: election.eligibleVoterCount,
-      totalVotesCast: election.totalVotesCast,
+      totalVotesCast: voters.length,
       voterTurnout,
+      requiresQuorum: election.requiresQuorum,
+      quorumPercentage: election.quorumPercentage,
       quorumMet,
       positions: positionResults,
       generalResults,
+      generalWinner,
+      generalTied,
+      generalAbstentions: abstentionsFor(null),
     };
   },
 
@@ -974,16 +1030,23 @@ export const votingService = {
   // ==========================================
 
   async createPoll(associationId: number, userId: number, data: CreatePollInput) {
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    if (endDate <= startDate) {
+      throw new RuleError('A poll has to end after it starts.', 400, 'BAD_WINDOW');
+    }
+
     const poll = await prisma.poll.create({
       data: {
         associationId,
         title: data.title,
         description: data.description,
         pollType: data.pollType,
-        startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
-        allowMultipleVotes: data.allowMultipleVotes ?? false,
-        maxChoices: data.maxChoices,
+        startDate,
+        endDate,
+        // Picking several answers is what a multiple-choice poll is; the flag mirrors the type so the apps never disagree.
+        allowMultipleVotes: data.pollType === 'MULTIPLE_CHOICE',
+        maxChoices: data.pollType === 'MULTIPLE_CHOICE' ? data.maxChoices : null,
         isAnonymous: data.isAnonymous ?? true,
         showResultsBeforeEnd: data.showResultsBeforeEnd ?? false,
         createdBy: userId,
@@ -1002,7 +1065,6 @@ export const votingService = {
 
     return poll;
   },
-
   async updatePoll(associationId: number, pollId: number, data: UpdatePollInput) {
     const poll = await prisma.poll.findFirst({
       where: { id: pollId, associationId },
@@ -1013,28 +1075,37 @@ export const votingService = {
     }
 
     if (poll.status !== 'DRAFT') {
-      throw new Error('Can only edit polls in draft status');
+      throw new RuleError('A poll can only be changed before it starts.', 409, 'NOT_EDITABLE');
     }
 
-    return prisma.poll.update({
-      where: { id: pollId },
+    const startDate = data.startDate ? new Date(data.startDate) : poll.startDate;
+    const endDate = data.endDate ? new Date(data.endDate) : poll.endDate;
+    if (endDate <= startDate) {
+      throw new RuleError('A poll has to end after it starts.', 400, 'BAD_WINDOW');
+    }
+
+    const { count } = await prisma.poll.updateMany({
+      where: { id: pollId, associationId, status: 'DRAFT' },
       data: {
         title: data.title,
         description: data.description,
         startDate: data.startDate ? new Date(data.startDate) : undefined,
         endDate: data.endDate ? new Date(data.endDate) : undefined,
-        allowMultipleVotes: data.allowMultipleVotes,
-        maxChoices: data.maxChoices,
+        maxChoices: poll.pollType === 'MULTIPLE_CHOICE' ? data.maxChoices : null,
         isAnonymous: data.isAnonymous,
         showResultsBeforeEnd: data.showResultsBeforeEnd,
       },
+    });
+    if (count !== 1) throw rules.alreadyMovedOnPoll();
+
+    return prisma.poll.findFirstOrThrow({
+      where: { id: pollId },
       include: {
         options: { orderBy: { orderNumber: 'asc' } },
       },
     });
   },
-
-  async getPoll(associationId: number, pollId: number) {
+  async getPoll(associationId: number, pollId: number, canManage = false) {
     const poll = await prisma.poll.findFirst({
       where: { id: pollId, associationId },
       include: {
@@ -1046,6 +1117,11 @@ export const votingService = {
 
     if (!poll) {
       throw new Error('Poll not found');
+    }
+
+    // While a poll is open, the answers so far are only for the people who run polls — unless the poll shows them.
+    if (poll.status === 'ACTIVE' && !poll.showResultsBeforeEnd && !canManage) {
+      return { ...poll, options: poll.options.map((o) => ({ ...o, voteCount: 0 })) };
     }
 
     return poll;
@@ -1104,6 +1180,7 @@ export const votingService = {
   async deletePoll(associationId: number, pollId: number) {
     const poll = await prisma.poll.findFirst({
       where: { id: pollId, associationId },
+      include: { _count: { select: { responses: true } } },
     });
 
     if (!poll) {
@@ -1111,13 +1188,18 @@ export const votingService = {
     }
 
     if (poll.status !== 'DRAFT' && poll.status !== 'CANCELLED') {
-      throw new Error('Can only delete polls in draft or cancelled status');
+      throw new RuleError('Only a poll that has not started, or one that was cancelled, can be deleted.', 409, 'NOT_DELETABLE');
+    }
+    if (poll._count.responses > 0) {
+      throw new RuleError('This poll has answers. Keep it as a record instead of deleting it.', 409, 'HAS_RESPONSES');
     }
 
-    await prisma.poll.delete({ where: { id: pollId } });
+    const { count } = await prisma.poll.deleteMany({
+      where: { id: pollId, associationId, status: { in: ['DRAFT', 'CANCELLED'] } },
+    });
+    if (count !== 1) throw rules.alreadyMovedOnPoll();
     return { success: true };
   },
-
   // ==========================================
   // POLL STATUS MANAGEMENT
   // ==========================================
@@ -1125,78 +1207,51 @@ export const votingService = {
   async startPoll(associationId: number, pollId: number) {
     const poll = await prisma.poll.findFirst({
       where: { id: pollId, associationId },
-      include: { options: true },
+      include: { _count: { select: { options: true } } },
     });
 
     if (!poll) {
       throw new Error('Poll not found');
     }
 
-    if (poll.status !== 'DRAFT') {
-      throw new Error('Can only start polls in draft status');
-    }
+    rules.assertPollTransition('start', poll.status);
+    const now = new Date();
+    rules.assertPollReady(poll._count.options, poll.endDate, now);
 
-    if (poll.options.length < 2) {
-      throw new Error('Poll must have at least 2 options');
-    }
-
-    return prisma.poll.update({
-      where: { id: pollId },
-      data: {
-        status: 'ACTIVE',
-        startDate: new Date(),
-      },
-    });
+    return claimPoll(associationId, pollId, 'start', { status: 'ACTIVE', startDate: now });
   },
-
   async closePoll(associationId: number, pollId: number) {
-    const poll = await prisma.poll.findFirst({
-      where: { id: pollId, associationId },
-    });
+    return prisma.$transaction(async (tx) => {
+      // Answers take the same lock, so every answer in flight is counted and none can follow the close.
+      await lockPoll(tx, pollId);
 
-    if (!poll) {
-      throw new Error('Poll not found');
-    }
+      const poll = await tx.poll.findFirst({ where: { id: pollId, associationId } });
 
-    if (poll.status !== 'ACTIVE') {
-      throw new Error('Poll is not currently active');
-    }
+      if (!poll) {
+        throw new Error('Poll not found');
+      }
 
-    // Get total responses
-    const totalResponses = await prisma.pollResponse.groupBy({
-      by: ['responderId'],
-      where: { pollId },
-    });
+      rules.assertPollTransition('close', poll.status);
 
-    return prisma.poll.update({
-      where: { id: pollId },
-      data: {
-        status: 'CLOSED',
-        totalResponses: totalResponses.length,
-        endDate: new Date(),
-      },
+      const responders = await tx.pollResponse.groupBy({ by: ['responderId'], where: { pollId } });
+      const now = new Date();
+
+      const { count } = await tx.poll.updateMany({
+        where: { id: pollId, associationId, status: 'ACTIVE' },
+        data: {
+          status: 'CLOSED',
+          totalResponses: responders.length,
+          endDate: now < poll.endDate ? now : undefined,
+        },
+      });
+      if (count !== 1) throw rules.alreadyMovedOnPoll();
+
+      return tx.poll.findFirstOrThrow({ where: { id: pollId } });
     });
   },
-
   async cancelPoll(associationId: number, pollId: number) {
-    const poll = await prisma.poll.findFirst({
-      where: { id: pollId, associationId },
-    });
-
-    if (!poll) {
-      throw new Error('Poll not found');
-    }
-
-    if (poll.status === 'CLOSED') {
-      throw new Error('Cannot cancel a closed poll');
-    }
-
-    return prisma.poll.update({
-      where: { id: pollId },
-      data: { status: 'CANCELLED' },
-    });
+    return claimPoll(associationId, pollId, 'cancel', { status: 'CANCELLED' });
   },
-
   // ==========================================
   // POLL OPTIONS
   // ==========================================
@@ -1211,7 +1266,7 @@ export const votingService = {
     }
 
     if (poll.status !== 'DRAFT') {
-      throw new Error('Can only add options to polls in draft status');
+      throw new RuleError('Options can only be added before the poll starts.', 409, 'NOT_EDITABLE');
     }
 
     // Get next order number
@@ -1230,7 +1285,6 @@ export const votingService = {
       },
     });
   },
-
   async deletePollOption(associationId: number, optionId: number) {
     const option = await prisma.pollOption.findFirst({
       where: { id: optionId },
@@ -1242,13 +1296,12 @@ export const votingService = {
     }
 
     if (option.poll.status !== 'DRAFT') {
-      throw new Error('Can only delete options from polls in draft status');
+      throw new RuleError('Options can only be removed before the poll starts.', 409, 'NOT_EDITABLE');
     }
 
     await prisma.pollOption.delete({ where: { id: optionId } });
     return { success: true };
   },
-
   // ==========================================
   // POLL RESPONSES
   // ==========================================
@@ -1259,99 +1312,66 @@ export const votingService = {
     memberId: number,
     data: SubmitPollResponseInput
   ) {
-    const poll = await prisma.poll.findFirst({
-      where: { id: pollId, associationId },
-      include: { options: true },
-    });
-
-    if (!poll) {
-      throw new Error('Poll not found');
-    }
-
-    if (poll.status !== 'ACTIVE') {
-      throw new Error('Poll is not currently active');
-    }
-
-    // Check poll period
     const now = new Date();
-    if (now < poll.startDate || now > poll.endDate) {
-      throw new Error('Poll is not within the allowed time period');
-    }
+    const optionIds = data.optionIds;
 
-    // Verify member is eligible
-    const member = await prisma.member.findFirst({
-      where: { id: memberId, associationId, status: 'active' },
-    });
+    const responseHash = await prisma.$transaction(async (tx) => {
+      // One answer at a time per poll: the checks below and the write behind them can't be interleaved with another
+      // answer, or with the poll being closed, so nobody answers twice and nobody answers after the close.
+      await lockPoll(tx, pollId);
 
-    if (!member) {
-      throw new Error('Member not found or not eligible to respond');
-    }
+      const poll = await tx.poll.findFirst({
+        where: { id: pollId, associationId },
+        include: { options: { select: { id: true } } },
+      });
 
-    // Check if already responded
-    const existingResponse = await prisma.pollResponse.findFirst({
-      where: { pollId, responderId: memberId },
-    });
+      if (!poll) {
+        throw new Error('Poll not found');
+      }
 
-    if (existingResponse && !poll.allowMultipleVotes) {
-      throw new Error('You have already responded to this poll');
-    }
+      rules.assertPollAnswer({
+        poll,
+        validOptionIds: poll.options.map((o) => o.id),
+        optionIds,
+        now,
+      });
 
-    // Validate options
-    const validOptionIds = poll.options.map((o) => o.id);
-    const invalidOptions = data.optionIds.filter((id) => !validOptionIds.includes(id));
-    if (invalidOptions.length > 0) {
-      throw new Error('Invalid option selection');
-    }
+      const member = await tx.member.findFirst({
+        where: { id: memberId, associationId, status: 'active' },
+        select: { id: true },
+      });
 
-    // Check max choices
-    if (poll.maxChoices && data.optionIds.length > poll.maxChoices) {
-      throw new Error(`Maximum ${poll.maxChoices} choices allowed`);
-    }
+      if (!member) {
+        throw new RuleError('Only active members can answer a poll.', 403, 'NOT_ELIGIBLE');
+      }
 
-    // For single choice polls, only one option allowed
-    if (poll.pollType === 'SINGLE_CHOICE' && data.optionIds.length > 1) {
-      throw new Error('Only one option can be selected');
-    }
+      const existingResponse = await tx.pollResponse.findFirst({
+        where: { pollId, responderId: memberId },
+        select: { id: true },
+      });
 
-    // For yes/no polls, only one option allowed
-    if (poll.pollType === 'YES_NO' && data.optionIds.length > 1) {
-      throw new Error('Only one option can be selected');
-    }
+      if (existingResponse) {
+        throw new RuleError('You have already answered this poll.', 409, 'ALREADY_RESPONDED');
+      }
 
-    const responseHash = generateVoteHash(pollId, memberId, now);
+      const hash = generateVoteHash(pollId, memberId, now);
 
-    const responses = await prisma.$transaction(async (tx) => {
-      // Create responses
-      const createdResponses = await Promise.all(
-        data.optionIds.map((optionId) =>
-          tx.pollResponse.create({
-            data: {
-              pollId,
-              optionId,
-              responderId: memberId,
-              responseHash,
-            },
-          })
-        )
-      );
+      await tx.pollResponse.createMany({
+        data: optionIds.map((optionId) => ({ pollId, optionId, responderId: memberId, responseHash: hash })),
+      });
 
-      // Update option vote counts
-      await Promise.all(
-        data.optionIds.map((optionId) =>
-          tx.pollOption.update({
-            where: { id: optionId },
-            data: { voteCount: { increment: 1 } },
-          })
-        )
-      );
+      await tx.pollOption.updateMany({
+        where: { id: { in: optionIds } },
+        data: { voteCount: { increment: 1 } },
+      });
 
-      // Update poll total responses
+      // The count is of members who have answered, so a member picking several options is counted once.
       await tx.poll.update({
         where: { id: pollId },
         data: { totalResponses: { increment: 1 } },
       });
 
-      return createdResponses;
+      return hash;
     });
 
     return {
@@ -1360,7 +1380,6 @@ export const votingService = {
       message: 'Response submitted successfully',
     };
   },
-
   async hasRespondedToPoll(associationId: number, pollId: number, memberId: number) {
     const response = await prisma.pollResponse.findFirst({
       where: { pollId, responderId: memberId },
@@ -1372,7 +1391,7 @@ export const votingService = {
   // POLL RESULTS
   // ==========================================
 
-  async getPollResults(associationId: number, pollId: number, memberId?: number) {
+  async getPollResults(associationId: number, pollId: number, memberId?: number, canManage = false) {
     const poll = await prisma.poll.findFirst({
       where: { id: pollId, associationId },
       include: {
@@ -1384,10 +1403,7 @@ export const votingService = {
       throw new Error('Poll not found');
     }
 
-    // Check if results can be viewed
-    if (!poll.showResultsBeforeEnd && poll.status === 'ACTIVE') {
-      throw new Error('Results are not available until the poll ends');
-    }
+    rules.assertPollResultsVisible(poll.status, poll.showResultsBeforeEnd, canManage);
 
     const totalVotes = poll.options.reduce((sum, opt) => sum + opt.voteCount, 0);
 
@@ -1432,6 +1448,9 @@ export const votingService = {
       totalPolls,
       activePolls,
       upcomingElections,
+      candidatesAwaitingApproval,
+      votingPastEnd,
+      resultsToPublish,
     ] = await Promise.all([
       prisma.election.count({ where: { associationId } }),
       prisma.election.count({ where: { associationId, status: 'VOTING_OPEN' } }),
@@ -1445,6 +1464,12 @@ export const votingService = {
           votingStartDate: { gt: now },
         },
       }),
+      // What is waiting for the committee: nominations to decide, voting to close, results to publish.
+      prisma.candidate.count({
+        where: { status: 'PENDING', election: { associationId, status: { in: ['DRAFT', 'NOMINATIONS_OPEN', 'NOMINATIONS_CLOSED'] } } },
+      }),
+      prisma.election.count({ where: { associationId, status: 'VOTING_OPEN', votingEndDate: { lt: now } } }),
+      prisma.election.count({ where: { associationId, status: 'VOTING_CLOSED' } }),
     ]);
 
     // Calculate average voter turnout
@@ -1501,10 +1526,36 @@ export const votingService = {
       totalPolls,
       activePolls,
       upcomingElections,
+      candidatesAwaitingApproval,
+      votingPastEnd,
+      resultsToPublish,
       averageVoterTurnout,
       recentElections,
       recentPolls,
     };
+  },
+
+  /** Active members the committee can put forward as candidates. Committee members don't have the members list, so this is all they see of it. */
+  async searchCandidateMembers(associationId: number, search: string | undefined, limit = 20) {
+    const term = search?.trim();
+    return prisma.member.findMany({
+      where: {
+        associationId,
+        status: 'active',
+        ...(term
+          ? {
+              OR: [
+                { firstName: { contains: term, mode: 'insensitive' } },
+                { lastName: { contains: term, mode: 'insensitive' } },
+                { memberId: { contains: term, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true, memberId: true, firstName: true, lastName: true },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      take: Math.min(Math.max(limit, 1), 50),
+    });
   },
 
   async getActiveVotingItems(associationId: number) {

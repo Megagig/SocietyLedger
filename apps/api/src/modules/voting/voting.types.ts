@@ -6,7 +6,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 // Election Types
 export type ElectionType = 'GENERAL' | 'EXECUTIVE' | 'COMMITTEE' | 'SPECIAL';
-export type ElectionStatus = 'DRAFT' | 'NOMINATIONS_OPEN' | 'VOTING_OPEN' | 'VOTING_CLOSED' | 'RESULTS_PUBLISHED' | 'CANCELLED';
+export type ElectionStatus = 'DRAFT' | 'NOMINATIONS_OPEN' | 'NOMINATIONS_CLOSED' | 'VOTING_OPEN' | 'VOTING_CLOSED' | 'RESULTS_PUBLISHED' | 'CANCELLED';
 
 // Candidate Types
 export type CandidateStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';

@@ -19,7 +19,6 @@ export default function NewPollPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [allowMultipleVotes, setAllowMultipleVotes] = useState(false);
   const [maxChoices, setMaxChoices] = useState<number | undefined>(undefined);
   const [showResultsBeforeEnd, setShowResultsBeforeEnd] = useState(false);
   const [options, setOptions] = useState<string[]>(['', '']);
@@ -57,7 +56,6 @@ export default function NewPollPage() {
       startDate: new Date(startDate).toISOString(),
       endDate: new Date(endDate).toISOString(),
       isAnonymous,
-      allowMultipleVotes,
       maxChoices: pollType === 'MULTIPLE_CHOICE' ? maxChoices : undefined,
       showResultsBeforeEnd,
       options: validOptions.map((text, index) => ({ optionText: text, orderNumber: index })),
@@ -244,15 +242,6 @@ export default function NewPollPage() {
               className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Anonymous responses (responses are not linked to members)</span>
-          </label>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={allowMultipleVotes}
-              onChange={(e) => setAllowMultipleVotes(e.target.checked)}
-              className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Allow members to change their response</span>
           </label>
           <label className="flex items-center gap-3">
             <input

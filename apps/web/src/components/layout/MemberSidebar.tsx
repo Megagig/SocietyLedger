@@ -35,6 +35,7 @@ import {
   IconExternalLink,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
+import { PERMISSIONS, hasAnyPermission } from '@/lib/permissions';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { docsUrl } from '@/lib/docs';
 import { toast } from '@/lib/toast';
@@ -78,6 +79,16 @@ export function MemberSidebar() {
         : [...prev, label]
     );
   };
+
+  // The Election Committee are ordinary members who also run elections, so their extra section appears with the role.
+  const isElectionCommittee = hasAnyPermission(user?.permissions || [], [
+    PERMISSIONS.ELECTION_MANAGE,
+    PERMISSIONS.ELECTION_CANDIDATES,
+    PERMISSIONS.ELECTION_RUN,
+    PERMISSIONS.ELECTION_RESULTS_VIEW,
+    PERMISSIONS.ELECTION_RESULTS_PUBLISH,
+    PERMISSIONS.POLL_MANAGE,
+  ]);
 
   const navItems: NavItem[] = [
     {
@@ -162,6 +173,26 @@ export function MemberSidebar() {
         },
       ],
     },
+    ...(isElectionCommittee
+      ? [
+          {
+            label: 'Election Committee',
+            icon: <IconUsers size={20} />,
+            children: [
+              {
+                label: 'Elections',
+                icon: <IconChecklist size={18} />,
+                href: '/dashboard/governance/elections',
+              },
+              {
+                label: 'Manage Polls',
+                icon: <IconChartPie size={18} />,
+                href: '/dashboard/governance/polls',
+              },
+            ],
+          },
+        ]
+      : []),
     {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,

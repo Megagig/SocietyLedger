@@ -1,4 +1,4 @@
-import { Banknote, Bell, CalendarDays, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, PiggyBank, ReceiptText, UserCheck, Users } from 'lucide-react-native';
+import { Banknote, Bell, CalendarDays, ChartPie, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, PiggyBank, ReceiptText, UserCheck, Users, Vote } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -14,6 +14,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { COOP_ADMIN_ACCESS, COOP_MODULE } from '@/features/coopManage/queries';
 import { WELFARE_ADMIN_ACCESS, WELFARE_MODULE } from '@/features/welfareManage/queries';
+import { ELECTION_ADMIN_ACCESS, VOTING_MODULE } from '@/features/electionsManage/labels';
 import { dashboardKeys, attentionCount, useAttention } from '@/features/dashboard/queries';
 import { FINANCE_VIEW_ACCESS } from '@/features/finance/queries';
 import { MEETINGS_ADMIN_ACCESS, MEETINGS_MODULE, useMeetingStats } from '@/features/meetingsAdmin/queries';
@@ -63,6 +64,10 @@ export default function ManageScreen() {
   // Welfare: officer permission and the module on; the badge adds contributions to confirm and requests to decide.
   const canWelfare = useModuleAccess(WELFARE_ADMIN_ACCESS, WELFARE_MODULE);
   const welfareWaiting = attentionCount(attention, 'welfareContributions') + attentionCount(attention, 'welfarePayouts');
+  // Voting: the Election Committee runs elections, the Administrator runs polls; the badge adds up what is waiting for the committee.
+  const canElections = useModuleAccess(ELECTION_ADMIN_ACCESS, VOTING_MODULE);
+  const canPolls = useModuleAccess('POLL_MANAGE', VOTING_MODULE);
+  const electionsWaiting = attentionCount(attention, 'electionNominations') + attentionCount(attention, 'electionsToClose') + attentionCount(attention, 'electionResults');
   const overdueCharges = attentionCount(attention, 'overdueCharges');
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
   const cashOverview = useCashOverview().data;
@@ -81,7 +86,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -164,6 +169,34 @@ export default function ManageScreen() {
                   onPress={() => router.push('/(app)/(tabs)/manage/welfare' as never)}
                   testID="manage-welfare"
                 />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canElections || canPolls ? (
+            <Section title="Voting">
+              <ListGroup>
+                {canElections ? (
+                  <ListItem
+                    leading={<IconCircle icon={Vote} tone={electionsWaiting > 0 ? 'warning' : 'primary'} />}
+                    title="Elections"
+                    meta="Nominations, voting and results"
+                    trailing={electionsWaiting > 0 ? <Badge tone="warning">{`${electionsWaiting} waiting`}</Badge> : undefined}
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/elections' as never)}
+                    testID="manage-elections"
+                  />
+                ) : null}
+                {canPolls ? (
+                  <ListItem
+                    leading={<IconCircle icon={ChartPie} tone="primary" />}
+                    title="Polls"
+                    meta="Ask members a quick question"
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/polls' as never)}
+                    testID="manage-polls"
+                  />
+                ) : null}
               </ListGroup>
             </Section>
           ) : null}

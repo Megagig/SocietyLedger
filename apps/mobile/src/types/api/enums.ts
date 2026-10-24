@@ -143,7 +143,7 @@ export type SMSCreditTransactionType = (typeof SMSCreditTransactionType)[number]
 export const ElectionType = ['GENERAL', 'EXECUTIVE', 'COMMITTEE', 'SPECIAL'] as const;
 export type ElectionType = (typeof ElectionType)[number];
 
-export const ElectionStatus = ['DRAFT', 'NOMINATIONS_OPEN', 'VOTING_OPEN', 'VOTING_CLOSED', 'RESULTS_PUBLISHED', 'CANCELLED'] as const;
+export const ElectionStatus = ['DRAFT', 'NOMINATIONS_OPEN', 'NOMINATIONS_CLOSED', 'VOTING_OPEN', 'VOTING_CLOSED', 'RESULTS_PUBLISHED', 'CANCELLED'] as const;
 export type ElectionStatus = (typeof ElectionStatus)[number];
 
 export const CandidateStatus = ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN'] as const;

@@ -256,6 +256,7 @@ export class AssociationsController {
           { name: 'treasurer', displayName: 'Treasurer', description: 'Financial management' },
           { name: 'financial_secretary', displayName: 'Financial Secretary', description: 'Financial record keeping' },
           { name: 'member', displayName: 'Member', description: 'Basic member access' },
+          { name: 'election_committee', displayName: 'Election Committee', description: 'People chosen to conduct elections, separate from the officers' },
         ];
 
         const createdRoles: { id: number; name: string }[] = [];

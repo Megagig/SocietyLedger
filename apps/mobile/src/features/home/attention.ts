@@ -1,4 +1,4 @@
-import { Banknote, FileText, HandHeart, Inbox, LifeBuoy, PiggyBank, ReceiptText, Landmark, UserCheck, Wallet, type LucideIcon } from 'lucide-react-native';
+import { Banknote, FileText, HandHeart, Hourglass, Inbox, LifeBuoy, PiggyBank, ReceiptText, Landmark, Trophy, UserCheck, Vote, Wallet, type LucideIcon } from 'lucide-react-native';
 
 import type { AttentionItemDTO, AttentionKey } from '@/api/endpoints/dashboard';
 
@@ -79,6 +79,24 @@ export const ATTENTION_LINES: Partial<Record<AttentionKey, AttentionLine>> = {
     tone: 'info',
     label: (n) => `${plural(n, 'welfare contribution', 'welfare contributions')} to confirm`,
     href: '/(app)/(tabs)/manage/welfare/contributions',
+  },
+  electionNominations: {
+    icon: Vote,
+    tone: 'warning',
+    label: (n) => `${plural(n, 'election nomination', 'election nominations')} to decide`,
+    href: '/(app)/(tabs)/manage/elections',
+  },
+  electionsToClose: {
+    icon: Hourglass,
+    tone: 'warning',
+    label: (n) => `${plural(n, 'election', 'elections')} to close — voting has ended`,
+    href: '/(app)/(tabs)/manage/elections',
+  },
+  electionResults: {
+    icon: Trophy,
+    tone: 'info',
+    label: (n) => `${plural(n, 'election result', 'election results')} to publish`,
+    href: '/(app)/(tabs)/manage/elections',
   },
   supportTickets: {
     icon: LifeBuoy,

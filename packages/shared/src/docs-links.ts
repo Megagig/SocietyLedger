@@ -115,8 +115,17 @@ export const DOCS_LINKS: Record<string, string> = {
   GV5: '/docs/meetings/minutes',
   GV6: '/docs/meetings/attendance-history',
 
+  // Elections and polls for the Election Committee (GV7–GV10) and their web equivalents.
+  '/dashboard/governance/elections': '/docs/elections/how-elections-work',
+  GV7: '/docs/elections/how-elections-work',
+  '/dashboard/governance/elections/new': '/docs/elections/creating-an-election',
+  GV8: '/docs/elections/creating-an-election',
   '/dashboard/governance/elections/[id]': '/docs/elections/how-elections-work',
   GV9: '/docs/elections/how-elections-work',
+  '/dashboard/governance/polls': '/docs/elections/creating-a-poll',
+  '/dashboard/governance/polls/new': '/docs/elections/creating-a-poll',
+  '/dashboard/governance/polls/[id]': '/docs/elections/poll-results',
+  GV10: '/docs/elections/creating-a-poll',
 
   C7: '/docs/member-guide/voting',
 

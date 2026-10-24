@@ -1,34 +1,54 @@
 ---
 title: "Publishing results"
-description: "Mark an election's results as official — vote counts aren't visible in the app yet."
+description: "See the count as soon as voting closes, then publish it to the members."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["GV9", "C8"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/governance/elections/[id]", "GV9"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/elections/running-the-vote"]
+lastVerified: "2026-10-28"
+related: ["/docs/elections/running-the-vote", "/docs/elections/voter-eligibility-and-turnout"]
 ---
 
-Once voting closes, publish the results to mark the election as officially decided.
+Once voting closes, the committee can read the results straight away. Members see them only when the committee publishes them.
 
 ## Before you start
 
-You need the **Administrator** role. Voting must be **Closed** first — see [Opening and closing voting](/docs/elections/running-the-vote).
+Voting must be **Closed** first — see [Opening and closing voting](/docs/elections/running-the-vote). Reading the results before they are published needs the committee's **see results early** power, and publishing needs the **publish results** power.
 
-## Publish results
+## Read and publish
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
-<Step>Open the election from <MenuPath items={["Governance", "Elections"]} />.</Step>
-<Step>Select **Publish Results**.</Step>
+<Step>Open the election from <MenuPath items={["Governance", "Elections"]} /> and select **View Results**.</Step>
+<Step>Check the count. Back on the election, select **Publish Results**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Open the election from <MenuPath items={["Manage", "Voting", "Elections"]} /> and tap **See the results**.</Step>
+<Step>Check the count. Back on the election, tap **Publish results** and confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/elections/publishing-results-1.webp" alt="Election page showing Results Published status after publishing, with the candidate list still visible" />
+## What the results show
 
-<Callout type="warning" title="Vote counts aren't shown anywhere yet">
-Publishing results changes the election's status to **Results Published**, but there's currently no screen — not even this one — that shows how many votes each candidate received or who won. The votes are counted and stored correctly; announce results to your members outside the app for now (a notice, an announcement, or at your AGM) until a results view is added.
+- **Turnout** — how many members voted out of how many could, counting each member once however many positions they voted in.
+- **Minimum turnout** — whether the election needed one and whether it was met.
+- **Each position** — every approved candidate with their votes and share, how many abstained, and the winner.
+
+<Callout type="note" title="A tie has no winner">
+If two or more candidates finish level at the top, none is marked as the winner and the screen says who is level. The committee decides what happens next — for example, cancelling and holding a run-off.
 </Callout>
+
+<Callout type="warning" title="Results below the minimum turnout can't be published">
+If the election needed a minimum turnout and too few members voted, **Publish Results** is refused. Cancel the election and run it again; the reason you give is visible to members.
+</Callout>
+
+Before they are published, the results are hidden from everyone but the committee — including officers who are not on it — and nobody at all can see a running count while voting is still open.
 
 ## What happens next
 
-The election's status becomes **Results Published**, and it stays available in your elections list as a historical record.
+The election becomes **Results Published**, every member can see the result, and it stays in the elections list as a record.

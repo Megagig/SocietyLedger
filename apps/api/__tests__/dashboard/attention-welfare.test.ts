@@ -15,6 +15,8 @@ const prismaMock: any = {
   savingsDepositRequest: { count: count() },
   welfarePayoutRequest: { count: count() },
   welfareContribution: { count: count() },
+  candidate: { count: count() },
+  election: { count: count() },
 };
 jest.mock('../../src/lib/prisma', () => ({ prisma: prismaMock }));
 jest.mock('../../src/services/rbac.service', () => ({ RBACService: { hasAnyPermission: jest.fn() } }));
@@ -31,6 +33,37 @@ beforeEach(() => {
   jest.clearAllMocks();
   Object.values(prismaMock).forEach((m: any) => m.count.mockResolvedValue(0));
   (ModuleFeatureService.isModuleEnabled as jest.Mock).mockResolvedValue(true);
+});
+
+describe('election attention', () => {
+  it('counts nominations to decide for the committee, leaving out their own, and only while the voting module is on', async () => {
+    (RBACService.hasAnyPermission as jest.Mock).mockImplementation(async (_c: unknown, wanted: string[]) => wanted.includes(PERMISSIONS.ELECTION_CANDIDATES));
+    prismaMock.candidate.count.mockResolvedValue(4);
+    expect(await attentionService.getAttention(context)).toEqual([{ key: 'electionNominations', count: 4 }]);
+    const where = prismaMock.candidate.count.mock.calls[0][0].where;
+    expect(where).toMatchObject({ status: 'PENDING', election: { associationId: 9 }, NOT: { member: { userId: 5 } } });
+    expect(where.election.status.in).toEqual(['DRAFT', 'NOMINATIONS_OPEN', 'NOMINATIONS_CLOSED']);
+
+    (ModuleFeatureService.isModuleEnabled as jest.Mock).mockImplementation(async (_a: number, code: string) => code !== 'voting');
+    prismaMock.candidate.count.mockClear();
+    expect(await attentionService.getAttention(context)).toEqual([]);
+    expect(prismaMock.candidate.count).not.toHaveBeenCalled();
+  });
+
+  it('shows voting to close and results to publish only to the people who can do those', async () => {
+    (RBACService.hasAnyPermission as jest.Mock).mockImplementation(async (_c: unknown, wanted: string[]) => wanted.includes(PERMISSIONS.ELECTION_RUN));
+    prismaMock.election.count.mockResolvedValue(1);
+    expect((await attentionService.getAttention(context)).map((i) => i.key)).toEqual(['electionsToClose']);
+    (RBACService.hasAnyPermission as jest.Mock).mockImplementation(async (_c: unknown, wanted: string[]) => wanted.includes(PERMISSIONS.ELECTION_RESULTS_PUBLISH));
+    expect((await attentionService.getAttention(context)).map((i) => i.key)).toEqual(['electionResults']);
+  });
+
+  it('a member without those permissions sees none of it', async () => {
+    (RBACService.hasAnyPermission as jest.Mock).mockResolvedValue(false);
+    prismaMock.candidate.count.mockResolvedValue(4);
+    prismaMock.election.count.mockResolvedValue(2);
+    expect(await attentionService.getAttention(context)).toEqual([]);
+  });
 });
 
 describe('welfare attention', () => {

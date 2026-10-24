@@ -1,32 +1,45 @@
 ---
 title: "Who can vote, and tracking turnout"
-description: "Every active member can vote once an election is open — turnout isn't shown as a report yet."
+description: "Every active member can vote once voting opens; turnout counts members, and a minimum turnout can make the result count."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/governance/voting"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/governance/voting", "GV7"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/elections/running-the-vote"]
+lastVerified: "2026-10-28"
+related: ["/docs/elections/running-the-vote", "/docs/elections/publishing-results"]
 ---
 
-Every active member of your association is eligible to vote once an election's voting window opens — there's no separate eligibility list to manage.
+Every **active** member of your association can vote once voting opens — there is no separate eligibility list to manage. The number of members who could vote is fixed the moment voting opens.
 
 ## How it works
 
+Turnout is the share of those members who voted, and each member counts once, however many positions they voted in. You can see it:
+
+- on the election's page, as soon as voting is open — a count of members who have voted, never who they voted for;
+- on the results, once voting has closed.
+
+<PlatformTabs>
+<PlatformTab>
 <Screenshot src="/images/elections/voter-eligibility-and-turnout-1.webp" alt="Voting & Elections hub showing Total Elections, Active Elections, Total Polls and Active Polls stat cards, plus active elections and polls lists" />
 
-The <MenuPath items={["Governance", "Voting & Elections"]} /> hub is where you manage both elections and polls from one place — total and active counts, your currently open items, and quick links to create a new election or poll.
+The <MenuPath items={["Governance", "Voting & Elections"]} /> hub shows your elections and polls together, with quick links to create a new one.
+</PlatformTab>
+<PlatformTab>
+Open <MenuPath items={["Manage", "Voting", "Elections"]} />. The top of the list shows how many elections are voting now and your usual turnout, and what is waiting for the committee: nominations to decide, voting that has run past its end date, and results to publish.
+</PlatformTab>
+</PlatformTabs>
 
-<Callout type="note" title="Turnout isn't a report yet">
-How many eligible voters an election has, and how many actually voted, aren't currently shown anywhere in the interface — the numbers are tracked, but there's no turnout screen to view them on. Once voting closes, you'll know how many votes were cast from your own count of members you spoke to, rather than from a report in the app.
-</Callout>
+## A minimum turnout
+
+When you create an election you can require a minimum share of members to vote for the result to count. The comparison is exact — 49.6% never counts as meeting a 50% minimum. If it is not met, the results can still be read by the committee, but **Publish Results** is refused: cancel the election and run it again.
 
 ## Why it matters
 
-If a member says they can't see an election to vote, it's worth confirming they're an **active** member — someone marked inactive or terminated won't see it.
+If a member says they can't see an election to vote, check they are an **active** member — someone marked inactive or terminated can't vote, and they are not counted in the turnout either.
 
 ## What you can do
 
 - [Opening and closing voting](/docs/elections/running-the-vote)
-- [Creating a quick poll](/docs/elections/creating-a-poll) — for a lighter-weight question that doesn't need full eligibility tracking.
+- [Publishing results](/docs/elections/publishing-results)
+- [Creating a quick poll](/docs/elections/creating-a-poll) — for a lighter-weight question.

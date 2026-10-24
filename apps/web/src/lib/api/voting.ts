@@ -8,10 +8,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 // ============================================
 
 // Enums — must match apps/api's voting.validation.ts / schema.prisma exactly.
-// NOMINATIONS_CLOSED, BY_ELECTION/REFERENDUM and RANKED_CHOICE never existed on
-// the backend — found and corrected at Track R R2 (2026-10-15), see G76.
+// BY_ELECTION/REFERENDUM and RANKED_CHOICE never existed on the backend — found
+// and corrected at Track R R2 (2026-10-15), see G76. NOMINATIONS_CLOSED is real now:
+// closing nominations used to send an election back to DRAFT (F6.3).
 export type ElectionType = 'GENERAL' | 'EXECUTIVE' | 'COMMITTEE' | 'SPECIAL';
-export type ElectionStatus = 'DRAFT' | 'NOMINATIONS_OPEN' | 'VOTING_OPEN' | 'VOTING_CLOSED' | 'RESULTS_PUBLISHED' | 'CANCELLED';
+export type ElectionStatus = 'DRAFT' | 'NOMINATIONS_OPEN' | 'NOMINATIONS_CLOSED' | 'VOTING_OPEN' | 'VOTING_CLOSED' | 'RESULTS_PUBLISHED' | 'CANCELLED';
 export type CandidateStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 export type PollType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'YES_NO' | 'RATING';
 export type PollStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'CANCELLED';
@@ -35,6 +36,7 @@ export interface Election {
   eligibleVoterCount: number;
   totalVotesCast: number;
   publishedAt?: string;
+  cancellationReason?: string | null;
   createdAt: string;
   updatedAt: string;
   positions?: ElectionPosition[];
@@ -146,6 +148,10 @@ export interface VotingDashboard {
   completedPolls: number;
   upcomingElections: Election[];
   recentResults: Election[];
+  // What is waiting for the Election Committee.
+  candidatesAwaitingApproval?: number;
+  votingPastEnd?: number;
+  resultsToPublish?: number;
 }
 
 // Matches voting.service.ts's getElectionResults() return shape exactly —
@@ -165,14 +171,24 @@ export interface ElectionResults {
   totalEligibleVoters: number;
   totalVotesCast: number;
   voterTurnout: number;
+  published?: boolean;
+  requiresQuorum?: boolean;
+  quorumPercentage?: number | null;
   quorumMet: boolean;
   positions: Array<{
     positionId: number;
     positionTitle: string;
     candidates: ElectionCandidateResult[];
+    abstentions?: number;
+    /** The single highest count. Missing when nobody has votes, or when candidates tie (see `tied`). */
     winner?: ElectionCandidateResult;
+    /** Candidates level at the top: there is no winner until the committee decides what happens next. */
+    tied?: ElectionCandidateResult[];
   }>;
   generalResults?: ElectionCandidateResult[];
+  generalWinner?: ElectionCandidateResult;
+  generalTied?: ElectionCandidateResult[];
+  generalAbstentions?: number;
 }
 
 export interface PollResults {
@@ -345,7 +361,7 @@ export async function publishResults(id: number) {
   return response.json();
 }
 
-export async function cancelElection(id: number, reason?: string) {
+export async function cancelElection(id: number, reason: string) {
   const response = await apiPost(`${API_URL}/api/voting/elections/${id}/cancel`, { reason });
   if (!response.ok) {
     const error = await response.json();
@@ -356,7 +372,25 @@ export async function cancelElection(id: number, reason?: string) {
 
 export async function getElectionResults(electionId: number): Promise<{ success: boolean; data: ElectionResults }> {
   const response = await apiGet(`${API_URL}/api/voting/elections/${electionId}/results`);
-  if (!response.ok) throw new Error('Failed to fetch election results');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to fetch election results');
+  }
+  return response.json();
+}
+
+/** Active members the Election Committee can put forward (they don't have the members list). */
+export async function searchCandidateMembers(search: string): Promise<{
+  success: boolean;
+  data: Array<{ id: number; memberId: string; firstName: string; lastName: string }>;
+}> {
+  const params = new URLSearchParams({ limit: '20' });
+  if (search.trim()) params.set('search', search.trim());
+  const response = await apiGet(`${API_URL}/api/voting/candidate-members?${params}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to search members');
+  }
   return response.json();
 }
 

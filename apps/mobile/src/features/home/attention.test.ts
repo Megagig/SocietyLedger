@@ -51,3 +51,19 @@ describe('attentionCount', () => {
     expect(attentionCount(undefined, 'bankTransfers')).toBe(0);
   });
 });
+
+describe('election queues', () => {
+  it('words and links the committee queues', () => {
+    const rows = attentionRows([
+      { key: 'electionNominations', count: 2 },
+      { key: 'electionsToClose', count: 1 },
+      { key: 'electionResults', count: 1 },
+    ]);
+    expect(rows.map((r) => r.label(r.count))).toEqual([
+      '2 election nominations to decide',
+      '1 election to close — voting has ended',
+      '1 election result to publish',
+    ]);
+    expect(rows.every((r) => r.href === '/(app)/(tabs)/manage/elections')).toBe(true);
+  });
+});
