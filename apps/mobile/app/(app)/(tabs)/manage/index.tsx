@@ -1,4 +1,4 @@
-import { Banknote, Bell, CalendarDays, Wallet, Briefcase, LifeBuoy, MailPlus, PiggyBank, ReceiptText, UserCheck, Users } from 'lucide-react-native';
+import { Banknote, Bell, CalendarDays, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, PiggyBank, ReceiptText, UserCheck, Users } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { COOP_ADMIN_ACCESS, COOP_MODULE } from '@/features/coopManage/queries';
+import { WELFARE_ADMIN_ACCESS, WELFARE_MODULE } from '@/features/welfareManage/queries';
 import { dashboardKeys, attentionCount, useAttention } from '@/features/dashboard/queries';
 import { FINANCE_VIEW_ACCESS } from '@/features/finance/queries';
 import { MEETINGS_ADMIN_ACCESS, MEETINGS_MODULE, useMeetingStats } from '@/features/meetingsAdmin/queries';
@@ -59,6 +60,9 @@ export default function ManageScreen() {
   // Cooperatives: officer permission and the module on; the badge adds up everything waiting for a decision.
   const canCoop = useModuleAccess(COOP_ADMIN_ACCESS, COOP_MODULE);
   const coopWaiting = attentionCount(attention, 'savingsDeposits') + attentionCount(attention, 'loanRepayments') + attentionCount(attention, 'loanApplications');
+  // Welfare: officer permission and the module on; the badge adds contributions to confirm and requests to decide.
+  const canWelfare = useModuleAccess(WELFARE_ADMIN_ACCESS, WELFARE_MODULE);
+  const welfareWaiting = attentionCount(attention, 'welfareContributions') + attentionCount(attention, 'welfarePayouts');
   const overdueCharges = attentionCount(attention, 'overdueCharges');
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
   const cashOverview = useCashOverview().data;
@@ -77,7 +81,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -143,6 +147,22 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/cooperatives' as never)}
                   testID="manage-cooperatives"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canWelfare ? (
+            <Section title="Welfare">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={HeartHandshake} tone={welfareWaiting > 0 ? 'warning' : 'primary'} />}
+                  title="Welfare"
+                  meta="Funds, contributions and payout requests"
+                  trailing={welfareWaiting > 0 ? <Badge tone="warning">{`${welfareWaiting} to decide`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/welfare' as never)}
+                  testID="manage-welfare"
                 />
               </ListGroup>
             </Section>

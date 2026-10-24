@@ -870,8 +870,12 @@ function RequestDetailsModal({
               <h3 className="font-medium text-gray-900 dark:text-white">Review Request</h3>
               <div>
                 <label className="block text-sm text-gray-500 mb-1">Approved Amount (₦)</label>
+                <p className="text-xs text-gray-500 mb-1">
+                  Up to what was asked for ({formatCurrency(request.amount)}), the fund&apos;s payout limit and what the fund holds.
+                </p>
                 <input
                   type="number"
+                  max={Number(request.amount)}
                   value={approvedAmount}
                   onChange={(e) => setApprovedAmount(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"

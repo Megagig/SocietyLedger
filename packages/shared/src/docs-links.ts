@@ -123,6 +123,14 @@ export const DOCS_LINKS: Record<string, string> = {
   '/dashboard/welfare/requests': '/docs/welfare/payout-requests',
   WF4: '/docs/welfare/payout-requests',
 
+  // Welfare officer screens on mobile (WF1–WF3) and their web equivalents.
+  '/dashboard/welfare': '/docs/welfare/welfare-funds',
+  WF1: '/docs/welfare/welfare-funds',
+  '/dashboard/welfare/social-funds': '/docs/welfare/welfare-funds',
+  WF2: '/docs/welfare/welfare-funds',
+  '/dashboard/welfare/contributions': '/docs/welfare/recording-contributions',
+  WF3: '/docs/welfare/recording-contributions',
+
   '/dashboard/cooperatives/apply': '/docs/cooperatives/applying-for-a-loan',
   M19: '/docs/cooperatives/applying-for-a-loan',
 

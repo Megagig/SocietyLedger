@@ -25,14 +25,17 @@ describe('attentionRows', () => {
     expect(rows.map((r) => r.urgent ?? false)).toEqual([false, true]);
   });
 
-  it('leaves out queues that have no screen in the app yet, and empty ones', () => {
+  it('leaves out empty queues, and links the cooperative and welfare queues to their screens', () => {
     const rows = attentionRows([
       { key: 'loanApplications', count: 4 },
       { key: 'welfarePayouts', count: 1 },
       { key: 'cashLodgments', count: 0 },
       { key: 'supportTickets', count: 2 },
     ]);
-    expect(rows.map((r) => r.key)).toEqual(['supportTickets']);
+    expect(rows.map((r) => r.key)).toEqual(['loanApplications', 'welfarePayouts', 'supportTickets']);
+    expect(rows[0]!.href).toBe('/(app)/(tabs)/manage/cooperatives/applications');
+    expect(rows[1]!.href).toBe('/(app)/(tabs)/manage/welfare/payouts');
+    expect(rows[1]!.label(1)).toBe('1 welfare request to decide');
   });
 
   it('returns nothing before the list has loaded', () => {

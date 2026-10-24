@@ -2028,6 +2028,8 @@ model WelfareContribution {
   status           WelfareContributionStatus @default(PENDING)
   confirmedBy      Int?                      @map("confirmed_by")
   confirmedAt      DateTime?                 @map("confirmed_at")
+  /// Who recorded it, so the same officer can't also confirm it. Null on contributions made before this was kept.
+  recordedBy       Int?                      @map("recorded_by")
   createdAt        DateTime                  @default(now()) @map("created_at")
   updatedAt        DateTime                  @updatedAt @map("updated_at")
   

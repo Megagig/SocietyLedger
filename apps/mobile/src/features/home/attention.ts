@@ -1,4 +1,4 @@
-import { Banknote, LifeBuoy, ReceiptText, Landmark, UserCheck, Wallet, type LucideIcon } from 'lucide-react-native';
+import { Banknote, FileText, HandHeart, Inbox, LifeBuoy, PiggyBank, ReceiptText, Landmark, UserCheck, Wallet, type LucideIcon } from 'lucide-react-native';
 
 import type { AttentionItemDTO, AttentionKey } from '@/api/endpoints/dashboard';
 
@@ -17,10 +17,7 @@ type AttentionLine = {
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-/**
- * Only the queues that have a screen in the app are listed here. Loan applications, loan repayments, savings deposits and
- * welfare payouts are counted by the API but have no mobile queue yet, so they are left out rather than linking nowhere.
- */
+/** Only the queues that have a screen in the app are listed here, so a row never links nowhere. */
 export const ATTENTION_LINES: Partial<Record<AttentionKey, AttentionLine>> = {
   memberApprovals: {
     icon: UserCheck,
@@ -52,6 +49,36 @@ export const ATTENTION_LINES: Partial<Record<AttentionKey, AttentionLine>> = {
     urgent: true,
     label: (n) => `${plural(n, 'charge', 'charges')} overdue`,
     href: '/(app)/(tabs)/manage/finance/overdue',
+  },
+  loanApplications: {
+    icon: FileText,
+    tone: 'warning',
+    label: (n) => `${plural(n, 'loan application', 'loan applications')} to review`,
+    href: '/(app)/(tabs)/manage/cooperatives/applications',
+  },
+  loanRepayments: {
+    icon: Wallet,
+    tone: 'info',
+    label: (n) => `${plural(n, 'loan payment', 'loan payments')} to confirm`,
+    href: '/(app)/(tabs)/manage/cooperatives/repayments',
+  },
+  savingsDeposits: {
+    icon: PiggyBank,
+    tone: 'info',
+    label: (n) => `${plural(n, 'savings deposit', 'savings deposits')} to confirm`,
+    href: '/(app)/(tabs)/manage/cooperatives/deposits',
+  },
+  welfarePayouts: {
+    icon: HandHeart,
+    tone: 'warning',
+    label: (n) => `${plural(n, 'welfare request', 'welfare requests')} to decide`,
+    href: '/(app)/(tabs)/manage/welfare/payouts',
+  },
+  welfareContributions: {
+    icon: Inbox,
+    tone: 'info',
+    label: (n) => `${plural(n, 'welfare contribution', 'welfare contributions')} to confirm`,
+    href: '/(app)/(tabs)/manage/welfare/contributions',
   },
   supportTickets: {
     icon: LifeBuoy,

@@ -19,7 +19,8 @@ export type AttentionKey =
   | 'loanApplications'
   | 'loanRepayments'
   | 'savingsDeposits'
-  | 'welfarePayouts';
+  | 'welfarePayouts'
+  | 'welfareContributions';
 
 export interface AttentionItem {
   key: AttentionKey;
@@ -94,6 +95,16 @@ export const ATTENTION_SOURCES: AttentionSource[] = [
     permissions: [PERMISSIONS.WELFARE_PAYOUT_APPROVE],
     module: 'welfare',
     count: ({ associationId }) => prisma.welfarePayoutRequest.count({ where: { associationId, status: { in: ['PENDING', 'UNDER_REVIEW'] } } }),
+  },
+  {
+    // Contributions waiting to be confirmed — not the ones this officer recorded, because they can't confirm those.
+    key: 'welfareContributions',
+    permissions: [PERMISSIONS.WELFARE_CONTRIBUTION_CONFIRM],
+    module: 'welfare',
+    count: ({ associationId, userId }) =>
+      prisma.welfareContribution.count({
+        where: { associationId, status: 'PENDING', OR: [{ recordedBy: null }, { recordedBy: { not: userId } }] },
+      }),
   },
 ];
 

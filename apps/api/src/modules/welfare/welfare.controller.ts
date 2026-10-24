@@ -22,6 +22,18 @@ import { PlatformRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { PERMISSIONS } from '../../lib/permissions';
 import { RBACService } from '../../services/rbac.service';
+import { RuleError } from '../finance/rule-error';
+
+/**
+ * A rule the officer broke (their own request, already decided, over the fund's limit, not enough in the fund) answers with its own
+ * status and a stable `code` the apps can react to. Any other failure keeps the plain 500 with its message, as before.
+ */
+function welfareFailure(res: Response, error: unknown, message: string) {
+  if (error instanceof RuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  return res.status(500).json({ success: false, message });
+}
 
 /**
  * Officers (members.view_all, or payments.approve for payout review) and super admins see every member's
@@ -83,7 +95,7 @@ export const welfareController = {
       }
       console.error('Error creating welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to create welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -122,7 +134,7 @@ export const welfareController = {
       }
       console.error('Error updating welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to update welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -144,7 +156,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error fetching welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to fetch welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -204,7 +216,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error deleting welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to delete welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -246,7 +258,7 @@ export const welfareController = {
       }
       console.error('Error recording contribution:', error);
       const message = error instanceof Error ? error.message : 'Failed to record contribution';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -284,7 +296,7 @@ export const welfareController = {
       }
       console.error('Error recording bulk contributions:', error);
       const message = error instanceof Error ? error.message : 'Failed to record contributions';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -329,7 +341,7 @@ export const welfareController = {
       }
       console.error('Error confirming contribution:', error);
       const message = error instanceof Error ? error.message : 'Failed to confirm contribution';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -407,7 +419,7 @@ export const welfareController = {
       }
       console.error('Error creating payout request:', error);
       const message = error instanceof Error ? error.message : 'Failed to create payout request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -451,7 +463,7 @@ export const welfareController = {
       }
       console.error('Error reviewing payout request:', error);
       const message = error instanceof Error ? error.message : 'Failed to review payout request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -495,7 +507,7 @@ export const welfareController = {
       }
       console.error('Error disbursing payout:', error);
       const message = error instanceof Error ? error.message : 'Failed to disburse payout';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -530,7 +542,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error cancelling payout request:', error);
       const message = error instanceof Error ? error.message : 'Failed to cancel payout request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -615,7 +627,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error fetching member welfare profile:', error);
       const message = error instanceof Error ? error.message : 'Failed to fetch profile';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -722,7 +734,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error creating bereavement request:', error);
       const message = error instanceof Error ? error.message : 'Failed to create bereavement request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 };

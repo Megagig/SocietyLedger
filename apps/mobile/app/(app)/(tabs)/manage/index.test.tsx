@@ -11,6 +11,7 @@ jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQ
 jest.mock('@/hooks/useCan', () => ({ useCan: () => mockCan }));
 jest.mock('@/hooks/useModuleAccess', () => ({ useModuleDisabled: () => false, useModuleAccess: () => mockCan }));
 jest.mock('@/features/coopManage/queries', () => ({ COOP_ADMIN_ACCESS: [], COOP_MODULE: 'cooperatives' }));
+jest.mock('@/features/welfareManage/queries', () => ({ WELFARE_ADMIN_ACCESS: [], WELFARE_MODULE: 'welfare' }));
 jest.mock('@/hooks/useTenantKey', () => ({ useTenantKey: () => 't' }));
 jest.mock('@/providers/ThemeProvider', () => ({
   useThemeTokens: () => ({ color: new Proxy({}, { get: () => '#000000' }), chart: ['#000000'] }),
