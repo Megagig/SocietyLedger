@@ -6,17 +6,16 @@ import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { canSeeOfficerDashboard } from '@/lib/permissions';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
 
-// Only these roles get the officer dashboard (it needs ledger.view). Every other role — the Election Committee, a custom role — is a
+// Only officers who can read the ledger get the officer dashboard. Every other role — the Election Committee, a custom role — is a
 // member first, so it lands on the member dashboard; assigning a role overwrites the legacy `role` field, so it can't be assumed to be 'member'.
-const OFFICER_ROLES = ['admin', 'treasurer', 'financial_secretary'];
-
 export default function DashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
-  const isOfficer = !!user && OFFICER_ROLES.includes(user.role);
+  const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -34,7 +33,7 @@ export default function DashboardPage() {
 
     if (user) {
       // Regular Admin/Treasurer/Financial Secretary → Stay here (admin dashboard)
-      if (OFFICER_ROLES.includes(user.role)) {
+      if (canSeeOfficerDashboard(user)) {
         // Show admin dashboard (current page)
         return;
       }

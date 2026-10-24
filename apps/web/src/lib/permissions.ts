@@ -231,6 +231,16 @@ export function isFinancialSecretary(role: string): boolean {
   return role === 'financial_secretary';
 }
 
+/**
+ * Whether someone gets the officer dashboard. `GET /dashboard/overview` needs `ledger.view`, so the roles that normally get it are
+ * only officers if they also hold that permission; anyone else (members, the Election Committee, custom roles) gets the member dashboard.
+ * A user whose permission list hasn't loaded yet is judged by role alone.
+ */
+export function canSeeOfficerDashboard(user: { role: string; permissions?: string[] } | null | undefined): boolean {
+  if (!user || !['admin', 'treasurer', 'financial_secretary'].includes(user.role)) return false;
+  return user.permissions === undefined || user.permissions.includes(PERMISSIONS.LEDGER_VIEW);
+}
+
 export function isMember(role: string): boolean {
   return role === 'member';
 }

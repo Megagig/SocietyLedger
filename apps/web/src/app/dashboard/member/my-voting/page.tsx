@@ -68,7 +68,9 @@ export default function MyVotingPage() {
                   className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-teal-500 transition-colors"
                 >
                   <p className="font-medium text-gray-900 dark:text-white">{election.title}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{election.status.replace(/_/g, ' ')}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Voting open{election.votingEndDate ? ` · ends ${new Date(election.votingEndDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                  </p>
                 </Link>
               ))}
             </div>
