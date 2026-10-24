@@ -243,6 +243,27 @@ export type ElectionDetailDTO = {
   _count: { votes: number; candidates: number };
 };
 
+/**
+ * GET /voting/elections/:id/progress — turnout while voting runs, from the moment voting opens. How many have voted and how that built up;
+ * never who anyone voted for. 409 `PROGRESS_NOT_READY` before voting opens.
+ */
+export type ElectionProgressDTO = {
+  electionId: number;
+  title: string;
+  status: ElectionStatus;
+  votingStartDate: IsoDateString;
+  votingEndDate: IsoDateString;
+  eligible: number;
+  voted: number;
+  turnoutPercent: number;
+  requiresQuorum: boolean;
+  quorumPercentage: number | null;
+  quorumMet: boolean;
+  positions: { positionId: number; title: string; voted: number }[];
+  timeline: { at: IsoDateString; voted: number }[];
+  updatedAt: IsoDateString;
+};
+
 /** GET /voting/elections/:id/voter-status — verified against voting.service.ts getVoterStatus (2026-10-21). */
 export type VoterStatusDTO = {
   electionId: number;

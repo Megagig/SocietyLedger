@@ -11,6 +11,7 @@ const tx: any = {
   poll: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), updateMany: jest.fn(), update: jest.fn() },
   pollResponse: { findFirst: jest.fn(), groupBy: jest.fn(), createMany: jest.fn() },
   pollOption: { updateMany: jest.fn() },
+  electionEligibilityException: { count: jest.fn(), findMany: jest.fn() },
 };
 const mockPrisma: any = {
   election: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), updateMany: jest.fn(), deleteMany: jest.fn(), count: jest.fn() },
@@ -19,6 +20,7 @@ const mockPrisma: any = {
   poll: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), updateMany: jest.fn(), deleteMany: jest.fn(), create: jest.fn() },
   member: { count: jest.fn(), findMany: jest.fn() },
   $transaction: jest.fn(async (arg: any) => arg(tx)),
+  electionEligibilityException: { count: jest.fn(), findMany: jest.fn() },
 };
 jest.mock('../../src/lib/prisma', () => ({ prisma: mockPrisma }));
 
@@ -348,6 +350,29 @@ describe('vote counts on the election itself', () => {
     mockPrisma.candidate.findMany.mockResolvedValue([{ id: 1, voteCount: 9 }]);
     expect((await votingService.listCandidates(1, 4, {}, true))[0].voteCount).toBe(0);
     expect(mockPrisma.candidate.findMany.mock.calls[0][0].include.member.select).not.toHaveProperty('email');
+  });
+});
+
+describe('turnout progress', () => {
+  const progressElection = (over: object = {}) => ({
+    id: 4, title: 'AGM', status: 'VOTING_OPEN', votingStartDate: new Date(Date.now() - 5 * 3600 * 1000), votingEndDate: new Date(Date.now() + 5 * 3600 * 1000),
+    eligibleVoterCount: 10, requiresQuorum: true, quorumPercentage: 50, positions: [{ id: 10, title: 'President' }], ...over,
+  });
+
+  it('says how many have voted and how it built up, and nothing about who they voted for', async () => {
+    mockPrisma.election.findFirst.mockResolvedValue(progressElection());
+    mockPrisma.vote.groupBy
+      .mockResolvedValueOnce([{ voterId: 1, _min: { votedAt: new Date(Date.now() - 3 * 3600 * 1000) } }, { voterId: 2, _min: { votedAt: new Date(Date.now() - 1 * 3600 * 1000) } }])
+      .mockResolvedValueOnce([{ positionId: 10, _count: { _all: 2 } }]);
+    const progress = await votingService.getElectionProgress(1, 4);
+    expect(progress).toMatchObject({ eligible: 10, voted: 2, turnoutPercent: 20, quorumMet: false, positions: [{ positionId: 10, voted: 2 }] });
+    expect(progress.timeline[progress.timeline.length - 1].voted).toBe(2);
+    expect(JSON.stringify(progress)).not.toMatch(/candidate|voterId/i);
+  });
+
+  it('is refused before voting opens', async () => {
+    mockPrisma.election.findFirst.mockResolvedValue(progressElection({ status: 'NOMINATIONS_OPEN' }));
+    await expect(votingService.getElectionProgress(1, 4)).rejects.toMatchObject({ status: 409, code: 'PROGRESS_NOT_READY' });
   });
 });
 

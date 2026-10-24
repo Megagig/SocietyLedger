@@ -174,6 +174,7 @@ export const PERMISSIONS = {
   ELECTION_VIEW: 'members.view_own', // Members can view and participate in elections
   ELECTION_MANAGE: 'elections.manage',
   ELECTION_CANDIDATES: 'elections.candidates.manage',
+  ELECTION_RULES: 'elections.rules.manage',
   ELECTION_RUN: 'elections.run',
   ELECTION_RESULTS_VIEW: 'elections.results.view',
   ELECTION_RESULTS_PUBLISH: 'elections.results.publish',

@@ -1,5 +1,6 @@
 import { RuleError } from '../../src/modules/finance/rule-error';
 import {
+  assertProgressVisible,
   assertCanRegisterCandidate,
   assertCanWithdraw,
   assertCandidatesCanBeDecided,
@@ -21,6 +22,7 @@ import {
   quorumMet,
   tallyVisible,
   turnoutPercent,
+  turnoutTimeline,
 } from '../../src/modules/voting/voting-rules';
 
 const code = (fn: () => void) => {
@@ -223,6 +225,34 @@ describe('turnout, quorum and results', () => {
     expect(tie.winner).toBeUndefined();
     expect(tie.tied.map((r) => r.candidateId)).toEqual([1, 2]);
     expect(pickWinner([{ candidateId: 1, voteCount: 0 }])).toEqual({ tied: [] });
+  });
+});
+
+describe('turnout progress', () => {
+  it('can be followed once voting has opened, not before', () => {
+    expect(code(() => assertProgressVisible('VOTING_OPEN'))).toBeNull();
+    expect(code(() => assertProgressVisible('RESULTS_PUBLISHED'))).toBeNull();
+    expect(code(() => assertProgressVisible('NOMINATIONS_OPEN'))).toBe('PROGRESS_NOT_READY');
+    expect(code(() => assertProgressVisible('DRAFT'))).toBe('PROGRESS_NOT_READY');
+  });
+
+  it('builds a running total from the first vote of each member', () => {
+    const start = new Date('2027-01-10T00:00:00Z');
+    const end = new Date('2027-01-10T05:00:00Z');
+    const points = turnoutTimeline([new Date('2027-01-10T00:30:00Z'), new Date('2027-01-10T00:45:00Z'), new Date('2027-01-10T03:10:00Z')], start, end);
+    expect(points[0]).toEqual({ at: start.toISOString(), voted: 0 });
+    expect(points.map((p) => p.voted)).toEqual([0, 2, 2, 2, 3, 3]);
+    expect(points[points.length - 1].at).toBe(end.toISOString());
+  });
+
+  it('never goes down, and a long election is cut into at most 48 slices', () => {
+    const start = new Date('2027-01-01T00:00:00Z');
+    const end = new Date('2027-01-15T00:00:00Z');
+    const times = Array.from({ length: 30 }, (_, i) => new Date(start.getTime() + i * 11 * 3600 * 1000));
+    const points = turnoutTimeline(times, start, end);
+    expect(points.length).toBeLessThanOrEqual(50);
+    points.forEach((p, i) => i > 0 && expect(p.voted).toBeGreaterThanOrEqual(points[i - 1].voted));
+    expect(points[points.length - 1].voted).toBe(30);
   });
 });
 

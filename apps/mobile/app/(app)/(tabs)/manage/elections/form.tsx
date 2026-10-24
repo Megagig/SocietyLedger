@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { X } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { View } from 'react-native';
 import { toast } from 'sonner-native';
@@ -23,7 +23,9 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { canEditElection, ELECTION_TYPE_OPTIONS } from '@/features/electionsManage/labels';
 import { useCreateElection, useUpdateElection } from '@/features/electionsManage/mutations';
-import { VOTING_MODULE } from '@/features/electionsManage/queries';
+import { RulesEditor } from '@/features/electionsManage/components/RulesEditor';
+import { emptyRulesValues, formValuesToRules, rulesProblem, rulesToFormValues, type RulesFormValues } from '@/features/electionsManage/eligibility';
+import { useEligibilityOptions, useEligibilityTemplate, VOTING_MODULE } from '@/features/electionsManage/queries';
 import { electionFormSchema, electionToFormValues, emptyElectionValues, toElectionPayload, type ElectionFormValues } from '@/features/electionsManage/schemas';
 import { useElectionDetail } from '@/features/voting/queries';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
@@ -43,6 +45,14 @@ export default function ElectionFormScreen() {
   const update = useUpdateElection(editId ?? 0);
   const { control, handleSubmit, reset } = useForm<ElectionFormValues>({ resolver: zodResolver(electionFormSchema), defaultValues: emptyElectionValues(), mode: 'onTouched' });
   const positions = useFieldArray({ control, name: 'positions' });
+  // Who can vote and stand: starts from the association's template, if it has one; nothing switched on means every active member.
+  const template = useEligibilityTemplate();
+  const eligibilityOptions = useEligibilityOptions();
+  const rulesForm = useForm<RulesFormValues>({ defaultValues: emptyRulesValues() });
+  const [rulesTouched, setRulesTouched] = useState(false);
+  useEffect(() => {
+    if (template.data && !rulesTouched && !isEdit) rulesForm.reset(rulesToFormValues(template.data.rules));
+  }, [template.data, rulesTouched, isEdit, rulesForm]);
   const requiresQuorum = useWatch({ control, name: 'requiresQuorum' });
   const back = () => router.back();
   const title = isEdit ? 'Edit election' : 'Add an election';
@@ -95,7 +105,13 @@ export default function ElectionFormScreen() {
   const fail = (error: unknown) => toast.error(error instanceof ApiError ? error.message : 'Could not save the election. Try again.');
 
   const submit = (values: ElectionFormValues) => {
-    const payload = toElectionPayload(values, !isEdit);
+    const rulesValues = rulesForm.getValues();
+    const problem = isEdit ? null : rulesProblem(rulesValues);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
+    const payload = { ...toElectionPayload(values, !isEdit), ...(isEdit ? {} : { eligibilityRules: formValuesToRules(rulesValues) }) };
     const done = (message: string) => ({
       onSuccess: () => {
         toast.success(message);
@@ -142,9 +158,16 @@ export default function ElectionFormScreen() {
 
         {isEdit ? (
           <Text variant="caption" tone="secondary">
-            Positions and candidates are changed from the election itself.
+            Positions, candidates and the rules for who can vote and stand are changed from the election itself.
           </Text>
         ) : (
+          <>
+          <Section title="Who can vote and stand">
+            <View className="gap-3" onTouchStart={() => setRulesTouched(true)}>
+              {template.data?.rules && !rulesTouched ? <Text variant="caption" tone="secondary">Starting from your association’s saved rules. Change them for this election if you need to.</Text> : null}
+              <RulesEditor control={rulesForm.control} categories={eligibilityOptions.data?.categories ?? ['regular', 'executive', 'honorary', 'student']} />
+            </View>
+          </Section>
           <Section title="Positions">
             <View className="gap-3">
               <Text variant="caption" tone="secondary">
@@ -163,6 +186,7 @@ export default function ElectionFormScreen() {
               </Button>
             </View>
           </Section>
+          </>
         )}
       </View>
 

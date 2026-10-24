@@ -46,7 +46,7 @@ import {
   type ElectionStepAction,
 } from '@/features/electionsManage/labels';
 import { useCancelElection, useAddPosition, useDecideCandidate, useDeleteElection, useDeletePosition, useElectionStep, useRegisterCandidate, useUpdatePosition } from '@/features/electionsManage/mutations';
-import { VOTING_MODULE } from '@/features/electionsManage/queries';
+import { useElectionEligibility, VOTING_MODULE } from '@/features/electionsManage/queries';
 import { toPositionPayload } from '@/features/electionsManage/schemas';
 import { FactRow } from '@/features/members/components/FactRow';
 import { useElectionDetail } from '@/features/voting/queries';
@@ -84,6 +84,7 @@ export default function ElectionControlScreen() {
   const ownMemberId = useMemberId();
   const query = useElectionDetail(id);
   const election = query.data;
+  const eligibility = useElectionEligibility(id);
 
   const step = useElectionStep(id);
   const cancel = useCancelElection(id);
@@ -350,6 +351,26 @@ export default function ElectionControlScreen() {
               <FactRow label="Abstaining" value={election.allowAbstention ? 'Allowed' : 'Not allowed'} />
             </ListGroup>
           </Section>
+
+          {canManage ? (
+            <Section title="Who can vote and stand">
+              <View className="gap-3">
+                {(eligibility.data?.requirements.voters.length ?? 0) + (eligibility.data?.requirements.candidates.length ?? 0) === 0 ? (
+                  <Text variant="body" tone="secondary">No rules are set, so every active member can vote and stand.</Text>
+                ) : (
+                  [...(eligibility.data?.requirements.voters.map((l) => `To vote: ${l}`) ?? []), ...(eligibility.data?.requirements.candidates.map((l) => `To stand: ${l}`) ?? [])].map((line) => (
+                    <Text key={line} variant="body" tone="secondary">{`• ${line}`}</Text>
+                  ))
+                )}
+                {(eligibility.data?.exceptions.length ?? 0) > 0 ? (
+                  <Text variant="caption" tone="secondary">{`${eligibility.data?.exceptions.length} ${eligibility.data?.exceptions.length === 1 ? 'exception' : 'exceptions'} made`}</Text>
+                ) : null}
+                <Button variant="secondary" onPress={() => go(`rules?id=${election.id}`)} testID="election-rules">
+                  {canEditElection(election.status) || election.status === 'NOMINATIONS_OPEN' || election.status === 'NOMINATIONS_CLOSED' ? 'Change the rules and exceptions' : 'See the rules and exceptions'}
+                </Button>
+              </View>
+            </Section>
+          ) : null}
 
           {canSeeResults ? (
             <Section title="Results">

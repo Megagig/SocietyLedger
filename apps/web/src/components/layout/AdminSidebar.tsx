@@ -437,6 +437,12 @@ export function AdminSidebar() {
           href: '/dashboard/governance/polls',
           permission: PERMISSIONS.POLL_VIEW,
         },
+        {
+          label: 'Voting Rules',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/governance/elections/rules',
+          permission: PERMISSIONS.ELECTION_RULES,
+        },
       ],
     },
 

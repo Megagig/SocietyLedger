@@ -31,6 +31,7 @@ import {
   cancelElection,
   castVote,
   getVoterStatus,
+  getMyEligibility,
   registerCandidate,
   selfNominate,
   approveCandidate,
@@ -41,6 +42,8 @@ import {
   Candidate,
   ElectionStatus
 } from '@/lib/api/voting';
+import { ElectionProgress } from '@/components/voting/ElectionProgress';
+import { EligibilityPanel } from '@/components/voting/EligibilityPanel';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
@@ -130,6 +133,15 @@ export default function ElectionDetailPage() {
   });
 
   // The committee can't list members, so they search through the voting module.
+  // The association's rules for who can vote and stand (none unless it has set some). Nobody is turned away unless a rule says so.
+  const { data: myEligibility } = useQuery({
+    queryKey: ['my-eligibility', electionId],
+    queryFn: () => getMyEligibility(electionId),
+    enabled: !!electionId,
+  });
+  const votingAllowed = myEligibility ? myEligibility.vote.eligible : true;
+  const standingAllowed = myEligibility ? myEligibility.stand.eligible : true;
+
   const { data: membersData } = useQuery({
     queryKey: ['members-for-candidate', memberSearch],
     queryFn: () => searchCandidateMembers(memberSearch),
@@ -520,6 +532,17 @@ export default function ElectionDetailPage() {
         </div>
       </div>
 
+      {/* What the election asks of people, and whether I meet it (only when the association has set rules) */}
+      <EligibilityPanel electionId={electionId} status={election.status} canManage={canManage} />
+
+      {/* Live turnout: how many have voted, never for whom */}
+      {['VOTING_OPEN', 'VOTING_CLOSED', 'RESULTS_PUBLISHED'].includes(election.status) && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Voting progress</h2>
+          <ElectionProgress electionId={electionId} />
+        </div>
+      )}
+
       {/* Positions and Candidates */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-6">
@@ -570,7 +593,7 @@ export default function ElectionDetailPage() {
                               Add Candidate
                             </button>
                           )}
-                          {election.status === 'NOMINATIONS_OPEN' && !myCandidacy && (
+                          {election.status === 'NOMINATIONS_OPEN' && !myCandidacy && standingAllowed && (
                             <button
                               onClick={() => selfNominateMutation.mutate(position.id)}
                               disabled={selfNominateMutation.isPending}
@@ -591,7 +614,7 @@ export default function ElectionDetailPage() {
                         <div
                           key={candidate.id}
                           className={`flex items-center justify-between p-3 rounded-lg border ${
-                            election.status === 'VOTING_OPEN' && !hasVoted && candidate.status === 'APPROVED'
+                            election.status === 'VOTING_OPEN' && !hasVoted && votingAllowed && candidate.status === 'APPROVED'
                               ? 'cursor-pointer hover:border-teal-500'
                               : ''
                           } ${
@@ -600,7 +623,7 @@ export default function ElectionDetailPage() {
                               : 'border-gray-200 dark:border-gray-700'
                           }`}
                           onClick={() => {
-                            if (election.status === 'VOTING_OPEN' && !hasVoted && candidate.status === 'APPROVED') {
+                            if (election.status === 'VOTING_OPEN' && !hasVoted && votingAllowed && candidate.status === 'APPROVED') {
                               setSelectedVotes({ ...selectedVotes, [position.id]: candidate.id });
                             }
                           }}
@@ -673,7 +696,7 @@ export default function ElectionDetailPage() {
                       ))}
                       
                       {/* Abstain option */}
-                      {election.status === 'VOTING_OPEN' && election.allowAbstention && !hasVoted && (
+                      {election.status === 'VOTING_OPEN' && election.allowAbstention && !hasVoted && votingAllowed && (
                         <div
                           className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:border-gray-400 ${
                             selectedVotes[position.id] === 'abstain'
@@ -687,7 +710,7 @@ export default function ElectionDetailPage() {
                       )}
 
                       {/* Vote button */}
-                      {election.status === 'VOTING_OPEN' && !hasVoted && selectedVotes[position.id] && (
+                      {election.status === 'VOTING_OPEN' && !hasVoted && votingAllowed && selectedVotes[position.id] && (
                         <button
                           onClick={() => handleVote(position.id)}
                           disabled={castVoteMutation.isPending}

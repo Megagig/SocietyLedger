@@ -17,6 +17,10 @@ export const electionAdminKeys = {
   elections: (tenant: string, filters: object) => [...votingKeys.all(tenant), 'admin', 'elections', filters] as const,
   results: (tenant: string, id: number) => [...votingKeys.all(tenant), 'admin', 'results', id] as const,
   members: (tenant: string, search: string) => [...votingKeys.all(tenant), 'admin', 'members', search] as const,
+  myEligibility: (tenant: string, id: number) => [...votingKeys.all(tenant), 'admin', 'myEligibility', id] as const,
+  eligibility: (tenant: string, id: number) => [...votingKeys.all(tenant), 'admin', 'eligibility', id] as const,
+  template: (tenant: string) => [...votingKeys.all(tenant), 'admin', 'eligibilityTemplate'] as const,
+  options: (tenant: string) => [...votingKeys.all(tenant), 'admin', 'eligibilityOptions'] as const,
   pollResults: (tenant: string, id: number) => [...votingKeys.all(tenant), 'admin', 'pollResults', id] as const,
 };
 
@@ -59,6 +63,39 @@ export function useCandidateMemberSearch(search: string, enabled: boolean) {
     enabled,
     staleTime: 30 * 1000,
   });
+}
+
+/** May I vote, may I stand, and what does this election ask of people. Nobody is turned away unless the association set a rule. */
+export function useMyEligibility(electionId: number | undefined) {
+  const tenant = useTenantKey();
+  const enabled = useModuleAccess('ELECTION_VIEW', VOTING_MODULE);
+  return useQuery({
+    queryKey: electionAdminKeys.myEligibility(tenant, electionId ?? 0),
+    queryFn: () => electionsManageApi.getMyEligibility(electionId!),
+    enabled: enabled && electionId !== undefined,
+    staleTime: 15 * 1000,
+  });
+}
+
+/** The rules and exceptions of one election, for the committee. */
+export function useElectionEligibility(electionId: number | undefined) {
+  const tenant = useTenantKey();
+  const enabled = useModuleAccess('ELECTION_MANAGE', VOTING_MODULE);
+  return useQuery({ queryKey: electionAdminKeys.eligibility(tenant, electionId ?? 0), queryFn: () => electionsManageApi.getElectionEligibility(electionId!), enabled: enabled && electionId !== undefined });
+}
+
+/** The association's template: the rules new elections start from. */
+export function useEligibilityTemplate() {
+  const tenant = useTenantKey();
+  const enabled = useModuleAccess(['ELECTION_MANAGE', 'ELECTION_RULES'], VOTING_MODULE);
+  return useQuery({ queryKey: electionAdminKeys.template(tenant), queryFn: () => electionsManageApi.getEligibilityTemplate(), enabled });
+}
+
+/** What the rule forms offer to choose from (the member categories in use here). */
+export function useEligibilityOptions() {
+  const tenant = useTenantKey();
+  const enabled = useModuleAccess(['ELECTION_MANAGE', 'ELECTION_RULES'], VOTING_MODULE);
+  return useQuery({ queryKey: electionAdminKeys.options(tenant), queryFn: () => electionsManageApi.getEligibilityOptions(), enabled, staleTime: 5 * 60 * 1000 });
 }
 
 export function usePollResults(id: number, enabled: boolean) {

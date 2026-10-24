@@ -26,7 +26,11 @@ jest.mock('@/features/electionsManage/components/Sheets', () => ({ CandidateShee
 jest.mock('@/features/voting/queries', () => ({
   useElectionDetail: () => ({ data: mockElection, isPending: false, isError: false, error: null, isRefetching: false, refetch: jest.fn() }),
 }));
-jest.mock('@/features/electionsManage/queries', () => ({ VOTING_MODULE: 'voting' }));
+let mockEligibility: { requirements: { voters: string[]; candidates: string[] }; exceptions: unknown[] } | undefined;
+jest.mock('@/features/electionsManage/queries', () => ({
+  VOTING_MODULE: 'voting',
+  useElectionEligibility: () => ({ data: mockEligibility }),
+}));
 const idle = () => ({ mutate: jest.fn(), isPending: false, variables: undefined });
 jest.mock('@/features/electionsManage/mutations', () => ({
   useCancelElection: () => idle(),
@@ -55,6 +59,7 @@ const election = (over: Partial<ElectionDetailDTO> = {}): ElectionDetailDTO => (
 });
 
 beforeEach(() => {
+  mockEligibility = { requirements: { voters: [], candidates: [] }, exceptions: [] };
   mockElection = election();
   mockCan = new Set(['ELECTION_MANAGE', 'ELECTION_CANDIDATES', 'ELECTION_RUN', 'ELECTION_RESULTS_VIEW', 'ELECTION_RESULTS_PUBLISH']);
   mockOwnMemberId = undefined;
@@ -118,6 +123,26 @@ describe('Election control', () => {
     await render(<ElectionControlScreen />);
     expect(screen.queryByTestId('election-results')).toBeNull();
     expect(screen.queryByTestId('election-step')).toBeNull();
+  });
+
+  it('with no rules set the committee sees that every active member can vote and stand', async () => {
+    await render(<ElectionControlScreen />);
+    expect(screen.getByText('No rules are set, so every active member can vote and stand.')).toBeTruthy();
+    expect(screen.getByTestId('election-rules')).toBeTruthy();
+  });
+
+  it('with rules set it lists them and how many exceptions were made', async () => {
+    mockEligibility = { requirements: { voters: ['Has no overdue charges'], candidates: ['Has been a member for at least 12 months'] }, exceptions: [{}, {}] };
+    await render(<ElectionControlScreen />);
+    expect(screen.getByText('• To vote: Has no overdue charges')).toBeTruthy();
+    expect(screen.getByText('• To stand: Has been a member for at least 12 months')).toBeTruthy();
+    expect(screen.getByText('2 exceptions made')).toBeTruthy();
+  });
+
+  it('only the people who run elections see the rules', async () => {
+    mockCan = new Set(['ELECTION_RUN']);
+    await render(<ElectionControlScreen />);
+    expect(screen.queryByTestId('election-rules')).toBeNull();
   });
 
   it('a cancelled election shows why, and has no step', async () => {

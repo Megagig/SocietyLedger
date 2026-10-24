@@ -8,6 +8,8 @@ import { ModuleLockedScreen } from '@/components/feedback/ModuleLockedScreen';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { ListItem } from '@/components/layout/ListItem';
+import { TurnoutCard } from '@/features/voting/components/TurnoutCard';
+import { IneligibleNote } from '@/features/electionsManage/components/EligibilityCards';
 import { SectionCard } from '@/components/layout/SectionCard';
 import { Badge } from '@/components/ui/Badge';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -93,14 +95,19 @@ export default function VotingScreen() {
                 <RowSkeleton />
               ) : activeElections.length > 0 ? (
                 activeElections.map((election) => (
-                  <ListItem
-                    key={election.id}
-                    leading={<IconCircle icon={Vote} tone="success" />}
-                    title={election.title}
-                    meta={`Ends ${format(new Date(election.votingEndDate), 'd MMM yyyy')} · ${election.totalVotesCast} vote${election.totalVotesCast === 1 ? '' : 's'} cast`}
-                    showChevron
-                    onPress={() => goElection(election.id)}
-                  />
+                  <View key={election.id}>
+                    <ListItem
+                      leading={<IconCircle icon={Vote} tone="success" />}
+                      title={election.title}
+                      meta={`Ends ${format(new Date(election.votingEndDate), 'd MMM yyyy')}`}
+                      showChevron
+                      onPress={() => goElection(election.id)}
+                    />
+                    <View className="gap-3 px-4 pb-4">
+                      <IneligibleNote electionId={election.id} />
+                      <TurnoutCard electionId={election.id} compact />
+                    </View>
+                  </View>
                 ))
               ) : (
                 <InlineEmpty icon={Vote} message="No active elections at the moment" />

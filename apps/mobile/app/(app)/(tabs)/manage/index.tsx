@@ -67,6 +67,8 @@ export default function ManageScreen() {
   // Voting: the Election Committee runs elections, the Administrator runs polls; the badge adds up what is waiting for the committee.
   const canElections = useModuleAccess(ELECTION_ADMIN_ACCESS, VOTING_MODULE);
   const canPolls = useModuleAccess('POLL_MANAGE', VOTING_MODULE);
+  // Who can vote and stand: the association's rules for new elections. Nothing is set until it chooses to.
+  const canVotingRules = useModuleAccess('ELECTION_RULES', VOTING_MODULE);
   const electionsWaiting = attentionCount(attention, 'electionNominations') + attentionCount(attention, 'electionsToClose') + attentionCount(attention, 'electionResults');
   const overdueCharges = attentionCount(attention, 'overdueCharges');
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
@@ -86,7 +88,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -173,7 +175,7 @@ export default function ManageScreen() {
             </Section>
           ) : null}
 
-          {canElections || canPolls ? (
+          {canElections || canPolls || canVotingRules ? (
             <Section title="Voting">
               <ListGroup>
                 {canElections ? (
@@ -185,6 +187,16 @@ export default function ManageScreen() {
                     showChevron
                     onPress={() => router.push('/(app)/(tabs)/manage/elections' as never)}
                     testID="manage-elections"
+                  />
+                ) : null}
+                {canVotingRules ? (
+                  <ListItem
+                    leading={<IconCircle icon={Vote} tone="primary" />}
+                    title="Voting rules"
+                    meta="Who can vote and who can stand"
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/elections/rules' as never)}
+                    testID="manage-voting-rules"
                   />
                 ) : null}
                 {canPolls ? (

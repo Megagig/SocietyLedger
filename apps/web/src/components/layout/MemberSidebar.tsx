@@ -84,6 +84,7 @@ export function MemberSidebar() {
   const isElectionCommittee = hasAnyPermission(user?.permissions || [], [
     PERMISSIONS.ELECTION_MANAGE,
     PERMISSIONS.ELECTION_CANDIDATES,
+    PERMISSIONS.ELECTION_RULES,
     PERMISSIONS.ELECTION_RUN,
     PERMISSIONS.ELECTION_RESULTS_VIEW,
     PERMISSIONS.ELECTION_RESULTS_PUBLISH,
@@ -183,6 +184,11 @@ export function MemberSidebar() {
                 label: 'Elections',
                 icon: <IconChecklist size={18} />,
                 href: '/dashboard/governance/elections',
+              },
+              {
+                label: 'Voting Rules',
+                icon: <IconChecklist size={18} />,
+                href: '/dashboard/governance/elections/rules',
               },
               {
                 label: 'Manage Polls',

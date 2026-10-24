@@ -384,6 +384,12 @@ const PERMISSION_REGISTRY = [
     examples: ["POST /api/voting/elections/:id/publish-results"]
   },
   {
+    key: "elections.rules.manage",
+    description: "Set the association's rules for who can vote and who can stand in elections.",
+    module: "Voting",
+    examples: ["PUT /api/voting/eligibility/template", "POST /api/voting/eligibility/preview"]
+  },
+  {
     key: "polls.manage",
     description: "Create, edit, start, close and cancel polls.",
     module: "Voting",

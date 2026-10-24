@@ -3,6 +3,12 @@ import { unwrap } from '../envelope';
 import type {
   CandidateMemberDTO,
   DecideCandidatePayload,
+  ElectionEligibilityDTO,
+  EligibilityExceptionDTO,
+  EligibilityExceptionPayload,
+  EligibilityPreviewDTO,
+  EligibilityRulesDTO,
+  MyEligibilityDTO,
   ElectionPayload,
   ElectionResultsDTO,
   PollOptionPayload,
@@ -97,6 +103,47 @@ export const electionsManageApi = {
   /** 403 `OWN_NOMINATION` for your own; 409 `ALREADY_DECIDED` / `CANDIDATES_LOCKED`. */
   async decideCandidate(candidateId: number, payload: DecideCandidatePayload): Promise<CandidateDTO> {
     return unwrap<CandidateDTO>(client.post(`${BASE}/candidates/${candidateId}/approve`, payload));
+  },
+
+  // ---------------------------------------------------------------- who can vote and who can stand
+  /** GET …/elections/:id/my-eligibility — for the signed-in member. */
+  async getMyEligibility(electionId: number): Promise<MyEligibilityDTO> {
+    return unwrap<MyEligibilityDTO>(client.get(`${BASE}/elections/${electionId}/my-eligibility`));
+  },
+
+  async getElectionEligibility(electionId: number): Promise<ElectionEligibilityDTO> {
+    return unwrap<ElectionEligibilityDTO>(client.get(`${BASE}/elections/${electionId}/eligibility`));
+  },
+
+  /** Only until voting opens (409 `RULES_LOCKED`); 400 `BAD_ELIGIBILITY_RULE` for a rule it doesn't understand. `null` clears it. */
+  async setElectionEligibility(electionId: number, rules: EligibilityRulesDTO | null): Promise<ElectionEligibilityDTO> {
+    return unwrap<ElectionEligibilityDTO>(client.put(`${BASE}/elections/${electionId}/eligibility`, { rules }));
+  },
+
+  /** Until voting closes. A reason is required; 409 `ALREADY_VOTED` for barring someone who has voted. */
+  async addEligibilityException(electionId: number, payload: EligibilityExceptionPayload): Promise<EligibilityExceptionDTO> {
+    return unwrap<EligibilityExceptionDTO>(client.post(`${BASE}/elections/${electionId}/eligibility/exceptions`, payload));
+  },
+
+  async removeEligibilityException(exceptionId: number): Promise<unknown> {
+    return unwrap<unknown>(client.delete(`${BASE}/eligibility/exceptions/${exceptionId}`));
+  },
+
+  async previewEligibility(rules: EligibilityRulesDTO | null): Promise<EligibilityPreviewDTO> {
+    return unwrap<EligibilityPreviewDTO>(client.post(`${BASE}/eligibility/preview`, { rules }));
+  },
+
+  /** The rules new elections start from (the association's template), or null when it has none. */
+  async getEligibilityTemplate(): Promise<{ rules: EligibilityRulesDTO | null }> {
+    return unwrap<{ rules: EligibilityRulesDTO | null }>(client.get(`${BASE}/eligibility/template`));
+  },
+
+  async setEligibilityTemplate(rules: EligibilityRulesDTO | null): Promise<{ rules: EligibilityRulesDTO | null }> {
+    return unwrap<{ rules: EligibilityRulesDTO | null }>(client.put(`${BASE}/eligibility/template`, { rules }));
+  },
+
+  async getEligibilityOptions(): Promise<{ categories: string[] }> {
+    return unwrap<{ categories: string[] }>(client.get(`${BASE}/eligibility/options`));
   },
 
   // ---------------------------------------------------------------- polls

@@ -26,6 +26,7 @@ import {
 import { prisma } from '../../lib/prisma';
 import { RuleError } from '../finance/rule-error';
 import { RBACService } from '../../services/rbac.service';
+import { eligibilityService } from './eligibility.service';
 import { PERMISSIONS } from '../../lib/permissions';
 
 /** Whether the caller holds a permission, so the same screen can show a committee member more than an ordinary member. */
@@ -801,6 +802,166 @@ export const votingController = {
       return res.status(200).json({ success: true, data: members });
     } catch (error) {
       return votingFailure(res, error, 'Failed to search members');
+    }
+  },
+
+  // ==========================================
+  // WHO CAN VOTE AND WHO CAN STAND
+  // ==========================================
+
+  async getMyEligibility(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const memberId = req.user?.memberId;
+
+      if (!associationId || !memberId) {
+        return res.status(400).json({ success: false, message: 'Association and member ID required' });
+      }
+
+      const data = await eligibilityService.myEligibility(associationId, parseInt(req.params.electionId), memberId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to check eligibility');
+    }
+  },
+
+  async getEligibility(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      const data = await eligibilityService.getForElection(associationId, parseInt(req.params.electionId));
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to get the rules');
+    }
+  },
+
+  async setEligibility(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      const electionId = parseInt(req.params.electionId);
+      const data = await eligibilityService.setForElection(associationId, electionId, req.body?.rules);
+
+      await prisma.auditLog.create({
+        data: { associationId, userId, action: 'UPDATE', tableName: 'elections', recordId: electionId, newValues: { eligibilityRules: data.rules } as any },
+      });
+      return res.status(200).json({ success: true, message: 'Rules saved', data });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to save the rules');
+    }
+  },
+
+  async addEligibilityException(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      const body = z
+        .object({ memberId: z.number().int().positive(), scope: z.enum(['VOTE', 'STAND']), kind: z.enum(['ALLOW', 'BAR']), reason: z.string().trim().min(3, 'Say why — the reason stays on record').max(500) })
+        .parse(req.body);
+      const electionId = parseInt(req.params.electionId);
+      const exception = await eligibilityService.addException(associationId, electionId, userId, body);
+
+      await prisma.auditLog.create({
+        data: { associationId, userId, action: 'CREATE', tableName: 'election_eligibility_exceptions', recordId: exception.id, newValues: { electionId, ...body } as any },
+      });
+      return res.status(201).json({ success: true, data: exception });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: error.errors[0]?.message ?? 'Validation error', errors: error.errors });
+      }
+      return votingFailure(res, error, 'Failed to save the exception');
+    }
+  },
+
+  async removeEligibilityException(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      const exceptionId = parseInt(req.params.exceptionId);
+      await eligibilityService.removeException(associationId, exceptionId);
+
+      await prisma.auditLog.create({
+        data: { associationId, userId, action: 'DELETE', tableName: 'election_eligibility_exceptions', recordId: exceptionId },
+      });
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to remove the exception');
+    }
+  },
+
+  async previewEligibility(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      const data = await eligibilityService.preview(associationId, req.body?.rules);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to preview the rules');
+    }
+  },
+
+  async getEligibilityTemplate(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      return res.status(200).json({ success: true, data: { rules: await eligibilityService.getTemplate(associationId) } });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to get the template');
+    }
+  },
+
+  async setEligibilityTemplate(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      const rules = await eligibilityService.setTemplate(associationId, userId, req.body?.rules);
+
+      await prisma.auditLog.create({
+        data: { associationId, userId, action: 'UPDATE', tableName: 'settings', newValues: { electionEligibilityTemplate: rules } as any },
+      });
+      return res.status(200).json({ success: true, message: 'Template saved', data: { rules } });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to save the template');
+    }
+  },
+
+  async getEligibilityOptions(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+
+      return res.status(200).json({ success: true, data: await eligibilityService.options(associationId) });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to get the options');
+    }
+  },
+
+  async getElectionProgress(req: Request, res: Response) {
+    try {
+      const { electionId } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const progress = await votingService.getElectionProgress(associationId, parseInt(electionId));
+
+      return res.status(200).json({ success: true, data: progress });
+    } catch (error) {
+      return votingFailure(res, error, 'Failed to get election progress');
     }
   },
 

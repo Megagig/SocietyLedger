@@ -245,6 +245,38 @@ export function tallyVisible(status: ElectionStatusName, canSeeBeforePublishing:
   return status === 'RESULTS_PUBLISHED' || (status === 'VOTING_CLOSED' && canSeeBeforePublishing);
 }
 
+/** Turnout (how many have voted, never for whom) can be followed from the moment voting opens. */
+export function assertProgressVisible(status: ElectionStatusName): void {
+  if (status !== 'VOTING_OPEN' && status !== 'VOTING_CLOSED' && status !== 'RESULTS_PUBLISHED') {
+    throw new RuleError('Voting has not opened yet, so there is no turnout to show.', 409, 'PROGRESS_NOT_READY');
+  }
+}
+
+export interface TimelinePoint {
+  at: string;
+  voted: number;
+}
+
+/**
+ * How turnout built up: the running number of members who had voted at the end of each slice of the voting window. A member counts from
+ * their first vote. No more than `maxPoints` slices, each at least an hour, so a week-long election isn't a wall of points.
+ */
+export function turnoutTimeline(firstVotes: Date[], start: Date, end: Date, maxPoints = 48): TimelinePoint[] {
+  const HOUR = 3600 * 1000;
+  const span = Math.max(end.getTime() - start.getTime(), HOUR);
+  const slice = Math.max(HOUR, Math.ceil(span / maxPoints / HOUR) * HOUR);
+  const times = firstVotes.map((d) => d.getTime()).sort((a, b) => a - b);
+  const points: TimelinePoint[] = [{ at: start.toISOString(), voted: 0 }];
+  let counted = 0;
+  for (let t = start.getTime() + slice; ; t += slice) {
+    const cutoff = Math.min(t, end.getTime());
+    while (counted < times.length && times[counted] <= cutoff) counted++;
+    points.push({ at: new Date(cutoff).toISOString(), voted: counted });
+    if (cutoff >= end.getTime()) break;
+  }
+  return points;
+}
+
 export interface TallyRow {
   candidateId: number;
   voteCount: number;

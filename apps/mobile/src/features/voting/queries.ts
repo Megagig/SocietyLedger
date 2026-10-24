@@ -13,6 +13,7 @@ export const votingKeys = {
   election: (tenant: string, id: number) => [...votingKeys.all(tenant), 'election', id] as const,
   polls: (tenant: string, params: ListPollsParams) => [...votingKeys.all(tenant), 'polls', params] as const,
   poll: (tenant: string, id: number) => [...votingKeys.all(tenant), 'poll', id] as const,
+  progress: (tenant: string, electionId: number) => [...votingKeys.all(tenant), 'progress', electionId] as const,
   voterStatus: (tenant: string, electionId: number) => [...votingKeys.all(tenant), 'voterStatus', electionId] as const,
 };
 
@@ -48,6 +49,22 @@ export function useElectionDetail(id: number | undefined) {
     queryKey: votingKeys.election(tenant, id ?? 0),
     queryFn: () => votingApi.getElection(id!),
     enabled: canView && id !== undefined,
+  });
+}
+
+/** How often the turnout of an election that is being voted on refreshes. */
+export const PROGRESS_REFRESH_MS = 10_000;
+
+/** Turnout while voting runs, refreshed every few seconds while the screen is open. */
+export function useElectionProgress(electionId: number | undefined) {
+  const tenant = useTenantKey();
+  const canView = useModuleAccess('ELECTION_VIEW', 'voting');
+
+  return useQuery({
+    queryKey: votingKeys.progress(tenant, electionId ?? 0),
+    queryFn: () => votingApi.getProgress(electionId!),
+    enabled: canView && electionId !== undefined,
+    refetchInterval: PROGRESS_REFRESH_MS,
   });
 }
 

@@ -256,6 +256,7 @@ export const sections: SectionDef[] = [
       { slug: 'election-committee', title: 'The Election Committee', type: 'concept', audience: ['admin', 'officer'], platforms: ['web', 'mobile'], covers: ['ST8', 'GV7'] },
       { slug: 'how-elections-work', title: 'How an election runs, start to finish', type: 'concept', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/governance/elections/[id]', 'GV9'] },
       { slug: 'creating-an-election', title: 'Creating an election and its positions', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/governance/elections/new', 'GV7', 'GV8'] },
+      { slug: 'voting-rules', title: 'Who can vote and who can stand', type: 'task', audience: ['admin', 'officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/governance/elections/rules', 'GV8'] },
       { slug: 'nominations-and-candidates', title: 'Nominations, self-nomination and approving candidates', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['GV9', 'C6'] },
       { slug: 'running-the-vote', title: 'Opening and closing voting', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['GV9'] },
       { slug: 'publishing-results', title: 'Publishing results', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['GV9', 'C8'] },

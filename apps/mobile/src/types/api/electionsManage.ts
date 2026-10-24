@@ -33,6 +33,57 @@ export type ElectionPayload = {
   quorumPercentage?: number | null;
   /** On create only: positions are added one by one once the election exists. */
   positions?: PositionPayload[];
+  /** Who can vote and stand. Left out = the association's template, if it has one; null = every active member. */
+  eligibilityRules?: EligibilityRulesDTO | null;
+};
+
+// ---------------------------------------------------------------- who can vote and who can stand
+// Optional. With no rule set every active member can vote and stand, as always.
+
+export type MemberRuleDTO = {
+  /** Members may owe at most this much on overdue charges (0 = nothing overdue). */
+  financialStanding?: { maxOverdue: number };
+  minMembershipMonths?: number;
+  categories?: string[];
+};
+export type CandidateRuleDTO = MemberRuleDTO & { mustBeVoter?: boolean; maxPositions?: number };
+export type EligibilityRulesDTO = { voters?: MemberRuleDTO; candidates?: CandidateRuleDTO };
+
+export type EligibilityResultDTO = { eligible: boolean; reason: string | null; code: string };
+
+/** GET /voting/elections/:id/my-eligibility — may I vote, may I stand, and what does this election ask of people. */
+export type MyEligibilityDTO = {
+  hasRules: boolean;
+  vote: EligibilityResultDTO;
+  stand: EligibilityResultDTO;
+  requirements: { voters: string[]; candidates: string[] };
+};
+
+export type EligibilityExceptionDTO = {
+  id: number;
+  memberId: number;
+  scope: 'VOTE' | 'STAND';
+  kind: 'ALLOW' | 'BAR';
+  reason: string;
+  createdAt: IsoDateString;
+  member: { id: number; memberId: string; firstName: string; lastName: string };
+};
+
+/** GET /voting/elections/:id/eligibility — the rules of one election and the exceptions made for it (committee). */
+export type ElectionEligibilityDTO = {
+  rules: EligibilityRulesDTO | null;
+  requirements: { voters: string[]; candidates: string[] };
+  exceptions: EligibilityExceptionDTO[];
+};
+
+export type EligibilityExceptionPayload = { memberId: number; scope: 'VOTE' | 'STAND'; kind: 'ALLOW' | 'BAR'; reason: string };
+
+/** POST /voting/eligibility/preview — what a rule would let in and turn away, before it is saved. */
+export type EligibilityPreviewDTO = {
+  activeMembers: number;
+  canVote: number;
+  canStand: number;
+  turnedAway: { memberId: number; memberNumber: string; name: string; scope: 'VOTE' | 'STAND'; reason: string }[];
 };
 
 export type RegisterCandidatePayload = {

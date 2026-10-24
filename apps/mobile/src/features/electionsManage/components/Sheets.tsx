@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { useForm } from 'react-hook-form';
 import { Pressable, View } from 'react-native';
 
+import { SegmentedControl } from '@/components/forms/SegmentedControl';
 import { TextField } from '@/components/forms/TextField';
 import { SearchField } from '@/components/forms/SearchField';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -14,9 +15,11 @@ import type { CandidateMemberDTO } from '@/types/api/electionsManage';
 import { useCandidateMemberSearch } from '../queries';
 import {
   candidateSchema,
+  exceptionReasonSchema,
   pollOptionSchema,
   positionSchema,
   type CandidateValues,
+  type ExceptionReasonValues,
   type PollOptionValues,
   type PositionValues,
 } from '../schemas';
@@ -102,6 +105,81 @@ export const CandidateSheet = forwardRef<BottomSheetModal, { positionTitle?: str
     );
   },
 );
+
+/**
+ * An exception to the rules for one named member: let them in, or keep them out, of voting or standing, whatever the rules say. A reason
+ * is required and stays on record. The committee can't search the members list, so the search goes through the voting module.
+ */
+export const ExceptionSheet = forwardRef<
+  BottomSheetModal,
+  { enabled: boolean; loading: boolean; onSave: (v: { member: CandidateMemberDTO; scope: 'VOTE' | 'STAND'; kind: 'ALLOW' | 'BAR'; reason: string }) => void; onDismiss?: () => void }
+>(function ExceptionSheet({ enabled, loading, onSave, onDismiss }, ref) {
+  const localRef = useRef<BottomSheetModal>(null);
+  useImperativeHandle(ref, () => localRef.current as BottomSheetModal, []);
+  const [search, setSearch] = useState('');
+  const [picked, setPicked] = useState<CandidateMemberDTO | null>(null);
+  const [scope, setScope] = useState<'VOTE' | 'STAND'>('VOTE');
+  const [kind, setKind] = useState<'ALLOW' | 'BAR'>('ALLOW');
+  const query = useCandidateMemberSearch(search, enabled);
+  const { control, handleSubmit, reset } = useForm<ExceptionReasonValues>({ resolver: zodResolver(exceptionReasonSchema), defaultValues: { reason: '' }, mode: 'onTouched' });
+
+  const close = () => {
+    setSearch('');
+    setPicked(null);
+    setScope('VOTE');
+    setKind('ALLOW');
+    reset();
+    onDismiss?.();
+  };
+
+  return (
+    <BottomSheet ref={localRef} title={picked ? 'Make an exception' : 'Choose a member'} snapPoints={['80%']} onDismiss={close}>
+      {picked ? (
+        <View className="gap-4 pb-6">
+          <View className="gap-0.5">
+            <Text variant="body-lg">{`${picked.firstName} ${picked.lastName}`}</Text>
+            <Text variant="caption" tone="secondary">
+              {picked.memberId}
+            </Text>
+          </View>
+          <SegmentedControl<'VOTE' | 'STAND'> options={[{ label: 'Voting', value: 'VOTE' }, { label: 'Standing', value: 'STAND' }]} value={scope} onChange={setScope} testID="exception-scope" />
+          <SegmentedControl<'ALLOW' | 'BAR'> options={[{ label: 'Allow them', value: 'ALLOW' }, { label: 'Bar them', value: 'BAR' }]} value={kind} onChange={setKind} testID="exception-kind" />
+          <TextField control={control} name="reason" label="Reason (kept on record)" placeholder="One day short of the year" multiline autoCapitalize="sentences" testID="exception-reason" />
+          <View className="flex-row gap-3">
+            <Button variant="secondary" fullWidth onPress={() => setPicked(null)}>
+              Someone else
+            </Button>
+            <Button variant="primary" fullWidth loading={loading} onPress={() => { void handleSubmit((v) => onSave({ member: picked, scope, kind, reason: v.reason.trim() }))(); }} testID="exception-save">
+              Save exception
+            </Button>
+          </View>
+        </View>
+      ) : (
+        <View className="gap-3 pb-6">
+          <SearchField value={search} onChangeText={setSearch} placeholder="Search name or member number" />
+          {query.isPending ? (
+            <View className="items-center py-6">
+              <Spinner />
+            </View>
+          ) : query.isError || query.data.length === 0 ? (
+            <Text variant="caption" tone="secondary">
+              {query.isError ? 'We couldn’t load the members. Try again.' : 'No active members match.'}
+            </Text>
+          ) : (
+            query.data.map((member) => (
+              <Pressable key={member.id} onPress={() => setPicked(member)} accessibilityRole="button" className="min-h-[52px] justify-center px-1 py-2" testID={`pick-exception-${member.id}`}>
+                <Text variant="body-lg" numberOfLines={1}>{`${member.firstName} ${member.lastName}`}</Text>
+                <Text variant="caption" tone="secondary" numberOfLines={1}>
+                  {member.memberId}
+                </Text>
+              </Pressable>
+            ))
+          )}
+        </View>
+      )}
+    </BottomSheet>
+  );
+});
 
 /** A position (President, Secretary…): its title and, if useful, what it does. Used to add one and to rename one. */
 export const PositionSheet = forwardRef<BottomSheetModal, { initial?: { title: string; description: string | null }; loading: boolean; onSave: (values: PositionValues) => void; onDismiss?: () => void }>(

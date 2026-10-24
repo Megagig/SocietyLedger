@@ -301,6 +301,7 @@ model Member {
   welfarePayoutRequests        WelfarePayoutRequest[]
   // Phase 4.5: Voting & Elections
   candidacies                  Candidate[]
+  eligibilityExceptions        ElectionEligibilityException[]
   votes                        Vote[]
   pollResponses                PollResponse[]
 
@@ -2410,6 +2411,8 @@ model Election {
   cancelledBy         Int?               @map("cancelled_by")
   cancelledAt         DateTime?          @map("cancelled_at")
   cancellationReason  String?            @map("cancellation_reason")
+  // Who may vote and who may stand, set by the association (null = every active member, the default). See eligibility-rules.ts.
+  eligibilityRules    Json?              @map("eligibility_rules")
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
   association         Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
@@ -2419,6 +2422,7 @@ model Election {
   positions           ElectionPosition[]
   candidates          Candidate[]
   votes               Vote[]
+  eligibilityExceptions ElectionEligibilityException[]
 
   @@index([associationId, status])
   @@index([associationId, votingStartDate])
@@ -2443,6 +2447,24 @@ model ElectionPosition {
   @@unique([electionId, orderNumber])
   @@index([electionId])
   @@map("election_positions")
+}
+
+// A named member let in, or kept out, of one election's vote or candidacy, whatever the rules say — with the reason on record.
+model ElectionEligibilityException {
+  id         Int      @id @default(autoincrement())
+  electionId Int      @map("election_id")
+  memberId   Int      @map("member_id")
+  scope      String // VOTE | STAND
+  kind       String // ALLOW | BAR
+  reason     String
+  createdBy  Int      @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, memberId, scope])
+  @@index([electionId])
+  @@map("election_eligibility_exceptions")
 }
 
 // Candidate Model

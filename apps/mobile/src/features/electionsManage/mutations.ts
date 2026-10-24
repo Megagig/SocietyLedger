@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { electionsManageApi } from '@/api/endpoints/electionsManage';
 import { useTenantKey } from '@/hooks/useTenantKey';
-import type { DecideCandidatePayload, ElectionPayload, PollOptionPayload, PollPayload, PollUpdatePayload, PositionPayload, RegisterCandidatePayload } from '@/types/api/electionsManage';
+import type { DecideCandidatePayload, EligibilityExceptionPayload, EligibilityRulesDTO, ElectionPayload, PollOptionPayload, PollPayload, PollUpdatePayload, PositionPayload, RegisterCandidatePayload } from '@/types/api/electionsManage';
 import type { ElectionStepAction } from './labels';
 
 /**
@@ -77,6 +77,32 @@ export function useDecideCandidate() {
     onSuccess: invalidate,
     onError: invalidate,
   });
+}
+
+// ---------------------------------------------------------------- who can vote and who can stand
+
+export function useSetElectionEligibility(electionId: number) {
+  const invalidate = useInvalidateVoting();
+  return useMutation({ mutationFn: (rules: EligibilityRulesDTO | null) => electionsManageApi.setElectionEligibility(electionId, rules), onSuccess: invalidate });
+}
+
+export function useAddEligibilityException(electionId: number) {
+  const invalidate = useInvalidateVoting();
+  return useMutation({ mutationFn: (payload: EligibilityExceptionPayload) => electionsManageApi.addEligibilityException(electionId, payload), onSuccess: invalidate });
+}
+
+export function useRemoveEligibilityException() {
+  const invalidate = useInvalidateVoting();
+  return useMutation({ mutationFn: (id: number) => electionsManageApi.removeEligibilityException(id), onSuccess: invalidate });
+}
+
+export function useSetEligibilityTemplate() {
+  const invalidate = useInvalidateVoting();
+  return useMutation({ mutationFn: (rules: EligibilityRulesDTO | null) => electionsManageApi.setEligibilityTemplate(rules), onSuccess: invalidate });
+}
+
+export function usePreviewEligibility() {
+  return useMutation({ mutationFn: (rules: EligibilityRulesDTO | null) => electionsManageApi.previewEligibility(rules) });
 }
 
 // ---------------------------------------------------------------- polls

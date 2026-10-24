@@ -32,6 +32,38 @@ router.get(
   votingController.getDashboard
 );
 
+// ==========================================
+// WHO CAN VOTE AND WHO CAN STAND
+// None of this applies until an association sets a rule: with none, every active member can vote and stand, as always.
+// ==========================================
+
+/** Whether the caller may vote or stand in an election, and what it asks of people. GET /api/voting/elections/:electionId/my-eligibility */
+router.get('/elections/:electionId/my-eligibility', requirePermission(PERMISSIONS.ELECTION_VIEW), votingController.getMyEligibility);
+
+/** The rules and exceptions of one election (committee). */
+router.get('/elections/:electionId/eligibility', requirePermission(PERMISSIONS.ELECTION_MANAGE), votingController.getEligibility);
+router.put('/elections/:electionId/eligibility', requirePermission(PERMISSIONS.ELECTION_MANAGE), votingController.setEligibility);
+router.post('/elections/:electionId/eligibility/exceptions', requirePermission(PERMISSIONS.ELECTION_MANAGE), votingController.addEligibilityException);
+router.delete('/eligibility/exceptions/:exceptionId', requirePermission(PERMISSIONS.ELECTION_MANAGE), votingController.removeEligibilityException);
+
+/** What a rule would let in and turn away, before it is saved, and what the forms can choose from (committee or whoever sets the template). */
+router.post('/eligibility/preview', requireAnyPermission([PERMISSIONS.ELECTION_MANAGE, PERMISSIONS.ELECTION_RULES]), votingController.previewEligibility);
+router.get('/eligibility/options', requireAnyPermission([PERMISSIONS.ELECTION_MANAGE, PERMISSIONS.ELECTION_RULES]), votingController.getEligibilityOptions);
+
+/** The rules new elections start from. Reading it is for the committee too; saving it needs the rules permission. */
+router.get('/eligibility/template', requireAnyPermission([PERMISSIONS.ELECTION_MANAGE, PERMISSIONS.ELECTION_RULES]), votingController.getEligibilityTemplate);
+router.put('/eligibility/template', requirePermission(PERMISSIONS.ELECTION_RULES), votingController.setEligibilityTemplate);
+
+/**
+ * Turnout while voting runs: how many have voted, never for whom
+ * GET /api/voting/elections/:electionId/progress
+ */
+router.get(
+  '/elections/:electionId/progress',
+  requirePermission(PERMISSIONS.ELECTION_VIEW),
+  votingController.getElectionProgress
+);
+
 /**
  * Find active members to put forward as candidates (the Election Committee has no access to the members list)
  * GET /api/voting/candidate-members?search=

@@ -21,6 +21,9 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { useBulkCastVotes, useElectionDetail, useSelfNominate, useVoterStatuses } from '@/features/voting/queries';
+import { TurnoutCard } from '@/features/voting/components/TurnoutCard';
+import { RequirementsCard } from '@/features/electionsManage/components/EligibilityCards';
+import { useMyEligibility } from '@/features/electionsManage/queries';
 import { t } from '@/lib/i18n';
 import { useCan } from '@/hooks/useCan';
 import type { ElectionPositionDTO } from '@/types/api/voting';
@@ -107,6 +110,10 @@ export default function ElectionDetailScreen() {
   const canVote = useCan('ELECTION_VOTE');
 
   const query = useElectionDetail(electionId);
+  // The association's rules for who can vote and stand (none unless it set some): nobody is turned away unless a rule says so.
+  const eligibility = useMyEligibility(electionId);
+  const mayVote = eligibility.data ? eligibility.data.vote.eligible : true;
+  const mayStand = eligibility.data ? eligibility.data.stand.eligible : true;
   const selfNominate = useSelfNominate();
   const bulkCastVotes = useBulkCastVotes();
 
@@ -210,6 +217,16 @@ export default function ElectionDetailScreen() {
             </Text>
           </View>
 
+          {/* Turnout while voting runs, and after: how many have voted, never for whom */}
+          {(election.status === 'VOTING_OPEN' || election.status === 'VOTING_CLOSED' || election.status === 'RESULTS_PUBLISHED') && (
+            <View className="rounded-lg border border-border bg-surface p-4 dark:border-transparent">
+              <TurnoutCard electionId={election.id} />
+            </View>
+          )}
+
+          {/* What the election asks of people, and whether I meet it (only when the association has set rules) */}
+          <RequirementsCard electionId={election.id} focus={isActive ? 'vote' : isNominating ? 'stand' : null} />
+
           {/* Stats */}
           <View className="flex-row gap-3">
             <StatTile label="Eligible voters" value={String(election.eligibleVoterCount)} tone="info" />
@@ -250,12 +267,12 @@ export default function ElectionDetailScreen() {
           {/* Actions */}
           <View className="gap-2">
             {canVote && isActive && hasVoted && <StatusChip status="confirmed" label={t('elections.alreadyVoted')} />}
-            {canVote && isActive && !hasVoted && (
+            {canVote && isActive && !hasVoted && mayVote && (
               <Button variant="primary" onPress={() => setMode('ballot')}>
                 {t('elections.vote')}
               </Button>
             )}
-            {canNominate && isNominating && (
+            {canNominate && isNominating && mayStand && (
               <Button variant="secondary" onPress={() => setMode('nominate')}>
                 {t('elections.nominate')}
               </Button>

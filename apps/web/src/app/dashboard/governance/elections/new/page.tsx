@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { IconArrowLeft, IconPlus, IconTrash } from '@tabler/icons-react';
-import { createElection, addPosition, ElectionType } from '@/lib/api/voting';
+import { createElection, addPosition, getEligibilityTemplate, ElectionType, type EligibilityRules } from '@/lib/api/voting';
+import { EligibilityRulesEditor } from '@/components/voting/EligibilityRulesEditor';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 
 interface PositionInput {
@@ -31,6 +33,13 @@ export default function NewElectionPage() {
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [allowAbstention, setAllowAbstention] = useState(true);
   const [requiresQuorum, setRequiresQuorum] = useState(false);
+  // Who can vote and stand. Starts from the association's template, if it has one; empty means every active member (the default).
+  const [eligibilityRules, setEligibilityRules] = useState<EligibilityRules | null>(null);
+  const [rulesTouched, setRulesTouched] = useState(false);
+  const { data: template } = useQuery({ queryKey: ['eligibility-template'], queryFn: getEligibilityTemplate, staleTime: 60 * 1000 });
+  useEffect(() => {
+    if (template && !rulesTouched) setEligibilityRules(template.rules);
+  }, [template, rulesTouched]);
   const [quorumPercentage, setQuorumPercentage] = useState('');
 
   // Positions state
@@ -72,6 +81,7 @@ export default function NewElectionPage() {
       allowAbstention,
       requiresQuorum,
       quorumPercentage: requiresQuorum ? Number(quorumPercentage) : undefined,
+      eligibilityRules,
     });
   };
 
@@ -280,6 +290,14 @@ export default function NewElectionPage() {
                 />
               </div>
             )}
+          </div>
+
+          <div className="space-y-3 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Who can vote and stand</h2>
+            {template?.rules && !rulesTouched && (
+              <p className="text-sm text-teal-700 dark:text-teal-400">Starting from your association&apos;s saved rules. Change them for this election if you need to.</p>
+            )}
+            <EligibilityRulesEditor value={eligibilityRules} onChange={(r) => { setRulesTouched(true); setEligibilityRules(r); }} />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

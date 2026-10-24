@@ -77,6 +77,44 @@ describe('positions and candidates', () => {
   });
 });
 
+describe('who can vote and who can stand', () => {
+  it('asks whether I can vote or stand, and reads the rules and exceptions of an election', async () => {
+    mockGet.mockReturnValue(ok({}));
+    await electionsManageApi.getMyEligibility(4);
+    await electionsManageApi.getElectionEligibility(4);
+    expect(mockGet).toHaveBeenNthCalledWith(1, `${BASE}/elections/4/my-eligibility`);
+    expect(mockGet).toHaveBeenNthCalledWith(2, `${BASE}/elections/4/eligibility`);
+  });
+
+  it('saves the rules of an election (null clears them), and adds and removes an exception', async () => {
+    mockPut.mockReturnValue(ok({}));
+    mockPost.mockReturnValue(ok({}));
+    mockDelete.mockReturnValue(ok({}));
+    await electionsManageApi.setElectionEligibility(4, { voters: { minMembershipMonths: 6 } });
+    await electionsManageApi.setElectionEligibility(4, null);
+    await electionsManageApi.addEligibilityException(4, { memberId: 3, scope: 'VOTE', kind: 'ALLOW', reason: 'One day short' });
+    await electionsManageApi.removeEligibilityException(9);
+    expect(mockPut).toHaveBeenNthCalledWith(1, `${BASE}/elections/4/eligibility`, { rules: { voters: { minMembershipMonths: 6 } } });
+    expect(mockPut).toHaveBeenNthCalledWith(2, `${BASE}/elections/4/eligibility`, { rules: null });
+    expect(mockPost).toHaveBeenCalledWith(`${BASE}/elections/4/eligibility/exceptions`, { memberId: 3, scope: 'VOTE', kind: 'ALLOW', reason: 'One day short' });
+    expect(mockDelete).toHaveBeenCalledWith(`${BASE}/eligibility/exceptions/9`);
+  });
+
+  it("previews a rule, and reads and saves the association's template and the options", async () => {
+    mockGet.mockReturnValue(ok({}));
+    mockPost.mockReturnValue(ok({}));
+    mockPut.mockReturnValue(ok({}));
+    await electionsManageApi.previewEligibility({ voters: { categories: ['regular'] } });
+    await electionsManageApi.getEligibilityTemplate();
+    await electionsManageApi.setEligibilityTemplate(null);
+    await electionsManageApi.getEligibilityOptions();
+    expect(mockPost).toHaveBeenCalledWith(`${BASE}/eligibility/preview`, { rules: { voters: { categories: ['regular'] } } });
+    expect(mockGet).toHaveBeenCalledWith(`${BASE}/eligibility/template`);
+    expect(mockPut).toHaveBeenCalledWith(`${BASE}/eligibility/template`, { rules: null });
+    expect(mockGet).toHaveBeenCalledWith(`${BASE}/eligibility/options`);
+  });
+});
+
 describe('polls', () => {
   it('creates, changes and deletes a poll, and takes its steps', async () => {
     mockPost.mockReturnValue(ok({}));

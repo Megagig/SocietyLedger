@@ -281,6 +281,8 @@ export async function createElection(data: {
   allowAbstention?: boolean;
   requiresQuorum?: boolean;
   quorumPercentage?: number;
+  /** Who can vote and who can stand. Left out = the association's template, if it has one. */
+  eligibilityRules?: EligibilityRules | null;
 }) {
   const response = await apiPost(`${API_URL}/api/voting/elections`, data);
   if (!response.ok) {
@@ -372,6 +374,127 @@ export async function cancelElection(id: number, reason: string) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to cancel election');
+  }
+  return response.json();
+}
+
+// ==========================================
+// WHO CAN VOTE AND WHO CAN STAND
+// Optional. With no rule set every active member can vote and stand, as always.
+// ==========================================
+
+export interface MemberRule {
+  /** Members may owe at most this much on overdue charges (0 = nothing overdue). */
+  financialStanding?: { maxOverdue: number };
+  minMembershipMonths?: number;
+  categories?: string[];
+}
+export interface CandidateRule extends MemberRule {
+  mustBeVoter?: boolean;
+  maxPositions?: number;
+}
+export interface EligibilityRules {
+  voters?: MemberRule;
+  candidates?: CandidateRule;
+}
+
+export interface EligibilityResult {
+  eligible: boolean;
+  /** Plain words for the person turned away. */
+  reason: string | null;
+  code: string;
+}
+
+export interface MyEligibility {
+  hasRules: boolean;
+  vote: EligibilityResult;
+  stand: EligibilityResult;
+  requirements: { voters: string[]; candidates: string[] };
+}
+
+export interface EligibilityException {
+  id: number;
+  memberId: number;
+  scope: 'VOTE' | 'STAND';
+  kind: 'ALLOW' | 'BAR';
+  reason: string;
+  createdAt: string;
+  member: { id: number; memberId: string; firstName: string; lastName: string };
+}
+
+export interface ElectionEligibility {
+  rules: EligibilityRules | null;
+  requirements: { voters: string[]; candidates: string[] };
+  exceptions: EligibilityException[];
+}
+
+export interface EligibilityPreview {
+  activeMembers: number;
+  canVote: number;
+  canStand: number;
+  turnedAway: Array<{ memberId: number; memberNumber: string; name: string; scope: 'VOTE' | 'STAND'; reason: string }>;
+}
+
+async function eligibilityJson<T>(response: Response, fallback: string): Promise<T> {
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || fallback);
+  }
+  return (await response.json()).data as T;
+}
+
+export async function getMyEligibility(electionId: number) {
+  return eligibilityJson<MyEligibility>(await apiGet(`${API_URL}/api/voting/elections/${electionId}/my-eligibility`), 'Failed to check eligibility');
+}
+export async function getElectionEligibility(electionId: number) {
+  return eligibilityJson<ElectionEligibility>(await apiGet(`${API_URL}/api/voting/elections/${electionId}/eligibility`), 'Failed to load the rules');
+}
+export async function setElectionEligibility(electionId: number, rules: EligibilityRules | null) {
+  return eligibilityJson<ElectionEligibility>(await apiPut(`${API_URL}/api/voting/elections/${electionId}/eligibility`, { rules }), 'Failed to save the rules');
+}
+export async function addEligibilityException(electionId: number, data: { memberId: number; scope: 'VOTE' | 'STAND'; kind: 'ALLOW' | 'BAR'; reason: string }) {
+  return eligibilityJson<EligibilityException>(await apiPost(`${API_URL}/api/voting/elections/${electionId}/eligibility/exceptions`, data), 'Failed to save the exception');
+}
+export async function removeEligibilityException(exceptionId: number) {
+  return eligibilityJson<unknown>(await apiDelete(`${API_URL}/api/voting/eligibility/exceptions/${exceptionId}`), 'Failed to remove the exception');
+}
+export async function previewEligibility(rules: EligibilityRules | null) {
+  return eligibilityJson<EligibilityPreview>(await apiPost(`${API_URL}/api/voting/eligibility/preview`, { rules }), 'Failed to preview the rules');
+}
+export async function getEligibilityTemplate() {
+  return eligibilityJson<{ rules: EligibilityRules | null }>(await apiGet(`${API_URL}/api/voting/eligibility/template`), 'Failed to load the template');
+}
+export async function setEligibilityTemplate(rules: EligibilityRules | null) {
+  return eligibilityJson<{ rules: EligibilityRules | null }>(await apiPut(`${API_URL}/api/voting/eligibility/template`, { rules }), 'Failed to save the template');
+}
+export async function getEligibilityOptions() {
+  return eligibilityJson<{ categories: string[] }>(await apiGet(`${API_URL}/api/voting/eligibility/options`), 'Failed to load the options');
+}
+
+export interface ElectionProgress {
+  electionId: number;
+  title: string;
+  status: ElectionStatus;
+  votingStartDate: string;
+  votingEndDate: string;
+  eligible: number;
+  /** Members who have voted — each counted once. Never says who they voted for. */
+  voted: number;
+  turnoutPercent: number;
+  requiresQuorum: boolean;
+  quorumPercentage: number | null;
+  quorumMet: boolean;
+  positions: Array<{ positionId: number; title: string; voted: number }>;
+  timeline: Array<{ at: string; voted: number }>;
+  updatedAt: string;
+}
+
+/** Turnout while voting runs (how many have voted, never for whom). Available from the moment voting opens. */
+export async function getElectionProgress(electionId: number): Promise<{ success: boolean; data: ElectionProgress }> {
+  const response = await apiGet(`${API_URL}/api/voting/elections/${electionId}/progress`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to fetch election progress');
   }
   return response.json();
 }

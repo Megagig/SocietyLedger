@@ -53,6 +53,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     // Polls are quick association questions, so the Administrator can run them. Elections belong to the Election Committee.
     "polls.manage",
+    // The Administrator sets the association's policy on who can vote and stand, but doesn't run the elections themselves.
+    "elections.rules.manage",
     // Officers are members too: they can declare a deposit into their own savings.
     "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "system.cron.view", "system.cron.trigger",
@@ -97,5 +99,5 @@ export const ROLE_PERMISSION_MAPPING = {
   ],
   member: [...MEMBER_PERMISSIONS],
   // Chosen by the association to conduct elections, outside the officers.
-  election_committee: [...MEMBER_PERMISSIONS, ...ELECTION_COMMITTEE_PERMISSIONS]
+  election_committee: [...MEMBER_PERMISSIONS, ...ELECTION_COMMITTEE_PERMISSIONS, "elections.rules.manage"]
 } satisfies Record<string, string[]>;

@@ -5,6 +5,7 @@ import type {
   BulkCastVotePayload,
   CastVotePayload,
   ElectionDetailDTO,
+  ElectionProgressDTO,
   ElectionsListResponseDTO,
   PollDetailDTO,
   PollsListResponseDTO,
@@ -47,6 +48,11 @@ export const votingApi = {
   /** POST /voting/elections/:electionId/vote/bulk — all positions at once. */
   async bulkCastVotes(electionId: number, payload: BulkCastVotePayload): Promise<void> {
     await unwrap<undefined>(client.post(`/voting/elections/${electionId}/vote/bulk`, payload));
+  },
+
+  /** GET /voting/elections/:id/progress — turnout while voting runs (never who anyone voted for). */
+  async getProgress(electionId: number): Promise<ElectionProgressDTO> {
+    return unwrap<ElectionProgressDTO>(client.get(`/voting/elections/${electionId}/progress`));
   },
 
   /** GET /voting/polls — verified 2026-10-21. Paginated list. */

@@ -195,5 +195,10 @@ export function toPollUpdatePayload(values: PollFormValues): PollUpdatePayload {
   };
 }
 
+export const exceptionReasonSchema = z.object({
+  reason: z.string().trim().min(3, 'Say why — the reason stays on record').max(500, 'Keep it under 500 characters'),
+});
+export type ExceptionReasonValues = z.infer<typeof exceptionReasonSchema>;
+
 export const pollOptionSchema = z.object({ optionText: z.string().trim().min(1, 'Write the answer').max(500, 'Keep it under 500 characters') });
 export type PollOptionValues = z.infer<typeof pollOptionSchema>;

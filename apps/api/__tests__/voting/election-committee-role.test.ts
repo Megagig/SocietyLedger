@@ -34,6 +34,18 @@ describe('Election Committee role', () => {
     }
   });
 
+  it('the Administrator and the committee can set the rules for who votes; no one else can', () => {
+    expect(ROLE_PERMISSION_MAPPING.admin as string[]).toContain('elections.rules.manage');
+    expect(committee).toContain('elections.rules.manage');
+    for (const role of ['treasurer', 'financial_secretary', 'member'] as const) {
+      expect(ROLE_PERMISSION_MAPPING[role] as string[]).not.toContain('elections.rules.manage');
+    }
+    expect(PERMISSIONS.ELECTION_RULES).toBe('elections.rules.manage');
+    const sql = fs.readFileSync(path.join(__dirname, '../../prisma/migrations/20261031_add_election_rules_permission/migration.sql'), 'utf8');
+    expect(sql).toContain("'elections.rules.manage'");
+    expect(sql).toContain("IN ('admin', 'election_committee')");
+  });
+
   it('the data migration grants exactly the same keys', () => {
     const sql = fs.readFileSync(path.join(__dirname, '../../prisma/migrations/20261028_add_election_committee_role/migration.sql'), 'utf8');
     for (const key of ELECTION_COMMITTEE_PERMISSIONS) {

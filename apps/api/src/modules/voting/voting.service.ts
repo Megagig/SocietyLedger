@@ -8,6 +8,8 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RuleError } from '../finance/rule-error';
 import * as rules from './voting-rules';
+import { eligibilityService } from './eligibility.service';
+import { normalizeRules } from './eligibility-rules';
 import {
   CreateElectionInput,
   UpdateElectionInput,
@@ -131,6 +133,13 @@ async function addCandidate(
       throw new RuleError(bySelf ? 'You are already a candidate for this position.' : 'That member is already a candidate for this position.', 409, 'ALREADY_CANDIDATE');
     }
 
+    // The association's rules for who can stand (none by default). For a member put forward by the committee the reason names them, so
+    // the committee knows what to fix or which exception to make.
+    const standing = await eligibilityService.check(tx, associationId, election, memberId, 'STAND', true);
+    if (!standing.eligible) {
+      throw new RuleError(bySelf ? standing.reason! : `That member can't stand in this election. ${standing.reason}`, 403, 'NOT_ELIGIBLE');
+    }
+
     const include = {
       member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
       position: { select: { id: true, title: true } },
@@ -186,6 +195,10 @@ export const votingService = {
     );
     rules.assertQuorumSetting(data.requiresQuorum, data.quorumPercentage);
 
+    // Who can vote and stand: what was chosen for this election, else the association's template, else nothing (every active member).
+    // It is copied onto the election, so changing the template later never changes an election that exists.
+    const eligibilityRules = data.eligibilityRules !== undefined ? normalizeRules(data.eligibilityRules) : await eligibilityService.getTemplate(associationId);
+
     // Get eligible voter count (active members)
     const eligibleVoterCount = await prisma.member.count({
       where: { associationId, status: 'active' },
@@ -207,6 +220,7 @@ export const votingService = {
         requiresQuorum: data.requiresQuorum ?? false,
         quorumPercentage: data.requiresQuorum ? data.quorumPercentage : null,
         eligibleVoterCount,
+        ...(eligibilityRules ? { eligibilityRules: eligibilityRules as unknown as Prisma.InputJsonValue } : {}),
         createdBy: userId,
         positions: data.positions && data.positions.length > 0 ? {
           create: data.positions.map((pos, index) => ({
@@ -504,7 +518,8 @@ export const votingService = {
 
       // Results that did not reach the quorum are not published: the committee cancels and runs the election again.
       const voters = await tx.vote.groupBy({ by: ['voterId'], where: { electionId } });
-      rules.assertQuorumForPublishing(election.requiresQuorum, election.quorumPercentage, voters.length, election.eligibleVoterCount);
+      const eligible = await eligibilityService.eligibleVoterCount(tx, associationId, election, voters.map((v) => v.voterId));
+      rules.assertQuorumForPublishing(election.requiresQuorum, election.quorumPercentage, voters.length, eligible);
 
       const { count } = await tx.election.updateMany({
         where: { id: electionId, associationId, status: 'VOTING_CLOSED' },
@@ -802,6 +817,9 @@ export const votingService = {
         throw new RuleError('Only active members can vote.', 403, 'NOT_ELIGIBLE');
       }
 
+      // The association's rules for who can vote (none by default), checked now rather than from a list made earlier.
+      await eligibilityService.assertEligible(tx, associationId, election, memberId, 'VOTE');
+
       const candidate = data.candidateId
         ? await tx.candidate.findFirst({
             where: { id: data.candidateId, electionId },
@@ -982,8 +1000,9 @@ export const votingService = {
     ]);
     const abstentionsFor = (positionId: number | null) => abstentions.find((a) => a.positionId === positionId)?._count._all ?? 0;
 
-    const voterTurnout = rules.turnoutPercent(voters.length, election.eligibleVoterCount);
-    const quorumMet = rules.quorumMet(election.requiresQuorum, election.quorumPercentage, voters.length, election.eligibleVoterCount);
+    const eligible = await eligibilityService.eligibleVoterCount(prisma, associationId, election, voters.map((v) => v.voterId));
+    const voterTurnout = rules.turnoutPercent(voters.length, eligible);
+    const quorumMet = rules.quorumMet(election.requiresQuorum, election.quorumPercentage, voters.length, eligible);
 
     // Calculate results per position
     const positionResults = election.positions.map((position) => {
@@ -1034,7 +1053,7 @@ export const votingService = {
       electionTitle: election.title,
       status: election.status,
       published: election.status === 'RESULTS_PUBLISHED',
-      totalEligibleVoters: election.eligibleVoterCount,
+      totalEligibleVoters: eligible,
       totalVotesCast: voters.length,
       voterTurnout,
       requiresQuorum: election.requiresQuorum,
@@ -1579,6 +1598,63 @@ export const votingService = {
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
       take: Math.min(Math.max(limit, 1), 50),
     });
+  },
+
+  /**
+   * Turnout while voting runs, for every member: how many of the eligible members have voted and how that built up, and how many have
+   * voted on each position. It says nothing about who anyone voted for.
+   */
+  async getElectionProgress(associationId: number, electionId: number) {
+    const election = await prisma.election.findFirst({
+      where: { id: electionId, associationId },
+      select: {
+        id: true, title: true, status: true, votingStartDate: true, votingEndDate: true, eligibleVoterCount: true, eligibilityRules: true,
+        requiresQuorum: true, quorumPercentage: true,
+        positions: { select: { id: true, title: true }, orderBy: { orderNumber: 'asc' } },
+      },
+    });
+
+    if (!election) {
+      throw new Error('Election not found');
+    }
+
+    rules.assertProgressVisible(election.status);
+
+    const [voters, perPosition] = await Promise.all([
+      prisma.vote.groupBy({ by: ['voterId'], where: { electionId }, _min: { votedAt: true } }),
+      prisma.vote.groupBy({ by: ['positionId'], where: { electionId }, _count: { _all: true } }),
+    ]);
+
+    const voted = voters.length;
+    // Who can vote, counted now when the association has rules (so a member who clears an overdue charge joins it), plus anyone who voted.
+    const eligible = await eligibilityService.eligibleVoterCount(prisma, associationId, election, voters.map((v) => v.voterId));
+    const now = new Date();
+    const end = now < election.votingEndDate ? now : election.votingEndDate;
+
+    return {
+      electionId: election.id,
+      title: election.title,
+      status: election.status,
+      votingStartDate: election.votingStartDate,
+      votingEndDate: election.votingEndDate,
+      eligible,
+      voted,
+      turnoutPercent: rules.turnoutPercent(voted, eligible),
+      requiresQuorum: election.requiresQuorum,
+      quorumPercentage: election.quorumPercentage,
+      quorumMet: rules.quorumMet(election.requiresQuorum, election.quorumPercentage, voted, eligible),
+      positions: election.positions.map((p) => ({
+        positionId: p.id,
+        title: p.title,
+        voted: perPosition.find((x) => x.positionId === p.id)?._count._all ?? 0,
+      })),
+      timeline: rules.turnoutTimeline(
+        voters.map((v) => v._min.votedAt!).filter(Boolean),
+        election.votingStartDate,
+        end > election.votingStartDate ? end : election.votingStartDate,
+      ),
+      updatedAt: now.toISOString(),
+    };
   },
 
   async getActiveVotingItems(associationId: number) {

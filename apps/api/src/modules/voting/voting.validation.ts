@@ -36,6 +36,8 @@ export const createElectionSchema = z.object({
   requiresQuorum: z.boolean().default(false),
   quorumPercentage: z.number().min(0).max(100).optional().nullable(),
   positions: z.array(createPositionSchema).optional(),
+  // Who can vote and who can stand. Checked against the menu of conditions when saved; left out means the association's template, if it has one.
+  eligibilityRules: z.unknown().optional(),
 }).refine(
   (data) => {
     const votingStart = new Date(data.votingStartDate);
