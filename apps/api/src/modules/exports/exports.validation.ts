@@ -7,15 +7,15 @@ import { z } from 'zod';
 export const exportFinancialSummarySchema = z.object({
   format: z.enum(['pdf', 'excel']),
   period: z.enum(['this_month', 'last_month', 'this_quarter', 'last_quarter', 'this_year', 'last_year', 'custom']).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
   includeComparison: z.boolean().optional(),
 });
 
 export const exportMemberStatementSchema = z.object({
   format: z.enum(['pdf']),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
 });
 
 export const exportAllMembersSchema = z.object({

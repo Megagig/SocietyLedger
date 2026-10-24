@@ -1,4 +1,4 @@
-import { Banknote, Bell, CalendarDays, ChartPie, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, UserCheck, Users, Vote } from 'lucide-react-native';
+import { Banknote, Bell, CalendarDays, ChartPie, FileBarChart, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, UserCheck, Users, Vote } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -22,6 +22,7 @@ import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, useMemberStats } from '@/features/members/queries';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS } from '@/features/nigerianPayments/queries';
 import { COMMUNICATION_ACCESS } from '@/features/communication/labels';
+import { EXPORT_ANY_ACCESS, REPORTS_MODULE, REPORTS_VIEW_ACCESS } from '@/features/reports/labels';
 import { SUPPORT_STAFF_ACCESS } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
@@ -61,6 +62,10 @@ export default function ManageScreen() {
   const canFinance = useCan(FINANCE_VIEW_ACCESS);
   // Communication: announcements need `notifications.send`; texting needs an SMS permission (the hub shows only what each can open).
   const canCommunication = useCan(COMMUNICATION_ACCESS);
+  // Reports: the officer permission with the reports module on, or any export permission (files are made on the server).
+  const canReadReports = useModuleAccess(REPORTS_VIEW_ACCESS, REPORTS_MODULE);
+  const canExport = useCan(EXPORT_ANY_ACCESS);
+  const canReports = canReadReports || canExport;
   // Cooperatives: officer permission and the module on; the badge adds up everything waiting for a decision.
   const canCoop = useModuleAccess(COOP_ADMIN_ACCESS, COOP_MODULE);
   const coopWaiting = attentionCount(attention, 'savingsDeposits') + attentionCount(attention, 'loanRepayments') + attentionCount(attention, 'loanApplications');
@@ -91,7 +96,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -265,6 +270,21 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/cash' as never)}
                   testID="manage-cash"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canReports ? (
+            <Section title="Reports">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={FileBarChart} tone="primary" />}
+                  title="Reports"
+                  meta="Financial reports, member balances, aging and exports"
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/reports' as never)}
+                  testID="manage-reports"
                 />
               </ListGroup>
             </Section>

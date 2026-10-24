@@ -1,32 +1,41 @@
 ---
 title: "Collection rate"
-description: "What percentage of what's expected actually gets collected, over time and by category."
+description: "Of what you charged, how much has been paid, over time and by category."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/reports/collection-rate", "RP5"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/reports/financial-summary", "/docs/reports/income-by-category"]
+lastVerified: "2026-10-29"
+related: ["/docs/reports/drilling-into-a-figure", "/docs/reports/financial-summary", "/docs/reports/income-by-category"]
 ---
 
-Collection rate is simply what you collected divided by what you expected to collect — a single number that tells you how well billing is translating into actual money.
+Collection rate is what has been paid divided by what you charged: one number that tells you how well billing turns into money.
 
 ## How it works
 
-<Screenshot src="/images/reports/collection-rate-1.webp" alt="Collection Rate Report showing Total Expected, Total Collected, Outstanding and Collection Rate stats, a trend chart over time, and a Collection Rate by Category table" />
+<PlatformTabs>
+<PlatformTab>
+Go to <MenuPath items={["Reports", "Collection Rate"]} />. Pick a period (it starts on this year) and choose to group **by month, quarter or year**.
+</PlatformTab>
+<PlatformTab>
+Go to <MenuPath items={["Manage", "Reports", "Collection rate"]} />. Pick a period (it starts on this year) and choose **By month**, **By quarter** or **By year**.
+</PlatformTab>
+</PlatformTabs>
 
-**Total Expected**, **Total Collected** and **Outstanding** give the raw numbers; **Collection Rate** is the percentage. **Collection Trend Over Time** charts it by period, and **Collection Rate by Category** breaks it down by what the charge was for.
+**Charged**, **Paid so far** and **Still owed** give the raw numbers, and **Collection rate** is the percentage. The chart shows the rate for each month, quarter or year, and a table breaks it down by category.
 
-### Worked example
+A charge belongs to the period it was **charged** in, and counts as paid whenever it was paid. Cancelled and forgiven charges are not counted. A custom date range is used exactly as you pick it.
 
-This period, ₦3,636,500 was expected and ₦3,145,000 was collected — a collection rate of 86.5%. Monthly Dues alone came in a little higher, at 87.4%.
+## Open any figure
+
+Select **Charged** to see every charge, **Still owed** to see the unpaid ones, a bar or row to see the charges raised in that month, or a category to see its charges. See [Opening a figure](/docs/reports/drilling-into-a-figure).
 
 ## Why it matters
 
-A falling collection rate is an early warning sign, even before overdue amounts pile up — it's worth checking alongside [aging analysis](/docs/reports/aging-analysis) if the trend turns down.
+A falling collection rate is an early warning, even before overdue amounts pile up. If it turns down, check [aging analysis](/docs/reports/aging-analysis) next.
 
 ## What you can do
 
-- [Financial summary report](/docs/reports/financial-summary) — the same rate, alongside full income detail.
+- [Financial summary report](/docs/reports/financial-summary) — the same rate, alongside the money received.
 - [Income by category](/docs/reports/income-by-category) — see which category is dragging the rate down.

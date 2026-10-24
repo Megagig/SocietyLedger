@@ -1,3 +1,5 @@
+import { cashApi } from './cash';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 jest.mock('../client', () => ({
@@ -6,8 +8,6 @@ jest.mock('../client', () => ({
     post: (...args: unknown[]) => mockPost(...args),
   },
 }));
-
-import { cashApi } from './cash';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 

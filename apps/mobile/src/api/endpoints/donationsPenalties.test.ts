@@ -1,3 +1,5 @@
+import { donationsPenaltiesApi } from './donationsPenalties';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockPatch = jest.fn();
@@ -10,8 +12,6 @@ jest.mock('../client', () => ({
     delete: (...a: unknown[]) => mockDelete(...a),
   },
 }));
-
-import { donationsPenaltiesApi } from './donationsPenalties';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 const BASE = '/finance/advanced';

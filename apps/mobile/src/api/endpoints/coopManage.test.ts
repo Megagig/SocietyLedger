@@ -1,11 +1,11 @@
+import { coopManageApi } from './coopManage';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockPut = jest.fn();
 jest.mock('../client', () => ({
   client: { get: (...a: unknown[]) => mockGet(...a), post: (...a: unknown[]) => mockPost(...a), put: (...a: unknown[]) => mockPut(...a) },
 }));
-
-import { coopManageApi } from './coopManage';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 const BASE = '/cooperatives';

@@ -1,7 +1,7 @@
+import { supportApi } from './support';
+
 const mockPost = jest.fn();
 jest.mock('../client', () => ({ client: { post: (...args: unknown[]) => mockPost(...args), get: jest.fn() } }));
-
-import { supportApi } from './support';
 
 const ok = (data: unknown, extra: Record<string, unknown> = {}) => Promise.resolve({ data: { success: true, data, ...extra } });
 

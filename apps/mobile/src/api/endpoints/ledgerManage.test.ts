@@ -1,3 +1,5 @@
+import { ledgerManageApi } from './ledgerManage';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 jest.mock('../client', () => ({
@@ -6,8 +8,6 @@ jest.mock('../client', () => ({
     post: (...a: unknown[]) => mockPost(...a),
   },
 }));
-
-import { ledgerManageApi } from './ledgerManage';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 

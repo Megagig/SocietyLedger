@@ -1,4 +1,5 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { format, isPast, isToday } from 'date-fns';
 
@@ -47,13 +48,17 @@ export function UpcomingObligationsList({ summaryQuery }: Props) {
 
 function ObligationRow({ item }: { item: FinanceSummaryDTO['upcomingPayments'][number] }) {
   const { color } = useThemeTokens();
+  const router = useRouter();
   const balance = toDecimal(item.balance);
   const dueDate = new Date(item.dueDate);
   const overdue = isPast(dueDate) && !isToday(dueDate);
   const dueColor = overdue ? color.danger : isToday(dueDate) ? color.warning : color.textSecondary;
 
   return (
-    <View
+    <Pressable
+      onPress={() => router.push(`/(app)/(tabs)/money/transaction/${item.id}` as never)}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.category.name}, due ${format(dueDate, 'MMM d, yyyy')}. Opens the charge.`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -82,6 +87,6 @@ function ObligationRow({ item }: { item: FinanceSummaryDTO['upcomingPayments'][n
       <Text variant="label" style={{ color: overdue ? color.danger : color.text }}>
         {formatMoney(balance)}
       </Text>
-    </View>
+    </Pressable>
   );
 }

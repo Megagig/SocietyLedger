@@ -1541,6 +1541,16 @@ Built from existing primitives; nothing new in `components/ui`.
 - **Screens:** hub with three `StatTile`s and grouped rows; composer and quick text show reach and cost live (debounced) and confirm with `ConfirmSheet` (non-destructive) before sending; campaign detail polls while sending.
 - **Rule shown in the UI:** nothing is sent without showing who it reaches, who it misses and what it costs; a short balance turns the Send button off.
 
+## Mobile Phase 6 — Reports & exports (F6.7, 2026-10-29)
+
+- **`DrillFigure`** (`features/reports/components/Drill.tsx`): a tinted-border card with a caption label, an amount in `h3` (or a plain count), an optional caption, and a small chevron when it can be opened; a figure of nothing is plain and not a button. Used on every report, the hub, Finance and the officer Home.
+- **`ChargeRow` / `PaymentRow`** (`GroupedRow` shell): member over category and number, the amount still owed or paid at the right with a `StatusChip`, and the dates underneath. A payment for a cancelled charge says so.
+- **`PeriodPicker`:** a scrolling row of `FilterChip`s (this month … last year, Choose dates); Choose dates opens a card with two `DateField`s and a Show button, and nothing is asked until both dates are picked.
+- **Drill list screens** (`charges.tsx`, `payments.tsx`): a totals card scrolling with the list (charged, paid, still owed / money received), then `PagedList` rows; a member's list has a ledger icon in the header.
+- **Charts:** `PieChart` donut and `BarChart` from `react-native-gifted-charts`, colours from the theme's chart tokens, with a tappable legend or bars; the aging screen uses a segmented bar.
+- **Exports:** a Make-a-file / History `SegmentedControl`; each file is a card with its own button; the share sheet opens as soon as a file is ready; an expired file shows an Expired chip instead of Share.
+- **Rule shown in the UI:** a number is never a dead end — it opens the records that add up to it, and the list says how many and how much, so the two can be compared.
+
 ---
 
 ## Retired

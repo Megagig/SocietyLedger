@@ -30,6 +30,9 @@ import {
   IconFileSpreadsheet,
 } from '@tabler/icons-react';
 import { reportsApi } from '@/lib/api/reports';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { chargesHref, paymentsHref } from '@/lib/reports-drill';
+
 import { exportsApi } from '@/lib/api/exports';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { notifications } from '@mantine/notifications';
@@ -155,10 +158,8 @@ export default function MemberBalancesPage() {
     );
   }
 
-  const totalOutstanding = report.members.reduce(
-    (sum: number, m: any) => sum + parseFloat(m.balance),
-    0
-  );
+  // Over every member in the list, not just this page (the page used to add up only the rows it showed)
+  const totalOutstanding = Number(report.totals?.balance ?? 0);
 
   return (
     <div>
@@ -214,7 +215,9 @@ export default function MemberBalancesPage() {
               Total Outstanding
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
-              {formatCurrency(totalOutstanding)}
+              <DrillLink href={totalOutstanding > 0 && !debouncedSearch && status !== 'overdue' ? chargesHref({ scope: 'owing' }, 'Everything still owed') : undefined} label="Total outstanding">
+                {formatCurrency(totalOutstanding)}
+              </DrillLink>
             </Text>
           </Stack>
         </Card>
@@ -294,7 +297,9 @@ export default function MemberBalancesPage() {
                   <div>
                     <Text size="xs" c="dimmed">Balance</Text>
                     <Text size="sm" fw={600} c={parseFloat(member.balance) > 0 ? 'orange' : 'gray'}>
-                      {formatCurrency(member.balance)}
+                      <DrillLink href={parseFloat(member.balance) > 0 ? chargesHref({ scope: 'owing', memberId: member.memberId }, `${member.firstName} ${member.lastName}`) : undefined}>
+                        {formatCurrency(member.balance)}
+                      </DrillLink>
                     </Text>
                   </div>
                 </div>
@@ -390,7 +395,9 @@ export default function MemberBalancesPage() {
                       {formatCurrency(member.totalPaid)}
                     </Table.Td>
                     <Table.Td ta="right" fw={600} c={parseFloat(member.balance) > 0 ? 'orange' : 'gray'}>
-                      {formatCurrency(member.balance)}
+                      <DrillLink href={parseFloat(member.balance) > 0 ? chargesHref({ scope: 'owing', memberId: member.memberId }, `${member.firstName} ${member.lastName}`) : undefined}>
+                        {formatCurrency(member.balance)}
+                      </DrillLink>
                     </Table.Td>
                     <Table.Td ta="center">
                       <Group gap="xs" justify="center">

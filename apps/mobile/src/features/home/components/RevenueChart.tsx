@@ -1,9 +1,12 @@
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { BarChart } from 'react-native-gifted-charts';
 import type { UseQueryResult } from '@tanstack/react-query';
 
 import { Text } from '@/components/ui/Text';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { paymentsHref } from '@/features/reports/drill';
+import { useReportsAccess } from '@/features/reports/queries';
 import { insertThousands } from '@/lib/money';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { DashboardOverviewDTO } from '@/api/endpoints/dashboard';
@@ -15,6 +18,8 @@ type Props = {
 /** Revenue Analytics bar chart — 6 months of revenue trend data. */
 export function RevenueChart({ dashboardQuery }: Props) {
   const { color, chart } = useThemeTokens();
+  const router = useRouter();
+  const canReports = useReportsAccess();
 
   if (dashboardQuery.isPending) {
     return <Skeleton width="100%" height={180} radius="lg" />;
@@ -48,6 +53,11 @@ export function RevenueChart({ dashboardQuery }: Props) {
     label: item.month.slice(0, 3),
     frontColor: chart[0],
     topLabelComponent: undefined,
+    // A bar opens the payments that came in during its month
+    onPress:
+      canReports && item.startDate && item.endDate
+        ? () => router.push(paymentsHref({ startDate: item.startDate, endDate: item.endDate }, `Received in ${item.month} ${item.year}`) as never)
+        : undefined,
   }));
 
   const maxValue = Math.max(...barData.map((d) => d.value), 1);

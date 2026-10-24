@@ -11,7 +11,7 @@ export type ManualPaymentMethod = 'cash' | 'bank_transfer' | 'card' | 'mobile_mo
 
 export type FinanceDashboardDTO = {
   overview: { totalMembers: number; activeCategories: number; overdueTransactions: number };
-  thisMonth: { transactionsCreated: number; transactionsAmount: MoneyValue; paymentsReceived: number; paymentsAmount: MoneyValue };
+  thisMonth: { startDate?: string; endDate?: string; transactionsCreated: number; transactionsAmount: MoneyValue; paymentsReceived: number; paymentsAmount: MoneyValue };
   totals: { totalOutstanding: MoneyValue; totalCollected: MoneyValue };
   recentPayments: {
     id: number;
@@ -19,6 +19,7 @@ export type FinanceDashboardDTO = {
     paymentDate: string;
     paymentMethod: string | null;
     receiptNumber: string | null;
+    transactionId?: number;
     transaction: { member: { firstName: string; lastName: string } | null; category: { name: string; type: string } | null };
   }[];
 };

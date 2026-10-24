@@ -1,10 +1,15 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Users, TrendingUp, Clock, AlertTriangle } from 'lucide-react-native';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/Text';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { chargesHref, paymentsHref } from '@/features/reports/drill';
+import { useReportsAccess } from '@/features/reports/queries';
+import { MEMBERS_VIEW_ACCESS } from '@/features/members/queries';
+import { useCan } from '@/hooks/useCan';
 import { formatMoney, toDecimal } from '@/lib/money';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { DashboardOverviewDTO } from '@/api/endpoints/dashboard';
@@ -19,12 +24,16 @@ type StatTileProps = {
   icon: LucideIcon;
   iconColor: string;
   iconBg: string;
+  /** Opens the records behind the figure. A tile with nothing to open is shown plainly. */
+  onPress?: () => void;
 };
 
-function OfficerStatTile({ label, value, icon: Icon, iconColor, iconBg }: StatTileProps) {
+function OfficerStatTile({ label, value, icon: Icon, iconColor, iconBg, onPress }: StatTileProps) {
   const { color } = useThemeTokens();
+  const Wrapper = onPress ? Pressable : View;
   return (
-    <View
+    <Wrapper
+      {...(onPress ? { onPress, accessibilityRole: 'button' as const, accessibilityLabel: `${label}: ${value}. Opens the list.` } : {})}
       style={{
         flex: 1,
         backgroundColor: color.surfaceRaised,
@@ -56,7 +65,7 @@ function OfficerStatTile({ label, value, icon: Icon, iconColor, iconBg }: StatTi
           {value}
         </Text>
       </View>
-    </View>
+    </Wrapper>
   );
 }
 
@@ -64,6 +73,9 @@ function OfficerStatTile({ label, value, icon: Icon, iconColor, iconBg }: StatTi
  * Pending Payments, Overdue Payments. */
 export function OfficerStatRow({ dashboardQuery }: Props) {
   const { color } = useThemeTokens();
+  const router = useRouter();
+  const canMembers = useCan(MEMBERS_VIEW_ACCESS);
+  const canReports = useReportsAccess();
 
   if (dashboardQuery.isPending) {
     return (
@@ -91,6 +103,7 @@ export function OfficerStatRow({ dashboardQuery }: Props) {
         <OfficerStatTile
           label="Total Members"
           value={d.memberStats.total.toString()}
+          onPress={canMembers ? () => router.push('/(app)/(tabs)/manage/members' as never) : undefined}
           icon={Users}
           iconColor={color.info}
           iconBg={color.infoSoft}
@@ -98,6 +111,7 @@ export function OfficerStatRow({ dashboardQuery }: Props) {
         <OfficerStatTile
           label="Total Revenue"
           value={formatMoney(totalRevenue)}
+          onPress={canReports ? () => router.push(paymentsHref({}, 'Everything received') as never) : undefined}
           icon={TrendingUp}
           iconColor={color.success}
           iconBg={color.successSoft}
@@ -107,6 +121,7 @@ export function OfficerStatRow({ dashboardQuery }: Props) {
         <OfficerStatTile
           label="Pending Payments"
           value={d.financialSummary.pendingPayments.toString()}
+          onPress={canReports ? () => router.push(chargesHref({ scope: 'aging', bucket: 'notYetDue' }, 'Owed, not yet due') as never) : undefined}
           icon={Clock}
           iconColor={color.warning}
           iconBg={color.warningSoft}
@@ -114,6 +129,7 @@ export function OfficerStatRow({ dashboardQuery }: Props) {
         <OfficerStatTile
           label="Overdue Payments"
           value={d.financialSummary.overduePayments.toString()}
+          onPress={canReports ? () => router.push(chargesHref({ scope: 'overdue' }, 'Overdue charges') as never) : undefined}
           icon={AlertTriangle}
           iconColor={color.danger}
           iconBg={color.dangerSoft}

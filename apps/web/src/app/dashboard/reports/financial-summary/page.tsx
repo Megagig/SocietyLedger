@@ -28,6 +28,9 @@ import {
 } from '@tabler/icons-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { reportsApi } from '@/lib/api/reports';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { chargesHref, paymentsHref } from '@/lib/reports-drill';
+
 import { exportsApi } from '@/lib/api/exports';
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
@@ -126,9 +129,12 @@ export default function FinancialSummaryPage() {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
+
+  // Every figure below opens the records that add up to it
+  const range = report ? { startDate: report.period.startDate, endDate: report.period.endDate } : undefined;
 
   const formatPercentage = (value: number) => {
     const sign = value > 0 ? '+' : '';
@@ -267,10 +273,12 @@ export default function FinancialSummaryPage() {
         <Card withBorder padding="md" className="p-3 sm:p-4">
           <Stack gap="xs">
             <Text size="xs" className="sm:text-sm" c="dimmed">
-              Total Income
+              Money Received
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="teal">
-              {formatCurrency(report.income.total)}
+              <DrillLink href={Number(report.income.total) > 0 && range ? paymentsHref(range, 'Money received') : undefined} label="Money received">
+                {formatCurrency(report.income.total)}
+              </DrillLink>
             </Text>
             {report.comparison && (
               <Group gap="xs">
@@ -286,10 +294,12 @@ export default function FinancialSummaryPage() {
         <Card withBorder padding="md" className="p-3 sm:p-4">
           <Stack gap="xs">
             <Text size="xs" className="sm:text-sm" c="dimmed">
-              Total Expected
+              Charged in this period
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
-              {formatCurrency(report.collections.expected)}
+              <DrillLink href={Number(report.collections.expected) > 0 && range ? chargesHref({ scope: 'raised', ...range }, 'Charges raised') : undefined} label="Charged in this period">
+                {formatCurrency(report.collections.expected)}
+              </DrillLink>
             </Text>
           </Stack>
         </Card>
@@ -297,10 +307,12 @@ export default function FinancialSummaryPage() {
         <Card withBorder padding="md" className="p-3 sm:p-4">
           <Stack gap="xs">
             <Text size="xs" className="sm:text-sm" c="dimmed">
-              Total Collected
+              Paid on those charges
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="green">
-              {formatCurrency(report.collections.collected)}
+              <DrillLink href={Number(report.collections.collected) > 0 && range ? chargesHref({ scope: 'raised', ...range }, 'Paid so far, charge by charge') : undefined} label="Paid on those charges">
+                {formatCurrency(report.collections.collected)}
+              </DrillLink>
             </Text>
             {report.comparison && (
               <Group gap="xs">
@@ -316,10 +328,15 @@ export default function FinancialSummaryPage() {
         <Card withBorder padding="md" className="p-3 sm:p-4">
           <Stack gap="xs">
             <Text size="xs" className="sm:text-sm" c="dimmed">
-              Collection Rate
+              Still owed on them
             </Text>
-            <Text size="lg" className="text-base sm:text-xl" fw={700} c="blue">
-              {report.collections.collectionRate.toFixed(1)}%
+            <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
+              <DrillLink href={Number(report.collections.outstanding) > 0 && range ? chargesHref({ scope: 'raised', ...range, owingOnly: true }, 'Still owed') : undefined} label="Still owed on them">
+                {formatCurrency(report.collections.outstanding)}
+              </DrillLink>
+            </Text>
+            <Text size="xs" c="dimmed">
+              Collection rate {report.collections.collectionRate.toFixed(1)}%
             </Text>
           </Stack>
         </Card>
@@ -397,9 +414,13 @@ export default function FinancialSummaryPage() {
                     {cat.categoryType}
                   </Badge>
                 </div>
-                <Text fw={600}>{formatCurrency(cat.amount)}</Text>
+                <Text fw={600}>
+                  <DrillLink href={range ? paymentsHref({ ...range, categoryId: cat.categoryId }, cat.categoryName) : undefined} label={cat.categoryName}>
+                    {formatCurrency(cat.amount)}
+                  </DrillLink>
+                </Text>
               </div>
-              <Text size="xs" c="dimmed">{cat.transactionCount} transactions</Text>
+              <Text size="xs" c="dimmed">{cat.transactionCount} payments</Text>
             </div>
           ))}
         </div>
@@ -412,7 +433,7 @@ export default function FinancialSummaryPage() {
                 <Table.Th>Category</Table.Th>
                 <Table.Th>Type</Table.Th>
                 <Table.Th ta="right">Amount</Table.Th>
-                <Table.Th ta="right">Transactions</Table.Th>
+                <Table.Th ta="right">Payments</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -425,7 +446,9 @@ export default function FinancialSummaryPage() {
                     </Badge>
                   </Table.Td>
                   <Table.Td ta="right" fw={600}>
-                    {formatCurrency(cat.amount)}
+                    <DrillLink href={range ? paymentsHref({ ...range, categoryId: cat.categoryId }, cat.categoryName) : undefined} label={cat.categoryName}>
+                      {formatCurrency(cat.amount)}
+                    </DrillLink>
                   </Table.Td>
                   <Table.Td ta="right">{cat.transactionCount}</Table.Td>
                 </Table.Tr>

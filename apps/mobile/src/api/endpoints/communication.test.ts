@@ -1,3 +1,5 @@
+import { communicationApi } from './communication';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockPut = jest.fn();
@@ -10,8 +12,6 @@ jest.mock('../client', () => ({
     delete: (...a: unknown[]) => mockDelete(...a),
   },
 }));
-
-import { communicationApi } from './communication';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 

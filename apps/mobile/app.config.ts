@@ -48,6 +48,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     '@react-native-community/datetimepicker',
     'expo-web-browser',
+    'expo-sharing',
     'expo-secure-store',
     [
       'expo-image-picker',

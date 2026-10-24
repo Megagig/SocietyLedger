@@ -176,6 +176,12 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 - Receipts generated client-side: HTML template → `Print.printToFileAsync` → share.
 - **Confirmed at F1.5 (`FileAttachField` built — image-picker/document-picker only; file-system/sharing/print not installed yet, no upload/download exists before F1.7/F2.6):** `ImagePicker.requestCameraPermissionsAsync()`/`requestMediaLibraryPermissionsAsync()` before `launchCameraAsync`/`launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 })` (SDK 58's `mediaTypes` takes an array of strings, not the old `MediaTypeOptions` enum). `DocumentPicker.getDocumentAsync({ type: allowedTypes, copyToCacheDirectory: true })` for Files. The max-2000px resize is **not implemented** — `expo-image-manipulator` is still not pinned (this row's own "if needed" already allowed deferring it); `quality: 0.7` alone is the only compression applied so far.
 
+**F6.7 (owner-approved, 2026-10-29): `expo-file-system ~58.0.11` and `expo-sharing ~58.0.20` are installed. `expo-print` is still not** — the server already makes the PDFs and Excel files, so the phone only downloads and shares them.
+- Download with the existing axios `client` (`responseType: 'arraybuffer'`), so the access token, tenant header and refresh all apply, then write the bytes with the new File API: `new File(Paths.cache, safeFilename(name))`, `file.create()`, `await file.write(new Uint8Array(bytes))`, then `Sharing.shareAsync(file.uri, { mimeType, dialogTitle })`. Check `Sharing.isAvailableAsync()` first. Code: `src/features/reports/share.ts`.
+- Files go in the **cache** directory, which the system clears when it needs space; nothing is kept for ever, and a file is downloaded again the next time it is shared. File names pass through `safeFilename` (letters, numbers, dots, dashes; no leading dots).
+- `expo-sharing` is added to `plugins` in `app.config.ts`. An expired export answers `410 EXPORT_EXPIRED` and is shown as Expired.
+- Not covered by Jest (native modules); the helper is tiny and the pure parts (`safeFilename`, `isExpired`, `fileSizeLabel`) are tested.
+
 ## expo-image
 - `<Image source={{ uri }} contentFit="cover" transition={150} placeholder={blurhash?} />`; association logos `contentFit="contain"`.
 - Relative upload paths resolved with `resolveAssetUrl(path)` (prefix API origin).

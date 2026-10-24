@@ -219,6 +219,7 @@ export const sections: SectionDef[] = [
     pages: [
       { slug: 'index', title: 'Reports & exports', type: 'overview', audience: ['officer'], platforms: ['web', 'mobile'], covers: [] },
       { slug: 'finding-the-report-you-need', title: 'Finding the report you need', type: 'concept', audience: ['officer'], platforms: ['web', 'mobile'], covers: [] },
+      { slug: 'drilling-into-a-figure', title: 'Opening a figure to see what makes it up', type: 'concept', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/reports/charges', '/dashboard/reports/payments', 'RP1'] },
       { slug: 'association-dashboard', title: 'The association dashboard', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard', 'H2'] },
       { slug: 'financial-summary', title: 'Financial summary report', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/reports/financial-summary', 'RP2'] },
       { slug: 'member-balances', title: 'Member balances report', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['RP3'] },

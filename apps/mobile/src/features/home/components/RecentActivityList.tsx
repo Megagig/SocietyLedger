@@ -1,4 +1,5 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
@@ -79,10 +80,14 @@ export function RecentActivityList({ summaryQuery }: Props) {
 
 function ActivityRow({ item }: { item: FinanceSummaryDTO['recentTransactions'][number] }) {
   const { color } = useThemeTokens();
+  const router = useRouter();
   const amount = toDecimal(item.amount);
 
   return (
-    <View
+    <Pressable
+      onPress={() => router.push(`/(app)/(tabs)/money/transaction/${item.id}` as never)}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.category.name}. Opens the charge.`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -109,6 +114,6 @@ function ActivityRow({ item }: { item: FinanceSummaryDTO['recentTransactions'][n
         </Text>
         <StatusBadge status={item.status} />
       </View>
-    </View>
+    </Pressable>
   );
 }

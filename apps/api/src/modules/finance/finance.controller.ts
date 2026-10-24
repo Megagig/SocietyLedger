@@ -1,3 +1,5 @@
+import { COUNTED_CHARGE, periodRange } from '../reports/report-rules';
+import { generateAgingAnalysis } from '../reports/reports-core.service';
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
@@ -1687,11 +1689,12 @@ export const financeController = {
           SELECT fc.type, COUNT(t.id)::int as count, COALESCE(SUM(t.amount), 0) as total
           FROM transactions t
           JOIN financial_categories fc ON t.category_id = fc.id
-          WHERE t.association_id = ${associationId} AND t.is_voided = false
+          WHERE t.association_id = ${associationId} AND t.is_voided = false AND t.status <> 'waived'
           GROUP BY fc.type
         ` as Promise<Array<{ type: string; count: number; total: Decimal }>>,
+        // What is billed leaves out forgiven (waived) charges, the same as the reports do
         prisma.transaction.aggregate({
-          where: { associationId, isVoided: false },
+          where: { associationId, isVoided: false, status: { not: 'waived' } },
           _sum: { amount: true },
           _count: { id: true },
         }),
@@ -1699,7 +1702,7 @@ export const financeController = {
 
       // Get total payments
       const totalPayments = await prisma.payment.aggregate({
-        where: { associationId, transaction: { isVoided: false } },
+        where: { associationId, transaction: { isVoided: false, status: { not: 'waived' } } },
         _sum: { amountPaid: true },
       });
 
@@ -2265,22 +2268,21 @@ export const financeController = {
       }
 
       // Get date range (default: current month)
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      // This month in Lagos, and charges that are not voided or forgiven: the same rules as the reports and their lists
+      const { startDate: startOfMonth, endDate: endOfMonth } = periodRange('this_month');
 
       const [
         totalMembers,
         activeCategories,
         monthlyTransactions,
         monthlyPayments,
-        overdueTransactions,
+        owing,
         recentPayments,
       ] = await Promise.all([
         prisma.member.count({ where: { associationId, status: 'active' } }),
         prisma.financialCategory.count({ where: { associationId, isActive: true } }),
         prisma.transaction.aggregate({
-          where: { associationId, isVoided: false, createdAt: { gte: startOfMonth, lte: endOfMonth } },
+          where: { associationId, ...COUNTED_CHARGE, createdAt: { gte: startOfMonth, lte: endOfMonth } },
           _sum: { amount: true },
           _count: { id: true },
         }),
@@ -2289,9 +2291,7 @@ export const financeController = {
           _sum: { amountPaid: true },
           _count: { id: true },
         }),
-        prisma.transaction.count({
-          where: { associationId, ...overdueWhere() },
-        }),
+        generateAgingAnalysis(associationId, new Date(), false),
         prisma.payment.findMany({
           where: { associationId },
           take: 5,
@@ -2307,18 +2307,10 @@ export const financeController = {
         }),
       ]);
 
-      // Get total outstanding — scoped to the SAME pending/overdue/partial transactions,
-      // not every payment ever made (G22: summing all-time payments against only the
-      // still-outstanding transactions' total produced a large negative figure)
-      const allTransactions = await prisma.transaction.aggregate({
-        where: { associationId, isVoided: false, status: { in: ['pending', 'overdue', 'partial'] } },
-        _sum: { amount: true },
-      });
-
-      const allPayments = await prisma.payment.aggregate({
-        where: { associationId, transaction: { isVoided: false, status: { in: ['pending', 'overdue', 'partial'] } } },
-        _sum: { amountPaid: true },
-      });
+      // What is still owed, and how many charges are overdue, come from the aging report's own code, so the lists behind them add up
+      const { current, days31to60, days61to90, over90 } = owing.buckets;
+      const overdueTransactions = current.count + days31to60.count + days61to90.count + over90.count;
+      const allPayments = await prisma.payment.aggregate({ where: { associationId }, _sum: { amountPaid: true } });
 
       return res.status(200).json({
         success: true,
@@ -2329,13 +2321,15 @@ export const financeController = {
             overdueTransactions,
           },
           thisMonth: {
+            startDate: startOfMonth,
+            endDate: endOfMonth,
             transactionsCreated: monthlyTransactions._count.id,
             transactionsAmount: monthlyTransactions._sum.amount || 0,
             paymentsReceived: monthlyPayments._count.id,
             paymentsAmount: monthlyPayments._sum.amountPaid || 0,
           },
           totals: {
-            totalOutstanding: (allTransactions._sum.amount || new Decimal(0)).minus(allPayments._sum.amountPaid || 0),
+            totalOutstanding: owing.summary.totalOutstanding,
             totalCollected: allPayments._sum.amountPaid || 0,
           },
           recentPayments,

@@ -1,10 +1,13 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { Text } from '@/components/ui/Text';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/Avatar';
+import { chargeHref } from '@/features/reports/drill';
+import { useReportsAccess } from '@/features/reports/queries';
 import { formatMoney, toDecimal } from '@/lib/money';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { DashboardOverviewDTO, RecentTransaction } from '@/api/endpoints/dashboard';
@@ -61,6 +64,8 @@ export function AssociationRecentTransactions({ dashboardQuery }: Props) {
 
 function TransactionRow({ tx, isLast }: { tx: RecentTransaction; isLast: boolean }) {
   const { color } = useThemeTokens();
+  const router = useRouter();
+  const canOpen = useReportsAccess();
   const amount = toDecimal(tx.amount);
   const s = tx.status.toLowerCase();
 
@@ -83,7 +88,11 @@ function TransactionRow({ tx, isLast }: { tx: RecentTransaction; isLast: boolean
           : color.surfaceSunken;
 
   return (
-    <View
+    <Pressable
+      onPress={canOpen ? () => router.push(chargeHref(tx.id) as never) : undefined}
+      disabled={!canOpen}
+      accessibilityRole={canOpen ? 'button' : undefined}
+      accessibilityLabel={`${tx.memberName}, ${tx.category}, ${tx.status}. Opens the charge.`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -109,6 +118,6 @@ function TransactionRow({ tx, isLast }: { tx: RecentTransaction; isLast: boolean
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }

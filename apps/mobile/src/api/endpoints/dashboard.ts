@@ -26,6 +26,9 @@ export type RevenueTrendItem = {
   year: number;
   revenue: string;
   expected: string;
+  /** The month's first and last moment, so a bar opens the payments in it. */
+  startDate?: string;
+  endDate?: string;
 };
 
 export type PaymentMethodItem = {

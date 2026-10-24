@@ -1,16 +1,16 @@
 ---
 title: "Member balances report"
-description: "Every member's outstanding balance, sorted and searchable."
+description: "What each member has been charged, paid and still owes, on the web or on your phone."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/reports/member-balances", "RP3"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/finance/member-ledgers", "/docs/reports/aging-analysis"]
+lastVerified: "2026-10-29"
+related: ["/docs/reports/drilling-into-a-figure", "/docs/finance/member-ledgers", "/docs/reports/aging-analysis"]
 ---
 
-See every member's dues, payments and remaining balance in one sortable list.
+See every member's charges, payments and remaining balance in one searchable, sortable list.
 
 ## Before you start
 
@@ -18,15 +18,33 @@ You need the **view finances** permission, which Administrators, Treasurers and 
 
 ## Read the report
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Reports", "Member Balances"]} />.</Step>
-<Step>Search by name, or sort by balance, dues or last payment.</Step>
+<Step>Search by name, ID or email, filter to members who owe or who have overdue charges, and sort by balance, name or last payment.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Reports", "Member balances"]} />.</Step>
+<Step>Search, filter (**All members**, **Owe money**, **Overdue**) and sort with the chips.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/reports/member-balances-1.webp" alt="Member Balances Report with Total Members, Total Outstanding and Members with Overdue stats, and a table of members with their dues, paid amount and balance" />
+## What the figures mean
 
-**Total Outstanding** and **Members with Overdue** summarise the whole association; each row shows one member's dues, what they've paid, their balance, and when they last paid.
+The figures at the top add up **every member in the list**, not just the page you are looking at. A member's **balance** is what they were charged minus what they paid. Cancelled and forgiven charges are not counted, so a member is never shown as owing money that was cancelled or forgiven.
+
+Members who are active, inactive or suspended are listed, because they still owe what they owe. A member who was disabled is left out, and so is their debt.
+
+A charge is **overdue** when it still has something to pay and its due date has passed.
+
+## Open any figure
+
+Select a member's balance to see the charges they owe, and from there any single charge or their whole ledger. Select **Still owed** to see every unpaid charge, or **Overdue charges** to see the overdue ones. See [Opening a figure](/docs/reports/drilling-into-a-figure).
 
 ## What happens next
 
-Select **Export Excel** to download the full list — see [Exporting to PDF and Excel](/docs/reports/exporting-reports).
+To get the full list as a spreadsheet, see [Exporting to PDF and Excel](/docs/reports/exporting-reports).

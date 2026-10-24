@@ -30,6 +30,9 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { reportsApi } from '@/lib/api/reports';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { chargesHref, paymentsHref } from '@/lib/reports-drill';
+
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import Link from 'next/link';
@@ -63,7 +66,7 @@ export default function CollectionRatePage() {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -142,7 +145,9 @@ export default function CollectionRatePage() {
               Total Expected
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
-              {formatCurrency(report.overall.expected)}
+              <DrillLink href={Number(report.overall.expected) > 0 ? chargesHref({ scope: 'raised', startDate: report.period.startDate, endDate: report.period.endDate }, 'Charges raised') : undefined} label="Expected">
+                {formatCurrency(report.overall.expected)}
+              </DrillLink>
             </Text>
           </Stack>
         </Card>
@@ -153,7 +158,9 @@ export default function CollectionRatePage() {
               Total Collected
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="green">
-              {formatCurrency(report.overall.collected)}
+              <DrillLink href={Number(report.overall.collected) > 0 ? chargesHref({ scope: 'raised', startDate: report.period.startDate, endDate: report.period.endDate }, 'Paid so far, charge by charge') : undefined} label="Collected">
+                {formatCurrency(report.overall.collected)}
+              </DrillLink>
             </Text>
           </Stack>
         </Card>
@@ -164,7 +171,9 @@ export default function CollectionRatePage() {
               Outstanding
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
-              {formatCurrency(report.overall.outstanding)}
+              <DrillLink href={Number(report.overall.outstanding) > 0 ? chargesHref({ scope: 'raised', startDate: report.period.startDate, endDate: report.period.endDate, owingOnly: true }, 'Still owed') : undefined} label="Outstanding">
+                {formatCurrency(report.overall.outstanding)}
+              </DrillLink>
             </Text>
           </Stack>
         </Card>
@@ -292,7 +301,11 @@ export default function CollectionRatePage() {
                   <Table.Td>
                     {item.month} {item.year}
                   </Table.Td>
-                  <Table.Td ta="right">{formatCurrency(item.expected)}</Table.Td>
+                  <Table.Td ta="right">
+                    <DrillLink href={item.startDate && Number(item.expected) > 0 ? chargesHref({ scope: 'raised', startDate: item.startDate, endDate: item.endDate }, `${item.month} ${item.year}`) : undefined}>
+                      {formatCurrency(item.expected)}
+                    </DrillLink>
+                  </Table.Td>
                   <Table.Td ta="right" c="green" fw={600}>
                     {formatCurrency(item.collected)}
                   </Table.Td>
@@ -382,7 +395,11 @@ export default function CollectionRatePage() {
                       {cat.categoryType}
                     </Badge>
                   </Table.Td>
-                  <Table.Td ta="right">{formatCurrency(cat.expected)}</Table.Td>
+                  <Table.Td ta="right">
+                    <DrillLink href={Number(cat.expected) > 0 ? chargesHref({ scope: 'raised', startDate: report.period.startDate, endDate: report.period.endDate, categoryId: cat.categoryId }, cat.categoryName) : undefined}>
+                      {formatCurrency(cat.expected)}
+                    </DrillLink>
+                  </Table.Td>
                   <Table.Td ta="right" c="green" fw={600}>
                     {formatCurrency(cat.collected)}
                   </Table.Td>

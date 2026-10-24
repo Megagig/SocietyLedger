@@ -20,6 +20,9 @@ import {
 import { IconArrowLeft, IconClock, IconAlertCircle } from '@tabler/icons-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { reportsApi } from '@/lib/api/reports';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { chargesHref, paymentsHref } from '@/lib/reports-drill';
+
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import Link from 'next/link';
 
@@ -37,7 +40,7 @@ export default function AgingAnalysisPage() {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -50,6 +53,7 @@ export default function AgingAnalysisPage() {
   };
 
   const BUCKET_COLORS = {
+    notYetDue: '#8884D8',
     current: '#00C49F',
     days31to60: '#FFBB28',
     days61to90: '#FF8042',
@@ -96,25 +100,31 @@ export default function AgingAnalysisPage() {
   // Prepare chart data
   const chartData = [
     {
-      name: '0-30 days',
+      name: 'Not yet due',
+      amount: parseFloat(report.buckets.notYetDue?.amount ?? 0),
+      count: report.buckets.notYetDue?.count ?? 0,
+      color: BUCKET_COLORS.notYetDue,
+    },
+    {
+      name: '1-30 days late',
       amount: parseFloat(report.buckets.current.amount),
       count: report.buckets.current.count,
       color: BUCKET_COLORS.current,
     },
     {
-      name: '31-60 days',
+      name: '31-60 days late',
       amount: parseFloat(report.buckets.days31to60.amount),
       count: report.buckets.days31to60.count,
       color: BUCKET_COLORS.days31to60,
     },
     {
-      name: '61-90 days',
+      name: '61-90 days late',
       amount: parseFloat(report.buckets.days61to90.amount),
       count: report.buckets.days61to90.count,
       color: BUCKET_COLORS.days61to90,
     },
     {
-      name: '90+ days',
+      name: '90+ days late',
       amount: parseFloat(report.buckets.over90.amount),
       count: report.buckets.over90.count,
       color: BUCKET_COLORS.over90,
@@ -151,7 +161,9 @@ export default function AgingAnalysisPage() {
               Total Outstanding
             </Text>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="orange">
-              {formatCurrency(report.summary.totalOutstanding)}
+              <DrillLink href={parseFloat(report.summary.totalOutstanding) > 0 ? chargesHref({ scope: 'owing' }, 'Everything still owed') : undefined} label="Total outstanding">
+                {formatCurrency(report.summary.totalOutstanding)}
+              </DrillLink>
             </Text>
           </Stack>
         </Card>
@@ -210,6 +222,7 @@ export default function AgingAnalysisPage() {
         {Object.entries(report.buckets).map(([key, bucket]: [string, any]) => {
           const percentage = totalAmount > 0 ? (parseFloat(bucket.amount) / totalAmount) * 100 : 0;
           const colorMap: Record<string, string> = {
+            notYetDue: 'gray',
             current: 'teal',
             days31to60: 'yellow',
             days61to90: 'orange',
@@ -226,7 +239,12 @@ export default function AgingAnalysisPage() {
               </Group>
 
               <Text size="lg" className="text-base sm:text-xl" fw={700} c={colorMap[key]} mb="xs">
-                {formatCurrency(bucket.amount)}
+                <DrillLink
+                  href={bucket.count > 0 ? chargesHref({ scope: 'aging', bucket: key as any, asOfDate: report.asOfDate }, bucket.range) : undefined}
+                  label={bucket.range}
+                >
+                  {formatCurrency(bucket.amount)}
+                </DrillLink>
               </Text>
 
               <Progress value={percentage} color={colorMap[key]} size="sm" mb="xs" />
@@ -250,6 +268,7 @@ export default function AgingAnalysisPage() {
             if (bucket.members.length === 0) return null;
 
             const colorMap: Record<string, string> = {
+              notYetDue: 'gray',
               current: 'teal',
               days31to60: 'yellow',
               days61to90: 'orange',
@@ -289,7 +308,12 @@ export default function AgingAnalysisPage() {
                         <Table.Tr key={member.memberId}>
                           <Table.Td>{member.memberName}</Table.Td>
                           <Table.Td ta="right" fw={600}>
-                            {formatCurrency(member.amount)}
+                            <DrillLink
+                              href={chargesHref({ scope: 'aging', bucket: key as any, asOfDate: report.asOfDate, memberId: member.memberId }, member.memberName)}
+                              label={member.memberName}
+                            >
+                              {formatCurrency(member.amount)}
+                            </DrillLink>
                           </Table.Td>
                           <Table.Td ta="right">
                             <Badge color={colorMap[key]} size="sm">

@@ -1,3 +1,4 @@
+import { periodRange } from '../reports/report-rules';
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
@@ -84,8 +85,9 @@ export const memberFinanceController = {
       }
 
       // Get all transactions for this member
+      // A cancelled (voided) or forgiven (waived) charge is not owed, so it is not in what the member sees as owed
       const transactions = await prisma.transaction.findMany({
-        where: { memberId: member.id, associationId },
+        where: { memberId: member.id, associationId, isVoided: false, status: { not: 'waived' } },
         include: {
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { amountPaid: true, paymentDate: true } },
@@ -114,7 +116,7 @@ export const memberFinanceController = {
       const donationsSummary = { total: new Decimal(0), count: 0 };
 
       const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthStart = periodRange('this_month', {}, now).startDate;
 
       transactions.forEach(txn => {
         const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));

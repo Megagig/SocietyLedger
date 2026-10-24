@@ -1,3 +1,5 @@
+import { bankManageApi } from './bankManage';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockPatch = jest.fn();
@@ -10,8 +12,6 @@ jest.mock('../client', () => ({
     delete: (...args: unknown[]) => mockDelete(...args),
   },
 }));
-
-import { bankManageApi } from './bankManage';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 

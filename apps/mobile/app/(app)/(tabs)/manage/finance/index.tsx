@@ -14,6 +14,8 @@ import { IconCircle } from '@/components/ui/IconCircle';
 import { Money } from '@/components/ui/Money';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SummaryHero } from '@/components/ui/SummaryHero';
+import { DrillFigure } from '@/features/reports/components/Drill';
+import { chargeHref, chargesHref, paymentsHref } from '@/features/reports/drill';
 import { Text } from '@/components/ui/Text';
 import { CHARGE_KIND_LABELS, collectionRate, PAYMENT_METHOD_LABELS } from '@/features/finance/labels';
 import { CHARGE_CREATE_ACCESS, FINANCE_VIEW_ACCESS, PAYMENT_RECORD_ACCESS, useChargeStats, useFinanceDashboard } from '@/features/finance/queries';
@@ -104,6 +106,39 @@ export default function FinanceOverviewScreen() {
             </View>
           ) : null}
 
+          {data.thisMonth.startDate && data.thisMonth.endDate ? (
+            <Section title="This month, opened up">
+              <View className="gap-3" testID="finance-drill">
+                <View className="flex-row gap-3">
+                  <DrillFigure
+                    label="Received"
+                    value={Number(data.thisMonth.paymentsAmount)}
+                    tone="success"
+                    caption={`${data.thisMonth.paymentsReceived} payments`}
+                    onPress={() => router.push(paymentsHref({ startDate: data.thisMonth.startDate, endDate: data.thisMonth.endDate }, 'Received this month') as never)}
+                    testID="finance-received"
+                  />
+                  <DrillFigure
+                    label="Billed"
+                    value={Number(data.thisMonth.transactionsAmount)}
+                    caption={`${data.thisMonth.transactionsCreated} charges`}
+                    onPress={() => router.push(chargesHref({ scope: 'raised', startDate: data.thisMonth.startDate, endDate: data.thisMonth.endDate }, 'Billed this month') as never)}
+                    testID="finance-billed"
+                  />
+                </View>
+                <View className="flex-row gap-3">
+                  <DrillFigure
+                    label="Still owed (all time)"
+                    value={Math.max(0, outstanding)}
+                    tone="warning"
+                    onPress={() => router.push(chargesHref({ scope: 'owing' }, 'Everything still owed') as never)}
+                    testID="finance-owed"
+                  />
+                </View>
+              </View>
+            </Section>
+          ) : null}
+
           <Section title="Do">
             <ListGroup>
               <ListItem
@@ -166,7 +201,14 @@ export default function FinanceOverviewScreen() {
                 />
                 <View className="flex-1 gap-2">
                   {byType.map((t, i) => (
-                    <View key={t.kind} className="flex-row items-center gap-2">
+                    <Pressable
+                      key={t.kind}
+                      onPress={() => router.push(chargesHref({ scope: 'raised', categoryType: t.kind as ChargeKind }, CHARGE_KIND_LABELS[t.kind as ChargeKind] ?? t.kind) as never)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${CHARGE_KIND_LABELS[t.kind as ChargeKind] ?? t.kind}. Opens the charges.`}
+                      className="flex-row items-center gap-2"
+                      testID={`finance-kind-${t.kind}`}
+                    >
                       <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: chart[i % chart.length] }} />
                       <Text variant="caption" className="flex-1" numberOfLines={1}>
                         {CHARGE_KIND_LABELS[t.kind as ChargeKind] ?? t.kind}
@@ -174,7 +216,7 @@ export default function FinanceOverviewScreen() {
                       <Text variant="caption" tone="secondary">
                         {Math.round((t.amount / typeTotal) * 100)}%
                       </Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </View>
               </View>
@@ -194,6 +236,8 @@ export default function FinanceOverviewScreen() {
                     title={p.transaction.member ? `${p.transaction.member.firstName} ${p.transaction.member.lastName}`.trim() : 'Member'}
                     meta={`${p.transaction.category?.name ?? 'Payment'} · ${PAYMENT_METHOD_LABELS[p.paymentMethod as ManualPaymentMethod] ?? p.paymentMethod ?? 'Method not stated'} · ${formatDate(p.paymentDate, 'short')}`}
                     trailing={<Money value={p.amountPaid} size="body-strong" />}
+                    showChevron={!!p.transactionId}
+                    onPress={p.transactionId ? () => router.push(chargeHref(p.transactionId as number) as never) : undefined}
                   />
                 ))}
               </ListGroup>

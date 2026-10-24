@@ -3,6 +3,7 @@
   "icon": "ChartColumn",
   "pages": [
     "finding-the-report-you-need",
+    "drilling-into-a-figure",
     "association-dashboard",
     "financial-summary",
     "member-balances",

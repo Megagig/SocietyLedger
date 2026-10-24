@@ -8,7 +8,8 @@
 
 import { prisma } from '../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
-import { isOverdue } from '../finance/overdue-rules';
+import { COUNTED_CHARGE, monthRange, periodRange } from '../reports/report-rules';
+import { generateAgingAnalysis } from '../reports/reports-core.service';
 import {
   DashboardOverview,
   MemberStats,
@@ -23,27 +24,6 @@ import {
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
-
-/**
- * Get the start of the current month
- */
-function getStartOfMonth(date: Date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-/**
- * Get the start of the previous month
- */
-function getStartOfPreviousMonth(date: Date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth() - 1, 1);
-}
-
-/**
- * Get the end of the previous month
- */
-function getEndOfPreviousMonth(date: Date = new Date()): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 0, 23, 59, 59);
-}
 
 /**
  * Calculate percentage change between two values
@@ -96,7 +76,7 @@ export const dashboardService = {
    * TASK-DASH-002: Get member statistics
    */
   async getMemberStats(associationId: number): Promise<MemberStats> {
-    const startOfMonth = getStartOfMonth();
+    const startOfMonth = periodRange('this_month').startDate;
 
     // Get counts by status
     const statusCounts = await prisma.member.groupBy({
@@ -109,6 +89,7 @@ export const dashboardService = {
     const newThisMonth = await prisma.member.count({
       where: {
         associationId,
+        ...COUNTED_CHARGE,
         createdAt: { gte: startOfMonth },
       },
     });
@@ -133,174 +114,92 @@ export const dashboardService = {
 
   /**
    * TASK-DASH-003: Get financial summary
+   *
+   * Every figure here is worked out the way the reports and the lists behind them work it out (see reports/report-rules.ts), so a
+   * tile on Home and the list it opens always add up to the same number:
+   *  - inflow is every payment ever received; this month's is every payment dated in this month (Lagos);
+   *  - outstanding is what is still owed on charges that are not voided, not waived and not for a disabled member;
+   *  - overdue is the owing charges past their due date, pending the owing ones not yet due.
    */
   async getFinancialSummary(associationId: number): Promise<FinancialSummary> {
-    const startOfMonth = getStartOfMonth();
+    const month = periodRange('this_month');
 
-    // Get all transactions with their payments
-    const transactions = await prisma.transaction.findMany({
-      where: { associationId, isVoided: false }, // a voided charge was cancelled: neither owed nor late
-      include: {
-        payments: { select: { amountPaid: true, paymentDate: true } },
-      },
-    });
+    const [allPaid, thisMonthPaid, expected, owing] = await Promise.all([
+      prisma.payment.aggregate({ where: { associationId }, _sum: { amountPaid: true } }),
+      prisma.payment.aggregate({ where: { associationId, paymentDate: { gte: month.startDate, lte: month.endDate } }, _sum: { amountPaid: true } }),
+      prisma.transaction.aggregate({ where: { associationId, ...COUNTED_CHARGE }, _sum: { amount: true } }),
+      generateAgingAnalysis(associationId, new Date(), false),
+    ]);
 
-    let totalExpected = new Decimal(0);
-    let totalCollected = new Decimal(0);
-    let thisMonthInflow = new Decimal(0);
-    let pendingPayments = 0;
-    let overduePayments = 0;
-
-    transactions.forEach(txn => {
-      totalExpected = totalExpected.plus(txn.amount);
-      
-      txn.payments.forEach(payment => {
-        totalCollected = totalCollected.plus(payment.amountPaid);
-        
-        // Check if payment was this month
-        if (payment.paymentDate >= startOfMonth) {
-          thisMonthInflow = thisMonthInflow.plus(payment.amountPaid);
-        }
-      });
-
-      // Count pending and overdue
-      // Overdue is decided from the due date, not the stored status (which only changes when the overdue job runs).
-      if (isOverdue(txn)) {
-        overduePayments++;
-      } else if (txn.status === 'pending' || txn.status === 'partial') {
-        pendingPayments++;
-      }
-    });
-
-    const outstandingDues = totalExpected.minus(totalCollected);
-    const collectionRate = totalExpected.isZero() 
-      ? 0 
-      : totalCollected.dividedBy(totalExpected).times(100).toNumber();
+    const totalCollected = new Decimal(allPaid._sum.amountPaid || 0);
+    const totalExpected = new Decimal(expected._sum.amount || 0);
+    const { notYetDue, current, days31to60, days61to90, over90 } = owing.buckets;
+    const collectionRate = totalExpected.isZero() ? 0 : totalCollected.dividedBy(totalExpected).times(100).toNumber();
 
     return {
       totalInflow: totalCollected,
-      totalOutflow: new Decimal(0), // Expenses not tracked in current model
+      totalOutflow: new Decimal(0), // Expenses are kept in Accounting, not here
       currentBalance: totalCollected, // Simplified - actual balance would need expense tracking
-      outstandingDues,
-      pendingPayments,
-      overduePayments,
-      thisMonthInflow,
-      collectionRate: Math.round(collectionRate * 10) / 10,
+      outstandingDues: owing.summary.totalOutstanding,
+      pendingPayments: notYetDue.count,
+      overduePayments: current.count + days31to60.count + days61to90.count + over90.count,
+      thisMonthInflow: new Decimal(thisMonthPaid._sum.amountPaid || 0),
+      collectionRate: Math.min(100, Math.round(collectionRate * 10) / 10),
     };
   },
 
   /**
    * TASK-DASH-004: Get revenue trend (last 6 months)
+   * Revenue is the money that came in during each month (Lagos), expected is what was charged in it. Each month carries its dates so
+   * its bar can open the payments in it.
    */
   async getRevenueTrend(associationId: number, months: number = 6): Promise<RevenueTrendItem[]> {
-    const now = new Date();
     const result: RevenueTrendItem[] = [];
-
-    // Generate data for each of the last N months
     for (let i = months - 1; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
-
-      // Get transactions created in this month
-      const transactions = await prisma.transaction.findMany({
-        where: {
-          associationId,
-          createdAt: { gte: monthStart, lte: monthEnd },
-        },
-        include: {
-          payments: {
-            where: { paymentDate: { gte: monthStart, lte: monthEnd } },
-            select: { amountPaid: true },
-          },
-        },
-      });
-
-      let expected = new Decimal(0);
-      let revenue = new Decimal(0);
-
-      transactions.forEach(txn => {
-        expected = expected.plus(txn.amount);
-        txn.payments.forEach(p => {
-          revenue = revenue.plus(p.amountPaid);
-        });
-      });
-
-      // Also get payments from previous transactions that were paid this month
-      const additionalPayments = await prisma.payment.findMany({
-        where: {
-          transaction: { associationId },
-          paymentDate: { gte: monthStart, lte: monthEnd },
-        },
-        select: { amountPaid: true },
-      });
-
-      // Add payments not already counted
-      const additionalRevenue = additionalPayments.reduce(
-        (sum, p) => sum.plus(p.amountPaid),
-        new Decimal(0)
-      );
-
+      const m = monthRange(i);
+      const [paid, raised] = await Promise.all([
+        prisma.payment.aggregate({ where: { associationId, paymentDate: { gte: m.startDate, lte: m.endDate } }, _sum: { amountPaid: true } }),
+        prisma.transaction.aggregate({ where: { associationId, ...COUNTED_CHARGE, createdAt: { gte: m.startDate, lte: m.endDate } }, _sum: { amount: true } }),
+      ]);
       result.push({
-        month: monthStart.toLocaleString('default', { month: 'short' }),
-        year: monthStart.getFullYear(),
-        revenue: revenue.plus(additionalRevenue.minus(revenue).greaterThan(0) ? additionalRevenue.minus(revenue) : new Decimal(0)),
-        expected,
+        month: m.shortLabel,
+        year: m.year,
+        revenue: new Decimal(paid._sum.amountPaid || 0),
+        expected: new Decimal(raised._sum.amount || 0),
+        startDate: m.startDate,
+        endDate: m.endDate,
       });
     }
-
     return result;
   },
 
-
   /**
    * TASK-DASH-005: Get payment methods distribution
+   * Every payment is counted, including those recorded without a method (shown as "Not recorded"), so the slices add up to all the
+   * money received and each slice can open its payments.
    */
   async getPaymentMethods(associationId: number): Promise<PaymentMethodItem[]> {
-    // Get payments grouped by method
     const payments = await prisma.payment.groupBy({
       by: ['paymentMethod'],
-      where: {
-        transaction: { associationId },
-      },
+      where: { associationId },
       _count: { id: true },
       _sum: { amountPaid: true },
     });
 
-    // Calculate total for percentages
-    const totalAmount = payments.reduce(
-      (sum, p) => sum.plus(p._sum.amountPaid || 0),
-      new Decimal(0)
-    );
+    const totalAmount = payments.reduce((sum, p) => sum.plus(p._sum.amountPaid || 0), new Decimal(0));
 
-    // Map to response format
-    const result: PaymentMethodItem[] = payments
-      .filter(p => p.paymentMethod !== null)
-      .map(p => {
-        const method = p.paymentMethod as string;
-        const config = PAYMENT_METHOD_CONFIG[method] || { 
-          name: method, 
-          color: '#6b7280' 
-        };
-        const amount = new Decimal(p._sum.amountPaid || 0);
-        const percentage = totalAmount.isZero() 
-          ? 0 
-          : amount.dividedBy(totalAmount).times(100).toNumber();
+    const result: PaymentMethodItem[] = payments.map((p) => {
+      const method = p.paymentMethod ?? 'unspecified';
+      const config = p.paymentMethod ? PAYMENT_METHOD_CONFIG[method] || { name: method, color: '#6b7280' } : { name: 'Not recorded', color: '#6b7280' };
+      const amount = new Decimal(p._sum.amountPaid || 0);
+      const percentage = totalAmount.isZero() ? 0 : amount.dividedBy(totalAmount).times(100).toNumber();
+      return { method, name: config.name, count: p._count.id, amount, percentage: Math.round(percentage), color: config.color };
+    });
 
-        return {
-          method,
-          name: config.name,
-          count: p._count.id,
-          amount,
-          percentage: Math.round(percentage),
-          color: config.color,
-        };
-      });
-
-    // Sort by amount descending
     result.sort((a, b) => b.amount.comparedTo(a.amount));
-
     return result;
   },
+
 
   /**
    * TASK-DASH-006: Get recent transactions
@@ -340,9 +239,9 @@ export const dashboardService = {
    * TASK-DASH-007: Get quick stats with month-over-month comparison
    */
   async getQuickStats(associationId: number): Promise<QuickStats> {
-    const startOfMonth = getStartOfMonth();
-    const startOfPrevMonth = getStartOfPreviousMonth();
-    const endOfPrevMonth = getEndOfPreviousMonth();
+    const startOfMonth = periodRange('this_month').startDate;
+    const startOfPrevMonth = periodRange('last_month').startDate;
+    const endOfPrevMonth = periodRange('last_month').endDate;
 
     // Current month active members
     const currentActiveMembers = await prisma.member.count({
@@ -397,6 +296,7 @@ export const dashboardService = {
     const prevMonthTransactions = await prisma.transaction.aggregate({
       where: {
         associationId,
+        ...COUNTED_CHARGE,
         createdAt: { gte: startOfPrevMonth, lte: endOfPrevMonth },
       },
       _sum: { amount: true },

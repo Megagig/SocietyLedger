@@ -190,6 +190,16 @@ export const DOCS_LINKS: Record<string, string> = {
   '/dashboard/communications/history': '/docs/communication/sms-history',
   '/dashboard/communications/credits': '/docs/communication/buying-sms-credits',
 
+  // Reports and exports for officers on mobile (RP1–RP7) and the web drill-down lists.
+  '/dashboard/reports/charges': '/docs/reports/drilling-into-a-figure',
+  '/dashboard/reports/payments': '/docs/reports/drilling-into-a-figure',
+  RP2: '/docs/reports/financial-summary',
+  RP3: '/docs/reports/member-balances',
+  RP4: '/docs/reports/aging-analysis',
+  RP5: '/docs/reports/collection-rate',
+  RP6: '/docs/reports/income-by-category',
+  RP7: '/docs/reports/exporting-reports',
+
   '/dashboard/settings/roles': '/docs/settings/custom-roles',
   ST8: '/docs/settings/custom-roles',
 

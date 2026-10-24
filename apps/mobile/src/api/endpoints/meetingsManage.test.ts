@@ -1,3 +1,5 @@
+import { meetingsManageApi } from './meetingsManage';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockPatch = jest.fn();
@@ -12,8 +14,6 @@ jest.mock('../client', () => ({
     delete: (...a: unknown[]) => mockDelete(...a),
   },
 }));
-
-import { meetingsManageApi } from './meetingsManage';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 

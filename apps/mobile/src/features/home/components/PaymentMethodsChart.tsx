@@ -1,9 +1,12 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { PieChart } from 'react-native-gifted-charts';
 import type { UseQueryResult } from '@tanstack/react-query';
 
 import { Text } from '@/components/ui/Text';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { paymentsHref } from '@/features/reports/drill';
+import { useReportsAccess } from '@/features/reports/queries';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { DashboardOverviewDTO } from '@/api/endpoints/dashboard';
 
@@ -14,6 +17,8 @@ type Props = {
 /** Payment Methods donut chart with legend. */
 export function PaymentMethodsChart({ dashboardQuery }: Props) {
   const { color, chart } = useThemeTokens();
+  const router = useRouter();
+  const canReports = useReportsAccess();
 
   if (dashboardQuery.isPending) {
     return <Skeleton width="100%" height={180} radius="lg" />;
@@ -47,6 +52,8 @@ export function PaymentMethodsChart({ dashboardQuery }: Props) {
     color: item.color || chart[i % chart.length],
     text: `${Math.round(item.percentage)}%`,
     label: item.name,
+    // A slice and its legend row open the payments made this way
+    onPress: canReports ? () => router.push(paymentsHref({ paymentMethod: item.method }, `Paid by ${item.name}`) as never) : undefined,
   }));
 
   return (
@@ -79,7 +86,14 @@ export function PaymentMethodsChart({ dashboardQuery }: Props) {
         {/* Legend */}
         <View style={{ flex: 1, gap: 8 }}>
           {pieData.map((item, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Pressable
+              key={i}
+              onPress={item.onPress}
+              disabled={!item.onPress}
+              accessibilityRole={item.onPress ? 'button' : undefined}
+              accessibilityLabel={`${item.label}, ${Math.round(item.value)} percent. Opens the payments.`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            >
               <View
                 style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: item.color }}
               />
@@ -89,7 +103,7 @@ export function PaymentMethodsChart({ dashboardQuery }: Props) {
               <Text variant="caption" tone="secondary">
                 {Math.round(item.value)}%
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>
