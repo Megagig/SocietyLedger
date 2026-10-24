@@ -1,4 +1,4 @@
-import { Banknote, Bell, CalendarDays, ChartPie, FileBarChart, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, UserCheck, Users, Vote } from 'lucide-react-native';
+import { Banknote, Bell, CalendarDays, ChartPie, FileBarChart, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, Settings, UserCheck, Users, Vote } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -23,6 +23,7 @@ import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, use
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS } from '@/features/nigerianPayments/queries';
 import { COMMUNICATION_ACCESS } from '@/features/communication/labels';
 import { EXPORT_ANY_ACCESS, REPORTS_MODULE, REPORTS_VIEW_ACCESS } from '@/features/reports/labels';
+import { SETTINGS_HUB_ACCESS } from '@/features/settings/labels';
 import { SUPPORT_STAFF_ACCESS } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
@@ -47,6 +48,8 @@ export default function ManageScreen() {
     }, [queryClient, tenantKey]),
   );
   const canSupport = useCan(SUPPORT_STAFF_ACCESS);
+  // Settings: any settings, roles or audit permission (each screen inside checks its own).
+  const canSettings = useCan(SETTINGS_HUB_ACCESS);
   const canMembers = useCan(MEMBERS_VIEW_ACCESS);
   const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
   const canInvite = useCan(MEMBERS_INVITE_ACCESS);
@@ -96,7 +99,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canSettings || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -300,6 +303,21 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/communication' as never)}
                   testID="manage-communication"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canSettings ? (
+            <Section title="Settings">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={Settings} tone="primary" />}
+                  title="Settings"
+                  meta="Profile, payments, reminders, access and your plan"
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/settings' as never)}
+                  testID="manage-settings"
                 />
               </ListGroup>
             </Section>

@@ -202,6 +202,20 @@ export const DOCS_LINKS: Record<string, string> = {
   RP6: '/docs/reports/income-by-category',
   RP7: '/docs/reports/exporting-reports',
 
+  // Association settings on the web and mobile (ST1–ST6). ST10 (subscription) has no entry on purpose: mobile never links into plan-billing docs.
+  '/dashboard/settings': '/docs/settings',
+  ST1: '/docs/settings',
+  '/dashboard/settings/association': '/docs/settings/association-profile',
+  ST2: '/docs/settings/association-profile',
+  '/dashboard/settings/financial': '/docs/settings/financial-settings',
+  ST3: '/docs/settings/financial-settings',
+  '/dashboard/settings/payments': '/docs/settings/payment-settings',
+  ST4: '/docs/settings/payment-settings',
+  '/dashboard/settings/notifications': '/docs/settings/notification-settings',
+  ST5: '/docs/settings/notification-settings',
+  '/dashboard/settings/members-access': '/docs/settings/members-and-access',
+  ST6: '/docs/settings/members-and-access',
+
   '/dashboard/settings/roles': '/docs/settings/custom-roles',
   ST8: '/docs/settings/custom-roles',
 

@@ -1,48 +1,50 @@
-# Memory — Mobile Phase 5 (Officer essentials) built, reviewed and fixed
+# Memory — Mobile Phase 6 (Officer advanced): F6.3, F6.6, F6.7, F6.8 built
 
-Last updated: 2026-10-25
+Last updated: 2026-10-29
 
 ## What was built
 
-Phase 5 (F5.1–F5.8, plus F5.5b cash collections and lodgments) is built on API, mobile, web and docs, reviewed with `/review`, and every finding fixed except the ones under Open questions. Per-feature detail is in `context/progress-tracker.md` (Phase 5 rows, "Phase 5 review fixes", "Amounts in full…", "Donation pledges can be paid…") and `context/ui-registry.md` — not repeated here.
+Phase 6 is built on API, mobile, web and docs, apart from the points under Open questions. Per-feature detail (bugs fixed, files, tests, deploy notes) is in `context/progress-tracker.md` (rows F6.3, F6.6, F6.7, F6.8) and `context/ui-registry.md`, so it is not repeated here. F6.1 to F6.5 were done before this session; F6.1 to F6.4 are committed.
 
 Work of this session, in order:
-- **F5.1 Manage hub & Home — Association:** one permission- and module-aware call `GET /dashboard/attention` (`apps/api/src/modules/dashboard/attention.service.ts`) feeds the "Needs your attention" list (mobile Home → Association, web dashboard card) and every Manage-hub badge. Also fixed the dashboard's overdue count (now by due date) and excluded voided charges.
-- **Phase 5 review fixes:** `/dashboard/overview` now needs `ledger.view` (it had no permission check); reconciliation can be decided once; bank transfers keep `recorded_by` (migration `20261025_add_bank_transfer_recorded_by`) so the recorder can't verify their own; undo-delete restores payments and donation records; dashboard cache is 1 minute and cleared on proof verify / reconciliation / undo; production startup logs a loud error when `MINIO_PUBLIC_ENDPOINT` is missing; web lint 0 errors (98 fixed); every web `prompt()` replaced by `hooks/usePrompt`; old web transfer list/record pages redirect to the one Bank transfers page; Manage hub render test; D7.2 officer docs done.
-- **Money always in full on mobile:** `formatMoney` never abbreviates (₦10,000.00, never ₦10k); the `compact` option was removed everywhere, including chart axes.
-- **Donation pledges (/recover):** `GET /members/me/donations` returns `amountPaid`, `balance`, `isPledge`, `dueDate`; My Donations (mobile + web) counts only paid money as "donated" and shows "Pledged, still to pay"; a pledge opens the pay screen (online or bank transfer). Paystack/Nomba `initialize` now refuse a charge that isn't the caller's (`payments/charge-ownership.ts`).
+- **F6.3 elections and polls admin:** an Election Committee role and its screens; live voting turnout for all members (turnout only, never who is ahead); optional configurable voting and candidacy eligibility rules (per election plus an association template; default behaviour unchanged).
+- **F6.6 announcements and SMS:** one announcement with an audience and ticked channels, kept as a record; SMS credits reserved before sending, failed texts refunded once, background sends with progress; a "Don't send me text messages" opt-out; mobile CM1–CM6 and a rebuilt web announcements page. The SMS webhook now follows Termii's real format: `POST /webhooks/termii`, signed in `X-Termii-Signature` (HMAC-SHA512 of the raw body, key `TERMII_WEBHOOK_SECRET` or else `TERMII_API_KEY`).
+- **F6.7 reports and exports:** mobile RP1–RP7, plus the rule that every figure is drillable to the last record (`GET /reports/charges` and `/reports/payments`, web `/dashboard/reports/charges` and `/payments`). Reports are live and never cached. Home, Finance overview and member Home tiles were wired to open their records. Added `expo-file-system` and `expo-sharing`; `expo-print` was deliberately not added. A shared period dropdown and an `OptionDropdown` replaced sideways chip rows on report screens.
+- **F6.8 reconciliation (PY8):** server-side statement parsing (CSV and Excel, any bank layout, preview and column mapping remembered per account), line fingerprints so nothing imports twice, ranked suggestions, one-to-one matches that use the bank line's own amount, and a second officer confirms. Mobile Manage → Payments → Reconciliation; the four web pages were rebuilt; direct web sidebar links were added at the very end.
 
 ## Decisions made
 
-- Build every feature at parity on web AND mobile; fix API/platform loopholes found; update the docs site, `progress-tracker.md` and `ui-registry.md` after each feature; ask before adding any library.
-- Charts stay on `react-native-gifted-charts` (victory-native was never installed; architecture, build plan and library docs updated).
-- Money is written in full everywhere (saved as a feedback memory too).
-- Manage hub / attention rows for cooperatives, welfare, voting, accounting, reports and communications are NOT added until their mobile screens exist (Phase 6+), so nothing links nowhere. Loan/savings/welfare queues are counted by the API and shown on web only.
-- A user can't verify what they recorded themselves (proofs and now bank transfers); a one-officer association can't self-verify.
+- **Money is always shown in full** (₦10,000.00, never 10k), including chart axes. Web report pages and the dashboard formatter now show two decimals.
+- **Counted money rules shared everywhere** (`reports/report-rules.ts`): a charge counts as owed only if it is not voided, not waived, and the member is not disabled. Periods and months are cut in Lagos time (UTC+1). Overdue means the due date has passed on an open charge. Money received means every payment dated in the period.
+- **Nothing is recorded until a second officer confirms** (matches, cash, welfare): whoever proposes cannot confirm. A bank line pays one charge only; confirmed matches are not reversible (void the payment instead).
+- **Drill-down is a standing rule:** a figure and the list behind it are worked out by the same filters, and the list's total equals the figure.
+- **PDF and old .xls statements are refused**; the file type is judged by contents and name.
+- **Library rule:** ask before adding a library, then record it in `context/library-docs.md`. `expo-sharing` is a native module: it is imported lazily inside `share.ts`, so an older development build still opens and only Share asks for the new build.
 
 ## Problems solved
 
-- Signed receipt links must point at an address the phone can reach (`MINIO_PUBLIC_ENDPOINT` in production; dev follows the PC's LAN IP).
-- Bash heredocs and long inline node scripts break on quotes: write script files with the Write tool, use function replacers with `String.replace`, never a bare `cat >`.
-- `jest.mock` factories may only use variables whose names start with `mock`; Jest can't load reanimated/gorhom, so mock `Skeleton`/`Screen` etc. in component tests.
-- Upload failures with `ECONNREFUSED 127.0.0.1:9000` mean the local MinIO container is stopped: `docker start societyledger-minio` (it exited with code 255 after a Docker/PC restart; two other projects' MinIO containers are running and may hold port 9000).
+- **Metro "Unable to resolve expo-sharing":** a stale Metro file map, not a missing package. The fix is to stop Metro and run `npx expo start -c`.
+- **Home Association overview went blank:** a charge filter slipped into the member count in `dashboard.service.ts`, so `/dashboard/overview` failed with a database error. A regression test now guards it.
+- **Heredocs and regexes in the Bash tool collapse backslashes and backticks:** use the Write tool for scripts, or the Edit tool for patches. Never run `prisma format`.
+- **Web reconciliation and statement pages read response shapes the API never returned**, and the statement import never worked. They were rebuilt on a corrected `nigerian-payments.ts` client.
 
 ## Current state
 
-- Typecheck clean on API, mobile and web; lint 0 errors on all three. API 397 tests pass excluding the two server-dependent multi-tenancy suites; mobile 93 suites / 472 pass; docs checks pass (211 pages, 449 links).
-- **Nothing in Phase 5 has been run on a real phone or in a browser** (the attendance tap-and-rollback and the longest amounts in narrow stat tiles especially).
-- The API must be restarted and the migration applied (`pnpm prisma migrate deploy`) for the latest changes.
-- **Local receipt uploads currently fail** because `societyledger-minio` is stopped.
+- **Verified:** API 817 tests pass (excluding the two server-dependent multi-tenancy suites). Mobile 129 suites and 749 tests pass. API, mobile and web typecheck clean, lint 0 errors. Docs checks: 214 pages and 478 links, 0 failures.
+- **Migrations applied locally** (`20261101` and `20261102`); both run on API start in deployment.
+- **Nothing from F6.3 onward is committed.**
+- **Not device or browser tested:** the share sheet and file download, the phone's file picker and statement upload, and the new web reconciliation pages.
+- **Last fix:** the web sidebar's direct Reconciliation link (both sidebar files, permission `payments.approve`) was typechecked but not yet seen in a browser. The mobile Manage-hub reconciliation row was NOT applied (the Payments hub row exists).
 
 ## Next session starts with
 
-1. Start MinIO (`docker start societyledger-minio`; if port 9000 is taken by another project's container, decide whether to stop that one or move this project's port), retry a donation-pledge receipt upload.
-2. If approved, make uploads answer **503 "File storage isn't available right now"** (with one clear log line naming the storage address) instead of a generic 500 — proof, lodgment slip and ticket-attachment uploads.
-3. Then a real-phone pass over Phase 5 before the officer beta (M3), then Phase 6 per `context/build-plan.md`.
+1. Ask whether the web Reconciliation sidebar link now shows (needs an API restart and a hard refresh). If not, find out the signed-in role and whether the page errors.
+2. Offer to commit the Phase 6 work (F6.3, F6.6, F6.7, F6.8) in sensible commits.
+3. Check what remains in Phase 6 in `context/progress-tracker.md`, then run `/architect` for the next feature.
 
 ## Open questions
 
-- Should a member's own "Make a donation" go through the pay-and-verify flow? Today it records the gift as already paid with no money or receipt checked (`POST /members/me/donate`).
-- Rebuild every member's ledger with a one-off script (rewrites ledger entries in all associations), or member by member?
-- Add a file-handling library so statements can be shared as PDF (needs owner approval)?
-- Recorded gaps left on purpose: mobile bulk delete, "start meeting" button, apology reason, "rebuild all ledgers" on mobile.
+- Is `TERMII_API_KEY` really the key Termii signs delivery reports with? Check after the first real send that a text moves from Sent to Delivered. If the webhook returns 401, the signing key is wrong.
+- The development build must be rebuilt for `expo-sharing` before Share works on a phone.
+- The remaining web chip rows (by-category type, SMS history status, export member filter) are still sideways chips; the owner was offered dropdowns and has not answered.
+- Whether to add a bank-line split (one transfer paying two charges) and reversal of confirmed matches later.

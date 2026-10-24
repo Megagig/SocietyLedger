@@ -1561,6 +1561,16 @@ Built from existing primitives; nothing new in `components/ui`.
 - **Import screen:** sections Which statement (bank-account dropdown, choose-file button, the file name or the problem), What we found (counts and totals), How the columns were read (one `OptionDropdown` per column, headed by where the choice came from), The first lines; a sticky Import button with a confirm sheet.
 - **Rule shown in the UI:** nothing is recorded until a second officer confirms, and every sheet says exactly what confirming or turning down will do.
 
+## Mobile Phase 7 — Association settings (F7.2, 2026-10-24)
+
+- **Settings hub** (`manage/settings/index.tsx`): `ListGroup` rows with `IconCircle` leading icons in three sections (Your association, Money and messages, Your plan); a row shows only if the officer holds that screen's permission.
+- **`SettingsScreen`** (`features/settings/components`): the frame every settings screen shares — header, `NoPermission`, three `Skeleton` bars while loading, `ErrorState` with retry; it renders its form only once the saved values are here, so the form starts from them.
+- **`SaveFooter`:** one primary **Save changes** button in the `StickyFooter`, off until the form has changed (`formState.isDirty`).
+- **Settings forms** (profile, financial, payments, reminders, members and access): sections of `TextField`, `SelectSheet` and `Switch` rows; a dependent field (late-fee amount, reminder days, member ID prefix, role they start with) appears only while its switch is on; plain helper text under each field says what it does.
+- **`LogoEditor`:** a 64dp logo (or the square `Avatar` fallback tinted by the brand colour), **Change logo** / **Add a logo** and **Remove** buttons; each saves straight away, Remove confirms in a `ConfirmSheet`.
+- **Subscription screen:** read-only `ListGroup` — plan with a status `Badge`, the next date (renews / trial ends / ends), members allowed, a pending plan change, then the modules the plan includes; one line of text says billing is managed on the website. No price, no purchase button, no link out.
+- **Rule shown in the UI:** a setting is shown only if something in the app reads it; the other web switches are left off the phone.
+
 ---
 
 ## Retired

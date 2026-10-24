@@ -1,16 +1,16 @@
 ---
 title: "Financial settings"
-description: "Grace periods, late fees and partial payments — saved here, but not yet applied automatically anywhere."
+description: "The late-fee fallback, the grace period and whether a charge can be part paid."
 type: task
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/settings/financial", "ST3"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/finance/penalties-and-late-fees"]
+lastVerified: "2026-10-24"
+related: ["/docs/finance/penalties-and-late-fees", "/docs/settings/payment-settings"]
 ---
 
-Financial settings store your association's default grace period, late-fee policy and payment-approval rules.
+Financial settings hold your association's default late fee, the grace period before it applies, and whether members can pay a charge in parts.
 
 ## Before you start
 
@@ -18,20 +18,36 @@ You need the **edit settings** permission, which only Administrators have by def
 
 ## Update financial settings
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Settings", "Financial Settings"]} />.</Step>
-<Step>Set **Grace Period (Days)**, toggle **Enable Late Fees** and set a **Late Fee Type** (Fixed or Percentage) and amount, toggle **Enable Partial Payments** and **Require Payment Approval**.</Step>
+<Step>Set **Grace Period (Days)**, switch on **Enable Late Fees**, then choose a **Late Fee Type** (Fixed or Percentage) and the amount.</Step>
+<Step>Switch **Enable Partial Payments** on or off.</Step>
 <Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Settings", "Financial settings"]} />.</Step>
+<Step>Switch on **Charge late fees**, then choose whether the fee is a fixed amount or a percentage, and enter it. Set the **Grace period in days**.</Step>
+<Step>Switch **Allow part payments** on or off.</Step>
+<Step>Tap **Save changes**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/settings/financial-settings-1.webp" alt="Financial Settings page with grace period, late fee type and amount, and partial payment toggles" />
 
-<Callout type="warning" title="Nothing currently reads these values">
-These settings save correctly, but no part of the system — penalty application, payment processing, dues creation — looks them up. Applying a late fee today is a separate, manual action on each individual penalty (see [Penalties and automatic late fees](/docs/finance/penalties-and-late-fees)), not something this page automates yet.
+## How these are used
+
+- **Late fee and grace period.** They are used only while you have no late-fee rule under [Penalties and late fees](/docs/finance/penalties-and-late-fees). With no rule, applying late fees uses these settings. Once you add a rule, the rule is used instead and these are ignored.
+- **Part payments.** When off, a payment must cover the whole balance of a charge. Part payments are also switched off if they are off under [Payment settings](/docs/settings/payment-settings).
+
+A percentage late fee cannot be more than 100.
+
+<Callout type="note" title="Settings with no effect yet">
+The web page also shows **Require Payment Approval**, **Approval Threshold**, **Maximum Late Fee**, **Currency** and **Decimal Places**. Nothing in the app uses them yet, so they are not on the mobile screen.
 </Callout>
-
-## What happens next
-
-Nothing changes elsewhere in the app yet — see the callout above.
 
 ## Related

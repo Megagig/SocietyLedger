@@ -10,6 +10,8 @@ import prisma from '../../lib/prisma';
 import { SettingsService } from './settings.service';
 import { LogoService } from './logo.service';
 import { SettingsCategory } from './settings.types';
+import { validateSettings } from './settings.schema';
+import { RuleError } from '../finance/rule-error';
 
 const VALID_CATEGORIES: SettingsCategory[] = [
   'association', 'members_access', 'financial', 'payments',
@@ -82,14 +84,16 @@ export class SettingsController {
         });
       }
 
-      const settings = req.body;
-
-      if (!settings || Object.keys(settings).length === 0) {
+      if (!req.body || Object.keys(req.body).length === 0) {
         return res.status(400).json({
           success: false,
+          code: 'INVALID_SETTINGS',
           message: 'No settings provided'
         });
       }
+
+      // Only keys and values this category knows are saved; anything else is refused with a plain message.
+      const settings = validateSettings(category as SettingsCategory, req.body);
 
       const updatedSettings = await SettingsService.updateSettings(
         associationId,
@@ -104,6 +108,9 @@ export class SettingsController {
         data: updatedSettings
       });
     } catch (error) {
+      if (error instanceof RuleError) {
+        return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+      }
       console.error('Error updating settings:', error);
       res.status(500).json({
         success: false,
@@ -158,14 +165,15 @@ export class SettingsController {
         });
       }
 
-      const profile = req.body;
-
-      if (!profile || Object.keys(profile).length === 0) {
+      if (!req.body || Object.keys(req.body).length === 0) {
         return res.status(400).json({
           success: false,
+          code: 'INVALID_SETTINGS',
           message: 'No profile data provided'
         });
       }
+
+      const profile = validateSettings('association', req.body);
 
       const updatedProfile = await SettingsService.updateAssociationProfile(
         associationId,
@@ -179,6 +187,9 @@ export class SettingsController {
         data: updatedProfile
       });
     } catch (error) {
+      if (error instanceof RuleError) {
+        return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+      }
       console.error('Error updating association profile:', error);
       res.status(500).json({
         success: false,

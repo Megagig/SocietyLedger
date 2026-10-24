@@ -5,9 +5,11 @@
  * All routes require authentication and appropriate permissions
  */
 
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import { SettingsController } from './settings.controller';
+import { SETTINGS_READ_PERMISSIONS, SETTINGS_WRITE_PERMISSIONS } from './settings.schema';
+import type { SettingsCategory } from './settings.types';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
@@ -27,6 +29,27 @@ const logoUpload = multer({
     }
   }
 });
+
+/**
+ * Each category has its own permission: any of the three settings permissions used to be enough to change any category, so a
+ * billing officer could switch off member sign-up. `platform` is SocietyLedger staff only and never reachable from here.
+ */
+function categoryGate(kind: 'read' | 'write'): RequestHandler {
+  return (req, res, next) => {
+    const category = req.params.category as SettingsCategory;
+    const permissions = (kind === 'read' ? SETTINGS_READ_PERMISSIONS : SETTINGS_WRITE_PERMISSIONS)[category];
+    if (!permissions) {
+      const known = category === 'platform';
+      res.status(known ? 403 : 400).json({
+        success: false,
+        code: known ? 'SETTINGS_NOT_EDITABLE' : 'INVALID_CATEGORY',
+        message: known ? 'These settings belong to SocietyLedger and cannot be changed here.' : 'That settings page does not exist.',
+      });
+      return;
+    }
+    requireAnyPermission(permissions)(req, res, next);
+  };
+}
 
 // All routes require authentication
 router.use(authMiddleware);
@@ -57,7 +80,18 @@ router.patch(
 router.post(
   '/association/logo',
   requirePermission(PERMISSIONS.SETTINGS_EDIT),
-  logoUpload.single('logo'),
+  (req, res, next) => {
+    // A rejected file answers 400 in plain words, not the default error page.
+    logoUpload.single('logo')(req, res, (error: unknown) => {
+      if (!error) return next();
+      const tooLarge = error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE';
+      res.status(400).json({
+        success: false,
+        code: tooLarge ? 'FILE_TOO_LARGE' : 'INVALID_FILE',
+        message: tooLarge ? 'The picture is larger than 2MB.' : 'Use a JPEG, PNG or WebP picture.',
+      });
+    });
+  },
   SettingsController.uploadLogo
 );
 
@@ -105,26 +139,9 @@ router.get(
  */
 
 // GET /api/settings/:category - Get settings for a category
-router.get(
-  '/:category',
-  requireAnyPermission([
-    PERMISSIONS.SETTINGS_VIEW, 
-    PERMISSIONS.SETTINGS_EDIT,
-    PERMISSIONS.SETTINGS_BILLING,
-    PERMISSIONS.SETTINGS_INTEGRATIONS
-  ]),
-  SettingsController.getSettings
-);
+router.get('/:category', categoryGate('read'), SettingsController.getSettings);
 
 // PATCH /api/settings/:category - Update settings for a category
-router.patch(
-  '/:category',
-  requireAnyPermission([
-    PERMISSIONS.SETTINGS_EDIT,
-    PERMISSIONS.SETTINGS_BILLING,
-    PERMISSIONS.SETTINGS_INTEGRATIONS
-  ]),
-  SettingsController.updateSettings
-);
+router.patch('/:category', categoryGate('write'), SettingsController.updateSettings);
 
 export default router;
