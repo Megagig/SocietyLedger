@@ -36,6 +36,8 @@ export default function CampaignDetailPage() {
     queryKey: ['sms-campaign', campaignId],
     queryFn: () => smsApi.getCampaign(campaignId),
     enabled: !!campaignId,
+    // A campaign sends in the background: follow it until it has finished
+    refetchInterval: (data) => (data?.status === 'IN_PROGRESS' ? 3000 : false),
   });
 
   const startMutation = useMutation({
@@ -43,7 +45,7 @@ export default function CampaignDetailPage() {
     onSuccess: () => {
       notifications.show({
         title: 'Campaign Started',
-        message: 'Your campaign has been started',
+        message: 'Your campaign is sending. Credits were set aside first; any text that doesn’t go out is refunded.',
         color: 'green',
       });
       refetch();
@@ -262,7 +264,7 @@ export default function CampaignDetailPage() {
         </Card>
 
         {/* Progress */}
-        {(campaign.status === 'IN_PROGRESS' || campaign.status === 'COMPLETED') && (
+        {(campaign.status === 'IN_PROGRESS' || campaign.status === 'COMPLETED' || campaign.status === 'INTERRUPTED' || campaign.status === 'CANCELLED') && (
           <Card padding="lg" radius="md" withBorder>
             <Title order={3} mb="md">Campaign Progress</Title>
             <CampaignProgress
@@ -278,6 +280,18 @@ export default function CampaignDetailPage() {
         {campaign.status === 'DRAFT' && (
           <Alert color="blue" variant="light">
             This campaign is a draft. Click &quot;Start Campaign&quot; to begin sending messages.
+          </Alert>
+        )}
+
+        {campaign.status === 'IN_PROGRESS' && (
+          <Alert color="cyan" variant="light">
+            Sending: {campaign.sentCount.toLocaleString()} of {campaign.totalRecipients.toLocaleString()} sent so far. You can leave this page; it carries on.
+          </Alert>
+        )}
+
+        {campaign.status === 'INTERRUPTED' && (
+          <Alert color="yellow" variant="light">
+            The server restarted before this campaign finished. The credits for the texts that were not sent have been refunded. Create a new campaign for the people who were missed.
           </Alert>
         )}
 

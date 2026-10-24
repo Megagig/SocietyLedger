@@ -83,6 +83,10 @@ export interface CampaignStats {
   pendingCount: number;
   deliveryRate: number;
   failureRate: number;
+  /** Set when the send is carrying on in the background. */
+  inProgress?: boolean;
+  /** Members in the audience who won't be texted, and why. */
+  skipped?: { noPhone: number; optedOut: number };
 }
 
 // ============================================
@@ -161,6 +165,10 @@ export interface QuickSMSResult {
   }>;
   creditsUsed: number;
   remainingCredits: number;
+  /** How many texts were accepted for sending. */
+  accepted?: number;
+  /** Set when the send is carrying on in the background (a big audience): the totals above are not final. */
+  inProgress?: boolean;
 }
 
 // ============================================

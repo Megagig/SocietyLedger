@@ -35,6 +35,11 @@ export function CampaignStatusBadge({ status, ...props }: CampaignStatusBadgePro
       label: 'Cancelled',
       icon: <IconX size={12} />,
     },
+    INTERRUPTED: {
+      color: 'yellow',
+      label: 'Interrupted',
+      icon: <IconAlertCircle size={12} />,
+    },
     FAILED: {
       color: 'red',
       label: 'Failed',

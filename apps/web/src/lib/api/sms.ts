@@ -7,7 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 // reconciled against the real backend (G39/G76-class drift, found at R3).
 
 export type SMSStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'FAILED' | 'REJECTED';
-export type SMSCampaignStatus = 'DRAFT' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+export type SMSCampaignStatus = 'DRAFT' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'FAILED' | 'INTERRUPTED';
 export type SMSRecipientType = 'ALL_MEMBERS' | 'SELECTED_MEMBERS' | 'MEMBER_CATEGORY' | 'CUSTOM_NUMBERS' | 'OWING_MEMBERS' | 'PAID_MEMBERS';
 export type SMSTemplateCategory = 'GENERAL' | 'PAYMENT_REMINDER' | 'MEETING' | 'DUES' | 'LEVY' | 'WELFARE' | 'ELECTION' | 'CUSTOM';
 export type SMSCreditTransactionType = 'PURCHASE' | 'USAGE' | 'REFUND' | 'BONUS' | 'ADJUSTMENT';
@@ -124,6 +124,9 @@ export interface QuickSMSResult {
   messages: Array<{ phone: string; success: boolean; messageId?: string; error?: string }>;
   creditsUsed: number;
   remainingCredits: number;
+  /** A big send carries on in the background: the totals above are not final. */
+  inProgress?: boolean;
+  accepted?: number;
 }
 
 export interface CreateCampaignRequest {

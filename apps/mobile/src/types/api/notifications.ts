@@ -67,6 +67,8 @@ export type NotificationPreferencesDTO = {
   approvalInApp: boolean;
   announcementEmail: boolean;
   announcementSMS: boolean;
+  /** "Don't send me text messages": stops announcement and campaign texts from officers. */
+  announcementSmsOptOut: boolean;
   announcementInApp: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;

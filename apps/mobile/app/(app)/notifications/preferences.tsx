@@ -75,6 +75,7 @@ export default function NotificationPreferencesScreen() {
             <Switch control={control} name="announcementInApp" label="Announcements — in-app" />
             <Switch control={control} name="announcementEmail" label="Announcements — email" />
             <Switch control={control} name="announcementSMS" label="Announcements — SMS" />
+            <Switch control={control} name="announcementSmsOptOut" label="Don't send me text messages" helper="Stops announcement and campaign texts from your association's officers." />
           </Section>
 
           <Section title="Approvals">

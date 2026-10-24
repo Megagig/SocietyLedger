@@ -1,3 +1,5 @@
+import { announcementsService } from './announcements.service';
+import { RuleError } from '../finance/rule-error';
 import { Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
@@ -19,12 +21,30 @@ const createNotificationSchema = z.object({
 });
 
 const announcementSchema = z.object({
-  title: z.string().min(1).max(200),
-  message: z.string().min(1).max(2000),
+  title: z.string().trim().min(1).max(200),
+  message: z.string().trim().min(1).max(2000),
   priority: z.enum(['info', 'warning', 'urgent']).optional().default('info'),
+  audience: z.enum(['ALL', 'CATEGORY', 'SELECTED']).optional().default('ALL'),
+  categories: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
+  memberIds: z.array(z.number().int().positive()).max(5000).optional(),
   sendEmail: z.boolean().optional().default(false),
-  sendSMS: z.boolean().optional().default(false),
+  sendSms: z.boolean().optional().default(false),
+  smsText: z.string().trim().max(1000).optional(),
 });
+
+/** A rule the officer broke (not enough credits, SMS switched off…) keeps its status and code; a missing record is a 404. */
+function announcementFailure(res: Response, error: unknown, fallback: string) {
+  if (error instanceof z.ZodError) {
+    return res.status(400).json({ success: false, message: error.errors[0]?.message ?? 'Validation error', errors: error.errors });
+  }
+  if (error instanceof RuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  const message = error instanceof Error ? error.message : fallback;
+  if (/not found$/i.test(message)) return res.status(404).json({ success: false, message });
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message });
+}
 
 export class NotificationsController {
   /**
@@ -274,77 +294,83 @@ export class NotificationsController {
   }
 
   /**
-   * Create a system announcement (admin only)
+   * Send an announcement: to everyone, a kind of member, or hand-picked members; in the app and as a push, and optionally by email and
+   * SMS. Needs the `notifications.send` permission (it used to need the admin role, so a treasurer or a custom role couldn't).
    */
   async createAnnouncement(req: AuthRequest, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      const adminId = req.user?.id;
+      const userId = req.user?.id;
+      if (!associationId || !userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-      if (!associationId || !adminId) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
-      }
+      const input = announcementSchema.parse(req.body);
+      const result = await announcementsService.create(associationId, userId, input);
 
-      const { title, message, priority, sendEmail: shouldSendEmail, sendSMS: shouldSendSMS } = announcementSchema.parse(req.body);
-
-      const association = await prisma.association.findUnique({
-        where: { id: associationId },
-        select: { name: true },
-      });
-
-      // R3.6/G14/G42: real preference gating per recipient (was: in-memory
-      // Map nothing read). Also now correctly typed 'announcement' rather
-      // than 'system' — matches the dedicated announcementEmail/SMS/InApp
-      // preference fields that already existed for exactly this category.
-      const result = await broadcastNotification(associationId, {
-        title: `📢 ${title}`,
-        message,
-        kind: 'announcement',
-        sendEmail: shouldSendEmail,
-        sendSMS: shouldSendSMS,
-        emailSubject: `📢 ${title} - ${association?.name || 'Association'}`,
-        emailTemplate: 'announcement',
-        emailData: {
-          title,
-          message,
-          priority,
-          associationName: association?.name || 'Your Association',
-        },
-      });
-
-      // Log the announcement
       await prisma.auditLog.create({
         data: {
           associationId,
-          userId: adminId,
+          userId,
           action: 'ANNOUNCEMENT_CREATED',
-          tableName: 'notifications',
-          newValues: { title, message, priority, recipientCount: result.recipientCount },
+          tableName: 'announcements',
+          recordId: result.announcement.id,
+          newValues: { title: input.title, audience: input.audience, sendEmail: input.sendEmail, sendSms: input.sendSms, members: result.reach.members },
         },
       });
 
       return res.status(201).json({
         success: true,
-        message: `Announcement sent to ${result.recipientCount} users`,
+        message: `Announcement sent to ${result.reach.members} members`,
         data: {
-          count: result.recipientCount,
-          emailsSent: result.emailsSent,
+          id: result.announcement.id,
+          count: result.reach.members,
+          inApp: result.announcement.inAppCount,
+          noLogin: result.announcement.noLoginCount,
+          emailsSent: result.announcement.emailCount,
           smsSent: result.smsSent,
+          smsFailed: result.smsFailed,
+          smsInProgress: result.inProgress,
+          reach: result.reach,
         },
       });
     } catch (error) {
-      console.error('Create announcement error:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation error',
-          errors: error.errors,
-        });
-      }
-      return res.status(500).json({ success: false, message: 'Internal server error' });
+      return announcementFailure(res, error, 'Failed to create announcement');
     }
   }
 
+  /** What sending this would do: who it reaches and misses, and what the SMS would cost against the balance. */
+  async previewAnnouncement(req: AuthRequest, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const data = await announcementsService.preview(associationId, announcementSchema.parse(req.body));
+      return res.json({ success: true, data });
+    } catch (error) {
+      return announcementFailure(res, error, 'Failed to preview the announcement');
+    }
+  }
+
+  /** The announcements the association has sent, newest first. */
+  async listAnnouncements(req: AuthRequest, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+      return res.json({ success: true, data: await announcementsService.list(associationId, page, limit) });
+    } catch (error) {
+      return announcementFailure(res, error, 'Failed to list announcements');
+    }
+  }
+
+  async getAnnouncement(req: AuthRequest, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+      return res.json({ success: true, data: await announcementsService.get(associationId, parseInt(req.params.id)) });
+    } catch (error) {
+      return announcementFailure(res, error, 'Failed to get the announcement');
+    }
+  }
   /**
    * Get notification preferences for the current user
    */

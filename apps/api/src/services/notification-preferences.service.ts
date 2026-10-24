@@ -54,6 +54,7 @@ const DEFAULTS: Omit<NotificationPreference, 'id' | 'associationId' | 'userId' |
   approvalInApp: true,
   announcementEmail: true,
   announcementSMS: false,
+  announcementSmsOptOut: false, // "Don't send me text messages": stops announcement and campaign texts from officers
   announcementInApp: true,
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
@@ -77,8 +78,15 @@ export async function getPreferences(associationId: number, userId: number): Pro
 export async function upsertPreferences(
   associationId: number,
   userId: number,
-  data: Partial<typeof DEFAULTS>
+  input: Partial<typeof DEFAULTS>
 ): Promise<NotificationPreference> {
+  // Only the preference fields themselves, of the right type: the request body used to go straight into the update, so a request could
+  // also have named the row's own ids.
+  const data: Record<string, unknown> = {};
+  for (const [key, fallback] of Object.entries(DEFAULTS)) {
+    const value = (input as Record<string, unknown> | undefined)?.[key];
+    if (value !== undefined && typeof value === typeof fallback) data[key] = value;
+  }
   return prisma.notificationPreference.upsert({
     where: { associationId_userId: { associationId, userId } },
     create: { associationId, userId, ...DEFAULTS, ...data },

@@ -177,7 +177,18 @@ export const DOCS_LINKS: Record<string, string> = {
   // implementation (G38 in progress-tracker.md). The real, linked route is
   // plural `/dashboard/communications`, which `sending-sms.mdx` documents.
   '/dashboard/communications': '/docs/communication/sending-sms',
+  CM1: '/docs/communication/sending-sms',
+  CM2: '/docs/communication/announcements',
   CM3: '/docs/communication/sending-sms',
+  CM4: '/docs/communication/sms-campaigns',
+  CM5: '/docs/communication/sms-templates',
+  CM6: '/docs/communication/sms-history',
+  '/dashboard/communication/announcements': '/docs/communication/announcements',
+  '/dashboard/communications/quick-send': '/docs/communication/sending-sms',
+  '/dashboard/communications/campaigns': '/docs/communication/sms-campaigns',
+  '/dashboard/communications/templates': '/docs/communication/sms-templates',
+  '/dashboard/communications/history': '/docs/communication/sms-history',
+  '/dashboard/communications/credits': '/docs/communication/buying-sms-credits',
 
   '/dashboard/settings/roles': '/docs/settings/custom-roles',
   ST8: '/docs/settings/custom-roles',

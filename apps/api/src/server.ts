@@ -10,6 +10,7 @@ import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 import { startCashLodgmentJobs, stopCashLodgmentJobs } from './jobs/cash-lodgment-jobs';
+import { startSmsJobs, stopSmsJobs } from './jobs/sms-jobs';
 import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
 import { startPushReceiptsJob, stopPushReceiptsJob } from './services/push.service';
 // Phase 12: Caching & Performance
@@ -128,7 +129,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body parsing middleware
-app.use(express.json());
+// The raw bytes are kept for webhooks that sign them (Termii's X-Termii-Signature is computed over the body as sent)
+app.use(express.json({ verify: (req, _res, buf) => { (req as unknown as { rawBody?: Buffer }).rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -274,6 +276,7 @@ if (process.env.NODE_ENV !== 'test') {
         startSubscriptionJobs();
         startMeetingJobs();
         startCashLodgmentJobs();
+        startSmsJobs();
         startPaymentReminderJobs();
         startPushReceiptsJob();
       });
@@ -292,6 +295,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopSubscriptionJobs();
     stopMeetingJobs();
     stopCashLodgmentJobs();
+    stopSmsJobs();
     stopPaymentReminderJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();
@@ -303,6 +307,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopSubscriptionJobs();
     stopMeetingJobs();
     stopCashLodgmentJobs();
+    stopSmsJobs();
     stopPaymentReminderJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();

@@ -1,4 +1,4 @@
-import { Banknote, Bell, CalendarDays, ChartPie, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, PiggyBank, ReceiptText, UserCheck, Users, Vote } from 'lucide-react-native';
+import { Banknote, Bell, CalendarDays, ChartPie, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, UserCheck, Users, Vote } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -21,6 +21,7 @@ import { MEETINGS_ADMIN_ACCESS, MEETINGS_MODULE, useMeetingStats } from '@/featu
 import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features/cash/queries';
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, useMemberStats } from '@/features/members/queries';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS } from '@/features/nigerianPayments/queries';
+import { COMMUNICATION_ACCESS } from '@/features/communication/labels';
 import { SUPPORT_STAFF_ACCESS } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
@@ -58,6 +59,8 @@ export default function ManageScreen() {
   const canMeetings = useCan(MEETINGS_ADMIN_ACCESS) && !meetingsOff;
   const upcomingMeetings = useMeetingStats().data?.scheduledMeetings ?? 0;
   const canFinance = useCan(FINANCE_VIEW_ACCESS);
+  // Communication: announcements need `notifications.send`; texting needs an SMS permission (the hub shows only what each can open).
+  const canCommunication = useCan(COMMUNICATION_ACCESS);
   // Cooperatives: officer permission and the module on; the badge adds up everything waiting for a decision.
   const canCoop = useModuleAccess(COOP_ADMIN_ACCESS, COOP_MODULE);
   const coopWaiting = attentionCount(attention, 'savingsDeposits') + attentionCount(attention, 'loanRepayments') + attentionCount(attention, 'loanApplications');
@@ -88,7 +91,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -262,6 +265,21 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/cash' as never)}
                   testID="manage-cash"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canCommunication ? (
+            <Section title="Communication">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={Megaphone} tone="primary" />}
+                  title="Communication"
+                  meta="Announcements, texts, campaigns and templates"
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/communication' as never)}
+                  testID="manage-communication"
                 />
               </ListGroup>
             </Section>

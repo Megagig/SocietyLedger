@@ -1,32 +1,38 @@
 ---
 title: "SMS templates"
-description: "Reusable message templates with placeholders — viewing works, creating currently fails."
-type: concept
+description: "Keep message wordings you use often, with placeholders for each member's details."
+type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/communications/templates"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/communications/templates", "CM5"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-28"
 related: ["/docs/communication/sending-sms", "/docs/communication/sms-campaigns"]
 ---
 
-Templates let you write a reusable message with placeholders — `{{name}}`, `{{amount}}` — once, and reuse it in Quick Send or a campaign.
+A template is a message you use again and again, such as a dues reminder. Put a word in braces, like `{name}`, where a member's own detail should go.
 
-## How it works
+## Before you start
 
-<MenuPath items={["Communication", "SMS Templates"]} /> lists templates by category and lets you filter them. This part works and loads correctly.
+You need the **manage SMS templates** permission to add, change or delete templates. Anyone who can view SMS can read them.
 
-<Screenshot src="/images/communication/sms-templates-1.webp" alt="SMS Templates page, currently empty, with a category filter and New Template button" />
+## Add or change a template
 
-<Callout type="danger" title="Creating a template currently fails">
-Filling in **New Template** and saving fails with a validation error every time — the form sends the message under the field name `message`, but the API expects `content`. Confirmed directly against the API; it's logged for a fix in a later phase.
-</Callout>
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Communication", "SMS Templates"]} /> and select **New Template**.</Step>
+<Step>Enter a **Name**, choose a **Category** and write the message (up to 918 characters).</Step>
+<Step>Select **Create**. To change one, open it from the list.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Communication", "Message templates"]} /> and tap **+**.</Step>
+<Step>Enter a **Name**, choose the **Kind** and write the message.</Step>
+<Step>Tap **Add template**. Tap a template in the list to change or delete it.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-## Why it matters
-
-Until this is fixed, write out each SMS message by hand rather than relying on a saved template.
-
-## What you can do
-
-- [SMS campaigns](/docs/communication/sms-campaigns)
-- [Sending an SMS](/docs/communication/sending-sms)
+Use a template when writing a campaign: pick it and its wording fills the message box, where you can still change it. A campaign keeps its own copy, so deleting a template never changes campaigns that used it.

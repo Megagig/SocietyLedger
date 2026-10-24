@@ -97,6 +97,7 @@ model Association {
   documentEmbeddings         DocumentEmbedding[]
   // Phase 4.5: Voting & Elections
   elections                  Election[]
+  announcements              Announcement[]
   polls                      Poll[]
 
   // RBAC System Relations
@@ -531,6 +532,8 @@ model NotificationPreference {
   approvalInApp         Boolean     @default(true) @map("approval_in_app")
   announcementEmail     Boolean     @default(true) @map("announcement_email")
   announcementSMS       Boolean     @default(false) @map("announcement_sms")
+  // "Don't send me text messages": stops announcement and campaign texts from officers, whatever the default for announcements is.
+  announcementSmsOptOut Boolean     @default(false) @map("announcement_sms_opt_out")
   announcementInApp     Boolean     @default(true) @map("announcement_in_app")
   quietHoursEnabled     Boolean     @default(false) @map("quiet_hours_enabled")
   quietHoursStart       String      @default("22:00") @map("quiet_hours_start")
@@ -2147,6 +2150,7 @@ model SMSMessage {
   id              Int            @id @default(autoincrement())
   associationId   Int            @map("association_id")
   campaignId      Int?           @map("campaign_id")
+  announcementId  Int?           @map("announcement_id")
   recipientPhone  String         @map("recipient_phone")
   recipientName   String?        @map("recipient_name")
   memberId        Int?           @map("member_id")
@@ -2159,13 +2163,17 @@ model SMSMessage {
   errorMessage    String?        @map("error_message")
   sentAt          DateTime?      @map("sent_at")
   deliveredAt     DateTime?      @map("delivered_at")
+  // A credit is only spent on a text that went out: set once the credit for a failed or interrupted text has been given back.
+  refunded        Boolean        @default(false)
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   association     Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
   campaign        SMSCampaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  announcement    Announcement?  @relation(fields: [announcementId], references: [id], onDelete: SetNull)
 
   @@index([associationId, status])
   @@index([campaignId])
+  @@index([announcementId])
   @@index([memberId])
   @@index([sentAt])
   @@map("sms_messages")
@@ -2201,6 +2209,53 @@ model SMSCampaign {
 }
 
 // SMS Template - Reusable message templates
+enum AnnouncementAudience {
+  ALL // Every active member
+  CATEGORY // Members of the chosen categories
+  SELECTED // Hand-picked members
+}
+
+enum AnnouncementStatus {
+  SENDING // Texts still going out
+  COMPLETED
+  INTERRUPTED // Cut short by a server restart
+}
+
+// One message from the officers to chosen members: in their app feed with a push, and optionally by email and SMS. Kept so officers can
+// see what was sent, to whom and what happened to it.
+model Announcement {
+  id              Int                     @id @default(autoincrement())
+  associationId   Int                     @map("association_id")
+  title           String
+  message         String                  @db.Text
+  priority        String                  @default("info")
+  audience        AnnouncementAudience    @default(ALL)
+  audienceFilter  Json?                   @map("audience_filter")
+  sendEmail       Boolean                 @default(false) @map("send_email")
+  sendSms         Boolean                 @default(false) @map("send_sms")
+  smsText         String?                 @map("sms_text")
+  status          AnnouncementStatus      @default(COMPLETED)
+  // Who the audience was, and how each part of it was reached
+  memberCount     Int                     @default(0) @map("member_count")
+  inAppCount      Int                     @default(0) @map("in_app_count")
+  noLoginCount    Int                     @default(0) @map("no_login_count")
+  emailCount      Int                     @default(0) @map("email_count")
+  smsRequested    Int                     @default(0) @map("sms_requested")
+  smsSent         Int                     @default(0) @map("sms_sent")
+  smsFailed       Int                     @default(0) @map("sms_failed")
+  noPhoneCount    Int                     @default(0) @map("no_phone_count")
+  optedOutCount   Int                     @default(0) @map("opted_out_count")
+  creditsUsed     Decimal                 @default(0) @map("credits_used") @db.Decimal(12, 4)
+  createdBy       Int                     @map("created_by")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  completedAt     DateTime?               @map("completed_at")
+  association     Association             @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  messages        SMSMessage[]
+
+  @@index([associationId, createdAt])
+  @@map("announcements")
+}
+
 model SMSTemplate {
   id            Int                 @id @default(autoincrement())
   associationId Int                 @map("association_id")
@@ -2276,6 +2331,7 @@ enum SMSCampaignStatus {
   COMPLETED // All messages sent
   CANCELLED // Cancelled before completion
   FAILED // Failed to complete
+  INTERRUPTED // Cut short by a server restart; the credits for the unsent texts were given back
 }
 
 enum SMSRecipientType {

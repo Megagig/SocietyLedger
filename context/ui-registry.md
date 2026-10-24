@@ -1532,6 +1532,15 @@ Built from existing primitives; nothing new in `components/ui`.
 - **Sheets (`Sheets.tsx`):** `CandidateSheet` (search members → pick → optional manifesto → "waiting for approval from another member of the committee"), `PositionSheet` (add and rename), `PollOptionSheet`; cancel and reject reuse the cooperative `ReasonSheet`, every step and delete reuses `ConfirmSheet` (the step's confirm is non-destructive).
 - **Rule shown in the UI:** one next step at a time; a step the person may not take is not shown; nobody is offered a decision on their own nomination; results and tallies are not shown until the people allowed to see them can.
 
+## Mobile Phase 6 — Communication (F6.6, 2026-10-29)
+
+- **`AudiencePicker`** (`features/communication/components`): `SegmentedControl` when there are four kinds or fewer, wrapped `FilterChip`s for more; category `FilterChip`s and a `MemberMultiPicker` appear only for the kinds that need them; a kind that needs the member directory is hidden without that permission.
+- **`MemberMultiPicker`:** a field-style row ("n chosen") opening a `BottomSheet` with `SearchField`, tick rows (20dp box, primary fill when ticked), Clear and Done (n).
+- **`CountLine` / `CostNotice` / `SummaryCard`** (`Notices.tsx`): a label with a right-aligned count and optional caption; a sunken (enough) or `danger-soft` (short) box saying parts per text, credits, balance, and that credits are bought on the web; a `Card` with an h3 title.
+- **Rows** (`GroupedRow`): `AnnouncementRow`, `CampaignRow` (progress bar while sending), `MessageRow` (status chip, error in danger), `CreditRow` (+ success / − default), `TemplateRow`.
+- **Screens:** hub with three `StatTile`s and grouped rows; composer and quick text show reach and cost live (debounced) and confirm with `ConfirmSheet` (non-destructive) before sending; campaign detail polls while sending.
+- **Rule shown in the UI:** nothing is sent without showing who it reaches, who it misses and what it costs; a short balance turns the Send button off.
+
 ---
 
 ## Retired

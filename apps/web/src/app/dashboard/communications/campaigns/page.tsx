@@ -189,6 +189,7 @@ export default function CampaignsListPage() {
                 { value: 'IN_PROGRESS', label: 'In Progress' },
                 { value: 'COMPLETED', label: 'Completed' },
                 { value: 'CANCELLED', label: 'Cancelled' },
+                { value: 'INTERRUPTED', label: 'Interrupted' },
                 { value: 'FAILED', label: 'Failed' },
               ]}
               value={statusFilter}

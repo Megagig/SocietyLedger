@@ -1,35 +1,50 @@
 ---
 title: "SMS campaigns"
-description: "Bulk SMS to groups of members — currently broken in two separate ways."
-type: concept
+description: "Text a whole group now or at a set time, with the cost checked first and progress you can follow."
+type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/communications/campaigns", "/dashboard/communications/campaigns/new"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/communications/campaigns", "/dashboard/communications/campaigns/new", "CM4"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/communication/sending-sms", "/docs/communication/sms-templates"]
+lastVerified: "2026-10-28"
+related: ["/docs/communication/sending-sms", "/docs/communication/sms-templates", "/docs/communication/buying-sms-credits"]
 ---
 
-A campaign sends one message to a group of members — everyone, a category, or a hand-picked list — instead of one recipient at a time.
+A campaign sends one message to a group: all members, a category, chosen members, typed phone numbers, members who owe, or members who are paid up.
 
-## How it works
+## Before you start
 
-<MenuPath items={["Communication", "SMS Campaigns"]} /> lists existing campaigns, and **New Campaign** opens the builder: a name, a recipient type (All Members, By Category, By Status, or Custom Selection), an optional schedule date, and a message.
+You need the **manage SMS campaigns** permission, the SMS module on your plan, and [SMS credits](/docs/communication/buying-sms-credits).
 
-<Screenshot src="/images/communication/sms-campaigns-1.webp" alt="SMS Campaigns list, currently empty, with a New Campaign button" />
+## Make and start a campaign
 
-<Callout type="danger" title="Two confirmed, separate problems">
-1. **Unless you choose "Custom Selection," there's nowhere to type a message.** Picking All Members, By Category or By Status replaces the whole message composer with a one-line description — the message box simply isn't there. Confirmed directly in the page: the composer only renders for Custom Selection.
-2. **Creating a campaign fails validation regardless of recipient type.** The recipient types this page sends (`all`, `category`, `status`, `custom`) don't match what the API accepts (`ALL_MEMBERS`, `MEMBER_CATEGORY`, `SELECTED_MEMBERS`, and others) — every create attempt is rejected, confirmed directly against the API.
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Communication", "SMS Campaigns"]} /> and select **New Campaign**.</Step>
+<Step>Enter a **Name**, choose who it goes to, and write the message (or start from a template).</Step>
+<Step>Optionally set a time to send. Select **Create**.</Step>
+<Step>Open the campaign and select **Start**.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Communication", "Campaigns"]} /> and tap **+**.</Step>
+<Step>Enter a **Name**, choose who gets it, write the message or start from a template, and optionally set a time.</Step>
+<Step>Tap **Save campaign**, then open it and tap **Start campaign**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-Both are logged for a fix in a later phase. There's currently no way to create a working campaign from this screen.
-</Callout>
+## Cost and reach come first
 
-## Why it matters
+Before you save, and again before you start, the app shows how many people will get a text, how many have no usable number, how many opted out, and the cost against your balance. If you are short, the campaign can't be started until you [buy more credits](/docs/communication/buying-sms-credits).
 
-Campaigns are the only way to message a group rather than one member at a time — until this is fixed, use [Sending an announcement](/docs/communication/announcements) for group messages instead (it reaches the in-app centre and, optionally, email).
+## While it sends
 
-## What you can do
-
-- [Sending an announcement](/docs/communication/announcements) — the working alternative for reaching a group today.
-- [SMS templates](/docs/communication/sms-templates)
+- Credits are set aside when you start it, and each text is recorded before it goes out.
+- A campaign can only be started once, even if you tap twice or two officers start it together. Duplicate numbers get one text.
+- Big campaigns send in the background. The campaign shows progress and you can leave the screen.
+- **Stop sending** (web: **Cancel**) keeps texts already sent and refunds the ones that haven't gone out.
+- If the server restarts mid-send the campaign shows **Interrupted**. Credits for the texts that didn't go are refunded, so make a new campaign for the people who were missed.
+- Only a **Draft** can be deleted.
