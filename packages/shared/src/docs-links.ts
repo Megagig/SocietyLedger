@@ -145,6 +145,15 @@ export const DOCS_LINKS: Record<string, string> = {
   '/dashboard/cooperatives/applications': '/docs/cooperatives/reviewing-and-disbursing-loans',
   CP4: '/docs/cooperatives/reviewing-and-disbursing-loans',
 
+  // Cooperatives officer screens on mobile (CP1–CP5) and their web equivalents.
+  '/dashboard/cooperatives': '/docs/cooperatives',
+  CP1: '/docs/cooperatives',
+  '/dashboard/cooperatives/savings': '/docs/cooperatives/savings-accounts',
+  CP2: '/docs/cooperatives/deposits-and-withdrawals',
+  CP3: '/docs/cooperatives/loan-products',
+  '/dashboard/cooperatives/loans': '/docs/cooperatives/repayments-and-schedules',
+  CP5: '/docs/cooperatives/repayments-and-schedules',
+
   // architecture.md §15.4 originally listed `/dashboard/communication/sms`
   // (singular) for CM3 — that route is the orphaned, unreachable SMS
   // implementation (G38 in progress-tracker.md). The real, linked route is

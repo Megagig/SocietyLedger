@@ -3,10 +3,10 @@ title: "Opening savings accounts"
 description: "Open a savings account for a member — Regular, Thrift, Target or Fixed Deposit."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/cooperatives/savings", "CP2"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-26"
 related: ["/docs/cooperatives/deposits-and-withdrawals"]
 ---
 
@@ -18,12 +18,23 @@ You need the **Administrator**, **Treasurer** or **Financial Secretary** role.
 
 ## Open an account
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Cooperatives", "Savings"]} /> and select **Open Account**.</Step>
 <Step>Choose the **Member**.</Step>
 <Step>Choose an **Account Type** — Regular, Thrift, Target or Fixed Deposit.</Step>
 <Step>Add optional **Notes**, then select **Create Account**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Cooperatives", "Savings accounts"]} /> and tap **+**.</Step>
+<Step>Choose the **Member** and the **Kind of account** — Regular, Thrift, Target or Fixed Deposit.</Step>
+<Step>Optionally add a savings target, monthly contribution, interest rate or note, then tap **Open account**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/cooperatives/savings-accounts-1.webp" alt="Open Savings Account modal with a member selected, Account Type set to Regular Savings, and a Notes field" />
 

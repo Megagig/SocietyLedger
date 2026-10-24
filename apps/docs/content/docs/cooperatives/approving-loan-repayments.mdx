@@ -3,10 +3,10 @@ title: "Approving member loan repayments"
 description: "Check the bank statement, then confirm or reject a loan payment a member has declared."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/cooperatives/loan-repayments"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cooperatives/loan-repayments", "CP5"]
 status: published
-lastVerified: "2026-10-21"
+lastVerified: "2026-10-26"
 related: ["/docs/cooperatives/paying-your-loan", "/docs/cooperatives/repayments-and-schedules"]
 ---
 
@@ -22,12 +22,24 @@ Approving records the repayment on the loan immediately and can't be undone from
 
 ## Review a payment
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Cooperatives", "Loan Repayments"]} />. The **Awaiting** tab lists payments that need a decision.</Step>
 <Step>Read the member, loan number, amount, date and any reference or note. Select **View receipt** to open the uploaded file.</Step>
 <Step>Select **Approve** if the money arrived — confirm with **Yes, record repayment**.</Step>
 <Step>Or select **Reject**, give the member a **Reason**, and confirm.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Cooperatives", "Repayment requests"]} />. The **Waiting** tab lists payments that need a decision.</Step>
+<Step>Read the member, loan number, amount, date and any reference or note. Tap **View receipt** to open the uploaded file.</Step>
+<Step>Tap **Approve** if the money arrived, and confirm.</Step>
+<Step>Or tap **Reject**, give the member a **Reason**, and confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot pending="Loan Repayments page, Awaiting tab, showing a member's ₦50,000 payment on a loan with View receipt, Approve and Reject buttons" />
 
@@ -36,6 +48,6 @@ Approving records the repayment on the loan immediately and can't be undone from
 - **Approved** — the repayment is recorded on the loan like any other (interest first, then principal), the outstanding balance and next payment update, and any savings held against the loan are released in proportion. The member is notified.
 - **Rejected** — nothing is recorded. The member is notified and shown your reason.
 
-If the loan has been paid down since the member submitted — so the payment is now more than they owe — the approval is refused and the payment stays in the **Awaiting** tab for you to reject or sort out. A payment can only be reviewed once.
+If the loan has been paid down since the member submitted — so the payment is now more than they owe — the approval is refused and the payment stays in the **Awaiting** tab for you to reject or sort out. A payment can only be reviewed once. **You can't decide your own payment** — if you are also the borrower, another officer has to approve or reject it.
 
 You can still record a repayment directly, without a member's receipt, from <MenuPath items={["Cooperatives", "Loans"]} />. See [Repayments and repayment schedules](/docs/cooperatives/repayments-and-schedules).

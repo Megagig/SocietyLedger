@@ -28,6 +28,15 @@ import {
   MemberCooperativeProfile,
 } from './cooperatives.types';
 // Accounting integration
+import { RuleError } from '../finance/rule-error';
+import {
+  REVIEWABLE_STATUSES,
+  assertDisbursementAccount,
+  assertDisbursementTarget,
+  assertNotOwnRequest,
+  assertRepaymentWithinOutstanding,
+  assertWithdrawable,
+} from './cooperative-rules';
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import {
   assertWithinSavingsRule,
@@ -318,57 +327,57 @@ export const cooperativesService = {
     userId: number,
     data: SavingsTransactionInput
   ): Promise<SavingsTransactionResponse> {
-    const account = await prisma.savingsAccount.findFirst({
-      where: { id: data.savingsAccountId, associationId, status: 'ACTIVE' },
-    });
-
-    if (!account) {
-      throw new Error('Savings account not found or inactive');
-    }
-
     const amount = new Decimal(data.amount);
+    const isCredit = ['DEPOSIT', 'INTEREST', 'TRANSFER_IN'].includes(data.type);
 
-    // Validate withdrawal
-    if (data.type === 'WITHDRAWAL' && account.balance.lessThan(amount)) {
-      throw new Error('Insufficient balance for withdrawal');
-    }
+    // One database transaction: the account is read, checked and changed together, and the balance moves in a single atomic step, so two
+    // deposits or withdrawals at the same moment can't overwrite each other or take an account below zero.
+    const transaction = await prisma.$transaction(async (tx) => {
+      const account = await tx.savingsAccount.findFirst({
+        where: { id: data.savingsAccountId, associationId, status: 'ACTIVE' },
+      });
 
-    // Savings held against an active loan can't be withdrawn or moved out.
-    if (data.type === 'WITHDRAWAL' || data.type === 'TRANSFER_OUT') {
-      const position = await getSavingsPosition(prisma, associationId, account.memberId);
-      if (position.locked.gt(0) && amount.gt(position.available)) {
-        throw new Error(
-          `Only ₦${position.available.toNumber().toLocaleString('en-NG', { minimumFractionDigits: 2 })} of your savings is available — the rest is held against an active loan`
-        );
+      if (!account) {
+        throw new RuleError('Savings account not found or inactive', 404, 'ACCOUNT_NOT_FOUND');
       }
-    }
 
-    // Calculate new balance
-    let newBalance: Decimal;
-    let totalDeposits = account.totalDeposits;
-    let totalWithdrawals = account.totalWithdrawals;
+      if (!isCredit) {
+        assertWithdrawable(account.balance, amount);
 
-    if (['DEPOSIT', 'INTEREST', 'TRANSFER_IN'].includes(data.type)) {
-      newBalance = account.balance.plus(amount);
-      if (data.type === 'DEPOSIT') {
-        totalDeposits = totalDeposits.plus(amount);
+        // Savings held against an active loan can't be withdrawn or moved out.
+        if (data.type === 'WITHDRAWAL' || data.type === 'TRANSFER_OUT') {
+          const position = await getSavingsPosition(tx, associationId, account.memberId);
+          if (position.locked.gt(0) && amount.gt(position.available)) {
+            throw new RuleError(
+              `Only ₦${position.available.toNumber().toLocaleString('en-NG', { minimumFractionDigits: 2 })} of the savings is available — the rest is held against an active loan`,
+              409,
+              'SAVINGS_HELD',
+            );
+          }
+        }
       }
-    } else {
-      newBalance = account.balance.minus(amount);
-      if (data.type === 'WITHDRAWAL') {
-        totalWithdrawals = totalWithdrawals.plus(amount);
-      }
-    }
 
-    // Create transaction and update account in a transaction
-    const [transaction] = await prisma.$transaction([
-      prisma.savingsTransaction.create({
+      const moved = await tx.savingsAccount.updateMany({
+        where: { id: data.savingsAccountId, status: 'ACTIVE', ...(isCredit ? {} : { balance: { gte: amount } }) },
+        data: {
+          balance: isCredit ? { increment: amount } : { decrement: amount },
+          ...(data.type === 'DEPOSIT' ? { totalDeposits: { increment: amount } } : {}),
+          ...(data.type === 'WITHDRAWAL' ? { totalWithdrawals: { increment: amount } } : {}),
+        },
+      });
+      if (moved.count === 0) {
+        throw new RuleError('Insufficient balance for this withdrawal.', 409, 'INSUFFICIENT_BALANCE');
+      }
+
+      const updated = await tx.savingsAccount.findUniqueOrThrow({ where: { id: data.savingsAccountId }, select: { balance: true } });
+
+      return tx.savingsTransaction.create({
         data: {
           associationId,
           savingsAccountId: data.savingsAccountId,
           type: data.type as any,
           amount,
-          balanceAfter: newBalance,
+          balanceAfter: updated.balance,
           paymentMethod: data.paymentMethod,
           reference: data.reference,
           processedBy: userId,
@@ -377,16 +386,8 @@ export const cooperativesService = {
         include: {
           processor: { select: { email: true } },
         },
-      }),
-      prisma.savingsAccount.update({
-        where: { id: data.savingsAccountId },
-        data: {
-          balance: newBalance,
-          totalDeposits,
-          totalWithdrawals,
-        },
-      }),
-    ]);
+      });
+    });
 
     // Accounting integration: Sync savings transaction to accounting module
     try {
@@ -525,18 +526,31 @@ export const cooperativesService = {
     return prisma.savingsDepositRequest.findFirst({ where: { id, associationId } });
   },
 
+  /** Nobody decides a deposit or repayment request that is their own; another officer has to. */
+  async assertNotOwnQueueItem(kind: 'deposit' | 'repayment', associationId: number, id: number, deciderUserId: number) {
+    const row =
+      kind === 'deposit'
+        ? await prisma.savingsDepositRequest.findFirst({ where: { id, associationId }, select: { memberId: true } })
+        : await prisma.loanRepaymentRequest.findFirst({ where: { id, associationId }, select: { memberId: true } });
+    if (!row) return; // the claim below answers "not found / already reviewed"
+    const owner = await prisma.member.findUnique({ where: { id: row.memberId }, select: { userId: true } });
+    assertNotOwnRequest(deciderUserId, owner?.userId);
+  },
+
   async approveSavingsDepositRequest(
     associationId: number,
     id: number,
     reviewerUserId: number
   ): Promise<SavingsDepositResponse> {
+    await this.assertNotOwnQueueItem('deposit', associationId, id, reviewerUserId);
+
     // Claim the request first so two officers (or a double click) can never credit it twice.
     const claimed = await prisma.savingsDepositRequest.updateMany({
       where: { id, associationId, status: 'PENDING' },
       data: { status: 'APPROVED', reviewedBy: reviewerUserId, reviewedAt: new Date() },
     });
     if (claimed.count !== 1) {
-      throw new Error('This deposit request does not exist or has already been reviewed');
+      throw new RuleError('This deposit request does not exist or has already been reviewed', 409, 'ALREADY_DECIDED');
     }
 
     const request = await prisma.savingsDepositRequest.findFirstOrThrow({ where: { id, associationId } });
@@ -577,12 +591,14 @@ export const cooperativesService = {
     reviewerUserId: number,
     reason: string
   ): Promise<SavingsDepositResponse> {
+    await this.assertNotOwnQueueItem('deposit', associationId, id, reviewerUserId);
+
     const claimed = await prisma.savingsDepositRequest.updateMany({
       where: { id, associationId, status: 'PENDING' },
       data: { status: 'REJECTED', reviewedBy: reviewerUserId, reviewedAt: new Date(), rejectionReason: reason },
     });
     if (claimed.count !== 1) {
-      throw new Error('This deposit request does not exist or has already been reviewed');
+      throw new RuleError('This deposit request does not exist or has already been reviewed', 409, 'ALREADY_DECIDED');
     }
 
     const rejected = await prisma.savingsDepositRequest.findFirstOrThrow({
@@ -802,13 +818,15 @@ export const cooperativesService = {
     id: number,
     reviewerUserId: number
   ): Promise<LoanRepaymentRequestResponse> {
+    await this.assertNotOwnQueueItem('repayment', associationId, id, reviewerUserId);
+
     // Claim the request first so two officers (or a double click) can never record it twice.
     const claimed = await prisma.loanRepaymentRequest.updateMany({
       where: { id, associationId, status: 'PENDING' },
       data: { status: 'APPROVED', reviewedBy: reviewerUserId, reviewedAt: new Date() },
     });
     if (claimed.count !== 1) {
-      throw new Error('This repayment request does not exist or has already been reviewed');
+      throw new RuleError('This repayment request does not exist or has already been reviewed', 409, 'ALREADY_DECIDED');
     }
 
     const request = await prisma.loanRepaymentRequest.findFirstOrThrow({ where: { id, associationId } });
@@ -848,12 +866,14 @@ export const cooperativesService = {
     reviewerUserId: number,
     reason: string
   ): Promise<LoanRepaymentRequestResponse> {
+    await this.assertNotOwnQueueItem('repayment', associationId, id, reviewerUserId);
+
     const claimed = await prisma.loanRepaymentRequest.updateMany({
       where: { id, associationId, status: 'PENDING' },
       data: { status: 'REJECTED', reviewedBy: reviewerUserId, reviewedAt: new Date(), rejectionReason: reason },
     });
     if (claimed.count !== 1) {
-      throw new Error('This repayment request does not exist or has already been reviewed');
+      throw new RuleError('This repayment request does not exist or has already been reviewed', 409, 'ALREADY_DECIDED');
     }
 
     const rejected = await prisma.loanRepaymentRequest.findFirstOrThrow({
@@ -1067,7 +1087,19 @@ export const cooperativesService = {
     });
 
     if (!product) {
-      throw new Error('Loan product not found');
+      throw new RuleError('Loan product not found', 404, 'NOT_FOUND');
+    }
+
+    // The limits have to stay sensible once the change is applied, whichever of them is being changed.
+    const nextMin = data.minAmount ?? product.minAmount.toNumber();
+    const nextMax = data.maxAmount ?? product.maxAmount.toNumber();
+    if (nextMin > nextMax) {
+      throw new RuleError('The smallest loan can\'t be more than the largest.', 400, 'INVALID_LIMITS');
+    }
+    const nextMinTenure = data.minTenureMonths ?? product.minTenureMonths;
+    const nextMaxTenure = data.maxTenureMonths ?? product.maxTenureMonths;
+    if (nextMinTenure > nextMaxTenure) {
+      throw new RuleError('The shortest tenure can\'t be longer than the longest.', 400, 'INVALID_LIMITS');
     }
 
     const updateData: any = {};
@@ -1075,7 +1107,7 @@ export const cooperativesService = {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.minAmount) updateData.minAmount = new Decimal(data.minAmount);
     if (data.maxAmount) updateData.maxAmount = new Decimal(data.maxAmount);
-    if (data.interestRate) updateData.interestRate = new Decimal(data.interestRate);
+    if (data.interestRate !== undefined) updateData.interestRate = new Decimal(data.interestRate);
     if (data.interestType) updateData.interestType = data.interestType;
     if (data.minTenureMonths) updateData.minTenureMonths = data.minTenureMonths;
     if (data.maxTenureMonths) updateData.maxTenureMonths = data.maxTenureMonths;
@@ -1365,13 +1397,16 @@ export const cooperativesService = {
     });
 
     if (!application) {
-      throw new Error('Loan application not found');
+      throw new RuleError('Loan application not found', 404, 'NOT_FOUND');
     }
 
+    // An officer can't decide their own application.
+    const applicant = await prisma.member.findUnique({ where: { id: application.memberId }, select: { userId: true } });
+    assertNotOwnRequest(userId, applicant?.userId);
+
     // Validate status for review
-    const reviewableStatuses = ['PENDING_REVIEW', 'UNDER_REVIEW', 'PENDING_APPROVAL'];
-    if (!reviewableStatuses.includes(application.status)) {
-      throw new Error(`Cannot review application in ${application.status} status`);
+    if (!(REVIEWABLE_STATUSES as readonly string[]).includes(application.status)) {
+      throw new RuleError(`This application can't be reviewed: it is ${application.status.toLowerCase().replace(/_/g, ' ')}.`, 409, 'NOT_REVIEWABLE');
     }
 
     // Check guarantor requirements
@@ -1412,10 +1447,14 @@ export const cooperativesService = {
       updateData.status = 'UNDER_REVIEW';
     }
 
-    await prisma.loanApplication.update({
-      where: { id: applicationId },
+    // Claim-then-act: only change the application if it is still in a reviewable state, so two officers can't approve and reject it at once.
+    const claimed = await prisma.loanApplication.updateMany({
+      where: { id: applicationId, associationId, status: { in: [...REVIEWABLE_STATUSES] } },
       data: updateData,
     });
+    if (claimed.count !== 1) {
+      throw new RuleError('This application was just decided by someone else. Reload it to see where it stands.', 409, 'ALREADY_DECIDED');
+    }
 
     return (await this.getLoanApplication(associationId, applicationId))!;
   },
@@ -1436,15 +1475,32 @@ export const cooperativesService = {
     } = {}
   ): Promise<LoanResponse> {
     const application = await prisma.loanApplication.findFirst({
-      where: { id: applicationId, associationId, status: 'APPROVED' },
+      where: { id: applicationId, associationId },
       include: {
         loanProduct: true,
-        member: { select: { firstName: true, lastName: true, memberId: true } },
+        member: { select: { firstName: true, lastName: true, memberId: true, userId: true } },
       },
     });
 
     if (!application) {
-      throw new Error('Approved loan application not found');
+      throw new RuleError('Loan application not found', 404, 'NOT_FOUND');
+    }
+    if (application.status === 'DISBURSED') {
+      throw new RuleError('This loan has already been disbursed.', 409, 'ALREADY_DISBURSED');
+    }
+    if (application.status !== 'APPROVED') {
+      throw new RuleError('Only an approved application can be disbursed.', 409, 'NOT_APPROVED');
+    }
+
+    // An officer can't pay out their own loan, and a loan credited to savings needs the borrower's own open account.
+    assertNotOwnRequest(userId, application.member.userId);
+    assertDisbursementTarget(disbursementMethod, options.savingsAccountId);
+    if (disbursementMethod === 'savings_credit') {
+      const target = await prisma.savingsAccount.findFirst({
+        where: { id: options.savingsAccountId, associationId },
+        select: { memberId: true, status: true },
+      });
+      assertDisbursementAccount(target, application.memberId);
     }
 
     const loanNumber = await generateLoanNumber(associationId);
@@ -1475,14 +1531,17 @@ export const cooperativesService = {
         application.amount
       );
 
-      // Update application status
-      await tx.loanApplication.update({
-        where: { id: applicationId },
+      // Claim the application: only one disbursement can win, so a double tap or two officers can never pay a loan out twice.
+      const claimed = await tx.loanApplication.updateMany({
+        where: { id: applicationId, associationId, status: 'APPROVED' },
         data: {
           status: 'DISBURSED',
           disbursedAt,
         },
       });
+      if (claimed.count !== 1) {
+        throw new RuleError('This loan has already been disbursed.', 409, 'ALREADY_DISBURSED');
+      }
 
       // Create loan
       const newLoan = await tx.loan.create({
@@ -1530,35 +1589,29 @@ export const cooperativesService = {
         product: application.loanProduct,
       });
 
-      // If disbursing to savings account, credit it
+      // If disbursing to a savings account, credit it — in one atomic step, to the borrower's own open account (checked above).
       if (disbursementMethod === 'savings_credit' && options.savingsAccountId) {
-        const savingsAccount = await tx.savingsAccount.findFirst({
-          where: { id: options.savingsAccountId, memberId: application.memberId },
+        await tx.savingsAccount.update({
+          where: { id: options.savingsAccountId },
+          data: {
+            balance: { increment: amountDisbursed },
+            totalDeposits: { increment: amountDisbursed },
+          },
         });
+        const credited = await tx.savingsAccount.findUniqueOrThrow({ where: { id: options.savingsAccountId }, select: { balance: true } });
 
-        if (savingsAccount) {
-          const newBalance = savingsAccount.balance.plus(amountDisbursed);
-          await tx.savingsAccount.update({
-            where: { id: options.savingsAccountId },
-            data: {
-              balance: newBalance,
-              totalDeposits: savingsAccount.totalDeposits.plus(amountDisbursed),
-            },
-          });
-
-          await tx.savingsTransaction.create({
-            data: {
-              associationId,
-              savingsAccountId: options.savingsAccountId,
-              type: 'TRANSFER_IN',
-              amount: amountDisbursed,
-              balanceAfter: newBalance,
-              reference: `Loan disbursement - ${loanNumber}`,
-              processedBy: userId,
-              notes: `Loan ${loanNumber} disbursement`,
-            },
-          });
-        }
+        await tx.savingsTransaction.create({
+          data: {
+            associationId,
+            savingsAccountId: options.savingsAccountId,
+            type: 'TRANSFER_IN',
+            amount: amountDisbursed,
+            balanceAfter: credited.balance,
+            reference: `Loan disbursement - ${loanNumber}`,
+            processedBy: userId,
+            notes: `Loan ${loanNumber} disbursement`,
+          },
+        });
       }
 
       return newLoan;
@@ -1937,82 +1990,88 @@ export const cooperativesService = {
     userId: number,
     data: LoanRepaymentInput
   ): Promise<LoanRepaymentResponse> {
-    const loan = await prisma.loan.findFirst({
-      where: { id: data.loanId, associationId, status: { in: ['ACTIVE', 'OVERDUE'] } },
-      include: {
-        repaymentSchedule: {
-          where: { status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] } },
-          orderBy: { dueDate: 'asc' },
-        },
-        loanProduct: true,
-      },
-    });
-
-    if (!loan) {
-      throw new Error('Active loan not found');
-    }
-
-    let remainingAmount = new Decimal(data.amount);
-    let totalPrincipalPaid = new Decimal(0);
-    let totalInterestPaid = new Decimal(0);
-    let totalLateFee = new Decimal(0);
-    let scheduleItemId: number | null = null;
-
-    // Apply payment to schedule items
-    const scheduleUpdates: Array<{
-      id: number;
-      principalPaid: Decimal;
-      interestPaid: Decimal;
-      totalPaid: Decimal;
-      status: string;
-      paidAt?: Date;
-    }> = [];
-
-    for (const scheduleItem of loan.repaymentSchedule) {
-      if (remainingAmount.lessThanOrEqualTo(0)) break;
-
-      const principalRemaining = scheduleItem.principalDue.minus(scheduleItem.principalPaid);
-      const interestRemaining = scheduleItem.interestDue.minus(scheduleItem.interestPaid);
-      const totalRemaining = principalRemaining.plus(interestRemaining).plus(scheduleItem.lateFee);
-
-      if (totalRemaining.lessThanOrEqualTo(0)) continue;
-
-      if (!scheduleItemId) scheduleItemId = scheduleItem.id;
-
-      // Pay interest first, then principal
-      let interestPayment = Decimal.min(remainingAmount, interestRemaining);
-      remainingAmount = remainingAmount.minus(interestPayment);
-
-      let principalPayment = Decimal.min(remainingAmount, principalRemaining);
-      remainingAmount = remainingAmount.minus(principalPayment);
-
-      // Pay late fee if any
-      let lateFeePayment = Decimal.min(remainingAmount, scheduleItem.lateFee);
-      remainingAmount = remainingAmount.minus(lateFeePayment);
-
-      totalPrincipalPaid = totalPrincipalPaid.plus(principalPayment);
-      totalInterestPaid = totalInterestPaid.plus(interestPayment);
-      totalLateFee = totalLateFee.plus(lateFeePayment);
-
-      const newPrincipalPaid = scheduleItem.principalPaid.plus(principalPayment);
-      const newInterestPaid = scheduleItem.interestPaid.plus(interestPayment);
-      const newTotalPaid = scheduleItem.totalPaid.plus(principalPayment).plus(interestPayment);
-
-      const isPaid = newPrincipalPaid.greaterThanOrEqualTo(scheduleItem.principalDue) &&
-                     newInterestPaid.greaterThanOrEqualTo(scheduleItem.interestDue);
-
-      scheduleUpdates.push({
-        id: scheduleItem.id,
-        principalPaid: newPrincipalPaid,
-        interestPaid: newInterestPaid,
-        totalPaid: newTotalPaid,
-        status: isPaid ? 'PAID' : 'PARTIAL',
-        paidAt: isPaid ? new Date() : undefined,
-      });
-    }
-
-    // Create repayment and update loan in a transaction
+    // Everything runs under a lock on the loan row, so two repayments at the same moment can't both be worked out from the same
+    // balance; the loan is read again once the lock is held.
     const repayment = await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM loans WHERE id = ${data.loanId} FOR UPDATE`;
+
+      const loan = await tx.loan.findFirst({
+        where: { id: data.loanId, associationId, status: { in: ['ACTIVE', 'OVERDUE'] } },
+        include: {
+          repaymentSchedule: {
+            where: { status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] } },
+            orderBy: { dueDate: 'asc' },
+          },
+          loanProduct: true,
+        },
+      });
+
+      if (!loan) {
+        throw new RuleError('Active loan not found', 404, 'LOAN_NOT_FOUND');
+      }
+
+      // A repayment can't be more than is still owed, whoever records it.
+      assertRepaymentWithinOutstanding(data.amount, loan.outstandingBalance);
+
+      let remainingAmount = new Decimal(data.amount);
+      let totalPrincipalPaid = new Decimal(0);
+      let totalInterestPaid = new Decimal(0);
+      let totalLateFee = new Decimal(0);
+      let scheduleItemId: number | null = null;
+
+      // Apply payment to schedule items
+      const scheduleUpdates: Array<{
+        id: number;
+        principalPaid: Decimal;
+        interestPaid: Decimal;
+        totalPaid: Decimal;
+        status: string;
+        paidAt?: Date;
+      }> = [];
+
+      for (const scheduleItem of loan.repaymentSchedule) {
+        if (remainingAmount.lessThanOrEqualTo(0)) break;
+
+        const principalRemaining = scheduleItem.principalDue.minus(scheduleItem.principalPaid);
+        const interestRemaining = scheduleItem.interestDue.minus(scheduleItem.interestPaid);
+        const totalRemaining = principalRemaining.plus(interestRemaining).plus(scheduleItem.lateFee);
+
+        if (totalRemaining.lessThanOrEqualTo(0)) continue;
+
+        if (!scheduleItemId) scheduleItemId = scheduleItem.id;
+
+        // Pay interest first, then principal
+        let interestPayment = Decimal.min(remainingAmount, interestRemaining);
+        remainingAmount = remainingAmount.minus(interestPayment);
+
+        let principalPayment = Decimal.min(remainingAmount, principalRemaining);
+        remainingAmount = remainingAmount.minus(principalPayment);
+
+        // Pay late fee if any
+        let lateFeePayment = Decimal.min(remainingAmount, scheduleItem.lateFee);
+        remainingAmount = remainingAmount.minus(lateFeePayment);
+
+        totalPrincipalPaid = totalPrincipalPaid.plus(principalPayment);
+        totalInterestPaid = totalInterestPaid.plus(interestPayment);
+        totalLateFee = totalLateFee.plus(lateFeePayment);
+
+        const newPrincipalPaid = scheduleItem.principalPaid.plus(principalPayment);
+        const newInterestPaid = scheduleItem.interestPaid.plus(interestPayment);
+        const newTotalPaid = scheduleItem.totalPaid.plus(principalPayment).plus(interestPayment);
+
+        const isPaid = newPrincipalPaid.greaterThanOrEqualTo(scheduleItem.principalDue) &&
+                       newInterestPaid.greaterThanOrEqualTo(scheduleItem.interestDue);
+
+        scheduleUpdates.push({
+          id: scheduleItem.id,
+          principalPaid: newPrincipalPaid,
+          interestPaid: newInterestPaid,
+          totalPaid: newTotalPaid,
+          status: isPaid ? 'PAID' : 'PARTIAL',
+          paidAt: isPaid ? new Date() : undefined,
+        });
+      }
+
       // Create repayment record
       const newRepayment = await tx.loanRepayment.create({
         data: {
@@ -2086,7 +2145,7 @@ export const cooperativesService = {
       });
 
       return newRepayment;
-    });
+    }, { maxWait: 15000, timeout: 30000 });
 
     // Accounting integration: Sync loan repayment to accounting module
     try {

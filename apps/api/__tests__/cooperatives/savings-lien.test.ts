@@ -210,6 +210,8 @@ describe('withdrawing held savings', () => {
       })),
     };
     prismaMod.savingsLien = db.savingsLien;
+    // processSavingsTransaction now reads, checks and moves the balance inside one database transaction.
+    prismaMod.$transaction = async (fn: (client: unknown) => unknown) => fn(prismaMod);
 
     await expect(
       cooperativesService.processSavingsTransaction(15, 2, { savingsAccountId: 9, type: 'WITHDRAWAL', amount: 50_000 })

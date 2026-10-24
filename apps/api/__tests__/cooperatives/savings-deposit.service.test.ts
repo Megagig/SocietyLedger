@@ -7,6 +7,7 @@ const mockPrisma = {
   savingsAccount: { findFirst: jest.fn() },
   associationBankAccount: { findFirst: jest.fn() },
   savingsDepositRequest: {
+    findFirst: jest.fn(async () => null), // the self-decision check finds nothing to compare, so the claim below answers
     create: jest.fn(),
     updateMany: jest.fn(),
     update: jest.fn(),

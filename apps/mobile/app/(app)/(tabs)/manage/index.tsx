@@ -1,4 +1,4 @@
-import { Banknote, Bell, CalendarDays, Wallet, Briefcase, LifeBuoy, MailPlus, ReceiptText, UserCheck, Users } from 'lucide-react-native';
+import { Banknote, Bell, CalendarDays, Wallet, Briefcase, LifeBuoy, MailPlus, PiggyBank, ReceiptText, UserCheck, Users } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -12,6 +12,7 @@ import { Section } from '@/components/layout/Section';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { COOP_ADMIN_ACCESS, COOP_MODULE } from '@/features/coopManage/queries';
 import { dashboardKeys, attentionCount, useAttention } from '@/features/dashboard/queries';
 import { FINANCE_VIEW_ACCESS } from '@/features/finance/queries';
 import { MEETINGS_ADMIN_ACCESS, MEETINGS_MODULE, useMeetingStats } from '@/features/meetingsAdmin/queries';
@@ -21,7 +22,7 @@ import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS } from '@/features/nigeri
 import { SUPPORT_STAFF_ACCESS } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
-import { useModuleDisabled } from '@/hooks/useModuleAccess';
+import { useModuleAccess, useModuleDisabled } from '@/hooks/useModuleAccess';
 import { useTenantKey } from '@/hooks/useTenantKey';
 
 // project-overview.md §6.8/§6.9 — members, finance, payments verification, accounting, reports,
@@ -55,6 +56,9 @@ export default function ManageScreen() {
   const canMeetings = useCan(MEETINGS_ADMIN_ACCESS) && !meetingsOff;
   const upcomingMeetings = useMeetingStats().data?.scheduledMeetings ?? 0;
   const canFinance = useCan(FINANCE_VIEW_ACCESS);
+  // Cooperatives: officer permission and the module on; the badge adds up everything waiting for a decision.
+  const canCoop = useModuleAccess(COOP_ADMIN_ACCESS, COOP_MODULE);
+  const coopWaiting = attentionCount(attention, 'savingsDeposits') + attentionCount(attention, 'loanRepayments') + attentionCount(attention, 'loanApplications');
   const overdueCharges = attentionCount(attention, 'overdueCharges');
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
   const cashOverview = useCashOverview().data;
@@ -73,7 +77,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -123,6 +127,22 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/finance' as never)}
                   testID="manage-finance"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canCoop ? (
+            <Section title="Cooperative">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={PiggyBank} tone={coopWaiting > 0 ? 'warning' : 'primary'} />}
+                  title="Cooperatives"
+                  meta="Savings, loans, and payments to confirm"
+                  trailing={coopWaiting > 0 ? <Badge tone="warning">{`${coopWaiting} waiting`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/cooperatives' as never)}
+                  testID="manage-cooperatives"
                 />
               </ListGroup>
             </Section>

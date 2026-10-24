@@ -9,7 +9,8 @@ let mockCan = true;
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn() }), useFocusEffect: jest.fn() }));
 jest.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: jest.fn() }), useQuery: jest.fn(), useMutation: jest.fn() }));
 jest.mock('@/hooks/useCan', () => ({ useCan: () => mockCan }));
-jest.mock('@/hooks/useModuleAccess', () => ({ useModuleDisabled: () => false }));
+jest.mock('@/hooks/useModuleAccess', () => ({ useModuleDisabled: () => false, useModuleAccess: () => mockCan }));
+jest.mock('@/features/coopManage/queries', () => ({ COOP_ADMIN_ACCESS: [], COOP_MODULE: 'cooperatives' }));
 jest.mock('@/hooks/useTenantKey', () => ({ useTenantKey: () => 't' }));
 jest.mock('@/providers/ThemeProvider', () => ({
   useThemeTokens: () => ({ color: new Proxy({}, { get: () => '#000000' }), chart: ['#000000'] }),

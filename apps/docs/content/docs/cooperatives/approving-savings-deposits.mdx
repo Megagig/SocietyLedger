@@ -3,10 +3,10 @@ title: "Approving member savings deposits"
 description: "Check the bank statement, then confirm or reject a deposit a member has declared."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/cooperatives/savings-deposits"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cooperatives/savings-deposits", "CP2"]
 status: published
-lastVerified: "2026-10-21"
+lastVerified: "2026-10-26"
 related: ["/docs/cooperatives/depositing-into-your-savings", "/docs/cooperatives/deposits-and-withdrawals"]
 ---
 
@@ -22,12 +22,24 @@ Approving takes effect immediately and can't be undone from this screen. A recei
 
 ## Review a deposit
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Cooperatives", "Savings Deposits"]} />. The **Awaiting** tab shows deposits that need a decision.</Step>
 <Step>Read the member, amount, payment date, account and any reference or note. Select **View receipt** to open the uploaded file.</Step>
 <Step>Select **Approve** if the money is in the cooperative's account — confirm with **Yes, add to savings**.</Step>
 <Step>Or select **Reject**, give the member a **Reason**, and confirm.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Cooperatives", "Deposit requests"]} />. The **Waiting** tab shows deposits that need a decision.</Step>
+<Step>Read the member, amount, payment date, account and any reference or note. Tap **View receipt** — an image opens in the zoom viewer, a PDF in your phone's viewer.</Step>
+<Step>Tap **Approve** if the money is in the cooperative's account, and confirm.</Step>
+<Step>Or tap **Reject**, give the member a **Reason**, and confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot pending="Savings Deposits page, Awaiting tab, showing a member's ₦100,000 deposit with View receipt, Approve and Reject buttons" />
 
@@ -36,6 +48,6 @@ Approving takes effect immediately and can't be undone from this screen. A recei
 - **Approved** — the amount is added to the member's savings account straight away and recorded as a deposit in its history (and in your accounting, if integration is on). The member is notified.
 - **Rejected** — nothing changes in the account. The member is notified and shown your reason.
 
-A deposit can only be reviewed once. If two officers open the same deposit, the second one is told it has already been reviewed. The **Approved** and **Rejected** tabs keep the history.
+**You can't decide your own deposit.** If you are also a member and the deposit is yours, another officer has to approve or reject it; you'll see a note instead of the buttons. A deposit can only be reviewed once. If two officers open the same deposit, the second one is told it has already been reviewed. The **Approved** and **Rejected** tabs keep the history.
 
 You can still record a deposit directly, without a member's receipt, as described in [Recording deposits and withdrawals](/docs/cooperatives/deposits-and-withdrawals).

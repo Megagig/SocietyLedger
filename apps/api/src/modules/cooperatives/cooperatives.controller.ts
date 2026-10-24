@@ -31,6 +31,18 @@ import { uploadFile, getPresignedUrl } from '../../lib/storage';
 import { PlatformRole } from '@prisma/client';
 import { PERMISSIONS } from '../../lib/permissions';
 import { RBACService } from '../../services/rbac.service';
+import { RuleError } from '../finance/rule-error';
+
+/**
+ * A rule the officer broke (their own request, not enough balance, already decided, over the amount owed) answers with its own status
+ * and a stable `code` the apps can react to. Any other failure keeps the plain 400 with its message, as before.
+ */
+function coopFailure(res: Response, error: any) {
+  if (error instanceof RuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  return res.status(400).json({ success: false, message: error?.message });
+}
 
 /**
  * Officers (members.view_all, or either cooperatives manage key) and super admins see every member's
@@ -87,7 +99,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating savings account:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -189,7 +201,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error processing savings transaction:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -300,7 +312,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating savings deposit request:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -391,7 +403,7 @@ export const cooperativesController = {
       return res.status(200).json({ success: true, message: 'Deposit approved and added to savings', data: deposit });
     } catch (error: any) {
       console.error('Error approving savings deposit:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -420,7 +432,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error rejecting savings deposit:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -485,7 +497,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating loan repayment request:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -577,7 +589,7 @@ export const cooperativesController = {
       return res.status(200).json({ success: true, message: 'Repayment recorded', data: request });
     } catch (error: any) {
       console.error('Error approving loan repayment request:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -606,7 +618,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error rejecting loan repayment request:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -638,7 +650,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating loan product:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -700,7 +712,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error updating loan product:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -747,7 +759,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating loan application:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -864,7 +876,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error reviewing loan application:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -902,7 +914,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error disbursing loan:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -977,7 +989,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error responding to guarantor request:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
@@ -1123,7 +1135,7 @@ export const cooperativesController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error processing loan repayment:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return coopFailure(res, error);
     }
   },
 
