@@ -129,10 +129,9 @@ export const accountingIntegrationService = {
     sourceId: number
   ) {
     try {
-      // Create journal entry with APPROVED status for auto-sync. createJournalEntry itself
-      // enforces the accounting-period check (shared with the manual-entry path) — a closed/
-      // locked period throws here, gets caught below, logged via logSyncFailure, and re-thrown;
-      // every onX... caller already swallows that non-critically, so the underlying business
+      // Written already posted, in one step (an automatic entry is never left half done). createJournalEntry enforces the
+      // accounting-period check shared with the manual path — a closed/locked period throws here, gets caught below, logged via
+      // logSyncFailure, and re-thrown; every onX... caller already swallows that non-critically, so the underlying business
       // action (recording a payment, etc.) is never blocked by an accounting period.
       const entry = await accountingService.createJournalEntry(
         associationId,
@@ -143,18 +142,10 @@ export const accountingIntegrationService = {
           description: entryData.description,
           reference: entryData.reference,
           lines: entryData.lines
-        }
+        },
+        { source: { type: sourceTable, id: sourceId }, autoPost: true }
       );
-      
-      // Update entry to APPROVED status (skip approval workflow for auto-sync)
-      await prisma.journalEntry.update({
-        where: { id: entry.id },
-        data: { status: 'APPROVED' }
-      });
-      
-      // Now post the entry
-      await accountingService.postJournalEntry(associationId, entry.id);
-      
+
       // Update source record with sync status
       await this.updateSyncStatus(sourceTable, sourceId, entry.id);
       

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { accountingController } from './accounting.controller';
 import { accountingPeriodsController } from './accounting-periods.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { requirePermission } from '../../middleware/rbac';
+import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { requireModule } from '../../middleware/module-feature.middleware';
 
@@ -289,7 +289,7 @@ router.get(
  */
 router.post(
   '/sync/transactions/bulk',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.FINANCE_EDIT, PERMISSIONS.FINANCE_CREATE]),
   accountingController.bulkSyncTransactions
 );
 
@@ -299,7 +299,7 @@ router.post(
  */
 router.post(
   '/sync/payments/bulk',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.FINANCE_EDIT, PERMISSIONS.FINANCE_CREATE]),
   accountingController.bulkSyncPayments
 );
 
@@ -309,7 +309,7 @@ router.post(
  */
 router.post(
   '/sync/welfare-contributions/bulk',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.FINANCE_EDIT, PERMISSIONS.FINANCE_CREATE]),
   accountingController.bulkSyncWelfareContributions
 );
 
@@ -319,7 +319,7 @@ router.post(
  */
 router.post(
   '/sync/welfare-payouts/bulk',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.FINANCE_EDIT, PERMISSIONS.FINANCE_CREATE]),
   accountingController.bulkSyncWelfarePayouts
 );
 
@@ -329,7 +329,7 @@ router.post(
  */
 router.post(
   '/sync/savings-transactions/bulk',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.FINANCE_EDIT, PERMISSIONS.FINANCE_CREATE]),
   accountingController.bulkSyncSavingsTransactions
 );
 
@@ -339,7 +339,7 @@ router.post(
  */
 router.post(
   '/sync/loans/bulk',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.FINANCE_EDIT, PERMISSIONS.FINANCE_CREATE]),
   accountingController.bulkSyncLoans
 );
 
@@ -349,7 +349,7 @@ router.post(
  */
 router.post(
   '/sync/loan-repayments/bulk',
-  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  requireAnyPermission([PERMISSIONS.FINANCE_EDIT, PERMISSIONS.FINANCE_CREATE]),
   accountingController.bulkSyncLoanRepayments
 );
 

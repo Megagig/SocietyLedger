@@ -1,9 +1,26 @@
 import { Request, Response } from 'express';
 import { RBACService as RBACServiceCore } from '../../services/rbac.service';
 import { PrismaClient, PlatformRole } from '@prisma/client';
-import { SettingsService } from '../settings/settings.service';
+import { RuleError } from '../finance/rule-error';
+import * as rbacRoles from './rbac-roles.service';
 
 const prisma = new PrismaClient();
+
+/** Who is asking, or null when the request has no association behind it. */
+function actorOf(req: Request): rbacRoles.Actor | null {
+  const user = req.user;
+  if (!user?.associationId) return null;
+  return { id: user.id, associationId: user.associationId, platformRole: user.platformRole ?? null };
+}
+
+/** A rule the request broke answers with its own status and plain message; anything else is a 500. */
+function respondWithError(res: Response, error: unknown, doing: string) {
+  if (error instanceof RuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  console.error(`Error trying to ${doing}:`, error);
+  return res.status(500).json({ success: false, message: `Could not ${doing}` });
+}
 
 /**
  * RBAC Controller - Handles role and permission management API endpoints
@@ -52,13 +69,10 @@ export class RBACController {
     try {
       const associationId = req.user?.associationId;
       
-      // Get association-specific roles and platform roles
+      // This association's own roles only: platform roles (no association) are SocietyLedger staff's and are never shown here
       const roles = await prisma.role.findMany({
         where: {
-          OR: [
-            { associationId },
-            { associationId: null } // Platform roles
-          ],
+          associationId,
           isActive: true
         },
         include: {
@@ -116,10 +130,7 @@ export class RBACController {
       const role = await prisma.role.findFirst({
         where: {
           id: parseInt(id),
-          OR: [
-            { associationId },
-            { associationId: null }
-          ]
+          associationId
         },
         include: {
           permissions: {
@@ -180,191 +191,30 @@ export class RBACController {
   }
 
   /**
-   * Create a new custom role
+   * Create a new custom role (with only permissions the creator holds)
    */
   static async createRole(req: Request, res: Response) {
     try {
-      const { name, displayName, description, permissions } = req.body;
-      const associationId = req.user?.associationId;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association context required'
-        });
-      }
-
-      // Check if role name already exists
-      const existing = await prisma.role.findUnique({
-        where: {
-          associationId_name: { associationId, name }
-        }
-      });
-
-      if (existing) {
-        return res.status(400).json({
-          success: false,
-          message: 'A role with this name already exists'
-        });
-      }
-
-      // Create role with permissions
-      const role = await prisma.role.create({
-        data: {
-          associationId,
-          name: name.toLowerCase().replace(/\s+/g, '_'),
-          displayName,
-          description,
-          isSystemRole: false,
-          permissions: {
-            create: permissions?.map((permKey: string) => ({
-              permission: {
-                connect: { key: permKey }
-              }
-            })) || []
-          }
-        },
-        include: {
-          permissions: {
-            include: { permission: true }
-          }
-        }
-      });
-
-      // Audit log
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId: req.user!.id,
-          action: 'ROLE_CREATED',
-          tableName: 'roles',
-          recordId: role.id,
-          newValues: { name, displayName, permissions }
-        }
-      });
-
-      res.status(201).json({
-        success: true,
-        message: 'Role created successfully',
-        data: role
-      });
+      const actor = actorOf(req);
+      if (!actor) return res.status(400).json({ success: false, message: 'Association context required' });
+      const role = await rbacRoles.createRole(actor, req.body);
+      res.status(201).json({ success: true, message: 'Role created successfully', data: role });
     } catch (error) {
-      console.error('Error creating role:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to create role'
-      });
+      respondWithError(res, error, 'create the role');
     }
   }
 
   /**
-   * Update a role's permissions
+   * Update a role's name or permissions (never the Administrator role's permissions; never adding what you do not hold)
    */
   static async updateRole(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const { displayName, description, permissions } = req.body;
-      const associationId = req.user?.associationId;
-
-      const role = await prisma.role.findFirst({
-        where: {
-          id: parseInt(id),
-          associationId
-        }
-      });
-
-      if (!role) {
-        return res.status(404).json({
-          success: false,
-          message: 'Role not found'
-        });
-      }
-
-      // System roles can only have permissions updated, not name/description
-      if (role.isSystemRole && (displayName || description)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot modify system role name or description'
-        });
-      }
-
-      // Update role
-      const updatedRole = await prisma.$transaction(async (tx) => {
-        // Update basic info if not system role
-        if (!role.isSystemRole) {
-          await tx.role.update({
-            where: { id: role.id },
-            data: {
-              displayName: displayName || role.displayName,
-              description: description !== undefined ? description : role.description
-            }
-          });
-        }
-
-        // Update permissions if provided
-        if (permissions) {
-          // Remove existing permissions
-          await tx.rolePermission.deleteMany({
-            where: { roleId: role.id }
-          });
-
-          // Add new permissions
-          const permissionRecords = await tx.permission.findMany({
-            where: { key: { in: permissions } }
-          });
-
-          await tx.rolePermission.createMany({
-            data: permissionRecords.map(p => ({
-              roleId: role.id,
-              permissionId: p.id
-            }))
-          });
-        }
-
-        return tx.role.findUnique({
-          where: { id: role.id },
-          include: {
-            permissions: {
-              include: { permission: true }
-            }
-          }
-        });
-      });
-
-      // Clear permission cache for affected users
-      const affectedUsers = await prisma.userRole.findMany({
-        where: { roleId: role.id },
-        select: { userId: true }
-      });
-      
-      affectedUsers.forEach(ur => {
-        RBACServiceCore.clearUserCache(ur.userId, associationId!);
-      });
-
-      // Audit log
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId: req.user!.id,
-          action: 'ROLE_UPDATED',
-          tableName: 'roles',
-          recordId: role.id,
-          oldValues: { displayName: role.displayName, description: role.description },
-          newValues: { displayName, description, permissions }
-        }
-      });
-
-      res.json({
-        success: true,
-        message: 'Role updated successfully',
-        data: updatedRole
-      });
+      const actor = actorOf(req);
+      if (!actor) return res.status(400).json({ success: false, message: 'Association context required' });
+      const role = await rbacRoles.updateRole(actor, Number(req.params.id), req.body);
+      res.json({ success: true, message: 'Role updated successfully', data: role });
     } catch (error) {
-      console.error('Error updating role:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to update role'
-      });
+      respondWithError(res, error, 'update the role');
     }
   }
 
@@ -437,180 +287,30 @@ export class RBACController {
   }
 
   /**
-   * Assign role to user
+   * Assign role to user (a role of this association only; nobody changes their own roles or gives more than they hold)
    */
   static async assignRole(req: Request, res: Response) {
     try {
-      const { userId, roleId } = req.body;
-      const associationId = req.user?.associationId;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association context required'
-        });
-      }
-
-      // Verify user belongs to association
-      const user = await prisma.user.findFirst({
-        where: { id: userId, associationId }
-      });
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found in this association'
-        });
-      }
-
-      // Verify role exists
-      const role = await prisma.role.findFirst({
-        where: {
-          id: roleId,
-          OR: [{ associationId }, { associationId: null }]
-        }
-      });
-
-      if (!role) {
-        return res.status(404).json({
-          success: false,
-          message: 'Role not found'
-        });
-      }
-
-      // R4.6/G53: Members & Access Settings' allowMultipleRoles was saved
-      // but never read — assignRole always stacked roles regardless. When
-      // off (the default), assigning a new role retires any other active
-      // one for this user instead of leaving both active.
-      const allowMultipleRoles = await SettingsService.getSetting(associationId, 'members_access', 'allowMultipleRoles');
-      if (!allowMultipleRoles) {
-        await prisma.userRole.updateMany({
-          where: { userId, associationId, roleId: { not: roleId }, isActive: true },
-          data: { isActive: false },
-        });
-      }
-
-      // Create or update user role
-      const userRole = await prisma.userRole.upsert({
-        where: {
-          userId_roleId_associationId: {
-            userId,
-            roleId,
-            associationId
-          }
-        },
-        update: {
-          isActive: true,
-          assignedBy: req.user!.id,
-          assignedAt: new Date()
-        },
-        create: {
-          userId,
-          roleId,
-          associationId,
-          assignedBy: req.user!.id,
-          isActive: true
-        }
-      });
-
-      // Also update the legacy role field for backward compatibility
-      await prisma.user.update({
-        where: { id: userId },
-        data: { role: role.name }
-      });
-
-      // Clear permission cache
-      RBACServiceCore.clearUserCache(userId, associationId);
-
-      // Audit log
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId: req.user!.id,
-          action: 'ROLE_ASSIGNED',
-          tableName: 'user_roles',
-          recordId: userRole.id,
-          newValues: { userId, roleId, roleName: role.name }
-        }
-      });
-
-      res.json({
-        success: true,
-        message: 'Role assigned successfully',
-        data: userRole
-      });
+      const actor = actorOf(req);
+      if (!actor) return res.status(400).json({ success: false, message: 'Association context required' });
+      const userRole = await rbacRoles.assignRole(actor, req.body);
+      res.json({ success: true, message: 'Role assigned successfully', data: userRole });
     } catch (error) {
-      console.error('Error assigning role:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to assign role'
-      });
+      respondWithError(res, error, 'assign the role');
     }
   }
 
   /**
-   * Remove role from user
+   * Remove role from user (never the last Administrator)
    */
   static async removeRole(req: Request, res: Response) {
     try {
-      const { userId, roleId } = req.body;
-      const associationId = req.user?.associationId;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association context required'
-        });
-      }
-
-      const userRole = await prisma.userRole.findUnique({
-        where: {
-          userId_roleId_associationId: {
-            userId,
-            roleId,
-            associationId
-          }
-        }
-      });
-
-      if (!userRole) {
-        return res.status(404).json({
-          success: false,
-          message: 'User role assignment not found'
-        });
-      }
-
-      // Deactivate instead of delete for audit trail
-      await prisma.userRole.update({
-        where: { id: userRole.id },
-        data: { isActive: false }
-      });
-
-      // Clear permission cache
-      RBACServiceCore.clearUserCache(userId, associationId);
-
-      // Audit log
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId: req.user!.id,
-          action: 'ROLE_REMOVED',
-          tableName: 'user_roles',
-          recordId: userRole.id,
-          oldValues: { userId, roleId }
-        }
-      });
-
-      res.json({
-        success: true,
-        message: 'Role removed successfully'
-      });
+      const actor = actorOf(req);
+      if (!actor) return res.status(400).json({ success: false, message: 'Association context required' });
+      await rbacRoles.removeRole(actor, req.body);
+      res.json({ success: true, message: 'Role removed successfully' });
     } catch (error) {
-      console.error('Error removing role:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to remove role'
-      });
+      respondWithError(res, error, 'remove the role');
     }
   }
 
@@ -620,9 +320,12 @@ export class RBACController {
   static async getUsersWithRoles(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      const { page = 1, limit = 20, search } = req.query;
+      const { search } = req.query;
+      // A page is at most 100 people; a missing or silly number falls back to the first page of 20.
+      const page = Math.max(1, Math.floor(Number(req.query.page)) || 1);
+      const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit)) || 20));
 
-      const skip = (Number(page) - 1) * Number(limit);
+      const skip = (page - 1) * limit;
 
       const where: any = {
         associationId,
@@ -641,7 +344,7 @@ export class RBACController {
         prisma.user.findMany({
           where,
           skip,
-          take: Number(limit),
+          take: limit,
           include: {
             member: {
               select: {
@@ -688,10 +391,10 @@ export class RBACController {
         data: {
           users: transformedUsers,
           pagination: {
-            page: Number(page),
-            limit: Number(limit),
+            page,
+            limit,
             total,
-            totalPages: Math.ceil(total / Number(limit))
+            totalPages: Math.ceil(total / limit)
           }
         }
       });

@@ -1571,6 +1571,53 @@ Built from existing primitives; nothing new in `components/ui`.
 - **Subscription screen:** read-only `ListGroup` — plan with a status `Badge`, the next date (renews / trial ends / ends), members allowed, a pending plan change, then the modules the plan includes; one line of text says billing is managed on the website. No price, no purchase button, no link out.
 - **Rule shown in the UI:** a setting is shown only if something in the app reads it; the other web switches are left off the phone.
 
+## Mobile Phase 7 — Users, roles and audit (F7.3, 2026-10-24)
+
+**Parity additions (2026-10-25):** `PermissionEditor` now opens with a `SearchField` (`gap-3` above the bordered group list); inside an open group, a first row `min-h-[44px] px-4 py-2` with `Text variant="body" tone="primary"` reading "Turn all of X on/off"; a search opens every matching group and shows `Text body secondary` when nothing matches. The role form is `Section` (name, description) then `Section` "What it can do" with the editor and a caption count; Add role stays disabled until one permission is chosen. `UserRow` gained a caption "Joined …" and a `danger` `Badge` for a platform role; role chips and the role row use `Badge tone="primary"` for built-in, `neutral` for custom. The audit screen filters are `Action` and `Area` side by side (`flex-row gap-3`), then `When` below; the row caption ends with `· #recordId`.
+
+- **`UserRow`** (`GroupedRow` shell): `Avatar` (40), name, email and member ID, and the roles as `Badge` chips (the Administrator in the primary tone, "No role" when empty).
+- **`RoleRow`:** name, "n people · n permissions", and a "Built in" `Badge` for the built-in roles.
+- **`AuditRow`:** the activity in plain words, "who · area", and the date and time; tapping opens a `BottomSheet` listing what changed ("Name: before → after").
+- **`PermissionEditor`:** one bordered surface; each part of the app is a row with "n of m on" and a chevron that opens its switches (description left, `Switch` right). A switch the person could not turn on is left out; with `readOnly` only what is on is listed, without switches.
+- **User roles screen:** the person (64dp `Avatar`, name, email), "Roles they hold" as a `ListGroup` with a ghost **Remove** button each, "Give a role" as a `ListGroup` of tappable rows; both go through a `ConfirmSheet`. Your own screen shows one line of text instead of buttons.
+- **Role detail:** name and description fields for a custom role, the permission editor, a sticky **Save changes** (off until something changes), and a danger ghost **Delete role** for a custom role nobody holds.
+- **Audit screen:** a `SearchField` and two side-by-side `OptionDropdown`s (Area, When) above a `PagedList`.
+- **Rule shown in the UI:** you are only offered what you could do yourself — no role you could not hold, no switch you could not turn on, no buttons on your own account.
+
+## Mobile Phase 7 — Accounting (F7.1, 2026-10-24)
+
+- **Accounting hub** (`manage/accounting/index.tsx`): a `SummaryHero` with cash and bank as the headline and owned / owed / surplus as the pills; "Needs attention" `ListGroup` (entries waiting with a warning `Badge`; records not in the books with a soft **Catch up** button); the last six months; shortcuts as a `ListGroup`; latest entries as `EntryRow`s.
+- **`EntryRow` / `AccountRow` / `BudgetRow` / `PeriodRow` / `SyncErrorRow`** (`GroupedRow` shell): an entry shows its description, number and date, the amount, a `StatusChip` and an **Automatic** `Badge`; an account its name, code, "Built in" / "Switched off" and (when asked) its balance, indented by depth; a budget its year, line count and status; a period its dates and an Open / Closed / Locked chip.
+- **`PlanBar`:** a `ProgressBar` with the amount used on the left and the plan on the right, in the danger tone when over.
+- **`TrendChart`:** income and spending side by side per month (`BarChart`, chart tokens), axis written in full, a legend underneath.
+- **`LinesEditor`:** one bordered card per line (account `SelectSheet`, **Debit** and **Credit** `AmountField`s side by side, a note), **Add a line**, and a sunken totals panel that says "Balanced" in success or "Out by ₦…" in danger. Save is refused until it balances.
+- **`StatementSection`:** a heading, a bordered list of account lines with `Money`, and a sunken total row; an empty part says so.
+- **`PostEntrySheet`:** a `BottomSheet` explaining that posting is for good, a `PasswordField`, and **Keep it** / **Post entry**; a wrong password stays on the sheet with the reason beneath.
+- **Entry detail:** status `StatusChip`, the lines in one bordered list with a total row, a history block, a rejection panel in the danger-soft tone, and a sticky footer whose buttons depend on the state and on who is looking (never Approve on your own entry).
+- **Statements:** a `SegmentedControl` (Income | Balance sheet | Cash flow), the period picker or an "As at" `OptionDropdown`, a share icon in the header; a warning panel when a sheet does not balance.
+- **Rule shown in the UI:** nothing is offered that the server would refuse — no Approve on your own entry, no editing a posted one, no saving an entry that does not balance.
+- **Statement PDF:** the statements header has a second share icon (`FileDown`, "Share this statement as a PDF") next to the text one, shown only to someone with `exports.financial`.
+
+- **Parity additions:** `CompareLine` (label with the change underneath in a success, danger or secondary tone, the earlier amount at the right) inside the bordered-list surface; `CashActivity` (a `StatementSection` whose rows read "In: …" and "Out: …" with the net as its total); the statements controls stack as `gap-3` — a period picker or "As at" dropdown, then "Compare with" or a `DateField`; the **Sync status** screen: one bordered card with "n of m" in `h3`, then a `ListGroup` per module whose trailing is a soft **Catch up n** button, a warning `Badge` ("n missing") when the person cannot change the books, or a success `Badge` ("All in").
+
+**Imprint (F7.1) — the classes these components share.** They are built from tokens only; the one dynamic colour is the chart legend swatch, which takes a chart token from the theme.
+
+| Surface | Classes |
+| --- | --- |
+| Bordered list (entry lines, statement section, permission-style lists) | `overflow-hidden rounded-md border border-border bg-surface dark:border-transparent`, rows `px-4 py-3`, `min-h-[48px]`, hairlines via `Divider` |
+| Total row inside a list | `min-h-[48px] flex-row items-center justify-between gap-3 bg-surface-sunken px-4 py-3`, label `body-strong`, amount `Money size="body-strong"` |
+| Card (a journal line, a budget line, a variance line, the chart) | `rounded-lg border border-border bg-surface p-4 dark:border-transparent`, no shadow, inner `gap-3` |
+| Empty chart | `items-center justify-center rounded-lg border border-border bg-surface p-6 dark:border-transparent` with `body` secondary text |
+| Totals / difference panel | `gap-2 rounded-lg bg-surface-sunken p-4` |
+| Warning / rejection panels | `rounded-lg bg-warning-soft p-4` (balance sheet, cash flow) and `rounded-lg bg-danger-soft p-4` (rejected entry), heading `body-strong` in the matching tone |
+| Rows (`GroupedRow`) | `px-4 py-3`, heights 60–84 by content, title `body-lg`, meta `caption` secondary, amount `Money size="body-strong"` at the right, status as `StatusChip` |
+| Section headings | `Section` (`h3`), hint under it `caption` secondary |
+| Chart legend swatch | `h-3 w-3 rounded-sm`, colour from `chart[n]` |
+
+Pattern notes: amounts are always `Money` (written in full); a status always has its words; the only primary action of a screen is in the `StickyFooter`; sheets use `BottomSheet` (never stacked).
+
+**Noted while imprinting:** `ProgressBar` has only a primary and a success tone, so a budget line that is over its plan shows the bar in primary and signals "over" with the danger-coloured amount and an Over budget chip. If a danger tone is added to `ProgressBar` later, `PlanBar` should use it for over-plan lines.
+
 ---
 
 ## Retired

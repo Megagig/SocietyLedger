@@ -1,44 +1,56 @@
 ---
 title: "Balance sheet in depth"
-description: "Assets, liabilities and equity as of any date, broken down by account."
+description: "What the association owns, owes and is worth, as at any date."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/accounting/balance-sheet"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/accounting/balance-sheet", "AC5"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting/balance-sheet-at-a-glance", "/docs/accounting-guide/cash-flow"]
 ---
 
-The full balance sheet lists every account that has a balance, grouped under Assets, Liabilities and Equity.
+The full balance sheet lists every account that has a balance, grouped as current assets, fixed assets, current and long-term liabilities, and equity, as at one date. Anything in a group of its own is shown as "other".
 
 ## How it works
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Accounting", "Balance Sheet"]} />.</Step>
-<Step>Pick an **As of Date** — it defaults to today.</Step>
+<Step>Pick an **As of Date**. It starts as today.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting", "Financial statements"]} /> and choose **Balance sheet**.</Step>
+<Step>Choose **As at**: today, the end of last month, last quarter or last year, or **Choose a date** for any day.</Step>
+<Step>Tap the share icon for text, or the PDF icon (if you may export) for a PDF.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/accounting-guide/balance-sheet-1.webp" alt="Balance Sheet report showing Assets, Liabilities and Equity sections with a green Balanced indicator" />
 
-Worked example, as of today, with one posted ₦50,000 dues entry:
+Worked example, with one posted ₦50,000 dues entry:
 
 | Section | Account | Amount |
 |---|---|---|
-| Current Assets | Member Dues Receivable | ₦50,000 |
-| **Total Assets** | | **₦50,000** |
-| Current Liabilities | — | ₦0 |
-| **Total Liabilities** | | **₦0** |
-| Equity | Retained Earnings | ₦50,000 |
-| **Total Equity** | | **₦50,000** |
+| Assets | Member Dues Receivable | ₦50,000 |
+| **Total assets** | | **₦50,000** |
+| Liabilities | none | ₦0 |
+| Equity | Earnings so far | ₦50,000 |
+| **Total equity** | | **₦50,000** |
 
-**Retained Earnings** is calculated, not posted directly — it's what carries your accumulated net income from past periods into equity.
+**Earnings so far** is worked out, not posted: it is all the income less all the spending up to that date.
 
-## Why it matters
+## What it counts
 
-A balance sheet that doesn't balance (Assets ≠ Liabilities + Equity) means something was posted outside the normal double-entry flow — this should never happen through the journal entry and sync workflows alone, so treat it as a bug rather than something to correct manually.
+- **Every account is shown,** including liabilities that are neither current nor long term, so the sheet adds up whenever the books do.
+- **A switched-off account still appears** while it holds money.
+- **It says when it does not balance.** If assets differ from liabilities plus equity, the sheet shows a warning. That points to an entry that should not be there, so look at the entries around the date it changed.
 
 ## What you can do
 
 - [Your balance sheet at a glance](/docs/accounting/balance-sheet-at-a-glance) — the summary version.
-- [Cash flow statement](/docs/accounting-guide/cash-flow) — how much of this balance sheet's assets are actually cash, and where it moved from.
+- [Cash flow statement](/docs/accounting-guide/cash-flow) — how much of the assets is cash, and where it moved.

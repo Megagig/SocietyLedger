@@ -16,6 +16,7 @@ import {
   Modal,
   TextInput,
   Textarea,
+  PasswordInput,
   Select,
   ActionIcon,
   Menu,
@@ -58,6 +59,9 @@ export default function JournalEntriesPage() {
   const [opened, { open, close }] = useDisclosure(false);
   const [viewOpened, { open: openView, close: closeView }] = useDisclosure(false);
   const [approvalOpened, { open: openApproval, close: closeApproval }] = useDisclosure(false);
+  // Posting writes to the books for good, so it asks for the officer's password first
+  const [postTarget, setPostTarget] = useState<JournalEntry | null>(null);
+  const [postPassword, setPostPassword] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>(initialStatus);
   const [search, setSearch] = useState('');
@@ -138,9 +142,11 @@ export default function JournalEntriesPage() {
   });
 
   const postMutation = useMutation({
-    mutationFn: (id: number) => accountingApi.postJournalEntry(id),
+    mutationFn: ({ id, password }: { id: number; password: string }) => accountingApi.postJournalEntry(id, password),
     onSuccess: () => {
       toast.success('Entry posted successfully');
+      setPostTarget(null);
+      setPostPassword('');
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
     },
     onError: (error: any) => {
@@ -352,7 +358,10 @@ export default function JournalEntriesPage() {
                       color="green"
                       size="xs"
                       leftSection={<IconCheck size={14} />}
-                      onClick={() => postMutation.mutate(entry.id)}
+                      onClick={() => {
+                        setPostPassword('');
+                        setPostTarget(entry);
+                      }}
                     >
                       Post
                     </Button>
@@ -440,7 +449,10 @@ export default function JournalEntriesPage() {
                             <Menu.Item
                               leftSection={<IconCheck size={14} />}
                               color="green"
-                              onClick={() => postMutation.mutate(entry.id)}
+                              onClick={() => {
+                        setPostPassword('');
+                        setPostTarget(entry);
+                      }}
                             >
                               Post Entry
                             </Menu.Item>
@@ -665,6 +677,46 @@ export default function JournalEntriesPage() {
       </Modal>
 
       {/* Approval Modal */}
+      <Modal
+        opened={postTarget !== null}
+        onClose={() => {
+          setPostTarget(null);
+          setPostPassword('');
+        }}
+        title={postTarget ? `Post ${postTarget.entryNumber}?` : 'Post entry'}
+      >
+        <Stack>
+          <Text size="sm">
+            Posting adds this entry to the books for good. It can no longer be changed. Enter your password to confirm.
+          </Text>
+          <PasswordInput
+            label="Your password"
+            value={postPassword}
+            onChange={(e) => setPostPassword(e.currentTarget.value)}
+            data-autofocus
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setPostTarget(null);
+                setPostPassword('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="green"
+              loading={postMutation.isPending}
+              disabled={!postPassword}
+              onClick={() => postTarget && postMutation.mutate({ id: postTarget.id, password: postPassword })}
+            >
+              Post entry
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <Modal
         opened={approvalOpened}
         onClose={closeApproval}

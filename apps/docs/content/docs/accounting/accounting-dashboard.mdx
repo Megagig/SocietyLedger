@@ -1,12 +1,12 @@
 ---
 title: "The accounting dashboard"
-description: "Your totals, period status and pending approvals at a glance."
+description: "Your cash, what you own and owe, the last six months and what needs an officer."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/accounting", "AC1"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting/what-happens-automatically", "/docs/accounting-guide/journal-entries"]
 ---
 
@@ -14,25 +14,35 @@ A one-screen summary of where your books stand right now.
 
 ## Before you start
 
-You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default.
+You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default. Your plan must include the Accounting module.
 
 ## Read the dashboard
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Accounting"]} />.</Step>
-<Step>Check **Quick Stats** — Total Assets, Total Liabilities, Total Equity, Net Income (YTD) and Cash Balance.</Step>
-<Step>**Recent Entries** lists your last 5 journal entries; **Pending Approvals** counts the ones waiting on a second person.</Step>
-<Step>If a budget is active, **Budget Status** shows Total Budget, Total Spent, Remaining and Percent Used. The **Monthly Trend** chart plots income vs. expenses for the last 6 months.</Step>
+<Step>Check **Quick Stats**: Total Assets, Total Liabilities, Total Equity, Net Income for the year so far, and Cash Balance.</Step>
+<Step>**Recent Entries** lists your last 5 journal entries. **Pending Approvals** counts the ones waiting for a second person.</Step>
+<Step>If a budget is in force, **Budget Status** shows how much of the spending plan is used. The **Monthly Trend** chart plots income against expenses for the last 6 months.</Step>
 </Steps>
-
-<Callout type="note" title="Totals only reflect synced activity">
-These numbers come from posted journal entries, not directly from Finance, Welfare or Cooperatives — see [What happens automatically when money moves](/docs/accounting/what-happens-automatically) for what that means in practice.
-</Callout>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting"]} />.</Step>
+<Step>The green panel shows your **Cash and bank** balance, with what you own, what you owe and the surplus for the year beneath it.</Step>
+<Step>**Needs attention** shows journal entries waiting for you and any records not in the books yet. Tap **Catch up** to enter the missing ones.</Step>
+<Step>Further down are the last six months, the budget so far, shortcuts to the rest of Accounting, and your latest entries.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/accounting/accounting-dashboard-1.webp" alt="Accounting dashboard showing Quick Stats cards, Recent Entries, Pending Approvals count and the Monthly Trend chart" />
 
-## What happens next
+## What the figures count
 
-Nothing on this screen updates on its own — see [What happens automatically when money moves](/docs/accounting/what-happens-automatically) for what you need to do to keep these totals current.
+- Every figure counts **posted** entries only. A draft, or an entry waiting for approval, is not in them yet.
+- The year, and each month, start and end in Lagos time.
+- Spending against the budget counts only spending posted within the budget's own dates.
 
 ## Related

@@ -277,8 +277,8 @@ export const accountingApi = {
     return response.data;
   },
 
-  async postJournalEntry(id: number) {
-    const response = await api.post(`${API_URL}/api/accounting/journal-entries/${id}/post`);
+  async postJournalEntry(id: number, password: string) {
+    const response = await api.post(`${API_URL}/api/accounting/journal-entries/${id}/post`, { password });
     return response.data;
   },
 

@@ -1,37 +1,51 @@
 ---
 title: "The chart of accounts"
-description: "Set up the accounts every journal entry, statement and budget in this module posts to."
+description: "The list of accounts every journal entry, statement and budget in Accounting uses."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/accounting/chart-of-accounts", "AC2"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting-guide/journal-entries", "/docs/accounting-guide/how-transactions-post"]
 ---
 
-Every journal entry, statement and budget in Accounting posts against an account from this list — set it up before you do anything else in the module.
+Every journal entry, statement and budget posts against an account from this list. Set it up before money starts to move, so the app can enter it in the books for you.
 
 ## Before you start
 
-You need the **manage finances** permission, which Administrators, Treasurers and Financial Secretaries have by default. Do this once, before creating any journal entry.
+You need the **manage finances** permission to add or change accounts, and **reverse ledger entries** to delete one. Administrators, Treasurers and Financial Secretaries have the first by default.
 
 ## Set up your accounts
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Accounting", "Chart of Accounts"]} />.</Step>
-<Step>If the list is empty, select <UiLabel>Initialize Standard Accounts</UiLabel> — this creates 50+ accounts across Assets, Liabilities, Equity, Income and Expenses, including Member Dues Receivable (1121) and Membership Dues (4110), the pair most journal entries use.</Step>
-<Step>To add your own account, select <UiLabel>Add Account</UiLabel> and set a unique **Code**, **Name**, **Type** (Asset, Liability, Equity, Income or Expense) and **Normal Balance** (Debit or Credit).</Step>
+<Step>If the list is empty, select <UiLabel>Initialize Standard Accounts</UiLabel>. This creates the accounts most associations need, including Member Dues Receivable (1121) and Membership Dues (4110).</Step>
+<Step>To add your own, select <UiLabel>Add Account</UiLabel> and set a unique **Code**, **Name** and **Type**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting", "Chart of accounts"]} />.</Step>
+<Step>If the list is empty, tap **Set up the standard accounts**.</Step>
+<Step>To add your own, tap **+**, enter a **Code** and **Name**, choose the **Kind of account** and the **Group on the statements**, and tap **Add account**. Tap any account to change it.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/accounting-guide/chart-of-accounts-1.webp" alt="Chart of Accounts list grouped by type, with Initialize Standard Accounts and Add Account buttons" />
 
-<Callout type="note" title="System accounts are protected">
-Accounts created by **Initialize Standard Accounts** can't have their code or type changed, and can only be deactivated, not deleted, once they have entries against them. Accounts you add yourself can be edited or deleted freely until something posts to them.
-</Callout>
+Accounts are grouped as Assets, Liabilities, Equity, Income and Expenses, with what each holds beside it.
 
-## What happens next
+## The rules
 
-New accounts appear immediately in the account picker on the journal entry form, and in every financial statement once something posts to them.
+- **Normal balance follows the type.** Assets and expenses grow with debits; liabilities, equity and income grow with credits. A new account gets the right one automatically. A contra account, such as accumulated depreciation, is the usual reason to choose the other. On the phone, **Grows with** lets you choose it when you add the account.
+- **Group on the statements.** Each kind has its own groups, the same as on the website: assets are current, fixed or other; liabilities are current or long term; income and spending are operating, program or other. The group decides where the account shows on the balance sheet and how cash movements are sorted, so give every account one.
+- **Groups of accounts.** An account can sit under another of the **same type**, and never under itself or under one of its own sub-accounts. Choose **None** to take it out from under its parent again.
+- **Built-in accounts** keep their code and type, and cannot be switched off or deleted.
+- **Used accounts are switched off, not deleted,** so their history stays. An account with sub-accounts, or in a budget, cannot be deleted at all.
+- **A switched-off account still shows in the statements** while it holds money, so the totals stay true. You just cannot post to it.
 
 ## Related

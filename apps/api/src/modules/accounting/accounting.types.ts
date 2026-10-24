@@ -81,12 +81,18 @@ export interface JournalEntryResponse {
   description: string;
   reference: string | null;
   sourceType: string | null;
+  sourceId: number | null;
   status: JournalEntryStatus;
   totalDebit: Decimal;
   totalCredit: Decimal;
   createdBy: number;
+  createdByEmail: string | null;
   approvedBy: number | null;
+  approvedByEmail: string | null;
   approvedAt: Date | null;
+  rejectionReason: string | null;
+  rejectedAt: Date | null;
+  postedAt: Date | null;
   createdAt: Date;
   lines: JournalEntryLineResponse[];
 }
@@ -147,6 +153,9 @@ export interface BalanceSheetReport {
     longTerm: AccountBalance[];
     totalCurrent: Decimal;
     totalLongTerm: Decimal;
+    /** Liabilities that are neither current nor long term: still counted, so the sheet adds up. */
+    other: AccountBalance[];
+    totalOther: Decimal;
     total: Decimal;
   };
   equity: {
@@ -182,6 +191,8 @@ export interface CashFlowReport {
   netCashChange: Decimal;
   beginningCash: Decimal;
   endingCash: Decimal;
+  /** Whether beginning cash plus the net change equals ending cash. False means a movement was missed. */
+  reconciles: boolean;
 }
 
 export interface AccountBalance {
@@ -228,6 +239,7 @@ export interface BudgetResponse {
   endDate: Date;
   status: BudgetStatus;
   totalBudget: Decimal;
+  createdBy: number;
   items: BudgetItemResponse[];
 }
 
@@ -261,10 +273,21 @@ export interface BudgetVarianceReport {
     totalVariance: Decimal;
     variancePercentage: number;
   };
+  /** Income and spending kept apart: adding a budget for money in to one for money out means nothing. */
+  incomeSummary: BudgetVarianceSummary;
+  expenseSummary: BudgetVarianceSummary;
+}
+
+export interface BudgetVarianceSummary {
+  totalBudget: Decimal;
+  totalActual: Decimal;
+  totalVariance: Decimal;
+  variancePercentage: number;
 }
 
 export interface BudgetVarianceItem {
   accountId: number;
+  accountType: AccountType;
   accountCode: string;
   accountName: string;
   budgetAmount: Decimal;

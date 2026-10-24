@@ -65,6 +65,9 @@ export const chargeStatusKey = (status: string): string => (status === 'voided' 
 export const CATEGORY_TYPE_LABELS: Record<string, string> = { due: 'Dues', levy: 'Levies', donation: 'Donations', penalty: 'Penalties' };
 
 export const EXPORT_TYPE_LABELS: Record<string, string> = {
+  accounting_income: 'Income statement',
+  accounting_balance: 'Balance sheet',
+  accounting_cash: 'Cash flow',
   financial_summary: 'Financial summary',
   member_statement: 'Member statement',
   all_members: 'All members',

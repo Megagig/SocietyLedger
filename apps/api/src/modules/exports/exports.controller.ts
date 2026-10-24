@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { exportsService } from './exports.service';
 import {
   exportFinancialSummarySchema,
+  exportAccountingStatementSchema,
   exportMemberStatementSchema,
   exportAllMembersSchema,
   getExportHistorySchema,
@@ -34,6 +35,31 @@ async function canSeeAllExports(req: Request): Promise<boolean> {
 // ============================================
 
 export const exportsController = {
+  /**
+   * An accounting statement (income statement, balance sheet or cash flow) as a PDF
+   * POST /api/exports/accounting-statement
+   */
+  async exportAccountingStatementPDF(req: Request, res: Response) {
+    try {
+      const validation = exportAccountingStatementSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ success: false, message: 'Validation failed', errors: validation.error.errors });
+      }
+      const { statement, period, startDate, endDate, asOfDate } = validation.data;
+      const result = await exportsService.exportAccountingStatementPDF(req.user!.associationId!, req.user!.id, {
+        statement,
+        period,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        asOfDate: asOfDate ? new Date(asOfDate) : undefined,
+      });
+      res.json({ success: true, message: 'Statement PDF generated successfully', data: publicExport(result) });
+    } catch (error: any) {
+      console.error('Export accounting statement error:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate the statement PDF' });
+    }
+  },
+
   /**
    * TASK-EXP-004: Export Financial Summary as PDF
    * POST /api/exports/financial-pdf

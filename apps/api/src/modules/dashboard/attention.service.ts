@@ -23,7 +23,8 @@ export type AttentionKey =
   | 'welfareContributions'
   | 'electionNominations'
   | 'electionsToClose'
-  | 'electionResults';
+  | 'electionResults'
+  | 'journalEntries';
 
 export interface AttentionItem {
   key: AttentionKey;
@@ -129,6 +130,16 @@ export const ATTENTION_SOURCES: AttentionSource[] = [
     permissions: [PERMISSIONS.ELECTION_RUN],
     module: 'voting',
     count: ({ associationId }) => prisma.election.count({ where: { associationId, status: 'VOTING_OPEN', votingEndDate: { lt: new Date() } } }),
+  },
+  {
+    // Journal entries to approve (not the officer's own, because they can't approve those) and approved ones still to post.
+    key: 'journalEntries',
+    permissions: [PERMISSIONS.FINANCE_APPROVE],
+    module: 'accounting',
+    count: ({ associationId, userId }) =>
+      prisma.journalEntry.count({
+        where: { associationId, OR: [{ status: 'PENDING_APPROVAL', createdBy: { not: userId } }, { status: 'APPROVED' }] },
+      }),
   },
   {
     key: 'electionResults',

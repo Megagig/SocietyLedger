@@ -1,4 +1,4 @@
-import { Banknote, Bell, CalendarDays, ChartPie, FileBarChart, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, Settings, UserCheck, Users, Vote } from 'lucide-react-native';
+import { Banknote, BookOpen, Bell, CalendarDays, ChartPie, FileBarChart, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, Settings, UserCheck, Users, Vote } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -21,6 +21,7 @@ import { MEETINGS_ADMIN_ACCESS, MEETINGS_MODULE, useMeetingStats } from '@/featu
 import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features/cash/queries';
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, useMemberStats } from '@/features/members/queries';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS } from '@/features/nigerianPayments/queries';
+import { ACCOUNTING_MODULE, ACCOUNTING_VIEW_ACCESS } from '@/features/accounting/labels';
 import { COMMUNICATION_ACCESS } from '@/features/communication/labels';
 import { EXPORT_ANY_ACCESS, REPORTS_MODULE, REPORTS_VIEW_ACCESS } from '@/features/reports/labels';
 import { SETTINGS_HUB_ACCESS } from '@/features/settings/labels';
@@ -50,6 +51,8 @@ export default function ManageScreen() {
   const canSupport = useCan(SUPPORT_STAFF_ACCESS);
   // Settings: any settings, roles or audit permission (each screen inside checks its own).
   const canSettings = useCan(SETTINGS_HUB_ACCESS);
+  // Accounting: the permission to read the books and the accounting module on; the badge is entries waiting for this officer to approve or post.
+  const canAccounting = useModuleAccess(ACCOUNTING_VIEW_ACCESS, ACCOUNTING_MODULE);
   const canMembers = useCan(MEMBERS_VIEW_ACCESS);
   const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
   const canInvite = useCan(MEMBERS_INVITE_ACCESS);
@@ -82,6 +85,7 @@ export default function ManageScreen() {
   const canVotingRules = useModuleAccess('ELECTION_RULES', VOTING_MODULE);
   const electionsWaiting = attentionCount(attention, 'electionNominations') + attentionCount(attention, 'electionsToClose') + attentionCount(attention, 'electionResults');
   const overdueCharges = attentionCount(attention, 'overdueCharges');
+  const journalWaiting = attentionCount(attention, 'journalEntries');
   const canVerifyCash = useCan(CASH_VERIFY_ACCESS);
   const cashOverview = useCashOverview().data;
   const cashToLodge = cashOverview?.mine?.readyToLodge ?? 0;
@@ -99,7 +103,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canSettings || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canAccounting || canSettings || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -288,6 +292,22 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/reports' as never)}
                   testID="manage-reports"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canAccounting ? (
+            <Section title="Accounting">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={BookOpen} tone={journalWaiting > 0 ? 'warning' : 'primary'} />}
+                  title="Accounting"
+                  meta="Journal entries, accounts, statements and budgets"
+                  trailing={journalWaiting > 0 ? <Badge tone="warning">{`${journalWaiting} waiting`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/accounting' as never)}
+                  testID="manage-accounting"
                 />
               </ListGroup>
             </Section>

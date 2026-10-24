@@ -14,7 +14,7 @@ import { SettingsService } from '../settings/settings.service';
 import { dispatchNotification } from '../../services/notification-preferences.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
 import { cashBackedMessage, findCashBackingReceipts } from './cash-guard';
-import { verifyPassword } from '../../lib/auth';
+import { confirmPassword, reauthFailure } from '../../lib/reauth';
 import { reminderText, splitByCooldown } from './reminder-rules';
 import { isOverdue, overdueWhere } from './overdue-rules';
 import { syncLedgerDebit } from './ledger-sync';
@@ -1286,9 +1286,10 @@ export const financeController = {
       const validatedData = voidAndReplaceSchema.parse(req.body);
 
       // Re-authentication: voiding rewrites what a member owes, so the officer proves it is them at the keyboard.
-      const actor = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
-      if (!actor?.passwordHash || !(await verifyPassword(validatedData.password, actor.passwordHash))) {
-        return res.status(403).json({ success: false, code: 'REAUTH_FAILED', message: 'That password is not correct.' });
+      const confirmed = await confirmPassword(userId, validatedData.password);
+      if (!confirmed.ok) {
+        const { status, body } = reauthFailure(confirmed);
+        return res.status(status).json(body);
       }
 
       // Fetch the original transaction

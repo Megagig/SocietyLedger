@@ -91,7 +91,8 @@ export type AttentionKey =
   | 'welfareContributions'
   | 'electionNominations'
   | 'electionsToClose'
-  | 'electionResults';
+  | 'electionResults'
+  | 'journalEntries';
 
 export type AttentionItemDTO = { key: AttentionKey; count: number };
 

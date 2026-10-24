@@ -15,6 +15,10 @@ import {
   budgetVarianceQuerySchema,
 } from './accounting.validation';
 import { z } from 'zod';
+import { confirmPassword, reauthFailure } from '../../lib/reauth';
+import { respondWithError } from './accounting-http';
+
+const postEntrySchema = z.object({ password: z.string().min(1) });
 
 // ============================================
 // ACCOUNTING CONTROLLER - Phase 9
@@ -45,7 +49,7 @@ export const accountingController = {
       });
     } catch (error: any) {
       console.error('Error initializing chart of accounts:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -94,7 +98,7 @@ export const accountingController = {
       }
 
       const data = createAccountSchema.parse(req.body);
-      const account = await accountingService.createAccount(associationId, data);
+      const account = await accountingService.createAccount(associationId, data, req.user?.id);
 
       return res.status(201).json({
         success: true,
@@ -106,7 +110,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating account:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -123,7 +127,7 @@ export const accountingController = {
 
       const accountId = parseInt(req.params.id);
       const data = updateAccountSchema.parse(req.body);
-      const account = await accountingService.updateAccount(associationId, accountId, data);
+      const account = await accountingService.updateAccount(associationId, accountId, data, req.user?.id);
 
       return res.status(200).json({
         success: true,
@@ -135,7 +139,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error updating account:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -151,7 +155,7 @@ export const accountingController = {
       }
 
       const accountId = parseInt(req.params.id);
-      await accountingService.deleteAccount(associationId, accountId);
+      await accountingService.deleteAccount(associationId, accountId, req.user?.id);
 
       return res.status(200).json({
         success: true,
@@ -159,7 +163,7 @@ export const accountingController = {
       });
     } catch (error: any) {
       console.error('Error deleting account:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -192,7 +196,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating journal entry:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -274,7 +278,7 @@ export const accountingController = {
 
       const entryId = parseInt(req.params.id);
       const data = updateJournalEntrySchema.parse(req.body);
-      const entry = await accountingService.updateJournalEntry(associationId, entryId, data);
+      const entry = await accountingService.updateJournalEntry(associationId, entryId, data, req.user?.id);
 
       return res.status(200).json({
         success: true,
@@ -286,7 +290,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error updating journal entry:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -302,7 +306,7 @@ export const accountingController = {
       }
 
       const entryId = parseInt(req.params.id);
-      const entry = await accountingService.submitForApproval(associationId, entryId);
+      const entry = await accountingService.submitForApproval(associationId, entryId, req.user?.id);
 
       return res.status(200).json({
         success: true,
@@ -311,7 +315,7 @@ export const accountingController = {
       });
     } catch (error: any) {
       console.error('Error submitting journal entry:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -346,7 +350,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error processing approval:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -357,12 +361,21 @@ export const accountingController = {
   async postJournalEntry(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      if (!associationId) {
-        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const userId = req.user?.id;
+      if (!associationId || !userId) {
+        return res.status(400).json({ success: false, message: 'Authentication required' });
+      }
+
+      // Posting writes to the books for good, so the officer confirms with their password first (403 REAUTH_FAILED when wrong; five wrong ones in 15 minutes lock it, 429 REAUTH_LOCKED)
+      const { password } = postEntrySchema.parse(req.body ?? {});
+      const confirmed = await confirmPassword(userId, password);
+      if (!confirmed.ok) {
+        const { status, body } = reauthFailure(confirmed);
+        return res.status(status).json(body);
       }
 
       const entryId = parseInt(req.params.id);
-      const entry = await accountingService.postJournalEntry(associationId, entryId);
+      const entry = await accountingService.postJournalEntry(associationId, entryId, userId);
 
       return res.status(200).json({
         success: true,
@@ -370,8 +383,10 @@ export const accountingController = {
         data: entry,
       });
     } catch (error: any) {
-      console.error('Error posting journal entry:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, code: 'REAUTH_REQUIRED', message: 'Enter your password to post this entry.' });
+      }
+      return respondWithError(res, error);
     }
   },
 
@@ -505,7 +520,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error creating budget:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -583,7 +598,7 @@ export const accountingController = {
 
       const budgetId = parseInt(req.params.id);
       const data = updateBudgetSchema.parse(req.body);
-      const budget = await accountingService.updateBudget(associationId, budgetId, data);
+      const budget = await accountingService.updateBudget(associationId, budgetId, data, req.user?.id);
 
       return res.status(200).json({
         success: true,
@@ -595,7 +610,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error updating budget:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -621,7 +636,7 @@ export const accountingController = {
       });
     } catch (error: any) {
       console.error('Error approving budget:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -637,7 +652,7 @@ export const accountingController = {
       }
 
       const budgetId = parseInt(req.params.id);
-      const budget = await accountingService.activateBudget(associationId, budgetId);
+      const budget = await accountingService.activateBudget(associationId, budgetId, req.user?.id);
 
       return res.status(200).json({
         success: true,
@@ -646,7 +661,7 @@ export const accountingController = {
       });
     } catch (error: any) {
       console.error('Error activating budget:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -680,7 +695,7 @@ export const accountingController = {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
       console.error('Error getting budget variance:', error);
-      return res.status(400).json({ success: false, message: error.message });
+      return respondWithError(res, error);
     }
   },
 
@@ -1194,9 +1209,19 @@ export const accountingController = {
         take: 50,
       });
 
+      // Only what an officer needs to act on: what failed, and the plain reason. The stack trace the log keeps is never sent.
+      const rows = errors.map((row) => ({
+        id: row.id,
+        tableName: row.tableName,
+        recordId: row.recordId,
+        message: String((row.newValues as { error?: unknown } | null)?.error ?? 'Unknown error').slice(0, 300),
+        newValues: { error: String((row.newValues as { error?: unknown } | null)?.error ?? 'Unknown error').slice(0, 300) },
+        createdAt: row.createdAt,
+      }));
+
       return res.status(200).json({
         success: true,
-        data: errors,
+        data: rows,
       });
     } catch (error) {
       console.error('Error getting sync errors:', error);

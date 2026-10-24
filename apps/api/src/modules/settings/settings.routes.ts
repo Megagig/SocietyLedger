@@ -124,6 +124,13 @@ router.get(
   SettingsController.getAuditLogs
 );
 
+// GET /api/settings/audit-logs/filters - the kinds of activity recorded, for filter choices
+router.get(
+  '/audit-logs/filters',
+  requirePermission(PERMISSIONS.AUDIT_VIEW),
+  SettingsController.getAuditFilters
+);
+
 /**
  * Category-based Settings Routes
  * 

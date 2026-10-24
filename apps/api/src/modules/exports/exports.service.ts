@@ -12,6 +12,8 @@ import {
 import { pdfService } from './pdf.service';
 import { excelService } from './excel.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
+import { accountingService } from '../accounting/accounting.service';
+import { balanceSheetDocument, cashFlowDocument, incomeStatementDocument, type StatementDocument } from '../accounting/statement-document';
 
 // ============================================
 // EXPORT SERVICE
@@ -573,5 +575,36 @@ export const exportsService = {
       filepath,
       stats.size
     );
+  },
+
+  /**
+   * One of the three accounting statements as a PDF, worked out from the books at this moment. It is laid out from the same report the
+   * screens show, so the file and the screen cannot disagree.
+   */
+  async exportAccountingStatementPDF(
+    associationId: number,
+    userId: number,
+    input: { statement: 'income' | 'balance' | 'cash'; period?: string; startDate?: Date; endDate?: Date; asOfDate?: Date }
+  ): Promise<ExportResult> {
+    const branding = await this.getAssociationBranding(associationId);
+    let document: StatementDocument;
+    if (input.statement === 'income') {
+      document = incomeStatementDocument(await accountingService.generateIncomeStatement(associationId, { period: input.period, startDate: input.startDate, endDate: input.endDate }));
+    } else if (input.statement === 'cash') {
+      document = cashFlowDocument(await accountingService.generateCashFlowStatement(associationId, { period: input.period, startDate: input.startDate, endDate: input.endDate }));
+    } else {
+      const asAt = input.asOfDate ?? new Date();
+      const label = asAt.toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', year: 'numeric', month: 'long', day: 'numeric' });
+      document = balanceSheetDocument(await accountingService.generateBalanceSheet(associationId, asAt), label);
+    }
+
+    const exportDir = this.ensureExportDirectory();
+    const type = `accounting_${input.statement}`;
+    const filename = this.generateFilename(type, 'pdf', associationId);
+    const filepath = path.join(exportDir, filename);
+    await pdfService.generateStatementPDF(document, branding, filepath);
+
+    const stats = fs.statSync(filepath);
+    return this.saveExportRecord(associationId, userId, type, 'pdf', filename, filepath, stats.size);
   },
 };

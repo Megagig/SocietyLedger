@@ -12,6 +12,14 @@ export const exportFinancialSummarySchema = z.object({
   includeComparison: z.boolean().optional(),
 });
 
+export const exportAccountingStatementSchema = z.object({
+  statement: z.enum(['income', 'balance', 'cash']),
+  period: z.enum(['this_month', 'last_month', 'this_quarter', 'last_quarter', 'this_year', 'last_year', 'custom']).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  asOfDate: z.string().datetime().optional(),
+});
+
 export const exportMemberStatementSchema = z.object({
   format: z.enum(['pdf']),
   startDate: z.string().datetime().optional(),

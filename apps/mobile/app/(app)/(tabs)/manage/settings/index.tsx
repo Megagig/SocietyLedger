@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Bell, Building2, CreditCard, Crown, Landmark, UserCog } from 'lucide-react-native';
+import { Bell, Building2, CreditCard, Crown, Landmark, ScrollText, ShieldCheck, UserCog, Users } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { NoPermission } from '@/components/feedback/NoPermission';
@@ -8,6 +8,7 @@ import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Section } from '@/components/layout/Section';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { AUDIT_ACCESS, ROLES_VIEW_ACCESS } from '@/features/rbac/labels';
 import { PAYMENTS_EDIT_ACCESS, SETTINGS_EDIT_ACCESS, SETTINGS_HUB_ACCESS, SUBSCRIPTION_ACCESS } from '@/features/settings/labels';
 import { useCan } from '@/hooks/useCan';
 
@@ -18,6 +19,8 @@ export default function SettingsHubScreen() {
   const canEdit = useCan(SETTINGS_EDIT_ACCESS);
   const canPayments = useCan(PAYMENTS_EDIT_ACCESS);
   const canSubscription = useCan(SUBSCRIPTION_ACCESS);
+  const canRoles = useCan(ROLES_VIEW_ACCESS);
+  const canAudit = useCan(AUDIT_ACCESS);
   const go = (path: string) => router.push(`/(app)/(tabs)/manage/settings/${path}` as never);
 
   if (!canAny) {
@@ -88,6 +91,43 @@ export default function SettingsHubScreen() {
                   showChevron
                   onPress={() => go('notifications')}
                   testID="settings-notifications"
+                />
+              ) : null}
+            </ListGroup>
+          </Section>
+        ) : null}
+
+        {canRoles || canAudit ? (
+          <Section title="People and records">
+            <ListGroup>
+              {canRoles ? (
+                <ListItem
+                  leading={<IconCircle icon={Users} tone="info" />}
+                  title="Users"
+                  meta="Who can sign in, and the roles they hold"
+                  showChevron
+                  onPress={() => go('users')}
+                  testID="settings-users"
+                />
+              ) : null}
+              {canRoles ? (
+                <ListItem
+                  leading={<IconCircle icon={ShieldCheck} tone="info" />}
+                  title="Roles and permissions"
+                  meta="What each role can do"
+                  showChevron
+                  onPress={() => go('roles')}
+                  testID="settings-roles"
+                />
+              ) : null}
+              {canAudit ? (
+                <ListItem
+                  leading={<IconCircle icon={ScrollText} tone="info" />}
+                  title="Audit log"
+                  meta="Who did what, and when"
+                  showChevron
+                  onPress={() => go('audit')}
+                  testID="settings-audit"
                 />
               ) : null}
             </ListGroup>

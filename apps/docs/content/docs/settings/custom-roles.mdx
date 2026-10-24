@@ -1,45 +1,58 @@
 ---
 title: "Creating custom roles"
-description: "Build a role with exactly the permissions it needs, beyond the five built-in roles."
+description: "Build a role with exactly the permissions it needs, beyond the built-in roles."
 type: task
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/settings/roles", "ST8"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/settings/assigning-roles", "/docs/core-concepts/roles-and-permissions"]
 ---
 
-Beyond the five built-in roles (Admin, Treasurer, Financial Secretary, Secretary, Member), you can build a custom role with any combination of permissions — useful for a position like an Events Coordinator who needs more than a Member but less than full Admin.
+Beyond the built-in roles, you can build a custom role with any combination of permissions. This is useful for a position like an Events Coordinator who needs more than a Member but less than an Administrator.
 
 ## Before you start
 
-You need the **manage roles** permission, which only Administrators have by default.
+- To add a role you need the **create roles** permission. To change or delete one you need **edit roles**. Only Administrators have these by default.
+- You can only give a role permissions you hold yourself. If you try to give one you do not hold, the app tells you which.
 
 ## Create a role
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Settings", "Roles & Permissions"]} /> and select <UiLabel>Create Role</UiLabel>.</Step>
-<Step>Enter a **Name** and optional **Description**.</Step>
-<Step>Select every permission the role needs — permissions are grouped by category (Members, Finance/Ledger, Settings, and so on).</Step>
-<Step>Select <UiLabel>Create Role</UiLabel> to save it.</Step>
+<Step>Enter a **Name** and an optional **Description**.</Step>
+<Step>Select every permission the role needs. They are grouped by part of the app.</Step>
+<Step>Select <UiLabel>Create Role</UiLabel>.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Settings", "Roles and permissions"]} /> and tap **+**.</Step>
+<Step>Enter a **Name** and an optional description.</Step>
+<Step>Under **What it can do**, open each group and switch on what the role needs. Use **Turn all on** to switch on a whole group, or search to find one permission. Choose at least one.</Step>
+<Step>Tap **Add role**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/settings/custom-roles-1.webp" alt="Create New Role panel with name, description, and grouped permission checkboxes" />
 
-## Edit or delete a role
+## Change or delete a role
 
-<Steps>
-<Step>Select a role from the list, then select <UiLabel>Edit Role</UiLabel> to change its name, description or permissions.</Step>
-<Step>Select <UiLabel>Delete Role</UiLabel> to remove a custom role entirely.</Step>
-</Steps>
+Open the role, change its name, description or permissions, and save. On the phone you can search the permissions, and turn a whole group on or off. A role can be deleted only when nobody holds it. Remove it from everyone first, as described in [Assigning and removing roles](/docs/settings/assigning-roles).
 
-<Callout type="note" title="System roles are protected">
-Admin, Treasurer, Financial Secretary, Secretary and Member can't be edited or deleted — only roles you create yourself can. A role also can't be deleted while anyone still holds it; remove it from everyone first (see [Assigning and removing roles](/docs/settings/assigning-roles)).
-</Callout>
+## What is protected
+
+- **The Administrator role** always keeps all of its permissions. They cannot be changed, so an association can never lock itself out.
+- **Built-in roles** (Administrator, Treasurer, Financial Secretary, Member and Election Committee) cannot be renamed or deleted. Except for the Administrator, you can change which permissions they carry.
+- **A custom role's name** cannot be the name of a built-in role.
+- **Election Committee permissions.** Administrators do not hold the permissions to run elections, but they can give them to a role, so they can appoint the committee. See [The Election Committee](/docs/elections/election-committee).
 
 ## What happens next
 
-A new role is immediately available to assign to any user — see [Assigning and removing roles](/docs/settings/assigning-roles).
+A new role can be given to anyone straight away. A change to a role's permissions reaches the people who hold it within a few minutes, or the next time they sign in.
 
 ## Related

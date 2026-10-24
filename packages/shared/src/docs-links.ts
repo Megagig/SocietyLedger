@@ -202,6 +202,20 @@ export const DOCS_LINKS: Record<string, string> = {
   RP6: '/docs/reports/income-by-category',
   RP7: '/docs/reports/exporting-reports',
 
+  // Accounting on the web and mobile (AC1–AC6)
+  '/dashboard/accounting': '/docs/accounting/accounting-dashboard',
+  AC1: '/docs/accounting/accounting-dashboard',
+  '/dashboard/accounting/chart-of-accounts': '/docs/accounting-guide/chart-of-accounts',
+  AC2: '/docs/accounting-guide/chart-of-accounts',
+  AC4: '/docs/accounting-guide/journal-entries',
+  AC5: '/docs/accounting/income-statement-at-a-glance',
+  '/dashboard/accounting/income-statement': '/docs/accounting-guide/income-statement',
+  '/dashboard/accounting/balance-sheet': '/docs/accounting-guide/balance-sheet',
+  '/dashboard/accounting/cash-flow': '/docs/accounting-guide/cash-flow',
+  '/dashboard/accounting/budgets': '/docs/accounting-guide/budgets-and-variance',
+  AC6: '/docs/accounting-guide/budgets-and-variance',
+  '/dashboard/accounting/periods': '/docs/accounting-guide/accounting-periods',
+
   // Association settings on the web and mobile (ST1–ST6). ST10 (subscription) has no entry on purpose: mobile never links into plan-billing docs.
   '/dashboard/settings': '/docs/settings',
   ST1: '/docs/settings',
@@ -215,6 +229,11 @@ export const DOCS_LINKS: Record<string, string> = {
   ST5: '/docs/settings/notification-settings',
   '/dashboard/settings/members-access': '/docs/settings/members-and-access',
   ST6: '/docs/settings/members-and-access',
+
+  '/dashboard/settings/users': '/docs/settings/managing-users',
+  ST7: '/docs/settings/managing-users',
+  '/dashboard/settings/audit-logs': '/docs/settings/audit-log',
+  ST9: '/docs/settings/audit-log',
 
   '/dashboard/settings/roles': '/docs/settings/custom-roles',
   ST8: '/docs/settings/custom-roles',

@@ -1,4 +1,4 @@
-import { Banknote, FileText, HandHeart, Hourglass, Inbox, LifeBuoy, PiggyBank, ReceiptText, Landmark, Trophy, UserCheck, Vote, Wallet, type LucideIcon } from 'lucide-react-native';
+import { BookOpen, Banknote, FileText, HandHeart, Hourglass, Inbox, LifeBuoy, PiggyBank, ReceiptText, Landmark, Trophy, UserCheck, Vote, Wallet, type LucideIcon } from 'lucide-react-native';
 
 import type { AttentionItemDTO, AttentionKey } from '@/api/endpoints/dashboard';
 
@@ -19,6 +19,12 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 
 /** Only the queues that have a screen in the app are listed here, so a row never links nowhere. */
 export const ATTENTION_LINES: Partial<Record<AttentionKey, AttentionLine>> = {
+  journalEntries: {
+    icon: BookOpen,
+    tone: 'warning',
+    label: (n) => `${plural(n, 'journal entry', 'journal entries')} to approve or post`,
+    href: '/(app)/(tabs)/manage/accounting/journal',
+  },
   memberApprovals: {
     icon: UserCheck,
     tone: 'warning',
