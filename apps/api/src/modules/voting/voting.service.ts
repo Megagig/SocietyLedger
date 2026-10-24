@@ -120,13 +120,39 @@ async function addCandidate(
     const positionId = data.positionId ?? null;
     rules.assertPositionBelongs(positionId, election.positions.map((p) => p.id));
 
+    // A member has one row per position (the table is unique on election, position and member), so standing again after being
+    // rejected or withdrawing reopens that row as a fresh nomination instead of adding a second one.
     const existingCandidate = await tx.candidate.findFirst({
-      where: { electionId, positionId, memberId, status: { notIn: ['REJECTED', 'WITHDRAWN'] } },
-      select: { id: true },
+      where: { electionId, positionId, memberId },
+      select: { id: true, status: true },
     });
 
-    if (existingCandidate) {
+    if (existingCandidate && existingCandidate.status !== 'REJECTED' && existingCandidate.status !== 'WITHDRAWN') {
       throw new RuleError(bySelf ? 'You are already a candidate for this position.' : 'That member is already a candidate for this position.', 409, 'ALREADY_CANDIDATE');
+    }
+
+    const include = {
+      member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+      position: { select: { id: true, title: true } },
+    };
+
+    if (existingCandidate) {
+      return tx.candidate.update({
+        where: { id: existingCandidate.id },
+        data: {
+          status: 'PENDING',
+          manifesto: data.manifesto,
+          photoUrl: data.photoUrl,
+          nominatedBy: data.nominatedBy ?? null,
+          nominatedAt: new Date(),
+          approvedBy: null,
+          approvedAt: null,
+          rejectionReason: null,
+          withdrawnAt: null,
+          withdrawalReason: null,
+        },
+        include,
+      });
     }
 
     return tx.candidate.create({
@@ -139,10 +165,7 @@ async function addCandidate(
         nominatedBy: data.nominatedBy,
         status: 'PENDING',
       },
-      include: {
-        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-        position: { select: { id: true, title: true } },
-      },
+      include,
     });
   });
 }

@@ -256,6 +256,22 @@ describe('candidates', () => {
     expect(tx.candidate.create.mock.calls[0][0].data).toMatchObject({ status: 'PENDING', nominatedBy: 50, positionId: 10 });
   });
 
+  it('standing again after being rejected or withdrawing reopens the old row, since a member has one row per position', async () => {
+    for (const status of ['REJECTED', 'WITHDRAWN']) {
+      jest.clearAllMocks();
+      tx.election.findFirst.mockResolvedValue({ id: 4, status: 'NOMINATIONS_OPEN', positions: [{ id: 10 }] });
+      tx.member.findFirst.mockResolvedValue({ id: 3 });
+      tx.candidate.findFirst.mockResolvedValue({ id: 7, status });
+      tx.candidate.update.mockResolvedValue({ id: 7 });
+      await votingService.registerCandidate(1, 4, 50, { memberId: 3, positionId: 10, manifesto: 'Again' } as any);
+      expect(tx.candidate.create).not.toHaveBeenCalled();
+      expect(tx.candidate.update.mock.calls[0][0]).toMatchObject({
+        where: { id: 7 },
+        data: { status: 'PENDING', manifesto: 'Again', nominatedBy: 50, rejectionReason: null, withdrawnAt: null, approvedBy: null },
+      });
+    }
+  });
+
   it('a position is required when the election has positions', async () => {
     tx.election.findFirst.mockResolvedValue({ id: 4, status: 'NOMINATIONS_OPEN', positions: [{ id: 10 }] });
     tx.member.findFirst.mockResolvedValue({ id: 3 });

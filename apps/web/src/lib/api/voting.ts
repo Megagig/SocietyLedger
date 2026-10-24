@@ -227,10 +227,16 @@ export async function getVotingDashboard(): Promise<{ success: boolean; data: Vo
   return response.json();
 }
 
+// GET /voting/active answers { activeElections, activePolls }. The page reads { elections, polls }, so they are renamed here
+// (reading the wrong names left My Voting empty for everyone, however many elections were open).
 export async function getActiveVotingItems(): Promise<{ success: boolean; data: { elections: Election[]; polls: Poll[] } }> {
   const response = await apiGet(`${API_URL}/api/voting/active`);
   if (!response.ok) throw new Error('Failed to fetch active voting items');
-  return response.json();
+  const body = await response.json();
+  return {
+    success: body.success,
+    data: { elections: body.data?.activeElections ?? [], polls: body.data?.activePolls ?? [] },
+  };
 }
 
 // ==========================================
