@@ -5,6 +5,7 @@
  */
 const mockPrisma: any = {
   payment: { aggregate: jest.fn(), groupBy: jest.fn() },
+  member: { groupBy: jest.fn(), count: jest.fn() },
   transaction: { aggregate: jest.fn(), findMany: jest.fn() },
 };
 jest.mock('../../src/lib/prisma', () => ({ __esModule: true, prisma: mockPrisma, default: mockPrisma }));
@@ -70,5 +71,17 @@ describe('the revenue trend', () => {
     expect(monthRange(1, jan).label).toBe('December 2026');
     expect(monthRange(0, jan).shortLabel).toBe('Jan');
     expect(monthRange(13, jan).label).toBe('December 2025');
+  });
+});
+
+describe('member counts', () => {
+  // A charge filter once slipped into this query and made the whole Home overview fail with a database error
+  it('asks only about members, never about charges', async () => {
+    mockPrisma.member.groupBy.mockResolvedValue([{ status: 'active', _count: { id: 3 } }]);
+    mockPrisma.member.count.mockResolvedValue(1);
+    const stats = await dashboardService.getMemberStats(1);
+    expect(stats).toMatchObject({ total: 3, active: 3, newThisMonth: 1 });
+    expect(mockPrisma.member.count.mock.calls[0][0].where).not.toHaveProperty('isVoided');
+    expect(mockPrisma.member.count.mock.calls[0][0].where).not.toHaveProperty('status');
   });
 });

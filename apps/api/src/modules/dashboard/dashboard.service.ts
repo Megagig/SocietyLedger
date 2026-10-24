@@ -89,7 +89,6 @@ export const dashboardService = {
     const newThisMonth = await prisma.member.count({
       where: {
         associationId,
-        ...COUNTED_CHARGE,
         createdAt: { gte: startOfMonth },
       },
     });
@@ -282,6 +281,7 @@ export const dashboardService = {
     const thisMonthTransactions = await prisma.transaction.aggregate({
       where: {
         associationId,
+        ...COUNTED_CHARGE,
         createdAt: { gte: startOfMonth },
       },
       _sum: { amount: true },
