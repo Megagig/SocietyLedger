@@ -1,6 +1,7 @@
 import { Association, AssociationStatus } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { prisma } from './prisma';
+import { extractSubdomainFromHost } from '@/utils/subdomain';
 
 export function stripPort(host?: string | null): string {
   if (!host) return '';
@@ -8,25 +9,7 @@ export function stripPort(host?: string | null): string {
 }
 
 export function extractSubdomain(host?: string | null): string | null {
-  const hostname = stripPort(host)?.toLowerCase();
-  if (!hostname || hostname === '127.0.0.1') return null;
-
-  // Handle localhost subdomains (e.g., demo.localhost)
-  if (hostname.endsWith('.localhost')) {
-    const parts = hostname.split('.');
-    if (parts.length >= 2) {
-      const sub = parts[0];
-      return sub !== 'www' ? sub : null;
-    }
-  }
-
-  // Handle regular domains
-  if (hostname === 'localhost') return null;
-  const parts = hostname.split('.');
-  if (parts.length < 3) return null;
-  const [sub] = parts;
-  if (sub === 'www') return null;
-  return sub;
+  return extractSubdomainFromHost(host);
 }
 
 export async function resolveAssociation(request: NextRequest): Promise<Association | null> {

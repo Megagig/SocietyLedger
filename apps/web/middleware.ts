@@ -1,31 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { extractSubdomainFromHost } from '@/utils/subdomain';
 
 function extractSubdomain(host?: string | null): string | null {
-  if (!host) return null;
-  
-  try {
-    const hostname = host.split(':')[0]?.toLowerCase();
-    if (!hostname || hostname === '127.0.0.1') return null;
-
-    // Handle localhost subdomains (e.g., demo.localhost)
-    if (hostname.endsWith('.localhost')) {
-      const parts = hostname.split('.');
-      if (parts.length >= 2) {
-        const sub = parts[0];
-        return sub !== 'www' ? sub : null;
-      }
-    }
-
-    // Handle regular domains
-    if (hostname === 'localhost') return null;
-    const parts = hostname.split('.');
-    if (parts.length < 3) return null;
-    const [sub] = parts;
-    if (sub === 'www') return null;
-    return sub;
-  } catch (error) {
-    return null;
-  }
+  return extractSubdomainFromHost(host);
 }
 
 export function middleware(request: NextRequest) {

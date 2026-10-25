@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { extractSubdomainFromHost } from '@/utils/subdomain';
 
 export type Tenant = {
   id: number;
@@ -31,29 +32,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      // Extract subdomain from window.location.hostname
-      const extractSubdomain = (hostname: string): string | null => {
-        const host = hostname.toLowerCase();
-        
-        // Handle localhost subdomains (e.g., demo.localhost)
-        if (host.endsWith('.localhost')) {
-          const parts = host.split('.');
-          if (parts.length >= 2) {
-            const sub = parts[0];
-            return sub !== 'www' ? sub : null;
-          }
-        }
-        
-        // Handle regular domains
-        if (host === 'localhost' || host === '127.0.0.1') return null;
-        const parts = host.split('.');
-        if (parts.length < 3) return null;
-        const [sub] = parts;
-        if (sub === 'www') return null;
-        return sub;
-      };
-
-      const subdomain = extractSubdomain(window.location.hostname);
+      // Which association this address belongs to (null on the main site and on www).
+      const subdomain = extractSubdomainFromHost(window.location.hostname);
       
       if (!subdomain) {
         setTenant(null);

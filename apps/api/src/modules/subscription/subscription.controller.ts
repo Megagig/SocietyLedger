@@ -171,15 +171,23 @@ export const subscriptionController = {
           const currentDate = new Date();
           const periodEnd = new Date(currentDate);
           periodEnd.setMonth(periodEnd.getMonth() + (billingCycle === 'MONTHLY' ? 1 : 12));
-          subscription = await prisma.subscription.create({
-            data: {
-              associationId,
-              planId: plan.id,
-              status: 'ACTIVE',
-              billingCycle: billingCycle as BillingCycle,
-              currentPeriodStart: currentDate,
-              currentPeriodEnd: periodEnd,
-            },
+          // Upsert, not create: (associationId, planId) is unique, and the lookup
+          // above skips EXPIRED/CANCELLED rows — re-subscribing to the same plan
+          // must revive that row rather than collide with it (P2002).
+          const periodData = {
+            status: 'ACTIVE' as const,
+            billingCycle: billingCycle as BillingCycle,
+            currentPeriodStart: currentDate,
+            currentPeriodEnd: periodEnd,
+            trialEndsAt: null,
+            cancelAtPeriodEnd: false,
+            pendingPlanId: null,
+            pendingBillingCycle: null,
+          };
+          subscription = await prisma.subscription.upsert({
+            where: { associationId_planId: { associationId, planId: plan.id } },
+            create: { associationId, planId: plan.id, ...periodData },
+            update: periodData,
           });
         } else {
           const trialDays = 14;
@@ -187,16 +195,17 @@ export const subscriptionController = {
           const trialEnd = new Date(currentDate);
           trialEnd.setDate(trialEnd.getDate() + trialDays);
 
-          subscription = await prisma.subscription.create({
-            data: {
-              associationId,
-              planId: plan.id,
-              status: 'TRIALING',
-              billingCycle: billingCycle as BillingCycle,
-              trialEndsAt: trialEnd,
-              currentPeriodStart: currentDate,
-              currentPeriodEnd: trialEnd,
-            },
+          const trialData = {
+            status: 'TRIALING' as const,
+            billingCycle: billingCycle as BillingCycle,
+            trialEndsAt: trialEnd,
+            currentPeriodStart: currentDate,
+            currentPeriodEnd: trialEnd,
+          };
+          subscription = await prisma.subscription.upsert({
+            where: { associationId_planId: { associationId, planId: plan.id } },
+            create: { associationId, planId: plan.id, ...trialData },
+            update: trialData,
           });
           await prisma.association.update({
             where: { id: associationId },

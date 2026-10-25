@@ -1,3 +1,5 @@
+import { extractSubdomainFromHost } from './subdomain';
+
 /**
  * Extract subdomain from hostname
  * Handles both regular domains and .localhost TLD
@@ -5,24 +7,7 @@
  * @returns The subdomain or null if none found
  */
 export function extractSubdomain(hostname: string): string | null {
-  const host = hostname.toLowerCase();
-  
-  // Handle .localhost TLD (e.g., demo.localhost)
-  if (host.endsWith('.localhost')) {
-    const parts = host.split('.');
-    if (parts.length >= 2) {
-      const sub = parts[0];
-      return sub !== 'www' ? sub : null;
-    }
-  }
-  
-  // Handle regular domains
-  if (host === 'localhost' || host === '127.0.0.1') return null;
-  const parts = host.split('.');
-  if (parts.length < 3) return null;
-  const [sub] = parts;
-  if (sub === 'www') return null;
-  return sub;
+  return extractSubdomainFromHost(hostname);
 }
 
 /**
