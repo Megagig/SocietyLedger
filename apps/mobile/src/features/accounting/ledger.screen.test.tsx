@@ -71,6 +71,18 @@ beforeEach(() => {
 });
 
 describe('the chart of accounts', () => {
+  it('offers a way to change each account to someone who may edit, built-in ones included', async () => {
+    await render(<AccountsScreen />);
+    await fireEvent.press(screen.getByTestId('account-edit-1'));
+    expect(mockPush).toHaveBeenCalledWith('/(app)/(tabs)/manage/accounting/account-form?id=1');
+  });
+
+  it('offers no change to someone who may only read', async () => {
+    mockAllowed = ['FINANCE_VIEW'];
+    await render(<AccountsScreen />);
+    expect(screen.queryByTestId('account-edit-1')).toBeNull();
+  });
+
   it('opens an account as its ledger, for every officer who can read the books', async () => {
     mockAllowed = ['FINANCE_VIEW'];
     await render(<AccountsScreen />);

@@ -1,5 +1,6 @@
+import { Pencil } from 'lucide-react-native';
 import { memo } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Badge } from '@/components/ui/Badge';
 import { Money } from '@/components/ui/Money';
@@ -8,6 +9,7 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { GroupedRow, type RowPosition } from '@/features/financeSetup/components/GroupedRow';
 import { formatDate } from '@/lib/dates';
+import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { AccountingPeriodDTO, BudgetDTO, ChartAccountDTO, JournalEntryDTO, SyncErrorDTO } from '@/types/api/accounting';
 import { BUDGET_STATUS_LABELS, budgetStatusKey, isAutomatic, JOURNAL_STATUS_LABELS, journalStatusKey, PERIOD_STATUS_LABELS, periodStatusKey } from '../labels';
 
@@ -38,7 +40,8 @@ function EntryRowBase({ item, position, onPress }: { item: JournalEntryDTO; posi
 export const EntryRow = memo(EntryRowBase);
 
 /** One account of the chart: its code and name, what kind it is and (when asked for) what it holds. */
-function AccountRowBase({ item, position, onPress, indent = 0 }: { item: ChartAccountDTO; position: RowPosition; onPress?: (item: ChartAccountDTO) => void; indent?: number }) {
+function AccountRowBase({ item, position, onPress, onEdit, indent = 0 }: { item: ChartAccountDTO; position: RowPosition; onPress?: (item: ChartAccountDTO) => void; onEdit?: (item: ChartAccountDTO) => void; indent?: number }) {
+  const { color } = useThemeTokens();
   return (
     <GroupedRow position={position} accessibilityLabel={`${item.code} ${item.name}`} testID={`account-row-${item.id}`} onPress={onPress ? () => onPress(item) : undefined} minHeight={60}>
       <View className="flex-row items-center justify-between gap-3" style={{ paddingLeft: indent }}>
@@ -53,6 +56,11 @@ function AccountRowBase({ item, position, onPress, indent = 0 }: { item: ChartAc
           </Text>
         </View>
         {item.balance !== undefined ? <Money value={item.balance} size="body-strong" /> : null}
+        {onEdit ? (
+          <Pressable onPress={() => onEdit(item)} accessibilityRole="button" accessibilityLabel={`Change ${item.name}`} hitSlop={8} className="h-9 w-9 items-center justify-center rounded-full bg-surface-sunken" testID={`account-edit-${item.id}`}>
+            <Pencil size={16} color={color.textSecondary} strokeWidth={1.75} />
+          </Pressable>
+        ) : null}
       </View>
     </GroupedRow>
   );

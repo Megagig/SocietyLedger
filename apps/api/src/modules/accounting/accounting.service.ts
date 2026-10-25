@@ -266,7 +266,7 @@ export const accountingService = {
    * Update an account. A built-in account stays switched on, and an account cannot be placed under itself or under one of its own
    * sub-accounts.
    */
-  async updateAccount(associationId: number, accountId: number, data: Partial<Omit<ChartOfAccountInput, 'parentId'>> & { isActive?: boolean; parentId?: number | null }, userId?: number): Promise<ChartOfAccountResponse> {
+  async updateAccount(associationId: number, accountId: number, data: Partial<Omit<ChartOfAccountInput, 'parentId' | 'subType' | 'description'>> & { subType?: string | null; description?: string | null; isActive?: boolean; parentId?: number | null }, userId?: number): Promise<ChartOfAccountResponse> {
     const account = await prisma.chartOfAccount.findFirst({ where: { id: accountId, associationId } });
     if (!account) throw rule('Account not found.', 404, 'ACCOUNT_NOT_FOUND');
 

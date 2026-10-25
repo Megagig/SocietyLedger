@@ -85,6 +85,7 @@ export default function ChartOfAccountsPage() {
       description: '',
       parentId: '',
       normalBalance: 'DEBIT',
+      isActive: true,
     },
     validate: {
       code: (value) => (!value ? 'Account code is required' : null),
@@ -170,22 +171,32 @@ export default function ChartOfAccountsPage() {
       description: account.description || '',
       parentId: account.parentId?.toString() || '',
       normalBalance: account.normalBalance,
+      isActive: account.isActive,
     });
     open();
   };
 
   const handleSubmit = (values: typeof form.values) => {
-    const data = {
-      ...values,
+    if (editingAccount) {
+      updateMutation.mutate({
+        id: editingAccount.id,
+        data: {
+          name: values.name,
+          subType: values.subType || null,
+          description: values.description || null,
+          // Clearing the parent takes the account out from under it
+          parentId: values.parentId ? parseInt(values.parentId) : null,
+          ...(editingAccount.isSystemAccount ? {} : { isActive: values.isActive }),
+        },
+      });
+      return;
+    }
+    const { isActive: _unused, ...rest } = values;
+    createMutation.mutate({
+      ...rest,
       parentId: values.parentId ? parseInt(values.parentId) : undefined,
       subType: values.subType || undefined,
-    };
-
-    if (editingAccount) {
-      updateMutation.mutate({ id: editingAccount.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
+    });
   };
 
   const handleClose = () => {
@@ -296,20 +307,20 @@ export default function ChartOfAccountsPage() {
                       <Text size="xs" c="dimmed" mt={2}>{account.description}</Text>
                     )}
                   </div>
-                  {!account.isSystemAccount && (
-                    <Menu position="bottom-end" withArrow>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle">
-                          <IconDotsVertical size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconEdit size={14} />}
-                          onClick={() => handleEdit(account)}
-                        >
-                          Edit
-                        </Menu.Item>
+                  <Menu position="bottom-end" withArrow>
+                    <Menu.Target>
+                      <ActionIcon variant="subtle" aria-label={`Actions for ${account.name}`}>
+                        <IconDotsVertical size={16} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        leftSection={<IconEdit size={14} />}
+                        onClick={() => handleEdit(account)}
+                      >
+                        Edit
+                      </Menu.Item>
+                      {!account.isSystemAccount && (
                         <Menu.Item
                           leftSection={<IconTrash size={14} />}
                           color="red"
@@ -317,9 +328,9 @@ export default function ChartOfAccountsPage() {
                         >
                           Delete
                         </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  )}
+                      )}
+                    </Menu.Dropdown>
+                  </Menu>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-2">
                   <Badge color={getTypeColor(account.type)} variant="light" size="sm">
@@ -388,20 +399,20 @@ export default function ChartOfAccountsPage() {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      {!account.isSystemAccount && (
-                        <Menu position="bottom-end" withArrow>
-                          <Menu.Target>
-                            <ActionIcon variant="subtle">
-                              <IconDotsVertical size={16} />
-                            </ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item
-                              leftSection={<IconEdit size={14} />}
-                              onClick={() => handleEdit(account)}
-                            >
-                              Edit
-                            </Menu.Item>
+                      <Menu position="bottom-end" withArrow>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle" aria-label={`Actions for ${account.name}`}>
+                            <IconDotsVertical size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconEdit size={14} />}
+                            onClick={() => handleEdit(account)}
+                          >
+                            Edit
+                          </Menu.Item>
+                          {!account.isSystemAccount && (
                             <Menu.Item
                               leftSection={<IconTrash size={14} />}
                               color="red"
@@ -409,9 +420,9 @@ export default function ChartOfAccountsPage() {
                             >
                               Delete
                             </Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
-                      )}
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -485,6 +496,20 @@ export default function ChartOfAccountsPage() {
               placeholder="Optional description"
               {...form.getInputProps('description')}
             />
+
+            {editingAccount && !editingAccount.isSystemAccount && (
+              <Switch
+                label="In use"
+                description="Switch off an account you no longer post to. Its past entries stay."
+                checked={form.values.isActive}
+                onChange={(e) => form.setFieldValue('isActive', e.currentTarget.checked)}
+              />
+            )}
+            {editingAccount?.isSystemAccount && (
+              <Text size="xs" c="dimmed">
+                This is a built-in account. You can rename it, describe it and move it, but its code and type stay, and it cannot be switched off or deleted.
+              </Text>
+            )}
 
             <Group justify="flex-end" mt="md">
               <Button variant="light" onClick={handleClose}>

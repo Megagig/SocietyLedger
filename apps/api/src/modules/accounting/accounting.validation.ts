@@ -24,8 +24,9 @@ export const createAccountSchema = z.object({
 
 export const updateAccountSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  subType: z.string().max(50).optional().nullable().transform(val => val ?? undefined),
-  description: z.string().max(500).optional().nullable().transform(val => val ?? undefined),
+  // null clears the group or the description; leaving it out keeps it
+  subType: z.string().max(50).optional().nullable(),
+  description: z.string().max(500).optional().nullable(),
   // null takes the account out from under its parent
   parentId: z.number().int().positive().optional().nullable(),
   isActive: z.boolean().optional(),
