@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { useController, type FieldValues } from 'react-hook-form';
 
 import { IconButton } from '@/components/ui/IconButton';
 import { Text } from '@/components/ui/Text';
 import { useThemeTokens } from '@/providers/ThemeProvider';
+import { FieldInput } from './FieldInput';
 import { FieldShell, type RHFControlProps } from './FieldShell';
 
 export type PasswordFieldProps<TFieldValues extends FieldValues = FieldValues> = RHFControlProps<TFieldValues> & {
@@ -53,7 +54,8 @@ export function PasswordField<TFieldValues extends FieldValues = FieldValues>({
           hasError ? 'border-danger' : 'border-border-strong',
         ].join(' ')}
       >
-        <TextInput
+        {/* FieldInput, not a plain TextInput: inside a bottom sheet (approve, post, void) it is what lets the sheet rise above the keyboard */}
+        <FieldInput
           testID={testID}
           value={value}
           onChangeText={field.onChange}
