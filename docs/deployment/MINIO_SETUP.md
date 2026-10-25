@@ -14,7 +14,7 @@ SocietyLedger uses MinIO for payment proofs, expense receipts, cash deposit slip
    | Variable | Value |
    |---|---|
    | `MINIO_ROOT_USER` | an admin username, 3+ characters |
-   | `MINIO_ROOT_PASSWORD` | `openssl rand -hex 24`. This is the **admin** login. Keep it, never give it to an app. |
+   | `MINIO_ROOT_PASSWORD` | `openssl rand -hex 24` (or any 8+ character password). This is the **admin** login. Keep it, never give it to an app. |
    | `FILES_DOMAIN` | `files.societyledger.com.ng` |
 
    Set both before the first start: MinIO reads them only when it creates its data. The deploy refuses to start if
@@ -27,11 +27,14 @@ SocietyLedger uses MinIO for payment proofs, expense receipts, cash deposit slip
 ## 2. Give an app its own bucket and key (once per app)
 
 Run these in the MinIO container (Dokploy > the stack > Terminal, service `minio`), or anywhere with the `mc` tool.
-Change `APP` for each app, and pick a long random `APP_SECRET`:
+Change `APP` for each app. The secret is generated for you:
 
 ```sh
 APP=societyledger
-APP_SECRET=$(openssl rand -hex 24)        # copy this value, you will need it below
+# 32 random characters. MinIO allows 8 to 40, so do NOT use "openssl rand -hex 24" (48 characters).
+# Keep the $( ) around the command: it runs the command and stores its output. Do not paste a value inside it.
+APP_SECRET=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+echo "$APP_SECRET"                         # copy it now, you need it in step 3
 mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
 mc mb --ignore-existing local/$APP
 cat > /tmp/$APP-policy.json <<JSON
@@ -83,6 +86,11 @@ After deploying SocietyLedger, upload a payment proof in the app and open it. In
 Payment receipts are records. Pick one:
 - Dokploy volume backups for the `minio_data` volume, or
 - a scheduled `mc mirror local/societyledger <other-location>` (another disk, another server, or cloud storage).
+
+## Troubleshooting
+- `The secret key is invalid (length should be between 8 and 40)`: the secret is empty or too long. `echo "$APP_SECRET"` should print 32 characters.
+- `command not found` right after `APP_SECRET=$(...)`: a value was pasted inside `$( )`. Keep the command there, or write `APP_SECRET=thevalue` with no `$( )`.
+- `Specified user does not exist` when attaching the policy: the `user add` line failed. Fix the secret and run those two lines again; the bucket and policy are already created.
 
 ## Rotating a key
 `mc admin user add local $APP-app "<new secret>"` replaces the secret; update `MINIO_SECRET_KEY` in the app and redeploy.
