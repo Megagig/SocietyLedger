@@ -14,6 +14,10 @@ const BRAND_BLUE = '#0B6BFF';
 
 type AppVariant = 'development' | 'preview' | 'production';
 
+// The EAS project id is not a secret (it is also in eas.json). A default lets `eas` commands run on a
+// developer machine, where the build profile's env is not set; builds still pass it explicitly.
+const DEFAULT_EAS_PROJECT_ID = '7deffb9f-b682-45c7-b773-b919a4d8f28b';
+
 const APP_VARIANT = (process.env.APP_VARIANT as AppVariant | undefined) ?? 'development';
 
 const IDENTITY: Record<AppVariant, { name: string; bundleId: string; scheme: string }> = {
@@ -55,7 +59,7 @@ function checkApiUrl(): void {
 export default ({ config }: ConfigContext): ExpoConfig => {
   checkApiUrl();
   const identity = IDENTITY[APP_VARIANT];
-  const easProjectId = process.env.EAS_PROJECT_ID;
+  const easProjectId = process.env.EAS_PROJECT_ID ?? DEFAULT_EAS_PROJECT_ID;
   const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
   const plugins: ExpoConfig['plugins'] = [
