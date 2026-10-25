@@ -17,7 +17,7 @@ export default function SplashRedirect() {
   if (!destination) {
     return (
       <View className="flex-1 items-center justify-center bg-bg">
-        <Image source={require('../assets/images/icon.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />
+        <Image source={require('../assets/images/logo-mark.png')} style={{ width: 96, height: 96 }} resizeMode="contain" accessibilityLabel="SocietyLedger" />
         <View className="mt-6">
           <Spinner size="lg" />
         </View>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { BrandMark } from '@/components/brand/BrandLogo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Text } from '@mantine/core';
@@ -905,9 +906,7 @@ export function Sidebar() {
                 />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <IconUsers className="text-white" size={24} />
-              </div>
+              <BrandMark size={40} className="flex-shrink-0 group-hover:scale-110 transition-transform" />
             )}
             <div>
               <span className="text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">

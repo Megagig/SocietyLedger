@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { ExternalLink } from 'lucide-react-native';
-import { Linking, View } from 'react-native';
+import { Image, Linking, View } from 'react-native';
 import Constants from 'expo-constants';
 
 import { Screen } from '@/components/layout/Screen';
@@ -22,6 +22,12 @@ export default function AboutScreen() {
       <View className="gap-4">
         {/* Version chip */}
         <View className="items-center py-4 gap-1">
+          <Image
+            source={require('../../../../assets/images/logo-mark.png')}
+            style={{ width: 72, height: 72 }}
+            resizeMode="contain"
+            accessibilityLabel="SocietyLedger"
+          />
           <Text variant="h2">SocietyLedger</Text>
           <Text variant="caption" tone="tertiary">
             {t('profile.about.version')} {version}

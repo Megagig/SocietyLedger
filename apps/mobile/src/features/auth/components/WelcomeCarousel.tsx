@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
+import { Image, ScrollView, View, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { CalendarCheck, Smartphone, Wallet, type LucideIcon } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/Text';
@@ -111,20 +111,12 @@ export function WelcomeCarousel({ topInset = 0 }: { topInset?: number }) {
                   gap: 8,
                 }}
               >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 9,
-                    backgroundColor: 'rgba(255,255,255,0.18)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text variant="label" tone="inverse" style={{ letterSpacing: 0 }}>
-                    SL
-                  </Text>
-                </View>
+                <Image
+                  source={require('../../../../assets/images/app-tile.png')}
+                  style={{ width: 32, height: 32 }}
+                  resizeMode="contain"
+                  accessibilityLabel="SocietyLedger"
+                />
                 <Text variant="body-strong" tone="inverse">
                   Society Ledger
                 </Text>

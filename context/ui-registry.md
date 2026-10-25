@@ -1642,3 +1642,9 @@ _(none)_
 - **Overview and summary rows:** `SectionCard` of `ListItem`s with an `IconCircle` (success + CheckCircle2 done, warning + SkipForward skipped, neutral + Circle not started) and a `Badge` (Done / Skipped).
 - **`features/session/components/SubscriptionBlockedScreen.tsx`:** `AuthHeroScreen` with the CreditCard icon; officers get the `SupportCard` (WhatsApp) and the text to renew on the web, members the contact-your-admin text; **Sign out** as `accent-ghost`. No prices, no pay button (store billing rules).
 - **`features/session/components/TrialEndingBanner.tsx`:** `bg-warning-soft` row with the Hourglass icon above the Me | Association toggle on Home, shown to admins and billing officers when 3 days or fewer are left.
+
+## Brand kit rollout (2026-10-25)
+
+- **Source of truth:** `SocietyLedger-brand/` (colours, folders and usage rules in its README). Mark = bold S with a ledger card; brand blue `#0B6BFF`, green `#14B866`, slate `#0F172A`.
+- **Mobile:** `assets/images/logo-mark(.png|@2x|@3x)` is the in-app mark (startup 96dp, `AuthBrandMark` 64dp, About 72dp); `app-tile.png` is the rounded gradient tile used on dark surfaces (welcome carousel, 32dp). Use these, never a lucide `Users` icon as the brand. App icon, adaptive icons, splash and notification icon live in `assets/images/` and are wired in `app.config.ts`.
+- **Web/admin/docs:** `public/brand/` holds the horizontal lockups (`-light-notag` for light pages, `-dark-notag` for dark) and `logo-mark.svg`. Web uses `BrandMark` and `BrandLogo` from `components/brand/BrandLogo.tsx` (`tone="auto"` swaps with the theme, `onDark` for the footer). The association's own logo still wins in the sidebars; the brand mark is only the fallback.

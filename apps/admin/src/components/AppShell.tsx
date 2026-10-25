@@ -75,7 +75,9 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         <Group h="100%" px="lg" justify="space-between">
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" color="var(--admin-chrome-fg)" />
-            <Text fw={700} size="md" c="white">SocietyLedger Admin</Text>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo-horizontal-dark-notag.png" alt="SocietyLedger" height={30} width={121} style={{ height: 30, width: 121 }} />
+            <Text fw={600} size="sm" c="dimmed" visibleFrom="xs">Admin</Text>
           </Group>
         </Group>
       </MantineAppShell.Header>

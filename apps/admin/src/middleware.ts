@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const SESSION_COOKIE = 'sl_admin_session';
 
 // Public routes that don't require authentication
-const PUBLIC_PATHS = ['/login', '/2fa', '/invite', '/favicon.ico', '/_next', '/robots.txt', '/api/health'];
+const PUBLIC_PATHS = ['/login', '/2fa', '/invite', '/favicon', '/apple-touch-icon.png', '/brand/', '/_next', '/robots.txt', '/api/health'];
 
 function isPublic(path: string): boolean {
   return PUBLIC_PATHS.some((p) => path.startsWith(p));

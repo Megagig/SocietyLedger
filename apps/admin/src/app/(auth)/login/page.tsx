@@ -73,7 +73,8 @@ function LoginPageContent() {
       >
         <Stack gap="lg">
           <Stack gap={4}>
-            <Title order={2} ta="center">SocietyLedger</Title>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/logo-horizontal-light-notag.png" alt="SocietyLedger" height={44} width={177} style={{ height: 44, width: 177, margin: '0 auto' }} />
             <Text size="sm" c="dimmed" ta="center">Platform Administration</Text>
           </Stack>
 

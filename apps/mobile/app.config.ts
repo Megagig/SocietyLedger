@@ -6,8 +6,11 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 // file, not its transitive local imports, and fails with "Cannot find module './src/theme/tokens'"
 // (confirmed by actually running `expo export`, not assumed). A plain literal, kept in sync by
 // this comment, is the only thing that works here.
-// Keep equal to `tokens.light.color.passbook` / `--color-passbook` in src/theme/global.css.
-const SPLASH_BACKGROUND_COLOR = '#0A4842';
+// Brand colours from the SocietyLedger brand kit (SocietyLedger-brand/README.md): slate splash in
+// dark mode, white in light mode, brand blue behind the Android adaptive icon and notification tint.
+const SPLASH_BACKGROUND_COLOR = '#0F172A';
+const SPLASH_LIGHT_BACKGROUND_COLOR = '#FFFFFF';
+const BRAND_BLUE = '#0B6BFF';
 
 type AppVariant = 'development' | 'preview' | 'production';
 
@@ -41,9 +44,22 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     [
       'expo-splash-screen',
       {
-        backgroundColor: SPLASH_BACKGROUND_COLOR,
-        image: './assets/images/splash-icon.png',
-        imageWidth: 180,
+        backgroundColor: SPLASH_LIGHT_BACKGROUND_COLOR,
+        image: './assets/images/splash-icon-light.png',
+        imageWidth: 280,
+        resizeMode: 'contain',
+        dark: {
+          backgroundColor: SPLASH_BACKGROUND_COLOR,
+          image: './assets/images/splash-icon.png',
+        },
+      },
+    ],
+    [
+      'expo-notifications',
+      {
+        // Android status-bar icon: white-on-transparent mark, tinted with the brand blue.
+        icon: './assets/images/notification-icon.png',
+        color: BRAND_BLUE,
       },
     ],
     '@react-native-community/datetimepicker',
@@ -95,7 +111,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         foregroundImage: './assets/images/android-icon-foreground.png',
         backgroundImage: './assets/images/android-icon-background.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
-        backgroundColor: SPLASH_BACKGROUND_COLOR,
+        backgroundColor: BRAND_BLUE,
       },
     },
     web: {

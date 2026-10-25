@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button, Container } from '@mantine/core';
-import { IconUsers, IconLogin, IconMenu2, IconX } from '@tabler/icons-react';
+import { IconLogin, IconMenu2, IconX } from '@tabler/icons-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { docsUrl } from '@/lib/docs';
@@ -34,12 +35,7 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0 no-underline">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-              <IconUsers className="text-white" size={24} />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
-              SocietyLedger
-            </span>
+            <BrandLogo height={36} />
           </Link>
 
           {/* Desktop Navigation */}
