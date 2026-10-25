@@ -1,29 +1,54 @@
 ---
 title: "Accounting periods and closing"
-description: "What an accounting period is meant to do, and why there's nothing to set up yet."
-type: concept
+description: "Close a month or a year once it is settled, so nothing can be posted into it afterwards."
+type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["AccountingPeriod"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/accounting/periods"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting-guide/journal-entries"]
 ---
 
-In most accounting systems, a period you close or lock stops new entries from being backdated into it. SocietyLedger has the underlying data model for this, but no screen or action to use it yet.
+A period is a stretch of dates, usually a month or a year. Once your books for it are final, you close it, and nothing more can be posted to a date inside it.
 
-## How it works
+## Before you start
 
-<Callout type="note" title="Not available today">
-There's no page to open, close or lock a period, and no option anywhere in Accounting that checks whether a period is open before letting you post an entry. Every journal entry can be dated into any past or future period, closed or not, because nothing enforces a period's status.
-</Callout>
+You need the **approve payments** permission, which Administrators and Treasurers have by default.
 
-If this changes in a future release, the concept is: a period (typically a month or a fiscal year) starts **Open**, moves to **Closed** once your books for it are final, and can be **Locked** to prevent even an administrator from reopening it.
+## Add, close and lock a period
 
-## Why it matters
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Accounting", "Periods"]} /> and select <UiLabel>New Period</UiLabel>.</Step>
+<Step>Give it a name, choose month, quarter or year, and set the first and last day.</Step>
+<Step>When the books for it are settled, select <UiLabel>Close</UiLabel> on the period.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting", "Accounting periods"]} /> and tap **+**.</Step>
+<Step>Name the period, choose what it covers, and pick its first and last day.</Step>
+<Step>Tap a period, then **Close this period**. Tap **Open it again** or **Lock it for good** on a closed one.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-Until period locking exists, your only real safeguard against an old journal entry being backdated into a period you consider "closed" is reviewing recent entries yourself — see [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) for the approval step that at least ensures a second person saw it first.
+## The three states
 
-## What you can do
+- **Open.** Entries can be posted to any date in it.
+- **Closed.** Nothing can be posted to a date in it. You can open it again if you must, and each reopening is recorded in the [audit log](/docs/settings/audit-log).
+- **Locked.** Final. A locked period can never be opened again by anyone.
 
-- [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) — the approval workflow that applies regardless of date.
+A period runs from the first moment of its first day to the last moment of its last day, in Lagos time. Two periods cannot share a day.
+
+## What closing checks
+
+- **Entries still waiting.** A period cannot be closed while entries in it are waiting to be approved or posted. Post or reject them first.
+- **Posting is checked again.** An entry written before a period was closed cannot be posted into it afterwards.
+- **Automatic entries too.** If money moves with a date in a closed period, the payment goes through, but its entry waits in the list of things that could not be entered until you fix it.
+
+Dates that no period covers are not restricted. Add a period for every month or year you want to be able to close.
+
+## Related

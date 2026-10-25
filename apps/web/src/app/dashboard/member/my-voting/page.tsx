@@ -3,6 +3,8 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
 import Link from 'next/link';
 import { IconChecklist, IconChartPie, IconBadge, IconCheck } from '@tabler/icons-react';
+import { ElectionProgress } from '@/components/voting/ElectionProgress';
+import { IneligibleNote } from '@/components/voting/EligibilityPanel';
 import { getActiveVotingItems, getElections, getVoterStatus, Election } from '@/lib/api/voting';
 
 // R2.7/G19: this page was a static placeholder — no fetch of any kind.
@@ -62,14 +64,19 @@ export default function MyVotingPage() {
           ) : activeElections.length > 0 ? (
             <div className="space-y-3">
               {activeElections.map((election: Election) => (
+                <div key={election.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
                 <Link
-                  key={election.id}
                   href={`/dashboard/governance/elections/${election.id}`}
-                  className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-teal-500 transition-colors"
+                  className="block hover:text-teal-600 transition-colors"
                 >
                   <p className="font-medium text-gray-900 dark:text-white">{election.title}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{election.status.replace(/_/g, ' ')}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Voting open{election.votingEndDate ? ` · ends ${new Date(election.votingEndDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                  </p>
                 </Link>
+                <IneligibleNote electionId={election.id} />
+                <ElectionProgress electionId={election.id} />
+                </div>
               ))}
             </div>
           ) : (

@@ -157,7 +157,7 @@ export default function DocumentationSearchPage() {
               {results.length === 0 && (
                 <Alert icon={<IconAlertCircle size={20} />} color="blue" title="No Results">
                   <Text>
-                    No documentation found for "<strong>{query}</strong>". Try different keywords or browse the
+                    No documentation found for &quot;<strong>{query}</strong>&quot;. Try different keywords or browse the
                     documentation sections.
                   </Text>
                 </Alert>

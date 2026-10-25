@@ -42,6 +42,10 @@ export interface FinancialSummaryReport {
     outstanding: Decimal;
     collectionRate: number; // percentage
   };
+  /** Money that came in during the period: every payment dated in it. `income.total` is this. */
+  received?: { total: Decimal; paymentCount: number };
+  /** Charges raised during the period (not voided, not waived). `collections.expected` is this. */
+  raised?: { total: Decimal; chargeCount: number };
   comparison?: {
     previousPeriod: {
       startDate: Date;
@@ -86,6 +90,7 @@ export interface AgingBucket {
     amount: Decimal;
     oldestDueDate: Date;
     daysOverdue: number;
+    chargeCount?: number;
   }>;
 }
 
@@ -97,7 +102,8 @@ export interface AgingAnalysisReport {
     totalTransactions: number;
   };
   buckets: {
-    current: AgingBucket; // 0-30 days
+    notYetDue: AgingBucket;
+    current: AgingBucket; // 1-30 days overdue
     days31to60: AgingBucket;
     days61to90: AgingBucket;
     over90: AgingBucket;
@@ -117,6 +123,9 @@ export interface CollectionRateReport {
     collectionRate: number;
   };
   byMonth: Array<{
+    key?: string;
+    startDate?: Date;
+    endDate?: Date;
     month: string;
     year: number;
     expected: Decimal;

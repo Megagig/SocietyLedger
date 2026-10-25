@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@/utils/api';
+import { apiGet, apiPost, apiPut, apiPostFormData } from '@/utils/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -138,6 +138,7 @@ export async function createLoanProduct(data: {
   requiresGuarantor?: boolean;
   minGuarantors?: number;
   maxLoanToSavingsRatio?: number;
+  lockSavings?: boolean;
   gracePeriodDays?: number;
   lateFeePercent?: number;
   lateFeeFixed?: number;
@@ -146,6 +147,36 @@ export async function createLoanProduct(data: {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to create loan product');
+  }
+  return response.json();
+}
+
+export async function updateLoanProduct(
+  id: number,
+  data: Partial<{
+    name: string;
+    description: string;
+    minAmount: number;
+    maxAmount: number;
+    interestRate: number;
+    interestType: string;
+    minTenureMonths: number;
+    maxTenureMonths: number;
+    processingFeePercent: number;
+    requiresGuarantor: boolean;
+    minGuarantors: number;
+    /** Send 0 to remove the savings requirement. */
+    maxLoanToSavingsRatio: number;
+    lockSavings: boolean;
+    gracePeriodDays: number;
+    lateFeePercent: number;
+    isActive: boolean;
+  }>
+) {
+  const response = await apiPut(`${API_URL}/api/cooperatives/loan-products/${id}`, data);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to update loan product');
   }
   return response.json();
 }
@@ -301,5 +332,182 @@ export async function getLoanRepayments(params?: {
 
   const response = await apiGet(`${API_URL}/api/cooperatives/loan-repayments?${searchParams}`);
   if (!response.ok) throw new Error('Failed to fetch loan repayments');
+  return response.json();
+}
+
+// Savings deposit requests — a member declares a deposit paid to the cooperative (with a receipt); an officer
+// approves it, which is what credits the balance.
+export type SavingsDepositStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface SavingsDeposit {
+  id: number;
+  savingsAccountId: number;
+  accountNumber: string;
+  memberId: number;
+  memberName: string;
+  memberNumber: string;
+  amount: string;
+  paymentDate: string;
+  reference: string | null;
+  memberNote: string | null;
+  filename: string;
+  hasReceipt: boolean;
+  status: SavingsDepositStatus;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+export async function submitSavingsDeposit(data: {
+  savingsAccountId: number;
+  amount: number;
+  paymentDate: string;
+  reference?: string;
+  memberNote?: string;
+  file: File;
+}) {
+  const formData = new FormData();
+  formData.append('savingsAccountId', String(data.savingsAccountId));
+  formData.append('amount', String(data.amount));
+  formData.append('paymentDate', data.paymentDate);
+  if (data.reference) formData.append('reference', data.reference);
+  if (data.memberNote) formData.append('memberNote', data.memberNote);
+  formData.append('file', data.file);
+
+  const response = await apiPostFormData(`${API_URL}/api/cooperatives/savings-deposits`, formData);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.errors?.[0]?.message || error.message || 'Failed to submit deposit');
+  }
+  return response.json();
+}
+
+export async function getSavingsDeposits(params?: {
+  page?: number;
+  limit?: number;
+  status?: SavingsDepositStatus;
+  savingsAccountId?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.savingsAccountId) searchParams.set('savingsAccountId', params.savingsAccountId.toString());
+
+  const response = await apiGet(`${API_URL}/api/cooperatives/savings-deposits?${searchParams}`);
+  if (!response.ok) throw new Error('Failed to fetch savings deposits');
+  return response.json();
+}
+
+/** A short-lived link to the receipt file (the API only hands it to the member who uploaded it, or an officer). */
+export async function getSavingsDepositReceiptUrl(id: number): Promise<{ url: string; filename: string }> {
+  const response = await apiGet(`${API_URL}/api/cooperatives/savings-deposits/${id}/receipt?format=json`);
+  if (!response.ok) throw new Error('Could not open the receipt');
+  const body = await response.json();
+  return body.data;
+}
+
+export async function approveSavingsDeposit(id: number) {
+  const response = await apiPost(`${API_URL}/api/cooperatives/savings-deposits/${id}/approve`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to approve deposit');
+  }
+  return response.json();
+}
+
+export async function rejectSavingsDeposit(id: number, reason: string) {
+  const response = await apiPost(`${API_URL}/api/cooperatives/savings-deposits/${id}/reject`, { reason });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.errors?.[0]?.message || error.message || 'Failed to reject deposit');
+  }
+  return response.json();
+}
+
+// Loan repayment requests — a member declares a payment towards their own loan (with a receipt); an officer
+// confirms it, which is what records the repayment.
+export interface LoanRepaymentRequest {
+  id: number;
+  loanId: number;
+  loanNumber: string;
+  memberId: number;
+  memberName: string;
+  memberNumber: string;
+  amount: string;
+  paymentDate: string;
+  reference: string | null;
+  memberNote: string | null;
+  filename: string;
+  hasReceipt: boolean;
+  status: SavingsDepositStatus;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+export async function submitLoanRepaymentRequest(data: {
+  loanId: number;
+  amount: number;
+  paymentDate: string;
+  reference?: string;
+  memberNote?: string;
+  file: File;
+}) {
+  const formData = new FormData();
+  formData.append('loanId', String(data.loanId));
+  formData.append('amount', String(data.amount));
+  formData.append('paymentDate', data.paymentDate);
+  if (data.reference) formData.append('reference', data.reference);
+  if (data.memberNote) formData.append('memberNote', data.memberNote);
+  formData.append('file', data.file);
+
+  const response = await apiPostFormData(`${API_URL}/api/cooperatives/loan-repayment-requests`, formData);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.errors?.[0]?.message || error.message || 'Failed to submit repayment');
+  }
+  return response.json();
+}
+
+export async function getLoanRepaymentRequests(params?: {
+  page?: number;
+  limit?: number;
+  status?: SavingsDepositStatus;
+  loanId?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.loanId) searchParams.set('loanId', params.loanId.toString());
+
+  const response = await apiGet(`${API_URL}/api/cooperatives/loan-repayment-requests?${searchParams}`);
+  if (!response.ok) throw new Error('Failed to fetch repayment requests');
+  return response.json();
+}
+
+export async function getLoanRepaymentReceiptUrl(id: number): Promise<{ url: string; filename: string }> {
+  const response = await apiGet(`${API_URL}/api/cooperatives/loan-repayment-requests/${id}/receipt?format=json`);
+  if (!response.ok) throw new Error('Could not open the receipt');
+  const body = await response.json();
+  return body.data;
+}
+
+export async function approveLoanRepaymentRequest(id: number) {
+  const response = await apiPost(`${API_URL}/api/cooperatives/loan-repayment-requests/${id}/approve`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to approve repayment');
+  }
+  return response.json();
+}
+
+export async function rejectLoanRepaymentRequest(id: number, reason: string) {
+  const response = await apiPost(`${API_URL}/api/cooperatives/loan-repayment-requests/${id}/reject`, { reason });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.errors?.[0]?.message || error.message || 'Failed to reject repayment');
+  }
   return response.json();
 }

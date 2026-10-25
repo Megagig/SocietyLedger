@@ -75,4 +75,11 @@ router.get(
   reportsController.getCategoryReport
 );
 
+/**
+ * The records behind a figure: GET /api/reports/charges and GET /api/reports/payments take the same filters as the reports and
+ * return totals that equal the figure tapped. Same permission as the reports.
+ */
+router.get('/charges', requirePermission(PERMISSIONS.FINANCE_VIEW), reportsController.listCharges);
+router.get('/payments', requirePermission(PERMISSIONS.FINANCE_VIEW), reportsController.listPayments);
+
 export default router;

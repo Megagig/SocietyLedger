@@ -70,6 +70,7 @@ export const PERMISSIONS = {
   SUPPORT_VIEW_ALL: 'support.view_all',
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
+  SUPPORT_ESCALATE: 'support.escalate',
   
   // Nigerian Payments Management (Phase 3.6)
   PAYMENT_RECORD: 'payments.nigerian.record',
@@ -77,6 +78,12 @@ export const PERMISSIONS = {
   PAYMENT_RECONCILE: 'payments.nigerian.reconcile',
   PAYMENT_IMPORT: 'payments.nigerian.import',
   NIGERIAN_PAYMENTS_VIEW: 'payments.nigerian.view',
+  
+  // Cash collections & lodgments
+  CASH_COLLECT: 'cash.collect',
+  CASH_LODGE: 'cash.lodge',
+  CASH_VERIFY: 'cash.verify',
+  CASH_VIEW: 'cash.view',
   
   // SMS & Communications (Phase 6.6)
   SMS_VIEW: 'communication.sms.view',
@@ -136,11 +143,13 @@ export const PERMISSIONS = {
   // Feature-specific (mapped to core permissions)
   COOPERATIVE_VIEW: 'ledger.view_own', // Members view their own cooperative data
   COOPERATIVE_SAVINGS_VIEW: 'ledger.view_own', // Members view their own savings
-  COOPERATIVE_SAVINGS_MANAGE: 'payments.approve', // Admin manages all savings
+  COOPERATIVE_SAVINGS_MANAGE: 'ledger.create', // Officers manage all savings — same key the API enforces (apps/api/src/lib/permissions.ts); admin, treasurer, financial secretary
   COOPERATIVE_LOANS_VIEW: 'ledger.view_own', // Members view their own loans
   COOPERATIVE_LOANS_APPLY: 'members.view_own', // Members can apply for loans
   COOPERATIVE_LOANS_MANAGE: 'payments.approve', // Admin manages loan applications
   COOPERATIVE_GUARANTOR: 'members.view_own', // Members can see guarantor requests
+  COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own', // Declare a savings deposit with a receipt
+  COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own', // Declare a payment towards your own loan with a receipt
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
   MEETING_VIEW: 'members.view_own', // Members can view meetings
   MEETING_CREATE: 'members.create',
@@ -163,11 +172,16 @@ export const PERMISSIONS = {
   AI_QUERY: 'reports.generate',
   AI_USAGE_VIEW: 'audit.view',
   ELECTION_VIEW: 'members.view_own', // Members can view and participate in elections
-  ELECTION_MANAGE: 'members.create',
+  ELECTION_MANAGE: 'elections.manage',
+  ELECTION_CANDIDATES: 'elections.candidates.manage',
+  ELECTION_RULES: 'elections.rules.manage',
+  ELECTION_RUN: 'elections.run',
+  ELECTION_RESULTS_VIEW: 'elections.results.view',
+  ELECTION_RESULTS_PUBLISH: 'elections.results.publish',
   ELECTION_NOMINATE: 'members.view_own', // Members can nominate
   ELECTION_VOTE: 'members.view_own', // Members can vote
   POLL_VIEW: 'members.view_own', // Members can view and participate in polls
-  POLL_MANAGE: 'members.create',
+  POLL_MANAGE: 'polls.manage',
   POLL_VOTE: 'members.view_own', // Members can vote in polls
 } as const;
 
@@ -216,6 +230,16 @@ export function isTreasurer(role: string): boolean {
 
 export function isFinancialSecretary(role: string): boolean {
   return role === 'financial_secretary';
+}
+
+/**
+ * Whether someone gets the officer dashboard. `GET /dashboard/overview` needs `ledger.view`, so the roles that normally get it are
+ * only officers if they also hold that permission; anyone else (members, the Election Committee, custom roles) gets the member dashboard.
+ * A user whose permission list hasn't loaded yet is judged by role alone.
+ */
+export function canSeeOfficerDashboard(user: { role: string; permissions?: string[] } | null | undefined): boolean {
+  if (!user || !['admin', 'treasurer', 'financial_secretary'].includes(user.role)) return false;
+  return user.permissions === undefined || user.permissions.includes(PERMISSIONS.LEDGER_VIEW);
 }
 
 export function isMember(role: string): boolean {

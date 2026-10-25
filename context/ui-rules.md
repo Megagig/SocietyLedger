@@ -152,7 +152,7 @@ Tab root                         Detail                         Form (modal)
 
 ### 5.13 Charts
 - Only via `components/charts/*`. Max 6 series; no 3D, no gradients under lines (flat 12 % area fill allowed for single-series trends).
-- Axis labels `caption` `text-secondary`, gridlines `border`, compact money (`₦1.2m`).
+- Axis labels `caption` `text-secondary`, gridlines `border`, money written out in full with thousands separators (`₦1,200,000`) — never `₦1.2m`.
 - Every chart has a title (`h3`), an optional one-line takeaway (`caption`) and an accessible text alternative.
 - Donut: max 5 slices + "Other"; legend as rows below with amounts and percentages.
 
@@ -164,7 +164,7 @@ Tab root                         Detail                         Form (modal)
 - Thumbnails 64×64 radius sm; tap opens full-screen viewer (pinch zoom, double-tap zoom, swipe down to close, share button). PDFs open with the OS viewer via share/QuickLook.
 
 ### 5.16 Money display rules
-- Always `₦` prefix, thousands separators, 2 decimals in detail screens and rows; compact (`₦25k`, `₦1.2m`) only in charts and KPI tiles.
+- Always `₦` prefix, thousands separators, 2 decimals, everywhere — rows, tiles, KPIs and chart axes. **Never abbreviate** (`₦25k`, `₦1.2m`); the owner wants every amount written in full (decided 2026-10-25).
 - Negative/credit values shown with a leading minus and the word context ("Credit ₦2,000") — never parentheses.
 - Overdue amounts in `danger`; savings growth in `success`; everything else `text`.
 

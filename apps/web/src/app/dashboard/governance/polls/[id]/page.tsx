@@ -26,6 +26,8 @@ import {
   Poll,
   PollStatus
 } from '@/lib/api/voting';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
 import { Text } from '@mantine/core';
@@ -55,6 +57,8 @@ export default function PollDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const pollId = parseInt(params.id as string);
+  const { can } = usePermissions();
+  const canManage = can(PERMISSIONS.POLL_MANAGE);
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [hasResponded, setHasResponded] = useState(false);
 
@@ -180,7 +184,7 @@ export default function PollDetailPage() {
         
         {/* Action Buttons based on status */}
         <div className="flex gap-2">
-          {poll.status === 'DRAFT' && (
+          {canManage && poll.status === 'DRAFT' && (
             <>
               <Link
                 href={`/dashboard/governance/polls/${pollId}/edit`}
@@ -199,7 +203,7 @@ export default function PollDetailPage() {
               </button>
             </>
           )}
-          {poll.status === 'ACTIVE' && (
+          {canManage && poll.status === 'ACTIVE' && (
             <button
               onClick={() => closePollMutation.mutate()}
               disabled={closePollMutation.isPending}
@@ -209,7 +213,7 @@ export default function PollDetailPage() {
               Close Poll
             </button>
           )}
-          {!['CANCELLED', 'CLOSED'].includes(poll.status) && (
+          {canManage && !['CANCELLED', 'CLOSED'].includes(poll.status) && (
             <button
               onClick={() => {
                 modals.openConfirmModal({
@@ -261,7 +265,7 @@ export default function PollDetailPage() {
               <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Anonymous</span>
             )}
             {poll.allowMultipleVotes && (
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Can Change</span>
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">Several answers</span>
             )}
             <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs capitalize">
               {poll.pollType.replace('_', ' ').toLowerCase()}

@@ -6,6 +6,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { API_ROUTES } from '@/utils/constants';
 import { createFetchHeaders } from '@/utils/tenant';
 import Link from 'next/link';
+import { OpenInAppButton } from '@/components/auth/OpenInAppButton';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -164,6 +165,8 @@ export default function ResetPasswordPage() {
 
         {/* Form Card */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          {token && <OpenInAppButton scheme="reset-password" token={token} tenant={tenant?.subdomain} />}
+
           {error && (
             <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
               <div className="flex items-start">

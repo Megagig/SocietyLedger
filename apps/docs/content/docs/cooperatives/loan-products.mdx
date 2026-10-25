@@ -3,11 +3,11 @@ title: "Setting up loan products"
 description: "Configure a loan type with its own amount limits, interest and guarantor rules."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/cooperatives/loan-products", "CP3"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/cooperatives/applying-for-a-loan"]
+lastVerified: "2026-10-26"
+related: ["/docs/cooperatives/applying-for-a-loan", "/docs/cooperatives/savings-rule-and-held-savings"]
 ---
 
 Create a loan product — a named loan type with its own amount range, interest rate and guarantor requirement — before members can apply for it.
@@ -25,10 +25,28 @@ You need the **Administrator**, **Treasurer** or **Financial Secretary** role.
 <Step>Set **Min** and **Max Tenure** in months.</Step>
 <Step>Optionally set a **Processing Fee**, **Late Fee** and **Grace Period**.</Step>
 <Step>Turn on **Requires Guarantor** if applicable, and set **Minimum Guarantors**.</Step>
+<Step>Under **Savings rule**, set the **Savings multiplier** if your cooperative lends against savings — 2 means a member can borrow up to twice their available savings. Leave it empty for no savings requirement.</Step>
+<Step>If you set a multiplier, choose whether to turn on **Hold savings while the loan is running**. It is on by default.</Step>
 <Step>Select **Create Product**.</Step>
 </Steps>
 
 <Screenshot src="/images/cooperatives/loan-products-1.webp" alt="Create loan product form with Product Name, Description, Minimum and Maximum Amount, and Interest Rate fields filled in" />
+
+<Callout type="note" title="Match your constitution">
+Cooperatives differ: some lend up to what a member has saved (1), others twice (2) or three times (3). Set the multiplier on each product to match your own rules. [Your savings rule and held savings](/docs/cooperatives/savings-rule-and-held-savings) explains exactly how it works, with examples.
+</Callout>
+
+On your phone, go to <MenuPath items={["Manage", "Cooperatives", "Loan products"]} />, tap **+**, and fill in the same sections — **Amount and time**, **Interest and fees**, **Guarantors and savings** and **Late repayment**. The largest loan can't be less than the smallest, and the longest tenure can't be shorter than the shortest.
+
+## Edit a product
+
+<Steps>
+<Step>On <MenuPath items={["Cooperatives", "Loan Products"]} />, select **Edit** on the product's card.</Step>
+<Step>Change any field — including the **Savings multiplier** and the hold switch. Set the multiplier to empty to remove the savings requirement.</Step>
+<Step>Use **Product is active** to stop members applying for it, then select **Save Changes**.</Step>
+</Steps>
+
+On your phone, tap a product to change it, or switch it off with **On**. Changes apply to new applications, and to applications still waiting for approval or payout, which are re-checked against the current rule. Savings already held against a loan that has been paid out stay as they were.
 
 ## What happens next
 

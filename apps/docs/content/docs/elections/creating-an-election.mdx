@@ -1,35 +1,58 @@
 ---
 title: "Creating an election and its positions"
-description: "Set up a new election and the positions being contested, in one guided flow."
+description: "Set up a new election and the positions being contested, on the web or on your phone."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/governance/elections/new", "GV8"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/governance/elections/new", "GV7", "GV8"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-28"
 related: ["/docs/elections/how-elections-work", "/docs/elections/nominations-and-candidates"]
 ---
 
-Create a new election and the positions being contested, as a single two-step form.
+Create a new election and the positions being contested.
 
 ## Before you start
 
-You need the **Administrator** role. Decide your nomination and voting windows before you start — see [How an election runs](/docs/elections/how-elections-work) for why these can't be changed once set.
+You need the **Election Committee** role, or a custom role that can create elections — see [The Election Committee](/docs/elections/election-committee). Decide your nomination and voting windows first: an election can only be changed while it is still a Draft.
 
 ## Create the election
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Governance", "Elections"]} /> and select **New Election**.</Step>
-<Step>Enter a **Title**, optional **Description**, and choose an **Election Type** — General, By-Election or Referendum.</Step>
-<Step>Set **Nomination Start/End Date** (optional) and **Voting Start/End Date** (required).</Step>
-<Step>Choose whether voting is **Anonymous** and whether members can **Abstain**, then select **Continue to Positions**.</Step>
-<Step>Add each position being contested — a **title** (e.g. "Treasurer"), optional description, and how many winners/candidates it allows.</Step>
-<Step>Select **Save Positions**, or **Skip for Now** to add positions later from the election's own page.</Step>
+<Step>Enter a **Title**, optional **Description**, and choose an **Election Type**.</Step>
+<Step>Set **Nomination Start/End Date** (optional) and **Voting Start/End Date** (required). Voting has to end after it starts, and nominations have to close before voting starts.</Step>
+<Step>Choose whether voting is **Anonymous**, whether members can **Abstain**, and whether the election **requires a quorum** — the share of members who must vote for the result to count.</Step>
+<Step>Select **Continue to Positions**, add each position being contested, then select **Save Positions** — or **Skip for Now** to add them later from the election's own page.</Step>
 </Steps>
 
 <Screenshot src="/images/elections/creating-an-election-1.webp" alt="Create New Election step 1 form with title, description, type, nomination and voting date fields" />
 <Screenshot src="/images/elections/creating-an-election-2.webp" alt="Create New Election step 2 form with two positions added, each showing title, description, max winners and min candidates fields" />
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Voting", "Elections"]} /> and tap **+**.</Step>
+<Step>Enter a **Title**, choose the **Kind of election**, and add an optional description.</Step>
+<Step>Set when nominations open and close (optional) and when voting starts and ends.</Step>
+<Step>Choose whether members can abstain, whether votes are secret, and whether a **minimum turnout** is needed.</Step>
+<Step>Under **Positions**, type each position being contested and tap **Add a position** for more. Leave them empty if the election has no separate positions.</Step>
+<Step>Tap **Add election**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## Who can vote and stand
+
+Leave this alone and every active member can vote and stand. If your association has its own rules, or you have saved them as your usual rules, they appear here to review or change for this election — see [Who can vote and who can stand](/docs/elections/voting-rules).
+
+## Change it afterwards
+
+While the election is a **Draft** you can change its details, and add, rename or remove positions from the election's own page (the pencil on the phone, **Edit** on the web). A position that already has candidates can't be removed until they are. Once nominations open, the election and its positions are fixed.
+
+A Draft or cancelled election with no votes can be deleted. Once an election has votes, it is kept as a record.
 
 ## What happens next
 
-The election is created in **Draft**. Nobody sees it until you select **Open Nominations** — see [Nominations, self-nomination and approving candidates](/docs/elections/nominations-and-candidates).
+The election is created in **Draft**. Nobody sees it until the committee opens nominations — see [Nominations, self-nomination and approving candidates](/docs/elections/nominations-and-candidates).

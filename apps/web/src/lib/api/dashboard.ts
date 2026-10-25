@@ -37,6 +37,9 @@ export interface RevenueTrendItem {
   year: number;
   revenue: string;
   expected: string;
+  /** The month's first and last moment, so its point opens the payments in it. */
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface PaymentMethodItem {
@@ -111,7 +114,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
  */
 export function formatCurrency(value: string | number, currency: string = '₦'): string {
   const numValue = typeof value === 'string' ? parseFloat(value) : value;
-  return `${currency}${numValue.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `${currency}${numValue.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**
@@ -140,4 +143,37 @@ export function getStatusColor(status: string): string {
     default:
       return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
   }
+}
+
+// ============================================
+// NEEDS YOUR ATTENTION
+// ============================================
+
+export type AttentionKey =
+  | 'paymentProofs'
+  | 'bankTransfers'
+  | 'memberApprovals'
+  | 'cashLodgments'
+  | 'overdueCharges'
+  | 'supportTickets'
+  | 'loanApplications'
+  | 'loanRepayments'
+  | 'savingsDeposits'
+  | 'welfarePayouts';
+
+export interface AttentionItem {
+  key: AttentionKey;
+  count: number;
+}
+
+/**
+ * What is waiting on the signed-in officer, one count per queue they may open.
+ * GET /api/dashboard/attention
+ */
+export async function getDashboardAttention(): Promise<AttentionItem[]> {
+  const response = await api.get<{ success: boolean; message?: string; data: { items: AttentionItem[] } }>('/dashboard/attention');
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to fetch what needs attention');
+  }
+  return response.data.data.items;
 }

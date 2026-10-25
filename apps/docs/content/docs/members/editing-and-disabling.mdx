@@ -1,6 +1,6 @@
 ---
 title: "Editing or disabling a member"
-description: "Update a member's details, change their status, or remove them."
+description: "Update a member's details, change their status, or disable a member so they can't sign in."
 type: task
 audience: ["officer"]
 platforms: ["web"]
@@ -21,16 +21,18 @@ You need the **edit members** permission, which only Administrators have by defa
 <Steps>
 <Step>Open the member's [profile](/docs/members/the-member-profile) and select **Edit**, or select the row's edit icon from the [member list](/docs/members/your-member-list).</Step>
 <Step>Update any field — personal details, address, category, status or emergency contact.</Step>
-<Step>To disable a member without removing their record, set **Status** to **Inactive** or **Suspended**.</Step>
+<Step>To mark a member as no longer taking part, or temporarily restricted, set **Status** to **Inactive** or **Suspended**. They can still sign in.</Step>
 <Step>Select **Update Member**.</Step>
 </Steps>
 
 <Screenshot src="/images/members/editing-and-disabling-1.webp" alt="Edit Member form with the Status dropdown set to Inactive" />
 
-## Removing a member
+## Disabling a member
 
-Selecting **Delete** on a member's profile doesn't erase their record — it marks them **Terminated** and keeps everything on file for your financial and legal records. You can't delete a member who still has pending or overdue charges; settle or waive those first.
+Select **Disable** on a member's profile or in the member list, then confirm. This doesn't erase their record — it marks them **Disabled** and keeps everything on file for your financial and legal records. You can't disable a member who still has pending or overdue charges; settle or waive those first.
+
+A disabled member can't sign in. To give them access again, open their profile and select **Enable member**.
 
 ## What happens next
 
-Status changes take effect immediately — an inactive or suspended member can no longer log in, but their history stays intact everywhere else in the system.
+Disabling takes effect the next time the member signs in or their session renews — a session that is already open can keep working until then. Inactive and suspended members can still sign in, so they can see what they owe and pay it. Their history stays intact everywhere else in the system.

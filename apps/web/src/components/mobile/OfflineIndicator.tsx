@@ -56,7 +56,7 @@ export function OfflineIndicator() {
           <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
             <IconWifiOff size={18} />
             <span className="text-sm font-medium">
-              You're offline. Some features may be limited.
+              You&apos;re offline. Some features may be limited.
             </span>
           </div>
         </div>

@@ -90,6 +90,7 @@ export interface LoanProductInput {
   requiresGuarantor: boolean;
   minGuarantors?: number;
   maxLoanToSavingsRatio?: number;
+  lockSavings?: boolean;
   gracePeriodDays?: number;
   lateFeePercent?: number;
   lateFeeFixed?: number;
@@ -111,6 +112,7 @@ export interface LoanProductResponse {
   requiresGuarantor: boolean;
   minGuarantors: number;
   maxLoanToSavingsRatio: Decimal | null;
+  lockSavings: boolean;
   gracePeriodDays: number;
   lateFeePercent: Decimal;
   lateFeeFixed: Decimal;
@@ -199,6 +201,18 @@ export interface LoanGuarantorResponse {
 }
 
 export type GuarantorStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'RELEASED';
+
+/** A guarantee the member accepted, plus the loan it backs. Loan fields are null until the loan is disbursed. */
+export interface GuaranteedLoanResponse extends LoanGuarantorResponse {
+  applicationNumber: string;
+  applicantName: string;
+  productName: string;
+  applicationStatus: string;
+  loanNumber: string | null;
+  principalAmount: Decimal | null;
+  outstandingBalance: Decimal | null;
+  loanStatus: LoanStatus | null;
+}
 
 export interface PendingGuarantorRequestResponse {
   id: number;
@@ -337,10 +351,14 @@ export interface MemberCooperativeProfile {
   memberName: string;
   savingsAccounts: SavingsAccountResponse[];
   totalSavings: Decimal;
+  /** Part of totalSavings held against active loans (not withdrawable, not borrowable against). */
+  lockedSavings: Decimal;
+  /** totalSavings − lockedSavings: what the member can withdraw or borrow against. */
+  availableSavings: Decimal;
   activeLoans: LoanResponse[];
   totalOutstandingLoans: Decimal;
   guarantorExposure: Decimal;
-  guaranteedLoans: LoanGuarantorResponse[];
+  guaranteedLoans: GuaranteedLoanResponse[];
   loanEligibility: {
     maxLoanAmount: Decimal;
     eligibleProducts: LoanProductResponse[];
@@ -348,4 +366,71 @@ export interface MemberCooperativeProfile {
   };
   creditScore: number;
   memberSince: Date;
+}
+
+export type SavingsDepositStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface SavingsDepositInput {
+  savingsAccountId: number;
+  amount: number;
+  paymentDate: Date;
+  bankAccountId?: number;
+  reference?: string;
+  memberNote?: string;
+}
+
+export interface SavingsDepositReceipt {
+  filename: string;
+  filepath: string;
+  fileSize?: number;
+  mimeType?: string;
+}
+
+export interface SavingsDepositResponse {
+  id: number;
+  savingsAccountId: number;
+  accountNumber: string;
+  memberId: number;
+  memberName: string;
+  memberNumber: string;
+  amount: any;
+  paymentDate: Date;
+  bankAccountId: number | null;
+  reference: string | null;
+  memberNote: string | null;
+  filename: string;
+  hasReceipt: boolean;
+  status: SavingsDepositStatus;
+  reviewedAt: Date | null;
+  rejectionReason: string | null;
+  createdAt: Date;
+}
+
+export interface LoanRepaymentRequestInput {
+  loanId: number;
+  amount: number;
+  paymentDate: Date;
+  bankAccountId?: number;
+  reference?: string;
+  memberNote?: string;
+}
+
+export interface LoanRepaymentRequestResponse {
+  id: number;
+  loanId: number;
+  loanNumber: string;
+  memberId: number;
+  memberName: string;
+  memberNumber: string;
+  amount: any;
+  paymentDate: Date;
+  bankAccountId: number | null;
+  reference: string | null;
+  memberNote: string | null;
+  filename: string;
+  hasReceipt: boolean;
+  status: SavingsDepositStatus;
+  reviewedAt: Date | null;
+  rejectionReason: string | null;
+  createdAt: Date;
 }

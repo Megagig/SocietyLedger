@@ -1,0 +1,63 @@
+---
+title: "Collecting cash from members"
+description: "Open a collection, write a receipt for each member, then close it."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cash/collections", "/dashboard/cash/collections/[id]", "CA2", "CA3", "CA4", "CA5"]
+status: published
+lastVerified: "2026-10-24"
+related: ["/docs/cash/how-cash-collections-work", "/docs/cash/lodging-cash-into-the-bank"]
+---
+
+Use a collection whenever you take cash from members — at a meeting, or on any day.
+
+## Before you start
+
+- You need the **collect cash** permission.
+- **Cash** must be enabled under **Enabled Channels** in [Payment settings](/docs/settings/payment-settings).
+- The member must be on the system. Their charges, savings account, welfare funds and loans are what you can take cash against.
+
+## Open a collection
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Cash Collections"]} />, then select **Open a collection**.</Step>
+<Step>Name it, for example *October general meeting*. Pick the meeting if it was one (optional), then select **Open collection**.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Cash", "Collections"]} />, then select the **+** button.</Step>
+<Step>Name it, pick the meeting if there was one (optional), then select **Open collection**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## Write a receipt
+
+<Steps>
+<Step>In the collection, select **Collect cash**.</Step>
+<Step>Choose the **Member**. Everything they could pay appears: what they owe, loan repayments, savings, welfare funds, and a donation.</Step>
+<Step>Type the amount they hand over against each item. **Fill** puts in the full balance or the usual amount for you.</Step>
+<Step>Check the **Total received** against the cash in your hand, then select **Record receipt**.</Step>
+</Steps>
+
+The member is credited at once and gets a notification (and an email if they have one). One receipt can cover several items.
+
+<Callout type="warning" title="If it says “Not saved”">
+The receipt didn't reach the server. Select **Not saved — Retry**. Retrying is safe: it never credits the member twice. If it says *part of this receipt was saved*, open the collection and check which payments are listed before taking more.
+</Callout>
+
+## Void a mistake
+
+While the collection is still open, another officer with the **verify** permission can open the receipt and select **Void**, giving a reason. The member's balance goes back as it was and they are told why. You can't void a receipt you took yourself, and a loan repayment can't be voided here.
+
+## Close the collection
+
+When you have finished taking cash, select **Close collection**. This fixes the receipts so the total can be lodged. You can't add or void receipts afterwards.
+
+## What happens next
+
+[Lodge the cash](/docs/cash/lodging-cash-into-the-bank) into the bank.

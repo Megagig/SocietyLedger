@@ -1,14 +1,24 @@
+import { COUNTED_CHARGE, periodRange } from '../reports/report-rules';
+import { generateAgingAnalysis } from '../reports/reports-core.service';
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
 // Phase 12: Cache invalidation
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
+import { categoryDeactivateError, categoryTypeChangeError } from './category-rules';
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { sendEmail } from '../../lib/email';
 import { SettingsService } from '../settings/settings.service';
 import { dispatchNotification } from '../../services/notification-preferences.service';
+import { memberLedgerService } from '../member-finance/member-ledger.service';
+import { cashBackedMessage, findCashBackingReceipts } from './cash-guard';
+import { confirmPassword, reauthFailure } from '../../lib/reauth';
+import { reminderText, splitByCooldown } from './reminder-rules';
+import { isOverdue, overdueWhere } from './overdue-rules';
+import { syncLedgerDebit } from './ledger-sync';
+import { restoreChargeExtras } from './restore-rules';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -77,6 +87,7 @@ const editTransactionSchema = z.object({
 
 // Void and replace schema (for paid transactions)
 const voidAndReplaceSchema = z.object({
+  password: z.string().min(1, 'Enter your password to confirm'),
   voidReason: z.string().min(10, 'Please provide a detailed reason for voiding (min 10 characters)'),
   newTransaction: z.object({
     memberId: z.number().int().positive(),
@@ -187,6 +198,7 @@ export const financeController = {
           skip,
           take: limit,
           orderBy: { [queryParams.sortBy]: queryParams.sortOrder },
+          include: { _count: { select: { transactions: true, levyCampaigns: true } } },
         }),
         prisma.financialCategory.count({ where }),
       ]);
@@ -194,7 +206,11 @@ export const financeController = {
       return res.status(200).json({
         success: true,
         data: {
-          categories,
+          // usageCount: how many charges and levy campaigns use the category (its type is locked once that is above 0)
+          categories: categories.map(({ _count, ...category }) => ({
+            ...category,
+            usageCount: _count.transactions + _count.levyCampaigns,
+          })),
           pagination: {
             page,
             limit,
@@ -223,7 +239,7 @@ export const financeController = {
       const category = await prisma.financialCategory.findFirst({
         where: { id: parseInt(id), associationId },
         include: {
-          _count: { select: { transactions: true } },
+          _count: { select: { transactions: true, levyCampaigns: true } },
         },
       });
 
@@ -248,6 +264,7 @@ export const financeController = {
         success: true,
         data: {
           ...category,
+          usageCount: category._count.transactions + category._count.levyCampaigns,
           stats: {
             totalTransactions: stats._count.id,
             totalAmount: stats._sum.amount || 0,
@@ -350,6 +367,25 @@ export const financeController = {
         return res.status(404).json({ success: false, message: 'Category not found' });
       }
 
+      // The type decides how a category's charges behave, so it is locked once anything uses the category.
+      if (validatedData.type !== undefined && validatedData.type !== existing.type) {
+        const [charges, campaigns] = await Promise.all([
+          prisma.transaction.count({ where: { categoryId: existing.id, associationId } }),
+          prisma.levyCampaign.count({ where: { categoryId: existing.id, associationId } }),
+        ]);
+        const typeError = categoryTypeChangeError(existing.type, validatedData.type, { charges, campaigns });
+        if (typeError) return res.status(409).json({ success: false, code: 'CATEGORY_IN_USE', message: typeError });
+      }
+
+      // Switching a category off is the same as deleting it, so the same open-charges rule applies.
+      if (validatedData.isActive === false && existing.isActive) {
+        const openCharges = await prisma.transaction.count({
+          where: { categoryId: existing.id, associationId, isVoided: false, status: { in: ['pending', 'overdue', 'partial'] } },
+        });
+        const deactivateError = categoryDeactivateError(openCharges);
+        if (deactivateError) return res.status(400).json({ success: false, code: 'CATEGORY_HAS_OPEN_CHARGES', message: deactivateError });
+      }
+
       // Check name uniqueness if changing
       if (validatedData.name && validatedData.name !== existing.name) {
         const duplicate = await prisma.financialCategory.findFirst({
@@ -433,7 +469,8 @@ export const financeController = {
         where: {
           categoryId: parseInt(id),
           associationId,
-          status: { in: ['pending', 'overdue'] },
+          isVoided: false,
+          status: { in: ['pending', 'overdue', 'partial'] },
         },
       });
 
@@ -538,7 +575,9 @@ export const financeController = {
         where.categoryId = parseInt(queryParams.categoryId);
       }
 
-      if (queryParams.status) {
+      if (queryParams.status === 'overdue') {
+        Object.assign(where, overdueWhere());
+      } else if (queryParams.status) {
         where.status = queryParams.status;
       }
 
@@ -740,6 +779,13 @@ export const financeController = {
         // Don't throw - transaction creation succeeded
       }
 
+      // Ledger sync: create DEBIT entry so the member ledger reflects this obligation
+      try {
+        await memberLedgerService.createFromTransaction(transaction.id, req.user!.id);
+      } catch (ledgerError) {
+        console.error('Ledger sync failed (non-critical):', ledgerError);
+      }
+
       return res.status(201).json({
         success: true,
         message: 'Transaction created successfully',
@@ -824,6 +870,8 @@ export const financeController = {
 
       // Accounting integration: Sync all transactions to accounting module
       for (const transaction of transactions) {
+        await syncLedgerDebit(transaction.id, req.user!.id);
+
         try {
           // Fetch full transaction with relations for accounting sync
           const fullTransaction = await prisma.transaction.findUnique({
@@ -947,6 +995,11 @@ export const financeController = {
         return res.status(404).json({ success: false, message: 'Transaction not found' });
       }
 
+      const cashReceipts = await findCashBackingReceipts(associationId, [transaction.id]);
+      if (cashReceipts.length > 0) {
+        return res.status(409).json({ success: false, code: 'CASH_BACKED', message: cashBackedMessage(cashReceipts) });
+      }
+
       // Don't allow deleting transactions with payments unless forceDelete is true
       if (transaction.payments.length > 0 && !forceDelete) {
         return res.status(400).json({
@@ -1026,6 +1079,11 @@ export const financeController = {
           found: transactions.length,
           requested: validatedData.transactionIds.length,
         });
+      }
+
+      const cashReceipts = await findCashBackingReceipts(associationId, validatedData.transactionIds);
+      if (cashReceipts.length > 0) {
+        return res.status(409).json({ success: false, code: 'CASH_BACKED', message: cashBackedMessage(cashReceipts) });
       }
 
       // Check for transactions with payments
@@ -1226,6 +1284,13 @@ export const financeController = {
       }
 
       const validatedData = voidAndReplaceSchema.parse(req.body);
+
+      // Re-authentication: voiding rewrites what a member owes, so the officer proves it is them at the keyboard.
+      const confirmed = await confirmPassword(userId, validatedData.password);
+      if (!confirmed.ok) {
+        const { status, body } = reauthFailure(confirmed);
+        return res.status(status).json(body);
+      }
 
       // Fetch the original transaction
       const originalTransaction = await prisma.transaction.findFirst({
@@ -1512,6 +1577,9 @@ export const financeController = {
           },
         });
 
+        // Bring back its payments and donation record too, so a charge that was paid is not restored as paid with nothing behind it.
+        await restoreChargeExtras(associationId, restored.id, txnData, req.user!.id);
+
         await prisma.auditLog.create({
           data: {
             associationId,
@@ -1574,6 +1642,10 @@ export const financeController = {
           )
         );
 
+        for (const [index, charge] of restored.entries()) {
+          await restoreChargeExtras(associationId, charge.id, txnsData[index], req.user!.id);
+        }
+
         await prisma.auditLog.create({
           data: {
             associationId,
@@ -1610,7 +1682,7 @@ export const financeController = {
       const [byStatus, byType, totals] = await Promise.all([
         prisma.transaction.groupBy({
           by: ['status'],
-          where: { associationId },
+          where: { associationId, isVoided: false },
           _count: { id: true },
           _sum: { amount: true },
         }),
@@ -1618,11 +1690,12 @@ export const financeController = {
           SELECT fc.type, COUNT(t.id)::int as count, COALESCE(SUM(t.amount), 0) as total
           FROM transactions t
           JOIN financial_categories fc ON t.category_id = fc.id
-          WHERE t.association_id = ${associationId}
+          WHERE t.association_id = ${associationId} AND t.is_voided = false AND t.status <> 'waived'
           GROUP BY fc.type
         ` as Promise<Array<{ type: string; count: number; total: Decimal }>>,
+        // What is billed leaves out forgiven (waived) charges, the same as the reports do
         prisma.transaction.aggregate({
-          where: { associationId },
+          where: { associationId, isVoided: false, status: { not: 'waived' } },
           _sum: { amount: true },
           _count: { id: true },
         }),
@@ -1630,9 +1703,12 @@ export const financeController = {
 
       // Get total payments
       const totalPayments = await prisma.payment.aggregate({
-        where: { associationId },
+        where: { associationId, transaction: { isVoided: false, status: { not: 'waived' } } },
         _sum: { amountPaid: true },
       });
+
+      // Overdue by due date (the stored status lags until the overdue job runs).
+      const overdueNow = await prisma.transaction.aggregate({ where: { associationId, ...overdueWhere() }, _count: { id: true }, _sum: { amount: true } });
 
       return res.status(200).json({
         success: true,
@@ -1641,6 +1717,7 @@ export const financeController = {
           totalAmount: totals._sum.amount || 0,
           totalPaid: totalPayments._sum.amountPaid || 0,
           totalOutstanding: (totals._sum.amount || new Decimal(0)).minus(totalPayments._sum.amountPaid || 0),
+          overdue: { count: overdueNow._count.id, amount: overdueNow._sum.amount || 0 },
           byStatus: byStatus.reduce((acc, item) => {
             acc[item.status] = { count: item._count.id, amount: item._sum.amount || 0 };
             return acc;
@@ -1680,6 +1757,10 @@ export const financeController = {
 
       if (!transaction) {
         return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+
+      if (transaction.isVoided) {
+        return res.status(400).json({ success: false, message: 'This charge was voided, so it can no longer be paid. Pay its replacement instead.' });
       }
 
       // R4.6/G53: Payment Settings' enabledChannels was saved but never
@@ -1780,6 +1861,13 @@ export const financeController = {
 
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onPaymentChange(associationId);
+
+      // Ledger sync: create CREDIT entry for this payment
+      try {
+        await memberLedgerService.createFromPayment(payment.id, req.user!.id);
+      } catch (ledgerError) {
+        console.error('Ledger sync failed (non-critical):', ledgerError);
+      }
 
       // Fetch full payment with transaction relations for accounting sync + receipt email
       const fullPayment = await prisma.payment.findUnique({
@@ -1883,6 +1971,7 @@ export const financeController = {
 
       // Filter out already fully paid transactions
       const unpaidTransactions = transactions.filter(txn => {
+        if (txn.isVoided) return false;
         const currentPaid = txn.payments.reduce(
           (sum, p) => sum.plus(p.amountPaid),
           new Decimal(0)
@@ -1976,8 +2065,13 @@ export const financeController = {
       // Phase 12: Invalidate cache
       await cacheInvalidationService.onPaymentChange(associationId);
 
-      // Accounting integration: Sync all payments to accounting module
+      // Ledger + accounting sync for all bulk payments
       for (const payment of result) {
+        try {
+          await memberLedgerService.createFromPayment(payment.id, req.user!.id);
+        } catch (ledgerError) {
+          console.error(`Ledger sync failed for payment ${payment.id} (non-critical):`, ledgerError);
+        }
         try {
           // Fetch full payment with transaction relations for accounting sync
           const fullPayment = await prisma.payment.findUnique({
@@ -1996,7 +2090,6 @@ export const financeController = {
           }
         } catch (syncError) {
           console.error(`Accounting sync failed for payment ${payment.id} (non-critical):`, syncError);
-          // Continue with other payments
         }
       }
 
@@ -2024,6 +2117,42 @@ export const financeController = {
   },
 
   // Get payment history
+  /**
+   * One payment, with the charge it paid and who confirmed it.
+   * GET /api/finance/payments/:id
+   */
+  async getPayment(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      const id = parseInt(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ success: false, message: 'That is not a valid payment' });
+      }
+      const payment = await prisma.payment.findFirst({
+        where: { id, associationId },
+        include: {
+          transaction: {
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+              category: { select: { id: true, name: true, type: true } },
+            },
+          },
+          confirmer: { select: { id: true, email: true } },
+        },
+      });
+      if (!payment) {
+        return res.status(404).json({ success: false, message: 'Payment not found' });
+      }
+      return res.status(200).json({ success: true, data: payment });
+    } catch (error) {
+      console.error('Error getting payment:', error);
+      return res.status(500).json({ success: false, message: 'Failed to get payment' });
+    }
+  },
+
   async listPayments(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
@@ -2176,22 +2305,21 @@ export const financeController = {
       }
 
       // Get date range (default: current month)
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      // This month in Lagos, and charges that are not voided or forgiven: the same rules as the reports and their lists
+      const { startDate: startOfMonth, endDate: endOfMonth } = periodRange('this_month');
 
       const [
         totalMembers,
         activeCategories,
         monthlyTransactions,
         monthlyPayments,
-        overdueTransactions,
+        owing,
         recentPayments,
       ] = await Promise.all([
         prisma.member.count({ where: { associationId, status: 'active' } }),
         prisma.financialCategory.count({ where: { associationId, isActive: true } }),
         prisma.transaction.aggregate({
-          where: { associationId, createdAt: { gte: startOfMonth, lte: endOfMonth } },
+          where: { associationId, ...COUNTED_CHARGE, createdAt: { gte: startOfMonth, lte: endOfMonth } },
           _sum: { amount: true },
           _count: { id: true },
         }),
@@ -2200,9 +2328,7 @@ export const financeController = {
           _sum: { amountPaid: true },
           _count: { id: true },
         }),
-        prisma.transaction.count({
-          where: { associationId, status: 'overdue' },
-        }),
+        generateAgingAnalysis(associationId, new Date(), false),
         prisma.payment.findMany({
           where: { associationId },
           take: 5,
@@ -2218,18 +2344,10 @@ export const financeController = {
         }),
       ]);
 
-      // Get total outstanding — scoped to the SAME pending/overdue/partial transactions,
-      // not every payment ever made (G22: summing all-time payments against only the
-      // still-outstanding transactions' total produced a large negative figure)
-      const allTransactions = await prisma.transaction.aggregate({
-        where: { associationId, status: { in: ['pending', 'overdue', 'partial'] } },
-        _sum: { amount: true },
-      });
-
-      const allPayments = await prisma.payment.aggregate({
-        where: { associationId, transaction: { status: { in: ['pending', 'overdue', 'partial'] } } },
-        _sum: { amountPaid: true },
-      });
+      // What is still owed, and how many charges are overdue, come from the aging report's own code, so the lists behind them add up
+      const { current, days31to60, days61to90, over90 } = owing.buckets;
+      const overdueTransactions = current.count + days31to60.count + days61to90.count + over90.count;
+      const allPayments = await prisma.payment.aggregate({ where: { associationId }, _sum: { amountPaid: true } });
 
       return res.status(200).json({
         success: true,
@@ -2240,13 +2358,15 @@ export const financeController = {
             overdueTransactions,
           },
           thisMonth: {
+            startDate: startOfMonth,
+            endDate: endOfMonth,
             transactionsCreated: monthlyTransactions._count.id,
             transactionsAmount: monthlyTransactions._sum.amount || 0,
             paymentsReceived: monthlyPayments._count.id,
             paymentsAmount: monthlyPayments._sum.amountPaid || 0,
           },
           totals: {
-            totalOutstanding: (allTransactions._sum.amount || new Decimal(0)).minus(allPayments._sum.amountPaid || 0),
+            totalOutstanding: owing.summary.totalOutstanding,
             totalCollected: allPayments._sum.amountPaid || 0,
           },
           recentPayments,
@@ -2281,10 +2401,11 @@ export const financeController = {
         where: {
           id: { in: transactionIds },
           associationId,
+          isVoided: false,
           status: { in: ['pending', 'overdue', 'partial'] },
         },
         include: {
-          member: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+          member: { select: { id: true, userId: true, firstName: true, lastName: true, email: true, phone: true } },
           category: { select: { name: true, type: true } },
           payments: { select: { amountPaid: true } },
         },
@@ -2292,6 +2413,16 @@ export const financeController = {
 
       if (transactions.length === 0) {
         return res.status(404).json({ success: false, message: 'No valid transactions found' });
+      }
+
+      // A charge reminded in the last day is skipped (the daily job and other officers update the same marker).
+      const { fresh: transactionsToRemind, recent: recentlyReminded } = splitByCooldown(transactions);
+      if (transactionsToRemind.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: 'These members were all reminded in the last 24 hours, so nothing was sent.',
+          data: { sent: 0, failed: 0, noEmail: 0, noContact: 0, inApp: 0, skippedRecently: recentlyReminded.length, details: [] },
+        });
       }
 
       // Get association details
@@ -2306,7 +2437,7 @@ export const financeController = {
 
       // Group transactions by member for consolidated reminders
       const memberTransactions: Record<number, typeof transactions> = {};
-      transactions.forEach(txn => {
+      transactionsToRemind.forEach(txn => {
         if (!memberTransactions[txn.member.id]) {
           memberTransactions[txn.member.id] = [];
         }
@@ -2317,6 +2448,9 @@ export const financeController = {
         sent: 0,
         failed: 0,
         noEmail: 0,
+        noContact: 0,
+        inApp: 0,
+        skippedRecently: recentlyReminded.length,
         details: [] as { memberId: number; memberName: string; status: string; error?: string }[],
       };
 
@@ -2324,8 +2458,10 @@ export const financeController = {
       for (const [memberId, memberTxns] of Object.entries(memberTransactions)) {
         const member = memberTxns[0].member;
         
-        if (!member.email) {
+        // Reach the member wherever they can be reached: in the app if they have a login, by email if they have one.
+        if (!member.email && !member.userId) {
           results.noEmail++;
+          results.noContact++;
           results.details.push({
             memberId: member.id,
             memberName: `${member.firstName} ${member.lastName}`,
@@ -2341,11 +2477,29 @@ export const financeController = {
             return sum.plus(new Decimal(txn.amount).minus(paid));
           }, new Decimal(0));
 
+          const anyOverdue = memberTxns.some((t) => t.dueDate && t.dueDate.getTime() < Date.now());
+          if (member.userId) {
+            try {
+              const text = reminderText({ count: memberTxns.length, total: totalOutstanding.toNumber(), overdue: anyOverdue, custom: message });
+              const outcome = await dispatchNotification({
+                associationId,
+                userId: member.userId,
+                kind: 'payment_due',
+                pushType: 'dues.reminder',
+                title: text.title,
+                message: text.message,
+              });
+              if (outcome.inAppCreated) results.inApp++;
+            } catch (notifyError) {
+              console.error('In-app reminder failed (non-critical):', notifyError);
+            }
+          }
+
           // G43: real email per transaction — each has its own category/due
           // date, so one reminder per transaction matches the existing
           // payment-reminder/payment-overdue templates' fields correctly
           // rather than forcing several transactions into one summary email.
-          for (const txn of memberTxns) {
+          for (const txn of member.email ? memberTxns : []) {
             const paid = txn.payments.reduce((p, pay) => p.plus(pay.amountPaid), new Decimal(0));
             const txnOutstanding = new Decimal(txn.amount).minus(paid);
             const daysUntilDue = txn.dueDate
@@ -2389,6 +2543,8 @@ export const financeController = {
             },
           });
 
+          await prisma.transaction.updateMany({ where: { id: { in: memberTxns.map((t) => t.id) } }, data: { lastReminderSentAt: new Date() } });
+
           results.sent++;
           results.details.push({
             memberId: member.id,
@@ -2408,7 +2564,7 @@ export const financeController = {
 
       return res.status(200).json({
         success: true,
-        message: `Reminders sent: ${results.sent}, Failed: ${results.failed}, No email: ${results.noEmail}`,
+        message: `Reminders sent: ${results.sent}, Failed: ${results.failed}, No way to reach: ${results.noContact}${results.skippedRecently > 0 ? `, Skipped (reminded in the last 24 hours): ${results.skippedRecently}` : ''}`,
         data: results,
       });
     } catch (error) {
@@ -2432,14 +2588,11 @@ export const financeController = {
         ? { in: ['pending', 'overdue', 'partial'] }
         : status;
 
-      // Get all pending/overdue transactions grouped by member
+      // Get all pending/overdue transactions grouped by member. "Overdue" is decided by the due date, not the stored status.
       const transactions = await prisma.transaction.findMany({
-        where: {
-          associationId,
-          status: statusCondition,
-        },
+        where: status === 'overdue' ? { associationId, ...overdueWhere() } : { associationId, isVoided: false, status: statusCondition },
         include: {
-          member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true, phone: true } },
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true, phone: true, userId: true } },
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { amountPaid: true } },
         },
@@ -2455,6 +2608,8 @@ export const financeController = {
           lastName: string;
           email: string | null;
           phone: string | null;
+          /** Whether the member has a login, so an in-app reminder can reach them even without an email. */
+          hasAccount: boolean;
         };
         transactions: Array<{
           id: number;
@@ -2464,6 +2619,7 @@ export const financeController = {
           balance: number;
           dueDate: Date | null;
           status: string;
+          lastReminderSentAt: Date | null;
         }>;
         totalOutstanding: number;
         overdueCount: number;
@@ -2478,7 +2634,15 @@ export const financeController = {
 
         if (!memberMap[txn.member.id]) {
           memberMap[txn.member.id] = {
-            member: txn.member,
+            member: {
+              id: txn.member.id,
+              memberId: txn.member.memberId,
+              firstName: txn.member.firstName,
+              lastName: txn.member.lastName,
+              email: txn.member.email,
+              phone: txn.member.phone,
+              hasAccount: !!txn.member.userId,
+            },
             transactions: [],
             totalOutstanding: 0,
             overdueCount: 0,
@@ -2493,10 +2657,11 @@ export const financeController = {
           balance,
           dueDate: txn.dueDate,
           status: txn.status,
+          lastReminderSentAt: txn.lastReminderSentAt,
         });
 
         memberMap[txn.member.id].totalOutstanding += balance;
-        if (txn.status === 'overdue') {
+        if (isOverdue(txn)) {
           memberMap[txn.member.id].overdueCount++;
         }
       });
@@ -2511,7 +2676,7 @@ export const financeController = {
             totalMembers: members.length,
             totalOutstanding: members.reduce((sum, m) => sum + m.totalOutstanding, 0),
             totalTransactions: transactions.length,
-            overdueTransactions: transactions.filter(t => t.status === 'overdue').length,
+            overdueTransactions: transactions.filter(t => isOverdue(t)).length,
           },
         },
       });

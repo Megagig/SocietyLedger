@@ -8,7 +8,7 @@ import {
   IconArrowLeft, IconFileAnalytics, IconUser, IconCurrencyNaira,
   IconCheck, IconX, IconCash, IconUsers
 } from '@tabler/icons-react';
-import { getLoanApplication, reviewLoanApplication, disburseLoan } from '@/lib/api/cooperatives';
+import { getLoanApplication, reviewLoanApplication, disburseLoan, getSavingsAccounts } from '@/lib/api/cooperatives';
 import { toast } from '@/lib/toast';
 
 interface LoanApplicationDetail {
@@ -34,7 +34,7 @@ interface LoanApplicationDetail {
   memberName: string;
   loanProductId: number;
   loanProductName: string;
-  guarantors: Array<{ id: number; status: string; guaranteeAmount: string; guarantorMemberId: number; guarantorName: string }>;
+  guarantors: Array<{ id: number; status: string; guaranteeAmount: string; guarantorMemberId: number; guarantorName: string; declineReason?: string | null }>;
   reviewedBy?: number;
   approvedBy?: number;
 }
@@ -49,7 +49,9 @@ export default function ApplicationDetailPage() {
   const [disburseOpened, { open: openDisburse, close: closeDisburse }] = useDisclosure(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [reviewData, setReviewData] = useState({ comments: '', rejectionReason: '' });
-  const [disburseData, setDisburseData] = useState({ disbursementMethod: 'BANK_TRANSFER', reference: '', notes: '' });
+  const [disburseData, setDisburseData] = useState({ disbursementMethod: 'bank_transfer', savingsAccountId: '', reference: '', notes: '' });
+  // The borrower's open savings accounts, for paying the loan straight into savings.
+  const [borrowerAccounts, setBorrowerAccounts] = useState<{ value: string; label: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => { if (params.id) fetchApplication(); }, [params.id]);
@@ -78,11 +80,27 @@ export default function ApplicationDetailPage() {
     } catch (err: any) { toast.error(err.message); } finally { setIsSubmitting(false); }
   };
 
+  const openDisburseModal = async () => {
+    openDisburse();
+    try {
+      const result = await getSavingsAccounts({ memberId: application!.memberId, status: 'ACTIVE', limit: 50 });
+      const accounts: { id: number; accountNumber: string }[] = result.data?.accounts ?? [];
+      setBorrowerAccounts(accounts.map((a) => ({ value: String(a.id), label: a.accountNumber })));
+    } catch {
+      setBorrowerAccounts([]);
+    }
+  };
+
   const handleDisburse = async () => {
+    if (disburseData.disbursementMethod === 'savings_credit' && !disburseData.savingsAccountId) {
+      toast.error("Choose the member's savings account to credit");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await disburseLoan(application!.id, {
         disbursementMethod: disburseData.disbursementMethod,
+        savingsAccountId: disburseData.disbursementMethod === 'savings_credit' ? Number(disburseData.savingsAccountId) : undefined,
         reference: disburseData.reference || undefined,
         notes: disburseData.notes || undefined
       });
@@ -128,7 +146,7 @@ export default function ApplicationDetailPage() {
           </div>
         )}
         {application.status === 'APPROVED' && (
-          <Button color="teal" leftSection={<IconCash size={16} />} onClick={openDisburse}>Disburse Loan</Button>
+          <Button color="teal" leftSection={<IconCash size={16} />} onClick={openDisburseModal}>Disburse Loan</Button>
         )}
       </div>
 
@@ -169,6 +187,7 @@ export default function ApplicationDetailPage() {
                     <div>
                       <p className="font-medium">{g.guarantorName || 'Unknown'}</p>
                       <p className="text-sm text-gray-500">Guarantor ID: {g.guarantorMemberId || 'N/A'}</p>
+                      {g.status === 'DECLINED' && g.declineReason && <p className="text-sm text-red-600">Reason: {g.declineReason}</p>}
                     </div>
                     <div className="text-right">
                       <Badge color={getGuarantorStatusColor(g.status)}>{g.status}</Badge>
@@ -229,7 +248,16 @@ export default function ApplicationDetailPage() {
             <p className="font-medium">{application.memberName || 'Unknown'}</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrency(application.amount)}</p>
           </div>
-          <Select label="Disbursement Method" data={[{ value: 'BANK_TRANSFER', label: 'Bank Transfer' }, { value: 'CASH', label: 'Cash' }, { value: 'CHEQUE', label: 'Cheque' }, { value: 'SAVINGS_CREDIT', label: 'Credit to Savings' }]} value={disburseData.disbursementMethod} onChange={(v) => setDisburseData({ ...disburseData, disbursementMethod: v || 'BANK_TRANSFER' })} />
+          <Select label="Disbursement Method" data={[{ value: 'bank_transfer', label: 'Bank Transfer' }, { value: 'cash', label: 'Cash' }, { value: 'cheque', label: 'Cheque' }, { value: 'savings_credit', label: 'Credit to savings account' }]} value={disburseData.disbursementMethod} onChange={(v) => setDisburseData({ ...disburseData, disbursementMethod: v || 'bank_transfer' })} />
+          {disburseData.disbursementMethod === 'savings_credit' && (
+            <Select
+              label="Savings account to credit"
+              placeholder={borrowerAccounts.length === 0 ? 'This member has no open savings account' : 'Choose an account'}
+              data={borrowerAccounts}
+              value={disburseData.savingsAccountId}
+              onChange={(v) => setDisburseData({ ...disburseData, savingsAccountId: v || '' })}
+            />
+          )}
           <Textarea label="Reference" placeholder="Transaction reference (optional)" value={disburseData.reference} onChange={(e) => setDisburseData({ ...disburseData, reference: e.target.value })} />
           <Textarea label="Notes" placeholder="Additional notes (optional)" value={disburseData.notes} onChange={(e) => setDisburseData({ ...disburseData, notes: e.target.value })} />
           <div className="flex justify-end gap-3 pt-4">

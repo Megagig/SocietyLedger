@@ -1,3 +1,4 @@
+import { creditVerifiedPurchase } from '../sms/sms-engine';
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { PaystackService } from '../payments/paystack/paystack.service';
@@ -206,49 +207,8 @@ export const smsCreditsController = {
         });
       }
 
-      // Update purchase and add credits
-      await prisma.$transaction([
-        // Update purchase status
-        prisma.sMSCreditsPurchase.update({
-          where: { id: purchase.id },
-          data: {
-            status: 'success',
-            paidAt: new Date(verificationResponse.data.paid_at),
-            paystackResponse: verificationResponse as any,
-          },
-        }),
-
-        // Add credits to association SMS balance
-        prisma.sMSCreditBalance.upsert({
-          where: { associationId },
-          create: {
-            associationId,
-            balance: purchase.credits,
-            totalPurchased: purchase.credits,
-            totalUsed: 0,
-          },
-          update: {
-            balance: { increment: purchase.credits },
-            totalPurchased: { increment: purchase.credits },
-          },
-        }),
-
-        // Audit log
-        prisma.auditLog.create({
-          data: {
-            associationId,
-            userId: purchase.userId,
-            action: 'SMS_CREDITS_ADDED',
-            tableName: 'sms_credit_balances',
-            newValues: {
-              reference: purchase.reference,
-              credits: purchase.credits,
-              amount: purchase.amount.toNumber(),
-              status: 'success',
-            },
-          },
-        }),
-      ]);
+      // Add the credits once, whoever verifies first: the purchase is claimed and credited together
+      await creditVerifiedPurchase(purchase, verificationResponse.data.paid_at, verificationResponse);
 
       return res.status(200).json({
         success: true,

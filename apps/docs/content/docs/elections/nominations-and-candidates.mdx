@@ -1,32 +1,58 @@
 ---
 title: "Nominations, self-nomination and approving candidates"
-description: "Candidates are added by your technical contact today — there's no self-service screen yet."
-type: concept
+description: "How candidates get on the ballot: members nominate themselves, the committee adds them, and someone else approves."
+type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["GV9", "C6"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/governance/elections/[id]", "GV9"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/elections/creating-an-election", "/docs/elections/running-the-vote"]
+lastVerified: "2026-10-28"
+related: ["/docs/elections/election-committee", "/docs/elections/creating-an-election", "/docs/elections/running-the-vote"]
 ---
 
-Once nominations open, candidates need to be added to each position before voting can start — but adding them isn't currently a self-service task.
+Before voting can open, every position needs at least one approved candidate. A candidate gets there in two steps: they are put forward, then another member of the [Election Committee](/docs/elections/election-committee) approves them.
 
-## How it works today
+## Before you start
 
-<Callout type="warning" title="No screen adds candidates yet">
-Selecting **Add Candidate** on an open election currently goes nowhere — there's no page behind it yet. There's also no button for a member to nominate themselves, and no screen to approve, reject or withdraw a candidate. If your association needs candidates added to a real election, contact support with the member's name and the position — your platform contact can add them directly.
+You need the committee's **manage candidates** power. Candidates can be added while the election is a **Draft** or **Nominations Open**; members can only nominate themselves while nominations are open.
+
+## Put a candidate forward
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Open the election from <MenuPath items={["Governance", "Elections"]} />.</Step>
+<Step>Under the position, select **Add Candidate**, search for the member, and add an optional manifesto.</Step>
+<Step>Members who want to stand themselves select **Nominate Yourself** on the position while nominations are open.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Open the election from <MenuPath items={["Manage", "Voting", "Elections"]} />.</Step>
+<Step>Under the position, tap **Add a candidate**, search by name or member number, pick the member, and add an optional manifesto.</Step>
+<Step>Members who want to stand themselves do it from <MenuPath items={["Community", "Elections"]} /> while nominations are open.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+The committee can search every active member from here, even though committee members don't have the full members list.
+
+## Approve or reject
+
+Every nomination starts as **Waiting**. A committee member selects **Approve**, or **Reject** with a reason that the member can read. Only **Approved** candidates appear on the ballot.
+
+<Callout type="note" title="You can't decide your own nomination">
+If you are standing yourself, another member of the committee has to approve or reject you. You'll see a note instead of the buttons.
 </Callout>
 
-Once a candidate has been added, you'll see them listed under their position with their name, manifesto (if given), and a status — **Pending**, **Approved**, **Rejected** or **Withdrawn**. Only **Approved** candidates appear on the ballot when voting opens.
+You can keep deciding nominations after **Close Nominations**, right up until voting opens. Voting cannot open while a nomination is still waiting, so the election page tells you how many are left.
+
+If your association has rules for who can stand, someone who doesn't meet them can't nominate themselves or be added, and is told why — the committee can make an exception for one member. See [Who can vote and who can stand](/docs/elections/voting-rules).
+
+A candidate can withdraw themselves until voting opens. After that, nobody can be removed from the ballot.
 
 <Screenshot src="/images/elections/nominations-and-candidates-1.webp" alt="Election detail page with nominations open, showing one approved candidate under Welfare Chair with their manifesto and an Approved badge" />
 
-## Why it matters
+## What happens next
 
-Don't open voting until every position has at least one approved candidate — a position with no candidates will show as empty on the ballot, with nothing for members to vote on.
-
-## What you can do
-
-- [Creating an election and its positions](/docs/elections/creating-an-election) — set up the election first.
-- [Running the vote](/docs/elections/running-the-vote) — once candidates are in place.
+When every position has an approved candidate and none is waiting, open voting — see [Opening and closing voting](/docs/elections/running-the-vote).

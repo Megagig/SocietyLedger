@@ -1,16 +1,16 @@
 ---
 title: "Income by category"
-description: "Drill into any single category — dues, levies, donations or penalties — on its own."
+description: "Look at each category on its own: dues, levies, donations or penalties."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/reports/by-category", "RP6"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/reports/collection-rate", "/docs/finance/financial-categories"]
+lastVerified: "2026-10-29"
+related: ["/docs/reports/drilling-into-a-figure", "/docs/reports/collection-rate", "/docs/finance/financial-categories"]
 ---
 
-See one category's numbers on their own — how much was expected, collected, and what status every charge in it is in.
+See one category's numbers on their own: how much was charged, paid and is still owed, and how many of its charges are in each state.
 
 ## Before you start
 
@@ -18,16 +18,29 @@ You need the **view finances** permission, which Administrators, Treasurers and 
 
 ## Read the report
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Reports", "By Category"]} />.</Step>
-<Step>Pick a **Period**, and optionally filter by category **Type** (Due, Levy, Donation, Penalty).</Step>
-<Step>Select a category from the chart or list to see its full breakdown.</Step>
+<Step>Filter by category **Type** (Due, Levy, Donation, Penalty) if you want.</Step>
+<Step>Select a category to see its full breakdown.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Reports", "By category"]} />.</Step>
+<Step>Pick a period and filter by type with the chips.</Step>
+<Step>Each category is a card with its charged, paid and owed amounts.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/reports/income-by-category-1.webp" alt="Category-wise Analysis showing a pie chart of expected amount by category, and a detail panel for Monthly Dues with Expected, Collected, Rate and a Transaction Status breakdown" />
+Each category shows how many of its charges are **Paid**, **Part paid**, **Not paid yet**, **Overdue** or **Waived**. A charge that is not paid and is past its due date shows as **Overdue** even if nobody has run the overdue job. Cancelled charges are left out, and waived charges are shown on their own line and not counted as owed.
 
-Selecting a category shows its **Collection Progress** and a **Transaction Status** breakdown — how many charges in it are paid, pending, overdue, partial or waived.
+## Open any figure
+
+Select a category to see every charge in it, a count (such as **Overdue 4**) to see exactly those charges, or a recent charge to open it. See [Opening a figure](/docs/reports/drilling-into-a-figure).
 
 ## What happens next
 
-Use this alongside [financial categories](/docs/finance/financial-categories) if a category's numbers look off — it's reading from the same charges you set up there.
+Use this alongside [financial categories](/docs/finance/financial-categories) if a category's numbers look off: it reads from the same charges you set up there.

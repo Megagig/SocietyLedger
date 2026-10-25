@@ -12,7 +12,10 @@ export type ExportType =
   | 'aging_analysis'
   | 'collection_rate'
   | 'category_report'
-  | 'all_members';
+  | 'all_members'
+  | 'accounting_income'
+  | 'accounting_balance'
+  | 'accounting_cash';
 
 export interface ExportOptions {
   format: ExportFormat;

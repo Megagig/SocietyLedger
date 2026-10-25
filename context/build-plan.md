@@ -25,7 +25,7 @@ The web app is finished, so the documentation site ships **first**. The admin co
 | 16 | **Admin Phase A2** — Migrate platform screens | A2.1 – A2.12 |
 | 17 | **Admin Phase A3** — Cutover & launch | A3.1 – A3.2 → **Milestone AL: admin live, Super Admin removed from web** |
 | 18 | **Mobile Phase 0** — Backend enablement | F0.1 – F0.6 |
-| 19 | **Mobile Phases 1–4** | F1.1 – F4.5 → M1, M2 |
+| 19 | **Mobile Phases 1–4** | F1.1 – F4.6 → M1, M2 |
 | 20 | **Docs D7.1** — Mobile app docs (member features) | after M2 |
 | 21 | **Mobile Phases 5–8** | F5.1 – F8.2 → M3 |
 | 22 | **Docs D7.2** — Mobile app docs (officer features, mobile screenshots across sections) | after M3 |
@@ -502,13 +502,22 @@ A tenant-scoped screen (e.g. `/dashboard/settings/pending-approvals`) for an ass
 
 ---
 
-## Mobile Phase 4 — Cooperatives & support — 5 features
+## Mobile Phase 4 — Cooperatives & support — 6 features
 
 ### F4.1 Savings (member) — M15, M16
 ### F4.2 Loans (member) & apply — M17, M18, M19
 ### F4.3 Guarantor requests — M20
 ### F4.4 Help center & FAQs — P5, P6, P7, P12 (User manual link) + contextual `?` docs links on mapped screens (`architecture.md §15.4`)
-### F4.5 Support tickets (member) — P8, P9, P10
+### F4.5 Support tickets, Tier 1 — member ↔ association — P8, P9, P10
+Members open tickets that go to **their own association's admins/officers** (association-scoped, as the data model already is). Built on web **and** mobile in parity, with **attachments** (upload endpoint + storage, on a new ticket and on replies), in-app + push + email notifications both ways, and two security fixes on the API (a member could list other members' tickets via `?userId=`, and close/reopen anyone's ticket).
+### F4.6 Support tickets, Tier 2 — association ↔ SaaS owner (built immediately after F4.5)
+Association **admins** open tickets to **SocietyLedger support** (billing, bugs, modules, data, feature requests); platform staff (`SUPPORT_AGENT`/`SUPER_ADMIN`) answer them from a real ticket inbox in the admin console (today's "Support Desk" only shows documentation feedback). Adds an audience field on tickets, an **Escalate to SocietyLedger** action for association officers (they choose what to share — the platform never sees members' tickets by default), platform notifications, and the docs correction. Diagram:
+```
+MEMBER ──ticket──▶ ASSOCIATION ADMINS / OFFICERS   (Tier 1 — F4.5)
+                        │
+                        └── escalate (only when they can't fix it) ──▶ SOCIETYLEDGER SUPPORT   (Tier 2 — F4.6)
+ASSOCIATION ADMIN ──ticket (billing, bugs, modules, data)──▶ SOCIETYLEDGER SUPPORT   (Tier 2 — F4.6)
+```
 
 **Milestone M2 (end of Phase 4):** public beta (TestFlight external + Play open testing) for member features. Officers can use the beta for member features only.
 
@@ -518,7 +527,7 @@ A tenant-scoped screen (e.g. `/dashboard/settings/pending-approvals`) for an ass
 *Goal: the highest-value officer tasks: members, payments verification, finance basics, attendance.*
 
 ### F5.1 Manage tab hub & Home — Association — Manage index, H2
-- Permission/module-driven sections with pending badges; association KPIs, charts (victory-native wrappers in `components/charts`), needs-attention list.
+- Permission/module-driven sections with pending badges; association KPIs, charts (react-native-gifted-charts, as built — see architecture.md), needs-attention list.
 
 ### F5.2 Members list & detail — MG1, MG2
 - Search, filters, infinite list, detail tabs, call/WhatsApp/email intents.

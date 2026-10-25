@@ -29,6 +29,7 @@ export interface AssociationProfileSettings {
   primaryColor?: string;
   secondaryColor?: string;
   associationType?: string;
+  customAssociationType?: string | null;
   address?: string;
   city?: string;
   state?: string;
@@ -63,6 +64,8 @@ export interface FinancialSettings {
   enablePartialPayments: boolean;
   requirePaymentApproval: boolean;
   approvalThreshold?: number;
+  /** Spending above this needs its receipt attached; at or below it a reason is enough. */
+  receiptRequiredAbove?: number;
   fiscalYearStart: number;
   currencyCode: string;
   currencySymbol: string;
@@ -79,6 +82,8 @@ export interface PaymentsSettings {
   minimumPaymentAmount?: number;
   receiptPrefix?: string;
   receiptAutoGenerate: boolean;
+  /** Days an officer has to lodge collected cash before it is flagged as overdue (cash collections). */
+  cashLodgmentDueDays?: number;
 }
 
 // Notifications Settings

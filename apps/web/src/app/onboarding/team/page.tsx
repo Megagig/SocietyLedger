@@ -4,26 +4,42 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
+import { MAX_TEAM_INVITES, ONBOARDING_TEAM_ROLES, onboardingTeamInviteSchema } from '@societyledger/shared';
 
 interface TeamMember {
+  firstName: string;
+  lastName: string;
   email: string;
   role: string;
 }
 
-const roles = [
-  { value: 'admin', label: 'Admin', description: 'Full access to all features' },
-  { value: 'treasurer', label: 'Treasurer', description: 'Manage finances and payments' },
-  { value: 'financial_secretary', label: 'Financial Secretary', description: 'Record transactions and dues' },
-];
+interface InviteResult {
+  email: string;
+  status: 'invited' | 'invited_email_failed' | 'already_member' | 'failed';
+  message?: string;
+}
+
+const emptyPerson = (): TeamMember => ({ firstName: '', lastName: '', email: '', role: 'treasurer' });
+
+const inputClass =
+  'w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent';
+
+const STATUS_TEXT: Record<InviteResult['status'], string> = {
+  invited: 'Invitation sent',
+  invited_email_failed: 'Added, but the email could not be sent. Resend it from Members.',
+  already_member: 'Already a member',
+  failed: 'Could not be invited',
+};
 
 export default function TeamSetupPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [members, setMembers] = useState<TeamMember[]>([{ email: '', role: 'admin' }]);
-  const [inviteSent, setInviteSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<TeamMember[]>([emptyPerson()]);
+  const [results, setResults] = useState<InviteResult[] | null>(null);
 
   const addMember = () => {
-    setMembers([...members, { email: '', role: 'admin' }]);
+    if (members.length < MAX_TEAM_INVITES) setMembers([...members, emptyPerson()]);
   };
 
   const removeMember = (index: number) => {
@@ -31,34 +47,45 @@ export default function TeamSetupPage() {
   };
 
   const updateMember = (index: number, field: keyof TeamMember, value: string) => {
-    const updated = [...members];
-    updated[index][field] = value;
-    setMembers(updated);
+    setMembers(members.map((m, i) => (i === index ? { ...m, [field]: value } : m)));
+  };
+
+  const finishStep = async (skipped: boolean) => {
+    await api.patch(API_ROUTES.ONBOARDING.COMPLETE_STEP, { step: 2, stepName: 'team', skipped });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    // Rows left completely empty are ignored
+    const filled = members.filter((m) => m.firstName.trim() || m.lastName.trim() || m.email.trim());
+    if (filled.length === 0) {
+      setError('Add at least one person, or skip this step.');
+      return;
+    }
+    const checked = onboardingTeamInviteSchema.safeParse({ invites: filled });
+    if (!checked.success) {
+      setError(checked.error.issues[0]?.message ?? 'Please check the details');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Filter out empty emails
-      const validMembers = members.filter(m => m.email.trim());
-      
-      // TODO: Send invitations via API
-      // For now, just complete the step
-      
-      await api.patch(
-        API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 2, stepName: 'team' }
-      );
-      
-      if (validMembers.length > 0) {
-        setInviteSent(true);
-        setTimeout(() => router.push('/onboarding/members'), 1500);
+      const response = await api.post('/onboarding/team', checked.data);
+      const outcome: InviteResult[] = response.data.data.results;
+      const anyInvited = outcome.some((r) => r.status === 'invited' || r.status === 'invited_email_failed');
+      // Finished only if someone was really invited; otherwise they stay on this step to fix what went wrong
+      if (anyInvited) {
+        await finishStep(false);
+        setResults(outcome);
       } else {
-        router.push('/onboarding/members');
+        setResults(outcome);
+        setError('Nobody could be invited. Check the messages below and try again, or skip this step.');
       }
-    } catch (error) {
-      console.error('Failed to invite team:', error);
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(message || 'We could not send the invitations. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -66,25 +93,39 @@ export default function TeamSetupPage() {
 
   const handleSkipStep = async () => {
     try {
-      await api.patch(
-        API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 2, stepName: 'team' }
-      );
-      router.push('/onboarding/members');
-    } catch (error) {
+      await finishStep(true);
+    } finally {
       router.push('/onboarding/members');
     }
   };
 
-  if (inviteSent) {
+  if (results && results.some((r) => r.status === 'invited' || r.status === 'invited_email_failed')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckIcon className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
+        <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckIcon className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Team Invited</h2>
+            <p className="text-gray-600 dark:text-gray-400">They can set a password from the email and will have the role you chose.</p>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Invitations Sent!</h2>
-          <p className="text-gray-600 dark:text-gray-400">Redirecting to next step...</p>
+          <ul className="space-y-2 mb-6">
+            {results.map((r) => (
+              <li key={r.email} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <span className="text-gray-900 dark:text-gray-100 break-all">{r.email}</span>
+                <span className={`text-sm text-right ${r.status === 'invited' ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  {r.message ?? STATUS_TEXT[r.status]}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => router.push('/onboarding/members')}
+            className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-green-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-green-600 transition-all shadow-lg"
+          >
+            Continue to Member Import
+          </button>
         </div>
       </div>
     );
@@ -110,65 +151,102 @@ export default function TeamSetupPage() {
             Invite Your Team
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Add team members who will help manage your association
+            Add the officers who will help manage your association
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div role="alert" className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+              {error}
+              {results && (
+                <ul className="mt-2 list-disc list-inside">
+                  {results.map((r) => (
+                    <li key={r.email}>{r.email}: {r.message ?? STATUS_TEXT[r.status]}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
-            <div className="space-y-4">
+            <div className="space-y-6">
               {members.map((member, index) => (
-                <div key={index} className="flex gap-4 items-start">
-                  <div className="flex-1">
+                <div key={index} className="space-y-3 pb-6 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={member.firstName}
+                      onChange={(e) => updateMember(index, 'firstName', e.target.value)}
+                      placeholder="First name"
+                      aria-label="First name"
+                      autoComplete="off"
+                      className={inputClass}
+                    />
+                    <input
+                      type="text"
+                      value={member.lastName}
+                      onChange={(e) => updateMember(index, 'lastName', e.target.value)}
+                      placeholder="Last name"
+                      aria-label="Last name"
+                      autoComplete="off"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
                     <input
                       type="email"
                       value={member.email}
                       onChange={(e) => updateMember(index, 'email', e.target.value)}
                       placeholder="team@example.com"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      aria-label="Email"
+                      autoComplete="off"
+                      className={`flex-1 ${inputClass}`}
                     />
-                  </div>
-                  <div className="w-48">
                     <select
                       value={member.role}
                       onChange={(e) => updateMember(index, 'role', e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      aria-label="Role"
+                      className={`sm:w-48 ${inputClass}`}
                     >
-                      {roles.map((role) => (
+                      {ONBOARDING_TEAM_ROLES.map((role) => (
                         <option key={role.value} value={role.value}>
                           {role.label}
                         </option>
                       ))}
                     </select>
+                    {members.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMember(index)}
+                        aria-label="Remove this person"
+                        className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors self-end sm:self-auto"
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
                   </div>
-                  {members.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeMember(index)}
-                      className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                    >
-                      <TrashIcon />
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={addMember}
-              className="mt-4 flex items-center gap-2 text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
-            >
-              <PlusIcon /> Add another team member
-            </button>
+            {members.length < MAX_TEAM_INVITES && (
+              <button
+                type="button"
+                onClick={addMember}
+                className="mt-4 flex items-center gap-2 text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
+              >
+                <PlusIcon /> Add another team member
+              </button>
+            )}
           </div>
 
           {/* Role Descriptions */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Role Permissions</h3>
             <div className="space-y-3">
-              {roles.map((role) => (
+              {ONBOARDING_TEAM_ROLES.map((role) => (
                 <div key={role.value} className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-teal-500 mt-2"></div>
                   <div>
@@ -194,7 +272,7 @@ export default function TeamSetupPage() {
               disabled={saving}
               className="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-500 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-green-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
             >
-              {saving ? 'Sending Invites...' : 'Continue to Member Import'}
+              {saving ? 'Sending Invites...' : 'Send Invites'}
             </button>
           </div>
         </form>

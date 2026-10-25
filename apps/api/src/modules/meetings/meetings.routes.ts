@@ -36,6 +36,12 @@ router.get('/recent',
   meetingsController.getRecent
 );
 
+// Get the caller's own per-meeting attendance
+router.get('/my-attendance',
+  requirePermission(PERMISSIONS.MEETING_VIEW),
+  meetingsController.getMyAttendance
+);
+
 // Get member attendance history
 router.get('/attendance-history',
   requirePermission(PERMISSIONS.MEETING_VIEW),
@@ -69,6 +75,16 @@ router.patch('/:id',
 );
 
 // Cancel meeting
+router.put('/:id/agenda/reorder',
+  requirePermission(PERMISSIONS.MEETING_EDIT),
+  meetingsController.reorderAgenda
+);
+
+router.post('/:id/complete',
+  requirePermission(PERMISSIONS.MEETING_EDIT),
+  meetingsController.completeMeeting
+);
+
 router.post('/:id/cancel',
   requirePermission(PERMISSIONS.MEETING_DELETE),
   meetingsController.cancelMeeting

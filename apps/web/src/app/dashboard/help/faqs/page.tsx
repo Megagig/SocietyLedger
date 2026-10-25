@@ -232,7 +232,7 @@ export default function FAQsPage() {
 
       {/* Still Need Help */}
       <div className="mt-8 bg-gradient-to-br from-teal-500 to-green-600 rounded-xl p-6 text-white text-center">
-        <h3 className="text-lg font-semibold mb-2">Can't find what you're looking for?</h3>
+        <h3 className="text-lg font-semibold mb-2">Can&apos;t find what you&apos;re looking for?</h3>
         <p className="text-white/80 mb-4">
           Our support team is ready to help you with any questions.
         </p>

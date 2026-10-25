@@ -63,7 +63,7 @@ export default function ContactPage() {
               </span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Have questions about SocietyLedger? We're here to help. Reach out to our team and we'll respond within 24 hours.
+              Have questions about SocietyLedger? We&apos;re here to help. Reach out to our team and we&apos;ll respond within 24 hours.
             </p>
           </div>
         </Container>

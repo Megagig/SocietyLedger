@@ -57,6 +57,19 @@ export default function ContributionsPage() {
     fetchData();
   }, [filterFund, filterStatus, pagination.page]);
 
+  // Every active member, a page at a time — only active members can contribute, and the list must not stop at the first few hundred.
+  const fetchActiveMembers = async () => {
+    const all: any[] = [];
+    for (let page = 1; page <= 50; page++) {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members?status=active&limit=100&page=${page}`);
+      if (!response.ok) break;
+      const data = await response.json();
+      all.push(...(data.data?.members || []));
+      if (!data.data?.pagination?.hasMore) break;
+    }
+    return all;
+  };
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
@@ -68,14 +81,11 @@ export default function ContributionsPage() {
           status: filterStatus || undefined,
         }),
         getWelfareFunds({ status: 'ACTIVE', limit: 100 }),
-        canManage ? apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members?limit=500`) : Promise.resolve({ ok: true, json: () => ({ data: { members: [] } }) }),
+        canManage ? fetchActiveMembers() : Promise.resolve([]),
       ]);
       setContributions(contribRes.data.contributions);
       setFunds(fundsRes.data.funds);
-      if (canManage && membersRes.ok) {
-        const membersData = await membersRes.json();
-        setMembers(membersData.data?.members || []);
-      }
+      if (canManage) setMembers(membersRes);
       setPagination(prev => ({
         ...prev,
         totalPages: contribRes.data.pagination.totalPages,

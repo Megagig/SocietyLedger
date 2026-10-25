@@ -14,7 +14,8 @@ export const createBankAccountSchema = z.object({
   description: z.string().optional(),
 });
 
-export const updateBankAccountSchema = createBankAccountSchema.partial();
+// `isActive` lets an officer reactivate (or retire) an account; the service refuses to retire the last active one.
+export const updateBankAccountSchema = createBankAccountSchema.partial().extend({ isActive: z.boolean().optional() });
 
 // Bank Transfer Validation
 export const createBankTransferSchema = z.object({
@@ -25,15 +26,14 @@ export const createBankTransferSchema = z.object({
   senderAccountNumber: z.string().optional(),
   senderAccountName: z.string().optional(),
   amount: z.number().positive('Amount must be positive'),
-  reference: z.string().min(1, 'Reference is required'),
+  reference: z.string().trim().min(1, 'Reference is required'),
   transferDate: z.string().datetime({ message: 'Invalid transfer date' }),
   narration: z.string().optional(),
   notes: z.string().optional(),
 });
 
-export const updateBankTransferSchema = createBankTransferSchema.partial().extend({
-  status: z.enum(['PENDING', 'VERIFIED', 'MATCHED', 'REJECTED']).optional(),
-});
+// No `status` here on purpose: a transfer is verified or rejected only through the verify endpoint, which needs the approve permission.
+export const updateBankTransferSchema = createBankTransferSchema.partial();
 
 export const verifyBankTransferSchema = z.object({
   status: z.enum(['VERIFIED', 'REJECTED']),
@@ -65,7 +65,8 @@ export const reconcilePaymentSchema = z.object({
   bankTransferId: z.number().int().positive().optional(),
   statementEntryId: z.number().int().positive().optional(),
   matchType: z.enum(['AUTO_REFERENCE', 'AUTO_AMOUNT', 'MANUAL']),
-  matchedAmount: z.number().positive('Matched amount must be positive'),
+  /** Ignored: the amount is always the bank line's own amount */
+  matchedAmount: z.number().optional(),
   variance: z.number().optional().default(0),
   notes: z.string().optional(),
 });
@@ -103,11 +104,11 @@ export const uploadPaymentProofSchema = z.object({
 
 export const verifyPaymentProofSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
-  rejectionReason: z.string().optional(),
+  rejectionReason: z.string().trim().max(500, 'Keep the reason under 500 characters').optional(),
   notes: z.string().optional(),
 }).refine(
-  (data) => data.status !== 'REJECTED' || data.rejectionReason,
-  { message: 'Rejection reason is required when rejecting' }
+  (data) => data.status !== 'REJECTED' || Boolean(data.rejectionReason),
+  { message: 'Rejection reason is required when rejecting', path: ['rejectionReason'] }
 );
 
 // Query Schemas
@@ -120,7 +121,7 @@ export const bankAccountQuerySchema = z.object({
 export const bankTransferQuerySchema = z.object({
   page: z.string().optional().default('1'),
   limit: z.string().optional().default('20'),
-  status: z.string().optional(),
+  status: z.enum(['PENDING', 'VERIFIED', 'MATCHED', 'REJECTED']).optional(),
   memberId: z.string().optional(),
   bankAccountId: z.string().optional(),
   startDate: z.string().optional(),
@@ -133,6 +134,8 @@ export const statementEntryQuerySchema = z.object({
   limit: z.string().optional().default('20'),
   importId: z.string().optional(),
   matchStatus: z.string().optional(),
+  /** Only money received (credit lines): the ones that can pay a charge */
+  creditsOnly: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });

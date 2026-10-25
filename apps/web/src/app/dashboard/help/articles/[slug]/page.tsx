@@ -185,7 +185,7 @@ export default function ArticleDetailPage() {
         <IconArticle size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Article not found</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-4">
-          The article you're looking for doesn't exist or has been removed.
+          The article you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
         <Link
           href="/dashboard/help/articles"

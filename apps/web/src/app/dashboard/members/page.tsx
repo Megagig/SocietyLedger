@@ -6,11 +6,24 @@ import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { Member } from '@/types';
 import { PERMISSIONS } from '@/lib/permissions';
-import { Can } from '@/hooks/usePermissions';
+import { Can, usePermissions } from '@/hooks/usePermissions';
 import { apiGet, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { Search, Plus, Edit, Trash2, Eye, UserPlus } from 'lucide-react';
 import { HelpLink } from '@/components/docs/HelpLink';
+
+interface MemberStats {
+  totalMembers: number;
+  activeMembers: number;
+  newThisMonth: number;
+  withLogin: number;
+}
+
+const LOGIN_LABELS: Record<string, string> = {
+  active: 'Can sign in',
+  invited: 'Invited',
+  no_login: 'No login',
+};
 
 export default function MembersPage() {
   const router = useRouter();
@@ -22,6 +35,11 @@ export default function MembersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [loginFilter, setLoginFilter] = useState('');
+  const [stats, setStats] = useState<MemberStats | null>(null);
+  const [waitingApprovals, setWaitingApprovals] = useState(0);
+  const { can } = usePermissions();
+  const canApprove = can(PERMISSIONS.MEMBER_EDIT_ALL);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -29,7 +47,37 @@ export default function MembersPage() {
 
   useEffect(() => {
     fetchMembers();
-  }, [search, statusFilter, categoryFilter, page, limit]);
+  }, [search, statusFilter, categoryFilter, loginFilter, page, limit]);
+
+  // How many self-registrations are waiting — only officers who can approve them ask.
+  useEffect(() => {
+    if (!canApprove) return;
+    const fetchWaiting = async () => {
+      try {
+        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/approvals?status=pending&limit=1`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setWaitingApprovals(data.data?.total ?? 0);
+      } catch (error) {
+        console.error('Error fetching pending approvals:', error);
+      }
+    };
+    fetchWaiting();
+  }, [canApprove]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/stats`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setStats(data.data);
+      } catch (error) {
+        console.error('Error fetching member stats:', error);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const fetchMembers = async () => {
     setIsLoading(true);
@@ -40,6 +88,7 @@ export default function MembersPage() {
         ...(search && { search }),
         ...(statusFilter && { status: statusFilter }),
         ...(categoryFilter && { category: categoryFilter }),
+        ...(loginFilter && { loginStatus: loginFilter }),
       });
 
       const response = await apiGet(
@@ -62,15 +111,15 @@ export default function MembersPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDisable = async (id: number) => {
     modals.openConfirmModal({
-      title: 'Delete Member',
+      title: 'Disable Member',
       children: (
         <Text size="sm">
-          Are you sure you want to delete this member? This action cannot be undone.
+          This member won&apos;t be able to sign in, and they&apos;re marked Disabled. You can enable them again any time.
         </Text>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      labels: { confirm: 'Disable member', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
         try {
@@ -81,13 +130,13 @@ export default function MembersPage() {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.message || 'Failed to delete member');
+            throw new Error(data.message || 'Failed to disable member');
           }
 
-          toast.success('Member deleted successfully');
+          toast.success('Member disabled');
           fetchMembers();
         } catch (error: any) {
-          toast.error(error.message || 'Failed to delete member');
+          toast.error(error.message || 'Failed to disable member');
         }
       },
     });
@@ -103,7 +152,7 @@ export default function MembersPage() {
 
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${badges[status] || badges.active}`}>
-        {status}
+        {status === 'terminated' ? 'disabled' : status}
       </span>
     );
   };
@@ -123,6 +172,19 @@ export default function MembersPage() {
         
         <div className="flex items-center gap-2">
           <HelpLink />
+          <Can permission={PERMISSIONS.MEMBER_EDIT_ALL}>
+            <button
+              onClick={() => router.push('/dashboard/settings/pending-approvals')}
+              className="flex items-center gap-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
+            >
+              <span>Approvals</span>
+              {waitingApprovals > 0 && (
+                <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 text-xs font-medium">
+                  {waitingApprovals} waiting
+                </span>
+              )}
+            </button>
+          </Can>
           <Can permission={PERMISSIONS.MEMBER_CREATE}>
             <button
               onClick={() => router.push('/dashboard/members/invite')}
@@ -147,9 +209,26 @@ export default function MembersPage() {
         </div>
       </div>
 
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[
+            { label: 'Total members', value: stats.totalMembers },
+            { label: 'Active', value: stats.activeMembers },
+            { label: 'New this month', value: stats.newThisMonth },
+            { label: 'Can sign in', value: stats.withLogin },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{stat.label}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
             <div className="relative">
@@ -181,6 +260,7 @@ export default function MembersPage() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="suspended">Suspended</option>
+              <option value="terminated">Disabled</option>
             </select>
           </div>
 
@@ -199,6 +279,23 @@ export default function MembersPage() {
               <option value="executive">Executive</option>
               <option value="honorary">Honorary</option>
               <option value="student">Student</option>
+            </select>
+          </div>
+
+          {/* Login Filter */}
+          <div>
+            <select
+              value={loginFilter}
+              onChange={(e) => {
+                setLoginFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Logins</option>
+              <option value="active">Can sign in</option>
+              <option value="invited">Invited</option>
+              <option value="no_login">No login</option>
             </select>
           </div>
         </div>
@@ -236,6 +333,7 @@ export default function MembersPage() {
                     <div className="flex flex-col gap-1 items-end">
                       {getStatusBadge(member.status)}
                       <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{member.category}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}</span>
                     </div>
                   </div>
                   
@@ -263,10 +361,10 @@ export default function MembersPage() {
                     
                     <Can permission={PERMISSIONS.MEMBER_DELETE}>
                       <button
-                        onClick={() => handleDelete(member.id)}
+                        onClick={() => handleDisable(member.id)}
                         className="flex items-center gap-1 text-red-600 hover:text-red-900 dark:text-red-400 text-sm"
                       >
-                        <Trash2 className="w-4 h-4" /> Delete
+                        <Trash2 className="w-4 h-4" /> Disable
                       </button>
                     </Can>
                   </div>
@@ -298,6 +396,9 @@ export default function MembersPage() {
                       Category
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Login
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -323,6 +424,9 @@ export default function MembersPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 capitalize">
                         {member.category}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        {LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                         <button
                           onClick={() => router.push(`/dashboard/members/${member.id}`)}
@@ -344,9 +448,9 @@ export default function MembersPage() {
                         
                         <Can permission={PERMISSIONS.MEMBER_DELETE}>
                           <button
-                            onClick={() => handleDelete(member.id)}
+                            onClick={() => handleDisable(member.id)}
                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            title="Delete"
+                            title="Disable"
                           >
                             <Trash2 className="w-4 h-4 inline" />
                           </button>

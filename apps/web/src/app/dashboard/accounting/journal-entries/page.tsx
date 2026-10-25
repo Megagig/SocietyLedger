@@ -16,6 +16,7 @@ import {
   Modal,
   TextInput,
   Textarea,
+  PasswordInput,
   Select,
   ActionIcon,
   Menu,
@@ -40,6 +41,9 @@ import {
 import { accountingApi, ChartOfAccount, JournalEntry, JournalEntryLine } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { SourceCard } from '@/components/accounting/SourceCard';
+import { ledgerHref } from '@/lib/accounting-drill';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -58,6 +62,9 @@ export default function JournalEntriesPage() {
   const [opened, { open, close }] = useDisclosure(false);
   const [viewOpened, { open: openView, close: closeView }] = useDisclosure(false);
   const [approvalOpened, { open: openApproval, close: closeApproval }] = useDisclosure(false);
+  // Posting writes to the books for good, so it asks for the officer's password first
+  const [postTarget, setPostTarget] = useState<JournalEntry | null>(null);
+  const [postPassword, setPostPassword] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>(initialStatus);
   const [search, setSearch] = useState('');
@@ -92,6 +99,30 @@ export default function JournalEntriesPage() {
       }),
     retry: false,
   });
+
+  // A ledger opens an entry by its number in the address
+  const entryParam = Number(searchParams.get('entry'));
+  useEffect(() => {
+    if (!entryParam) return;
+    accountingApi
+      .getJournalEntry(entryParam)
+      .then((result) => {
+        if (result?.data) {
+          setSelectedEntry(result.data);
+          openView();
+        }
+      })
+      .catch(() => toast.error('That journal entry could not be found'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryParam]);
+
+  // The entry on show, with where it came from (the list does not carry that)
+  const { data: entryDetail } = useQuery({
+    queryKey: ['journal-entry-detail', selectedEntry?.id],
+    queryFn: () => accountingApi.getJournalEntry(selectedEntry!.id),
+    enabled: viewOpened && !!selectedEntry,
+  });
+  const entrySource = entryDetail?.data?.source ?? null;
 
   const { data: accountsData } = useQuery({
     queryKey: ['chart-of-accounts-active'],
@@ -138,9 +169,11 @@ export default function JournalEntriesPage() {
   });
 
   const postMutation = useMutation({
-    mutationFn: (id: number) => accountingApi.postJournalEntry(id),
+    mutationFn: ({ id, password }: { id: number; password: string }) => accountingApi.postJournalEntry(id, password),
     onSuccess: () => {
       toast.success('Entry posted successfully');
+      setPostTarget(null);
+      setPostPassword('');
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
     },
     onError: (error: any) => {
@@ -283,7 +316,7 @@ export default function JournalEntriesPage() {
       {entries.length === 0 ? (
         <Alert icon={<IconFileAnalytics size={20} />} title="No Entries Found" color="blue">
           <Text size="sm">
-            No journal entries found. Click "New Entry" to create your first journal entry.
+            No journal entries found. Click &quot;New Entry&quot; to create your first journal entry.
           </Text>
         </Alert>
       ) : (
@@ -352,7 +385,10 @@ export default function JournalEntriesPage() {
                       color="green"
                       size="xs"
                       leftSection={<IconCheck size={14} />}
-                      onClick={() => postMutation.mutate(entry.id)}
+                      onClick={() => {
+                        setPostPassword('');
+                        setPostTarget(entry);
+                      }}
                     >
                       Post
                     </Button>
@@ -440,7 +476,10 @@ export default function JournalEntriesPage() {
                             <Menu.Item
                               leftSection={<IconCheck size={14} />}
                               color="green"
-                              onClick={() => postMutation.mutate(entry.id)}
+                              onClick={() => {
+                        setPostPassword('');
+                        setPostTarget(entry);
+                      }}
                             >
                               Post Entry
                             </Menu.Item>
@@ -638,7 +677,11 @@ export default function JournalEntriesPage() {
                 {selectedEntry.lines.map((line) => (
                   <Table.Tr key={line.id}>
                     <Table.Td>
-                      <Text>{line.accountCode} - {line.accountName}</Text>
+                      <Text>
+                        <DrillLink href={ledgerHref({ accountId: line.accountId, title: line.accountName ?? '' })} label={line.accountName}>
+                          {line.accountCode} - {line.accountName}
+                        </DrillLink>
+                      </Text>
                       {line.description && (
                         <Text size="xs" c="dimmed">{line.description}</Text>
                       )}
@@ -660,11 +703,58 @@ export default function JournalEntriesPage() {
                 </Table.Tr>
               </Table.Tfoot>
             </Table>
+
+            {entrySource ? (
+              <div>
+                <Text size="sm" c="dimmed" mb={4}>Where this came from</Text>
+                <SourceCard source={entrySource} />
+              </div>
+            ) : null}
           </Stack>
         )}
       </Modal>
 
       {/* Approval Modal */}
+      <Modal
+        opened={postTarget !== null}
+        onClose={() => {
+          setPostTarget(null);
+          setPostPassword('');
+        }}
+        title={postTarget ? `Post ${postTarget.entryNumber}?` : 'Post entry'}
+      >
+        <Stack>
+          <Text size="sm">
+            Posting adds this entry to the books for good. It can no longer be changed. Enter your password to confirm.
+          </Text>
+          <PasswordInput
+            label="Your password"
+            value={postPassword}
+            onChange={(e) => setPostPassword(e.currentTarget.value)}
+            data-autofocus
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setPostTarget(null);
+                setPostPassword('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="green"
+              loading={postMutation.isPending}
+              disabled={!postPassword}
+              onClick={() => postTarget && postMutation.mutate({ id: postTarget.id, password: postPassword })}
+            >
+              Post entry
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <Modal
         opened={approvalOpened}
         onClose={closeApproval}

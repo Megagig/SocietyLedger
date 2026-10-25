@@ -95,7 +95,7 @@ export function BlogSearch({
           ) : results.length > 0 ? (
             <Stack gap="xs">
               <Text size="sm" fw={500}>
-                {results.length} {results.length === 1 ? 'result' : 'results'} for "{debouncedQuery}"
+                {results.length} {results.length === 1 ? 'result' : 'results'} for &quot;{debouncedQuery}&quot;
               </Text>
               {results.map((result) => (
                 <Paper
@@ -129,7 +129,7 @@ export function BlogSearch({
             </Stack>
           ) : (
             <Text size="sm" c="dimmed" ta="center">
-              No results found for "{debouncedQuery}"
+              No results found for &quot;{debouncedQuery}&quot;
             </Text>
           )}
         </Paper>

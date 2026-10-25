@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { BrandMark } from '@/components/brand/BrandLogo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Text } from '@mantine/core';
@@ -35,6 +36,7 @@ import {
   IconExternalLink,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
+import { PERMISSIONS, hasAnyPermission } from '@/lib/permissions';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { docsUrl } from '@/lib/docs';
 import { toast } from '@/lib/toast';
@@ -78,6 +80,17 @@ export function MemberSidebar() {
         : [...prev, label]
     );
   };
+
+  // The Election Committee are ordinary members who also run elections, so their extra section appears with the role.
+  const isElectionCommittee = hasAnyPermission(user?.permissions || [], [
+    PERMISSIONS.ELECTION_MANAGE,
+    PERMISSIONS.ELECTION_CANDIDATES,
+    PERMISSIONS.ELECTION_RULES,
+    PERMISSIONS.ELECTION_RUN,
+    PERMISSIONS.ELECTION_RESULTS_VIEW,
+    PERMISSIONS.ELECTION_RESULTS_PUBLISH,
+    PERMISSIONS.POLL_MANAGE,
+  ]);
 
   const navItems: NavItem[] = [
     {
@@ -162,11 +175,41 @@ export function MemberSidebar() {
         },
       ],
     },
+    ...(isElectionCommittee
+      ? [
+          {
+            label: 'Election Committee',
+            icon: <IconUsers size={20} />,
+            children: [
+              {
+                label: 'Elections',
+                icon: <IconChecklist size={18} />,
+                href: '/dashboard/governance/elections',
+              },
+              {
+                label: 'Voting Rules',
+                icon: <IconChecklist size={18} />,
+                href: '/dashboard/governance/elections/rules',
+              },
+              {
+                label: 'Manage Polls',
+                icon: <IconChartPie size={18} />,
+                href: '/dashboard/governance/polls',
+              },
+            ],
+          },
+        ]
+      : []),
     {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
       // badge: 'Enterprise',
       children: [
+        {
+          label: 'Overview',
+          icon: <IconLayoutDashboard size={18} />,
+          href: '/dashboard/cooperatives',
+        },
         {
           label: 'My Savings',
           icon: <IconCurrencyNaira size={18} />,
@@ -408,9 +451,7 @@ export function MemberSidebar() {
                 />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <IconUsers className="text-white" size={24} />
-              </div>
+              <BrandMark size={40} className="flex-shrink-0 group-hover:scale-110 transition-transform" />
             )}
             <div>
               <span className="text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">

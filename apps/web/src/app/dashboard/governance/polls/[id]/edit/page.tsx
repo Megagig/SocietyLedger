@@ -28,7 +28,6 @@ export default function EditPollPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [allowMultipleVotes, setAllowMultipleVotes] = useState(false);
   const [showResultsBeforeEnd, setShowResultsBeforeEnd] = useState(false);
 
   const toLocalInput = (iso?: string) => (iso ? new Date(iso).toISOString().slice(0, 16) : '');
@@ -40,7 +39,6 @@ export default function EditPollPage() {
     setStartDate(toLocalInput(poll.startDate));
     setEndDate(toLocalInput(poll.endDate));
     setIsAnonymous(poll.isAnonymous);
-    setAllowMultipleVotes(poll.allowMultipleVotes);
     setShowResultsBeforeEnd(poll.showResultsBeforeEnd);
   }, [poll]);
 
@@ -52,7 +50,6 @@ export default function EditPollPage() {
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
         isAnonymous,
-        allowMultipleVotes,
         showResultsBeforeEnd,
       }),
     onSuccess: () => {
@@ -129,7 +126,7 @@ export default function EditPollPage() {
         </div>
 
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Poll type and options can't be changed after creation — delete and recreate the poll if you need a different type.
+          Poll type and options can&apos;t be changed after creation — delete and recreate the poll if you need a different type.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -164,15 +161,6 @@ export default function EditPollPage() {
               className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Anonymous responses</span>
-          </label>
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={allowMultipleVotes}
-              onChange={(e) => setAllowMultipleVotes(e.target.checked)}
-              className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Allow members to change their response</span>
           </label>
           <label className="flex items-center gap-3">
             <input

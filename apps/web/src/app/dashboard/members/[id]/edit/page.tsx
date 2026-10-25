@@ -373,6 +373,8 @@ export default function EditMemberPage() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="suspended">Suspended</option>
+                {/* Disabling is its own action (it checks for unpaid charges); the option only shows for a member who already is, so saving doesn't silently re-enable them. */}
+                {formData.status === 'terminated' && <option value="terminated">Disabled</option>}
               </select>
             </div>
 

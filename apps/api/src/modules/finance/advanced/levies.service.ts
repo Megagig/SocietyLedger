@@ -1,6 +1,18 @@
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { syncLedgerDebit } from '../ledger-sync';
+import { cacheInvalidationService } from '../../../services/cache-invalidation.service';
+import { memberLedgerService } from '../../member-finance/member-ledger.service';
+import {
+  LevyRuleError,
+  assertAssignmentRemovable,
+  assertCanAssign,
+  assertDeadlineNotPast,
+  assertStatusChange,
+  effectiveStatus,
+  type CampaignStatus,
+} from './levy-rules';
 
 // ============================================
 // LEVY CAMPAIGN SERVICE (TASK-ADV-001, TASK-ADV-002)
@@ -22,6 +34,8 @@ export const leviesService = {
       deadline: Date;
     }
   ) {
+    assertDeadlineNotPast(data.deadline);
+
     // Verify category exists and is a levy type
     const category = await prisma.financialCategory.findFirst({
       where: { id: data.categoryId, associationId, type: 'levy', isActive: true },
@@ -111,16 +125,19 @@ export const leviesService = {
     const campaignsWithProgress = campaigns.map(campaign => {
       let totalAssigned = new Decimal(0);
       let totalCollected = new Decimal(0);
+      let paidMembers = 0;
 
       campaign.assignments.forEach(assignment => {
         totalAssigned = totalAssigned.plus(assignment.amount);
+        let paid = new Decimal(0);
         if (assignment.transaction) {
-          const paid = assignment.transaction.payments.reduce(
+          paid = assignment.transaction.payments.reduce(
             (sum, p) => sum.plus(p.amountPaid),
             new Decimal(0)
           );
           totalCollected = totalCollected.plus(paid);
         }
+        if (new Decimal(assignment.amount).minus(paid).lessThanOrEqualTo(0)) paidMembers++;
       });
 
       const progressPercentage = campaign.targetAmount.greaterThan(0)
@@ -129,12 +146,16 @@ export const leviesService = {
 
       return {
         ...campaign,
+        storedStatus: campaign.status,
+        status: effectiveStatus(campaign.status as CampaignStatus, campaign._count.assignments, paidMembers),
         progress: {
           totalAssigned: totalAssigned.toNumber(),
           totalCollected: totalCollected.toNumber(),
           remaining: new Decimal(campaign.targetAmount).minus(totalCollected).toNumber(),
           progressPercentage: Math.min(progressPercentage, 100),
           assignedMembers: campaign._count.assignments,
+          paidCount: paidMembers,
+          stillOwed: totalAssigned.minus(totalCollected).toNumber(),
         },
       };
     });
@@ -222,11 +243,14 @@ export const leviesService = {
 
     return {
       ...campaign,
+      storedStatus: campaign.status,
+      status: effectiveStatus(campaign.status as CampaignStatus, campaign.assignments.length, paidCount),
       assignments: assignmentsWithBalance,
       progress: {
         totalAssigned: totalAssigned.toNumber(),
         totalCollected: totalCollected.toNumber(),
         remaining: new Decimal(campaign.targetAmount).minus(totalCollected).toNumber(),
+        stillOwed: totalAssigned.minus(totalCollected).toNumber(),
         progressPercentage: Math.min(progressPercentage, 100),
         assignedMembers: campaign.assignments.length,
         paidCount,
@@ -249,7 +273,7 @@ export const leviesService = {
       targetAmount?: number;
       amountPerMember?: number;
       deadline?: Date;
-      status?: 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+      status?: 'ACTIVE' | 'CLOSED';
     }
   ) {
     const existing = await prisma.levyCampaign.findFirst({
@@ -257,8 +281,11 @@ export const leviesService = {
     });
 
     if (!existing) {
-      throw new Error('Campaign not found');
+      throw new LevyRuleError('Campaign not found', 404, 'NOT_FOUND');
     }
+
+    if (data.status) assertStatusChange(existing.status as CampaignStatus, data.status);
+    if (data.deadline && data.deadline.getTime() !== existing.deadline.getTime()) assertDeadlineNotPast(data.deadline);
 
     const updated = await prisma.levyCampaign.update({
       where: { id: campaignId },
@@ -298,43 +325,57 @@ export const leviesService = {
     associationId: number,
     userId: number,
     data: {
-      memberIds: number[];
+      memberIds?: number[];
+      /** Every active member of the association, instead of a chosen list. */
+      allActive?: boolean;
       amount?: number; // Override amount per member
       createTransactions?: boolean;
     }
   ) {
     const campaign = await prisma.levyCampaign.findFirst({
-      where: { id: campaignId, associationId, status: 'ACTIVE' },
+      where: { id: campaignId, associationId },
     });
 
     if (!campaign) {
-      throw new Error('Campaign not found or not active');
+      throw new LevyRuleError('Campaign not found', 404, 'NOT_FOUND');
+    }
+    assertCanAssign(campaign.status as CampaignStatus);
+
+    let requested: number[];
+    if (data.allActive) {
+      const everyone = await prisma.member.findMany({ where: { associationId, status: 'active' }, select: { id: true } });
+      requested = everyone.map((m) => m.id);
+    } else {
+      requested = data.memberIds ?? [];
+    }
+    if (requested.length === 0) {
+      throw new LevyRuleError('Choose at least one member.', 400, 'NO_MEMBERS');
     }
 
     // Verify all members exist
     const members = await prisma.member.findMany({
-      where: { id: { in: data.memberIds }, associationId, status: 'active' },
+      where: { id: { in: requested }, associationId, status: 'active' },
     });
 
-    if (members.length !== data.memberIds.length) {
-      throw new Error('Some members not found or inactive');
+    if (members.length !== requested.length) {
+      throw new LevyRuleError('Some members were not found or are not active.', 400, 'MEMBERS_NOT_FOUND');
     }
 
     // Check for existing assignments
     const existingAssignments = await prisma.levyCampaignAssignment.findMany({
-      where: { campaignId, memberId: { in: data.memberIds } },
+      where: { campaignId, memberId: { in: requested } },
     });
 
     const existingMemberIds = new Set(existingAssignments.map(a => a.memberId));
-    const newMemberIds = data.memberIds.filter(id => !existingMemberIds.has(id));
+    const newMemberIds = requested.filter(id => !existingMemberIds.has(id));
 
     if (newMemberIds.length === 0) {
-      throw new Error('All selected members are already assigned to this campaign');
+      throw new LevyRuleError('All selected members are already assigned to this campaign.', 409, 'ALREADY_ASSIGNED');
     }
 
     const amountPerMember = data.amount || campaign.amountPerMember?.toNumber() || 0;
     if (amountPerMember <= 0) {
-      throw new Error('Amount per member must be specified');
+      throw new LevyRuleError('Amount per member must be specified.', 400, 'AMOUNT_REQUIRED');
     }
 
     // Get transaction count for reference numbers
@@ -363,6 +404,9 @@ export const leviesService = {
           },
         });
         transactionId = transaction.id;
+
+        // The member now owes this levy — put it on their ledger so a later payment offsets it instead of standing alone as a credit.
+        await syncLedgerDebit(transaction.id, userId);
 
         // G45: levy campaign assignment creates a Transaction directly,
         // bypassing finance.controller.ts's sync hook — wire it here too.
@@ -412,6 +456,8 @@ export const leviesService = {
       },
     });
 
+    await cacheInvalidationService.onTransactionChange(associationId);
+
     return {
       assigned: assignments.length,
       skipped: existingAssignments.length,
@@ -430,26 +476,38 @@ export const leviesService = {
     const assignment = await prisma.levyCampaignAssignment.findFirst({
       where: { id: assignmentId },
       include: {
-        campaign: { select: { associationId: true } },
+        campaign: { select: { associationId: true, name: true } },
         transaction: { include: { payments: true } },
       },
     });
 
     if (!assignment || assignment.campaign.associationId !== associationId) {
-      throw new Error('Assignment not found');
+      throw new LevyRuleError('Assignment not found', 404, 'NOT_FOUND');
     }
 
-    // Check if there are payments
-    if (assignment.transaction && assignment.transaction.payments.length > 0) {
-      throw new Error('Cannot remove assignment with recorded payments');
-    }
+    assertAssignmentRemovable(assignment.transaction?.payments.length ?? 0);
 
-    // Delete transaction if exists
+    // The charge is voided, not deleted, so the member's ledger and every total can drop it cleanly and the record of what was
+    // raised stays. The assignment row goes, so the member can be assigned again if it was a slip.
+    await prisma.$transaction(async (tx) => {
+      if (assignment.transactionId) {
+        await tx.transaction.update({
+          where: { id: assignment.transactionId },
+          data: {
+            isVoided: true,
+            voidReason: `Removed from levy campaign "${assignment.campaign.name}"`,
+            voidedAt: new Date(),
+            voidedBy: userId,
+          },
+        });
+      }
+      await tx.levyCampaignAssignment.delete({ where: { id: assignmentId } });
+    });
+
     if (assignment.transactionId) {
-      await prisma.transaction.delete({ where: { id: assignment.transactionId } });
+      await memberLedgerService.syncExistingTransactions(associationId, assignment.memberId, userId, true);
     }
-
-    await prisma.levyCampaignAssignment.delete({ where: { id: assignmentId } });
+    await cacheInvalidationService.onTransactionChange(associationId);
 
     await prisma.auditLog.create({
       data: {
@@ -494,6 +552,7 @@ export const leviesService = {
       },
       totalAssigned: campaign.progress.totalAssigned,
       totalCollected: campaign.progress.totalCollected,
+      stillOwed: campaign.progress.stillOwed,
       totalMembers: campaign.progress.assignedMembers,
       paidMembers: campaign.progress.paidCount,
       progressPercentage: campaign.progress.progressPercentage,

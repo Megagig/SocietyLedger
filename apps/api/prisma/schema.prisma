@@ -56,6 +56,7 @@ model Association {
   // Phase 9: Accounting System
   chartOfAccounts            ChartOfAccount[]
   journalEntries             JournalEntry[]
+  expenseVouchers            ExpenseVoucher[]
   budgets                    Budget[]
   accountingPeriods          AccountingPeriod[]
   // Phase 3.5: Nigerian Payment Features
@@ -66,6 +67,12 @@ model Association {
   paymentProofs              PaymentProof[]
   // Phase 8.5: Cooperatives & Loans
   savingsAccounts            SavingsAccount[]
+  savingsDepositRequests     SavingsDepositRequest[]
+  loanRepaymentRequests      LoanRepaymentRequest[]
+  savingsLiens               SavingsLien[]
+  cashCollections             CashCollection[]
+  cashReceipts                CashReceipt[]
+  cashLodgments               CashLodgment[]
   savingsTransactions        SavingsTransaction[]
   loanProducts               LoanProduct[]
   loanApplications           LoanApplication[]
@@ -88,9 +95,12 @@ model Association {
   smsCreditsPurchases        SMSCreditsPurchase[]
   // Phase 17: AI Integration
   aiAuditLogs                AIAuditLog[]
+  aiCreditBalance            AICreditBalance?
+  aiCreditPurchases          AICreditPurchase[]
   documentEmbeddings         DocumentEmbedding[]
   // Phase 4.5: Voting & Elections
   elections                  Election[]
+  announcements              Announcement[]
   polls                      Poll[]
 
   // RBAC System Relations
@@ -175,6 +185,7 @@ model User {
   disbursedWelfarePayouts       WelfarePayoutRequest[] @relation("WelfarePayoutDisburser")
   // Phase 17: AI Integration
   aiAuditLogs                   AIAuditLog[]
+  aiCreditPurchases             AICreditPurchase[]
   // Phase 4.5: Voting & Elections
   createdElections              Election[]             @relation("ElectionCreatedBy")
   publishedElections            Election[]             @relation("ElectionPublishedBy")
@@ -216,6 +227,12 @@ model User {
   totpEnabledAt   DateTime? @map("totp_enabled_at")
   recoveryCodes   RecoveryCode[]
   loginChallenges AdminLoginChallenge[]
+
+  // F0.2 — Mobile push notifications
+  deviceTokens DeviceToken[]
+
+  // F0.3 — Mobile refresh-token sessions
+  refreshTokens RefreshToken[]
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -273,6 +290,10 @@ model Member {
   paymentProofs                PaymentProof[]
   // Phase 8.5: Cooperatives & Loans
   savingsAccounts              SavingsAccount[]
+  savingsDepositRequests       SavingsDepositRequest[]
+  loanRepaymentRequests        LoanRepaymentRequest[]
+  savingsLiens                 SavingsLien[]
+  cashReceipts                CashReceipt[]
   loanApplications             LoanApplication[]
   guaranteedLoans              LoanGuarantor[]
   loans                        Loan[]
@@ -285,6 +306,7 @@ model Member {
   welfarePayoutRequests        WelfarePayoutRequest[]
   // Phase 4.5: Voting & Elections
   candidacies                  Candidate[]
+  eligibilityExceptions        ElectionEligibilityException[]
   votes                        Vote[]
   pollResponses                PollResponse[]
 
@@ -306,6 +328,8 @@ model MemberInvite {
   phone                String?
   inviteToken          String      @unique @map("invite_token")
   inviteTokenExpiresAt DateTime    @map("invite_token_expires_at")
+  // Phase 8: the officer role this invite grants when accepted (null = an ordinary member).
+  roleName             String?     @map("role_name")
   status               String      @default("pending")
   invitedById          Int         @map("invited_by")
   acceptedAt           DateTime?   @map("accepted_at")
@@ -478,6 +502,8 @@ model Notification {
   title         String
   message       String
   type          String
+  entityId      Int?        @map("entity_id") // F0.2: the entity (payment, meeting, election...) this notification is about, for push deep-link routing. Nullable — existing rows and writers that don't pass one are unaffected.
+  pushType      String?     @map("push_type") // Deep-link type (same vocabulary as the push `data.type`), so the inbox can route a tap to the right screen. Null on older rows.
   isRead        Boolean     @default(false) @map("is_read")
   createdAt     DateTime    @default(now()) @map("created_at")
   association   Association @relation(fields: [associationId], references: [id])
@@ -497,6 +523,7 @@ model NotificationPreference {
   emailEnabled          Boolean     @default(true) @map("email_enabled")
   smsEnabled            Boolean     @default(false) @map("sms_enabled")
   inAppEnabled          Boolean     @default(true) @map("in_app_enabled")
+  pushEnabled           Boolean     @default(true) @map("push_enabled") // F0.2: master toggle for mobile push, independent of the in-app feed. Per-kind push granularity (like email/SMS/inApp have) can be added later if a mobile settings screen needs it — not required for v1.
   paymentDueEmail       Boolean     @default(true) @map("payment_due_email")
   paymentDueSMS         Boolean     @default(false) @map("payment_due_sms")
   paymentDueInApp       Boolean     @default(true) @map("payment_due_in_app")
@@ -511,6 +538,8 @@ model NotificationPreference {
   approvalInApp         Boolean     @default(true) @map("approval_in_app")
   announcementEmail     Boolean     @default(true) @map("announcement_email")
   announcementSMS       Boolean     @default(false) @map("announcement_sms")
+  // "Don't send me text messages": stops announcement and campaign texts from officers, whatever the default for announcements is.
+  announcementSmsOptOut Boolean     @default(false) @map("announcement_sms_opt_out")
   announcementInApp     Boolean     @default(true) @map("announcement_in_app")
   quietHoursEnabled     Boolean     @default(false) @map("quiet_hours_enabled")
   quietHoursStart       String      @default("22:00") @map("quiet_hours_start")
@@ -523,6 +552,54 @@ model NotificationPreference {
 
   @@unique([associationId, userId])
   @@map("notification_preferences")
+}
+
+// F0.2 — a registered Expo push token for one install of the mobile app.
+// associationId is nullable: a device can be registered before the user has
+// selected/switched a tenant in some flows, and one physical device token is
+// re-used/reassigned across associations if the same phone signs into more
+// than one (register upserts by expoPushToken, not by user).
+model DeviceToken {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  associationId Int?      @map("association_id")
+  expoPushToken String    @unique @map("expo_push_token")
+  platform      String // 'ios' | 'android'
+  deviceName    String?   @map("device_name")
+  appVersion    String?   @map("app_version")
+  lastSeenAt    DateTime  @default(now()) @map("last_seen_at")
+  disabledAt    DateTime? @map("disabled_at") // set by the receipts job on a DeviceNotRegistered receipt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, associationId])
+  @@map("device_tokens")
+}
+
+// F0.3 — one row per issued mobile refresh token. `tokenHash` is the sha256
+// of the opaque token the client holds (the plaintext is never stored).
+// `familyId` groups every token descended from one login via rotation; a
+// reuse of a revoked token revokes the whole family (theft detection).
+// `replacedById` is informational only (no enforced FK, matching
+// architecture.md's own schema exactly) — which row a rotation replaced.
+model RefreshToken {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  associationId Int?      @map("association_id")
+  tokenHash     String    @unique @map("token_hash")
+  familyId      String    @map("family_id")
+  deviceName    String?   @map("device_name")
+  platform      String?
+  expiresAt     DateTime  @map("expires_at")
+  revokedAt     DateTime? @map("revoked_at")
+  replacedById  Int?      @map("replaced_by_id")
+  lastUsedAt    DateTime? @map("last_used_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
 }
 
 model Settings {
@@ -695,6 +772,8 @@ model OnboardingProgress {
   associationId      Int       @unique @map("association_id")
   currentStep        Int       @default(1) @map("current_step")
   completedSteps     Json      @default("[]") @map("completed_steps")
+  // Phase 8: steps the admin chose to skip, kept apart from the ones they finished so the final checklist is honest.
+  skippedSteps       Json      @default("[]") @map("skipped_steps")
   profileCompleted   Boolean   @default(false) @map("profile_completed")
   teamInvited        Boolean   @default(false) @map("team_invited")
   membersImported    Boolean   @default(false) @map("members_imported")
@@ -793,6 +872,7 @@ model LevyCampaignAssignment {
 enum LevyCampaignStatus {
   DRAFT
   ACTIVE
+  CLOSED
   COMPLETED
   CANCELLED
 }
@@ -913,11 +993,56 @@ model ChartOfAccount {
   children          ChartOfAccount[]   @relation("AccountHierarchy")
   journalEntryLines JournalEntryLine[]
   budgetItems       BudgetItem[]
+  expenseCategories ExpenseVoucher[]   @relation("ExpenseCategory")
+  expensesPaidFrom  ExpenseVoucher[]   @relation("ExpensePaidFrom")
 
   @@unique([associationId, code])
   @@index([associationId, type])
   @@index([parentId])
   @@map("chart_of_accounts")
+}
+
+// Expense voucher: spending recorded after it is paid. A different officer approves it, and approval posts it to the books
+// (debit the category account, credit the account it was paid from). A wrong one is voided, which posts a reversal.
+model ExpenseVoucher {
+  id                Int            @id @default(autoincrement())
+  associationId     Int            @map("association_id")
+  voucherNumber     String         @map("voucher_number") // EXP-2026-00001
+  expenseDate       DateTime       @map("expense_date")
+  payee             String
+  description       String
+  amount            Decimal        @db.Decimal(12, 2)
+  categoryAccountId Int            @map("category_account_id")
+  paidFromAccountId Int            @map("paid_from_account_id")
+  reference         String?
+  noReceiptReason   String?        @map("no_receipt_reason")
+  receiptKey        String?        @map("receipt_key")
+  receiptType       String?        @map("receipt_type")
+  status            ExpenseStatus  @default(DRAFT)
+  createdBy         Int            @map("created_by")
+  submittedAt       DateTime?      @map("submitted_at")
+  approvedBy        Int?           @map("approved_by")
+  approvedAt        DateTime?      @map("approved_at")
+  overBudget        Boolean        @default(false) @map("over_budget")
+  rejectedBy        Int?           @map("rejected_by")
+  rejectedAt        DateTime?      @map("rejected_at")
+  rejectionReason   String?        @map("rejection_reason")
+  voidedBy          Int?           @map("voided_by")
+  voidedAt          DateTime?      @map("voided_at")
+  voidReason        String?        @map("void_reason")
+  journalEntryId    Int?           @map("journal_entry_id")
+  reversalEntryId   Int?           @map("reversal_entry_id")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  association       Association    @relation(fields: [associationId], references: [id])
+  category          ChartOfAccount @relation("ExpenseCategory", fields: [categoryAccountId], references: [id])
+  paidFrom          ChartOfAccount @relation("ExpensePaidFrom", fields: [paidFromAccountId], references: [id])
+
+  @@unique([associationId, voucherNumber])
+  @@index([associationId, status])
+  @@index([associationId, expenseDate])
+  @@index([categoryAccountId])
+  @@map("expense_vouchers")
 }
 
 // Journal Entry (TASK-ACC-002)
@@ -1049,6 +1174,14 @@ enum NormalBalance {
   CREDIT
 }
 
+enum ExpenseStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  VOIDED
+}
+
 enum JournalEntryStatus {
   DRAFT
   PENDING_APPROVAL
@@ -1087,11 +1220,14 @@ model AssociationBankAccount {
   isDefault        Boolean               @default(false) @map("is_default")
   isActive         Boolean               @default(true) @map("is_active")
   description      String?
+  // How this bank's statement columns were read last time (by header text), so the next import needs no correction
+  statementMapping Json?                 @map("statement_mapping")
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
   association      Association           @relation(fields: [associationId], references: [id])
   bankTransfers    BankTransfer[]
   statementImports BankStatementImport[]
+  statementEntries BankStatementEntry[]
 
   @@unique([associationId, accountNumber])
   @@index([associationId, isActive])
@@ -1114,6 +1250,7 @@ model BankTransfer {
   narration           String?
   status              BankTransferStatus      @default(PENDING)
   reconciliationId    Int?                    @map("reconciliation_id")
+  recordedBy          Int?                    @map("recorded_by") // The officer who entered it; they cannot also verify it
   verifiedBy          Int?                    @map("verified_by")
   verifiedAt          DateTime?               @map("verified_at")
   notes               String?
@@ -1144,6 +1281,8 @@ model BankStatementImport {
   totalEntries     Int                    @default(0) @map("total_entries")
   matchedEntries   Int                    @default(0) @map("matched_entries")
   unmatchedEntries Int                    @default(0) @map("unmatched_entries")
+  // Lines that were already imported before (an overlapping or repeated statement) and so were not added again
+  skippedEntries   Int                    @default(0) @map("skipped_entries")
   status           ImportStatus           @default(PROCESSING)
   importedBy       Int                    @map("imported_by")
   createdAt        DateTime               @default(now()) @map("created_at")
@@ -1172,9 +1311,14 @@ model BankStatementEntry {
   matchConfidence       Int?                @map("match_confidence") // 0-100 percentage
   matchedAt             DateTime?           @map("matched_at")
   matchedBy             Int?                @map("matched_by")
+  // Identity of the line (see statement-parser.ts): the same line is never imported twice for one bank account
+  bankAccountId         Int?                @map("bank_account_id")
+  fingerprint           String?
   createdAt             DateTime            @default(now()) @map("created_at")
   import                BankStatementImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  bankAccount           AssociationBankAccount? @relation(fields: [bankAccountId], references: [id])
 
+  @@unique([bankAccountId, fingerprint])
   @@index([importId, matchStatus])
   @@index([reference])
   @@map("bank_statement_entries")
@@ -1192,6 +1336,8 @@ model PaymentReconciliation {
   status           ReconciliationStatus    @default(PENDING)
   reconciledBy     Int?                    @map("reconciled_by")
   reconciledAt     DateTime?               @map("reconciled_at")
+  // Who proposed the match: they cannot also confirm it
+  createdBy        Int?                    @map("created_by")
   notes            String?
   createdAt        DateTime                @default(now()) @map("created_at")
   association      Association             @relation(fields: [associationId], references: [id])
@@ -1309,6 +1455,7 @@ model SavingsAccount {
   association         Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
   member              Member               @relation(fields: [memberId], references: [id], onDelete: Cascade)
   transactions        SavingsTransaction[]
+  depositRequests     SavingsDepositRequest[]
 
   @@unique([associationId, accountNumber])
   @@index([associationId, status])
@@ -1344,6 +1491,114 @@ model SavingsTransaction {
   @@map("savings_transactions")
 }
 
+// A member's claim that they paid money into the cooperative's bank account, with a receipt attached.
+// It is pending until an officer confirms the money landed; only approval creates the real
+// SavingsTransaction and raises the balance (the balance never moves on a pending request).
+model SavingsDepositRequest {
+  id                   Int                  @id @default(autoincrement())
+  associationId        Int                  @map("association_id")
+  savingsAccountId     Int                  @map("savings_account_id")
+  memberId             Int                  @map("member_id")
+  amount               Decimal              @db.Decimal(12, 2)
+  paymentDate          DateTime             @map("payment_date")
+  bankAccountId        Int?                 @map("bank_account_id")
+  reference            String?
+  memberNote           String?              @map("member_note")
+  filename             String
+  filepath             String // MinIO object key
+  fileSize             Int?                 @map("file_size")
+  mimeType             String?              @map("mime_type")
+  status               SavingsDepositStatus @default(PENDING)
+  reviewedBy           Int?                 @map("reviewed_by")
+  reviewedAt           DateTime?            @map("reviewed_at")
+  rejectionReason      String?              @map("rejection_reason")
+  savingsTransactionId Int?                 @map("savings_transaction_id")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  association    Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  savingsAccount SavingsAccount @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
+  member         Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, status])
+  @@index([memberId])
+  @@index([savingsAccountId])
+  @@map("savings_deposit_requests")
+}
+
+enum SavingsDepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Part of a member's savings held against an active loan. It is created when the loan is disbursed and
+// released as the principal is repaid; while it is outstanding it cannot be withdrawn or borrowed against
+// again. The savings balance itself is untouched — available = balance - outstanding liens.
+model SavingsLien {
+  id             Int              @id @default(autoincrement())
+  associationId  Int              @map("association_id")
+  memberId       Int              @map("member_id")
+  loanId         Int              @unique @map("loan_id")
+  amount         Decimal          @db.Decimal(12, 2)
+  releasedAmount Decimal          @default(0) @map("released_amount") @db.Decimal(12, 2)
+  status         SavingsLienStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  loan        Loan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, memberId, status])
+  @@map("savings_liens")
+}
+
+enum SavingsLienStatus {
+  ACTIVE
+  RELEASED
+}
+
+// A member's claim that they paid money towards a loan, with a receipt attached. Pending until an officer
+// confirms the money landed; only approval records the real LoanRepayment (which also releases held savings).
+model LoanRepaymentRequest {
+  id              Int                        @id @default(autoincrement())
+  associationId   Int                        @map("association_id")
+  loanId          Int                        @map("loan_id")
+  memberId        Int                        @map("member_id")
+  amount          Decimal                    @db.Decimal(12, 2)
+  paymentDate     DateTime                   @map("payment_date")
+  bankAccountId   Int?                       @map("bank_account_id")
+  reference       String?
+  memberNote      String?                    @map("member_note")
+  filename        String
+  filepath        String // MinIO object key
+  fileSize        Int?                       @map("file_size")
+  mimeType        String?                    @map("mime_type")
+  status          LoanRepaymentRequestStatus @default(PENDING)
+  reviewedBy      Int?                       @map("reviewed_by")
+  reviewedAt      DateTime?                  @map("reviewed_at")
+  rejectionReason String?                    @map("rejection_reason")
+  loanRepaymentId Int?                       @map("loan_repayment_id")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  loan        Loan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, status])
+  @@index([memberId])
+  @@index([loanId])
+  @@map("loan_repayment_requests")
+}
+
+enum LoanRepaymentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // Loan Product
 model LoanProduct {
   id                    Int               @id @default(autoincrement())
@@ -1361,6 +1616,9 @@ model LoanProduct {
   requiresGuarantor     Boolean           @default(true) @map("requires_guarantor")
   minGuarantors         Int               @default(1) @map("min_guarantors")
   maxLoanToSavingsRatio Decimal?          @map("max_loan_to_savings_ratio") @db.Decimal(5, 2)
+  // When set together with the ratio, disbursing a loan puts principal / ratio of the member's savings on
+  // hold (a SavingsLien) until the loan is repaid. The balance is never debited — it is held, not spent.
+  lockSavings           Boolean           @default(true) @map("lock_savings")
   gracePeriodDays       Int               @default(0) @map("grace_period_days")
   lateFeePercent        Decimal           @default(0) @map("late_fee_percent") @db.Decimal(5, 2)
   lateFeeFixed          Decimal           @default(0) @map("late_fee_fixed") @db.Decimal(10, 2)
@@ -1484,6 +1742,8 @@ model Loan {
   loanProduct        LoanProduct             @relation(fields: [loanProductId], references: [id])
   repaymentSchedule  LoanRepaymentSchedule[]
   repayments         LoanRepayment[]
+  savingsLien        SavingsLien?
+  repaymentRequests  LoanRepaymentRequest[]
 
   @@unique([associationId, loanNumber])
   @@index([associationId, status])
@@ -1845,6 +2105,8 @@ model WelfareContribution {
   status           WelfareContributionStatus @default(PENDING)
   confirmedBy      Int?                      @map("confirmed_by")
   confirmedAt      DateTime?                 @map("confirmed_at")
+  /// Who recorded it, so the same officer can't also confirm it. Null on contributions made before this was kept.
+  recordedBy       Int?                      @map("recorded_by")
   createdAt        DateTime                  @default(now()) @map("created_at")
   updatedAt        DateTime                  @updatedAt @map("updated_at")
   
@@ -1961,6 +2223,7 @@ model SMSMessage {
   id              Int            @id @default(autoincrement())
   associationId   Int            @map("association_id")
   campaignId      Int?           @map("campaign_id")
+  announcementId  Int?           @map("announcement_id")
   recipientPhone  String         @map("recipient_phone")
   recipientName   String?        @map("recipient_name")
   memberId        Int?           @map("member_id")
@@ -1973,13 +2236,17 @@ model SMSMessage {
   errorMessage    String?        @map("error_message")
   sentAt          DateTime?      @map("sent_at")
   deliveredAt     DateTime?      @map("delivered_at")
+  // A credit is only spent on a text that went out: set once the credit for a failed or interrupted text has been given back.
+  refunded        Boolean        @default(false)
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   association     Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
   campaign        SMSCampaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  announcement    Announcement?  @relation(fields: [announcementId], references: [id], onDelete: SetNull)
 
   @@index([associationId, status])
   @@index([campaignId])
+  @@index([announcementId])
   @@index([memberId])
   @@index([sentAt])
   @@map("sms_messages")
@@ -2015,6 +2282,53 @@ model SMSCampaign {
 }
 
 // SMS Template - Reusable message templates
+enum AnnouncementAudience {
+  ALL // Every active member
+  CATEGORY // Members of the chosen categories
+  SELECTED // Hand-picked members
+}
+
+enum AnnouncementStatus {
+  SENDING // Texts still going out
+  COMPLETED
+  INTERRUPTED // Cut short by a server restart
+}
+
+// One message from the officers to chosen members: in their app feed with a push, and optionally by email and SMS. Kept so officers can
+// see what was sent, to whom and what happened to it.
+model Announcement {
+  id              Int                     @id @default(autoincrement())
+  associationId   Int                     @map("association_id")
+  title           String
+  message         String                  @db.Text
+  priority        String                  @default("info")
+  audience        AnnouncementAudience    @default(ALL)
+  audienceFilter  Json?                   @map("audience_filter")
+  sendEmail       Boolean                 @default(false) @map("send_email")
+  sendSms         Boolean                 @default(false) @map("send_sms")
+  smsText         String?                 @map("sms_text")
+  status          AnnouncementStatus      @default(COMPLETED)
+  // Who the audience was, and how each part of it was reached
+  memberCount     Int                     @default(0) @map("member_count")
+  inAppCount      Int                     @default(0) @map("in_app_count")
+  noLoginCount    Int                     @default(0) @map("no_login_count")
+  emailCount      Int                     @default(0) @map("email_count")
+  smsRequested    Int                     @default(0) @map("sms_requested")
+  smsSent         Int                     @default(0) @map("sms_sent")
+  smsFailed       Int                     @default(0) @map("sms_failed")
+  noPhoneCount    Int                     @default(0) @map("no_phone_count")
+  optedOutCount   Int                     @default(0) @map("opted_out_count")
+  creditsUsed     Decimal                 @default(0) @map("credits_used") @db.Decimal(12, 4)
+  createdBy       Int                     @map("created_by")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  completedAt     DateTime?               @map("completed_at")
+  association     Association             @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  messages        SMSMessage[]
+
+  @@index([associationId, createdAt])
+  @@map("announcements")
+}
+
 model SMSTemplate {
   id            Int                 @id @default(autoincrement())
   associationId Int                 @map("association_id")
@@ -2090,6 +2404,7 @@ enum SMSCampaignStatus {
   COMPLETED // All messages sent
   CANCELLED // Cancelled before completion
   FAILED // Failed to complete
+  INTERRUPTED // Cut short by a server restart; the credits for the unsent texts were given back
 }
 
 enum SMSRecipientType {
@@ -2150,6 +2465,43 @@ model SMSCreditsPurchase {
 // ============================================
 
 // AI Audit Log - Track all AI requests for compliance
+// AI credits: bought on top of the plan's daily allowance. They never expire; the allowance is spent first.
+model AICreditBalance {
+  id             Int         @id @default(autoincrement())
+  associationId  Int         @unique @map("association_id")
+  balance        Int         @default(0)
+  totalPurchased Int         @default(0) @map("total_purchased")
+  totalUsed      Int         @default(0) @map("total_used")
+  lastTopUpAt    DateTime?   @map("last_top_up_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  association    Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_credit_balances")
+}
+
+model AICreditPurchase {
+  id               Int         @id @default(autoincrement())
+  associationId    Int         @map("association_id")
+  userId           Int         @map("user_id")
+  credits          Int
+  pricePerCredit   Decimal     @map("price_per_credit") @db.Decimal(10, 2)
+  amount           Decimal     @db.Decimal(12, 2)
+  reference        String      @unique // Paystack reference (AIC-...)
+  status           String      @default("pending") // pending, success, failed
+  paidAt           DateTime?   @map("paid_at")
+  paystackResponse Json?       @map("paystack_response")
+  metadata         Json?
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  association      Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([associationId])
+  @@index([status])
+  @@map("ai_credit_purchases")
+}
+
 model AIAuditLog {
   id            Int         @id @default(autoincrement())
   associationId Int         @map("association_id")
@@ -2160,8 +2512,12 @@ model AIAuditLog {
   tokensOutput  Int         @default(0) @map("tokens_output")
   costUsd       Decimal     @default(0) @map("cost_usd") @db.Decimal(10, 6)
   outputSummary String?     @map("output_summary") @db.Text
-  status        String      @default("success") // success, error, rate_limited
+  status        String      @default("success") // pending (held while the model works), success, error, rate_limited
   errorMessage  String?     @map("error_message")
+  /// What the request cost in units, and how many came from the day's allowance and from bought credits
+  units          Int         @default(1)
+  allowanceUnits Int         @default(0) @map("allowance_units")
+  creditUnits    Int         @default(0) @map("credit_units")
   createdAt     DateTime    @default(now()) @map("created_at")
   association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -2225,6 +2581,8 @@ model Election {
   cancelledBy         Int?               @map("cancelled_by")
   cancelledAt         DateTime?          @map("cancelled_at")
   cancellationReason  String?            @map("cancellation_reason")
+  // Who may vote and who may stand, set by the association (null = every active member, the default). See eligibility-rules.ts.
+  eligibilityRules    Json?              @map("eligibility_rules")
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
   association         Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
@@ -2234,6 +2592,7 @@ model Election {
   positions           ElectionPosition[]
   candidates          Candidate[]
   votes               Vote[]
+  eligibilityExceptions ElectionEligibilityException[]
 
   @@index([associationId, status])
   @@index([associationId, votingStartDate])
@@ -2258,6 +2617,24 @@ model ElectionPosition {
   @@unique([electionId, orderNumber])
   @@index([electionId])
   @@map("election_positions")
+}
+
+// A named member let in, or kept out, of one election's vote or candidacy, whatever the rules say — with the reason on record.
+model ElectionEligibilityException {
+  id         Int      @id @default(autoincrement())
+  electionId Int      @map("election_id")
+  memberId   Int      @map("member_id")
+  scope      String // VOTE | STAND
+  kind       String // ALLOW | BAR
+  reason     String
+  createdBy  Int      @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, memberId, scope])
+  @@index([electionId])
+  @@map("election_eligibility_exceptions")
 }
 
 // Candidate Model
@@ -2390,6 +2767,7 @@ enum ElectionType {
 enum ElectionStatus {
   DRAFT // Being created
   NOMINATIONS_OPEN // Accepting nominations
+  NOMINATIONS_CLOSED // Nominations closed, candidates being finalised before voting
   VOTING_OPEN // Voting in progress
   VOTING_CLOSED // Voting ended, results being processed
   RESULTS_PUBLISHED // Results announced
@@ -2743,6 +3121,9 @@ model SupportTicket {
   category                TicketCategory
   priority                TicketPriority     @default(MEDIUM)
   status                  TicketStatus       @default(OPEN)
+  audience                TicketAudience     @default(ASSOCIATION)
+  // Set on a Tier 2 ticket an officer opened by escalating a member's ticket (the member's ticket is never shared)
+  escalatedFromId         Int?               @map("escalated_from_id")
   // AI-generated fields
   aiCategory              String?            @map("ai_category")
   aiCategoryConfidence    Float?             @map("ai_category_confidence")
@@ -2761,10 +3142,14 @@ model SupportTicket {
   association             Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
   user                    User               @relation("TicketCreator", fields: [userId], references: [id])
   assignedTo              User?              @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  escalatedFrom           SupportTicket?     @relation("TicketEscalation", fields: [escalatedFromId], references: [id], onDelete: SetNull)
+  escalations             SupportTicket[]    @relation("TicketEscalation")
   responses               TicketResponse[]
   attachments             TicketAttachment[]
 
   @@index([associationId, status])
+  @@index([audience, status])
+  @@index([escalatedFromId])
   @@index([userId])
   @@index([assignedToId])
   @@index([category])
@@ -2827,7 +3212,16 @@ enum TicketCategory {
   TECHNICAL // Technical issues, bugs
   BUG // Bug reports
   FEATURE_REQUEST // Feature requests
+  BILLING // Subscription, plans, invoices (Tier 2: association admin to SocietyLedger)
+  DATA // Data corrections and imports (Tier 2)
   OTHER // Other inquiries
+}
+
+// Who a ticket is for. ASSOCIATION = a member asking their own association's admins (Tier 1);
+// PLATFORM = an association admin asking SocietyLedger support (Tier 2).
+enum TicketAudience {
+  ASSOCIATION
+  PLATFORM
 }
 
 // Ticket Priority Enum
@@ -3189,4 +3583,145 @@ model AdminLoginChallenge {
 
   @@index([userId])
   @@map("admin_login_challenges")
+}
+
+// ============================================
+// Cash collections & lodgments
+// ============================================
+// Officers collect cash from members at meetings and later lodge it into an association bank account. Additive: the existing
+// payment, savings, welfare, donation and loan tables are untouched — a receipt item points at the record it created by (kind, source_id).
+
+// One occasion (a meeting or a day) on which an officer collects cash. Owned by the collector.
+model CashCollection {
+  id            Int                  @id @default(autoincrement())
+  associationId Int                  @map("association_id")
+  meetingId     Int?                 @map("meeting_id")
+  title         String
+  collectedBy   Int                  @map("collected_by") // User id of the officer holding the cash
+  status        CashCollectionStatus @default(OPEN)
+  notes         String?
+  openedAt      DateTime             @default(now()) @map("opened_at")
+  closedAt      DateTime?            @map("closed_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  association Association              @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  receipts    CashReceipt[]
+  allocations CashLodgmentAllocation[]
+
+  @@index([associationId, status])
+  @@index([associationId, collectedBy])
+  @@index([meetingId])
+  @@map("cash_collections")
+}
+
+// One member's cash payment inside a collection. It credits the member at once; the idempotency key makes a retry safe.
+model CashReceipt {
+  id             Int               @id @default(autoincrement())
+  associationId  Int               @map("association_id")
+  collectionId   Int               @map("collection_id")
+  memberId       Int               @map("member_id")
+  receiptNumber  String            @unique @map("receipt_number")
+  idempotencyKey String            @map("idempotency_key")
+  totalAmount    Decimal           @map("total_amount") @db.Decimal(12, 2)
+  status         CashReceiptStatus @default(ACTIVE)
+  createdBy      Int               @map("created_by")
+  voidedBy       Int?              @map("voided_by")
+  voidedAt       DateTime?         @map("voided_at")
+  voidReason     String?           @map("void_reason")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  association Association       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  collection  CashCollection    @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  member      Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items       CashReceiptItem[]
+
+  @@unique([associationId, idempotencyKey])
+  @@index([collectionId, status])
+  @@index([associationId, memberId])
+  @@map("cash_receipts")
+}
+
+// What a receipt paid: one line per thing, pointing at the record the existing flow created.
+model CashReceiptItem {
+  id        Int          @id @default(autoincrement())
+  receiptId Int          @map("receipt_id")
+  kind      CashItemKind
+  sourceId  Int?         @map("source_id") // payments / savings_transactions / welfare_contributions / donation_records / loan_repayments id
+  label     String
+  amount    Decimal      @db.Decimal(12, 2)
+
+  receipt CashReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@index([kind, sourceId])
+  @@map("cash_receipt_items")
+}
+
+// Cash paid into an association bank account, with a deposit-slip photo. A different officer verifies it against the statement.
+model CashLodgment {
+  id                Int                @id @default(autoincrement())
+  associationId     Int                @map("association_id")
+  bankAccountId     Int                @map("bank_account_id")
+  lodgedBy          Int                @map("lodged_by")
+  amount            Decimal            @db.Decimal(12, 2)
+  expectedAmount    Decimal            @map("expected_amount") @db.Decimal(12, 2)
+  shortfallReason   String?            @map("shortfall_reason")
+  depositDate       DateTime           @map("deposit_date")
+  bankReference     String?            @map("bank_reference")
+  slipKey           String?            @map("slip_key")
+  status            CashLodgmentStatus @default(PENDING)
+  verifiedBy        Int?               @map("verified_by")
+  verifiedAt        DateTime?          @map("verified_at")
+  rejectionReason   String?            @map("rejection_reason")
+  accountingEntryId Int?               @map("accounting_entry_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  association Association              @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  allocations CashLodgmentAllocation[]
+
+  @@index([associationId, status])
+  @@index([associationId, lodgedBy])
+  @@map("cash_lodgments")
+}
+
+// How much of a lodgment came out of which collection.
+model CashLodgmentAllocation {
+  id           Int     @id @default(autoincrement())
+  lodgmentId   Int     @map("lodgment_id")
+  collectionId Int     @map("collection_id")
+  amount       Decimal @db.Decimal(12, 2)
+
+  lodgment   CashLodgment   @relation(fields: [lodgmentId], references: [id], onDelete: Cascade)
+  collection CashCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([lodgmentId, collectionId])
+  @@index([collectionId])
+  @@map("cash_lodgment_allocations")
+}
+
+enum CashCollectionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashReceiptStatus {
+  ACTIVE
+  VOIDED
+}
+
+enum CashItemKind {
+  DUES
+  LEVY
+  SAVINGS
+  WELFARE
+  DONATION
+  LOAN_REPAYMENT
+}
+
+enum CashLodgmentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }

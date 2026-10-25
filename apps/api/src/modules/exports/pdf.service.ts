@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AssociationBranding, MemberStatementData, LedgerStatementData } from './exports.types';
 import { reportsService } from '../reports/reports.service';
+import type { StatementDocument } from '../accounting/statement-document';
 
 // ============================================
 // PDF SERVICE
@@ -611,6 +612,76 @@ export const pdfService = {
         // Finalize PDF
         doc.end();
 
+        stream.on('finish', () => resolve());
+        stream.on('error', reject);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
+  /**
+   * A financial statement (income statement, balance sheet or cash flow) as a PDF: a heading, then each section as a list of
+   * lines with the amount on the right and a bold total under it. Continues on a new page when a section would run off the end.
+   */
+  async generateStatementPDF(statement: StatementDocument, branding: AssociationBranding, filepath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
+        const stream = fs.createWriteStream(filepath);
+        doc.pipe(stream);
+
+        this.addHeader(doc, branding, statement.title);
+        doc.fontSize(12).font('Helvetica-Bold').text(statement.subtitle, 50, 100);
+
+        const left = 50;
+        const width = doc.page.width - 100;
+        const amountWidth = 150;
+        let y = 135;
+        const room = () => doc.page.height - 90;
+        const ensure = (needed: number) => {
+          if (y + needed > room()) {
+            doc.addPage();
+            y = 60;
+          }
+        };
+
+        for (const section of statement.sections) {
+          ensure(40 + Math.min(section.rows.length, 3) * 20);
+          if (section.rows.length > 0) {
+            doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af').text(section.title, left, y);
+            doc.fillColor('#000000');
+            y += 20;
+          }
+          for (const row of section.rows) {
+            ensure(20);
+            doc.fontSize(10).font('Helvetica').text(row.label, left + 10, y, { width: width - amountWidth - 20 });
+            doc.text(row.amount, left + width - amountWidth, y, { width: amountWidth, align: 'right' });
+            y += 18;
+          }
+          ensure(30);
+          doc.moveTo(left, y).lineTo(left + width, y).strokeColor('#cbd5e1').stroke();
+          y += 6;
+          doc.fontSize(11).font('Helvetica-Bold').text(section.totalLabel, left + 10, y, { width: width - amountWidth - 20 });
+          doc.text(section.total, left + width - amountWidth, y, { width: amountWidth, align: 'right' });
+          y += 30;
+        }
+
+        ensure(40);
+        doc.fontSize(9).font('Helvetica').fillColor('#475569');
+        for (const note of statement.notes) {
+          doc.text(note, left, y, { width });
+          y += 14;
+        }
+        doc.fillColor('#000000');
+
+        const pages = doc.bufferedPageRange();
+        for (let i = 0; i < pages.count; i += 1) {
+          doc.switchToPage(pages.start + i);
+          this.addFooter(doc, branding, i + 1);
+        }
+
+        doc.end();
         stream.on('finish', () => resolve());
         stream.on('error', reject);
       } catch (error) {

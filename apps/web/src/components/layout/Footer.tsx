@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { IconUsers, IconBrandFacebook, IconBrandInstagram, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconPhone, IconMail, IconBrandWhatsapp } from '@tabler/icons-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import { IconBrandFacebook, IconBrandInstagram, IconBrandLinkedin, IconBrandX, IconBrandYoutube, IconPhone, IconMail, IconBrandWhatsapp } from '@tabler/icons-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { docsUrl } from '@/lib/docs';
 
@@ -15,12 +16,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Logo and Info Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={20} />
-              </div>
-              <span className="font-bold text-xl">SocietyLedger</span>
-            </div>
+            <BrandLogo height={36} tone="onDark" />
             
             <p className="text-gray-400 text-sm leading-relaxed">
               Empowering associations with seamless management solutions for efficient operations and growth.

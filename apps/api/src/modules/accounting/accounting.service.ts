@@ -1,131 +1,139 @@
-import { prisma } from '../../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { prisma } from '../../lib/prisma';
 import {
-  ChartOfAccountInput,
-  ChartOfAccountResponse,
-  JournalEntryInput,
-  JournalEntryResponse,
-  IncomeStatementReport,
+  AccountBalance,
+  AccountingDashboard,
   BalanceSheetReport,
-  CashFlowReport,
   BudgetInput,
   BudgetResponse,
   BudgetVarianceReport,
-  AccountingDashboard,
-  AccountBalance,
+  BudgetVarianceSummary,
+  CashFlowReport,
+  ChartOfAccountInput,
+  ChartOfAccountResponse,
+  IncomeStatementReport,
+  JournalEntryInput,
+  JournalEntryResponse,
   STANDARD_CHART_OF_ACCOUNTS,
 } from './accounting.types';
 import { getDateRange } from '../reports/reports.service';
 import { accountingPeriodsService } from './accounting-periods.service';
+import {
+  AccountingRuleError,
+  balanceOf,
+  cashFlowGroup,
+  cleanEntryLines,
+  defaultNormalBalance,
+  lagosDayEnd,
+  lagosDayKey,
+  lagosDayStart,
+  proratedBudget,
+  toMoney,
+  varianceStatus,
+  type AccountType,
+} from './accounting-rules';
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
 
+const rule = (message: string, status: 400 | 403 | 404 | 409, code: string) => new AccountingRuleError(message, status, code);
+
+async function writeAudit(db: Db, associationId: number, userId: number, action: string, tableName: string, recordId: number, values: object, before?: object) {
+  await db.auditLog.create({
+    data: { associationId, userId, action, tableName, recordId, newValues: values as Prisma.InputJsonValue, ...(before ? { oldValues: before as Prisma.InputJsonValue } : {}) },
+  });
+}
+
 /**
- * Generate unique entry number for journal entries
+ * Generate unique entry number for journal entries.
+ * Based on the highest existing suffix, not a row count — a count-based "next number" collides with an already-used number the moment
+ * any entry for the year is ever deleted (G90). Two entries made at the same moment can still pick the same number; the caller retries.
  */
-async function generateEntryNumber(associationId: number): Promise<string> {
-  const year = new Date().getFullYear();
-  // Based on the highest existing suffix, not a row count — a count-based "next number"
-  // collides with an already-used number the moment any entry for the year is ever
-  // deleted (G90), since the count drops but the highest number already issued doesn't.
-  const latest = await prisma.journalEntry.findFirst({
-    where: {
-      associationId,
-      entryNumber: { startsWith: `JE-${year}-` },
-    },
+async function generateEntryNumber(db: Db, associationId: number): Promise<string> {
+  const year = lagosDayKey(new Date()).slice(0, 4);
+  const latest = await db.journalEntry.findFirst({
+    where: { associationId, entryNumber: { startsWith: `JE-${year}-` } },
     orderBy: { entryNumber: 'desc' },
     select: { entryNumber: true },
   });
-
-  const latestSuffix = latest ? parseInt(latest.entryNumber.split('-')[2], 10) || 0 : 0;
+  const latestSuffix = latest ? parseInt(latest.entryNumber.split('-')[2] ?? '0', 10) || 0 : 0;
   return `JE-${year}-${String(latestSuffix + 1).padStart(5, '0')}`;
 }
 
-/**
- * Calculate account balance from journal entries
- */
-async function calculateAccountBalance(
-  accountId: number,
-  associationId: number,
-  asOfDate?: Date
-): Promise<Decimal> {
-  const account = await prisma.chartOfAccount.findUnique({
-    where: { id: accountId },
-  });
+const isUniqueViolation = (error: unknown): boolean => error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 
-  if (!account) return new Decimal(0);
+type Range = { from?: Date; to?: Date };
 
-  const dateFilter = asOfDate ? { lte: asOfDate } : {};
+/** Debits and credits posted to each account, in one query. With no `from` it is everything up to `to`; with one it is that stretch only. */
+async function activityByAccount(associationId: number, range: Range, accountIds?: number[]): Promise<Map<number, { debit: Decimal; credit: Decimal }>> {
+  const entryDate: Prisma.DateTimeFilter = {};
+  if (range.from) entryDate.gte = range.from;
+  if (range.to) entryDate.lte = range.to;
+  if (accountIds && accountIds.length === 0) return new Map();
 
-  const entries = await prisma.journalEntryLine.findMany({
+  const rows = await prisma.journalEntryLine.groupBy({
+    by: ['accountId'],
     where: {
-      accountId,
-      journalEntry: {
-        associationId,
-        status: 'POSTED',
-        entryDate: dateFilter,
-      },
+      ...(accountIds ? { accountId: { in: accountIds } } : {}),
+      journalEntry: { associationId, status: 'POSTED', ...(range.from || range.to ? { entryDate } : {}) },
     },
-    select: {
-      debitAmount: true,
-      creditAmount: true,
-    },
+    _sum: { debitAmount: true, creditAmount: true },
   });
-
-  let balance = new Decimal(0);
-  entries.forEach(entry => {
-    if (account.normalBalance === 'DEBIT') {
-      balance = balance.plus(entry.debitAmount).minus(entry.creditAmount);
-    } else {
-      balance = balance.plus(entry.creditAmount).minus(entry.debitAmount);
-    }
-  });
-
-  return balance;
+  return new Map(rows.map((r) => [r.accountId, { debit: new Decimal(r._sum.debitAmount ?? 0), credit: new Decimal(r._sum.creditAmount ?? 0) }]));
 }
 
-/**
- * Get all account balances for a specific type
- */
-async function getAccountBalancesByType(
-  associationId: number,
-  type: string,
-  asOfDate?: Date,
-  subType?: string
-): Promise<AccountBalance[]> {
-  const whereClause: any = {
-    associationId,
-    type,
-    isActive: true,
-  };
-
-  if (subType) {
-    whereClause.subType = subType;
-  }
-
+/** The balance of each account of a type, skipping the ones at zero. Switched-off accounts still count: their money did not go anywhere. */
+async function getAccountBalancesByType(associationId: number, type: AccountType, range: Range, subType?: string): Promise<AccountBalance[]> {
   const accounts = await prisma.chartOfAccount.findMany({
-    where: whereClause,
+    where: { associationId, type, ...(subType ? { subType } : {}) },
     orderBy: { code: 'asc' },
   });
-
+  const activity = await activityByAccount(associationId, range, accounts.map((a) => a.id));
   const balances: AccountBalance[] = [];
-
   for (const account of accounts) {
-    const balance = await calculateAccountBalance(account.id, associationId, asOfDate);
-    if (!balance.isZero()) {
-      balances.push({
-        accountId: account.id,
-        accountCode: account.code,
-        accountName: account.name,
-        balance,
-      });
-    }
+    const sums = activity.get(account.id);
+    const balance = sums ? balanceOf(account.normalBalance as 'DEBIT' | 'CREDIT', sums.debit, sums.credit) : new Decimal(0);
+    if (!balance.isZero()) balances.push({ accountId: account.id, accountCode: account.code, accountName: account.name, balance });
   }
-
   return balances;
 }
+
+const sumBalances = (rows: AccountBalance[]): Decimal => rows.reduce((sum, r) => sum.plus(r.balance), new Decimal(0));
+
+/** The accounts that hold the association's cash and bank money. */
+export async function cashAccountIds(associationId: number): Promise<number[]> {
+  const accounts = await prisma.chartOfAccount.findMany({
+    where: {
+      associationId,
+      type: 'ASSET',
+      OR: [{ code: { startsWith: '111' } }, { name: { contains: 'Cash', mode: 'insensitive' } }, { name: { contains: 'Bank', mode: 'insensitive' } }],
+    },
+    select: { id: true },
+  });
+  return accounts.map((a) => a.id);
+}
+
+async function totalBalance(associationId: number, accountIds: number[], range: Range): Promise<Decimal> {
+  if (accountIds.length === 0) return new Decimal(0);
+  const accounts = await prisma.chartOfAccount.findMany({ where: { id: { in: accountIds }, associationId } });
+  const activity = await activityByAccount(associationId, range, accountIds);
+  return accounts.reduce((sum, a) => {
+    const sums = activity.get(a.id);
+    return sums ? sum.plus(balanceOf(a.normalBalance as 'DEBIT' | 'CREDIT', sums.debit, sums.credit)) : sum;
+  }, new Decimal(0));
+}
+
+const entryInclude = {
+  lines: { include: { account: { select: { code: true, name: true } } } },
+  creator: { select: { email: true } },
+  approver: { select: { email: true } },
+} as const;
+
+const percentOf = (part: Decimal, whole: Decimal): number => (whole.isZero() ? 0 : part.dividedBy(whole).times(100).toDecimalPlaces(1).toNumber());
 
 // ============================================
 // ACCOUNTING SERVICE
@@ -137,43 +145,42 @@ export const accountingService = {
   // ==========================================
 
   /**
-   * Initialize standard chart of accounts for an association
+   * Initialize standard chart of accounts for an association. All or nothing: a failure part-way used to leave a half-made chart that
+   * then refused to start again.
    */
   async initializeChartOfAccounts(associationId: number): Promise<ChartOfAccountResponse[]> {
-    const existingAccounts = await prisma.chartOfAccount.count({
-      where: { associationId },
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        if ((await tx.chartOfAccount.count({ where: { associationId } })) > 0) throw rule('The chart of accounts is already set up.', 409, 'ALREADY_INITIALIZED');
 
-    if (existingAccounts > 0) {
-      throw new Error('Chart of accounts already initialized');
-    }
-
-    // Create accounts in order to maintain parent-child relationships
-    const accountMap: Record<string, number> = {};
-
-    for (const accountData of STANDARD_CHART_OF_ACCOUNTS) {
-      // Find parent ID if this is a child account
-      let parentId: number | undefined;
-      if (accountData.code.length > 4) {
-        const parentCode = accountData.code.substring(0, accountData.code.length - 1) + '0';
-        parentId = accountMap[parentCode];
-      }
-
-      const account = await prisma.chartOfAccount.create({
-        data: {
-          associationId,
-          code: accountData.code,
-          name: accountData.name,
-          type: accountData.type,
-          subType: accountData.subType,
-          description: accountData.description,
-          parentId,
-          normalBalance: accountData.normalBalance || 'DEBIT',
-          isSystemAccount: true,
-        },
+        // Create accounts in order to maintain parent-child relationships
+        const accountMap: Record<string, number> = {};
+        for (const accountData of STANDARD_CHART_OF_ACCOUNTS) {
+          let parentId: number | undefined;
+          if (accountData.code.length > 4) {
+            const parentCode = accountData.code.substring(0, accountData.code.length - 1) + '0';
+            parentId = accountMap[parentCode];
+          }
+          const account = await tx.chartOfAccount.create({
+            data: {
+              associationId,
+              code: accountData.code,
+              name: accountData.name,
+              type: accountData.type,
+              subType: accountData.subType,
+              description: accountData.description,
+              parentId,
+              normalBalance: accountData.normalBalance || defaultNormalBalance(accountData.type),
+              isSystemAccount: true,
+            },
+          });
+          accountMap[account.code] = account.id;
+        }
       });
-
-      accountMap[account.code] = account.id;
+    } catch (error) {
+      // Two people starting it at once: the second hits the unique code
+      if (isUniqueViolation(error)) throw rule('The chart of accounts is already set up.', 409, 'ALREADY_INITIALIZED');
+      throw error;
     }
 
     return this.getChartOfAccounts(associationId);
@@ -184,29 +191,21 @@ export const accountingService = {
    */
   async getChartOfAccounts(
     associationId: number,
-    options: {
-      type?: string;
-      isActive?: boolean;
-      includeBalances?: boolean;
-      hierarchical?: boolean;
-    } = {}
+    options: { type?: string; isActive?: boolean; includeBalances?: boolean; hierarchical?: boolean } = {},
   ): Promise<ChartOfAccountResponse[]> {
-    const whereClause: any = { associationId };
-
-    if (options.type) whereClause.type = options.type;
+    const whereClause: Prisma.ChartOfAccountWhereInput = { associationId };
+    if (options.type) whereClause.type = options.type as AccountType;
     if (options.isActive !== undefined) whereClause.isActive = options.isActive;
 
     const accounts = await prisma.chartOfAccount.findMany({
       where: whereClause,
-      include: {
-        children: options.hierarchical ? true : false,
-      },
+      include: { children: options.hierarchical ? true : false },
       orderBy: { code: 'asc' },
     });
 
-    const result: ChartOfAccountResponse[] = [];
+    const activity = options.includeBalances ? await activityByAccount(associationId, {}, accounts.map((a) => a.id)) : null;
 
-    for (const account of accounts) {
+    return accounts.map((account) => {
       const response: ChartOfAccountResponse = {
         id: account.id,
         code: account.code,
@@ -219,213 +218,172 @@ export const accountingService = {
         isSystemAccount: account.isSystemAccount,
         normalBalance: account.normalBalance as any,
       };
-
-      if (options.includeBalances) {
-        response.balance = await calculateAccountBalance(account.id, associationId);
+      if (activity) {
+        const sums = activity.get(account.id);
+        response.balance = sums ? balanceOf(account.normalBalance as 'DEBIT' | 'CREDIT', sums.debit, sums.credit) : new Decimal(0);
       }
-
-      result.push(response);
-    }
-
-    return result;
+      return response;
+    });
   },
 
   /**
-   * Create a new account
+   * Create a new account. Its normal balance follows its type unless one is given (a contra account such as accumulated depreciation
+   * is the usual reason to give one); a child must be of the same type as its parent.
    */
-  async createAccount(
-    associationId: number,
-    data: ChartOfAccountInput
-  ): Promise<ChartOfAccountResponse> {
-    // Check for duplicate code
-    const existing = await prisma.chartOfAccount.findUnique({
-      where: { associationId_code: { associationId, code: data.code } },
-    });
+  async createAccount(associationId: number, data: ChartOfAccountInput, userId?: number): Promise<ChartOfAccountResponse> {
+    const code = data.code.trim();
+    const existing = await prisma.chartOfAccount.findUnique({ where: { associationId_code: { associationId, code } } });
+    if (existing) throw rule(`An account with code ${code} already exists.`, 409, 'CODE_EXISTS');
 
-    if (existing) {
-      throw new Error(`Account with code ${data.code} already exists`);
-    }
-
-    // Validate parent if provided
     if (data.parentId) {
-      const parent = await prisma.chartOfAccount.findFirst({
-        where: { id: data.parentId, associationId },
-      });
-      if (!parent) {
-        throw new Error('Parent account not found');
-      }
+      const parent = await prisma.chartOfAccount.findFirst({ where: { id: data.parentId, associationId } });
+      if (!parent) throw rule('The parent account was not found.', 404, 'PARENT_NOT_FOUND');
+      if (parent.type !== data.type) throw rule(`A ${data.type.toLowerCase()} account must sit under a ${data.type.toLowerCase()} account.`, 400, 'PARENT_TYPE');
     }
 
-    const account = await prisma.chartOfAccount.create({
-      data: {
-        associationId,
-        code: data.code,
-        name: data.name,
-        type: data.type,
-        subType: data.subType,
-        description: data.description,
-        parentId: data.parentId,
-        normalBalance: data.normalBalance || 'DEBIT',
-      },
-    });
-
-    return {
-      id: account.id,
-      code: account.code,
-      name: account.name,
-      type: account.type as any,
-      subType: account.subType,
-      description: account.description,
-      parentId: account.parentId,
-      isActive: account.isActive,
-      isSystemAccount: account.isSystemAccount,
-      normalBalance: account.normalBalance as any,
-    };
+    try {
+      const account = await prisma.chartOfAccount.create({
+        data: {
+          associationId,
+          code,
+          name: data.name.trim(),
+          type: data.type,
+          subType: data.subType,
+          description: data.description,
+          parentId: data.parentId,
+          normalBalance: data.normalBalance || defaultNormalBalance(data.type),
+        },
+      });
+      if (userId) await writeAudit(prisma, associationId, userId, 'ACCOUNT_CREATED', 'chart_of_accounts', account.id, { code: account.code, name: account.name, type: account.type });
+      return formatAccount(account);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw rule(`An account with code ${code} already exists.`, 409, 'CODE_EXISTS');
+      throw error;
+    }
   },
 
   /**
-   * Update an account
+   * Update an account. A built-in account stays switched on, and an account cannot be placed under itself or under one of its own
+   * sub-accounts.
    */
-  async updateAccount(
-    associationId: number,
-    accountId: number,
-    data: Partial<ChartOfAccountInput> & { isActive?: boolean }
-  ): Promise<ChartOfAccountResponse> {
-    const account = await prisma.chartOfAccount.findFirst({
-      where: { id: accountId, associationId },
-    });
+  async updateAccount(associationId: number, accountId: number, data: Partial<Omit<ChartOfAccountInput, 'parentId' | 'subType' | 'description'>> & { subType?: string | null; description?: string | null; isActive?: boolean; parentId?: number | null }, userId?: number): Promise<ChartOfAccountResponse> {
+    const account = await prisma.chartOfAccount.findFirst({ where: { id: accountId, associationId } });
+    if (!account) throw rule('Account not found.', 404, 'ACCOUNT_NOT_FOUND');
 
-    if (!account) {
-      throw new Error('Account not found');
-    }
+    if (account.isSystemAccount && (data.code || data.type)) throw rule('The code and type of a built-in account cannot be changed.', 400, 'SYSTEM_ACCOUNT');
+    if (account.isSystemAccount && data.isActive === false) throw rule('A built-in account cannot be switched off.', 400, 'SYSTEM_ACCOUNT');
 
-    // Cannot modify system accounts' core properties
-    if (account.isSystemAccount && (data.code || data.type)) {
-      throw new Error('Cannot modify code or type of system accounts');
+    // A number moves the account under that parent; null takes it out from under its parent
+    if (data.parentId !== undefined && data.parentId !== null) {
+      if (data.parentId === accountId) throw rule('An account cannot be its own parent.', 400, 'PARENT_CYCLE');
+      const parent = await prisma.chartOfAccount.findFirst({ where: { id: data.parentId, associationId } });
+      if (!parent) throw rule('The parent account was not found.', 404, 'PARENT_NOT_FOUND');
+      if (parent.type !== account.type) throw rule(`A ${account.type.toLowerCase()} account must sit under a ${account.type.toLowerCase()} account.`, 400, 'PARENT_TYPE');
+      // Walk up from the new parent: meeting this account means the move would make a loop
+      let cursor: number | null = parent.parentId;
+      for (let depth = 0; cursor && depth < 20; depth += 1) {
+        if (cursor === accountId) throw rule('That would put the account under one of its own sub-accounts.', 400, 'PARENT_CYCLE');
+        const up: { parentId: number | null } | null = await prisma.chartOfAccount.findUnique({ where: { id: cursor }, select: { parentId: true } });
+        cursor = up?.parentId ?? null;
+      }
     }
 
     const updated = await prisma.chartOfAccount.update({
       where: { id: accountId },
-      data: {
-        name: data.name,
-        subType: data.subType,
-        description: data.description,
-        parentId: data.parentId,
-        isActive: data.isActive,
-      },
+      data: { name: data.name?.trim(), subType: data.subType, description: data.description, parentId: data.parentId, isActive: data.isActive },
     });
-
-    return {
-      id: updated.id,
-      code: updated.code,
-      name: updated.name,
-      type: updated.type as any,
-      subType: updated.subType,
-      description: updated.description,
-      parentId: updated.parentId,
-      isActive: updated.isActive,
-      isSystemAccount: updated.isSystemAccount,
-      normalBalance: updated.normalBalance as any,
-    };
+    if (userId) await writeAudit(prisma, associationId, userId, 'ACCOUNT_UPDATED', 'chart_of_accounts', accountId, { name: updated.name, isActive: updated.isActive, parentId: updated.parentId }, { name: account.name, isActive: account.isActive, parentId: account.parentId });
+    return formatAccount(updated);
   },
 
   /**
-   * Delete an account (soft delete by deactivating)
+   * Delete an account: switched off when it has been used, removed when it never was. One with sub-accounts or a budget line stays.
    */
-  async deleteAccount(associationId: number, accountId: number): Promise<void> {
-    const account = await prisma.chartOfAccount.findFirst({
-      where: { id: accountId, associationId },
-    });
+  async deleteAccount(associationId: number, accountId: number, userId?: number): Promise<{ removed: boolean }> {
+    const account = await prisma.chartOfAccount.findFirst({ where: { id: accountId, associationId } });
+    if (!account) throw rule('Account not found.', 404, 'ACCOUNT_NOT_FOUND');
+    if (account.isSystemAccount) throw rule('A built-in account cannot be deleted.', 400, 'SYSTEM_ACCOUNT');
 
-    if (!account) {
-      throw new Error('Account not found');
+    if ((await prisma.chartOfAccount.count({ where: { parentId: accountId, associationId } })) > 0) {
+      throw rule('This account has sub-accounts. Move or delete them first.', 409, 'HAS_CHILDREN');
+    }
+    if ((await prisma.budgetItem.count({ where: { accountId } })) > 0) {
+      throw rule('This account is used in a budget, so it cannot be deleted. Switch it off instead.', 409, 'IN_BUDGET');
     }
 
-    if (account.isSystemAccount) {
-      throw new Error('Cannot delete system accounts');
-    }
-
-    // Check if account has any journal entries
-    const hasEntries = await prisma.journalEntryLine.count({
-      where: { accountId },
-    });
-
-    if (hasEntries > 0) {
-      // Soft delete
-      await prisma.chartOfAccount.update({
-        where: { id: accountId },
-        data: { isActive: false },
-      });
+    const used = await prisma.journalEntryLine.count({ where: { accountId } });
+    if (used > 0) {
+      await prisma.chartOfAccount.update({ where: { id: accountId }, data: { isActive: false } });
     } else {
-      // Hard delete if no entries
-      await prisma.chartOfAccount.delete({
-        where: { id: accountId },
-      });
+      await prisma.chartOfAccount.delete({ where: { id: accountId } });
     }
+    if (userId) await writeAudit(prisma, associationId, userId, used > 0 ? 'ACCOUNT_DEACTIVATED' : 'ACCOUNT_DELETED', 'chart_of_accounts', accountId, { code: account.code, name: account.name });
+    return { removed: used === 0 };
   },
-
 
   // ==========================================
   // TASK-ACC-002: Journal Entry System
   // ==========================================
 
   /**
-   * Create a journal entry
+   * Create a journal entry. A person's entry starts as a draft; an automatic one (made by the app when money moves) is written
+   * already posted, in the same step, so it can never be left half done.
    */
   async createJournalEntry(
     associationId: number,
     userId: number,
-    data: JournalEntryInput
+    data: JournalEntryInput,
+    options: { source?: { type: string; id?: number }; autoPost?: boolean } = {},
   ): Promise<JournalEntryResponse> {
-    await accountingPeriodsService.assertDateIsPostable(associationId, new Date(data.entryDate));
+    const entryDate = new Date(data.entryDate);
+    if (Number.isNaN(entryDate.getTime())) throw rule('Choose a valid date for the entry.', 400, 'INVALID_DATE');
+    await accountingPeriodsService.assertDateIsPostable(associationId, entryDate);
 
-    const entryNumber = await generateEntryNumber(associationId);
+    const description = data.description?.trim();
+    if (!description) throw rule('Describe the entry.', 400, 'INVALID_ENTRY');
 
-    // Validate all accounts exist and belong to association
-    const accountIds = data.lines.map(line => line.accountId);
-    const accounts = await prisma.chartOfAccount.findMany({
-      where: { id: { in: accountIds }, associationId, isActive: true },
-    });
+    // Automatic entries are worked out by the app from amounts with many decimals (interest, percentages): round to the kobo first
+    const rawLines = options.autoPost
+      ? data.lines.map((l) => ({ ...l, debitAmount: Number(new Decimal(l.debitAmount || 0).toDecimalPlaces(2)), creditAmount: Number(new Decimal(l.creditAmount || 0).toDecimalPlaces(2)) }))
+      : data.lines;
+    const { lines, total } = cleanEntryLines(rawLines);
 
-    if (accounts.length !== accountIds.length) {
-      throw new Error('One or more accounts not found or inactive');
+    const accountIds = [...new Set(lines.map((l) => l.accountId))];
+    const accounts = await prisma.chartOfAccount.findMany({ where: { id: { in: accountIds }, associationId, isActive: true }, select: { id: true } });
+    if (accounts.length !== accountIds.length) throw rule('One or more accounts were not found or are switched off.', 400, 'INVALID_ACCOUNT');
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        const entry = await prisma.$transaction(async (tx) => {
+          const created = await tx.journalEntry.create({
+            data: {
+              associationId,
+              entryNumber: await generateEntryNumber(tx, associationId),
+              entryDate,
+              description,
+              reference: data.reference?.trim() || null,
+              sourceType: options.source ? `auto_sync:${options.source.type}` : 'manual',
+              sourceId: options.source?.id ?? null,
+              status: options.autoPost ? 'POSTED' : 'DRAFT',
+              postedAt: options.autoPost ? new Date() : null,
+              totalDebit: total,
+              totalCredit: total,
+              createdBy: userId,
+              lines: { create: lines.map((l) => ({ accountId: l.accountId, debitAmount: l.debit, creditAmount: l.credit, description: l.description })) },
+            },
+            include: entryInclude,
+          });
+          if (!options.autoPost) await writeAudit(tx, associationId, userId, 'JOURNAL_CREATED', 'journal_entries', created.id, { entryNumber: created.entryNumber, total: total.toFixed(2) });
+          return created;
+        });
+        return this.formatJournalEntryResponse(entry);
+      } catch (error) {
+        // Another entry took this number a moment ago: take the next one
+        if (isUniqueViolation(error) && attempt < 4) continue;
+        throw error;
+      }
     }
-
-    // Calculate totals
-    const totalDebit = data.lines.reduce((sum, line) => sum + (line.debitAmount || 0), 0);
-    const totalCredit = data.lines.reduce((sum, line) => sum + (line.creditAmount || 0), 0);
-
-    const entry = await prisma.journalEntry.create({
-      data: {
-        associationId,
-        entryNumber,
-        entryDate: new Date(data.entryDate),
-        description: data.description,
-        reference: data.reference,
-        sourceType: 'manual',
-        status: 'DRAFT',
-        totalDebit: new Decimal(totalDebit),
-        totalCredit: new Decimal(totalCredit),
-        createdBy: userId,
-        lines: {
-          create: data.lines.map(line => ({
-            accountId: line.accountId,
-            debitAmount: new Decimal(line.debitAmount || 0),
-            creditAmount: new Decimal(line.creditAmount || 0),
-            description: line.description,
-          })),
-        },
-      },
-      include: {
-        lines: {
-          include: {
-            account: { select: { code: true, name: true } },
-          },
-        },
-      },
-    });
-
-    return this.formatJournalEntryResponse(entry);
+    throw rule('Could not number the entry. Try again.', 409, 'NUMBERING_CONFLICT');
   },
 
   /**
@@ -433,29 +391,16 @@ export const accountingService = {
    */
   async getJournalEntries(
     associationId: number,
-    options: {
-      page?: number;
-      limit?: number;
-      status?: string;
-      startDate?: Date;
-      endDate?: Date;
-      search?: string;
-      sortBy?: string;
-      sortOrder?: 'asc' | 'desc';
-    } = {}
+    options: { page?: number; limit?: number; status?: string; startDate?: Date; endDate?: Date; search?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' } = {},
   ): Promise<{ entries: JournalEntryResponse[]; pagination: any }> {
-    const page = options.page || 1;
-    const limit = options.limit || 20;
+    const page = Math.max(1, options.page || 1);
+    const limit = Math.min(100, Math.max(1, options.limit || 20));
     const skip = (page - 1) * limit;
 
-    const whereClause: any = { associationId };
-
-    if (options.status) whereClause.status = options.status;
-    if (options.startDate && options.endDate) {
-      whereClause.entryDate = {
-        gte: options.startDate,
-        lte: options.endDate,
-      };
+    const whereClause: Prisma.JournalEntryWhereInput = { associationId };
+    if (options.status) whereClause.status = options.status as any;
+    if (options.startDate || options.endDate) {
+      whereClause.entryDate = { ...(options.startDate ? { gte: options.startDate } : {}), ...(options.endDate ? { lte: options.endDate } : {}) };
     }
     if (options.search) {
       whereClause.OR = [
@@ -465,19 +410,12 @@ export const accountingService = {
       ];
     }
 
+    const sortBy = ['entryDate', 'entryNumber', 'createdAt'].includes(options.sortBy ?? '') ? (options.sortBy as string) : 'entryDate';
     const [entries, totalCount] = await Promise.all([
       prisma.journalEntry.findMany({
         where: whereClause,
-        include: {
-          lines: {
-            include: {
-              account: { select: { code: true, name: true } },
-            },
-          },
-          creator: { select: { email: true } },
-          approver: { select: { email: true } },
-        },
-        orderBy: { [options.sortBy || 'entryDate']: options.sortOrder || 'desc' },
+        include: entryInclude,
+        orderBy: [{ [sortBy]: options.sortOrder === 'asc' ? 'asc' : 'desc' }, { id: 'desc' }],
         skip,
         take: limit,
       }),
@@ -485,119 +423,81 @@ export const accountingService = {
     ]);
 
     return {
-      entries: entries.map(e => this.formatJournalEntryResponse(e)),
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-        hasMore: skip + entries.length < totalCount,
-      },
+      entries: entries.map((e) => this.formatJournalEntryResponse(e)),
+      pagination: { page, limit, totalCount, totalPages: Math.ceil(totalCount / limit), hasMore: skip + entries.length < totalCount },
     };
   },
 
   /**
    * Get a single journal entry
    */
-  async getJournalEntry(
-    associationId: number,
-    entryId: number
-  ): Promise<JournalEntryResponse | null> {
-    const entry = await prisma.journalEntry.findFirst({
-      where: { id: entryId, associationId },
-      include: {
-        lines: {
-          include: {
-            account: { select: { code: true, name: true } },
-          },
-        },
-        creator: { select: { email: true } },
-        approver: { select: { email: true } },
-      },
-    });
-
+  async getJournalEntry(associationId: number, entryId: number): Promise<JournalEntryResponse | null> {
+    const entry = await prisma.journalEntry.findFirst({ where: { id: entryId, associationId }, include: entryInclude });
     return entry ? this.formatJournalEntryResponse(entry) : null;
   },
 
   /**
-   * Update a journal entry (only if DRAFT)
+   * Update a journal entry while it is a draft, or after it was rejected (editing a rejected entry makes it a draft again so it can be
+   * sent back for approval). The lines are replaced in the same step as the rest, so a failure never leaves an entry with no lines.
    */
-  async updateJournalEntry(
-    associationId: number,
-    entryId: number,
-    data: Partial<JournalEntryInput>
-  ): Promise<JournalEntryResponse> {
-    const entry = await prisma.journalEntry.findFirst({
-      where: { id: entryId, associationId },
-    });
+  async updateJournalEntry(associationId: number, entryId: number, data: Partial<JournalEntryInput>, userId?: number): Promise<JournalEntryResponse> {
+    const entry = await prisma.journalEntry.findFirst({ where: { id: entryId, associationId } });
+    if (!entry) throw rule('Journal entry not found.', 404, 'ENTRY_NOT_FOUND');
+    if (entry.status !== 'DRAFT' && entry.status !== 'REJECTED') throw rule('Only a draft or a rejected entry can be changed.', 409, 'WRONG_STATUS');
 
-    if (!entry) {
-      throw new Error('Journal entry not found');
+    const entryDate = data.entryDate ? new Date(data.entryDate) : entry.entryDate;
+    if (Number.isNaN(entryDate.getTime())) throw rule('Choose a valid date for the entry.', 400, 'INVALID_DATE');
+    if (data.entryDate) await accountingPeriodsService.assertDateIsPostable(associationId, entryDate);
+    if (data.description !== undefined && !data.description.trim()) throw rule('Describe the entry.', 400, 'INVALID_ENTRY');
+
+    const cleaned = data.lines ? cleanEntryLines(data.lines) : null;
+    if (cleaned) {
+      const accountIds = [...new Set(cleaned.lines.map((l) => l.accountId))];
+      const accounts = await prisma.chartOfAccount.findMany({ where: { id: { in: accountIds }, associationId, isActive: true }, select: { id: true } });
+      if (accounts.length !== accountIds.length) throw rule('One or more accounts were not found or are switched off.', 400, 'INVALID_ACCOUNT');
     }
 
-    if (entry.status !== 'DRAFT') {
-      throw new Error('Can only update draft entries');
-    }
-
-    if (data.entryDate) {
-      await accountingPeriodsService.assertDateIsPostable(associationId, new Date(data.entryDate));
-    }
-
-    const updateData: any = {};
-    if (data.entryDate) updateData.entryDate = new Date(data.entryDate);
-    if (data.description) updateData.description = data.description;
-    if (data.reference !== undefined) updateData.reference = data.reference;
-
-    if (data.lines) {
-      const totalDebit = data.lines.reduce((sum, line) => sum + (line.debitAmount || 0), 0);
-      const totalCredit = data.lines.reduce((sum, line) => sum + (line.creditAmount || 0), 0);
-      updateData.totalDebit = new Decimal(totalDebit);
-      updateData.totalCredit = new Decimal(totalCredit);
-
-      // Delete existing lines and create new ones
-      await prisma.journalEntryLine.deleteMany({
-        where: { journalEntryId: entryId },
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.journalEntry.updateMany({
+        where: { id: entryId, associationId, status: { in: ['DRAFT', 'REJECTED'] } },
+        data: {
+          entryDate,
+          ...(data.description !== undefined ? { description: data.description.trim() } : {}),
+          ...(data.reference !== undefined ? { reference: data.reference?.trim() || null } : {}),
+          ...(cleaned ? { totalDebit: cleaned.total, totalCredit: cleaned.total } : {}),
+          status: 'DRAFT',
+          rejectedBy: null,
+          rejectedAt: null,
+          rejectionReason: null,
+        },
       });
+      if (claimed.count === 0) throw rule('That entry was just changed by someone else.', 409, 'WRONG_STATUS');
 
-      await prisma.journalEntryLine.createMany({
-        data: data.lines.map(line => ({
-          journalEntryId: entryId,
-          accountId: line.accountId,
-          debitAmount: new Decimal(line.debitAmount || 0),
-          creditAmount: new Decimal(line.creditAmount || 0),
-          description: line.description,
-        })),
-      });
-    }
-
-    await prisma.journalEntry.update({
-      where: { id: entryId },
-      data: updateData,
+      if (cleaned) {
+        await tx.journalEntryLine.deleteMany({ where: { journalEntryId: entryId } });
+        await tx.journalEntryLine.createMany({
+          data: cleaned.lines.map((l) => ({ journalEntryId: entryId, accountId: l.accountId, debitAmount: l.debit, creditAmount: l.credit, description: l.description })),
+        });
+      }
+      if (userId) await writeAudit(tx, associationId, userId, 'JOURNAL_UPDATED', 'journal_entries', entryId, { entryNumber: entry.entryNumber, linesChanged: !!cleaned });
     });
 
     return (await this.getJournalEntry(associationId, entryId))!;
   },
 
   /**
-   * Submit entry for approval
+   * Submit a draft for approval. It is checked again now (balanced, accounts on, period open) so a bad entry fails here, not at posting.
    */
-  async submitForApproval(associationId: number, entryId: number): Promise<JournalEntryResponse> {
-    const entry = await prisma.journalEntry.findFirst({
-      where: { id: entryId, associationId },
-    });
+  async submitForApproval(associationId: number, entryId: number, userId?: number): Promise<JournalEntryResponse> {
+    const entry = await prisma.journalEntry.findFirst({ where: { id: entryId, associationId }, include: { lines: true } });
+    if (!entry) throw rule('Journal entry not found.', 404, 'ENTRY_NOT_FOUND');
+    if (entry.status !== 'DRAFT') throw rule('Only a draft can be sent for approval.', 409, 'WRONG_STATUS');
 
-    if (!entry) {
-      throw new Error('Journal entry not found');
-    }
+    await assertEntryCanBePosted(associationId, entry);
 
-    if (entry.status !== 'DRAFT') {
-      throw new Error('Can only submit draft entries for approval');
-    }
-
-    await prisma.journalEntry.update({
-      where: { id: entryId },
-      data: { status: 'PENDING_APPROVAL' },
-    });
+    const claimed = await prisma.journalEntry.updateMany({ where: { id: entryId, associationId, status: 'DRAFT' }, data: { status: 'PENDING_APPROVAL' } });
+    if (claimed.count === 0) throw rule('That entry was just changed by someone else.', 409, 'WRONG_STATUS');
+    if (userId) await writeAudit(prisma, associationId, userId, 'JOURNAL_SUBMITTED', 'journal_entries', entryId, { entryNumber: entry.entryNumber });
 
     return (await this.getJournalEntry(associationId, entryId))!;
   },
@@ -607,80 +507,51 @@ export const accountingService = {
   // ==========================================
 
   /**
-   * Approve or reject a journal entry
+   * Approve or reject a journal entry. Nobody approves their own entry, and an entry is decided once.
    */
-  async processApproval(
-    associationId: number,
-    entryId: number,
-    userId: number,
-    action: 'approve' | 'reject',
-    reason?: string
-  ): Promise<JournalEntryResponse> {
-    const entry = await prisma.journalEntry.findFirst({
-      where: { id: entryId, associationId },
-    });
-
-    if (!entry) {
-      throw new Error('Journal entry not found');
-    }
-
-    if (entry.status !== 'PENDING_APPROVAL') {
-      throw new Error('Entry is not pending approval');
-    }
-
-    if (entry.createdBy === userId) {
-      throw new Error('Cannot approve your own entry');
-    }
+  async processApproval(associationId: number, entryId: number, userId: number, action: 'approve' | 'reject', reason?: string): Promise<JournalEntryResponse> {
+    const entry = await prisma.journalEntry.findFirst({ where: { id: entryId, associationId } });
+    if (!entry) throw rule('Journal entry not found.', 404, 'ENTRY_NOT_FOUND');
+    if (entry.status !== 'PENDING_APPROVAL') throw rule('This entry is not waiting for approval.', 409, 'WRONG_STATUS');
+    if (entry.createdBy === userId) throw rule('You cannot approve or reject your own entry. Ask another officer.', 403, 'OWN_ENTRY');
 
     if (action === 'approve') {
-      await prisma.journalEntry.update({
-        where: { id: entryId },
-        data: {
-          status: 'APPROVED',
-          approvedBy: userId,
-          approvedAt: new Date(),
-        },
+      const claimed = await prisma.journalEntry.updateMany({
+        where: { id: entryId, associationId, status: 'PENDING_APPROVAL' },
+        data: { status: 'APPROVED', approvedBy: userId, approvedAt: new Date() },
       });
+      if (claimed.count === 0) throw rule('Someone else just decided this entry.', 409, 'ALREADY_DECIDED');
+      await writeAudit(prisma, associationId, userId, 'JOURNAL_APPROVED', 'journal_entries', entryId, { entryNumber: entry.entryNumber });
     } else {
-      if (!reason) {
-        throw new Error('Rejection reason is required');
-      }
-      await prisma.journalEntry.update({
-        where: { id: entryId },
-        data: {
-          status: 'REJECTED',
-          rejectedBy: userId,
-          rejectedAt: new Date(),
-          rejectionReason: reason,
-        },
+      const why = reason?.trim();
+      if (!why) throw rule('Say why you are rejecting it.', 400, 'REASON_REQUIRED');
+      const claimed = await prisma.journalEntry.updateMany({
+        where: { id: entryId, associationId, status: 'PENDING_APPROVAL' },
+        data: { status: 'REJECTED', rejectedBy: userId, rejectedAt: new Date(), rejectionReason: why },
       });
+      if (claimed.count === 0) throw rule('Someone else just decided this entry.', 409, 'ALREADY_DECIDED');
+      await writeAudit(prisma, associationId, userId, 'JOURNAL_REJECTED', 'journal_entries', entryId, { entryNumber: entry.entryNumber, reason: why });
     }
 
     return (await this.getJournalEntry(associationId, entryId))!;
   },
 
   /**
-   * Post an approved journal entry
+   * Post an approved entry to the books. Checked once more at this moment: the entry still balances, its accounts are still on, and
+   * its period has not been closed since it was written. It is posted once, however many times it is asked.
    */
-  async postJournalEntry(associationId: number, entryId: number): Promise<JournalEntryResponse> {
-    const entry = await prisma.journalEntry.findFirst({
-      where: { id: entryId, associationId },
-    });
+  async postJournalEntry(associationId: number, entryId: number, userId: number): Promise<JournalEntryResponse> {
+    const entry = await prisma.journalEntry.findFirst({ where: { id: entryId, associationId }, include: { lines: true } });
+    if (!entry) throw rule('Journal entry not found.', 404, 'ENTRY_NOT_FOUND');
+    if (entry.status === 'POSTED') throw rule('This entry is already posted.', 409, 'ALREADY_POSTED');
+    if (entry.status !== 'APPROVED') throw rule('Only an approved entry can be posted.', 409, 'WRONG_STATUS');
 
-    if (!entry) {
-      throw new Error('Journal entry not found');
-    }
+    await assertEntryCanBePosted(associationId, entry);
 
-    if (entry.status !== 'APPROVED') {
-      throw new Error('Can only post approved entries');
-    }
-
-    await prisma.journalEntry.update({
-      where: { id: entryId },
-      data: {
-        status: 'POSTED',
-        postedAt: new Date(),
-      },
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.journalEntry.updateMany({ where: { id: entryId, associationId, status: 'APPROVED' }, data: { status: 'POSTED', postedAt: new Date() } });
+      if (claimed.count === 0) throw rule('This entry was just posted by someone else.', 409, 'ALREADY_POSTED');
+      await writeAudit(tx, associationId, userId, 'JOURNAL_POSTED', 'journal_entries', entryId, { entryNumber: entry.entryNumber, total: entry.totalDebit.toString() });
     });
 
     return (await this.getJournalEntry(associationId, entryId))!;
@@ -690,9 +561,7 @@ export const accountingService = {
    * Get pending approvals count
    */
   async getPendingApprovalsCount(associationId: number): Promise<number> {
-    return prisma.journalEntry.count({
-      where: { associationId, status: 'PENDING_APPROVAL' },
-    });
+    return prisma.journalEntry.count({ where: { associationId, status: 'PENDING_APPROVAL' } });
   },
 
   /**
@@ -706,12 +575,18 @@ export const accountingService = {
       description: entry.description,
       reference: entry.reference,
       sourceType: entry.sourceType,
+      sourceId: entry.sourceId ?? null,
       status: entry.status,
       totalDebit: entry.totalDebit,
       totalCredit: entry.totalCredit,
       createdBy: entry.createdBy,
+      createdByEmail: entry.creator?.email ?? null,
       approvedBy: entry.approvedBy,
+      approvedByEmail: entry.approver?.email ?? null,
       approvedAt: entry.approvedAt,
+      rejectionReason: entry.rejectionReason ?? null,
+      rejectedAt: entry.rejectedAt ?? null,
+      postedAt: entry.postedAt ?? null,
       createdAt: entry.createdAt,
       lines: entry.lines.map((line: any) => ({
         id: line.id,
@@ -725,78 +600,53 @@ export const accountingService = {
     };
   },
 
-
   // ==========================================
   // TASK-ACC-003: Income Statement (P&L)
   // ==========================================
 
   /**
-   * Generate Income Statement (Profit & Loss)
+   * Generate Income Statement (Profit & Loss): income and spending within the period only. It used to add up everything since the
+   * books began, so "this month" showed the association's whole history.
    */
   async generateIncomeStatement(
     associationId: number,
     filter: { startDate?: Date; endDate?: Date; period?: string },
-    includeComparison: boolean = false
+    includeComparison: boolean = false,
   ): Promise<IncomeStatementReport> {
     const { startDate, endDate, label } = getDateRange(filter as any);
+    const range = { from: startDate, to: endDate };
 
-    // Get revenue accounts (INCOME type)
-    const revenueAccounts = await getAccountBalancesByType(associationId, 'INCOME', endDate);
-    const totalRevenue = revenueAccounts.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-
-    // Get expense accounts (EXPENSE type)
-    const expenseAccounts = await getAccountBalancesByType(associationId, 'EXPENSE', endDate);
-    const totalExpenses = expenseAccounts.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-
+    const revenueAccounts = await getAccountBalancesByType(associationId, 'INCOME', range);
+    const expenseAccounts = await getAccountBalancesByType(associationId, 'EXPENSE', range);
+    const totalRevenue = sumBalances(revenueAccounts);
+    const totalExpenses = sumBalances(expenseAccounts);
     const netIncome = totalRevenue.minus(totalExpenses);
 
     const report: IncomeStatementReport = {
       period: { startDate, endDate, label },
-      revenue: {
-        total: totalRevenue,
-        accounts: revenueAccounts,
-      },
-      expenses: {
-        total: totalExpenses,
-        accounts: expenseAccounts,
-      },
+      revenue: { total: totalRevenue, accounts: revenueAccounts },
+      expenses: { total: totalExpenses, accounts: expenseAccounts },
       netIncome,
     };
 
     if (includeComparison) {
-      // Calculate previous period
+      // The stretch of the same length just before this one
       const duration = endDate.getTime() - startDate.getTime();
       const prevEndDate = new Date(startDate.getTime() - 1);
       const prevStartDate = new Date(prevEndDate.getTime() - duration);
+      const prevRange = { from: prevStartDate, to: prevEndDate };
 
-      const prevRevenueAccounts = await getAccountBalancesByType(associationId, 'INCOME', prevEndDate);
-      const prevTotalRevenue = prevRevenueAccounts.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-
-      const prevExpenseAccounts = await getAccountBalancesByType(associationId, 'EXPENSE', prevEndDate);
-      const prevTotalExpenses = prevExpenseAccounts.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-
+      const prevTotalRevenue = sumBalances(await getAccountBalancesByType(associationId, 'INCOME', prevRange));
+      const prevTotalExpenses = sumBalances(await getAccountBalancesByType(associationId, 'EXPENSE', prevRange));
       const prevNetIncome = prevTotalRevenue.minus(prevTotalExpenses);
 
+      const change = (now: Decimal, before: Decimal) => ({
+        amount: now.minus(before),
+        percentage: before.isZero() ? 0 : now.minus(before).dividedBy(before.abs()).times(100).toNumber(),
+      });
       report.comparison = {
-        previousPeriod: {
-          revenue: prevTotalRevenue,
-          expenses: prevTotalExpenses,
-          netIncome: prevNetIncome,
-        },
-        changes: {
-          revenue: {
-            amount: totalRevenue.minus(prevTotalRevenue),
-            percentage: prevTotalRevenue.isZero() ? 0 : totalRevenue.minus(prevTotalRevenue).dividedBy(prevTotalRevenue).times(100).toNumber(),
-          },
-          expenses: {
-            amount: totalExpenses.minus(prevTotalExpenses),
-            percentage: prevTotalExpenses.isZero() ? 0 : totalExpenses.minus(prevTotalExpenses).dividedBy(prevTotalExpenses).times(100).toNumber(),
-          },
-          netIncome: {
-            amount: netIncome.minus(prevNetIncome),
-            percentage: prevNetIncome.isZero() ? 0 : netIncome.minus(prevNetIncome).dividedBy(prevNetIncome.abs()).times(100).toNumber(),
-          },
-        },
+        previousPeriod: { revenue: prevTotalRevenue, expenses: prevTotalExpenses, netIncome: prevNetIncome },
+        changes: { revenue: change(totalRevenue, prevTotalRevenue), expenses: change(totalExpenses, prevTotalExpenses), netIncome: change(netIncome, prevNetIncome) },
       };
     }
 
@@ -808,46 +658,43 @@ export const accountingService = {
   // ==========================================
 
   /**
-   * Generate Balance Sheet
+   * Generate Balance Sheet: everything posted up to the date. Every asset and liability is shown, including the ones that are neither
+   * current nor long term, so the sheet adds up whenever the books do.
    */
-  async generateBalanceSheet(
-    associationId: number,
-    asOfDate?: Date
-  ): Promise<BalanceSheetReport> {
+  async generateBalanceSheet(associationId: number, asOfDate?: Date): Promise<BalanceSheetReport> {
     const date = asOfDate || new Date();
+    const range = { to: date };
 
-    // Get Assets
-    const currentAssets = await getAccountBalancesByType(associationId, 'ASSET', date, 'current_asset');
-    const fixedAssets = await getAccountBalancesByType(associationId, 'ASSET', date, 'fixed_asset');
-    const otherAssets = await getAccountBalancesByType(associationId, 'ASSET', date);
-    
-    // Filter out current and fixed from other
-    const currentAssetIds = new Set(currentAssets.map(a => a.accountId));
-    const fixedAssetIds = new Set(fixedAssets.map(a => a.accountId));
-    const filteredOtherAssets = otherAssets.filter(a => !currentAssetIds.has(a.accountId) && !fixedAssetIds.has(a.accountId));
+    const allAssets = await getAccountBalancesByType(associationId, 'ASSET', range);
+    const subTypes = await prisma.chartOfAccount.findMany({ where: { associationId, type: 'ASSET' }, select: { id: true, subType: true } });
+    const subTypeOf = new Map(subTypes.map((a) => [a.id, a.subType]));
+    const currentAssets = allAssets.filter((a) => subTypeOf.get(a.accountId) === 'current_asset');
+    const fixedAssets = allAssets.filter((a) => subTypeOf.get(a.accountId) === 'fixed_asset');
+    const otherAssets = allAssets.filter((a) => !['current_asset', 'fixed_asset'].includes(subTypeOf.get(a.accountId) ?? ''));
 
-    const totalCurrentAssets = currentAssets.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-    const totalFixedAssets = fixedAssets.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-    const totalOtherAssets = filteredOtherAssets.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
+    const totalCurrentAssets = sumBalances(currentAssets);
+    const totalFixedAssets = sumBalances(fixedAssets);
+    const totalOtherAssets = sumBalances(otherAssets);
     const totalAssets = totalCurrentAssets.plus(totalFixedAssets).plus(totalOtherAssets);
 
-    // Get Liabilities
-    const currentLiabilities = await getAccountBalancesByType(associationId, 'LIABILITY', date, 'current_liability');
-    const longTermLiabilities = await getAccountBalancesByType(associationId, 'LIABILITY', date, 'long_term_liability');
+    const allLiabilities = await getAccountBalancesByType(associationId, 'LIABILITY', range);
+    const liabilitySubTypes = await prisma.chartOfAccount.findMany({ where: { associationId, type: 'LIABILITY' }, select: { id: true, subType: true } });
+    const liabilitySubTypeOf = new Map(liabilitySubTypes.map((a) => [a.id, a.subType]));
+    const currentLiabilities = allLiabilities.filter((a) => liabilitySubTypeOf.get(a.accountId) === 'current_liability');
+    const longTermLiabilities = allLiabilities.filter((a) => liabilitySubTypeOf.get(a.accountId) === 'long_term_liability');
+    const otherLiabilities = allLiabilities.filter((a) => !['current_liability', 'long_term_liability'].includes(liabilitySubTypeOf.get(a.accountId) ?? ''));
 
-    const totalCurrentLiabilities = currentLiabilities.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-    const totalLongTermLiabilities = longTermLiabilities.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-    const totalLiabilities = totalCurrentLiabilities.plus(totalLongTermLiabilities);
+    const totalCurrentLiabilities = sumBalances(currentLiabilities);
+    const totalLongTermLiabilities = sumBalances(longTermLiabilities);
+    const totalOtherLiabilities = sumBalances(otherLiabilities);
+    const totalLiabilities = totalCurrentLiabilities.plus(totalLongTermLiabilities).plus(totalOtherLiabilities);
 
-    // Get Equity
-    const equityAccounts = await getAccountBalancesByType(associationId, 'EQUITY', date);
-    const totalEquityAccounts = equityAccounts.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
+    const equityAccounts = await getAccountBalancesByType(associationId, 'EQUITY', range);
+    const totalEquityAccounts = sumBalances(equityAccounts);
 
-    // Calculate retained earnings (net income from all periods)
-    const revenueAccounts = await getAccountBalancesByType(associationId, 'INCOME', date);
-    const expenseAccounts = await getAccountBalancesByType(associationId, 'EXPENSE', date);
-    const totalRevenue = revenueAccounts.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
-    const totalExpenses = expenseAccounts.reduce((sum, acc) => sum.plus(acc.balance), new Decimal(0));
+    // What the association has earned since the books began and not yet moved into equity
+    const totalRevenue = sumBalances(await getAccountBalancesByType(associationId, 'INCOME', range));
+    const totalExpenses = sumBalances(await getAccountBalancesByType(associationId, 'EXPENSE', range));
     const retainedEarnings = totalRevenue.minus(totalExpenses);
 
     const totalEquity = totalEquityAccounts.plus(retainedEarnings);
@@ -855,27 +702,17 @@ export const accountingService = {
 
     return {
       asOfDate: date,
-      assets: {
-        current: currentAssets,
-        fixed: fixedAssets,
-        other: filteredOtherAssets,
-        totalCurrent: totalCurrentAssets,
-        totalFixed: totalFixedAssets,
-        totalOther: totalOtherAssets,
-        total: totalAssets,
-      },
+      assets: { current: currentAssets, fixed: fixedAssets, other: otherAssets, totalCurrent: totalCurrentAssets, totalFixed: totalFixedAssets, totalOther: totalOtherAssets, total: totalAssets },
       liabilities: {
         current: currentLiabilities,
         longTerm: longTermLiabilities,
+        other: otherLiabilities,
         totalCurrent: totalCurrentLiabilities,
         totalLongTerm: totalLongTermLiabilities,
+        totalOther: totalOtherLiabilities,
         total: totalLiabilities,
       },
-      equity: {
-        accounts: equityAccounts,
-        retainedEarnings,
-        total: totalEquity,
-      },
+      equity: { accounts: equityAccounts, retainedEarnings, total: totalEquity },
       totalLiabilitiesAndEquity,
       isBalanced: totalAssets.equals(totalLiabilitiesAndEquity),
     };
@@ -886,126 +723,70 @@ export const accountingService = {
   // ==========================================
 
   /**
-   * Generate Cash Flow Statement
+   * Generate Cash Flow Statement. Cash accounts are asset accounts only (a "Bank Charges" expense is not a bank account), the opening
+   * balance is what stood just before the period began, and money moved between two cash accounts is not an inflow or an outflow.
    */
-  async generateCashFlowStatement(
-    associationId: number,
-    filter: { startDate?: Date; endDate?: Date; period?: string }
-  ): Promise<CashFlowReport> {
+  async generateCashFlowStatement(associationId: number, filter: { startDate?: Date; endDate?: Date; period?: string }): Promise<CashFlowReport> {
     const { startDate, endDate, label } = getDateRange(filter as any);
 
-    // Get cash account (typically 1110 or similar)
-    const cashAccounts = await prisma.chartOfAccount.findMany({
-      where: {
-        associationId,
-        OR: [
-          { code: { startsWith: '111' } }, // Cash accounts
-          { name: { contains: 'Cash', mode: 'insensitive' } },
-          { name: { contains: 'Bank', mode: 'insensitive' } },
-        ],
-        isActive: true,
-      },
-    });
+    const cashIds = await cashAccountIds(associationId);
+    const cashSet = new Set(cashIds);
 
-    const cashAccountIds = cashAccounts.map(a => a.id);
+    const beginningCash = await totalBalance(associationId, cashIds, { to: new Date(startDate.getTime() - 1) });
+    const endingCash = await totalBalance(associationId, cashIds, { to: endDate });
 
-    // Get beginning cash balance
-    const beginningCash = await this.getCashBalanceAsOf(associationId, cashAccountIds, startDate);
-
-    // Get ending cash balance
-    const endingCash = await this.getCashBalanceAsOf(associationId, cashAccountIds, endDate);
-
-    // Get journal entries affecting cash accounts in the period
-    const cashEntries = await prisma.journalEntryLine.findMany({
-      where: {
-        accountId: { in: cashAccountIds },
-        journalEntry: {
-          associationId,
-          status: 'POSTED',
-          entryDate: { gte: startDate, lte: endDate },
-        },
-      },
-      include: {
-        journalEntry: {
-          include: {
-            lines: {
-              include: {
-                account: true,
-              },
-            },
+    const cashEntries = cashIds.length
+      ? await prisma.journalEntryLine.findMany({
+          where: {
+            accountId: { in: cashIds },
+            journalEntry: { associationId, status: 'POSTED', entryDate: { gte: startDate, lte: endDate } },
           },
-        },
-      },
-    });
+          include: { journalEntry: { include: { lines: { include: { account: true } } } } },
+        })
+      : [];
 
-    // Categorize cash flows
-    const operating = { inflows: [] as any[], outflows: [] as any[], netCash: new Decimal(0) };
-    const investing = { inflows: [] as any[], outflows: [] as any[], netCash: new Decimal(0) };
-    const financing = { inflows: [] as any[], outflows: [] as any[], netCash: new Decimal(0) };
+    const empty = () => ({ inflows: [] as any[], outflows: [] as any[], netCash: new Decimal(0) });
+    const groups = { operating: empty(), investing: empty(), financing: empty() };
 
-    for (const entry of cashEntries) {
-      const isInflow = entry.debitAmount.greaterThan(0);
-      const amount = isInflow ? entry.debitAmount : entry.creditAmount;
-      const description = entry.journalEntry.description;
+    for (const line of cashEntries) {
+      const others = line.journalEntry.lines.filter((l) => l.id !== line.id);
+      // Cash moved between two cash accounts nets to nothing
+      if (others.length > 0 && others.every((l) => cashSet.has(l.accountId))) continue;
 
-      // Determine category based on the other account in the entry
-      const otherLines = entry.journalEntry.lines.filter(l => l.accountId !== entry.accountId);
-      const otherAccount = otherLines[0]?.account;
-
-      let category = operating; // Default to operating
-
-      if (otherAccount) {
-        if (otherAccount.type === 'ASSET' && otherAccount.subType === 'fixed_asset') {
-          category = investing;
-        } else if (otherAccount.type === 'LIABILITY' && otherAccount.subType === 'long_term_liability') {
-          category = financing;
-        } else if (otherAccount.type === 'EQUITY') {
-          category = financing;
-        }
-      }
-
-      const item = { description, amount, accountId: entry.accountId };
-
+      const isInflow = line.debitAmount.greaterThan(0);
+      const amount = isInflow ? line.debitAmount : line.creditAmount;
+      const group = groups[cashFlowGroup(others.filter((l) => !cashSet.has(l.accountId)).map((l) => l.account))];
+      const item = { description: line.journalEntry.description, amount, accountId: line.accountId, entryId: line.journalEntryId };
       if (isInflow) {
-        category.inflows.push(item);
-        category.netCash = category.netCash.plus(amount);
+        group.inflows.push(item);
+        group.netCash = group.netCash.plus(amount);
       } else {
-        category.outflows.push(item);
-        category.netCash = category.netCash.minus(amount);
+        group.outflows.push(item);
+        group.netCash = group.netCash.minus(amount);
       }
     }
 
-    const netCashChange = operating.netCash.plus(investing.netCash).plus(financing.netCash);
+    const netCashChange = groups.operating.netCash.plus(groups.investing.netCash).plus(groups.financing.netCash);
 
     return {
       period: { startDate, endDate, label },
-      operating,
-      investing,
-      financing,
+      operating: groups.operating,
+      investing: groups.investing,
+      financing: groups.financing,
       netCashChange,
       beginningCash,
       endingCash,
+      reconciles: beginningCash.plus(netCashChange).equals(endingCash),
+      cashAccountIds: cashIds,
     };
   },
 
   /**
    * Get cash balance as of a specific date
    */
-  async getCashBalanceAsOf(
-    associationId: number,
-    cashAccountIds: number[],
-    asOfDate: Date
-  ): Promise<Decimal> {
-    let totalCash = new Decimal(0);
-
-    for (const accountId of cashAccountIds) {
-      const balance = await calculateAccountBalance(accountId, associationId, asOfDate);
-      totalCash = totalCash.plus(balance);
-    }
-
-    return totalCash;
+  async getCashBalanceAsOf(associationId: number, accountIds: number[], asOfDate: Date): Promise<Decimal> {
+    return totalBalance(associationId, accountIds, { to: asOfDate });
   },
-
 
   // ==========================================
   // TASK-ACC-006: Budget Planning
@@ -1014,90 +795,52 @@ export const accountingService = {
   /**
    * Create a budget
    */
-  async createBudget(
-    associationId: number,
-    userId: number,
-    data: BudgetInput
-  ): Promise<BudgetResponse> {
-    // Validate all accounts exist
-    const accountIds = data.items.map(item => item.accountId);
-    const accounts = await prisma.chartOfAccount.findMany({
-      where: { id: { in: accountIds }, associationId, isActive: true },
-    });
+  async createBudget(associationId: number, userId: number, data: BudgetInput): Promise<BudgetResponse> {
+    const { startDate, endDate } = checkBudgetDates(data.startDate, data.endDate);
+    const items = await checkBudgetItems(associationId, data.items);
+    const name = data.name.trim();
 
-    if (accounts.length !== accountIds.length) {
-      throw new Error('One or more accounts not found or inactive');
+    try {
+      const budget = await prisma.budget.create({
+        data: {
+          associationId,
+          name,
+          description: data.description,
+          fiscalYear: data.fiscalYear,
+          startDate,
+          endDate,
+          status: 'DRAFT',
+          totalBudget: items.reduce((sum, i) => sum.plus(i.annualAmount), new Decimal(0)),
+          createdBy: userId,
+          items: { create: items },
+        },
+        include: { items: { include: { account: { select: { code: true, name: true } } } } },
+      });
+      await writeAudit(prisma, associationId, userId, 'BUDGET_CREATED', 'budgets', budget.id, { name: budget.name, fiscalYear: budget.fiscalYear, total: budget.totalBudget.toString() });
+      return this.formatBudgetResponse(budget);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw rule(`A budget called "${name}" already exists for ${data.fiscalYear}.`, 409, 'BUDGET_EXISTS');
+      throw error;
     }
-
-    const totalBudget = data.items.reduce((sum, item) => sum + item.annualAmount, 0);
-
-    const budget = await prisma.budget.create({
-      data: {
-        associationId,
-        name: data.name,
-        description: data.description,
-        fiscalYear: data.fiscalYear,
-        startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
-        status: 'DRAFT',
-        totalBudget: new Decimal(totalBudget),
-        createdBy: userId,
-        items: {
-          create: data.items.map(item => ({
-            accountId: item.accountId,
-            monthlyAmount: new Decimal(item.monthlyAmount || item.annualAmount / 12),
-            q1Amount: item.q1Amount ? new Decimal(item.q1Amount) : null,
-            q2Amount: item.q2Amount ? new Decimal(item.q2Amount) : null,
-            q3Amount: item.q3Amount ? new Decimal(item.q3Amount) : null,
-            q4Amount: item.q4Amount ? new Decimal(item.q4Amount) : null,
-            annualAmount: new Decimal(item.annualAmount),
-            notes: item.notes,
-          })),
-        },
-      },
-      include: {
-        items: {
-          include: {
-            account: { select: { code: true, name: true } },
-          },
-        },
-      },
-    });
-
-    return this.formatBudgetResponse(budget);
   },
 
   /**
    * Get budgets with pagination
    */
-  async getBudgets(
-    associationId: number,
-    options: {
-      page?: number;
-      limit?: number;
-      fiscalYear?: number;
-      status?: string;
-    } = {}
-  ): Promise<{ budgets: BudgetResponse[]; pagination: any }> {
-    const page = options.page || 1;
-    const limit = options.limit || 20;
+  async getBudgets(associationId: number, options: { page?: number; limit?: number; fiscalYear?: number; status?: string } = {}): Promise<{ budgets: BudgetResponse[]; pagination: any }> {
+    const page = Math.max(1, options.page || 1);
+    const limit = Math.min(100, Math.max(1, options.limit || 20));
     const skip = (page - 1) * limit;
 
-    const whereClause: any = { associationId };
+    const whereClause: Prisma.BudgetWhereInput = { associationId };
     if (options.fiscalYear) whereClause.fiscalYear = options.fiscalYear;
-    if (options.status) whereClause.status = options.status;
+    if (options.status) whereClause.status = options.status as any;
 
     const [budgets, totalCount] = await Promise.all([
       prisma.budget.findMany({
         where: whereClause,
-        include: {
-          items: {
-            include: {
-              account: { select: { code: true, name: true } },
-            },
-          },
-        },
-        orderBy: { fiscalYear: 'desc' },
+        include: { items: { include: { account: { select: { code: true, name: true } } } } },
+        orderBy: [{ fiscalYear: 'desc' }, { id: 'desc' }],
         skip,
         take: limit,
       }),
@@ -1105,14 +848,8 @@ export const accountingService = {
     ]);
 
     return {
-      budgets: budgets.map(b => this.formatBudgetResponse(b)),
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-        hasMore: skip + budgets.length < totalCount,
-      },
+      budgets: budgets.map((b) => this.formatBudgetResponse(b)),
+      pagination: { page, limit, totalCount, totalPages: Math.ceil(totalCount / limit), hasMore: skip + budgets.length < totalCount },
     };
   },
 
@@ -1122,206 +859,148 @@ export const accountingService = {
   async getBudget(associationId: number, budgetId: number): Promise<BudgetResponse | null> {
     const budget = await prisma.budget.findFirst({
       where: { id: budgetId, associationId },
-      include: {
-        items: {
-          include: {
-            account: { select: { code: true, name: true } },
-          },
-        },
-      },
+      include: { items: { include: { account: { select: { code: true, name: true } } } } },
     });
-
     return budget ? this.formatBudgetResponse(budget) : null;
   },
 
   /**
-   * Update a budget (only if DRAFT)
+   * Update a budget (only while it is a draft). The items are replaced in the same step as the rest.
    */
-  async updateBudget(
-    associationId: number,
-    budgetId: number,
-    data: Partial<BudgetInput>
-  ): Promise<BudgetResponse> {
-    const budget = await prisma.budget.findFirst({
-      where: { id: budgetId, associationId },
-    });
+  async updateBudget(associationId: number, budgetId: number, data: Partial<BudgetInput>, userId?: number): Promise<BudgetResponse> {
+    const budget = await prisma.budget.findFirst({ where: { id: budgetId, associationId } });
+    if (!budget) throw rule('Budget not found.', 404, 'BUDGET_NOT_FOUND');
+    if (budget.status !== 'DRAFT') throw rule('Only a draft budget can be changed.', 409, 'WRONG_STATUS');
 
-    if (!budget) {
-      throw new Error('Budget not found');
-    }
+    const items = data.items ? await checkBudgetItems(associationId, data.items) : null;
+    if (data.name !== undefined && !data.name.trim()) throw rule('Give the budget a name.', 400, 'INVALID_BUDGET');
 
-    if (budget.status !== 'DRAFT') {
-      throw new Error('Can only update draft budgets');
-    }
-
-    const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.description !== undefined) updateData.description = data.description;
-
-    if (data.items) {
-      const totalBudget = data.items.reduce((sum, item) => sum + item.annualAmount, 0);
-      updateData.totalBudget = new Decimal(totalBudget);
-
-      // Delete existing items and create new ones
-      await prisma.budgetItem.deleteMany({
-        where: { budgetId },
+    try {
+      await prisma.$transaction(async (tx) => {
+        const claimed = await tx.budget.updateMany({
+          where: { id: budgetId, associationId, status: 'DRAFT' },
+          data: {
+            ...(data.name ? { name: data.name.trim() } : {}),
+            ...(data.description !== undefined ? { description: data.description } : {}),
+            ...(items ? { totalBudget: items.reduce((sum, i) => sum.plus(i.annualAmount), new Decimal(0)) } : {}),
+          },
+        });
+        if (claimed.count === 0) throw rule('That budget was just changed by someone else.', 409, 'WRONG_STATUS');
+        if (items) {
+          await tx.budgetItem.deleteMany({ where: { budgetId } });
+          await tx.budgetItem.createMany({ data: items.map((i) => ({ ...i, budgetId })) });
+        }
+        if (userId) await writeAudit(tx, associationId, userId, 'BUDGET_UPDATED', 'budgets', budgetId, { name: data.name ?? budget.name, itemsChanged: !!items });
       });
-
-      await prisma.budgetItem.createMany({
-        data: data.items.map(item => ({
-          budgetId,
-          accountId: item.accountId,
-          monthlyAmount: new Decimal(item.monthlyAmount || item.annualAmount / 12),
-          q1Amount: item.q1Amount ? new Decimal(item.q1Amount) : null,
-          q2Amount: item.q2Amount ? new Decimal(item.q2Amount) : null,
-          q3Amount: item.q3Amount ? new Decimal(item.q3Amount) : null,
-          q4Amount: item.q4Amount ? new Decimal(item.q4Amount) : null,
-          annualAmount: new Decimal(item.annualAmount),
-          notes: item.notes,
-        })),
-      });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw rule(`A budget called "${data.name}" already exists for ${budget.fiscalYear}.`, 409, 'BUDGET_EXISTS');
+      throw error;
     }
 
-    await prisma.budget.update({
-      where: { id: budgetId },
-      data: updateData,
+    return (await this.getBudget(associationId, budgetId))!;
+  },
+
+  /**
+   * Approve a budget. Nobody approves their own, and it is approved once.
+   */
+  async approveBudget(associationId: number, budgetId: number, userId: number): Promise<BudgetResponse> {
+    const budget = await prisma.budget.findFirst({ where: { id: budgetId, associationId } });
+    if (!budget) throw rule('Budget not found.', 404, 'BUDGET_NOT_FOUND');
+    if (budget.status !== 'DRAFT' && budget.status !== 'PENDING_APPROVAL') throw rule('This budget cannot be approved in its current state.', 409, 'WRONG_STATUS');
+    if (budget.createdBy === userId) throw rule('You cannot approve your own budget. Ask another officer.', 403, 'OWN_BUDGET');
+
+    const claimed = await prisma.budget.updateMany({
+      where: { id: budgetId, associationId, status: { in: ['DRAFT', 'PENDING_APPROVAL'] } },
+      data: { status: 'APPROVED', approvedBy: userId, approvedAt: new Date() },
+    });
+    if (claimed.count === 0) throw rule('Someone else just decided this budget.', 409, 'ALREADY_DECIDED');
+    await writeAudit(prisma, associationId, userId, 'BUDGET_APPROVED', 'budgets', budgetId, { name: budget.name });
+
+    return (await this.getBudget(associationId, budgetId))!;
+  },
+
+  /**
+   * Activate a budget; any other active budget of the same year is closed in the same step.
+   */
+  async activateBudget(associationId: number, budgetId: number, userId?: number): Promise<BudgetResponse> {
+    const budget = await prisma.budget.findFirst({ where: { id: budgetId, associationId } });
+    if (!budget) throw rule('Budget not found.', 404, 'BUDGET_NOT_FOUND');
+    if (budget.status !== 'APPROVED') throw rule('Only an approved budget can be activated.', 409, 'WRONG_STATUS');
+
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.budget.updateMany({ where: { id: budgetId, associationId, status: 'APPROVED' }, data: { status: 'ACTIVE' } });
+      if (claimed.count === 0) throw rule('That budget was just changed by someone else.', 409, 'WRONG_STATUS');
+      await tx.budget.updateMany({ where: { associationId, fiscalYear: budget.fiscalYear, status: 'ACTIVE', id: { not: budgetId } }, data: { status: 'CLOSED' } });
+      if (userId) await writeAudit(tx, associationId, userId, 'BUDGET_ACTIVATED', 'budgets', budgetId, { name: budget.name });
     });
 
     return (await this.getBudget(associationId, budgetId))!;
   },
 
   /**
-   * Approve a budget
+   * Budget against actual. Actual is what was posted inside the period, not everything since the books began; and income and spending
+   * are summed apart.
    */
-  async approveBudget(
-    associationId: number,
-    budgetId: number,
-    userId: number
-  ): Promise<BudgetResponse> {
-    const budget = await prisma.budget.findFirst({
-      where: { id: budgetId, associationId },
-    });
-
-    if (!budget) {
-      throw new Error('Budget not found');
-    }
-
-    if (budget.status !== 'DRAFT' && budget.status !== 'PENDING_APPROVAL') {
-      throw new Error('Budget cannot be approved in current status');
-    }
-
-    await prisma.budget.update({
-      where: { id: budgetId },
-      data: {
-        status: 'APPROVED',
-        approvedBy: userId,
-        approvedAt: new Date(),
-      },
-    });
-
-    return (await this.getBudget(associationId, budgetId))!;
-  },
-
-  /**
-   * Activate a budget
-   */
-  async activateBudget(associationId: number, budgetId: number): Promise<BudgetResponse> {
-    const budget = await prisma.budget.findFirst({
-      where: { id: budgetId, associationId },
-    });
-
-    if (!budget) {
-      throw new Error('Budget not found');
-    }
-
-    if (budget.status !== 'APPROVED') {
-      throw new Error('Can only activate approved budgets');
-    }
-
-    // Deactivate any other active budgets for the same fiscal year
-    await prisma.budget.updateMany({
-      where: {
-        associationId,
-        fiscalYear: budget.fiscalYear,
-        status: 'ACTIVE',
-        id: { not: budgetId },
-      },
-      data: { status: 'CLOSED' },
-    });
-
-    await prisma.budget.update({
-      where: { id: budgetId },
-      data: { status: 'ACTIVE' },
-    });
-
-    return (await this.getBudget(associationId, budgetId))!;
-  },
-
-  /**
-   * Get budget variance report
-   */
-  async getBudgetVariance(
-    associationId: number,
-    budgetId: number,
-    startDate?: Date,
-    endDate?: Date
-  ): Promise<BudgetVarianceReport> {
+  async getBudgetVariance(associationId: number, budgetId: number, startDate?: Date, endDate?: Date): Promise<BudgetVarianceReport> {
     const budget = await this.getBudget(associationId, budgetId);
-
-    if (!budget) {
-      throw new Error('Budget not found');
-    }
+    if (!budget) throw rule('Budget not found.', 404, 'BUDGET_NOT_FOUND');
 
     const periodStart = startDate || budget.startDate;
     const periodEnd = endDate || budget.endDate;
 
-    const items: any[] = [];
-    let totalBudget = new Decimal(0);
-    let totalActual = new Decimal(0);
+    const accounts = await prisma.chartOfAccount.findMany({ where: { associationId, id: { in: budget.items.map((i) => i.accountId) } } });
+    const accountOf = new Map(accounts.map((a) => [a.id, a]));
+    const activity = await activityByAccount(associationId, { from: periodStart, to: periodEnd }, accounts.map((a) => a.id));
+
+    const items: BudgetVarianceReport['items'] = [];
+    const totals = {
+      all: { budget: new Decimal(0), actual: new Decimal(0) },
+      INCOME: { budget: new Decimal(0), actual: new Decimal(0) },
+      EXPENSE: { budget: new Decimal(0), actual: new Decimal(0) },
+    };
 
     for (const item of budget.items) {
-      // Calculate actual amount from journal entries
-      const actualAmount = await calculateAccountBalance(item.accountId, associationId, periodEnd);
-
-      const variance = new Decimal(item.annualAmount).minus(actualAmount);
-      const variancePercentage = new Decimal(item.annualAmount).isZero()
-        ? 0
-        : variance.dividedBy(item.annualAmount).times(100).toNumber();
-
-      let status: 'under' | 'on_track' | 'over' = 'on_track';
-      if (variancePercentage > 10) status = 'under';
-      else if (variancePercentage < -10) status = 'over';
+      const account = accountOf.get(item.accountId);
+      const sums = activity.get(item.accountId);
+      const actualAmount = account && sums ? balanceOf(account.normalBalance as 'DEBIT' | 'CREDIT', sums.debit, sums.credit) : new Decimal(0);
+      // A narrower stretch of the year is judged against its share of the yearly amount
+      const budgetAmount = proratedBudget(item.annualAmount, budget.startDate, budget.endDate, periodStart, periodEnd);
+      const variance = budgetAmount.minus(actualAmount);
 
       items.push({
         accountId: item.accountId,
         accountCode: item.accountCode,
         accountName: item.accountName,
-        budgetAmount: item.annualAmount,
+        accountType: (account?.type ?? 'EXPENSE') as AccountType,
+        budgetAmount,
         actualAmount,
         variance,
-        variancePercentage,
-        status,
+        variancePercentage: percentOf(variance, budgetAmount),
+        status: varianceStatus(budgetAmount, actualAmount),
       });
 
-      totalBudget = totalBudget.plus(item.annualAmount);
-      totalActual = totalActual.plus(actualAmount);
+      totals.all.budget = totals.all.budget.plus(budgetAmount);
+      totals.all.actual = totals.all.actual.plus(actualAmount);
+      if (account?.type === 'INCOME' || account?.type === 'EXPENSE') {
+        totals[account.type].budget = totals[account.type].budget.plus(budgetAmount);
+        totals[account.type].actual = totals[account.type].actual.plus(actualAmount);
+      }
     }
 
-    const totalVariance = totalBudget.minus(totalActual);
-    const variancePercentage = totalBudget.isZero()
-      ? 0
-      : totalVariance.dividedBy(totalBudget).times(100).toNumber();
+    const summarise = (t: { budget: Decimal; actual: Decimal }): BudgetVarianceSummary => ({
+      totalBudget: t.budget,
+      totalActual: t.actual,
+      totalVariance: t.budget.minus(t.actual),
+      variancePercentage: percentOf(t.budget.minus(t.actual), t.budget),
+    });
 
     return {
       budget,
       period: { startDate: periodStart, endDate: periodEnd },
       items,
-      summary: {
-        totalBudget,
-        totalActual,
-        totalVariance,
-        variancePercentage,
-      },
+      summary: summarise(totals.all),
+      incomeSummary: summarise(totals.INCOME),
+      expenseSummary: summarise(totals.EXPENSE),
     };
   },
 
@@ -1338,6 +1017,7 @@ export const accountingService = {
       endDate: budget.endDate,
       status: budget.status,
       totalBudget: budget.totalBudget,
+      createdBy: budget.createdBy,
       items: budget.items.map((item: any) => ({
         id: item.id,
         accountId: item.accountId,
@@ -1359,90 +1039,57 @@ export const accountingService = {
   // ==========================================
 
   /**
-   * Get accounting dashboard data
+   * Get accounting dashboard data. Months and the year are cut in Lagos time.
    */
   async getDashboard(associationId: number): Promise<AccountingDashboard> {
     const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const today = lagosDayKey(now);
+    const year = Number(today.slice(0, 4));
+    const month = Number(today.slice(5, 7)) - 1;
+    const startOfYear = lagosDayStart(`${year}-01-01`);
 
-    // Get quick stats
     const balanceSheet = await this.generateBalanceSheet(associationId, now);
-    const incomeStatement = await this.generateIncomeStatement(
-      associationId,
-      { startDate: startOfYear, endDate: now },
-      false
-    );
+    const incomeStatement = await this.generateIncomeStatement(associationId, { startDate: startOfYear, endDate: now }, false);
+    const cashBalance = await totalBalance(associationId, await cashAccountIds(associationId), { to: now });
 
-    // Get cash balance
-    const cashAccounts = await prisma.chartOfAccount.findMany({
-      where: {
-        associationId,
-        code: { startsWith: '111' },
-        isActive: true,
-      },
-    });
-
-    let cashBalance = new Decimal(0);
-    for (const account of cashAccounts) {
-      const balance = await calculateAccountBalance(account.id, associationId, now);
-      cashBalance = cashBalance.plus(balance);
-    }
-
-    // Get recent entries
-    const recentEntries = await prisma.journalEntry.findMany({
-      where: { associationId },
-      include: {
-        lines: {
-          include: {
-            account: { select: { code: true, name: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
-
-    // Get pending approvals count
+    const recentEntries = await prisma.journalEntry.findMany({ where: { associationId }, include: entryInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 5 });
     const pendingApprovals = await this.getPendingApprovalsCount(associationId);
+    const pendingExpenses = await prisma.expenseVoucher.count({ where: { associationId, status: 'PENDING_APPROVAL' } });
 
-    // Get active budget status
-    const activeBudget = await prisma.budget.findFirst({
-      where: { associationId, status: 'ACTIVE' },
-      include: { items: true },
-    });
-
-    let budgetStatus;
+    // The active budget's spending: only expense lines, and only what was posted inside the budget's own dates
+    const activeBudget = await prisma.budget.findFirst({ where: { associationId, status: 'ACTIVE' }, include: { items: true } });
+    let budgetStatus: AccountingDashboard['budgetStatus'];
     if (activeBudget) {
-      const totalBudget = activeBudget.totalBudget;
-      let totalSpent = new Decimal(0);
-
-      for (const item of activeBudget.items) {
-        const spent = await calculateAccountBalance(item.accountId, associationId, now);
-        totalSpent = totalSpent.plus(spent.abs());
-      }
-
-      budgetStatus = {
-        totalBudget,
-        totalSpent,
-        remainingBudget: totalBudget.minus(totalSpent),
-        percentUsed: totalBudget.isZero() ? 0 : totalSpent.dividedBy(totalBudget).times(100).toNumber(),
-      };
+      const expenseAccounts = await prisma.chartOfAccount.findMany({ where: { associationId, type: 'EXPENSE', id: { in: activeBudget.items.map((i) => i.accountId) } } });
+      const expenseIds = new Set(expenseAccounts.map((a) => a.id));
+      const planned = activeBudget.items.filter((i) => expenseIds.has(i.accountId)).reduce((sum, i) => sum.plus(i.annualAmount), new Decimal(0));
+      const activity = await activityByAccount(associationId, { from: activeBudget.startDate, to: now < activeBudget.endDate ? now : activeBudget.endDate }, [...expenseIds]);
+      const spent = expenseAccounts.reduce((sum, a) => {
+        const sums = activity.get(a.id);
+        return sums ? sum.plus(balanceOf(a.normalBalance as 'DEBIT' | 'CREDIT', sums.debit, sums.credit)) : sum;
+      }, new Decimal(0));
+      budgetStatus = { budgetId: activeBudget.id, totalBudget: planned, totalSpent: spent, remainingBudget: planned.minus(spent), percentUsed: percentOf(spent, planned) };
     }
 
-    // Get monthly trend (last 6 months)
-    const monthlyTrend = [];
-    for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
-
-      const monthIncome = await this.getMonthlyTotal(associationId, 'INCOME', monthStart, monthEnd);
-      const monthExpenses = await this.getMonthlyTotal(associationId, 'EXPENSE', monthStart, monthEnd);
-
-      monthlyTrend.push({
-        month: monthStart.toLocaleString('default', { month: 'short', year: 'numeric' }),
-        income: monthIncome,
-        expenses: monthExpenses,
-      });
+    // The last six months, income and spending, one query a month
+    const trendAccounts = await prisma.chartOfAccount.findMany({ where: { associationId, type: { in: ['INCOME', 'EXPENSE'] } } });
+    const monthlyTrend: AccountingDashboard['monthlyTrend'] = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const first = new Date(Date.UTC(year, month - i, 1));
+      const last = new Date(Date.UTC(year, month - i + 1, 0));
+      const from = lagosDayStart(first.toISOString().slice(0, 10));
+      const to = lagosDayEnd(last.toISOString().slice(0, 10));
+      const activity = await activityByAccount(associationId, { from, to }, trendAccounts.map((a) => a.id));
+      let income = new Decimal(0);
+      let expenses = new Decimal(0);
+      for (const account of trendAccounts) {
+        const sums = activity.get(account.id);
+        if (!sums) continue;
+        const balance = balanceOf(account.normalBalance as 'DEBIT' | 'CREDIT', sums.debit, sums.credit);
+        if (account.type === 'INCOME') income = income.plus(balance);
+        else expenses = expenses.plus(balance);
+      }
+      monthlyTrend.push({ month: first.toLocaleString('en', { month: 'short', year: 'numeric', timeZone: 'UTC' }), income, expenses });
     }
 
     return {
@@ -1453,53 +1100,90 @@ export const accountingService = {
         netIncome: incomeStatement.netIncome,
         cashBalance,
       },
-      recentEntries: recentEntries.map(e => this.formatJournalEntryResponse(e)),
+      recentEntries: recentEntries.map((e) => this.formatJournalEntryResponse(e)),
       pendingApprovals,
+      pendingExpenses,
       budgetStatus,
       monthlyTrend,
     };
   },
 
   /**
-   * Get monthly total for a specific account type
+   * Income or spending of one type inside a stretch of time
    */
-  async getMonthlyTotal(
-    associationId: number,
-    type: string,
-    startDate: Date,
-    endDate: Date
-  ): Promise<Decimal> {
-    const accounts = await prisma.chartOfAccount.findMany({
-      where: { associationId, type: type as any, isActive: true },
-    });
-
-    let total = new Decimal(0);
-
-    for (const account of accounts) {
-      const entries = await prisma.journalEntryLine.findMany({
-        where: {
-          accountId: account.id,
-          journalEntry: {
-            associationId,
-            status: 'POSTED',
-            entryDate: { gte: startDate, lte: endDate },
-          },
-        },
-        select: {
-          debitAmount: true,
-          creditAmount: true,
-        },
-      });
-
-      entries.forEach(entry => {
-        if (account.normalBalance === 'DEBIT') {
-          total = total.plus(entry.debitAmount).minus(entry.creditAmount);
-        } else {
-          total = total.plus(entry.creditAmount).minus(entry.debitAmount);
-        }
-      });
-    }
-
-    return total;
+  async getMonthlyTotal(associationId: number, type: string, startDate: Date, endDate: Date): Promise<Decimal> {
+    return sumBalances(await getAccountBalancesByType(associationId, type as AccountType, { from: startDate, to: endDate }));
   },
 };
+
+// ============================================
+// SHARED CHECKS
+// ============================================
+
+function formatAccount(account: any): ChartOfAccountResponse {
+  return {
+    id: account.id,
+    code: account.code,
+    name: account.name,
+    type: account.type,
+    subType: account.subType,
+    description: account.description,
+    parentId: account.parentId,
+    isActive: account.isActive,
+    isSystemAccount: account.isSystemAccount,
+    normalBalance: account.normalBalance,
+  };
+}
+
+/** What has to be true of an entry for it to go into the books. Used when it is sent for approval and again when it is posted. */
+async function assertEntryCanBePosted(
+  associationId: number,
+  entry: { entryDate: Date; lines: { accountId: number; debitAmount: Decimal; creditAmount: Decimal }[] },
+): Promise<void> {
+  cleanEntryLines(entry.lines.map((l) => ({ accountId: l.accountId, debitAmount: Number(l.debitAmount), creditAmount: Number(l.creditAmount) })));
+  const accountIds = [...new Set(entry.lines.map((l) => l.accountId))];
+  const accounts = await prisma.chartOfAccount.findMany({ where: { id: { in: accountIds }, associationId, isActive: true }, select: { id: true } });
+  if (accounts.length !== accountIds.length) throw rule('One of the accounts in this entry has been switched off or removed.', 409, 'INVALID_ACCOUNT');
+  await accountingPeriodsService.assertDateIsPostable(associationId, entry.entryDate);
+}
+
+function checkBudgetDates(start: Date | string, end: Date | string): { startDate: Date; endDate: Date } {
+  const startDate = lagosDayStart(lagosDayKey(new Date(start)));
+  const endDate = lagosDayEnd(lagosDayKey(new Date(end)));
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) throw rule('Choose valid start and end dates.', 400, 'INVALID_DATE');
+  if (endDate <= startDate) throw rule('The budget must end after it starts.', 400, 'INVALID_DATE');
+  return { startDate, endDate };
+}
+
+/** Budget lines: income and expense accounts only, each once, amounts in whole kobo, the monthly figure worked out when not given. */
+async function checkBudgetItems(associationId: number, items: BudgetInput['items']) {
+  if (items.length === 0) throw rule('Add at least one line to the budget.', 400, 'INVALID_BUDGET');
+  const ids = items.map((i) => i.accountId);
+  if (new Set(ids).size !== ids.length) throw rule('Each account can be in a budget only once.', 400, 'DUPLICATE_ACCOUNT');
+
+  const accounts = await prisma.chartOfAccount.findMany({ where: { id: { in: ids }, associationId, isActive: true }, select: { id: true, type: true } });
+  if (accounts.length !== ids.length) throw rule('One or more accounts were not found or are switched off.', 400, 'INVALID_ACCOUNT');
+  if (accounts.some((a) => a.type !== 'INCOME' && a.type !== 'EXPENSE')) throw rule('A budget covers income and expense accounts only.', 400, 'INVALID_ACCOUNT');
+
+  const money = (value: number | undefined, label: string): Decimal | null => {
+    if (value === undefined || value === null) return null;
+    const amount = toMoney(value);
+    if (!amount || amount.isNegative()) throw rule(`${label} must be an amount in naira with at most 2 decimal places.`, 400, 'INVALID_AMOUNT');
+    return amount;
+  };
+
+  return items.map((item) => {
+    const annualAmount = money(item.annualAmount, 'The yearly amount');
+    if (!annualAmount || annualAmount.isZero()) throw rule('Each budget line needs a yearly amount above zero.', 400, 'INVALID_AMOUNT');
+    return {
+      accountId: item.accountId,
+      annualAmount,
+      monthlyAmount: money(item.monthlyAmount, 'The monthly amount') ?? annualAmount.dividedBy(12).toDecimalPlaces(2),
+      q1Amount: money(item.q1Amount, 'The first quarter amount'),
+      q2Amount: money(item.q2Amount, 'The second quarter amount'),
+      q3Amount: money(item.q3Amount, 'The third quarter amount'),
+      q4Amount: money(item.q4Amount, 'The fourth quarter amount'),
+      notes: item.notes,
+    };
+  });
+}

@@ -17,15 +17,31 @@ import {
 } from './nigerian-payments.types';
 // Accounting integration
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
+import { memberLedgerService } from '../member-finance/member-ledger.service';
+import { cacheInvalidationService } from '../../services/cache-invalidation.service';
+import { decidePaymentProof, targetTransactionIds } from './payment-proof-decision';
+import { confirmMatch, disputeMatch, proposeMatch, suggestMatches } from './reconciliation-engine';
+import { assertNotLastActiveAccount, assertReferenceFree, assertTransferLinks, BankRuleError, promoteNewDefault } from './bank-rules';
+
+/** Thrown when a reconciliation was already confirmed or disputed. The controller answers 409. */
+export class ReconciliationDecisionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReconciliationDecisionError';
+  }
+}
 
 export const nigerianPaymentsService = {
   // ==========================================
   // TASK-PAY-002: BANK ACCOUNT MANAGEMENT
   // ==========================================
 
+  /** The first active account is always the default, so members are never shown an account list with none marked as the one to use. */
   async createBankAccount(associationId: number, data: BankAccountInput) {
-    // If setting as default, unset other defaults first
-    if (data.isDefault) {
+    const activeCount = await prisma.associationBankAccount.count({ where: { associationId, isActive: true } });
+    const makeDefault = Boolean(data.isDefault) || activeCount === 0;
+
+    if (makeDefault) {
       await prisma.associationBankAccount.updateMany({
         where: { associationId, isDefault: true },
         data: { isDefault: false },
@@ -39,49 +55,82 @@ export const nigerianPaymentsService = {
         accountName: data.accountName,
         accountNumber: data.accountNumber,
         bankCode: data.bankCode,
-        isDefault: data.isDefault || false,
+        isDefault: makeDefault,
         description: data.description,
       },
     });
   },
 
-  async updateBankAccount(id: number, associationId: number, data: Partial<BankAccountInput>) {
-    // If setting as default, unset other defaults first
-    if (data.isDefault) {
-      await prisma.associationBankAccount.updateMany({
-        where: { associationId, isDefault: true, id: { not: id } },
-        data: { isDefault: false },
-      });
+  /**
+   * Edits an account. Rules that keep members' "pay to" details sound: a changed account number can't clash with another account; the
+   * last active account can't be deactivated; only an active account can be the default; and the default can't be un-set directly —
+   * it moves by making another account the default.
+   */
+  async updateBankAccount(id: number, associationId: number, data: Partial<BankAccountInput> & { isActive?: boolean }) {
+    const existing = await prisma.associationBankAccount.findFirst({ where: { id, associationId } });
+    if (!existing) throw new BankRuleError('NOT_FOUND', 'Bank account not found');
+
+    if (data.accountNumber && data.accountNumber !== existing.accountNumber) {
+      const clash = await prisma.associationBankAccount.findFirst({ where: { associationId, accountNumber: data.accountNumber, id: { not: id } }, select: { id: true } });
+      if (clash) throw new BankRuleError('DUPLICATE_ACCOUNT', 'A bank account with this account number already exists.');
     }
 
-    return prisma.associationBankAccount.update({
+    const retiring = data.isActive === false && existing.isActive;
+    if (retiring) await assertNotLastActiveAccount(associationId, id);
+
+    const willBeActive = data.isActive ?? existing.isActive;
+    if (data.isDefault === true && !willBeActive) {
+      throw new BankRuleError('INACTIVE_DEFAULT', 'An inactive account can’t be the default. Reactivate it first.');
+    }
+
+    // Making this the default moves the default; a retired account never keeps it.
+    const becomesDefault = !retiring && (data.isDefault === true || existing.isDefault);
+    if (data.isDefault === true && !retiring) {
+      await prisma.associationBankAccount.updateMany({ where: { associationId, isDefault: true, id: { not: id } }, data: { isDefault: false } });
+    }
+
+    const account = await prisma.associationBankAccount.update({
       where: { id },
       data: {
         bankName: data.bankName,
         accountName: data.accountName,
         accountNumber: data.accountNumber,
         bankCode: data.bankCode,
-        isDefault: data.isDefault,
         description: data.description,
+        isActive: data.isActive,
+        isDefault: becomesDefault && willBeActive,
       },
     });
+
+    const newDefaultId = retiring && existing.isDefault ? await promoteNewDefault(associationId) : null;
+    return { account, newDefaultId };
   },
 
+  /**
+   * Removes an account. One that has transfers or statement imports is deactivated (its history stays); one with neither is deleted.
+   * The last active account can't be removed, and if the default goes, the oldest remaining active account becomes the default.
+   */
   async deleteBankAccount(id: number, associationId: number) {
-    // Check if account has any transfers
-    const transferCount = await prisma.bankTransfer.count({
-      where: { bankAccountId: id },
-    });
+    const existing = await prisma.associationBankAccount.findFirst({ where: { id, associationId } });
+    if (!existing) throw new BankRuleError('NOT_FOUND', 'Bank account not found');
+    if (existing.isActive) await assertNotLastActiveAccount(associationId, id);
 
-    if (transferCount > 0) {
-      // Soft delete by deactivating
-      return prisma.associationBankAccount.update({
-        where: { id },
-        data: { isActive: false },
-      });
+    const [transferCount, importCount] = await Promise.all([
+      prisma.bankTransfer.count({ where: { bankAccountId: id } }),
+      prisma.bankStatementImport.count({ where: { bankAccountId: id } }),
+    ]);
+
+    let outcome: 'deleted' | 'deactivated';
+    if (transferCount > 0 || importCount > 0) {
+      await prisma.associationBankAccount.update({ where: { id }, data: { isActive: false, isDefault: false } });
+      outcome = 'deactivated';
+    } else {
+      await prisma.associationBankAccount.delete({ where: { id } });
+      outcome = 'deleted';
     }
 
-    return prisma.associationBankAccount.delete({ where: { id } });
+    const newDefaultId = existing.isDefault ? await promoteNewDefault(associationId) : null;
+    return { outcome, newDefaultId };
   },
 
   async getBankAccounts(associationId: number, isActive?: boolean) {
@@ -109,10 +158,14 @@ export const nigerianPaymentsService = {
   // TASK-PAY-001: BANK TRANSFER TRACKING
   // ==========================================
 
-  async createBankTransfer(associationId: number, data: BankTransferInput) {
+  async createBankTransfer(associationId: number, data: BankTransferInput, recordedBy?: number) {
+    await assertTransferLinks(associationId, { bankAccountId: data.bankAccountId, memberId: data.memberId, transactionId: data.transactionId });
+    await assertReferenceFree(associationId, data.reference);
+
     return prisma.bankTransfer.create({
       data: {
         associationId,
+        recordedBy,
         transactionId: data.transactionId,
         bankAccountId: data.bankAccountId,
         memberId: data.memberId,
@@ -120,7 +173,7 @@ export const nigerianPaymentsService = {
         senderAccountNumber: data.senderAccountNumber,
         senderAccountName: data.senderAccountName,
         amount: data.amount,
-        reference: data.reference,
+        reference: data.reference.trim(),
         transferDate: new Date(data.transferDate),
         narration: data.narration,
         notes: data.notes,
@@ -140,9 +193,17 @@ export const nigerianPaymentsService = {
     });
   },
 
-  async updateBankTransfer(id: number, associationId: number, data: Partial<BankTransferInput & { status: string }>) {
-    return prisma.bankTransfer.update({
-      where: { id },
+  /**
+   * Edits a transfer that is still waiting. The status is deliberately not editable here — verifying and rejecting go only through
+   * `verifyBankTransfer`, which needs the approve permission — and the update itself only lands on a PENDING transfer, so an edit can't
+   * slip in after someone verified it or after reconciliation matched it.
+   */
+  async updateBankTransfer(id: number, associationId: number, data: Partial<BankTransferInput>) {
+    await assertTransferLinks(associationId, { bankAccountId: data.bankAccountId, memberId: data.memberId, transactionId: data.transactionId });
+    if (data.reference) await assertReferenceFree(associationId, data.reference, id);
+
+    const result = await prisma.bankTransfer.updateMany({
+      where: { id, associationId, status: 'PENDING' },
       data: {
         transactionId: data.transactionId,
         bankAccountId: data.bankAccountId,
@@ -151,25 +212,39 @@ export const nigerianPaymentsService = {
         senderAccountNumber: data.senderAccountNumber,
         senderAccountName: data.senderAccountName,
         amount: data.amount,
-        reference: data.reference,
+        reference: data.reference?.trim(),
         transferDate: data.transferDate ? new Date(data.transferDate) : undefined,
         narration: data.narration,
         notes: data.notes,
-        status: data.status as any,
       },
     });
+    if (result.count === 0) throw new BankRuleError('ALREADY_DECIDED', 'This transfer was already decided or matched, so it can no longer be edited.');
+
+    return prisma.bankTransfer.findUniqueOrThrow({ where: { id } });
   },
 
+  /**
+   * Verifies or rejects a transfer, once. Only a PENDING transfer can be decided — the change is claimed atomically, so a second tap, a
+   * second officer, or a transfer reconciliation already MATCHED can't be overwritten. Verifying confirms the money reached the account;
+   * it records no payment (that happens when a member's proof is verified or a reconciliation is confirmed).
+   */
   async verifyBankTransfer(id: number, associationId: number, userId: number, status: 'VERIFIED' | 'REJECTED', notes?: string) {
-    return prisma.bankTransfer.update({
-      where: { id },
-      data: {
-        status,
-        verifiedBy: userId,
-        verifiedAt: new Date(),
-        notes: notes || undefined,
-      },
+    const claimed = await prisma.bankTransfer.updateMany({
+      // Whoever recorded a transfer can't also decide it (a transfer with no recorder, from before this was kept, can be decided by anyone allowed to).
+      where: { id, associationId, status: 'PENDING', OR: [{ recordedBy: null }, { recordedBy: { not: userId } }] },
+      data: { status, verifiedBy: userId, verifiedAt: new Date(), notes: notes || undefined },
     });
+
+    if (claimed.count === 0) {
+      const current = await prisma.bankTransfer.findFirst({ where: { id, associationId }, select: { status: true, recordedBy: true } });
+      if (!current) throw new BankRuleError('NOT_FOUND', 'Bank transfer not found');
+      if (current.status === 'PENDING' && current.recordedBy === userId) {
+        throw new BankRuleError('OWN_TRANSFER', "You can't verify or reject a bank transfer you recorded yourself. Ask another officer.");
+      }
+      throw new BankRuleError('ALREADY_DECIDED', `This transfer is already ${current.status.toLowerCase()}. It can't be decided again.`);
+    }
+
+    return prisma.bankTransfer.findUniqueOrThrow({ where: { id } });
   },
 
   async getBankTransfers(
@@ -237,7 +312,11 @@ export const nigerianPaymentsService = {
     ]);
 
     return {
-      transfers,
+      // A linked proof's storage key stays server-side — clients only learn whether a file is attached.
+      transfers: transfers.map((transfer) => ({
+        ...transfer,
+        paymentProofs: transfer.paymentProofs.map(({ filepath, ...proof }) => ({ ...proof, hasFile: Boolean(filepath) })),
+      })),
       pagination: {
         page,
         limit,
@@ -249,7 +328,7 @@ export const nigerianPaymentsService = {
   },
 
   async getBankTransferById(id: number, associationId: number) {
-    return prisma.bankTransfer.findFirst({
+    const transfer = await prisma.bankTransfer.findFirst({
       where: { id, associationId },
       include: {
         transaction: {
@@ -265,6 +344,12 @@ export const nigerianPaymentsService = {
         paymentProofs: true,
       },
     });
+    if (!transfer) return null;
+
+    return {
+      ...transfer,
+      paymentProofs: transfer.paymentProofs.map(({ filepath, ...proof }) => ({ ...proof, hasFile: Boolean(filepath) })),
+    };
   },
 
 
@@ -272,46 +357,35 @@ export const nigerianPaymentsService = {
   // TASK-PAY-005: BANK STATEMENT IMPORT
   // ==========================================
 
+  /** Kept for callers of the old JSON import: the real import reads the uploaded file (see statement-import.ts). */
   async importBankStatement(associationId: number, userId: number, data: StatementImportInput) {
-    // Create the import record
-    const importRecord = await prisma.bankStatementImport.create({
-      data: {
-        associationId,
-        bankAccountId: data.bankAccountId,
-        filename: data.filename,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null,
-        totalEntries: data.entries.length,
-        status: 'PROCESSING',
-        importedBy: userId,
-      },
+    // The lines are checked the same way as a file's: each one needs a date and an amount, and a line saved before is skipped.
+    const { fingerprints } = await import('./statement-parser');
+    const { Decimal: D } = await import('@prisma/client/runtime/library');
+    const account = await prisma.associationBankAccount.findFirst({ where: { id: data.bankAccountId, associationId } });
+    if (!account) throw new Error('Bank account not found');
+    const lines = data.entries.map((entry, i) => ({
+      row: i + 1,
+      transactionDate: new Date(entry.transactionDate),
+      valueDate: entry.valueDate ? new Date(entry.valueDate) : null,
+      reference: entry.reference ?? null,
+      description: entry.description,
+      debitAmount: entry.debitAmount ? new D(entry.debitAmount) : null,
+      creditAmount: entry.creditAmount ? new D(entry.creditAmount) : null,
+      balance: entry.balance !== undefined && entry.balance !== null ? new D(entry.balance) : null,
+    }));
+    const prints = fingerprints(account.id, lines);
+    return prisma.$transaction(async (tx) => {
+      const record = await tx.bankStatementImport.create({
+        data: { associationId, bankAccountId: account.id, filename: data.filename, startDate: data.startDate ? new Date(data.startDate) : null, endDate: data.endDate ? new Date(data.endDate) : null, totalEntries: 0, status: 'PROCESSING', importedBy: userId },
+      });
+      const created = await tx.bankStatementEntry.createMany({
+        data: lines.map((l, i) => ({ importId: record.id, bankAccountId: account.id, fingerprint: prints[i]!, transactionDate: l.transactionDate, valueDate: l.valueDate, reference: l.reference, description: l.description, debitAmount: l.debitAmount, creditAmount: l.creditAmount, balance: l.balance, matchStatus: 'UNMATCHED' as const })),
+        skipDuplicates: true,
+      });
+      const done = await tx.bankStatementImport.update({ where: { id: record.id }, data: { totalEntries: created.count, skippedEntries: lines.length - created.count, status: 'COMPLETED' } });
+      return { import: done, entriesCreated: created.count };
     });
-
-    // Create all statement entries
-    const entries = await prisma.bankStatementEntry.createMany({
-      data: data.entries.map((entry) => ({
-        importId: importRecord.id,
-        transactionDate: new Date(entry.transactionDate),
-        valueDate: entry.valueDate ? new Date(entry.valueDate) : null,
-        reference: entry.reference,
-        description: entry.description,
-        debitAmount: entry.debitAmount,
-        creditAmount: entry.creditAmount,
-        balance: entry.balance,
-        matchStatus: 'UNMATCHED',
-      })),
-    });
-
-    // Update import record status
-    await prisma.bankStatementImport.update({
-      where: { id: importRecord.id },
-      data: { status: 'COMPLETED' },
-    });
-
-    return {
-      import: importRecord,
-      entriesCreated: entries.count,
-    };
   },
 
   async getStatementImports(associationId: number, page: number, limit: number) {
@@ -335,8 +409,18 @@ export const nigerianPaymentsService = {
       prisma.bankStatementImport.count({ where: { associationId } }),
     ]);
 
+    // How many of each import's money-in lines are matched, worked out from the lines themselves (the stored counters are not kept up to date)
+    const grouped = await prisma.bankStatementEntry.groupBy({
+      by: ['importId', 'matchStatus'],
+      where: { importId: { in: imports.map((i) => i.id) }, creditAmount: { gt: 0 } },
+      _count: { _all: true },
+    });
+    const countFor = (importId: number, matched: boolean) =>
+      grouped.filter((g) => g.importId === importId && (g.matchStatus !== 'UNMATCHED') === matched).reduce((n, g) => n + g._count._all, 0);
+    const withCounts = imports.map((i) => ({ ...i, matchedEntries: countFor(i.id, true), unmatchedEntries: countFor(i.id, false) }));
+
     return {
-      imports,
+      imports: withCounts,
       pagination: {
         page,
         limit,
@@ -354,11 +438,12 @@ export const nigerianPaymentsService = {
       limit: number;
       importId?: number;
       matchStatus?: string;
+      creditsOnly?: boolean;
       startDate?: Date;
       endDate?: Date;
     }
   ) {
-    const { page, limit, importId, matchStatus, startDate, endDate } = options;
+    const { page, limit, importId, matchStatus, creditsOnly, startDate, endDate } = options;
     const skip = (page - 1) * limit;
 
     const where: any = {
@@ -367,6 +452,7 @@ export const nigerianPaymentsService = {
 
     if (importId) where.importId = importId;
     if (matchStatus) where.matchStatus = matchStatus;
+    if (creditsOnly) where.creditAmount = { gt: 0 };
     if (startDate || endDate) {
       where.transactionDate = {};
       if (startDate) where.transactionDate.gte = startDate;
@@ -408,116 +494,22 @@ export const nigerianPaymentsService = {
   // TASK-PAY-003: PAYMENT RECONCILIATION
   // ==========================================
 
+  /**
+   * Proposes a match between a bank line (or a declared transfer) and a charge. The amount is the bank line's own, never the one
+   * the caller sends. See reconciliation-engine.ts for the rules.
+   */
   async reconcilePayment(associationId: number, userId: number, data: ReconcileInput) {
-    // Verify transaction exists
-    const transaction = await prisma.transaction.findFirst({
-      where: { id: data.transactionId, associationId },
+    return proposeMatch(associationId, userId, {
+      transactionId: data.transactionId,
+      statementEntryId: data.statementEntryId ?? null,
+      bankTransferId: data.bankTransferId ?? null,
+      matchType: data.matchType,
+      notes: data.notes ?? null,
     });
-
-    if (!transaction) {
-      throw new Error('Transaction not found');
-    }
-
-    // Create reconciliation record
-    const reconciliation = await prisma.paymentReconciliation.create({
-      data: {
-        associationId,
-        transactionId: data.transactionId,
-        statementEntryId: data.statementEntryId,
-        matchType: data.matchType,
-        matchedAmount: data.matchedAmount,
-        variance: data.variance || 0,
-        status: 'PENDING',
-        notes: data.notes,
-      },
-    });
-
-    // If bank transfer provided, link it to reconciliation
-    if (data.bankTransferId) {
-      await prisma.bankTransfer.update({
-        where: { id: data.bankTransferId },
-        data: {
-          reconciliationId: reconciliation.id,
-          status: 'MATCHED',
-        },
-      });
-    }
-
-    // Update statement entry if provided
-    if (data.statementEntryId) {
-      await prisma.bankStatementEntry.update({
-        where: { id: data.statementEntryId },
-        data: {
-          matchStatus: data.matchType === 'MANUAL' ? 'MANUAL_MATCHED' : 'AUTO_MATCHED',
-          matchedTransactionId: data.transactionId,
-          matchConfidence: data.matchType === 'AUTO_REFERENCE' ? 100 : data.matchType === 'AUTO_AMOUNT' ? 80 : 100,
-          matchedAt: new Date(),
-          matchedBy: userId,
-        },
-      });
-    }
-
-    return reconciliation;
   },
 
   async confirmReconciliation(id: number, associationId: number, userId: number, status: 'CONFIRMED' | 'DISPUTED', notes?: string) {
-    const reconciliation = await prisma.paymentReconciliation.update({
-      where: { id },
-      data: {
-        status,
-        reconciledBy: userId,
-        reconciledAt: new Date(),
-        notes: notes || undefined,
-      },
-      include: {
-        transaction: true,
-      },
-    });
-
-    // If confirmed, update the transaction status to paid
-    if (status === 'CONFIRMED') {
-      await prisma.transaction.update({
-        where: { id: reconciliation.transactionId },
-        data: {
-          status: 'paid',
-          paymentDate: new Date(),
-          paymentMethod: 'bank_transfer',
-        },
-      });
-
-      // Create a payment record
-      const paymentCount = await prisma.payment.count({ where: { associationId } });
-      const payment = await prisma.payment.create({
-        data: {
-          associationId,
-          transactionId: reconciliation.transactionId,
-          amountPaid: reconciliation.matchedAmount,
-          paymentDate: new Date(),
-          paymentMethod: 'bank_transfer',
-          receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
-          confirmedBy: userId,
-          confirmedAt: new Date(),
-        },
-        include: {
-          transaction: {
-            include: {
-              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-              category: { select: { id: true, name: true, type: true } },
-            },
-          },
-        },
-      });
-
-      // Accounting integration: Sync payment to accounting module
-      try {
-        await accountingIntegrationService.onPaymentRecorded(payment, userId);
-      } catch (syncError) {
-        console.error('Accounting sync failed (non-critical):', syncError);
-        // Don't throw - payment creation succeeded
-      }
-    }
-
-    return reconciliation;
+    return status === 'CONFIRMED' ? confirmMatch(id, associationId, userId, notes) : disputeMatch(id, associationId, userId, notes);
   },
 
   async getReconciliations(
@@ -557,8 +549,16 @@ export const nigerianPaymentsService = {
       prisma.paymentReconciliation.count({ where }),
     ]);
 
+    // Each match with the bank line it holds (the relation is by id), so a screen can show what the money was
+    const entryIds = reconciliations.map((r) => r.statementEntryId).filter((id): id is number => id !== null);
+    const entries = entryIds.length
+      ? await prisma.bankStatementEntry.findMany({ where: { id: { in: entryIds } }, select: { id: true, transactionDate: true, reference: true, description: true, creditAmount: true } })
+      : [];
+    const entryById = new Map(entries.map((e) => [e.id, e]));
+    const withLines = reconciliations.map((r) => ({ ...r, statementEntry: r.statementEntryId ? (entryById.get(r.statementEntryId) ?? null) : null }));
+
     return {
-      reconciliations,
+      reconciliations: withLines,
       pagination: {
         page,
         limit,
@@ -574,156 +574,41 @@ export const nigerianPaymentsService = {
   // TASK-PAY-004: AUTO-MATCHING TRANSACTIONS
   // ==========================================
 
-  async autoMatchTransactions(associationId: number): Promise<AutoMatchResult> {
-    const matches: AutoMatchResult['matches'] = [];
-
-    // Get unmatched bank transfers (VERIFIED but not matched to transaction)
-    const unmatchedTransfers = await prisma.bankTransfer.findMany({
-      where: {
-        associationId,
-        status: 'VERIFIED',
-        transactionId: null,
-      },
-    });
-
-    console.log(`[Auto-Match] Found ${unmatchedTransfers.length} unmatched transfers`);
-
-    // Get pending transactions (case-insensitive status check)
-    const pendingTransactions = await prisma.transaction.findMany({
-      where: {
-        associationId,
-        status: {
-          in: ['PENDING', 'OVERDUE', 'pending', 'overdue', 'Pending', 'Overdue'],
-        },
-      },
-      include: {
-        member: true,
-      },
-    });
-
-    console.log(`[Auto-Match] Found ${pendingTransactions.length} pending transactions`);
-
-    for (const transfer of unmatchedTransfers) {
-      // Try to match by reference number first
-      let matchedTransaction = pendingTransactions.find((txn) => {
-        if (!transfer.reference || !txn.referenceNumber) return false;
-        return transfer.reference.toLowerCase().includes(txn.referenceNumber.toLowerCase()) ||
-               txn.referenceNumber.toLowerCase().includes(transfer.reference.toLowerCase());
-      });
-
-      if (matchedTransaction) {
-        matches.push({
-          transactionId: matchedTransaction.id,
-          bankTransferId: transfer.id,
-          confidence: 100,
-          matchType: 'AUTO_REFERENCE',
-        });
-        continue;
-      }
-
-      // Try to match by amount and member
-      if (transfer.memberId) {
-        matchedTransaction = pendingTransactions.find((txn) => {
-          return txn.memberId === transfer.memberId &&
-                 new Decimal(txn.amount).equals(transfer.amount);
-        });
-
-        if (matchedTransaction) {
-          matches.push({
-            transactionId: matchedTransaction.id,
-            bankTransferId: transfer.id,
-            confidence: 90,
-            matchType: 'AUTO_AMOUNT',
-          });
-          continue;
-        }
-      }
-
-      // Try to match by amount only (lower confidence)
-      matchedTransaction = pendingTransactions.find((txn) => {
-        return new Decimal(txn.amount).equals(transfer.amount);
-      });
-
-      if (matchedTransaction) {
-        matches.push({
-          transactionId: matchedTransaction.id,
-          bankTransferId: transfer.id,
-          confidence: 70,
-          matchType: 'AUTO_AMOUNT',
-        });
-      }
-    }
-
-    // Also try to match statement entries
-    const unmatchedEntries = await prisma.bankStatementEntry.findMany({
-      where: {
-        import: { associationId },
-        matchStatus: 'UNMATCHED',
-        creditAmount: { not: null },
-      },
-    });
-
-    for (const entry of unmatchedEntries) {
-      if (!entry.creditAmount) continue;
-
-      // Try to match by reference
-      let matchedTransaction = pendingTransactions.find((txn) => {
-        if (!entry.reference || !txn.referenceNumber) return false;
-        return entry.reference.toLowerCase().includes(txn.referenceNumber.toLowerCase()) ||
-               txn.referenceNumber.toLowerCase().includes(entry.reference.toLowerCase());
-      });
-
-      if (matchedTransaction) {
-        matches.push({
-          transactionId: matchedTransaction.id,
-          statementEntryId: entry.id,
-          confidence: 100,
-          matchType: 'AUTO_REFERENCE',
-        });
-        continue;
-      }
-
-      // Try to match by amount
-      matchedTransaction = pendingTransactions.find((txn) => {
-        return new Decimal(txn.amount).equals(entry.creditAmount!);
-      });
-
-      if (matchedTransaction) {
-        matches.push({
-          transactionId: matchedTransaction.id,
-          statementEntryId: entry.id,
-          confidence: 70,
-          matchType: 'AUTO_AMOUNT',
-        });
-      }
-    }
-
+  /** The ranked suggestions, in the shape the older screens read, with the full detail alongside. */
+  async autoMatchTransactions(associationId: number): Promise<AutoMatchResult & { suggestions: Awaited<ReturnType<typeof suggestMatches>>['suggestions']; counts: Awaited<ReturnType<typeof suggestMatches>>['counts'] }> {
+    const { suggestions, counts } = await suggestMatches(associationId);
     return {
-      matched: matches.length,
-      unmatched: unmatchedTransfers.length + unmatchedEntries.length - matches.length,
-      matches,
+      matched: suggestions.length,
+      unmatched: counts.withoutSuggestion,
+      matches: suggestions.map((m) => ({
+        transactionId: m.transactionId,
+        bankTransferId: m.bankTransferId ?? undefined,
+        statementEntryId: m.statementEntryId ?? undefined,
+        confidence: m.confidence,
+        matchType: m.matchType,
+      })),
+      suggestions,
+      counts,
     };
   },
 
+  /** Proposes each chosen match. One that can't be made says why and the rest still go ahead. Nothing is recorded until confirmed. */
   async applyAutoMatches(associationId: number, userId: number, matches: AutoMatchResult['matches']) {
     const results = [];
-
     for (const match of matches) {
       try {
-        const reconciliation = await this.reconcilePayment(associationId, userId, {
+        const reconciliation = await proposeMatch(associationId, userId, {
           transactionId: match.transactionId,
-          bankTransferId: match.bankTransferId,
-          statementEntryId: match.statementEntryId,
-          matchType: match.matchType as any,
-          matchedAmount: 0, // Will be set from transaction
+          bankTransferId: match.bankTransferId ?? null,
+          statementEntryId: match.statementEntryId ?? null,
+          matchType: match.matchType === 'AUTO_REFERENCE' ? 'AUTO_REFERENCE' : match.matchType === 'MANUAL' ? 'MANUAL' : 'AUTO_AMOUNT',
+          confidence: match.confidence,
         });
-
         results.push({ success: true, reconciliationId: reconciliation.id, ...match });
       } catch (error) {
         results.push({ success: false, error: (error as Error).message, ...match });
       }
     }
-
     return results;
   },
 
@@ -770,140 +655,9 @@ export const nigerianPaymentsService = {
   // TASK-PAY-008: PAYMENT VERIFICATION WORKFLOW
   // ==========================================
 
-  async verifyPaymentProof(
-    id: number,
-    associationId: number,
-    userId: number,
-    verification: PaymentProofVerification
-  ) {
-    // Accounting syncs run after the DB transaction commits — onPaymentRecorded is
-    // non-critical and must not cause the approval to roll back if it fails.
-    type AccountingSync = () => Promise<void>;
-    const accountingSyncs: AccountingSync[] = [];
-
-    const proof = await prisma.$transaction(async (tx) => {
-      const updated = await tx.paymentProof.update({
-        where: { id },
-        data: {
-          status: verification.status,
-          verifiedBy: userId,
-          verifiedAt: new Date(),
-          rejectionReason: verification.rejectionReason,
-          notes: verification.notes,
-        },
-        include: {
-          transaction: true,
-          bankTransfer: true,
-        },
-      });
-
-      if (verification.status === 'APPROVED') {
-        // R7.2 (G17): transactionIds (multi-item member declaration) and transactionId
-        // (single bank-transfer-linked proof) are mutually exclusive paths. Checking
-        // transactionIds first ensures a proof that carries both fields only processes
-        // payments once — the bank-transfer path (else if) is skipped when declarations
-        // are present, preventing double payment records.
-        if (updated.transactionIds.length > 0) {
-          const transactions = await tx.transaction.findMany({
-            where: { id: { in: updated.transactionIds }, associationId },
-            include: { payments: { select: { amountPaid: true } } },
-          });
-
-          for (const txn of transactions) {
-            const alreadyPaid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
-            const balance = new Decimal(txn.amount).minus(alreadyPaid);
-            if (balance.lessThanOrEqualTo(0)) continue;
-
-            const paymentCount = await tx.payment.count({ where: { associationId } });
-            const payment = await tx.payment.create({
-              data: {
-                associationId,
-                transactionId: txn.id,
-                amountPaid: balance,
-                paymentDate: new Date(),
-                paymentMethod: updated.paymentMethod || 'bank_transfer',
-                receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
-                confirmedBy: userId,
-                confirmedAt: new Date(),
-              },
-              include: {
-                transaction: {
-                  include: {
-                    member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-                    category: { select: { id: true, name: true, type: true } },
-                  },
-                },
-              },
-            });
-
-            await tx.transaction.update({ where: { id: txn.id }, data: { status: 'paid' } });
-            await tx.levyCampaignAssignment.updateMany({
-              where: { transactionId: txn.id },
-              data: { status: 'paid' },
-            });
-
-            accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
-          }
-        } else if (updated.transactionId && updated.transaction) {
-          // Single bank-transfer-linked proof path — only runs when transactionIds is empty
-          await tx.transaction.update({
-            where: { id: updated.transactionId },
-            data: {
-              status: 'paid',
-              paymentDate: new Date(),
-              paymentMethod: 'bank_transfer',
-            },
-          });
-
-          const paymentCount = await tx.payment.count({ where: { associationId } });
-          const payment = await tx.payment.create({
-            data: {
-              associationId,
-              transactionId: updated.transactionId,
-              amountPaid: updated.transaction.amount,
-              paymentDate: new Date(),
-              paymentMethod: 'bank_transfer',
-              receiptNumber: `RCP${String(paymentCount + 1).padStart(6, '0')}`,
-              confirmedBy: userId,
-              confirmedAt: new Date(),
-            },
-            include: {
-              transaction: {
-                include: {
-                  member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-                  category: { select: { id: true, name: true, type: true } },
-                },
-              },
-            },
-          });
-
-          accountingSyncs.push(() => accountingIntegrationService.onPaymentRecorded(payment, userId));
-        }
-
-        if (updated.bankTransferId) {
-          await tx.bankTransfer.update({
-            where: { id: updated.bankTransferId },
-            data: {
-              status: 'VERIFIED',
-              verifiedBy: userId,
-              verifiedAt: new Date(),
-            },
-          });
-        }
-      }
-
-      return updated;
-    });
-
-    for (const sync of accountingSyncs) {
-      try {
-        await sync();
-      } catch (syncError) {
-        console.error('Accounting sync failed (non-critical):', syncError);
-      }
-    }
-
-    return proof;
+  /** Decides a proof once — see payment-proof-decision.ts for the guards (pending only, no self-approval, something to apply). */
+  async verifyPaymentProof(id: number, associationId: number, userId: number, verification: PaymentProofVerification) {
+    return decidePaymentProof(id, associationId, userId, verification);
   },
 
   async getPaymentProofs(
@@ -946,7 +700,8 @@ export const nigerianPaymentsService = {
     ]);
 
     return {
-      proofs,
+      // The storage key stays server-side — clients only learn whether a file is attached and fetch it through the link endpoints.
+      proofs: proofs.map(({ filepath, ...rest }) => ({ ...rest, hasFile: Boolean(filepath) })),
       pagination: {
         page,
         limit,
@@ -957,8 +712,13 @@ export const nigerianPaymentsService = {
     };
   },
 
+  /**
+   * One proof with the charges it asks to settle expanded (`declaredItems`), so the officer can compare them with the bank
+   * statement. `declaredBalance` is what approving will record: each charge's remaining balance, summed — voided and waived
+   * charges and ones already settled count for nothing. `file` is never the storage key, only whether one is attached.
+   */
   async getPaymentProofById(id: number, associationId: number) {
-    return prisma.paymentProof.findFirst({
+    const proof = await prisma.paymentProof.findFirst({
       where: { id, associationId },
       include: {
         transaction: {
@@ -971,6 +731,43 @@ export const nigerianPaymentsService = {
         member: true,
       },
     });
+    if (!proof) return null;
+
+    const ids = targetTransactionIds(proof);
+    const transactions = ids.length
+      ? await prisma.transaction.findMany({
+          where: { id: { in: ids }, associationId },
+          include: { category: { select: { id: true, name: true, type: true } }, payments: { select: { amountPaid: true } } },
+          orderBy: { dueDate: 'asc' },
+        })
+      : [];
+
+    const declaredItems = transactions.map((txn) => {
+      const paid = txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0));
+      const remaining = new Decimal(txn.amount).minus(paid);
+      const counts = !txn.isVoided && txn.status !== 'waived' && remaining.greaterThan(0);
+      return {
+        id: txn.id,
+        referenceNumber: txn.referenceNumber,
+        category: txn.category,
+        dueDate: txn.dueDate,
+        status: txn.status,
+        isVoided: txn.isVoided,
+        amount: txn.amount,
+        paid,
+        balance: counts ? remaining : new Decimal(0),
+      };
+    });
+    const declaredBalance = declaredItems.reduce((sum, item) => sum.plus(item.balance), new Decimal(0));
+
+    return {
+      ...proof,
+      // Never expose the storage key — the file is fetched through the short-lived link endpoints.
+      filepath: undefined,
+      hasFile: Boolean(proof.filepath),
+      declaredItems,
+      declaredBalance,
+    };
   },
 
   // ==========================================

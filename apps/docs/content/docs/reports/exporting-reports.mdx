@@ -1,31 +1,44 @@
 ---
 title: "Exporting to PDF and Excel"
-description: "Download your financial summary, member list, or an individual member's statement."
+description: "Make your financial summary, member list or a member's statement as a file, and share it from your phone or download it on the web."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/exports", "RP7"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-29"
 related: ["/docs/reports/custom-exports", "/docs/reports/export-history"]
 ---
 
-The Exports Center is the one place to download any of your reports, your member list, or an individual member's statement.
+Exports make a file you can keep, print or send: a financial summary, your member list, or one member's statement.
 
 ## Before you start
 
-You need the **view finances** or **export members** permission, which Administrators, Treasurers and Financial Secretaries have by default.
+You need the **export financial** permission for the financial files, and **export members** for the member list and statements. Administrators, Treasurers and Financial Secretaries have them by default.
 
 ## Export something
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Exports"]} />.</Step>
 <Step>Under **Quick Exports**, select **Financial Summary** (PDF or Excel), **All Members** (Excel), or **Member Statement** (PDF, after choosing a member).</Step>
 <Step>Your file downloads automatically.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Reports", "Exports"]} />.</Step>
+<Step>On **Make a file**, choose **Financial summary** (pick a period and PDF or Excel), **Members list** (choose which members), or **Member statement** (choose a member and, if you want, two dates).</Step>
+<Step>Tap **Make PDF** or **Make Excel**. When the file is ready, your phone's share sheet opens, so you can send it by WhatsApp or email, or save it to Files.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/reports/exporting-reports-1.webp" alt="Exports Center with Quick Export cards for Financial Summary, All Members and Member Statement, Recent Exports, and links to Export History and Custom Export" />
+The financial summary uses the same rules as the [Financial summary report](/docs/reports/financial-summary), so the file matches what you see on screen. Dates in it follow Lagos time.
 
 ## What happens next
 
-The export also appears under **Recent Exports** here and in your full [Export history](/docs/reports/export-history), so you can re-download it without generating it again — for a while, at least.
+The file is kept for **7 days**. It is listed under the **History** tab in the app, and in your [Export history](/docs/reports/export-history) on the web, where you can share or download it again without making it again. After 7 days the file is gone and the history says **Expired**: make it again.
+
+Officers with an export permission see every file the association has made. Someone with only the **view export history** permission sees just the files they made themselves.

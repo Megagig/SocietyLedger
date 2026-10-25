@@ -1,10 +1,10 @@
 // SocietyLedger Service Worker v1.0.0
 // Provides offline support, caching, and push notifications
 
-const CACHE_NAME = 'societyledger-v1';
-const STATIC_CACHE_NAME = 'societyledger-static-v1';
-const DYNAMIC_CACHE_NAME = 'societyledger-dynamic-v1';
-const API_CACHE_NAME = 'societyledger-api-v1';
+const CACHE_NAME = 'societyledger-v2';
+const STATIC_CACHE_NAME = 'societyledger-static-v2';
+const DYNAMIC_CACHE_NAME = 'societyledger-dynamic-v2';
+const API_CACHE_NAME = 'societyledger-api-v2';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -13,8 +13,8 @@ const STATIC_ASSETS = [
   '/auth/login',
   '/offline',
   '/manifest.json',
-  '/icons/android-launchericon-192-192.png',
-  '/icons/android-launchericon-512-512.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
 ];
 
 // API routes to cache with network-first strategy
@@ -264,8 +264,8 @@ self.addEventListener('push', (event) => {
   let data = {
     title: 'SocietyLedger',
     body: 'You have a new notification',
-    icon: '/icons/android-launchericon-192-192.png',
-    badge: '/icons/android-launchericon-72-72.png',
+    icon: '/icons/icon-192.png',
+    badge: '/favicon-96x96.png',
     tag: 'default',
     data: { url: '/dashboard/notifications' }
   };

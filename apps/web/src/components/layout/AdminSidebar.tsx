@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { BrandMark } from '@/components/brand/BrandLogo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Text } from '@mantine/core';
@@ -10,6 +11,7 @@ import {
   IconCurrencyNaira,
   IconReceipt,
   IconChartBar,
+  IconCoin,
   IconHeart,
   IconBell,
   IconSettings,
@@ -24,6 +26,7 @@ import {
   IconBuildingCommunity,
   IconBadge,
   IconBuildingBank,
+  IconCash,
   IconCalendarEvent,
   IconClipboardCheck,
   IconMessage,
@@ -285,6 +288,13 @@ export function AdminSidebar() {
           href: '/dashboard/finance/reminders',
         },
         {
+          // Cash collected from members at meetings, lodged into the bank and checked by a second officer.
+          label: 'Cash Collections',
+          icon: <IconCash size={18} />,
+          href: '/dashboard/cash',
+          permission: [PERMISSIONS.CASH_COLLECT, PERMISSIONS.CASH_LODGE, PERMISSIONS.CASH_VERIFY, PERMISSIONS.CASH_VIEW],
+        },
+        {
           label: 'Payment Management',
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments',
@@ -294,6 +304,18 @@ export function AdminSidebar() {
           label: 'Nigerian Payments',
           icon: <IconBuildingBank size={18} />,
           href: '/dashboard/payments/nigerian',
+        },
+        {
+          label: 'Payment Proofs',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/payments/nigerian/verification',
+          permission: PERMISSIONS.PAYMENT_RECORD,
+        },
+        {
+          label: 'Reconciliation',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/payments/nigerian/reconciliation',
+          permission: PERMISSIONS.PAYMENT_CONFIRM,
         },
       ],
     },
@@ -311,6 +333,11 @@ export function AdminSidebar() {
           label: 'Chart of Accounts',
           icon: <IconReceipt size={18} />,
           href: '/dashboard/accounting/chart-of-accounts',
+        },
+        {
+          label: 'Expenses',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/accounting/expenses',
         },
         {
           label: 'Journal Entries',
@@ -423,6 +450,12 @@ export function AdminSidebar() {
           href: '/dashboard/governance/polls',
           permission: PERMISSIONS.POLL_VIEW,
         },
+        {
+          label: 'Voting Rules',
+          icon: <IconChecklist size={18} />,
+          href: '/dashboard/governance/elections/rules',
+          permission: PERMISSIONS.ELECTION_RULES,
+        },
       ],
     },
 
@@ -461,19 +494,31 @@ export function AdminSidebar() {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
       badge: 'Enterprise',
-      permission: PERMISSIONS.COOPERATIVE_VIEW,
+      permission: [PERMISSIONS.COOPERATIVE_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_LOANS_MANAGE],
       children: [
         {
           label: 'Dashboard',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/cooperatives',
-          permission: PERMISSIONS.COOPERATIVE_VIEW,
+          permission: [PERMISSIONS.COOPERATIVE_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_LOANS_MANAGE],
         },
         {
           label: 'All Savings',
           icon: <IconCurrencyNaira size={18} />,
           href: '/dashboard/cooperatives/savings',
           permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+        },
+        {
+          label: 'Savings Deposits',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/cooperatives/savings-deposits',
+          permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+        },
+        {
+          label: 'Loan Repayments',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/cooperatives/loan-repayments',
+          permission: PERMISSIONS.COOPERATIVE_LOANS_MANAGE,
         },
         {
           label: 'All Loans',
@@ -622,6 +667,12 @@ export function AdminSidebar() {
           permission: PERMISSIONS.AI_QUERY,
         },
         {
+          label: 'Buy AI Credits',
+          icon: <IconCoin size={18} />,
+          href: '/dashboard/ai/credits',
+          permission: PERMISSIONS.LEDGER_VIEW,
+        },
+        {
           label: 'Usage & Stats',
           icon: <IconChartBar size={18} />,
           href: '/dashboard/ai/usage',
@@ -743,7 +794,7 @@ export function AdminSidebar() {
           permission: undefined,
         },
         {
-          label: 'My Tickets',
+          label: 'Support Tickets',
           icon: <IconTicket size={18} />,
           href: '/dashboard/help/tickets',
           permission: undefined,
@@ -934,9 +985,7 @@ export function AdminSidebar() {
                 />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <IconUsers className="text-white" size={24} />
-              </div>
+              <BrandMark size={40} className="flex-shrink-0 group-hover:scale-110 transition-transform" />
             )}
             <div>
               <span className="text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">

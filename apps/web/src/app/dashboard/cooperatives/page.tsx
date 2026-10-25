@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCooperativeDashboard } from '@/lib/api/cooperatives';
+import { usePermissions } from '@/hooks/usePermissions';
+import MemberOverview from './MemberOverview';
 import { 
   IconWallet, IconCurrencyNaira, IconAlertTriangle,
   IconArrowRight, IconTrendingUp, IconTrendingDown,
@@ -39,7 +41,7 @@ interface DashboardData {
   };
 }
 
-export default function CooperativesDashboardPage() {
+function OfficerDashboard() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -282,6 +284,28 @@ export default function CooperativesDashboardPage() {
             </button>
 
             <button
+              onClick={() => router.push('/dashboard/cooperatives/savings-deposits')}
+              className="w-full flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <IconCurrencyNaira className="text-green-600" size={20} />
+                <span className="font-medium text-gray-900 dark:text-white">Review Savings Deposits</span>
+              </div>
+              <IconArrowRight className="text-gray-400" size={16} />
+            </button>
+
+            <button
+              onClick={() => router.push('/dashboard/cooperatives/loan-repayments')}
+              className="w-full flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <IconFileAnalytics className="text-purple-600" size={20} />
+                <span className="font-medium text-gray-900 dark:text-white">Review Loan Payments</span>
+              </div>
+              <IconArrowRight className="text-gray-400" size={16} />
+            </button>
+
+            <button
               onClick={() => router.push('/dashboard/cooperatives/loan-products')}
               className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
             >
@@ -342,4 +366,24 @@ export default function CooperativesDashboardPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * The association-wide dashboard is officer-only on the server (ledger.view or payments.approve), so a plain
+ * member used to land on "Failed to fetch cooperative dashboard". Members get their own overview instead; the
+ * check mirrors the API's, so the screen always matches what the server will allow.
+ */
+export default function CooperativesDashboardPage() {
+  const { permissions, isHydrated } = usePermissions();
+
+  if (!isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  const isOfficer = permissions.includes('ledger.view') || permissions.includes('payments.approve');
+  return isOfficer ? <OfficerDashboard /> : <MemberOverview />;
 }

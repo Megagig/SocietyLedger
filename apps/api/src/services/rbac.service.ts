@@ -198,6 +198,35 @@ export class RBACService {
   }
 
   /**
+   * Ensures a UserRole entry exists for the user in this association.
+   * Called at login time to self-heal users created before the RBAC migration
+   * or by the admin without a corresponding UserRole row.
+   */
+  static async ensureUserRoles(userId: number, associationId: number, legacyRole: string): Promise<void> {
+    if (!legacyRole || !associationId) return;
+
+    const existing = await prisma.userRole.count({
+      where: { userId, associationId, isActive: true },
+    });
+    if (existing > 0) return;
+
+    const dbRole = await prisma.role.findFirst({
+      where: { associationId, name: legacyRole },
+    });
+    if (!dbRole) return;
+
+    await prisma.userRole.upsert({
+      where: {
+        userId_roleId_associationId: { userId, roleId: dbRole.id, associationId },
+      },
+      update: { isActive: true },
+      create: { userId, roleId: dbRole.id, associationId, isActive: true },
+    });
+
+    this.clearUserCache(userId, associationId);
+  }
+
+  /**
    * Clear permission cache for user (call on role changes)
    */
   static clearUserCache(userId: number, associationId?: number): void {

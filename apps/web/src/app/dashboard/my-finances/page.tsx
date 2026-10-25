@@ -133,7 +133,7 @@ export default function MyFinancesPage() {
               No Member Profile Found
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              You don't have a member profile linked to your account in this association. 
+              You don&apos;t have a member profile linked to your account in this association. 
               Create one to view your financial information and make payments.
             </p>
             <Button

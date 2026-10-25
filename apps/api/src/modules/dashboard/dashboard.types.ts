@@ -44,6 +44,9 @@ export interface RevenueTrendItem {
   year: number;
   revenue: Decimal;
   expected: Decimal;
+  /** The month's first and last moment (Lagos), so a bar can open the payments in it. */
+  startDate?: Date;
+  endDate?: Date;
 }
 
 // ============================================

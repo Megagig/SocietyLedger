@@ -17,6 +17,7 @@ export default function MembersImportPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [parsedMembers, setParsedMembers] = useState<ParsedMember[]>([]);
   const [importMethod, setImportMethod] = useState<'csv' | 'manual' | null>(null);
@@ -78,6 +79,7 @@ export default function MembersImportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError(null);
     try {
       // Import members via bulk API if there are any
       if (parsedMembers.length > 0) {
@@ -89,11 +91,15 @@ export default function MembersImportPage() {
 
       await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 3, stepName: 'members' }
+        parsedMembers.length > 0
+          ? { step: 3, stepName: 'members' }
+          : { step: 3, stepName: 'members', skipped: true }
       );
       router.push('/onboarding/finance');
-    } catch (error) {
-      console.error('Failed to import members:', error);
+    } catch (err) {
+      console.error('Failed to import members:', err);
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(message || 'We could not import your members. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -103,7 +109,7 @@ export default function MembersImportPage() {
     try {
       await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 3, stepName: 'members' }
+        { step: 3, stepName: 'members', skipped: true }
       );
       router.push('/onboarding/finance');
     } catch (error) {
@@ -136,6 +142,11 @@ export default function MembersImportPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div role="alert" className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
           {/* Import Method Selection */}
           {!importMethod && (
             <div className="grid md:grid-cols-2 gap-4">

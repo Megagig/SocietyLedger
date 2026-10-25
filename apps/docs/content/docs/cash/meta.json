@@ -1,0 +1,10 @@
+{
+  "title": "Cash collections",
+  "icon": "HandCoins",
+  "pages": [
+    "how-cash-collections-work",
+    "collecting-cash-from-members",
+    "lodging-cash-into-the-bank",
+    "verifying-cash-lodgments"
+  ]
+}

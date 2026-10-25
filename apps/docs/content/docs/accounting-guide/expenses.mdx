@@ -1,0 +1,70 @@
+---
+title: "Recording and approving expenses"
+description: "Record spending once it is paid, attach the receipt, have a second officer approve it, and see it in the books."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/accounting/expenses", "AC7"]
+status: published
+lastVerified: "2026-10-25"
+related: ["/docs/accounting-guide/journal-entries", "/docs/accounting-guide/budgets-and-variance", "/docs/accounting-guide/opening-a-figure"]
+---
+
+An expense is money the association has paid out: hall hire, stationery, a welfare cost. You record it **after** it is paid, with the receipt. A different officer checks the receipt and approves it, and only then does it count in the books. You never write debits and credits: the books are updated for you.
+
+## Before you start
+
+- To record, change and send expenses you need the **manage finances** permission (Administrators, Treasurers and Financial Secretaries by default).
+- To approve, reject or void you need **approve payments**, which only Administrators and Treasurers have by default.
+- The **category** is one of your expense accounts in the [chart of accounts](/docs/accounting-guide/chart-of-accounts), so add an account there if the one you need is missing.
+- The **paid from** account is one of your cash or bank accounts, including petty cash.
+
+## Record an expense
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Accounting", "Expenses"]} /> and select <UiLabel>Record Expense</UiLabel>.</Step>
+<Step>Enter who was paid, what it was for, the amount and the date it was paid. The date cannot be in the future.</Step>
+<Step>Choose the **Category** and the account it was **Paid from**. If the category is in the budget in force, you see what is left, or how far over this takes it.</Step>
+<Step>Attach the receipt: a photo or a PDF up to 5MB. Without one, say why (only for small amounts).</Step>
+<Step>Select <UiLabel>Send for approval</UiLabel>, or <UiLabel>Save draft</UiLabel> to finish later.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting", "Expenses"]} /> and tap **+**.</Step>
+<Step>Enter who was paid, what it was for, the amount and the date it was paid.</Step>
+<Step>Choose the **Category** and the account it was **Paid from**. The budget note appears under the category.</Step>
+<Step>Take a photo of the receipt, or choose one from your photos or files. Without one, say why (only for small amounts).</Step>
+<Step>Tap **Send for approval**, or **Save draft** to finish later.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## The receipt rule
+
+Spending **above the receipt limit** cannot be sent without its receipt. At or below the limit you may send it with a reason instead, such as "bus fare, no receipt". The limit starts at ₦5,000.00. An officer with the **edit settings** permission can change it under <MenuPath items={["Settings", "Financial"]} /> (**A receipt is needed above**). Set it to 0 to always ask for a receipt.
+
+## Approve, reject or void
+
+- **Approve.** Open the expense, check the receipt against the amount, then approve with your password. It is posted to the books straight away: the category is debited and the account it was paid from is credited. **You cannot approve an expense you recorded.**
+- **Nobody to approve?** An officer who cannot approve payments sees the expense and a note saying so. If no one but the officer who recorded it can approve, the expense says that too: give the Treasurer role to someone, or let another officer approve payments, under Settings → Roles.
+- **Reject.** Give a reason. The officer who recorded it sees the reason, changes the expense and sends it again.
+- **Take it back.** The officer who recorded an expense that is still waiting can take it back to change it.
+- **Void.** If an approved expense was wrong (paid twice, wrong amount), an approver can void it with a reason and their password. The books get a reversing entry dated today, and the expense stays on the list marked **Voided**. Nothing is deleted. A date in a closed accounting period cannot be voided until the period is reopened.
+
+## Budget
+
+If the category has a line in the budget in force, the form and the approver both see where it stands. A voucher that takes the line over budget is **not refused**: the approver decides, and the approval records that it went over.
+
+## Where it shows
+
+Every approved expense appears in the books as a journal entry. Open an expense category on the chart of accounts or the income statement, and select a line: its entry has a **Where this came from** card that opens the expense and its receipt. See [Opening a figure to see the entries behind it](/docs/accounting-guide/opening-a-figure).
+
+An expense waiting for approval shows on the Accounting dashboard and on Home for officers who can approve it.
+
+## Related
+
+- [Journal entries](/docs/accounting-guide/journal-entries): for adjustments and opening balances. Spending belongs here, not there.
+- [Budgets, approval and variance](/docs/accounting-guide/budgets-and-variance)

@@ -519,6 +519,7 @@ export const memberLedgerService = {
       by: ['category', 'entryType'],
       where: { associationId, memberId },
       _sum: { amount: true },
+      _count: { _all: true },
     });
 
     // Get recent entries
@@ -531,10 +532,14 @@ export const memberLedgerService = {
     // Calculate summary
     let totalDebits = 0;
     let totalCredits = 0;
+    let totalAdjustments = 0;
+    let entryCount = 0;
     const byCategory: Record<string, { debits: number; credits: number }> = {};
 
     categoryTotals.forEach(item => {
       const amount = Number(item._sum.amount || 0);
+      entryCount += item._count._all;
+      if (item.entryType === 'ADJUSTMENT') totalAdjustments += amount;
       if (!byCategory[item.category]) {
         byCategory[item.category] = { debits: 0, credits: 0 };
       }
@@ -547,11 +552,20 @@ export const memberLedgerService = {
       }
     });
 
+    // The web ledger page reads these (with a per-category net); `byCategory` stays for the mobile app.
+    const categoryBreakdown = Object.fromEntries(
+      Object.entries(byCategory).map(([category, totals]) => [category, { ...totals, net: totals.debits - totals.credits }])
+    );
+
     return {
       currentBalance,
       totalDebits,
       totalCredits,
+      totalAdjustments,
+      entryCount,
+      lastEntryDate: recentEntries[0]?.effectiveDate ?? null,
       byCategory,
+      categoryBreakdown,
       recentEntries: recentEntries.map(e => ({
         ...e,
         amount: Number(e.amount),
@@ -621,9 +635,10 @@ export const memberLedgerService = {
       // For dues/levies/penalties: Transaction creates DEBIT (what is owed), payment creates CREDIT (payment made)
       const isDonation = txn.category.type === 'donation';
       
-      // Only create transaction entry for non-donation types (dues, levies, penalties)
-      // Donations don't create a debt - they are voluntary payments
-      if (!isDonation) {
+      // Only create transaction entry for non-donation types (dues, levies, penalties).
+      // A voided charge is no longer owed — its replacement carries the debt — so it adds no debit; any payments
+      // already made against it were real money received and still count as credits below.
+      if (!isDonation && !txn.isVoided) {
         entries.push({
           associationId,
           memberId,

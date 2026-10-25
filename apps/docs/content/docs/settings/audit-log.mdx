@@ -1,29 +1,46 @@
 ---
 title: "The audit log"
-description: "What this page is meant to show, and why it currently can't show it to you."
-type: concept
+description: "A record of changes made in your association: who did what, and when."
+type: task
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/settings/audit-logs", "ST9"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/settings/assigning-roles"]
 ---
 
-The Audit Log page is meant to be a filterable feed of changes made in your association — role changes, settings edits, and similar actions — with who made them and when.
+The audit log is a feed of changes made in your association, such as role changes and settings edits, newest first. Each entry shows what happened, who did it, which part of the app it belongs to and when.
 
-## How it works
+## Before you start
 
-<Callout type="danger" title="This page doesn't work for association administrators today">
-Opening <MenuPath items={["Settings", "Audit Log"]} /> always fails with a "Platform access denied" error, for every association Administrator, Treasurer or Financial Secretary — confirmed live. The page's only data call is wired to a platform-level endpoint that requires SocietyLedger's own Super Admin role, not any association-level permission; no tenant-scoped audit log endpoint exists in the API at all. The backend does write real audit records when settings change — the problem is purely that nothing lets you read them back at this level.
-</Callout>
+You need the **view audit log** permission, which Administrators have by default.
 
-The `audit.view`/`audit.export` permissions Administrators and Treasurers hold by default aren't checked by anything real either — they exist in the permission list but gate no actual route.
+## Look through the log
 
-## Why it matters
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Settings", "Audit Log"]} />.</Step>
+<Step>Search, or filter by activity and area, to narrow the list.</Step>
+<Step>Select an entry to see the values before and after.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Settings", "Audit log"]} />.</Step>
+<Step>Search, or choose an **Action** (Create, Update, Delete, Login, Settings or Role changes), an **Area** and a time under **When**, to narrow the list.</Step>
+<Step>Tap an entry to see what changed and the record number it was about.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-Changes to settings, roles and other association configuration are genuinely logged in the database, so the information this page would show does exist — there's just no way to see it as an association admin today.
+## What you will see
 
-## What you can do
+- Times are in Lagos time.
+- Anything that looks like a password, token or key is hidden and shown as `[hidden]`.
+- The log is for your association only. Nobody can change or delete an entry.
 
-For now, settings and role changes you've made are visible from where you made them (the Settings pages themselves reflect the current state), just not as a historical, who-changed-what feed.
+Not every action in the app is recorded. Role changes, settings changes and the actions of several other areas are.
+
+## Related

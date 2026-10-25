@@ -136,7 +136,50 @@ export interface AIChatResponse {
 // AI API CLIENT
 // ============================================
 
+export interface AIStatusDetail extends RateLimitStatus {
+  enabled: boolean;
+  tier: string;
+  allowancePerDay: number;
+  allowanceUsed: number;
+  allowanceLeft: number;
+  credits: number;
+  totalPurchased: number;
+  weights: { question: number; reminders: number; report: number };
+  creditPriceNaira: number;
+  minPurchaseNaira: number;
+  minimumCredits: number;
+  canAsk: boolean;
+}
+
+export interface AICreditPurchase {
+  id: number;
+  reference: string;
+  credits: number;
+  amount: string;
+  status: 'pending' | 'success' | 'failed';
+  paidAt: string | null;
+  createdAt: string;
+}
+
 export const aiApi = {
+  /** What is left today and in credits, the price, and recent purchases */
+  async getCredits(): Promise<{ success: boolean; data: { status: AIStatusDetail; purchases: AICreditPurchase[] } }> {
+    const response = await api.get(`${API_URL}/api/ai/credits`);
+    return response.data;
+  },
+
+  /** Start buying credits; the response has the Paystack page to send the buyer to */
+  async purchaseCredits(credits: number): Promise<{ success: boolean; data: { reference: string; authorizationUrl: string; credits: number; amount: number } }> {
+    const response = await api.post(`${API_URL}/api/ai/credits/purchase`, { credits, platform: 'web' });
+    return response.data;
+  },
+
+  /** Ask whether a payment went through (adds the credits if it did) */
+  async verifyCredits(reference: string): Promise<{ success: boolean; data: { status: 'success' | 'pending' | 'failed'; credits: number } }> {
+    const response = await api.get(`${API_URL}/api/ai/credits/verify/${encodeURIComponent(reference)}`);
+    return response.data;
+  },
+
   /**
    * Check AI service status
    */

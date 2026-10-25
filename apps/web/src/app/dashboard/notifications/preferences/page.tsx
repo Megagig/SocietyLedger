@@ -513,6 +513,30 @@ export default function NotificationPreferencesPage() {
                   />
                 </button>
               </div>
+              <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <IconDeviceMobile className="text-gray-600 dark:text-gray-400" size={18} />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Don&apos;t send me text messages
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">Stops announcement and campaign texts from your association&apos;s officers.</span>
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleToggle('announcementSmsOptOut')}
+                  disabled={updatePreferencesMutation.isPending}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    preferences?.announcementSmsOptOut ? 'bg-teal-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                  aria-pressed={!!preferences?.announcementSmsOptOut}
+                  aria-label="Don't send me text messages"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      preferences?.announcementSmsOptOut ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <IconBell className="text-gray-600 dark:text-gray-400" size={18} />

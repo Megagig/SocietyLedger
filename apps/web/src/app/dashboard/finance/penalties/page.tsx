@@ -149,7 +149,7 @@ export default function PenaltiesPage() {
     setIsLoading(true);
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories?type=penalty`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/categories?type=penalty&limit=100`
       );
       if (!response.ok) throw new Error('Failed to fetch penalties');
       const data = await response.json();
@@ -164,7 +164,7 @@ export default function PenaltiesPage() {
   const fetchRules = async () => {
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/rules`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/rules?limit=100`
       );
       if (response.ok) {
         const data = await response.json();
@@ -178,7 +178,7 @@ export default function PenaltiesPage() {
   const fetchWaivers = async () => {
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/waivers`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/waivers?limit=100`
       );
       if (response.ok) {
         const data = await response.json();
@@ -219,12 +219,17 @@ export default function PenaltiesPage() {
 
   const fetchMembers = async () => {
     try {
-      const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?status=active&limit=100`
-      );
-      if (!response.ok) throw new Error('Failed to fetch members');
-      const data = await response.json();
-      setMembers(data.data.members);
+      const all: Member[] = [];
+      for (let page = 1; page <= 50; page++) {
+        const response = await apiGet(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/members?status=active&limit=100&page=${page}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch members');
+        const data = await response.json();
+        all.push(...data.data.members);
+        if (!data.data.pagination?.hasMore) break;
+      }
+      setMembers(all);
     } catch (err: any) {
       console.error('Error fetching members:', err);
     }
@@ -380,7 +385,7 @@ export default function PenaltiesPage() {
     }
   };
 
-  const handleApplyLateFees = async () => {
+  const applyLateFeesNow = async () => {
     setIsSubmitting(true);
     try {
       const response = await apiPost(
@@ -393,8 +398,60 @@ export default function PenaltiesPage() {
 
       toast.success(`Applied ${data.data.applied} late fee(s), total: ₦${data.data.totalAmount.toLocaleString()}`);
       fetchStats();
+      fetchAppliedPenalties();
     } catch (err: any) {
       toast.error(err.message || 'Failed to apply late fees');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Shows who would be charged and how much, and only applies once the officer confirms.
+  const handleApplyLateFees = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await apiGet(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/penalties/late-fees/preview`
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to check late fees');
+      const preview = data.data as {
+        count: number;
+        memberCount: number;
+        totalAmount: number;
+        items: { transactionId: number; memberName: string; chargeName: string; daysOverdue: number; penaltyAmount: number }[];
+        truncated: boolean;
+      };
+
+      if (preview.count === 0) {
+        toast.info('No late fees are due right now.');
+        return;
+      }
+
+      modals.openConfirmModal({
+        title: 'Apply late fees now?',
+        children: (
+          <div>
+            <Text size="sm" mb="sm">
+              This charges {preview.count} late fee(s) to {preview.memberCount} member(s), ₦{preview.totalAmount.toLocaleString()} in total.
+              Voided charges, donation pledges and charges inside their grace period are left out.
+            </Text>
+            <div className="max-h-48 overflow-y-auto text-sm">
+              {preview.items.map((item) => (
+                <div key={item.transactionId} className="flex justify-between gap-2 py-1 border-b border-gray-100 dark:border-gray-700">
+                  <span>{item.memberName} · {item.chargeName} · {item.daysOverdue} days overdue</span>
+                  <span className="font-medium">₦{item.penaltyAmount.toLocaleString()}</span>
+                </div>
+              ))}
+              {preview.truncated && <p className="text-gray-500 pt-1">…and more.</p>}
+            </div>
+          </div>
+        ),
+        labels: { confirm: 'Apply late fees', cancel: 'Not now' },
+        onConfirm: applyLateFeesNow,
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to check late fees');
     } finally {
       setIsSubmitting(false);
     }

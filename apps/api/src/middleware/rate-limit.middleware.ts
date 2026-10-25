@@ -152,6 +152,30 @@ function cleanupMemoryStore(): void {
 }
 
 // ============================================
+// ATTEMPT COUNTING (for things that count only the failures, such as a wrong password)
+// ============================================
+
+/** Counts one attempt against a key and says whether it is still within the limit. Uses Redis when it is there, memory when not. */
+export async function countAttempt(key: string, windowMs: number, max: number): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+  return checkRedisRateLimit(key, windowMs, max);
+}
+
+/** How many attempts a key has used in the current window, without counting another. */
+export async function peekAttempts(key: string, windowMs: number): Promise<number> {
+  const client = await getRedisClient();
+  if (client) {
+    try {
+      const windowKey = `${key}:${Math.floor(Date.now() / windowMs)}`;
+      return Number((await client.get(windowKey)) ?? 0);
+    } catch (error) {
+      console.error('Redis rate limit error:', error);
+    }
+  }
+  const info = memoryStore.get(key);
+  return info && Date.now() <= info.resetTime ? info.count : 0;
+}
+
+// ============================================
 // MIDDLEWARE FACTORY
 // ============================================
 

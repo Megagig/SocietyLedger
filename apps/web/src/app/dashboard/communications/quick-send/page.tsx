@@ -54,10 +54,16 @@ export default function QuickSendPage() {
   const sendMutation = useMutation({
     mutationFn: (data: SendSMSRequest) => smsApi.sendSMS(data),
     onSuccess: (response) => {
+      // What actually happened: a text that fails is refunded and said so, rather than reported as sent
+      const result = (response as { totalSent?: number; totalFailed?: number; inProgress?: boolean; accepted?: number }) ?? {};
       notifications.show({
-        title: 'SMS Sent Successfully',
-        message: `Message sent to ${recipients.length} recipient(s)`,
-        color: 'green',
+        title: result.inProgress ? 'Sending' : result.totalFailed ? 'SMS Partly Sent' : 'SMS Sent Successfully',
+        message: result.inProgress
+          ? `Sending to ${result.accepted ?? recipients.length} people. You can leave this page.`
+          : result.totalFailed
+            ? `${result.totalSent ?? 0} sent, ${result.totalFailed} did not go out (those credits are refunded).`
+            : `Message sent to ${result.totalSent ?? recipients.length} recipient(s)`,
+        color: result.totalFailed ? 'orange' : 'green',
         icon: <IconCheck size={18} />,
       });
       // Reset form

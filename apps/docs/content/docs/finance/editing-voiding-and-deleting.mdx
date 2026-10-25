@@ -3,10 +3,10 @@ title: "Editing, voiding or deleting a transaction (and undo)"
 description: "Fix a mistake on a charge — which option you get depends on whether it's been paid."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["FN3"]
+platforms: ["web", "mobile"]
+covers: ["FN3", "/dashboard/finance/transactions"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-24"
 related: ["/docs/finance/recording-a-payment", "/docs/finance/transaction-statuses"]
 ---
 
@@ -28,16 +28,16 @@ You need the **edit transactions** permission, which Administrators and Treasure
 
 An **EDITED** badge appears on the transaction afterward — select **View History** to see exactly what changed, when, and why.
 
-You can also select **Delete Transaction** instead, if the charge should never have existed. Deleting is a real removal, but you have 30 seconds to undo it from the confirmation toast before it's final.
+You can also select **Delete Transaction** instead, if the charge should never have existed. Deleting is a real removal, but you have a few seconds to undo it from the confirmation message. In the app, open the charge, tap the **⋮** menu, then **Delete charge**.
 
 ## If it's been paid or partially paid
 
-Editing and deleting aren't available once money has moved — select **Void & Replace** instead.
+Editing and deleting aren't available once money has moved — select **Void & Replace** instead. In the app it is in the **⋮** menu on the charge.
 
 <Steps>
 <Step>Select **Void & Replace** on the transaction.</Step>
 <Step>Enter a reason (at least 10 characters) and the corrected details.</Step>
-<Step>Submit.</Step>
+<Step>Enter **your password** to confirm it is you, then submit.</Step>
 </Steps>
 
 <Screenshot src="/images/finance/editing-voiding-and-deleting-2.webp" alt="Void and Replace modal with a warning about voiding the transaction and a reason field" />
@@ -45,3 +45,9 @@ Editing and deleting aren't available once money has moved — select **Void & R
 ## What happens next
 
 The original transaction gets a **VOIDED** badge (with your reason visible on hover) and a new, corrected transaction is created and linked to it — nothing about the original record disappears, it's just superseded.
+
+## Good to know
+
+- **A charge paid in cash at a meeting** can't be deleted until you void that cash receipt (see [Cash collections](/docs/cash/collecting-cash-from-members)).
+- **A voided charge** no longer counts towards outstanding or overdue totals, can't be paid, and stops getting reminders.
+- **Undo brings the charge back with its payments** and donation record, and the member's ledger is updated to match. The app still only offers **Delete** on a charge with nothing paid on it — to remove a paid charge, void it instead. A charge paid through a cash receipt can't be deleted until that receipt is voided.

@@ -1,41 +1,52 @@
 ---
 title: "Sync status and fixing sync errors"
-description: "Read the sync numbers correctly, and know which modules can't sync yet no matter what you click."
+description: "See what has not reached the books yet, why, and catch it up."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/accounting/sync/*"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting/what-happens-automatically", "/docs/accounting-guide/journal-entries"]
 ---
 
-Sync status tells you how much of your financial activity has actually reached Accounting — and for two of the three modules it tracks, the honest answer is "none of it, and nothing you click will change that yet."
+Money that moves in the app is entered in the books automatically. Occasionally an entry fails, and the record waits until you fix the cause and catch it up.
 
 ## Before you start
 
-You need the **manage settings** permission — this screen lives under Settings, not Accounting itself.
+To catch up you need the permission to change finances (Administrators, Treasurers and Financial Secretaries have it). The web page lives under Settings and needs the **manage settings** permission.
 
-## Check and fix sync status
+## See what is missing and catch it up
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Settings", "Accounting Integration"]} />.</Step>
-<Step>**Overall Sync Status** shows Total Records, Synced, Unsynced and an overall Sync Rate across every module.</Step>
-<Step>Under **Finance Module**, each of Transactions and Payments has its own **Sync Now** button — select it to sync everything currently unsynced for that type, up to 100 records per click. Repeat if Unsynced is still above 0 after it finishes.</Step>
-<Step>**Welfare Module** and **Cooperatives Module** show the same Total / Synced / Unsynced breakdown, but have no **Sync Now** button — see the callout below for why.</Step>
-<Step>If **Recent Sync Errors** appears, each row names the record and the error returned when syncing it failed.</Step>
+<Step>**Overall Sync Status** shows the total records, how many are in the books, and how many are not.</Step>
+<Step>Under **Finance Module**, **Welfare Module** and **Cooperatives Module**, select <UiLabel>Sync Now</UiLabel> on a kind of record to enter up to 100 missing ones. Repeat if some remain.</Step>
+<Step>If **Recent Sync Errors** appears, each row names the record and why it could not be entered.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting"]} />.</Step>
+<Step>Tap **Sync status** (or **Not in the books yet** under **Needs attention**) to see each kind of record, grouped as Finance, Welfare and Cooperatives, with how many are in the books.</Step>
+<Step>Tap **Catch up** beside a kind to enter its missing records, or **Catch up everything** at the top. It enters up to 100 of each kind at a time.</Step>
+<Step>Anything that still fails is listed under **Could not be entered**, with the reason.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/accounting-guide/sync-status-and-errors-1.webp" alt="Accounting Integration page showing Overall Sync Status, Finance Module sync rates with Sync Now buttons, and Welfare and Cooperatives modules with no sync button" />
+<Screenshot src="/images/accounting-guide/sync-status-and-errors-1.webp" alt="Accounting Integration page showing Overall Sync Status, Finance Module sync rates with Sync Now buttons, and Welfare and Cooperatives modules" />
 
-<Callout type="warning" title="Welfare and Cooperatives can't be synced at all yet">
-Only Finance transactions and payments can ever be synced — there's no **Sync Now** button for Welfare or Cooperatives because the feature to sync them doesn't exist yet, not because there's nothing to sync. Their 0% sync rate will never move.
-</Callout>
+The two screens show the same numbers: charges and payments under Finance; contributions and payouts under Welfare; savings, loans paid out and loan repayments under Cooperatives.
 
-A sync error is rare in practice — the most common cause is syncing before the chart of accounts has been initialized, which is why [setting up the chart of accounts](/docs/accounting-guide/chart-of-accounts) has to come first. If you see "Required accounts not found," that's what happened; initialize the standard accounts (or re-add whichever one was removed) and try **Sync Now** again.
+## The commonest causes
 
-## What happens next
+- **The chart of accounts is not set up.** Initialize the standard accounts (see [The chart of accounts](/docs/accounting-guide/chart-of-accounts)), then catch up.
+- **The date is in a closed period.** Open the period again, or write a manual entry dated in an open period. See [Accounting periods](/docs/accounting-guide/accounting-periods).
+- **A required account was switched off or removed.** Switch it back on.
 
-A successful sync posts a journal entry per record immediately — there's no approval step for synced entries, unlike one you create by hand. See [How charges and payments post to accounts](/docs/accounting-guide/how-transactions-post) for which accounts it uses.
+The reason shown is plain words only. Nothing technical is shown.
 
 ## Related

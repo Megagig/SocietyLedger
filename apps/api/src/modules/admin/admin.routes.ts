@@ -92,10 +92,19 @@ router.get('/approvals', (req, res) => ctrl.listPendingApprovals(req as any, res
 router.patch('/approvals/:userId', (req, res) => ctrl.updateApproval(req as any, res));
 router.post('/approvals/bulk', (req, res) => ctrl.bulkUpdateApprovals(req as any, res));
 
+// Email verification by hand, for people who never got the code
+router.post('/users/:userId/verify-email', (req, res) => ctrl.verifyUserEmail(req as any, res));
+router.post('/users/:userId/resend-verification', (req, res) => ctrl.resendUserVerification(req as any, res));
+
 // Platform Settings (TASK-SET-025)
 router.get('/settings/platform', PlatformSettingsController.getSettings);
 router.patch('/settings/platform', PlatformSettingsController.updateSettings);
 router.get('/settings/platform/stats', PlatformSettingsController.getStats);
+
+// AI assistant: model, credit price, allowances, and AI cost against credits sold
+router.get('/settings/ai', PlatformSettingsController.getAiSettings);
+router.patch('/settings/ai', PlatformSettingsController.updateAiSettings);
+router.get('/ai/usage', PlatformSettingsController.getAiUsage);
 
 // Association Overrides
 router.get('/associations/:id/override', PlatformSettingsController.getAssociationOverride);
@@ -120,6 +129,8 @@ router.post('/tenants/:associationId/force-logout', (req, res) => platformCtrl.f
 router.patch('/tenants/:associationId/security', (req, res) => platformCtrl.updateSecuritySettings(req as any, res));
 
 // Module & Feature Management (Phase 19.3)
+router.get('/plans', (req, res) => platformCtrl.listPlans(req as any, res));
+router.post('/tenants/:associationId/plan', (req, res) => platformCtrl.changeTenantPlan(req as any, res));
 router.get('/modules', (req, res) => platformCtrl.getAllModules(req as any, res));
 router.get('/features', (req, res) => platformCtrl.getAllFeatures(req as any, res));
 router.get('/tenants/:associationId/modules', (req, res) => platformCtrl.getModulesAndFeatures(req as any, res));

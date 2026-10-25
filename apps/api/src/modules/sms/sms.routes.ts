@@ -33,6 +33,16 @@ router.get(
   smsController.getDashboard
 );
 
+/**
+ * What a send to an audience would do before it is sent: who is texted, who is missed, and the cost
+ * POST /api/sms/audience/preview
+ */
+router.post(
+  '/audience/preview',
+  requireAnyPermission([PERMISSIONS.SMS_SEND, PERMISSIONS.SMS_CAMPAIGN_MANAGE]),
+  smsController.previewAudience
+);
+
 // ============================================
 // Quick SMS Routes
 // ============================================

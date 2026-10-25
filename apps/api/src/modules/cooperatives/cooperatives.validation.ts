@@ -87,6 +87,7 @@ export const createLoanProductSchema = z.object({
   requiresGuarantor: z.boolean().default(true),
   minGuarantors: z.number().int().min(0).max(10).default(1),
   maxLoanToSavingsRatio: z.number().min(0).optional(),
+  lockSavings: z.boolean().optional(),
   gracePeriodDays: z.number().int().min(0).max(90).default(0),
   lateFeePercent: z.number().min(0).max(100).default(0),
   lateFeeFixed: z.number().min(0).default(0),
@@ -113,6 +114,7 @@ export const updateLoanProductSchema = z.object({
   requiresGuarantor: z.boolean().optional(),
   minGuarantors: z.number().int().min(0).max(10).optional(),
   maxLoanToSavingsRatio: z.number().min(0).optional(),
+  lockSavings: z.boolean().optional(),
   gracePeriodDays: z.number().int().min(0).max(90).optional(),
   lateFeePercent: z.number().min(0).max(100).optional(),
   lateFeeFixed: z.number().min(0).optional(),
@@ -249,4 +251,58 @@ export const disburseLoanSchema = z.object({
   savingsAccountId: z.number().int().positive().optional(),
   reference: z.string().max(100).optional(),
   notes: z.string().max(500).optional(),
+});
+
+// ==========================================
+// SAVINGS DEPOSIT REQUESTS (member declares a deposit, officer approves)
+// ==========================================
+
+// Multipart form fields all arrive as strings, so numbers/dates are coerced, and an empty optional field
+// (a blank input) is treated as absent.
+const blankToUndefined = (v: unknown) => (v === '' || v === null ? undefined : v);
+
+export const createSavingsDepositSchema = z.object({
+  savingsAccountId: z.coerce.number().int().positive('Savings account is required'),
+  amount: z.coerce.number().positive('Amount must be positive').max(1_000_000_000, 'Amount is too large'),
+  paymentDate: z.coerce.date().refine((d) => d.getTime() <= Date.now() + 24 * 60 * 60 * 1000, {
+    message: 'Payment date cannot be in the future',
+  }),
+  bankAccountId: z.preprocess(blankToUndefined, z.coerce.number().int().positive().optional()),
+  reference: z.preprocess(blankToUndefined, z.string().max(100).optional()),
+  memberNote: z.preprocess(blankToUndefined, z.string().max(500).optional()),
+});
+
+export const savingsDepositQuerySchema = z.object({
+  page: z.string().default('1'),
+  limit: z.string().default('20'),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  memberId: z.string().optional(),
+  savingsAccountId: z.string().optional(),
+});
+
+export const rejectSavingsDepositSchema = z.object({
+  reason: z.string().trim().min(3, 'Please give a reason').max(500),
+});
+
+// ==========================================
+// LOAN REPAYMENT REQUESTS (member declares a repayment, officer confirms)
+// ==========================================
+
+export const createLoanRepaymentRequestSchema = z.object({
+  loanId: z.coerce.number().int().positive('Loan is required'),
+  amount: z.coerce.number().positive('Amount must be positive').max(1_000_000_000, 'Amount is too large'),
+  paymentDate: z.coerce.date().refine((d) => d.getTime() <= Date.now() + 24 * 60 * 60 * 1000, {
+    message: 'Payment date cannot be in the future',
+  }),
+  bankAccountId: z.preprocess(blankToUndefined, z.coerce.number().int().positive().optional()),
+  reference: z.preprocess(blankToUndefined, z.string().max(100).optional()),
+  memberNote: z.preprocess(blankToUndefined, z.string().max(500).optional()),
+});
+
+export const loanRepaymentRequestQuerySchema = z.object({
+  page: z.string().default('1'),
+  limit: z.string().default('20'),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  memberId: z.string().optional(),
+  loanId: z.string().optional(),
 });

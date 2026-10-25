@@ -10,7 +10,7 @@ import { HelpLink } from '@/components/docs/HelpLink';
 
 interface OutstandingItem {
   id: number;
-  type: 'dues' | 'levy' | 'penalty';
+  type: 'dues' | 'levy' | 'penalty' | 'donation';
   category: { name: string };
   amount: number;
   balance: number;
@@ -167,6 +167,7 @@ export default function MakePaymentPage() {
       case 'dues': return 'blue';
       case 'levy': return 'purple';
       case 'penalty': return 'red';
+      case 'donation': return 'pink';
       default: return 'gray';
     }
   };
@@ -238,7 +239,7 @@ export default function MakePaymentPage() {
                             {item.campaign?.name || item.category.name}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <Badge color={getTypeColor(item.type)} size="sm">{item.type}</Badge>
+                            <Badge color={getTypeColor(item.type)} size="sm">{item.type === 'donation' ? 'pledge' : item.type}</Badge>
                             {item.dueDate && (
                               <span className="text-xs text-gray-500">Due: {formatDate(item.dueDate)}</span>
                             )}
@@ -280,6 +281,11 @@ export default function MakePaymentPage() {
 
                 {isBankTransfer ? (
                   <>
+                    {bankAccounts.length === 0 && (
+                      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                        Your association hasn&apos;t added a bank account yet. Ask an officer for the payment details.
+                      </p>
+                    )}
                     {bankAccounts.length > 0 && (
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm">
                         <p className="font-medium text-blue-900 dark:text-blue-200 mb-2">Transfer to:</p>
@@ -335,7 +341,7 @@ export default function MakePaymentPage() {
                 </Button>
 
                 <Alert icon={<IconInfoCircle size={16} />} color="gray" variant="light">
-                  This won't show as paid until an officer reviews and approves what you submit.
+                  This won&apos;t show as paid until an officer reviews and approves what you submit.
                 </Alert>
               </div>
             </div>

@@ -20,6 +20,8 @@ import {
   IconX
 } from '@tabler/icons-react';
 import { getElections, deleteElection, Election, ElectionStatus, ElectionType } from '@/lib/api/voting';
+import { Can, usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
 import { Text } from '@mantine/core';
@@ -32,6 +34,7 @@ function StatusBadge({ status }: { status: ElectionStatus }) {
   const statusConfig: Record<ElectionStatus, { color: string; label: string }> = {
     DRAFT: { color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', label: 'Draft' },
     NOMINATIONS_OPEN: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Nominations Open' },
+    NOMINATIONS_CLOSED: { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', label: 'Nominations Closed' },
     VOTING_OPEN: { color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', label: 'Voting Open' },
     VOTING_CLOSED: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', label: 'Voting Closed' },
     RESULTS_PUBLISHED: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', label: 'Results Published' },
@@ -71,6 +74,9 @@ export default function ElectionsListPage() {
   const [typeFilter, setTypeFilter] = useState<ElectionType | ''>('');
   const [page, setPage] = useState(1);
   const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const { can } = usePermissions();
+  const canManage = can(PERMISSIONS.ELECTION_MANAGE);
+  const canSeeEarlyResults = can(PERMISSIONS.ELECTION_RESULTS_VIEW);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['elections', { page, search, status: statusFilter, electionType: typeFilter }],
@@ -116,15 +122,19 @@ export default function ElectionsListPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Elections</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Manage elections, positions, and candidates</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            {canManage ? 'Manage elections, positions, and candidates' : 'Nominate yourself, see who is standing, and vote'}
+          </p>
         </div>
-        <Link
-          href="/dashboard/governance/elections/new"
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors w-full sm:w-auto"
-        >
-          <IconPlus size={18} />
-          New Election
-        </Link>
+        <Can permission={PERMISSIONS.ELECTION_MANAGE}>
+          <Link
+            href="/dashboard/governance/elections/new"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors w-full sm:w-auto"
+          >
+            <IconPlus size={18} />
+            New Election
+          </Link>
+        </Can>
       </div>
 
       {/* Filters */}
@@ -149,6 +159,7 @@ export default function ElectionsListPage() {
               <option value="">All Statuses</option>
               <option value="DRAFT">Draft</option>
               <option value="NOMINATIONS_OPEN">Nominations Open</option>
+              <option value="NOMINATIONS_CLOSED">Nominations Closed</option>
               <option value="VOTING_OPEN">Voting Open</option>
               <option value="VOTING_CLOSED">Voting Closed</option>
               <option value="RESULTS_PUBLISHED">Results Published</option>
@@ -190,9 +201,11 @@ export default function ElectionsListPage() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             {search || statusFilter || typeFilter 
               ? 'Try adjusting your filters'
-              : 'Get started by creating your first election'}
+              : canManage
+                ? 'Get started by creating your first election'
+                : 'There are no elections yet. The Election Committee will set one up.'}
           </p>
-          {!search && !statusFilter && !typeFilter && (
+          {!search && !statusFilter && !typeFilter && canManage && (
             <Link
               href="/dashboard/governance/elections/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
@@ -256,7 +269,7 @@ export default function ElectionsListPage() {
                         <IconChecklist size={16} />
                         View Details
                       </Link>
-                      {election.status === 'DRAFT' && (
+                      {election.status === 'DRAFT' && canManage && (
                         <Link
                           href={`/dashboard/governance/elections/${election.id}/edit`}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -266,7 +279,7 @@ export default function ElectionsListPage() {
                           Edit
                         </Link>
                       )}
-                      {(election.status === 'VOTING_CLOSED' || election.status === 'RESULTS_PUBLISHED') && (
+                      {(election.status === 'RESULTS_PUBLISHED' || (election.status === 'VOTING_CLOSED' && canSeeEarlyResults)) && (
                         <Link
                           href={`/dashboard/governance/elections/${election.id}/results`}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -276,7 +289,7 @@ export default function ElectionsListPage() {
                           View Results
                         </Link>
                       )}
-                      {election.status === 'DRAFT' && (
+                      {election.status === 'DRAFT' && canManage && (
                         <button
                           onClick={() => handleDelete(election.id)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"

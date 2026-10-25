@@ -1,7 +1,8 @@
 'use client';
 
 import { Container, Button, TextInput } from '@mantine/core';
-import { IconUsers, IconSearch, IconHome, IconArrowLeft, IconMail } from '@tabler/icons-react';
+import { BrandMark } from '@/components/brand/BrandLogo';
+import { IconSearch, IconHome, IconArrowLeft, IconMail } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -33,9 +34,7 @@ export default function NotFound() {
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={32} />
-              </div>
+              <BrandMark size={64} />
             </Link>
           </div>
 

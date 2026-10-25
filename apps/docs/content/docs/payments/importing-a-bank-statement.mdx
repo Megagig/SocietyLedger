@@ -1,31 +1,60 @@
 ---
 title: "Importing a bank statement"
-description: "Upload a CSV of your bank statement so SocietyLedger can match it against recorded payments."
+description: "Upload your bank's CSV or Excel statement, check how it was read, and import only the lines that are new."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/payments/nigerian/statements", "PY8"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/payments/matching-and-reconciliation"]
+lastVerified: "2026-10-29"
+related: ["/docs/payments/matching-and-reconciliation", "/docs/payments/reconciliation-history"]
 ---
 
-Importing your bank statement is what reconciliation matches against — do this before running auto-match.
+Importing your bank statement is what reconciliation matches against. You don't need to reformat anything: upload the file as your bank gave it.
 
 ## Before you start
 
-You need the **create finance records** permission, which Administrators and Treasurers have by default. Export your statement from your bank as a CSV first.
+- You need the **create finance records** permission, which Administrators and Treasurers have by default.
+- Add the bank account under [Association bank accounts](/docs/payments/association-bank-accounts) first, since every statement belongs to one account.
+- Download the statement from your bank as **CSV** or **Excel (.xlsx)**. PDF statements can't be read reliably, so they are not accepted.
 
 ## Import a statement
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Payments", "Nigerian", "Statements"]} />.</Step>
-<Step>Select **Download Template** if you need the expected column layout.</Step>
-<Step>Select **Upload Statement** and choose your CSV file.</Step>
+<Step>Choose the **Bank account** and the **Statement file**.</Step>
+<Step>Check **What we found** and **How the columns were read**. Change a column from its dropdown if one is wrong.</Step>
+<Step>Select **Import** and confirm.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Payments", "Reconciliation"]} /> and tap **+**.</Step>
+<Step>Choose the **Bank account**, then tap **Choose the statement file** and pick the file from your phone.</Step>
+<Step>Check **What we found** and **How the columns were read**. Change a column from its dropdown if one is wrong.</Step>
+<Step>Tap **Import** and confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/payments/importing-a-bank-statement-1.webp" alt="Import Bank Statements page with Download Template and Upload Statement options, and an empty Import History" />
+## How your file is read
+
+Banks lay out statements differently, so SocietyLedger works out the layout instead of asking you to convert the file.
+
+- It finds the table even when the file starts with lines of account details.
+- It recognises common column names (Date, Narration, Reference, Debit, Credit, Withdrawal, Deposit, Balance), whether money in and out are two columns or one signed amount.
+- It reads Nigerian dates (31/10/2026, 31-Oct-2026) and amounts such as 1,250,000.00.
+- It shows you what it understood **before** anything is saved. If a column is wrong, you pick the right one.
+- It remembers how the columns were read for that bank account, so the next statement from the same bank needs no correction.
+
+A line it can't read is left out, and the preview tells you which row and why.
+
+## Importing the same lines twice
+
+Every line has an identity, so importing the same file twice, or two statements that overlap, never adds a line twice. The preview says how many lines are new and how many were imported before. If every line was imported before, nothing is added.
 
 ## What happens next
 
-The import appears in **Import History**, and its entries become available for [matching and reconciliation](/docs/payments/matching-and-reconciliation) — select **View Statement Entries** to see each line.
+Only money coming in (credits) can pay a charge. The new lines appear in [Matching payments and reconciling](/docs/payments/matching-and-reconciliation), and each import is listed under **Statements imported** with how many of its lines are matched.

@@ -1,20 +1,21 @@
 ---
 title: "How an election runs, start to finish"
-description: "The stages an election moves through, from Draft to Results Published."
+description: "The stages an election moves through, from Draft to Results Published, and who can take each step."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/governance/elections/[id]", "GV9"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/elections/creating-an-election", "/docs/elections/running-the-vote"]
+lastVerified: "2026-10-28"
+related: ["/docs/elections/election-committee", "/docs/elections/creating-an-election", "/docs/elections/running-the-vote"]
 ---
 
-Every election moves through the same stages, in order. You trigger each move yourself — nothing advances automatically except quorum and turnout numbers.
+Every election moves through the same stages, in order. A member of the [Election Committee](/docs/elections/election-committee) takes each step themselves — nothing advances on its own.
 
 ## How it works
 
-<Diagram alt="An election moves from Draft to Nominations Open, back to Draft once nominations close, then to Voting Open, Voting Closed, and finally Results Published." caption="The election lifecycle">
-<svg viewBox="0 0 980 150" xmlns="http://www.w3.org/2000/svg" className="h-40 w-full max-w-4xl">
+<Diagram alt="An election moves from Draft to Nominations Open, Nominations Closed, Voting Open, Voting Closed, and finally Results Published." caption="The election lifecycle">
+<svg viewBox="0 0 1180 150" xmlns="http://www.w3.org/2000/svg" className="h-40 w-full max-w-5xl">
   <rect x="10" y="40" width="150" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
   <text x="85" y="75" textAnchor="middle" fill="currentColor" fontSize="14" fontWeight="600">Draft</text>
 
@@ -23,15 +24,18 @@ Every election moves through the same stages, in order. You trigger each move yo
   <text x="281" y="85" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Open</text>
 
   <rect x="402" y="40" width="150" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
-  <text x="477" y="68" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Voting Open</text>
-  <text x="477" y="85" textAnchor="middle" fill="currentColor" fontSize="11">(from Draft)</text>
+  <text x="477" y="68" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Nominations</text>
+  <text x="477" y="85" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Closed</text>
 
   <rect x="598" y="40" width="150" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
-  <text x="673" y="75" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Voting Closed</text>
+  <text x="673" y="75" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Voting Open</text>
 
-  <rect x="794" y="40" width="176" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
-  <text x="882" y="68" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="600">Results</text>
-  <text x="882" y="85" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="600">Published</text>
+  <rect x="794" y="40" width="150" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
+  <text x="869" y="75" textAnchor="middle" fill="currentColor" fontSize="13" fontWeight="600">Voting Closed</text>
+
+  <rect x="990" y="40" width="176" height="60" rx="10" fill="none" stroke="currentColor" strokeWidth="2" />
+  <text x="1078" y="68" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="600">Results</text>
+  <text x="1078" y="85" textAnchor="middle" fill="currentColor" fontSize="12" fontWeight="600">Published</text>
 
   <defs>
     <marker id="arrow-el" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
@@ -42,30 +46,38 @@ Every election moves through the same stages, in order. You trigger each move yo
   <line x1="358" y1="70" x2="399" y2="70" stroke="currentColor" strokeWidth="2" markerEnd="url(#arrow-el)" />
   <line x1="554" y1="70" x2="595" y2="70" stroke="currentColor" strokeWidth="2" markerEnd="url(#arrow-el)" />
   <line x1="750" y1="70" x2="791" y2="70" stroke="currentColor" strokeWidth="2" markerEnd="url(#arrow-el)" />
+  <line x1="946" y1="70" x2="987" y2="70" stroke="currentColor" strokeWidth="2" markerEnd="url(#arrow-el)" />
 </svg>
 </Diagram>
 
-| Stage | What you do | What members see |
+| Stage | What the committee does | What members see |
 |---|---|---|
 | Draft | Create the election and its positions. | Nothing yet. |
-| Nominations Open | Members and officers put candidates forward. | The election, open for nominations. |
-| *(back to Draft)* | Close nominations once you have your candidates. | Nothing changes for members. |
-| Voting Open | Start voting. | The ballot, ready to vote. |
+| Nominations Open | Members nominate themselves; the committee adds and approves candidates. | The election, open for nominations. |
+| Nominations Closed | Approve or reject the nominations still waiting. | Nominations are over. |
+| Voting Open | Open voting once every nomination has been decided. | The ballot, ready to vote. |
 | Voting Closed | Close voting once the window ends. | The election shows as closed; no results yet. |
-| Results Published | Publish the results. | — see [Publishing results](/docs/elections/publishing-results) for what's actually visible today. |
+| Results Published | Publish the results. | The results — see [Publishing results](/docs/elections/publishing-results). |
 
-<Callout type="warning" title="Closing nominations returns the election to Draft">
-Selecting **Close Nominations** moves the election back to the same **Draft** badge it started with — this is correct, not a mistake, but it looks like nominations never happened. Your candidates are still there; see [Running the vote](/docs/elections/running-the-vote) for how to get from here to a live ballot.
+An election can also go **straight from Draft to Voting Open** when the committee has put the candidates in itself and approved them, skipping the nominations stages. It can be **cancelled** from any stage before the results are published — with a reason, which members can read.
+
+<Callout type="note" title="Each step happens once">
+If two committee members tap the same step at the same moment, or you tap twice, only the first one counts. The other is told the election has already moved on, and the screen refreshes to show where it is now.
 </Callout>
 
-An election can be cancelled from any stage before results are published.
+## What each step checks
+
+- **Opening voting** needs an approved candidate for every position, no nomination left waiting, and a voting end date that has not already passed.
+- **Publishing results** is refused if the election needed a minimum turnout and too few members voted. Cancel the election and run it again instead.
+- **Candidates** can be approved or rejected until voting opens, even after nominations close; they cannot withdraw once voting has opened.
 
 ## Why it matters
 
-Each stage is a deliberate, one-way gate — once nominations close, no more candidates can be added for that election; once voting closes, no more votes count. Plan your dates before you open nominations, since there's no way to extend a window after the fact except by cancelling and starting over.
+Each stage is a deliberate, one-way gate — once voting closes, no more votes count, and once results are published the election is on record. Plan your dates before you open nominations; the election's details can only be changed while it is still a Draft.
 
 ## What you can do
 
+- [The Election Committee](/docs/elections/election-committee)
 - [Creating an election and its positions](/docs/elections/creating-an-election)
 - [Nominations, self-nomination and approving candidates](/docs/elections/nominations-and-candidates)
 - [Running the vote](/docs/elections/running-the-vote)

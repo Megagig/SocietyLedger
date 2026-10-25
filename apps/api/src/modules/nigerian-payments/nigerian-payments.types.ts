@@ -85,7 +85,7 @@ export interface ReconcileInput {
   bankTransferId?: number;
   statementEntryId?: number;
   matchType: 'AUTO_REFERENCE' | 'AUTO_AMOUNT' | 'MANUAL';
-  matchedAmount: number;
+  matchedAmount?: number;
   variance?: number;
   notes?: string;
 }

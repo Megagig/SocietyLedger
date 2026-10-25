@@ -37,6 +37,9 @@ import {
 import { accountingApi, Budget, ChartOfAccount } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { entryHref, ledgerHref } from '@/lib/accounting-drill';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -52,6 +55,8 @@ export default function BudgetsPage() {
   const [opened, { open, close }] = useDisclosure(false);
   const [varianceOpened, { open: openVariance, close: closeVariance }] = useDisclosure(false);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
+  // The dashboard can open a budget's variance straight away
+  const varianceParam = Number(useSearchParams().get('variance'));
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterYear, setFilterYear] = useState<string>('');
 
@@ -140,6 +145,16 @@ export default function BudgetsPage() {
   }, [error]);
 
   const budgets: Budget[] = budgetsData?.data?.budgets || [];
+  useEffect(() => {
+    if (!varianceParam || selectedBudget) return;
+    const target = budgets.find((b) => b.id === varianceParam);
+    if (target) {
+      setSelectedBudget(target);
+      openVariance();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [varianceParam, budgets.length]);
+  const varianceDates = { from: varianceData?.data?.period?.startDate, to: varianceData?.data?.period?.endDate, datesLabel: 'The budget’s dates' };
   const accounts: ChartOfAccount[] = accountsData?.data || [];
 
   const accountOptions = accounts.map((a) => ({
@@ -152,7 +167,7 @@ export default function BudgetsPage() {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -249,7 +264,7 @@ export default function BudgetsPage() {
       {budgets.length === 0 ? (
         <Alert icon={<IconCalculator size={20} />} title="No Budgets Found" color="blue">
           <Text size="sm">
-            No budgets found. Click "New Budget" to create your first budget.
+            No budgets found. Click &quot;New Budget&quot; to create your first budget.
           </Text>
         </Alert>
       ) : (
@@ -594,13 +609,13 @@ export default function BudgetsPage() {
                 {varianceData.data.items.map((item: any) => (
                   <Table.Tr key={item.accountId}>
                     <Table.Td>
-                      <Text size="sm">{item.accountCode} - {item.accountName}</Text>
+                      <Text size="sm"><DrillLink href={ledgerHref({ accountId: item.accountId, title: item.accountName, ...varianceDates })} label={item.accountName}>{item.accountCode} - {item.accountName}</DrillLink></Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{formatCurrency(item.budgetAmount)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatCurrency(item.actualAmount)}</Text>
+                      <Text size="sm"><DrillLink href={Number(item.actualAmount) !== 0 ? ledgerHref({ accountId: item.accountId, title: item.accountName, ...varianceDates }) : undefined} label={item.accountName}>{formatCurrency(item.actualAmount)}</DrillLink></Text>
                     </Table.Td>
                     <Table.Td>
                       <Text

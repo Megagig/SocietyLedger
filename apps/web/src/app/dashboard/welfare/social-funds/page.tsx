@@ -99,7 +99,7 @@ export default function SocialFundsPage() {
       title: 'Delete Welfare Fund',
       children: (
         <p className="text-sm text-gray-600">
-          Are you sure you want to delete "{fund.name}"? This action cannot be undone.
+          Are you sure you want to delete &quot;{fund.name}&quot;? This action cannot be undone.
         </p>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },

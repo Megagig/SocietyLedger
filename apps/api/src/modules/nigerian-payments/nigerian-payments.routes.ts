@@ -2,9 +2,8 @@
 // PHASE 3.5: NIGERIAN PAYMENT FEATURES ROUTES
 // ============================================
 
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
-import path from 'path';
 import { nigerianPaymentsController } from './nigerian-payments.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
@@ -13,22 +12,11 @@ import { PERMISSIONS } from '../../lib/permissions';
 
 const router: Router = Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/payment-proofs/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
+// Files go to memory — the controller streams the buffer to MinIO immediately
+// after. No file ever lands on the server's local disk.
 const upload = multer({
-  storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -39,6 +27,16 @@ const upload = multer({
   },
 });
 
+// Statements are CSV or Excel files. The type is decided from the file's contents (statement-file.ts), not from what the client says.
+const statementUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+function receiveStatement(req: Request, res: Response, next: NextFunction) {
+  statementUpload.single('file')(req, res, (error: unknown) => {
+    if (!error) return next();
+    const tooBig = error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE';
+    return res.status(400).json({ success: false, code: tooBig ? 'FILE_TOO_LARGE' : 'BAD_UPLOAD', message: tooBig ? 'The file is larger than 5 MB.' : 'The file could not be uploaded.' });
+  });
+}
+
 // Apply auth and tenant middleware to all routes
 router.use(authMiddleware);
 router.use(tenantMiddleware);
@@ -47,9 +45,9 @@ router.use(tenantMiddleware);
 // UTILITY ROUTES
 // ==========================================
 
-// Get list of Nigerian banks
+// Get list of Nigerian banks — a static reference list, needed by anyone who adds a bank account or records a transfer
 router.get('/banks',
-  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  requireAnyPermission([PERMISSIONS.FINANCE_VIEW, PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENT_CREATE]),
   nigerianPaymentsController.getNigerianBanks
 );
 
@@ -57,33 +55,36 @@ router.get('/banks',
 // BANK ACCOUNT ROUTES (TASK-PAY-002)
 // ==========================================
 
+// Bank accounts are the association's payment details, so the officers who record payments (treasurer, financial secretary)
+// can manage them as well as the administrator who holds settings.edit. Viewing is open to anyone who handles payments.
+
 // List all bank accounts
 router.get('/bank-accounts',
-  requirePermission(PERMISSIONS.SETTINGS_VIEW),
+  requireAnyPermission([PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_RECORD, PERMISSIONS.PAYMENT_VIEW]),
   nigerianPaymentsController.listBankAccounts
 );
 
 // Get single bank account
 router.get('/bank-accounts/:id',
-  requirePermission(PERMISSIONS.SETTINGS_VIEW),
+  requireAnyPermission([PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.PAYMENT_RECORD, PERMISSIONS.PAYMENT_VIEW]),
   nigerianPaymentsController.getBankAccountById
 );
 
 // Create bank account
 router.post('/bank-accounts',
-  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  requireAnyPermission([PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]),
   nigerianPaymentsController.createBankAccount
 );
 
 // Update bank account
 router.patch('/bank-accounts/:id',
-  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  requireAnyPermission([PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]),
   nigerianPaymentsController.updateBankAccount
 );
 
 // Delete bank account
 router.delete('/bank-accounts/:id',
-  requirePermission(PERMISSIONS.SETTINGS_EDIT),
+  requireAnyPermission([PERMISSIONS.SETTINGS_EDIT, PERMISSIONS.PAYMENT_RECORD]),
   nigerianPaymentsController.deleteBankAccount
 );
 
@@ -125,9 +126,17 @@ router.post('/bank-transfers/:id/verify',
 // BANK STATEMENT IMPORT ROUTES (TASK-PAY-005)
 // ==========================================
 
-// Import bank statement
+// Preview a statement: what would be imported, and how its columns were read. Saves nothing.
+router.post('/import-statement/preview',
+  requirePermission(PERMISSIONS.FINANCE_CREATE),
+  receiveStatement,
+  nigerianPaymentsController.previewStatement
+);
+
+// Import a bank statement (CSV or Excel upload). Lines imported before are skipped.
 router.post('/import-statement',
   requirePermission(PERMISSIONS.FINANCE_CREATE),
+  receiveStatement,
   nigerianPaymentsController.importBankStatement
 );
 
@@ -157,6 +166,12 @@ router.post('/reconcile',
 router.post('/reconciliations/:id/confirm',
   requirePermission(PERMISSIONS.FINANCE_APPROVE),
   nigerianPaymentsController.confirmReconciliation
+);
+
+// Ranked suggestions: each unmatched bank line with the charge it most likely paid
+router.get('/reconciliation/suggestions',
+  requirePermission(PERMISSIONS.FINANCE_APPROVE),
+  nigerianPaymentsController.getMatchSuggestions
 );
 
 // List reconciliations
@@ -211,6 +226,19 @@ router.get('/proofs/:id',
 router.post('/proofs/:id/verify',
   requirePermission(PERMISSIONS.PAYMENT_CONFIRM),
   nigerianPaymentsController.verifyPaymentProof
+);
+
+// Generate presigned download URL for a proof file — redirects browser to MinIO
+router.get('/proofs/:id/download',
+  requireAnyPermission([PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENTS_VIEW_OWN]),
+  nigerianPaymentsController.downloadPaymentProof
+);
+
+// Same short-lived link, as JSON — for the mobile app, which can't follow the redirect above with its auth header.
+// A member only gets the link to a proof they submitted themselves (enforced in the controller).
+router.get('/proofs/:id/file-url',
+  requireAnyPermission([PERMISSIONS.PAYMENT_VIEW, PERMISSIONS.PAYMENTS_VIEW_OWN]),
+  nigerianPaymentsController.getPaymentProofFileUrl
 );
 
 // ==========================================

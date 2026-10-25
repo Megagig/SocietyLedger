@@ -12,6 +12,7 @@ import { ContextIndicator } from '@/components/layout/ContextIndicator';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
 import { ModuleLockedModal } from '@/components/layout/ModuleLockedModal';
+import { SubscriptionBlockedScreen, TrialEndingBanner } from '@/components/subscription/SubscriptionBanners';
 import { Loader } from '@mantine/core';
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -50,6 +51,9 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     if (!isChecking && isAuthenticated && user) {
       // Skip if already on onboarding pages
       if (pathname.startsWith('/onboarding')) return;
+
+      // A blocked association has to renew before anything else
+      if (user.subscriptionAccess && !user.subscriptionAccess.allowed) return;
       
       // Redirect admins who haven't completed onboarding (exclude super admins)
       if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
@@ -71,6 +75,11 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  // Trial or subscription ended: everything is paused except the billing pages, where officers renew.
+  if (user && !user.platformRole && user.subscriptionAccess && !user.subscriptionAccess.allowed && !pathname.startsWith('/dashboard/subscription')) {
+    return <SubscriptionBlockedScreen />;
   }
 
   // Determine which sidebar to show based on route
@@ -119,6 +128,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
         <div className="p-4 sm:p-5 lg:p-6 mb-bottom-nav">
+          <TrialEndingBanner />
           <Breadcrumbs />
           {children}
         </div>

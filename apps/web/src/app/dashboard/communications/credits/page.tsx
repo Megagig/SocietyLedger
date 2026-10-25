@@ -23,7 +23,8 @@ import {
 } from '@tabler/icons-react';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
-import { smsApi } from '@/lib/api/sms';
+import { smsApi } from '@/lib/api/sms';
+import { toast } from '@/lib/toast';
 
 // R3.1/G38: ported from the orphaned /dashboard/communication/sms/credits
 // (deleted at R3.1) — this was the only implementation with a real,
@@ -63,7 +64,7 @@ export default function SMSCreditsPage() {
       const data = await smsApi.purchaseCredits({ credits, packageId });
       window.location.href = data.authorizationUrl;
     } catch (error: any) {
-      alert(error.response?.data?.message || error.message || 'Failed to initialize payment');
+      toast.error(error.response?.data?.message || error.message || 'Failed to initialize payment');
       setLoading(false);
     }
   };
@@ -81,7 +82,7 @@ export default function SMSCreditsPage() {
   };
 
   return (
-    <Can permission={PERMISSIONS.SMS_SEND} fallback={<Alert color="red">You don't have permission to purchase SMS credits</Alert>}>
+    <Can permission={PERMISSIONS.SMS_SEND} fallback={<Alert color="red">You don&apos;t have permission to purchase SMS credits</Alert>}>
       <Stack gap="lg">
         <Group>
           <Button
@@ -207,7 +208,7 @@ export default function SMSCreditsPage() {
           <Text size="xs">
             • Payments are processed securely via Paystack<br />
             • Credits are added to your account instantly after successful payment<br />
-            • You'll receive a receipt via email<br />
+            • You&apos;ll receive a receipt via email<br />
             • For bulk purchases (10,000+ credits), contact support for special pricing
           </Text>
         </Alert>

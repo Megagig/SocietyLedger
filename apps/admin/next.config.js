@@ -1,3 +1,11 @@
+// Next.js dev mode's React Refresh runtime evaluates strings as JavaScript. Without
+// 'unsafe-eval' the main bundle throws before React hydrates, leaving every page as inert
+// HTML. Production builds ship no Refresh runtime, so the strict policy still applies there.
+const isDev = process.env.NODE_ENV !== 'production';
+const scriptSrc = isDev
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+  : "script-src 'self' 'unsafe-inline'";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -20,12 +28,12 @@ const nextConfig = {
       headers: [
         // Block all indexing — admin console must never appear in search results
         { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
-        // CSP — unsafe-eval removed; unsafe-inline required by Next.js SSR hydration
+        // CSP — unsafe-inline required by Next.js SSR hydration; unsafe-eval dev-only (see above)
         {
           key: 'Content-Security-Policy',
           value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            scriptSrc,
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob:",

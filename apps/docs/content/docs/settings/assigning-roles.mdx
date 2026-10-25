@@ -1,44 +1,70 @@
 ---
 title: "Assigning and removing roles"
-description: "Give a user a role, or take one away — done from the Users page, not the Roles page."
+description: "Give a person a role, or take one away, from the Users page."
 type: task
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["ST8", "/dashboard/settings/users"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/settings/managing-users", "/docs/settings/custom-roles"]
 ---
 
-Role assignment happens on the Users page, alongside the role badges you see in [Managing user accounts](/docs/settings/managing-users) — not on the Roles & Permissions page itself.
+Roles are given on the Users page, next to the role badges you see in [Managing user accounts](/docs/settings/managing-users). The Roles & Permissions page is for building roles, not giving them.
 
 ## Before you start
 
-You need the **manage roles** permission, which only Administrators have by default.
+You need the **assign roles** permission, which only Administrators have by default.
 
-## Assign a role
+## Give a role
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Settings", "Users"]} />.</Step>
-<Step>Find the user and select <UiLabel>Assign Role</UiLabel>.</Step>
-<Step>Choose any built-in or custom role from the list and confirm.</Step>
+<Step>Find the person and select <UiLabel>Assign Role</UiLabel>.</Step>
+<Step>Choose a role and confirm.</Step>
 </Steps>
-
-## Remove a role
-
+</PlatformTab>
+<PlatformTab>
 <Steps>
-<Step>On the same user's row, select the **×** on the role badge you want to remove.</Step>
-<Step>Confirm **Remove** in the dialog that appears.</Step>
+<Step>Go to <MenuPath items={["Manage", "Settings", "Users"]} /> and tap the person.</Step>
+<Step>Under **Give a role**, tap the role.</Step>
+<Step>Tap **Give role** to confirm.</Step>
 </Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## Take a role away
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>On the person's row, select the **×** on the role badge you want to remove.</Step>
+<Step>Confirm **Remove** in the dialog.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Tap the person, then tap **Remove** beside the role.</Step>
+<Step>Tap **Remove role** to confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/settings/assigning-roles-1.webp" alt="A user's role badges on the Users page, each with a remove control, and an Assign Role action" />
 
-<Callout type="note" title="A role change takes effect immediately">
-The affected user may need to log out and back in to see every change, since their permission list is loaded at login.
-</Callout>
+## The rules
+
+- **Not your own roles.** You cannot give yourself a role or take one away from yourself. Ask another Administrator.
+- **Never the last Administrator.** An association must always have an active Administrator. Give someone else the Administrator role first.
+- **Only roles you could hold.** You can only give a role whose permissions you hold yourself. The Election Committee role is the exception, which Administrators can give.
+- **One role each, unless you allow more.** Under [Members & access](/docs/settings/members-and-access), **Allow Multiple Roles** decides whether giving a new role replaces the old one.
+- **Never left without a role.** If you take away someone's only role, they become an ordinary Member again.
+- **Approved people only.** Someone still waiting for approval cannot be given a role.
 
 ## What happens next
 
-The user's permissions change right away — what they can see and do in the app reflects their new role set on their next action, or after they re-authenticate.
+The change is recorded in the [audit log](/docs/settings/audit-log). The person's permissions update within a few minutes, or when they next sign in.
 
 ## Related

@@ -510,7 +510,7 @@ export default function MyLedgerPage() {
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <IconFileAnalytics size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Select a date range and click "Generate Statement" to view your statement</p>
+                <p>Select a date range and click &quot;Generate Statement&quot; to view your statement</p>
               </div>
             )}
           </div>

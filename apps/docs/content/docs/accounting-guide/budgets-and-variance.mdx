@@ -1,44 +1,59 @@
 ---
 title: "Budgets, approval and variance"
-description: "Create a budget, move it to Active, and read how actual spending compares."
+description: "Plan a year, have another officer approve it, put it in force, and see how you are doing."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/accounting/budgets"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/accounting/budgets", "AC6"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting/budgets", "/docs/accounting-guide/journal-entries"]
 ---
 
-A budget only tracks variance once it's Active — creating one is just the first of three steps.
+A budget only tracks how you are doing once it is in force. Creating one is the first of three steps.
 
 ## Before you start
 
-You need the **manage finances** permission to create a budget; approving and activating it needs **approve payments** (Administrators and Treasurers by default).
+You need the **manage finances** permission to plan a budget. Approving and putting it in force needs **approve payments** (Administrators and Treasurers by default), and you cannot approve a budget you wrote.
 
-## Create, approve and activate a budget
+## Plan, approve and put a budget in force
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Accounting", "Budgets"]} /> and select <UiLabel>New Budget</UiLabel>.</Step>
 <Step>Set a **Name**, **Fiscal Year**, **Start Date** and **End Date**.</Step>
-<Step>Select <UiLabel>+ Add Item</UiLabel> for each account you want to budget, picking the **Account** and an **Annual Amount** — for example, ₦1,200,000 for Membership Dues.</Step>
-<Step>Select <UiLabel>Create Budget</UiLabel>. It starts as **Draft**.</Step>
-<Step>Open the budget and select <UiLabel>Approve</UiLabel>, then <UiLabel>Activate</UiLabel>. Activating closes any other budget already Active for the same fiscal year.</Step>
+<Step>Select <UiLabel>+ Add Item</UiLabel> for each account, with its **Annual Amount**.</Step>
+<Step>Select <UiLabel>Create Budget</UiLabel>. It starts as a draft. A different officer opens it and selects <UiLabel>Approve</UiLabel>, then <UiLabel>Activate</UiLabel>.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting", "Budgets"]} /> and tap **+**.</Step>
+<Step>Name it, set the year and its first and last day, then add a line for each income or spending account with the amount for the year and, if you like, a note.</Step>
+<Step>Tap **Save draft**. A different officer opens it and taps **Approve**, then **Put in force**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/accounting-guide/budgets-and-variance-1.webp" alt="Budgets list showing a 2026 Annual Budget with its fiscal year, period, total budget and Active status, and a New Budget button" />
 
-## Read the variance report
+Only one budget is in force for a year. Putting a new one in force closes the one before it.
 
-<Steps>
-<Step>Select <UiLabel>View Variance</UiLabel> on any budget.</Step>
-<Step>Each account shows **Budget Amount**, **Actual Amount**, **Variance** and a status of **Under**, **On Track** or **Over**.</Step>
-</Steps>
+Spending reaches a budget line when an [expense](/docs/accounting-guide/expenses) is approved. The expense form shows where the category stands, and warns without blocking when a voucher takes it over.
 
-Worked example, partway through the year: a ₦1,200,000 annual budget for Membership Dues against ₦50,000 posted so far shows a variance of ₦1,150,000 and a status of **Under** — expected this early in the year, not necessarily a problem.
+## Read how you are doing
 
-## What happens next
+Open a budget to see each account against its plan, with a bar for how much is used and a status of **Under budget**, **On track** or **Over budget** (more than 10% above or below the plan).
 
-Variance recalculates every time you open it — there's nothing to refresh or re-save. It only reflects **posted** journal entries, same as every other statement in this module.
+- **Actual is what was posted within the budget's dates,** not everything since the books began.
+- **Income and spending are kept apart.** Adding money in to money out would mean nothing, so each has its own total.
+- **A budget covers income and expense accounts only,** each account once, in whole kobo.
+- **Only a draft can be changed.**
+- **Find a budget** by status and by year in the budgets list.
+
+Worked example, partway through the year: a ₦1,200,000 plan for Membership Dues with ₦50,000 posted so far shows **Under budget**. That is expected this early, and not necessarily a problem.
+
+Select an account line, or the spending or income total, to see the entries posted inside the budget's dates. See [Opening a figure to see the entries behind it](/docs/accounting-guide/opening-a-figure).
 
 ## Related

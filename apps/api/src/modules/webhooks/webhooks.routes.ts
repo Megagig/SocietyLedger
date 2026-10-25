@@ -1,8 +1,35 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { verifyPaystackSignature } from '../../lib/paystack';
+import crypto from 'crypto';
+import { applyDeliveryReport } from '../sms/sms-engine';
 
 const router: Router = Router();
+
+// SMS delivery reports (Termii). Termii signs each report: the X-Termii-Signature header is an HMAC-SHA512 of the body, made with your
+// Termii secret key. The key is TERMII_WEBHOOK_SECRET, or TERMII_API_KEY when that isn't set. Without a key a text stays "Sent" and is
+// never shown as "Delivered".
+router.post('/termii', async (req: Request, res: Response) => {
+  const secret = process.env.TERMII_WEBHOOK_SECRET || process.env.TERMII_API_KEY;
+  if (!secret) return res.status(503).json({ success: false, message: 'Delivery reports are not set up' });
+
+  const raw = (req as unknown as { rawBody?: Buffer }).rawBody;
+  const expected = crypto.createHmac('sha512', secret).update(raw ?? Buffer.from(JSON.stringify(req.body ?? {}))).digest('hex');
+  const given = Buffer.from(String(req.headers['x-termii-signature'] ?? ''));
+  const wanted = Buffer.from(expected);
+  if (given.length !== wanted.length || !crypto.timingSafeEqual(given, wanted)) {
+    return res.status(401).json({ success: false, message: 'Invalid signature' });
+  }
+
+  try {
+    const body = req.body ?? {};
+    const result = await applyDeliveryReport(String(body.message_id ?? body.messageId ?? ''), String(body.status ?? ''));
+    return res.status(200).json({ success: true, applied: result.applied });
+  } catch (error) {
+    console.error('Termii delivery report failed:', error);
+    return res.status(500).json({ success: false, message: 'Could not apply the report' });
+  }
+});
 
 // Paystack webhook endpoint
 router.post('/paystack', async (req: Request, res: Response) => {

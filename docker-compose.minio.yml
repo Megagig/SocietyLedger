@@ -1,0 +1,47 @@
+# Shared MinIO object storage, its own Dokploy stack (type: Docker Compose).
+# One MinIO serves every app; each app gets its own bucket and its own key limited to that bucket.
+# Full steps: docs/deployment/MINIO_SETUP.md
+#
+# Environment (Dokploy > this stack > Environment). You make both values up; there are no defaults
+# on purpose, so a forgotten value stops the deploy instead of falling back to "minioadmin".
+#   MINIO_ROOT_USER      admin username, 3+ characters
+#   MINIO_ROOT_PASSWORD  admin password, 8+ characters (openssl rand -hex 24)
+#   FILES_DOMAIN         public address of the S3 API, e.g. files.societyledger.com.ng
+# The root login is for administration only. Apps never use it: they use their own scoped keys.
+#
+# Domains (Dokploy > this stack > Domains): FILES_DOMAIN -> service "minio", port 9000, HTTPS on.
+# Port 9001 is the admin console. Leave it OFF the public internet; reach it with an SSH tunnel
+# or, if you must expose it, put it behind its own domain and a strong root password.
+#
+# Nothing is published on the host's ports: other containers reach MinIO as
+# http://shared-minio:9000 over the shared "dokploy-network"; the outside world uses FILES_DOMAIN.
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: shared-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dokploy-network
+    labels:
+      - "dokploy.domain=${FILES_DOMAIN:-}"
+      - "dokploy.port=9000"
+
+networks:
+  # Created by Dokploy; every app it manages is attached to it. Do not create it yourself.
+  dokploy-network:
+    external: true
+
+volumes:
+  minio_data:

@@ -1,0 +1,47 @@
+---
+title: "Verifying cash lodgments"
+description: "Check a lodgment against the bank statement, then verify or reject it."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cash/lodgments", "/dashboard/cash/lodgments/[id]", "CA7", "CA8"]
+status: published
+lastVerified: "2026-10-24"
+related: ["/docs/cash/lodging-cash-into-the-bank", "/docs/cash/how-cash-collections-work"]
+---
+
+A second pair of eyes is what makes cash trustworthy. A lodgment is checked by an officer other than the one who lodged it.
+
+## Before you start
+
+You need the **verify cash lodgments** permission. You can't verify a lodgment you made yourself.
+
+## Check a lodgment
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Cash Collections", "Lodgments"]} />. **Waiting** lists lodgments to check.</Step>
+<Step>Open one. Compare the amount, date and bank with the deposit slip and your bank statement.</Step>
+<Step>Select **Verify lodgment** if it is on the statement, or **Reject** and give a reason if it isn't.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Cash", "Lodgments"]} />. **Waiting** lists lodgments to check.</Step>
+<Step>Open one. Compare the amount, date and bank with the slip (tap it to zoom) and your bank statement.</Step>
+<Step>Tap **Verify lodgment** if it is on the statement, or **Reject** and give a reason if it isn't.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+Both decisions are final, and only one officer's decision counts if two try at once.
+
+## What happens next
+
+- **Verified** — the cash moves from *Cash in hand* to your bank account in the accounting records (if you use Accounting), and the officer is told.
+- **Rejected** — the cash returns to the officer's hand with your reason, and they lodge it again.
+
+## Lodged short
+
+A lodgment marked **Lodged short** shows how much is missing and the reason given. Verifying it confirms the money that was paid in; the shortfall stays visible as cash not yet accounted for, so follow it up with the officer.

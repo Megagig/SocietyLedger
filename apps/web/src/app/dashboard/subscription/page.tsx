@@ -154,7 +154,7 @@ export default function SubscriptionPage() {
             No Active Subscription
           </h2>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6">
-            You don't have an active subscription. Choose a plan to get started.
+            You don&apos;t have an active subscription. Choose a plan to get started.
           </p>
           <button
             onClick={() => router.push('/dashboard/subscription/plans')}

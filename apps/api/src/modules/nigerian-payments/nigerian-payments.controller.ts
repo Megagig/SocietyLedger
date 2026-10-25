@@ -4,8 +4,19 @@
 
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import path from 'path';
+import { PlatformRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { nigerianPaymentsService } from './nigerian-payments.service';
+import { PERMISSIONS } from '../../lib/permissions';
+import { uploadFile, getPresignedUrl } from '../../lib/storage';
+import { RBACService } from '../../services/rbac.service';
+import { notifyProofDecided, notifyProofSubmitted, notifyTransferRecorded } from '../../services/payment-proof-notifications';
+import { BANK_RULE_STATUS, BankRuleError } from './bank-rules';
+import { nigerianPaymentsService, ReconciliationDecisionError } from './nigerian-payments.service';
+import { RuleError } from '../finance/rule-error';
+import { importStatement, parseMappingInput, previewStatement } from './statement-import';
+import { suggestMatches } from './reconciliation-engine';
+import { PROOF_DECISION_STATUS, ProofDecisionError } from './payment-proof-decision';
 import {
   createBankAccountSchema,
   updateBankAccountSchema,
@@ -24,6 +35,51 @@ import {
   paymentProofQuerySchema,
 } from './nigerian-payments.validation';
 import { NIGERIAN_BANKS } from './nigerian-payments.types';
+
+/**
+ * The proof a caller may fetch the file of. The route lets members in (payments.view_own), so this is where "own" is enforced:
+ * officers (payments.view) get any proof in the association, everyone else only the ones they submitted. Without it, any
+ * member could read any other member's receipt just by counting proof ids.
+ */
+async function findProofFileForCaller(req: Request, id: number, associationId: number) {
+  const proof = await prisma.paymentProof.findFirst({ where: { id, associationId } });
+  if (!proof || !req.user) return null;
+
+  const isOfficer =
+    req.user.platformRole === PlatformRole.SUPER_ADMIN ||
+    (await RBACService.hasAnyPermission(
+      { userId: req.user.id, associationId: req.user.associationId ?? null, platformRole: req.user.platformRole ?? null },
+      [PERMISSIONS.PAYMENT_VIEW],
+    ));
+  if (isOfficer) return proof;
+
+  return req.user.memberId !== undefined && proof.memberId === req.user.memberId ? proof : null;
+}
+
+/** A broken rule keeps its status and code; a bad request is a 400; a decided match is a 409; anything else is logged and a 500. */
+function reconFailure(res: Response, error: unknown, fallback: string) {
+  if (error instanceof z.ZodError) return res.status(400).json({ success: false, message: error.errors[0]?.message ?? 'Validation error', errors: error.errors });
+  if (error instanceof RuleError) return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  if (error instanceof ReconciliationDecisionError) return res.status(409).json({ success: false, code: 'ALREADY_DECIDED', message: error.message });
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message: fallback });
+}
+
+/** The file and choices of an import request (multipart: file, bankAccountId, and optionally mapping and headerRow). */
+function statementRequest(req: Request) {
+  const file = (req as Request & { file?: Express.Multer.File }).file;
+  if (!file) throw new RuleError('Choose a CSV or Excel statement to upload.', 400, 'NO_FILE');
+  const bankAccountId = parseInt(String(req.body?.bankAccountId ?? ''), 10);
+  if (!Number.isInteger(bankAccountId) || bankAccountId <= 0) throw new RuleError('Choose the bank account this statement is for.', 400, 'NO_ACCOUNT');
+  const headerRow = req.body?.headerRow !== undefined && req.body.headerRow !== '' ? parseInt(String(req.body.headerRow), 10) : null;
+  return {
+    bankAccountId,
+    filename: path.basename(file.originalname),
+    buffer: file.buffer,
+    manualMapping: parseMappingInput(req.body?.mapping),
+    headerRow: headerRow !== null && Number.isInteger(headerRow) && headerRow >= 0 ? headerRow : null,
+  };
+}
 
 export const nigerianPaymentsController = {
   // ==========================================
@@ -119,7 +175,7 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
       }
       console.error('Error creating bank account:', error);
       return res.status(500).json({ success: false, message: 'Failed to create bank account' });
@@ -145,7 +201,7 @@ export const nigerianPaymentsController = {
         return res.status(404).json({ success: false, message: 'Bank account not found' });
       }
 
-      const account = await nigerianPaymentsService.updateBankAccount(parseInt(id), associationId, data);
+      const { account, newDefaultId } = await nigerianPaymentsService.updateBankAccount(parseInt(id), associationId, data);
 
       await prisma.auditLog.create({
         data: {
@@ -161,12 +217,15 @@ export const nigerianPaymentsController = {
 
       return res.status(200).json({
         success: true,
-        message: 'Bank account updated successfully',
-        data: account,
+        message: newDefaultId ? 'Bank account updated. Another account is now the default.' : 'Bank account updated successfully',
+        data: { ...account, newDefaultId },
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error updating bank account:', error);
       return res.status(500).json({ success: false, message: 'Failed to update bank account' });
@@ -190,7 +249,7 @@ export const nigerianPaymentsController = {
         return res.status(404).json({ success: false, message: 'Bank account not found' });
       }
 
-      await nigerianPaymentsService.deleteBankAccount(parseInt(id), associationId);
+      const { outcome, newDefaultId } = await nigerianPaymentsService.deleteBankAccount(parseInt(id), associationId);
 
       await prisma.auditLog.create({
         data: {
@@ -200,14 +259,20 @@ export const nigerianPaymentsController = {
           tableName: 'association_bank_accounts',
           recordId: parseInt(id),
           oldValues: existing,
+          newValues: { outcome, newDefaultId },
         },
       });
 
       return res.status(200).json({
         success: true,
-        message: 'Bank account deleted successfully',
+        // A used account keeps its history, so it is deactivated rather than deleted — say which happened.
+        message: outcome === 'deactivated' ? 'Bank account deactivated. Its transfers and statements are kept.' : 'Bank account deleted successfully',
+        data: { outcome, newDefaultId },
       });
     } catch (error) {
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
+      }
       console.error('Error deleting bank account:', error);
       return res.status(500).json({ success: false, message: 'Failed to delete bank account' });
     }
@@ -291,19 +356,16 @@ export const nigerianPaymentsController = {
 
       const data = createBankTransferSchema.parse(req.body);
 
-      // Check for duplicate reference
-      const existing = await prisma.bankTransfer.findFirst({
-        where: { associationId, reference: data.reference },
+      // The service checks the links belong to this association and that the reference is free (ignoring case and spaces).
+      const transfer = await nigerianPaymentsService.createBankTransfer(associationId, data, req.user!.id);
+
+      // Officers who can verify are told one is waiting — fire-and-forget.
+      void notifyTransferRecorded(associationId, {
+        id: transfer.id,
+        recorderUserId: req.user!.id,
+        amount: transfer.amount.toString(),
+        reference: transfer.reference,
       });
-
-      if (existing) {
-        return res.status(400).json({
-          success: false,
-          message: 'A bank transfer with this reference already exists',
-        });
-      }
-
-      const transfer = await nigerianPaymentsService.createBankTransfer(associationId, data);
 
       await prisma.auditLog.create({
         data: {
@@ -323,7 +385,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error creating bank transfer:', error);
       return res.status(500).json({ success: false, message: 'Failed to record bank transfer' });
@@ -377,7 +442,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error updating bank transfer:', error);
       return res.status(500).json({ success: false, message: 'Failed to update bank transfer' });
@@ -430,7 +498,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof BankRuleError) {
+        return res.status(BANK_RULE_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error verifying bank transfer:', error);
       return res.status(500).json({ success: false, message: 'Failed to verify bank transfer' });
@@ -441,25 +512,26 @@ export const nigerianPaymentsController = {
   // BANK STATEMENT IMPORT ENDPOINTS (TASK-PAY-005)
   // ==========================================
 
+  /** POST /import-statement/preview — what an import would do, without saving anything. */
+  async previewStatement(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const data = await previewStatement(associationId, statementRequest(req));
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return reconFailure(res, error, 'Failed to read the statement');
+    }
+  },
+
+  /** POST /import-statement — saves the new lines of an uploaded CSV or Excel statement. */
   async importBankStatement(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-      if (!associationId) {
-        return res.status(400).json({ success: false, message: 'Association ID is required' });
-      }
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
 
-      const data = importStatementSchema.parse(req.body);
-
-      // Verify bank account exists
-      const bankAccount = await prisma.associationBankAccount.findFirst({
-        where: { id: data.bankAccountId, associationId },
-      });
-
-      if (!bankAccount) {
-        return res.status(404).json({ success: false, message: 'Bank account not found' });
-      }
-
-      const result = await nigerianPaymentsService.importBankStatement(associationId, req.user!.id, data);
+      const input = statementRequest(req);
+      const result = await importStatement(associationId, req.user!.id, input);
 
       await prisma.auditLog.create({
         data: {
@@ -468,21 +540,28 @@ export const nigerianPaymentsController = {
           action: 'IMPORT',
           tableName: 'bank_statement_imports',
           recordId: result.import.id,
-          newValues: { filename: data.filename, entriesCreated: result.entriesCreated },
+          newValues: { filename: input.filename, entriesCreated: result.entriesCreated, alreadyImported: result.alreadyImported },
         },
       });
 
       return res.status(201).json({
         success: true,
-        message: `Bank statement imported successfully with ${result.entriesCreated} entries`,
+        message: `Imported ${result.entriesCreated} lines${result.alreadyImported > 0 ? `, skipped ${result.alreadyImported} already imported` : ''}`,
         data: result,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      console.error('Error importing bank statement:', error);
-      return res.status(500).json({ success: false, message: 'Failed to import bank statement' });
+      return reconFailure(res, error, 'Failed to import bank statement');
+    }
+  },
+
+  /** GET /reconciliation/suggestions — each unmatched bank line with the charge it most likely paid, and how sure that is. */
+  async getMatchSuggestions(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      return res.status(200).json({ success: true, data: await suggestMatches(associationId) });
+    } catch (error) {
+      return reconFailure(res, error, 'Failed to find matches');
     }
   },
 
@@ -524,6 +603,7 @@ export const nigerianPaymentsController = {
         limit,
         importId: query.importId ? parseInt(query.importId) : undefined,
         matchStatus: query.matchStatus,
+        creditsOnly: query.creditsOnly === 'true',
         startDate: query.startDate ? new Date(query.startDate) : undefined,
         endDate: query.endDate ? new Date(query.endDate) : undefined,
       });
@@ -571,11 +651,7 @@ export const nigerianPaymentsController = {
         data: reconciliation,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      console.error('Error reconciling payment:', error);
-      return res.status(500).json({ success: false, message: 'Failed to reconcile payment' });
+      return reconFailure(res, error, 'Failed to reconcile payment');
     }
   },
 
@@ -624,11 +700,7 @@ export const nigerianPaymentsController = {
         data: reconciliation,
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
-      }
-      console.error('Error confirming reconciliation:', error);
-      return res.status(500).json({ success: false, message: 'Failed to confirm reconciliation' });
+      return reconFailure(res, error, 'Failed to confirm reconciliation');
     }
   },
 
@@ -679,8 +751,7 @@ export const nigerianPaymentsController = {
         data: result,
       });
     } catch (error) {
-      console.error('Error auto-matching transactions:', error);
-      return res.status(500).json({ success: false, message: 'Failed to auto-match transactions' });
+      return reconFailure(res, error, 'Failed to auto-match transactions');
     }
   },
 
@@ -718,8 +789,7 @@ export const nigerianPaymentsController = {
         data: { results, successful, failed },
       });
     } catch (error) {
-      console.error('Error applying auto-matches:', error);
-      return res.status(500).json({ success: false, message: 'Failed to apply auto-matches' });
+      return reconFailure(res, error, 'Failed to apply auto-matches');
     }
   },
 
@@ -756,6 +826,15 @@ export const nigerianPaymentsController = {
         });
       }
 
+      // Upload the file buffer to MinIO. The returned key is stored in the DB;
+      // the server's local disk is never written to.
+      let storageKey: string | undefined;
+      if (file?.buffer) {
+        const ext = path.extname(file.originalname) || '';
+        storageKey = `payment-proofs/${associationId}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+        await uploadFile(storageKey, file.buffer, file.mimetype);
+      }
+
       // R7.2 (G17): confirm every declared transaction actually belongs to this
       // member and is genuinely outstanding — without this, any member could
       // submit a proof for someone else's transaction.
@@ -782,7 +861,7 @@ export const nigerianPaymentsController = {
         bankTransferId: data.bankTransferId,
         paymentMethod: data.paymentMethod || (file ? 'bank_transfer' : undefined),
         filename: file?.originalname,
-        filepath: file?.path,
+        filepath: storageKey,   // MinIO object key, not a local path
         fileSize: file?.size,
         mimeType: file?.mimetype,
         declarationNote: data.declarationNote,
@@ -798,6 +877,13 @@ export const nigerianPaymentsController = {
           recordId: proof.id,
           newValues: { filename: file?.originalname, transactionId: data.transactionId, transactionIds: data.transactionIds },
         },
+      });
+
+      // Officers who can verify proofs are told one is waiting — fire-and-forget.
+      void notifyProofSubmitted(associationId, {
+        id: proof.id,
+        memberUserId: req.user!.id,
+        memberName: `${proof.member.firstName} ${proof.member.lastName}`.trim(),
       });
 
       return res.status(201).json({
@@ -852,6 +938,9 @@ export const nigerianPaymentsController = {
         },
       });
 
+      // Tell the member how it went (with the reason, if rejected) — fire-and-forget.
+      void notifyProofDecided(associationId, proof);
+
       return res.status(200).json({
         success: true,
         message: `Payment proof ${data.status.toLowerCase()} successfully`,
@@ -859,7 +948,10 @@ export const nigerianPaymentsController = {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return res.status(400).json({ success: false, message: error.errors[0]?.message || 'Validation error', errors: error.errors });
+      }
+      if (error instanceof ProofDecisionError) {
+        return res.status(PROOF_DECISION_STATUS[error.code]).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error verifying payment proof:', error);
       return res.status(500).json({ success: false, message: 'Failed to verify payment proof' });
@@ -917,6 +1009,66 @@ export const nigerianPaymentsController = {
     } catch (error) {
       console.error('Error fetching payment proof:', error);
       return res.status(500).json({ success: false, message: 'Failed to fetch payment proof' });
+    }
+  },
+
+  async downloadPaymentProof(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const associationId = req.user?.associationId;
+
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const proof = await findProofFileForCaller(req, parseInt(id), associationId);
+
+      if (!proof) {
+        return res.status(404).json({ success: false, message: 'Payment proof not found' });
+      }
+
+      if (!proof.filepath) {
+        return res.status(404).json({ success: false, message: 'No file attached to this proof' });
+      }
+
+      // Generate a 1-hour presigned URL and redirect the browser directly to MinIO.
+      // The file is never proxied through the API server — MinIO streams it directly.
+      const url = await getPresignedUrl(proof.filepath, undefined, req.hostname);
+      return res.redirect(url);
+    } catch (error) {
+      console.error('Error generating download URL:', error);
+      return res.status(500).json({ success: false, message: 'Failed to generate download URL' });
+    }
+  },
+
+  /**
+   * GET /proofs/:id/file-url — the same short-lived link as /download, but as JSON, for clients (the mobile app) that can't follow
+   * a redirect with their auth header. Officers get any proof in the association; a member only their own.
+   */
+  async getPaymentProofFileUrl(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+
+      const proof = await findProofFileForCaller(req, parseInt(req.params.id), associationId);
+      if (!proof) {
+        return res.status(404).json({ success: false, message: 'Payment proof not found' });
+      }
+      if (!proof.filepath) {
+        return res.status(404).json({ success: false, message: 'No file attached to this proof' });
+      }
+
+      const expiresInSeconds = 3600;
+      const url = await getPresignedUrl(proof.filepath, expiresInSeconds, req.hostname);
+      return res.status(200).json({
+        success: true,
+        data: { url, filename: proof.filename, mimeType: proof.mimeType, expiresInSeconds },
+      });
+    } catch (error) {
+      console.error('Error generating proof file link:', error);
+      return res.status(500).json({ success: false, message: 'Failed to generate the file link' });
     }
   },
 

@@ -21,8 +21,10 @@ import { notifications } from '@mantine/notifications';
 import { smsApi, SMSCampaign } from '@/lib/api/sms';
 import { CampaignStatusBadge } from '@/components/communications/CampaignStatusBadge';
 import { CampaignProgress } from '@/components/communications/CampaignProgress';
+import { useConfirm } from '@/hooks/useConfirm';
 
 export default function CampaignDetailPage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const router = useRouter();
   const params = useParams();
   const campaignId = Array.isArray(params.id) ? parseInt(params.id[0]) : parseInt(params.id || '0');
@@ -34,6 +36,8 @@ export default function CampaignDetailPage() {
     queryKey: ['sms-campaign', campaignId],
     queryFn: () => smsApi.getCampaign(campaignId),
     enabled: !!campaignId,
+    // A campaign sends in the background: follow it until it has finished
+    refetchInterval: (data) => (data?.status === 'IN_PROGRESS' ? 3000 : false),
   });
 
   const startMutation = useMutation({
@@ -41,7 +45,7 @@ export default function CampaignDetailPage() {
     onSuccess: () => {
       notifications.show({
         title: 'Campaign Started',
-        message: 'Your campaign has been started',
+        message: 'Your campaign is sending. Credits were set aside first; any text that doesn’t go out is refunded.',
         color: 'green',
       });
       refetch();
@@ -93,22 +97,22 @@ export default function CampaignDetailPage() {
     },
   });
 
-  const handleStart = () => {
-    if (!confirm('Are you sure you want to start this campaign?')) {
+  const handleStart = async () => {
+    if (!(await confirm({ message: 'Are you sure you want to start this campaign?' }))) {
       return;
     }
     startMutation.mutate();
   };
 
-  const handleCancel = () => {
-    if (!confirm('Are you sure you want to cancel this campaign?')) {
+  const handleCancel = async () => {
+    if (!(await confirm({ message: 'Are you sure you want to cancel this campaign?', danger: true }))) {
       return;
     }
     cancelMutation.mutate();
   };
 
-  const handleDelete = () => {
-    if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+  const handleDelete = async () => {
+    if (!(await confirm({ message: 'Are you sure you want to delete this campaign? This action cannot be undone.', danger: true }))) {
       return;
     }
     deleteMutation.mutate();
@@ -145,6 +149,7 @@ export default function CampaignDetailPage() {
 
   return (
     <Container size="xl" py="xl">
+      {confirmElement}
       <LoadingOverlay visible={startMutation.isPending || cancelMutation.isPending || deleteMutation.isPending} />
       <Stack gap="xl">
         {/* Header */}
@@ -259,7 +264,7 @@ export default function CampaignDetailPage() {
         </Card>
 
         {/* Progress */}
-        {(campaign.status === 'IN_PROGRESS' || campaign.status === 'COMPLETED') && (
+        {(campaign.status === 'IN_PROGRESS' || campaign.status === 'COMPLETED' || campaign.status === 'INTERRUPTED' || campaign.status === 'CANCELLED') && (
           <Card padding="lg" radius="md" withBorder>
             <Title order={3} mb="md">Campaign Progress</Title>
             <CampaignProgress
@@ -274,7 +279,19 @@ export default function CampaignDetailPage() {
         {/* Info */}
         {campaign.status === 'DRAFT' && (
           <Alert color="blue" variant="light">
-            This campaign is a draft. Click "Start Campaign" to begin sending messages.
+            This campaign is a draft. Click &quot;Start Campaign&quot; to begin sending messages.
+          </Alert>
+        )}
+
+        {campaign.status === 'IN_PROGRESS' && (
+          <Alert color="cyan" variant="light">
+            Sending: {campaign.sentCount.toLocaleString()} of {campaign.totalRecipients.toLocaleString()} sent so far. You can leave this page; it carries on.
+          </Alert>
+        )}
+
+        {campaign.status === 'INTERRUPTED' && (
+          <Alert color="yellow" variant="light">
+            The server restarted before this campaign finished. The credits for the texts that were not sent have been refunded. Create a new campaign for the people who were missed.
           </Alert>
         )}
 

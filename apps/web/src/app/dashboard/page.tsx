@@ -1,16 +1,33 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { canSeeOfficerDashboard } from '@/lib/permissions';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
+import { chargeHref, chargesHref, paymentsHref } from '@/lib/reports-drill';
 
+// Only officers who can read the ledger get the officer dashboard. Every other role — the Election Committee, a custom role — is a
+// member first, so it lands on the member dashboard; assigning a role overwrites the legacy `role` field, so it can't be assumed to be 'member'.
 export default function DashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
+  const isOfficer = canSeeOfficerDashboard(user);
+
+  // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['dashboard-overview'],
+    queryFn: getDashboardOverview,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
+    enabled: _hasHydrated && isOfficer, // everyone else is sent to the member dashboard
+
+  });
 
   // Smart redirect based on user role
   useEffect(() => {
@@ -18,16 +35,13 @@ export default function DashboardPage() {
 
     if (user) {
       // Regular Admin/Treasurer/Financial Secretary → Stay here (admin dashboard)
-      if (user.role === 'admin' || user.role === 'treasurer' || user.role === 'financial_secretary') {
+      if (canSeeOfficerDashboard(user)) {
         // Show admin dashboard (current page)
         return;
       }
 
-      // Regular Member → Redirect to member dashboard
-      if (user.role === 'member') {
-        router.replace('/dashboard/member');
-        return;
-      }
+      // Members, the Election Committee and custom roles → member dashboard
+      router.replace('/dashboard/member');
     }
   }, [user, _hasHydrated, router]);
 
@@ -37,16 +51,9 @@ export default function DashboardPage() {
   }
 
   // If member, don't show this page (will redirect)
-  if (user?.role === 'member') {
+  if (user && !isOfficer) {
     return <DashboardSkeleton />;
   }
-  // Fetch dashboard data
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['dashboard-overview'],
-    queryFn: getDashboardOverview,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
 
   // Loading state
   if (isLoading) {
@@ -86,6 +93,7 @@ export default function DashboardPage() {
   }));
 
   const paymentMethodsData = data.paymentMethods.map(item => ({
+    method: item.method,
     name: item.name,
     value: item.percentage,
     color: item.color,
@@ -101,14 +109,17 @@ export default function DashboardPage() {
           </h1>
           <HelpLink />
         </div>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here's your overview</p>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here&apos;s your overview</p>
       </div>
 
       <div className="space-y-4 sm:space-y-6">
+        <NeedsAttentionCard />
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
           <StatCard
             title="Total Members"
+            href="/dashboard/members"
             value={data.memberStats.total.toString()}
             icon={<UsersIcon />}
             color="text-blue-600 dark:text-blue-400"
@@ -116,6 +127,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Total Revenue"
+            href={paymentsHref({}, 'Everything received')}
             value={formatCurrency(data.financialSummary.totalInflow)}
             icon={<CashIcon />}
             color="text-green-600 dark:text-green-400"
@@ -123,6 +135,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Pending Payments"
+            href={chargesHref({ scope: 'aging', bucket: 'notYetDue' }, 'Owed, not yet due')}
             value={data.financialSummary.pendingPayments.toString()}
             icon={<ClockIcon />}
             color="text-orange-600 dark:text-orange-400"
@@ -130,6 +143,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Overdue Payments"
+            href={chargesHref({ scope: 'overdue' }, 'Overdue charges')}
             value={data.financialSummary.overduePayments.toString()}
             icon={<AlertIcon />}
             color="text-red-600 dark:text-red-400"
@@ -144,7 +158,14 @@ export default function DashboardPage() {
             <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Revenue Analytics</h2>
             {revenueData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={revenueData}>
+                <AreaChart
+                  data={revenueData}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(state: any) => {
+                    const item = typeof state?.activeTooltipIndex === 'number' ? data.revenueTrend[state.activeTooltipIndex] : undefined;
+                    if (item?.startDate && item.endDate) router.push(paymentsHref({ startDate: item.startDate, endDate: item.endDate }, `Received in ${item.month} ${item.year}`));
+                  }}
+                >
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8}/>
@@ -181,6 +202,11 @@ export default function DashboardPage() {
                     outerRadius={70}
                     paddingAngle={5}
                     dataKey="value"
+                    style={{ cursor: 'pointer' }}
+                    onClick={(_: unknown, index: number) => {
+                      const entry = paymentMethodsData[index];
+                      if (entry) router.push(paymentsHref({ paymentMethod: entry.method }, `Paid by ${entry.name}`));
+                    }}
                   >
                     {paymentMethodsData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -237,7 +263,9 @@ export default function DashboardPage() {
                   {data.recentTransactions.slice(0, 5).map((transaction) => (
                     <div key={transaction.id} className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{transaction.memberName}</span>
+                        <Link href={chargeHref(transaction.id)} className="text-sm font-medium text-gray-900 dark:text-gray-100 underline decoration-dotted underline-offset-4">
+                          {transaction.memberName}
+                        </Link>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(transaction.status)}`}>
                           {transaction.status}
                         </span>
@@ -266,7 +294,11 @@ export default function DashboardPage() {
                     <tbody>
                       {data.recentTransactions.slice(0, 5).map((transaction) => (
                         <tr key={transaction.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                          <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">{transaction.memberName}</td>
+                          <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
+                            <Link href={chargeHref(transaction.id)} className="underline decoration-dotted underline-offset-4">
+                              {transaction.memberName}
+                            </Link>
+                          </td>
                           <td className="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">{formatCurrency(transaction.amount)}</td>
                           <td className="py-3 px-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(transaction.status)}`}>
@@ -372,7 +404,7 @@ function EmptyDashboard() {
           </h1>
           <HelpLink />
         </div>
-        <p className="text-gray-600 dark:text-gray-400">Welcome! Let's get started</p>
+        <p className="text-gray-600 dark:text-gray-400">Welcome! Let&apos;s get started</p>
       </div>
 
       <div className="glass rounded-2xl p-12 shadow-xl text-center">
@@ -434,14 +466,16 @@ function EmptyTableState({ message }: { message: string }) {
 // STAT CARD COMPONENT
 // ============================================
 
-function StatCard({ title, value, icon, color, bgColor }: {
+function StatCard({ title, value, icon, color, bgColor, href }: {
   title: string;
   value: string;
   icon: React.ReactNode;
   color: string;
   bgColor: string;
+  /** Opens the records behind the figure. */
+  href?: string;
 }) {
-  return (
+  const card = (
     <div className="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
       <div className="flex items-start justify-between">
         <div>
@@ -453,6 +487,13 @@ function StatCard({ title, value, icon, color, bgColor }: {
         </div>
       </div>
     </div>
+  );
+  return href ? (
+    <Link href={href} aria-label={`${title}: ${value}. Opens the list.`} className="block">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }
 

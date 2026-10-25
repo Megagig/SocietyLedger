@@ -3,10 +3,10 @@ title: "Scheduling a meeting"
 description: "Set the date, type, location and quorum for a new meeting."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/governance/meetings/create", "GV2"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-24"
 related: ["/docs/meetings/building-an-agenda", "/docs/meetings/taking-attendance"]
 ---
 
@@ -36,3 +36,11 @@ The form on this page also has an **Agenda Items** section — see [Building the
 ## What happens next
 
 The meeting appears as **Scheduled** for every member of the association, with an in-app notification and an email sent to everyone. It stays **Scheduled** until you cancel it or a reminder fires 24 hours beforehand — there's currently no way to mark a meeting as held or completed from this screen; see [Cancelling or postponing a meeting](/docs/meetings/cancelling-or-postponing) if plans change.
+
+## In the app
+
+Go to <MenuPath items={["Manage", "Meetings"]} /> and tap **+**. Choose the kind of meeting, the start (date and time are separate taps), an optional end, the venue or online link, and the quorum if you have one. The end must be after the start. Members are told when you schedule it.
+
+## Meetings become "Held" by themselves
+
+Once a meeting's end time has passed — or three hours after it started, if you didn't set an end — it moves from **Upcoming** to **Held** automatically, so your recent-meetings list stays right. You can also mark a meeting as held yourself from its **⋮** menu.

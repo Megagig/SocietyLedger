@@ -3,6 +3,7 @@
  * Phase 6.5: SMS & Bulk Communication
  */
 
+import { creditVerifiedPurchase } from './sms-engine';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { SMSService } from './sms.service';
@@ -15,11 +16,29 @@ import {
   listMessagesQuerySchema,
   listCampaignsQuerySchema,
   listTemplatesQuerySchema,
+  previewAudienceSchema,
 } from './sms.validation';
 import { prisma } from '../../lib/prisma';
 import { SettingsService } from '../settings/settings.service';
 
 const smsService = new SMSService();
+
+import { RuleError } from '../finance/rule-error';
+import { tenantBaseUrl } from '../../lib/tenant-url';
+
+/** A rule an officer broke (not enough credits, a campaign already started…) keeps its status and code; a missing record is a 404. */
+function smsFailure(res: Response, error: unknown, fallback: string) {
+  if (error instanceof z.ZodError) {
+    return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+  }
+  if (error instanceof RuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  const message = error instanceof Error ? error.message : fallback;
+  if (/not found$/i.test(message)) return res.status(404).json({ success: false, message });
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message });
+}
 
 export const smsController = {
   // ============================================
@@ -43,6 +62,19 @@ export const smsController = {
     } catch (error) {
       console.error('Error fetching SMS dashboard:', error);
       return res.status(500).json({ success: false, message: 'Failed to fetch dashboard' });
+    }
+  },
+
+  /** What a send to this audience would do, before it is sent: who is texted, who is missed and why, and the cost. */
+  async previewAudience(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const body = previewAudienceSchema.parse(req.body);
+      const data = await smsService.previewAudience(associationId, body.recipientType, body.recipientFilter, body.message);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return smsFailure(res, error, 'Failed to preview the audience');
     }
   },
 
@@ -88,16 +120,14 @@ export const smsController = {
 
       return res.status(200).json({
         success: true,
-        message: `SMS sent to ${result.totalSent} recipients`,
+        message: result.inProgress ? `Sending to ${result.accepted} recipients` : `SMS sent to ${result.totalSent} recipients`,
         data: result,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error sending quick SMS:', error);
-      const message = error instanceof Error ? error.message : 'Failed to send SMS';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to send SMS');
     }
   },
 
@@ -137,9 +167,7 @@ export const smsController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error creating campaign:', error);
-      const message = error instanceof Error ? error.message : 'Failed to create campaign';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to create campaign');
     }
   },
 
@@ -218,19 +246,17 @@ export const smsController = {
           action: 'UPDATE',
           tableName: 'sms_campaigns',
           recordId: parseInt(id),
-          newValues: { status: 'COMPLETED', ...stats },
+          newValues: { status: 'IN_PROGRESS', ...stats },
         },
       });
 
       return res.status(200).json({
         success: true,
-        message: 'Campaign executed successfully',
+        message: `Campaign is sending to ${stats.totalRecipients} people`,
         data: stats,
       });
     } catch (error) {
-      console.error('Error starting campaign:', error);
-      const message = error instanceof Error ? error.message : 'Failed to start campaign';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to start campaign');
     }
   },
 
@@ -263,9 +289,7 @@ export const smsController = {
         data: campaign,
       });
     } catch (error) {
-      console.error('Error cancelling campaign:', error);
-      const message = error instanceof Error ? error.message : 'Failed to cancel campaign';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to cancel campaign');
     }
   },
 
@@ -296,9 +320,7 @@ export const smsController = {
         message: 'Campaign deleted successfully',
       });
     } catch (error) {
-      console.error('Error deleting campaign:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete campaign';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to delete campaign');
     }
   },
 
@@ -339,9 +361,7 @@ export const smsController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error creating template:', error);
-      const message = error instanceof Error ? error.message : 'Failed to create template';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to create template');
     }
   },
 
@@ -429,9 +449,7 @@ export const smsController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error updating template:', error);
-      const message = error instanceof Error ? error.message : 'Failed to update template';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to update template');
     }
   },
 
@@ -462,9 +480,7 @@ export const smsController = {
         message: 'Template deleted successfully',
       });
     } catch (error) {
-      console.error('Error deleting template:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete template';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to delete template');
     }
   },
 
@@ -516,9 +532,7 @@ export const smsController = {
         data: message,
       });
     } catch (error) {
-      console.error('Error fetching message:', error);
-      const message = error instanceof Error ? error.message : 'Failed to fetch message';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to fetch message');
     }
   },
 
@@ -648,7 +662,7 @@ export const smsController = {
         email: user.email,
         amount: amountInKobo,
         reference,
-        callback_url: `${process.env.FRONTEND_URL}/dashboard/communications/credits/verify?reference=${reference}`,
+        callback_url: `${tenantBaseUrl(association?.subdomain)}/dashboard/communications/credits/verify?reference=${reference}`,
         metadata: {
           associationId,
           userId,
@@ -709,9 +723,7 @@ export const smsController = {
         },
       });
     } catch (error) {
-      console.error('Error initializing SMS credits purchase:', error);
-      const message = error instanceof Error ? error.message : 'Failed to initialize payment';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to initialize payment');
     }
   },
 
@@ -768,49 +780,8 @@ export const smsController = {
         });
       }
 
-      // Update purchase and add credits
-      await prisma.$transaction([
-        // Update purchase status
-        prisma.sMSCreditsPurchase.update({
-          where: { id: purchase.id },
-          data: {
-            status: 'success',
-            paidAt: new Date(verificationResponse.data.paid_at),
-            paystackResponse: verificationResponse as any,
-          },
-        }),
-
-        // Add credits to association SMS balance
-        prisma.sMSCreditBalance.upsert({
-          where: { associationId },
-          create: {
-            associationId,
-            balance: purchase.credits,
-            totalPurchased: purchase.credits,
-            totalUsed: 0,
-          },
-          update: {
-            balance: { increment: purchase.credits },
-            totalPurchased: { increment: purchase.credits },
-          },
-        }),
-
-        // Audit log
-        prisma.auditLog.create({
-          data: {
-            associationId,
-            userId: purchase.userId,
-            action: 'SMS_CREDITS_ADDED',
-            tableName: 'sms_credit_balances',
-            newValues: {
-              reference: purchase.reference,
-              credits: purchase.credits,
-              amount: purchase.amount.toNumber(),
-              status: 'success',
-            },
-          },
-        }),
-      ]);
+      // Add the credits once, whoever verifies first: the purchase is claimed and credited together
+      await creditVerifiedPurchase(purchase, verificationResponse.data.paid_at, verificationResponse);
 
       return res.status(200).json({
         success: true,
@@ -824,9 +795,7 @@ export const smsController = {
         },
       });
     } catch (error) {
-      console.error('Error verifying SMS credits purchase:', error);
-      const message = error instanceof Error ? error.message : 'Failed to verify payment';
-      return res.status(500).json({ success: false, message });
+      return smsFailure(res, error, 'Failed to verify payment');
     }
   },
 };

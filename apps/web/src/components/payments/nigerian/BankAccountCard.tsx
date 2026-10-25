@@ -117,7 +117,7 @@ export function BankAccountCard({ account, onEdit, onDelete, onSetDefault }: Ban
       >
         <Stack gap="md">
           <Text>
-            Are you sure you want to delete the bank account <Text fw={700}>"{account.accountName}"</Text>?
+            Are you sure you want to delete the bank account <Text fw={700}>&quot;{account.accountName}&quot;</Text>?
           </Text>
           <Text size="sm" c="dimmed">
             This action cannot be undone.

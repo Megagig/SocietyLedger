@@ -3,11 +3,11 @@ title: "Repayments and repayment schedules"
 description: "Officers record repayments against a loan; members see their own progress."
 type: concept
 audience: ["officer", "member"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/cooperatives/loans", "CP5", "M18"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/cooperatives/reviewing-and-disbursing-loans"]
+lastVerified: "2026-10-26"
+related: ["/docs/cooperatives/reviewing-and-disbursing-loans", "/docs/cooperatives/paying-your-loan", "/docs/cooperatives/approving-loan-repayments"]
 ---
 
 Once a loan is disbursed, it has an outstanding balance that goes down as repayments are recorded against it.
@@ -16,18 +16,18 @@ Once a loan is disbursed, it has an outstanding balance that goes down as repaym
 
 <RoleTabs roles={["Officers", "Members"]}>
 <RoleTab>
-From <MenuPath items={["Cooperatives", "Loans"]} />, select the cash icon on an active loan to **Record Loan Repayment** — enter the **Amount**, a **Payment Method**, and an optional reference. The loan's **Outstanding** balance updates immediately.
+On the web, go to <MenuPath items={["Cooperatives", "Loans"]} /> and select the cash icon on an active loan to **Record Loan Repayment**. On your phone, go to <MenuPath items={["Manage", "Cooperatives", "Loans"]} />, open the loan and tap **Record a repayment**. Enter the **Amount**, how it was paid, and an optional reference. The loan's **Outstanding** balance updates immediately. A repayment can't be more than is still owed on the loan, and two repayments at the same moment can't both be worked out from the same balance. When a member declares a payment with a receipt instead, approve it from [Approving member loan repayments](/docs/cooperatives/approving-loan-repayments).
 
 <Screenshot src="/images/cooperatives/repayments-and-schedules-1.webp" alt="Record Loan Repayment modal showing the loan's outstanding balance and an Amount field" />
 </RoleTab>
 <RoleTab>
-Under <MenuPath items={["Cooperatives", "My Loans"]} />, each loan shows a **Repayment Progress** bar, how much you've paid against the total, and the **Maturity Date**. This view is read-only — repayments are recorded by an officer.
+Under <MenuPath items={["Cooperatives", "My Loans"]} />, each loan shows a **Repayment Progress** bar, how much you've paid against the total, and the **Maturity Date**. To pay, transfer to the cooperative's bank account and select **Pay Now** to upload your receipt — an officer confirms it before it counts. See [Paying towards your loan](/docs/cooperatives/paying-your-loan).
 </RoleTab>
 </RoleTabs>
 
 ## Why it matters
 
-Only officers can record repayments — there's no self-service "pay my loan" action for members on this screen. If a member pays outside the app (bank transfer, cash), it only reflects here once an officer records it.
+A repayment only counts once an officer has seen the money arrive. Members can't record a repayment on their own loan — they declare a payment with a receipt, and an officer approves it, or an officer records it directly. A confirmed repayment also releases the matching share of any savings held against the loan.
 
 ## What you can do
 

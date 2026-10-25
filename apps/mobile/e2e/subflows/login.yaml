@@ -1,0 +1,29 @@
+# Shared sign-in. Needs env: APP_ID, ASSOCIATION_CODE, and the EMAIL and PASSWORD to use.
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: welcome-get-started
+- tapOn:
+    id: association-code-input
+- inputText: ${ASSOCIATION_CODE}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: association-continue
+    timeout: 15000
+- tapOn:
+    id: association-continue
+- tapOn:
+    id: login-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: login-password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: login-submit
+- extendedWaitUntil:
+    visible: Home
+    timeout: 20000

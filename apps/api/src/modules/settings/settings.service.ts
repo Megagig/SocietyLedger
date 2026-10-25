@@ -41,6 +41,7 @@ const DEFAULT_SETTINGS: Record<SettingsCategory, Record<string, any>> = {
     lateFeeAmount: 0,
     enablePartialPayments: true,
     requirePaymentApproval: false,
+    receiptRequiredAbove: 5000,
     fiscalYearStart: 1,
     currencyCode: 'NGN',
     currencySymbol: '₦',
@@ -52,7 +53,8 @@ const DEFAULT_SETTINGS: Record<SettingsCategory, Record<string, any>> = {
     enableManualPayments: true,
     manualPaymentApprovalRequired: true,
     enablePartialPayments: true,
-    receiptAutoGenerate: true
+    receiptAutoGenerate: true,
+    cashLodgmentDueDays: 3
   },
   notifications: {
     emailEnabled: true,
@@ -123,47 +125,38 @@ export class SettingsService {
     // Get current settings for audit
     const currentSettings = await this.getSettings(associationId, category);
 
-    // Process each setting
-    for (const [key, value] of Object.entries(settings)) {
-      const fullKey = `${category}.${key}`;
-      const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-      const oldValue = currentSettings[key];
+    // Values are always saved as JSON, so the text "123" stays text and a number stays a number when it is read back.
+    // (Rows saved before this change hold bare numbers and booleans, which read the same way.)
+    const entries = Object.entries(settings).filter(([, value]) => value !== undefined);
+    await prisma.$transaction(async (tx) => {
+      for (const [key, value] of entries) {
+        const fullKey = `${category}.${key}`;
+        const stringValue = JSON.stringify(value);
 
-      // Upsert the setting
-      await prisma.settings.upsert({
-        where: {
-          associationId_key: { associationId, key: fullKey }
-        },
-        update: {
+        await tx.settings.upsert({
+          where: { associationId_key: { associationId, key: fullKey } },
+          update: { value: stringValue, updatedBy: userId },
+          create: { associationId, key: fullKey, value: stringValue, description: `${category} setting: ${key}`, updatedBy: userId },
+        });
+
+        updates.push({
+          key,
           value: stringValue,
-          updatedBy: userId
-        },
-        create: {
-          associationId,
-          key: fullKey,
-          value: stringValue,
-          description: `${category} setting: ${key}`,
-          updatedBy: userId
-        }
-      });
-
-      updates.push({
-        key,
-        value: stringValue,
-        oldValue: oldValue !== undefined ? String(oldValue) : undefined
-      });
-    }
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        associationId,
-        userId,
-        action: 'SETTINGS_UPDATED',
-        tableName: 'settings',
-        oldValues: { category, changes: updates.map(u => ({ key: u.key, old: u.oldValue })) },
-        newValues: { category, changes: updates.map(u => ({ key: u.key, new: u.value })) }
+          oldValue: currentSettings[key] !== undefined ? JSON.stringify(currentSettings[key]) : undefined,
+        });
       }
+
+      // The audit entry is written with the change, so one never exists without the other.
+      await tx.auditLog.create({
+        data: {
+          associationId,
+          userId,
+          action: 'SETTINGS_UPDATED',
+          tableName: 'settings',
+          oldValues: { category, changes: updates.map((u) => ({ key: u.key, old: u.oldValue })) },
+          newValues: { category, changes: updates.map((u) => ({ key: u.key, new: u.value })) },
+        },
+      });
     });
 
     // Return updated settings
@@ -209,7 +202,7 @@ export class SettingsService {
     userId: number
   ): Promise<void> {
     const fullKey = `${category}.${key}`;
-    const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    const stringValue = JSON.stringify(value);
 
     // Get old value for audit
     const oldSetting = await prisma.settings.findUnique({
@@ -260,12 +253,13 @@ export class SettingsService {
 
     const settings = await this.getSettings(associationId, 'association');
 
+    // The association's own fields come last, so a stored setting can never stand in for the name, logo or colour.
     return {
+      ...settings,
       name: association.name,
       logo: association.logo || undefined,
       primaryColor: association.primaryColor || undefined,
-      ...settings
-    };
+    } as AssociationProfileSettings;
   }
 
   /**
@@ -276,13 +270,14 @@ export class SettingsService {
     profile: Partial<AssociationProfileSettings>,
     userId: number
   ): Promise<AssociationProfileSettings> {
-    const { name, logo, primaryColor, ...settingsData } = profile;
+    // The logo is changed only by the upload and delete routes: a saved value here used to decide which file got deleted next.
+    const { name, primaryColor, ...settingsData } = profile;
+    delete (settingsData as { logo?: unknown }).logo;
 
     // Update association table fields
-    if (name || logo !== undefined || primaryColor !== undefined) {
-      const updateData: any = {};
+    if (name || primaryColor !== undefined) {
+      const updateData: { name?: string; primaryColor?: string | null } = {};
       if (name) updateData.name = name;
-      if (logo !== undefined) updateData.logo = logo;
       if (primaryColor !== undefined) updateData.primaryColor = primaryColor;
 
       await prisma.association.update({

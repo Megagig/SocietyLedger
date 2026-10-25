@@ -81,7 +81,7 @@ export function generateArticleJsonLd(data: {
     publisher: {
       '@type': 'Organization',
       name: 'SocietyLedger',
-      logo: `${baseUrl}/logo.png`,
+      logo: `${baseUrl}/icons/icon-512.png`,
     },
     description: description.substring(0, 160),
     url: `${baseUrl}/blog/${data.slug}`,
@@ -164,7 +164,7 @@ export function generateOrganizationJsonLd(): string {
     '@type': 'Organization',
     name: 'SocietyLedger',
     url: 'https://societyledger.com.ng',
-    logo: 'https://societyledger.com.ng/logo.png',
+    logo: 'https://societyledger.com.ng/icons/icon-512.png',
     description: 'Comprehensive management platform for associations, cooperatives, and community organizations.',
     sameAs: [
       'https://twitter.com/societyledger',

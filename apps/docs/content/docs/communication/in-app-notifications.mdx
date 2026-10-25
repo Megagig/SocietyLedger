@@ -35,8 +35,10 @@ Unread notifications show a teal highlight; the count badge in the sidebar drops
 
 <MenuPath items={["Notifications", "Preferences"]} /> lets you toggle Email / SMS / In-App per notification type, and set quiet hours.
 
-<Callout type="warning" title="Preferences don't do anything yet">
-These toggles save successfully and the page confirms it — but nothing anywhere in SocietyLedger actually checks your saved preferences before sending a notification. Every notification still goes out in-app regardless of what you've turned off, and the saved settings are kept in the server's memory rather than the database, so they're also wiped the next time the server restarts. Treat this page as not yet functional.
+**Don't send me text messages** stops announcement and campaign texts from your officers. It is on the same Preferences screen, on the web and in the app. An officer texting you one to one can still reach you.
+
+<Callout type="warning" title="What the toggles control">
+Your choices are saved to your account and applied to payment, support-ticket, guarantor, savings-deposit and loan-repayment notifications: a type switched off for a channel isn't sent on it. Meeting reminders and platform announcements don't check them yet, and **quiet hours** are saved but not applied yet.
 </Callout>
 
 <Screenshot src="/images/communication/notification-preferences-1.webp" alt="Notification Preferences page with per-type Email, SMS and In-App toggles and a Quiet Hours section" />

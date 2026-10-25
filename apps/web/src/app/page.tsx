@@ -237,7 +237,7 @@ export default function HomePage() {
               Simple, Transparent Pricing
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Choose a plan that fits your association's size and needs
+              Choose a plan that fits your association&apos;s size and needs
             </p>
           </div>
 

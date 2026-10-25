@@ -9,8 +9,10 @@ import {
 } from '@tabler/icons-react';
 import { toast } from '@/lib/toast';
 import { getAllMemberBalances, bulkSyncLedgers, forceResyncAllLedgers, MemberBalance } from '@/lib/api/member-ledger';
+import { useConfirm } from '@/hooks/useConfirm';
 
 export default function MemberLedgerPage() {
+  const { confirm, element: confirmElement } = useConfirm();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [members, setMembers] = useState<MemberBalance[]>([]);
@@ -99,7 +101,7 @@ export default function MemberLedgerPage() {
   };
 
   const handleForceResync = async () => {
-    if (!confirm('This will clear ALL ledger entries and rebuild them from transactions. This may take a while. Continue?')) {
+    if (!(await confirm({ message: 'This will clear ALL ledger entries and rebuild them from transactions. This may take a while. Continue?', danger: true }))) {
       return;
     }
     try {
@@ -124,6 +126,7 @@ export default function MemberLedgerPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
+      {confirmElement}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>

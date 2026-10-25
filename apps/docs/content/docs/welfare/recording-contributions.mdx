@@ -3,10 +3,10 @@ title: "Recording and confirming contributions"
 description: "Log a member's welfare contribution, then confirm it so it counts toward the fund."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/welfare/contributions", "WF3"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/welfare/welfare-funds", "/docs/welfare/eligibility"]
 ---
 
@@ -18,12 +18,26 @@ You need the **Administrator**, **Treasurer** or **Financial Secretary** role to
 
 ## Record a contribution
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Welfare", "Contributions"]} /> and select **Record Contribution**.</Step>
 <Step>Choose the **Welfare Fund** and the **Member**.</Step>
 <Step>Enter the **Amount**, **Contribution Date** and **Payment Method**.</Step>
 <Step>Optionally add a **Reference** and **Notes**, then select **Record Contribution**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Welfare", "Contributions"]} /> and tap **+**.</Step>
+<Step>Choose **One member** or **Many members**, then the **Fund** and who paid.</Step>
+<Step>Enter the **Amount**, the date, and how it was paid. For many members, everyone chosen pays the same amount.</Step>
+<Step>Optionally add a reference or note, then tap **Record contribution**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+Only an **active** member can contribute, the fund must be active, and the amount must meet the fund's smallest contribution if it has one.
 
 <Screenshot src="/images/welfare/recording-contributions-1.webp" alt="Record Contribution modal with fund, member, amount, contribution date and payment method fields" />
 
@@ -31,10 +45,22 @@ You need the **Administrator**, **Treasurer** or **Financial Secretary** role to
 
 A recorded contribution starts as **Pending** and doesn't count toward the fund's balance yet.
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>On the Contributions list, find the **Pending** row.</Step>
 <Step>Select the green checkmark to **Confirm**, or the red cross to **Reject**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>On the **Contributions** screen, the **To confirm** tab lists what is waiting.</Step>
+<Step>Tap **Confirm** if you have seen the money, or **Reject** and say why.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+**A second officer has to confirm it.** The officer who recorded a contribution can't also confirm it, and nobody confirms a contribution in their own name — you'll see a note instead of the buttons. A contribution can only be decided once, so a double tap or two officers at the same moment can't add it to the fund twice. Contributions recorded before this rule existed can be confirmed by any officer allowed to.
 
 <Screenshot src="/images/welfare/recording-contributions-2.webp" alt="Welfare Contributions list with a confirmed contribution showing Chiamaka Nwosu, Medical Emergency Fund, ₦5,000, Confirmed status" />
 

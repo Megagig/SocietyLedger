@@ -16,6 +16,7 @@ import { FilterBar } from '@/components/FilterBar';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ConfirmDestructive } from '@/components/ConfirmDestructive';
 import { ErrorState } from '@/components/ErrorState';
+import { tenantUrl } from '@/lib/tenant-url';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,7 +198,7 @@ export default function AssociationsPage() {
               header: 'Subdomain',
               render: (r) => (
                 <Anchor
-                  href={`https://${r.subdomain}.societyledger.com.ng`}
+                  href={tenantUrl(r.subdomain)}
                   target="_blank"
                   rel="noopener noreferrer"
                   size="sm"

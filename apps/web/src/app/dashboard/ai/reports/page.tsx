@@ -269,7 +269,7 @@ export default function AIReportsPage() {
               <IconFileAnalytics size={64} className="mx-auto mb-4 text-gray-400 hidden sm:block" />
               <Text size="lg" fw={500} mb="xs">No Report Generated</Text>
               <Text size="sm" c="dimmed">
-                Select a report type and click "Generate Report" to create an AI-powered financial report.
+                Select a report type and click &quot;Generate Report&quot; to create an AI-powered financial report.
               </Text>
             </Paper>
           )}

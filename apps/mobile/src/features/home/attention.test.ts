@@ -1,0 +1,76 @@
+jest.mock('lucide-react-native', () => new Proxy({}, { get: () => () => null }));
+
+import { attentionCount } from '@/features/dashboard/queries';
+import { attentionRows } from './attention';
+
+jest.mock('@/hooks/useTenantKey', () => ({ useTenantKey: () => 't' }));
+jest.mock('@/api/endpoints/dashboard', () => ({ attentionApi: {}, dashboardApi: {} }));
+
+describe('attentionRows', () => {
+  it('words each queue with its count, singular and plural', () => {
+    const rows = attentionRows([
+      { key: 'paymentProofs', count: 1 },
+      { key: 'paymentProofs' as const, count: 3 },
+    ]);
+    expect(rows.map((r) => r.label(r.count))).toEqual(['1 payment proof to verify', '3 payment proofs to verify']);
+  });
+
+  it('words the expenses waiting for approval and opens them filtered', () => {
+    const [row] = attentionRows([{ key: 'expenses', count: 2 }]);
+    expect(row!.label(2)).toBe('2 expenses to approve');
+    expect(row!.label(1)).toBe('1 expense to approve');
+    expect(row!.href).toBe('/(app)/(tabs)/manage/accounting/expenses?status=PENDING_APPROVAL');
+  });
+
+  it('keeps the order the API sent and links each to its queue', () => {
+    const rows = attentionRows([
+      { key: 'memberApprovals', count: 2 },
+      { key: 'overdueCharges', count: 5 },
+    ]);
+    expect(rows.map((r) => r.key)).toEqual(['memberApprovals', 'overdueCharges']);
+    expect(rows.map((r) => r.href)).toEqual(['/(app)/(tabs)/manage/members/approvals', '/(app)/(tabs)/manage/finance/overdue']);
+    expect(rows.map((r) => r.urgent ?? false)).toEqual([false, true]);
+  });
+
+  it('leaves out empty queues, and links the cooperative and welfare queues to their screens', () => {
+    const rows = attentionRows([
+      { key: 'loanApplications', count: 4 },
+      { key: 'welfarePayouts', count: 1 },
+      { key: 'cashLodgments', count: 0 },
+      { key: 'supportTickets', count: 2 },
+    ]);
+    expect(rows.map((r) => r.key)).toEqual(['loanApplications', 'welfarePayouts', 'supportTickets']);
+    expect(rows[0]!.href).toBe('/(app)/(tabs)/manage/cooperatives/applications');
+    expect(rows[1]!.href).toBe('/(app)/(tabs)/manage/welfare/payouts');
+    expect(rows[1]!.label(1)).toBe('1 welfare request to decide');
+  });
+
+  it('returns nothing before the list has loaded', () => {
+    expect(attentionRows(undefined)).toEqual([]);
+  });
+});
+
+describe('attentionCount', () => {
+  it('reads one queue, and is 0 when it is absent', () => {
+    const items = [{ key: 'paymentProofs' as const, count: 6 }];
+    expect(attentionCount(items, 'paymentProofs')).toBe(6);
+    expect(attentionCount(items, 'bankTransfers')).toBe(0);
+    expect(attentionCount(undefined, 'bankTransfers')).toBe(0);
+  });
+});
+
+describe('election queues', () => {
+  it('words and links the committee queues', () => {
+    const rows = attentionRows([
+      { key: 'electionNominations', count: 2 },
+      { key: 'electionsToClose', count: 1 },
+      { key: 'electionResults', count: 1 },
+    ]);
+    expect(rows.map((r) => r.label(r.count))).toEqual([
+      '2 election nominations to decide',
+      '1 election to close — voting has ended',
+      '1 election result to publish',
+    ]);
+    expect(rows.every((r) => r.href === '/(app)/(tabs)/manage/elections')).toBe(true);
+  });
+});

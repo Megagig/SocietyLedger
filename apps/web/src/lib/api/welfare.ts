@@ -300,6 +300,12 @@ export async function getPayoutRequests(params?: {
   return response.json();
 }
 
+export async function getPayoutRequest(id: number) {
+  const response = await apiGet(`${API_URL}/api/welfare/payouts/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch payout request');
+  return response.json();
+}
+
 export async function createPayoutRequest(data: {
   fundId: number;
   payoutType: string;

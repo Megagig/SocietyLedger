@@ -33,7 +33,8 @@ export const updateArticleSchema = z.object({
 
 export const searchArticlesSchema = z.object({
   query: z.string().min(1).max(200).optional(),
-  category: z.enum(ARTICLE_CATEGORIES as unknown as [string, ...string[]]).optional(),
+  // Reading is not limited to the authoring list: articles already exist in other categories (e.g. "governance").
+  category: z.string().min(1).max(50).optional(),
   tags: z.array(z.string()).optional(),
   limit: z.coerce.number().min(1).max(100).optional(),
   offset: z.coerce.number().min(0).optional(),

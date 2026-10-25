@@ -4,6 +4,15 @@
 
 import { prisma } from '../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { RuleError } from '../finance/rule-error';
+import { assertNotOwnRequest } from '../cooperatives/cooperative-rules';
+import {
+  REVIEWABLE_PAYOUT_STATUSES,
+  assertApprovalAmount,
+  assertContributionAmount,
+  assertMemberActive,
+  assertNotRecorder,
+} from './welfare-rules';
 import {
   CreateWelfareFundInput,
   UpdateWelfareFundInput,
@@ -239,7 +248,7 @@ export const welfareService = {
     });
 
     if (!fund) {
-      throw new Error('Welfare fund not found or not active');
+      throw new RuleError('That welfare fund was not found, or it is not active.', 404, 'FUND_NOT_ACTIVE');
     }
 
     // Verify member exists
@@ -248,19 +257,18 @@ export const welfareService = {
     });
 
     if (!member) {
-      throw new Error('Member not found');
+      throw new RuleError('Member not found', 404, 'NOT_FOUND');
     }
-
-    // Check minimum contribution
-    if (fund.minContribution && data.amount < Number(fund.minContribution)) {
-      throw new Error(`Minimum contribution is ${fund.minContribution}`);
-    }
+    assertMemberActive(member.status, 'contribute');
+    assertContributionAmount(data.amount, fund.minContribution);
 
     const contribution = await prisma.welfareContribution.create({
       data: {
         associationId,
         fundId: data.fundId,
         memberId: data.memberId,
+        // Remembered so the same officer can't also confirm it.
+        recordedBy: userId,
         amount: data.amount,
         contributionDate: data.contributionDate ? new Date(data.contributionDate) : new Date(),
         paymentMethod: data.paymentMethod,
@@ -284,32 +292,33 @@ export const welfareService = {
     });
 
     if (!fund) {
-      throw new Error('Welfare fund not found or not active');
+      throw new RuleError('That welfare fund was not found, or it is not active.', 404, 'FUND_NOT_ACTIVE');
     }
 
-    // Verify all members exist
+    // The same member twice is one contribution, not two.
+    const memberIds = [...new Set(data.memberIds)];
+
+    // Verify all members exist and are active
     const members = await prisma.member.findMany({
-      where: { id: { in: data.memberIds }, associationId },
+      where: { id: { in: memberIds }, associationId },
     });
 
-    if (members.length !== data.memberIds.length) {
-      throw new Error('Some members not found');
+    if (members.length !== memberIds.length) {
+      throw new RuleError('Some members were not found.', 400, 'MEMBERS_NOT_FOUND');
     }
-
-    // Check minimum contribution
-    if (fund.minContribution && data.amount < Number(fund.minContribution)) {
-      throw new Error(`Minimum contribution is ${fund.minContribution}`);
-    }
+    for (const member of members) assertMemberActive(member.status, 'contribute');
+    assertContributionAmount(data.amount, fund.minContribution);
 
     const contributionDate = data.contributionDate ? new Date(data.contributionDate) : new Date();
 
     const contributions = await prisma.$transaction(
-      data.memberIds.map((memberId) =>
+      memberIds.map((memberId) =>
         prisma.welfareContribution.create({
           data: {
             associationId,
             fundId: data.fundId,
             memberId,
+            recordedBy: userId,
             amount: data.amount,
             contributionDate,
             paymentMethod: data.paymentMethod,
@@ -331,29 +340,33 @@ export const welfareService = {
     notes?: string
   ) {
     const contribution = await prisma.welfareContribution.findFirst({
-      where: { id: contributionId, associationId, status: 'PENDING' },
-      include: { fund: true },
+      where: { id: contributionId, associationId },
+      include: { fund: true, member: { select: { userId: true } } },
     });
 
     if (!contribution) {
-      throw new Error('Contribution not found or already processed');
+      throw new RuleError('Contribution not found', 404, 'NOT_FOUND');
     }
 
+    // Nobody confirms a contribution made in their own name, and the officer who recorded it can't confirm it either.
+    assertNotOwnRequest(userId, contribution.member.userId);
+    assertNotRecorder(userId, contribution.recordedBy);
+
     const updated = await prisma.$transaction(async (tx) => {
-      // Update contribution status
-      const updatedContribution = await tx.welfareContribution.update({
-        where: { id: contributionId },
+      // Claim-then-act: only a contribution that is still pending can be decided, and only once, so two officers (or a double tap)
+      // can never add the same contribution to the fund twice.
+      const claimed = await tx.welfareContribution.updateMany({
+        where: { id: contributionId, associationId, status: 'PENDING' },
         data: {
           status,
           confirmedBy: userId,
           confirmedAt: new Date(),
           notes: notes || contribution.notes,
         },
-        include: {
-          fund: { select: { id: true, name: true } },
-          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-        },
       });
+      if (claimed.count !== 1) {
+        throw new RuleError('This contribution has already been decided.', 409, 'ALREADY_DECIDED');
+      }
 
       // If confirmed, update fund balance
       if (status === 'CONFIRMED') {
@@ -365,7 +378,13 @@ export const welfareService = {
         });
       }
 
-      return updatedContribution;
+      return tx.welfareContribution.findUniqueOrThrow({
+        where: { id: contributionId },
+        include: {
+          fund: { select: { id: true, name: true } },
+          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        },
+      });
     });
 
     // Accounting integration: Sync confirmed contribution to accounting module
@@ -450,24 +469,30 @@ export const welfareService = {
     });
 
     if (!fund) {
-      throw new Error('Welfare fund not found or not active');
+      throw new RuleError('That welfare fund was not found, or it is not active.', 404, 'FUND_NOT_ACTIVE');
     }
+
+    const requester = await prisma.member.findFirst({ where: { id: memberId, associationId }, select: { status: true } });
+    if (!requester) {
+      throw new RuleError('Member not found', 404, 'NOT_FOUND');
+    }
+    assertMemberActive(requester.status, 'request');
 
     // Check member eligibility
     const eligibility = await this.checkMemberEligibility(associationId, memberId, data.fundId);
     
     if (!eligibility.isEligible) {
-      throw new Error(eligibility.reason || 'Member is not eligible for payout from this fund');
+      throw new RuleError(eligibility.reason || 'Member is not eligible for payout from this fund', 409, 'NOT_ELIGIBLE');
     }
 
     // Check max payout limit
     if (fund.maxPayout && data.amount > Number(fund.maxPayout)) {
-      throw new Error(`Maximum payout amount is ${fund.maxPayout}`);
+      throw new RuleError(`The most this fund pays out at a time is ₦${Number(fund.maxPayout).toLocaleString('en-NG', { minimumFractionDigits: 2 })}.`, 400, 'MAX_PAYOUT_EXCEEDED');
     }
 
     // Check fund balance
     if (data.amount > Number(fund.currentBalance)) {
-      throw new Error('Insufficient fund balance');
+      throw new RuleError('The fund does not hold enough for this request.', 409, 'FUND_INSUFFICIENT');
     }
 
     // Generate request number
@@ -579,16 +604,19 @@ export const welfareService = {
     data: ReviewPayoutInput
   ) {
     const request = await prisma.welfarePayoutRequest.findFirst({
-      where: {
-        id: requestId,
-        associationId,
-        status: { in: ['PENDING', 'UNDER_REVIEW'] },
-      },
-      include: { fund: true },
+      where: { id: requestId, associationId },
+      include: { fund: true, member: { select: { userId: true } } },
     });
 
     if (!request) {
-      throw new Error('Payout request not found or already processed');
+      throw new RuleError('Payout request not found', 404, 'NOT_FOUND');
+    }
+
+    // Nobody decides their own request; another officer has to.
+    assertNotOwnRequest(userId, request.member.userId);
+
+    if (!(REVIEWABLE_PAYOUT_STATUSES as readonly string[]).includes(request.status)) {
+      throw new RuleError('This request has already been decided.', 409, 'ALREADY_DECIDED');
     }
 
     const updateData: any = {
@@ -598,12 +626,15 @@ export const welfareService = {
     };
 
     if (data.status === 'APPROVED') {
-      const approvedAmount = data.approvedAmount || Number(request.amount);
-      
-      // Check fund balance
-      if (approvedAmount > Number(request.fund.currentBalance)) {
-        throw new Error('Insufficient fund balance for approval');
-      }
+      const approvedAmount = data.approvedAmount ?? Number(request.amount);
+
+      // No more than was asked for, than the fund pays out at a time, or than the fund holds.
+      assertApprovalAmount({
+        approved: approvedAmount,
+        requested: request.amount,
+        maxPayout: request.fund.maxPayout,
+        balance: request.fund.currentBalance,
+      });
 
       updateData.status = 'APPROVED';
       updateData.approvedBy = userId;
@@ -614,16 +645,22 @@ export const welfareService = {
       updateData.rejectionReason = data.rejectionReason;
     }
 
-    const updated = await prisma.welfarePayoutRequest.update({
-      where: { id: requestId },
+    // Claim-then-act: only a request still waiting can be decided, so approve and reject can't both land.
+    const claimed = await prisma.welfarePayoutRequest.updateMany({
+      where: { id: requestId, associationId, status: { in: [...REVIEWABLE_PAYOUT_STATUSES] } },
       data: updateData,
+    });
+    if (claimed.count !== 1) {
+      throw new RuleError('This request was just decided by someone else. Reload it to see where it stands.', 409, 'ALREADY_DECIDED');
+    }
+
+    return prisma.welfarePayoutRequest.findUniqueOrThrow({
+      where: { id: requestId },
       include: {
         fund: { select: { id: true, name: true } },
         member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
       },
     });
-
-    return updated;
   },
 
   async disbursePayoutRequest(
@@ -633,27 +670,32 @@ export const welfareService = {
     data: DisbursePayoutInput
   ) {
     const request = await prisma.welfarePayoutRequest.findFirst({
-      where: { id: requestId, associationId, status: 'APPROVED' },
-      include: { fund: true },
+      where: { id: requestId, associationId },
+      include: { fund: true, member: { select: { userId: true } } },
     });
 
     if (!request) {
-      throw new Error('Payout request not found or not approved');
+      throw new RuleError('Payout request not found', 404, 'NOT_FOUND');
     }
+    if (request.status === 'DISBURSED') {
+      throw new RuleError('This payout has already been paid out.', 409, 'ALREADY_DISBURSED');
+    }
+    if (request.status !== 'APPROVED') {
+      throw new RuleError('Only an approved request can be paid out.', 409, 'NOT_APPROVED');
+    }
+
+    // Nobody pays out their own request.
+    assertNotOwnRequest(userId, request.member.userId);
 
     if (!request.approvedAmount) {
-      throw new Error('No approved amount set');
+      throw new RuleError('No approved amount is set on this request.', 409, 'NO_APPROVED_AMOUNT');
     }
-
-    // Check fund balance again
-    if (Number(request.approvedAmount) > Number(request.fund.currentBalance)) {
-      throw new Error('Insufficient fund balance for disbursement');
-    }
+    const approvedAmount = request.approvedAmount;
 
     const updated = await prisma.$transaction(async (tx) => {
-      // Update payout request
-      const updatedRequest = await tx.welfarePayoutRequest.update({
-        where: { id: requestId },
+      // Claim the request first: only one disbursement can win, so a double tap or two officers can never pay it out twice.
+      const claimed = await tx.welfarePayoutRequest.updateMany({
+        where: { id: requestId, associationId, status: 'APPROVED' },
         data: {
           status: 'DISBURSED',
           disbursedBy: userId,
@@ -661,21 +703,27 @@ export const welfareService = {
           disbursementMethod: data.disbursementMethod,
           disbursementReference: data.disbursementReference,
         },
+      });
+      if (claimed.count !== 1) {
+        throw new RuleError('This payout has already been paid out.', 409, 'ALREADY_DISBURSED');
+      }
+
+      // Take the money out in one conditional step: it only happens if the fund still holds it, so the balance can never go below zero.
+      const taken = await tx.welfareFund.updateMany({
+        where: { id: request.fundId, currentBalance: { gte: approvedAmount } },
+        data: { currentBalance: { decrement: approvedAmount } },
+      });
+      if (taken.count !== 1) {
+        throw new RuleError('The fund no longer holds enough to pay this out.', 409, 'FUND_INSUFFICIENT');
+      }
+
+      return tx.welfarePayoutRequest.findUniqueOrThrow({
+        where: { id: requestId },
         include: {
           fund: { select: { id: true, name: true } },
           member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
         },
       });
-
-      // Deduct from fund balance
-      await tx.welfareFund.update({
-        where: { id: request.fundId },
-        data: {
-          currentBalance: { decrement: request.approvedAmount! },
-        },
-      });
-
-      return updatedRequest;
     });
 
     // Accounting integration: Sync payout disbursement to accounting module
@@ -704,12 +752,31 @@ export const welfareService = {
     });
 
     if (!request) {
-      throw new Error('Payout request not found or cannot be cancelled');
+      throw new RuleError('This request was not found, or it can no longer be cancelled.', 404, 'NOT_CANCELLABLE');
     }
 
-    return prisma.welfarePayoutRequest.update({
-      where: { id: requestId },
+    const claimed = await prisma.welfarePayoutRequest.updateMany({
+      where: { id: requestId, associationId, memberId, status: { in: ['PENDING', 'UNDER_REVIEW'] } },
       data: { status: 'CANCELLED' },
+    });
+    if (claimed.count !== 1) {
+      throw new RuleError('This request has just been decided, so it can no longer be cancelled.', 409, 'ALREADY_DECIDED');
+    }
+
+    return prisma.welfarePayoutRequest.findUniqueOrThrow({ where: { id: requestId } });
+  },
+
+  /** One payout request of this association, with the fund, the member and the officers who handled it. */
+  async getPayoutRequest(associationId: number, id: number) {
+    return prisma.welfarePayoutRequest.findFirst({
+      where: { id, associationId },
+      include: {
+        fund: { select: { id: true, name: true, fundType: true } },
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        reviewer: { select: { id: true, email: true } },
+        approver: { select: { id: true, email: true } },
+        disburser: { select: { id: true, email: true } },
+      },
     });
   },
 

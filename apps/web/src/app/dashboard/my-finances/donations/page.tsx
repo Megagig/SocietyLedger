@@ -14,6 +14,9 @@ interface DonationItem {
   category: { id: number; name: string; type: string };
   amount: number;
   amountPaid?: number;
+  balance?: number;
+  isPledge?: boolean;
+  dueDate?: string | null;
   purpose: string;
   isAnonymous: boolean;
   receiptNumber?: string;
@@ -84,16 +87,15 @@ export default function MyDonationsPage() {
   const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
-  
-  // Calculate unpaid donations
-  const getBalance = (donation: DonationItem) => {
-    const paid = donation.amountPaid ?? donation.payments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
-    return donation.amount - paid;
-  };
-  
+  // A pledge is a promise, not money given: "donated" counts only what was paid; what is still owed on pledges is shown separately.
+  const getPaid = (donation: DonationItem) =>
+    donation.amountPaid ?? donation.payments.reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+  const getBalance = (donation: DonationItem) => donation.balance ?? Math.max(donation.amount - getPaid(donation), 0);
   const isPaid = (donation: DonationItem) => getBalance(donation) <= 0;
-  const totalUnpaid = donations.filter(d => !isPaid(d)).reduce((sum, d) => sum + getBalance(d), 0);
+
+  const totalDonated = donations.reduce((sum, d) => sum + getPaid(d), 0);
+  const pledges = donations.filter((d) => !isPaid(d));
+  const totalUnpaid = pledges.reduce((sum, d) => sum + getBalance(d), 0);
 
   if (isLoading) {
     return (
@@ -121,9 +123,14 @@ export default function MyDonationsPage() {
       <div className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg shadow-lg p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-pink-100">Total Donations</p>
+            <p className="text-pink-100">Total Donated</p>
             <p className="text-4xl font-bold mt-2">{formatCurrency(totalDonated)}</p>
-            <p className="text-pink-100 mt-1">{donations.length} donation(s) made</p>
+            <p className="text-pink-100 mt-1">{donations.length - pledges.length} donation(s) made</p>
+            {pledges.length > 0 && (
+              <p className="text-white mt-2 font-medium" data-testid="donations-pledged">
+                {pledges.length === 1 ? 'Pledged, still to pay' : `${pledges.length} pledges, still to pay`}: {formatCurrency(totalUnpaid)}
+              </p>
+            )}
           </div>
           <div className="p-4 bg-white/20 rounded-full">
             <IconHeart size={40} />
@@ -165,9 +172,9 @@ export default function MyDonationsPage() {
                   </div>
                   <div className="text-right">
                     <Badge color={paid ? 'green' : 'yellow'} leftSection={paid ? <IconCheck size={14} /> : <IconClock size={14} />}>
-                      {paid ? 'PAID' : 'PENDING'}
+                      {paid ? 'PAID' : donation.dueDate ? 'PLEDGED' : 'PENDING'}
                     </Badge>
-                    <p className="text-xl font-bold text-pink-600 mt-2">{formatCurrency(donation.amount)}</p>
+                    <p className="text-xl font-bold text-pink-600 mt-2">{formatCurrency(paid ? donation.amount : getBalance(donation))}</p>
                     {donation.receiptNumber && (
                       <p className="text-xs text-gray-500 mt-1">Receipt: {donation.receiptNumber}</p>
                     )}
@@ -176,7 +183,7 @@ export default function MyDonationsPage() {
                 {!paid && (
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Balance: <span className="font-semibold text-pink-600">{formatCurrency(balance)}</span>
+                      {donation.dueDate ? `Due ${formatDate(donation.dueDate)} · ` : ''}Still to pay: <span className="font-semibold text-pink-600">{formatCurrency(balance)}</span>
                     </p>
                     <Button 
                       size="sm" 

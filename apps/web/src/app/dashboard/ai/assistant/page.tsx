@@ -127,7 +127,7 @@ export default function AIAssistantPage() {
               AI Financial Assistant
             </h1>
             <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-              Ask questions about your association's finances in plain English
+              Ask questions about your association&apos;s finances in plain English
             </p>
           </div>
           {aiAvailable !== null && (
@@ -173,7 +173,7 @@ export default function AIAssistantPage() {
             <IconRobot size={64} className="text-teal-500 mb-4 hidden sm:block" />
             <Text size="lg" fw={500} mb="xs">How can I help you today?</Text>
             <Text size="sm" c="dimmed" mb="lg">
-              Ask me anything about your association's finances. I can explain data, summarize reports, and answer questions.
+              Ask me anything about your association&apos;s finances. I can explain data, summarize reports, and answer questions.
             </Text>
             
             {/* Suggested Questions */}

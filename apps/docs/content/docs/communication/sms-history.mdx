@@ -1,30 +1,43 @@
 ---
 title: "SMS history and delivery status"
-description: "Every SMS the association has sent, with its delivery status."
+description: "Every text sent, whether it arrived, and every credit bought, used or refunded."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/communications/history"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/communications/history", "CM6"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/communication/sending-sms"]
+lastVerified: "2026-10-28"
+related: ["/docs/communication/sending-sms", "/docs/communication/buying-sms-credits"]
 ---
 
-Every SMS sent — one-off or part of a campaign — is recorded here with its delivery status.
+Every text, one-off or part of a campaign or announcement, is recorded with its status. The credit history lists each change to your balance.
 
 ## Before you start
 
-You need SMS permissions on your officer role (Administrator has them by default).
+You need the **view SMS** permission.
 
-## View message history
+## View history
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Communication", "SMS History"]} />.</Step>
-<Step>Filter by **Status** — Pending, Sent, Delivered, Failed or Rejected.</Step>
+<Step>Filter by **Status**: Pending, Sent, Delivered, Failed or Rejected.</Step>
+<Step>For credits, go to <MenuPath items={["Communication", "SMS Reports"]} />.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Communication", "Texts and credits"]} />.</Step>
+<Step>On **Texts**, filter by status. On **Credits**, see what you have left, bought and used, and every change.</Step>
+<Step>From a campaign, tap **See every text in this campaign** to see only its texts.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/communication/sms-history-1.webp" alt="SMS message history, currently empty, with a status filter" />
+## What the statuses mean
 
-## What happens next
-
-Each row shows the recipient, message, type (single or bulk) and status, with any delivery error shown underneath a failed message. Nothing has been sent yet in this environment — see [Sending an SMS](/docs/communication/sending-sms) for why — so this list is currently empty, but the page itself works correctly.
+- **Sending**: recorded and about to go out.
+- **Sent**: handed to the phone network.
+- **Delivered**: the network confirmed it reached the phone. This needs delivery reports switched on for your SMS provider; without them texts stay **Sent**.
+- **Failed** or **Rejected**: it did not get through, and its credit was refunded. The reason shows under the message.

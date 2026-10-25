@@ -7,6 +7,9 @@
 
 import { Request, Response } from 'express';
 import { PlatformSettingsService } from './platform-settings.service';
+import { aiSettingsService } from '../ai/ai-settings.service';
+import { aiAdminService } from '../ai/ai-admin.service';
+import { AiCreditsError, DEFAULT_AI_SETTINGS } from '../ai/ai-credits-rules';
 
 export class PlatformSettingsController {
   /**
@@ -91,6 +94,43 @@ export class PlatformSettingsController {
         success: false,
         message: 'Failed to fetch platform stats'
       });
+    }
+  }
+
+  /** GET /api/admin/settings/ai */
+  static async getAiSettings(_req: Request, res: Response) {
+    try {
+      res.json({ success: true, data: { settings: await aiSettingsService.get(), defaults: DEFAULT_AI_SETTINGS } });
+    } catch (error) {
+      console.error('Error fetching AI settings:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch AI settings' });
+    }
+  }
+
+  /** PATCH /api/admin/settings/ai */
+  static async updateAiSettings(req: Request, res: Response) {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Authentication required' });
+    try {
+      const settings = await aiSettingsService.update(req.body, userId);
+      res.json({ success: true, message: 'AI settings updated', data: { settings, defaults: DEFAULT_AI_SETTINGS } });
+    } catch (error) {
+      if (error instanceof AiCreditsError) {
+        return res.status(error.status).json({ success: false, message: error.message, code: error.code });
+      }
+      console.error('Error updating AI settings:', error);
+      res.status(500).json({ success: false, message: 'Failed to update AI settings' });
+    }
+  }
+
+  /** GET /api/admin/ai/usage?days=30 */
+  static async getAiUsage(req: Request, res: Response) {
+    try {
+      const days = req.query.days ? Number(req.query.days) : undefined;
+      res.json({ success: true, data: await aiAdminService.usage(Number.isFinite(days) ? days : undefined) });
+    } catch (error) {
+      console.error('Error fetching AI usage:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch AI usage' });
     }
   }
 

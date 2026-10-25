@@ -1,43 +1,59 @@
 ---
 title: "Cash flow statement"
-description: "Where cash actually moved, grouped into operating, investing and financing activity."
+description: "Where cash actually moved, grouped into running the association, assets and loans."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/accounting/cash-flow"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/accounting/cash-flow", "AC5"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting-guide/balance-sheet", "/docs/accounting-guide/income-statement"]
 ---
 
-The cash flow statement tracks cash specifically — separate from income, which can include amounts still owed rather than collected.
+The cash flow statement tracks cash only. It is separate from income, which can include money still owed rather than collected.
 
 ## How it works
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Accounting", "Cash Flow"]} />.</Step>
 <Step>Pick a **Period**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting", "Financial statements"]} /> and choose **Cash flow**.</Step>
+<Step>Pick a **Period**. Under the totals, each kind of cash movement lists what came in (**In:**) and what went out (**Out:**), with its net.</Step>
+<Step>Tap the share icon for text, or the PDF icon (if you may export) for a PDF.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/accounting-guide/cash-flow-1.webp" alt="Cash Flow report with Operating, Investing and Financing sections and a beginning-to-ending cash summary" />
 
-Worked example: the same ₦50,000 dues entry from [How charges and payments post to accounts](/docs/accounting-guide/how-transactions-post) only debited a **receivable** account, not a bank account — so it moves the income statement but not cash flow:
+Worked example: cash at the start was ₦1,000, you received ₦3,000 in dues and spent ₦800 on hall hire:
 
 | | Amount |
 |---|---|
-| Operating Activities — Net Cash | ₦0 |
-| Investing Activities — Net Cash | ₦0 |
-| Financing Activities — Net Cash | ₦0 |
-| Beginning Cash Balance | ₦0 |
-| **Ending Cash Balance** | **₦0** |
+| Cash at the start | ₦1,000 |
+| From running the association | ₦2,200 |
+| From buying or selling assets | ₦0 |
+| From loans and equity | ₦0 |
+| **Cash at the end** | **₦3,200** |
 
-Cash only moves here once the matching **payment** is recorded and synced — a due being posted is a promise to pay, not cash in hand.
+A due being raised is a promise to pay, not cash. Cash moves here only once the payment is recorded.
 
-## Why it matters
+## What it counts
 
-This is the statement that catches the gap between "we recorded ₦1.2M in dues this year" and "we actually have ₦1.2M in the bank" — a healthy income statement with a flat cash flow statement usually means a lot of uncollected receivables.
+- **Bank and cash accounts only.** These are asset accounts whose name or code marks them as cash or bank. A "Bank Charges" expense is not one.
+- **Opening cash is what stood just before the period began,** so nothing on the first day is counted twice.
+- **Moving money between two cash accounts is not an inflow or an outflow.** It is left out, since it nets to nothing.
+- **It checks itself.** If the start plus the movements does not equal the end, the statement says so.
+
+Select cash at the start or at the end to see the cash and bank accounts, and a thing that came in or went out to see its journal entry. See [Opening a figure to see the entries behind it](/docs/accounting-guide/opening-a-figure).
 
 ## What you can do
 
-- [Balance sheet in depth](/docs/accounting-guide/balance-sheet) — your current receivables and bank balances.
-- [What happens automatically when money moves](/docs/accounting/what-happens-automatically) — when a payment (not just a due) actually syncs.
+- [Balance sheet in depth](/docs/accounting-guide/balance-sheet) — your bank and receivable balances.
+- [What happens automatically when money moves](/docs/accounting/what-happens-automatically) — when a payment reaches the books.

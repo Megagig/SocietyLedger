@@ -3,10 +3,10 @@ title: "Handling support requests"
 description: "Review a member's welfare request and approve or reject it."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/welfare/requests", "WF4"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/welfare/eligibility", "/docs/welfare/disbursing-payouts"]
 ---
 
@@ -18,12 +18,36 @@ You need the **Administrator** or **Treasurer** role.
 
 ## Review a request
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Welfare", "Requests"]} />.</Step>
 <Step>Select the eye icon on a **Pending** request to open its full details — member, fund, type, amount and reason.</Step>
 <Step>To approve, select **Approve** — adjust the **Approved Amount** first if you're granting less than requested.</Step>
 <Step>To reject, enter a **Rejection Reason**, then select **Reject**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Welfare", "Payout requests"]} />. The **To decide** tab lists what is waiting.</Step>
+<Step>Open a request to see the member, fund, kind, amount, reason, and how much they have contributed.</Step>
+<Step>To approve, tap **Approve**, adjust the **Amount to approve** if you're granting less than requested, and tap **Approve request**.</Step>
+<Step>To reject, tap **Reject**, say why, and confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## Limits on an approval
+
+An approval can be less than was asked, but never more than **any** of these:
+
+- the amount the member **asked for**;
+- the fund's **Maximum Payout**, if it has one;
+- what the fund **holds right now**.
+
+The screen tells you which limit applies. Approving doesn't take any money out of the fund yet — that happens when you [pay it out](/docs/welfare/disbursing-payouts).
+
+**You can't decide your own request.** If you are also the member who asked, another officer has to approve or reject it. A request can only be decided once: if two officers open the same one, the second to decide is told it was just decided.
 
 <Screenshot src="/images/welfare/payout-requests-1.webp" alt="Request Details panel for request WPR000002, showing member, fund, type, amount, reason, and an editable Approved Amount field" />
 

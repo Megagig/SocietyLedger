@@ -128,6 +128,14 @@ export const PERMISSIONS = {
   COOPERATIVE_LOANS_APPLY: 'ledger.create',
   COOPERATIVE_LOANS_MANAGE: 'payments.approve',
   COOPERATIVE_GUARANTOR: 'ledger.view',
+  // Member self-service: a member's own savings/loans/applications, applying, answering guarantor requests
+  // and declaring a savings deposit. Distinct from the officer-level `ledger.*` keys above, which members
+  // must never hold (R0.2).
+  COOPERATIVE_VIEW_OWN: 'cooperatives.view_own',
+  COOPERATIVE_APPLY_OWN: 'cooperatives.apply_own',
+  COOPERATIVE_GUARANTOR_OWN: 'cooperatives.guarantor_own',
+  COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own',
+  COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own',
   
   // Member Self-Service Finance
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
@@ -150,7 +158,11 @@ export const PERMISSIONS = {
   WELFARE_PAYOUT_REQUEST: 'ledger.create',
   WELFARE_PAYOUT_APPROVE: 'payments.approve',
   WELFARE_PAYOUT_DISBURSE: 'payments.approve',
-  
+  // Member self-service: a member's own welfare profile/contributions/requests and filing a request.
+  // Distinct from the officer-level `ledger.*` keys above, which members must never hold.
+  WELFARE_VIEW_OWN: 'welfare.view_own',
+  WELFARE_REQUEST_OWN: 'welfare.request_own',
+
   // SMS & Bulk Communication
   SMS_VIEW: 'communication.sms.view',
   SMS_SEND: 'communication.sms.send',
@@ -164,6 +176,12 @@ export const PERMISSIONS = {
   PAYMENT_RECONCILE: 'payments.nigerian.reconcile',
   PAYMENT_IMPORT: 'payments.nigerian.import',
   NIGERIAN_PAYMENTS_VIEW: 'payments.nigerian.view',
+
+  // Cash collections & lodgments
+  CASH_COLLECT: 'cash.collect',
+  CASH_LODGE: 'cash.lodge',
+  CASH_VERIFY: 'cash.verify',
+  CASH_VIEW: 'cash.view',
   
   // Notifications & Announcements
   NOTIFICATION_VIEW: 'notifications.view',
@@ -187,11 +205,17 @@ export const PERMISSIONS = {
   
   // Voting & Elections
   ELECTION_VIEW: 'elections.view_own',
-  ELECTION_MANAGE: 'members.create',
+  // The Election Committee runs elections; officers do not. Each is its own key, so a custom role can take any slice.
+  ELECTION_MANAGE: 'elections.manage', // create, edit and delete elections and positions; cancel
+  ELECTION_CANDIDATES: 'elections.candidates.manage', // register, approve and reject candidates
+  ELECTION_RULES: 'elections.rules.manage', // set the association's rules for who can vote and who can stand
+  ELECTION_RUN: 'elections.run', // open and close nominations and voting
+  ELECTION_RESULTS_VIEW: 'elections.results.view', // see results before they are published
+  ELECTION_RESULTS_PUBLISH: 'elections.results.publish',
   ELECTION_NOMINATE: 'elections.nominate_own',
   ELECTION_VOTE: 'elections.vote_own',
   POLL_VIEW: 'polls.view_own',
-  POLL_MANAGE: 'members.create',
+  POLL_MANAGE: 'polls.manage',
   POLL_VOTE: 'polls.vote_own',
   
   // Help & Support (Phase 21)
@@ -202,6 +226,7 @@ export const PERMISSIONS = {
   SUPPORT_VIEW_ALL: 'support.view_all',
   SUPPORT_MANAGE: 'support.manage',
   SUPPORT_RESPOND: 'support.respond',
+  SUPPORT_ESCALATE: 'support.escalate',
   
   // Documentation (old DB-backed CMS, superseded by apps/docs at D6.3 — see G57).
   // Referenced by real, mounted admin routes (documentation.routes.ts) but never seeded

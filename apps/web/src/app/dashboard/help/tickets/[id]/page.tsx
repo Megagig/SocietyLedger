@@ -26,21 +26,48 @@ import {
   TICKET_PRIORITY_LABELS,
   getStatusColor,
   getPriorityColor,
+  getStatusLabel,
+  updateTicket,
+  suggestResponse,
+  TicketStatus,
 } from '@/lib/api/support';
+import { EscalateTicketModal } from '@/components/support/EscalateTicketModal';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
 import { modals } from '@mantine/modals';
+import { AttachmentPicker } from '@/components/support/AttachmentPicker';
+import { TicketAttachments } from '@/components/support/TicketAttachments';
+import { toast } from '@/lib/toast';
 import { Text } from '@mantine/core';
+import { HelpLink } from '@/components/docs/HelpLink';
+
+/** The status moves the API allows — the staff status control only offers these. */
+const NEXT_STATUSES: Record<TicketStatus, TicketStatus[]> = {
+  OPEN: ['IN_PROGRESS', 'WAITING_ON_USER', 'RESOLVED', 'CLOSED'],
+  IN_PROGRESS: ['WAITING_ON_USER', 'WAITING_ON_STAFF', 'RESOLVED', 'CLOSED'],
+  WAITING_ON_USER: ['IN_PROGRESS', 'RESOLVED', 'CLOSED'],
+  WAITING_ON_STAFF: ['IN_PROGRESS', 'WAITING_ON_USER', 'RESOLVED', 'CLOSED'],
+  RESOLVED: ['OPEN', 'CLOSED'],
+  CLOSED: ['OPEN'],
+};
 
 export default function TicketDetailPage() {
   const params = useParams();
   const router = useRouter();
   const ticketId = parseInt(params.id as string);
 
+  const { can, user } = usePermissions();
+  const [internal, setInternal] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [escalateOpen, setEscalateOpen] = useState(false);
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Response form
   const [newResponse, setNewResponse] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -68,13 +95,44 @@ export default function TicketDetailPage() {
 
     setSubmitting(true);
     try {
-      await addResponse(ticket.id, newResponse.trim());
+      const result = await addResponse(ticket.id, newResponse.trim(), { files, isInternal: staffView && internal });
       setNewResponse('');
+      setFiles([]);
+      setInternal(false);
+      if (result.attachmentError) toast.error(result.attachmentError);
       await loadTicket(); // Reload to get updated responses
     } catch (err: any) {
       setError(err.message || 'Failed to add response');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /** Staff: change status or take the ticket. Only support.manage may (the API enforces it too). */
+  async function handleUpdate(changes: { status?: TicketStatus; assignedToId?: number | null }, done: string) {
+    if (!ticket) return;
+    setUpdating(true);
+    try {
+      await updateTicket(ticket.id, changes);
+      toast.success(done);
+      await loadTicket();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update ticket');
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  /** Staff: a draft reply from the AI service, dropped into the reply box to edit. */
+  async function handleSuggest() {
+    if (!ticket) return;
+    setSuggesting(true);
+    try {
+      const suggestion = await suggestResponse({ subject: ticket.subject, description: ticket.description, category: ticket.category });
+      if (suggestion?.suggestion) setNewResponse(suggestion.suggestion);
+      else toast.error('No suggestion available right now. Write your reply yourself.');
+    } finally {
+      setSuggesting(false);
     }
   }
 
@@ -188,6 +246,10 @@ export default function TicketDetailPage() {
   }
 
   const isClosed = ticket.status === 'CLOSED' || ticket.status === 'RESOLVED';
+  // A Tier 2 ticket is between this admin and SocietyLedger: here they are the customer, not staff.
+  const isPlatformTicket = ticket.audience === 'PLATFORM';
+  const staffView = can(PERMISSIONS.SUPPORT_VIEW_ALL) && !isPlatformTicket;
+  const canEscalate = staffView && can(PERMISSIONS.SUPPORT_ESCALATE);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -208,18 +270,35 @@ export default function TicketDetailPage() {
                 {ticket.ticketNumber}
               </span>
               <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[getStatusColor(ticket.status)]}`}>
-                {TICKET_STATUS_LABELS[ticket.status]}
+                {getStatusLabel(ticket.status, staffView)}
               </span>
               <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[getPriorityColor(ticket.priority)]}`}>
                 {TICKET_PRIORITY_LABELS[ticket.priority]}
               </span>
+              {isPlatformTicket && (
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                  SocietyLedger support
+                </span>
+              )}
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {ticket.subject}
             </h1>
+              <HelpLink />
+            </div>
           </div>
           
           <div className="flex gap-2">
+            {canEscalate && !isClosed && (
+              <button
+                onClick={() => setEscalateOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+              >
+                <IconSparkles size={18} />
+                Escalate to SocietyLedger
+              </button>
+            )}
             {isClosed ? (
               <button
                 onClick={handleReopenTicket}
@@ -287,7 +366,47 @@ export default function TicketDetailPage() {
         <div className="prose dark:prose-invert max-w-none">
           <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">{ticket.description}</p>
         </div>
+        <TicketAttachments attachments={ticket.attachments} />
       </div>
+
+      {/* Staff: handle the ticket */}
+      {staffView && can(PERMISSIONS.SUPPORT_MANAGE) && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6 flex flex-wrap items-center gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Move to</label>
+            <select
+              value=""
+              disabled={updating}
+              onChange={(e) => e.target.value && handleUpdate({ status: e.target.value as TicketStatus }, 'Ticket updated')}
+              className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+            >
+              <option value="">{getStatusLabel(ticket.status, true)}</option>
+              {NEXT_STATUSES[ticket.status].map((status) => (
+                <option key={status} value={status}>{getStatusLabel(status, true)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Assigned to</span>
+            {ticket.assignedTo?.id === user?.id ? (
+              <span className="text-sm font-medium text-gray-900 dark:text-white">You</span>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 dark:text-gray-300">{getUserName(ticket.assignedTo) === 'Unknown' ? 'Not assigned yet' : getUserName(ticket.assignedTo)}</span>
+                {user?.id && (
+                  <button
+                    onClick={() => handleUpdate({ assignedToId: user.id }, 'Assigned to you')}
+                    disabled={updating}
+                    className="px-3 py-1 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Assign to me
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Responses */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
@@ -302,7 +421,7 @@ export default function TicketDetailPage() {
             {ticket.responses.map((response) => (
               <div
                 key={response.id}
-                className={`p-4 ${response.isStaff ? 'bg-teal-50/50 dark:bg-teal-900/10' : ''}`}
+                className={`p-4 ${response.isInternal ? 'bg-yellow-50 dark:bg-yellow-900/10' : response.isStaff ? 'bg-teal-50/50 dark:bg-teal-900/10' : ''}`}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <span className="font-medium text-gray-900 dark:text-white">
@@ -310,7 +429,12 @@ export default function TicketDetailPage() {
                   </span>
                   {response.isStaff && (
                     <span className="px-2 py-0.5 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-xs rounded">
-                      Staff
+                      {isPlatformTicket ? 'SocietyLedger' : 'Staff'}
+                    </span>
+                  )}
+                  {response.isInternal && (
+                    <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs rounded">
+                      Internal note
                     </span>
                   )}
                   {response.isAiGenerated && (
@@ -326,6 +450,7 @@ export default function TicketDetailPage() {
                 <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                   {response.message}
                 </p>
+                <TicketAttachments attachments={response.attachments} />
               </div>
             ))}
           </div>
@@ -357,6 +482,31 @@ export default function TicketDetailPage() {
             className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none mb-4"
             maxLength={10000}
           />
+          {staffView && (
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={internal}
+                  onChange={(e) => setInternal(e.target.checked)}
+                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                />
+                Internal note — the member won&apos;t see it
+              </label>
+              <button
+                type="button"
+                onClick={handleSuggest}
+                disabled={suggesting}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 disabled:opacity-60"
+              >
+                <IconSparkles size={14} />
+                {suggesting ? 'Thinking...' : 'Suggest a reply'}
+              </button>
+            </div>
+          )}
+          <div className="mb-4">
+            <AttachmentPicker files={files} onChange={setFiles} disabled={submitting} label="Attachments (optional)" />
+          </div>
           <div className="flex justify-end">
             <button
               type="submit"
@@ -377,6 +527,17 @@ export default function TicketDetailPage() {
             </button>
           </div>
         </form>
+      )}
+      {ticket && canEscalate && (
+        <EscalateTicketModal
+          opened={escalateOpen}
+          onClose={() => setEscalateOpen(false)}
+          ticket={ticket}
+          onEscalated={() => {
+            setEscalateOpen(false);
+            loadTicket();
+          }}
+        />
       )}
     </div>
   );

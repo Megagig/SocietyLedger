@@ -3,10 +3,10 @@ title: "Setting up welfare funds"
 description: "Create a welfare fund, choose its type, and set contribution and eligibility rules."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/welfare/social-funds", "WF2"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/welfare/social-funds", "WF1", "WF2"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/welfare/recording-contributions", "/docs/welfare/eligibility"]
 ---
 
@@ -18,6 +18,8 @@ You need the **Administrator**, **Treasurer** or **Financial Secretary** role.
 
 ## Create a fund
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Welfare", "Social Funds"]} /> and select **Create Fund**.</Step>
 <Step>Enter a **Fund Name**, optional **Description**, and choose a **Fund Type**.</Step>
@@ -26,6 +28,22 @@ You need the **Administrator**, **Treasurer** or **Financial Secretary** role.
 <Step>Set a **Waiting Period (Days)** and **Min. Contribution Months** — how long a member must belong, and how many months they must have contributed, before they're eligible to request support.</Step>
 <Step>Select **Create Fund**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Welfare", "Funds"]} /> and tap **+**.</Step>
+<Step>Enter a **Name**, choose the **Kind of fund**, and add an optional description.</Step>
+<Step>Optionally set a **Target balance**, **Monthly contribution** and **Smallest contribution**.</Step>
+<Step>Set **Most paid out at a time** to cap how much one request can be approved for.</Step>
+<Step>Set the **Days a member must wait after joining** and the **Months of contributions needed** before they can ask for support.</Step>
+<Step>Tap **Add fund**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+To change a fund, tap it on your phone or edit it on the web. Setting its status to **Suspended** or **Closed** stops new contributions and new requests; what it holds and what was paid out stay on record. A fund with no contributions or requests can be deleted; any other can only be closed.
+
+On your phone, the **Welfare** screen also shows the money held across all funds, what has come in and gone out, and the contributions and requests waiting for you.
 
 <Screenshot src="/images/welfare/welfare-funds-2.webp" alt="Create Welfare Fund modal with fund name, description, type, target balance and waiting period fields" />
 

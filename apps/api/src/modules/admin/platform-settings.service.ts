@@ -15,6 +15,8 @@ export interface PlatformSettings {
   allowNewSignups: boolean;
   requireEmailVerification: boolean;
   requireAdminApproval: boolean;
+  /** When on (the default), an association whose trial or subscription has run out is blocked until it pays. */
+  enforceSubscriptionAccess: boolean;
   defaultAssociationTier: string;
   platformVersion: string;
 }
@@ -44,6 +46,7 @@ const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   allowNewSignups: true,
   requireEmailVerification: true,
   requireAdminApproval: true,
+  enforceSubscriptionAccess: true,
   defaultAssociationTier: 'STARTER',
   platformVersion: '1.0.0',
 };

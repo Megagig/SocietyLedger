@@ -1,16 +1,16 @@
 ---
 title: "Guarantors: requesting and responding"
-description: "Accept or decline a request to guarantee someone else's loan."
+description: "Get told when someone asks you to guarantee their loan, accept or decline on the web or in the app, and see what you already guarantee."
 type: task
 audience: ["member"]
-platforms: ["web"]
-covers: ["/dashboard/cooperatives/guarantors", "M20"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cooperatives/guarantors", "money/guarantor-requests", "M20"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/cooperatives/applying-for-a-loan"]
+lastVerified: "2026-10-22"
+related: ["/docs/cooperatives/applying-for-a-loan", "/docs/cooperatives/reviewing-and-disbursing-loans"]
 ---
 
-When another member names you as a guarantor on their loan application, you'll see the request here and decide whether to accept it.
+When another member names you as a guarantor on their loan application, you're told straight away and the request waits for you to accept or decline. You can answer on the web or in the mobile app, and see every loan you already guarantee in the same place.
 
 ## Before you start
 
@@ -20,16 +20,51 @@ Read the loan details carefully — guaranteeing a loan is a real commitment.
 Accepting a guarantor request means you agree to be responsible for the guaranteed amount if the borrower doesn't repay. Don't accept unless you understand and accept that risk.
 </Callout>
 
+## How you find out
+
+As soon as the borrower submits their application, you get:
+
+- an **in-app notification** — and, if you use the mobile app, a **push notification** that opens your Guarantor Requests;
+- an **email** with the loan details and a **Review Request** button, as a backup in case you miss the notification.
+
+Which of these you receive follows your notification preferences. The request stays on your Guarantor Requests screen until you answer it, whether or not you saw the message.
+
 ## Respond to a request
 
+### On the web
+
 <Steps>
-<Step>Go to <MenuPath items={["Cooperatives", "Guarantors"]} />.</Step>
-<Step>Review the borrower's name, the loan product, the loan amount, and the amount you'd be guaranteeing.</Step>
-<Step>Select **Accept** to confirm, or **Decline** and give a reason.</Step>
+<Step>Go to <MenuPath items={["Cooperatives", "Guarantor Requests"]} />.</Step>
+<Step>Review the borrower's name, the loan product, the loan amount, the purpose, and the amount you'd be guaranteeing.</Step>
+<Step>Select **Accept** to confirm, or **Decline** and give a reason. A reason is required to decline.</Step>
 </Steps>
 
 <Screenshot src="/images/cooperatives/guarantors-1.webp" alt="Accept Guarantor Request dialog showing the borrower's name, loan amount, your guarantee amount, and a warning about liability" />
 
+### In the mobile app
+
+<Steps>
+<Step>Go to <MenuPath items={["Money", "Guarantor Requests"]} />, or tap the push notification.</Step>
+<Step>Under **Waiting for you**, review the borrower, the loan product, the loan amount, **Your guarantee**, and the purpose.</Step>
+<Step>Tap **Accept** and confirm on the sheet that explains you may be liable, or tap **Decline** and write your reason. A reason is required to decline, and you can't undo it.</Step>
+</Steps>
+
+<Screenshot pending="Guarantor Requests screen in the mobile app: a request card with Decline and Accept, and the My guarantees section below" />
+
+## See what you already guarantee
+
+Below your pending requests, **My guarantees** lists the loans you've agreed to guarantee, on the web and in the app:
+
+- **Total guaranteed on active loans** — the most you could be asked to cover right now.
+- For each loan: the borrower, the loan product, your share, and its status. A loan shows **awaiting payout** until an officer has paid it out, then its loan number appears.
+
 ## What happens next
 
-If you accept and the loan product's minimum guarantor count is now met, the application automatically moves to **Pending Review** for an officer to approve — see [Reviewing, approving and disbursing loans](/docs/cooperatives/reviewing-and-disbursing-loans). If you decline, the borrower sees your reason and can look for another guarantor.
+If you accept and the loan product's minimum guarantor count is now met, the application automatically moves to **Pending Review** for an officer to approve — see [Reviewing, approving and disbursing loans](/docs/cooperatives/reviewing-and-disbursing-loans). If you decline, the borrower sees your reason.
+
+## If you're the borrower
+
+- Your guarantors are notified the moment you submit.
+- You're notified each time a guarantor accepts or declines — in the app, by push, and by email. A decline includes the reason, and shows on your application next to that guarantor's name.
+- When enough guarantors have accepted, the notification says your application is now with the officers.
+- If a guarantor declines, contact your association's officers about next steps.

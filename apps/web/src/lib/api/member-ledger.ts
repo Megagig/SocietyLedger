@@ -84,6 +84,17 @@ export interface MemberBalance {
 // MEMBER SELF-SERVICE ENDPOINTS
 // ============================================
 
+/**
+ * The API answers `{ data: { entries, pagination: { totalPages } } }`; the pages expect `{ data: entries[], pagination: { pages } }`.
+ * Accepts either, so it keeps working if the endpoint is ever flattened.
+ */
+function normalizeEntriesResponse(body: any): { data: LedgerEntry[]; pagination: any } {
+  const payload = body?.data;
+  const entries: LedgerEntry[] = Array.isArray(payload) ? payload : payload?.entries ?? [];
+  const pagination = body?.pagination ?? payload?.pagination;
+  return { data: entries, pagination: pagination ? { ...pagination, pages: pagination.pages ?? pagination.totalPages ?? 1 } : undefined };
+}
+
 export async function getMyLedgerSummary(): Promise<{ data: LedgerSummary }> {
   const response = await apiGet(`${API_URL}/api/member-ledger/my-ledger/summary`);
   if (!response.ok) {
@@ -114,7 +125,7 @@ export async function getMyLedgerEntries(params?: {
     const error = await response.json();
     throw new Error(error.message || 'Failed to fetch ledger entries');
   }
-  return response.json();
+  return normalizeEntriesResponse(await response.json());
 }
 
 export async function getMyStatement(params: {
@@ -214,6 +225,7 @@ export async function getMemberLedgerEntries(memberId: number, params?: {
     const error = await response.json();
     throw new Error(error.message || 'Failed to fetch member ledger entries');
   }
+  // Left raw on purpose: the admin member-ledger page reads `data.entries` itself.
   return response.json();
 }
 
@@ -233,8 +245,12 @@ export async function getMemberStatement(memberId: number, params: {
   return response.json();
 }
 
-export async function syncMemberLedger(memberId: number): Promise<{ data: { synced: number } }> {
-  const response = await apiPost(`${API_URL}/api/member-ledger/ledger/${memberId}/sync`, {});
+/**
+ * Rebuilds one member's ledger from their charges and payments. It always forces the rebuild: without `force` the API refuses for a member
+ * who already has entries, which is exactly the member who needs fixing. Voided charges add no debit.
+ */
+export async function syncMemberLedger(memberId: number): Promise<{ data: { entriesCreated: number } }> {
+  const response = await apiPost(`${API_URL}/api/member-ledger/ledger/${memberId}/sync?force=true`, {});
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to sync member ledger');

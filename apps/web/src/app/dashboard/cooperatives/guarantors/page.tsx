@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Modal, Button, Badge, Textarea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconUsers, IconCheck, IconX, IconCurrencyNaira } from '@tabler/icons-react';
-import { getPendingGuarantorRequests, respondToGuarantorRequest } from '@/lib/api/cooperatives';
+import { IconUsers, IconCheck, IconX, IconCurrencyNaira, IconShieldCheck } from '@tabler/icons-react';
+import { getPendingGuarantorRequests, respondToGuarantorRequest, getMyCooperativeProfile } from '@/lib/api/cooperatives';
 import { toast } from '@/lib/toast';
+import { HelpLink } from '@/components/docs/HelpLink';
 
 interface GuarantorRequest {
   id: number;
@@ -21,8 +22,22 @@ interface GuarantorRequest {
   };
 }
 
+interface Guarantee {
+  id: number;
+  guaranteeAmount: string;
+  applicationNumber: string;
+  applicantName: string;
+  productName: string;
+  applicationStatus: string;
+  loanNumber: string | null;
+  outstandingBalance: string | null;
+  loanStatus: string | null;
+}
+
 export default function GuarantorsPage() {
   const [requests, setRequests] = useState<GuarantorRequest[]>([]);
+  const [guarantees, setGuarantees] = useState<Guarantee[]>([]);
+  const [exposure, setExposure] = useState('0');
   const [isLoading, setIsLoading] = useState(true);
   const [responseOpened, { open: openResponse, close: closeResponse }] = useDisclosure(false);
   const [selectedRequest, setSelectedRequest] = useState<GuarantorRequest | null>(null);
@@ -30,7 +45,19 @@ export default function GuarantorsPage() {
   const [declineReason, setDeclineReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => { fetchRequests(); }, []);
+  useEffect(() => { fetchRequests(); fetchGuarantees(); }, []);
+
+  // The loans this member has already agreed to guarantee — shown beside the pending requests so they can see what
+  // they have committed to before agreeing to more. Not essential: the requests above still work if this fails.
+  const fetchGuarantees = async () => {
+    try {
+      const result = await getMyCooperativeProfile();
+      setGuarantees(result.data.guaranteedLoans || []);
+      setExposure(result.data.guarantorExposure || '0');
+    } catch {
+      setGuarantees([]);
+    }
+  };
 
   const fetchRequests = async () => {
     try {
@@ -60,6 +87,7 @@ export default function GuarantorsPage() {
       setSelectedRequest(null);
       setDeclineReason('');
       fetchRequests();
+      fetchGuarantees();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -87,9 +115,12 @@ export default function GuarantorsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
           Guarantor Requests
         </h1>
+          <HelpLink />
+        </div>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Review and respond to loan guarantor requests</p>
       </div>
 
@@ -98,7 +129,7 @@ export default function GuarantorsPage() {
           <IconUsers size={40} className="mx-auto text-gray-400 mb-4 sm:hidden" />
           <IconUsers size={48} className="mx-auto text-gray-400 mb-4 hidden sm:block" />
           <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No Pending Requests</h3>
-          <p className="text-sm sm:text-base text-gray-500">You don't have any pending guarantor requests at this time.</p>
+          <p className="text-sm sm:text-base text-gray-500">You don&apos;t have any pending guarantor requests at this time.</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -137,6 +168,35 @@ export default function GuarantorsPage() {
           ))}
         </div>
       )}
+
+      {/* Loans I already guarantee */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2"><IconShieldCheck size={20} />My Guarantees</h2>
+          <p className="text-sm text-gray-500">Total guaranteed on active loans: <span className="font-semibold text-purple-600">{formatCurrency(exposure)}</span>. If a borrower defaults, you may be liable for your share.</p>
+        </div>
+        {guarantees.length === 0 ? (
+          <p className="p-6 text-center text-sm text-gray-500">You aren&apos;t guaranteeing any loans.</p>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {guarantees.map((g) => (
+              <div key={g.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">{g.applicantName || g.applicationNumber}</p>
+                  <p className="text-sm text-gray-500">
+                    {g.productName} · {g.loanNumber ? g.loanNumber : 'awaiting payout'}
+                    {g.outstandingBalance ? ` · ${formatCurrency(g.outstandingBalance)} still owed` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-purple-600">{formatCurrency(g.guaranteeAmount)}</span>
+                  <Badge color="gray">{(g.loanStatus || g.applicationStatus).replace(/_/g, ' ')}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Response Modal */}
       <Modal opened={responseOpened} onClose={closeResponse} title={responseAction === 'accept' ? 'Accept Guarantor Request' : 'Decline Guarantor Request'} size="md">

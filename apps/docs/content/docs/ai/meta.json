@@ -2,6 +2,7 @@
   "title": "AI assistant",
   "icon": "Bot",
   "pages": [
+    "buying-ai-credits",
     "asking-questions",
     "smart-reminders",
     "ai-reports",

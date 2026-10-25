@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "APP_VARIANT": "development",
+        "EAS_PROJECT_ID": "7deffb9f-b682-45c7-b773-b919a4d8f28b"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "APP_VARIANT": "preview",
+        "EAS_PROJECT_ID": "7deffb9f-b682-45c7-b773-b919a4d8f28b"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "production",
+        "EAS_PROJECT_ID": "7deffb9f-b682-45c7-b773-b919a4d8f28b"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

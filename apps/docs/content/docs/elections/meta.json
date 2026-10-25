@@ -2,8 +2,10 @@
   "title": "Elections & polls",
   "icon": "Vote",
   "pages": [
+    "election-committee",
     "how-elections-work",
     "creating-an-election",
+    "voting-rules",
     "nominations-and-candidates",
     "running-the-vote",
     "publishing-results",

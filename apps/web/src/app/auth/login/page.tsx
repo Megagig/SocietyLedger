@@ -12,6 +12,10 @@ interface LoginForm {
   password: string;
 }
 
+const SUPPORT_WHATSAPP_NUMBER = '2348060374755';
+const SUPPORT_MESSAGE =
+  "Hello Society Ledger support. My account is still pending approval and I'd like to check on its status.";
+
 export default function LoginPage() {
   const router = useRouter();
   const { tenant, isLoading: tenantLoading, error: tenantError } = useTenant();
@@ -25,6 +29,10 @@ export default function LoginPage() {
 
   // Combine tenant and auth errors
   const error = tenantError || authError || localError;
+
+  // A pending account isn't a failure the member can fix by retrying, so it gets its own
+  // explanatory panel (timeline + support route) instead of a red "Login Error".
+  const isPendingApproval = !!error && /pending admin approval/i.test(error);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +100,42 @@ export default function LoginPage() {
 
         {/* Login Form Card */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          {error && (
+          {isPendingApproval && (
+            <div className="mb-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                    Your account is pending approval
+                  </h3>
+                  <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-1 leading-relaxed">
+                    We&apos;ll notify you by email once an admin approves your account. Approval usually takes less
+                    than 24 hours.
+                  </p>
+                  <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-800">
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                      Taking longer than expected?{' '}
+                      <a
+                        href={`https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(SUPPORT_MESSAGE)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-200 underline underline-offset-2 hover:text-emerald-900 dark:hover:text-emerald-100 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.19 8.19 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23Zm4.52-6.16c-.25-.13-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.25-.64.8-.78.97-.15.16-.29.18-.54.06-.25-.13-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.84-.2-.49-.4-.42-.56-.43h-.47c-.16 0-.43.06-.65.31-.22.25-.85.84-.85 2.05s.87 2.37.99 2.54c.12.16 1.71 2.61 4.14 3.66.58.25 1.03.4 1.38.51.58.19 1.11.16 1.53.1.47-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29Z" />
+                        </svg>
+                        Contact us on WhatsApp
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && !isPendingApproval && (
             <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
               <div className="flex items-start">
                 <svg className="w-5 h-5 text-red-600 dark:text-red-400 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -187,7 +230,7 @@ export default function LoginPage() {
               Forgot your password?
             </Link>
             <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               {tenant ? (
                 <Link href="/auth/register" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-300 font-medium">
                   Register here

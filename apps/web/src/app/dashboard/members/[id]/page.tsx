@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar, User, DollarSign, PiggyBank } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar, CalendarCheck, FileText, Heart, MessageCircle, User, DollarSign, PiggyBank } from 'lucide-react';
 import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
-import { Can } from '@/hooks/usePermissions';
-import { apiGet, apiDelete } from '@/utils/api';
+import { mailHref, telHref, whatsappHref } from '@/lib/contact';
+import { Can, usePermissions } from '@/hooks/usePermissions';
+import { apiGet, apiDelete, apiPatch } from '@/utils/api';
 import { toast } from '@/lib/toast';
 
 interface MemberDetails {
@@ -31,6 +32,7 @@ interface MemberDetails {
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;
   notes: string | null;
+  loginStatus?: string;
   createdAt: string;
   updatedAt: string;
   financialSummary?: {
@@ -40,6 +42,30 @@ interface MemberDetails {
   };
 }
 
+interface AttendanceTotals {
+  totalMeetings: number;
+  attended: number;
+  absent: number;
+  apologies: number;
+  late: number;
+  attendanceRate: number;
+}
+
+interface WelfareProfile {
+  totalContributions: number | string;
+  contributionCount: number;
+  lastContributionDate: string | null;
+  totalPayoutsReceived: number | string;
+  payoutCount: number;
+  pendingRequests: number;
+}
+
+const LOGIN_LABELS: Record<string, string> = {
+  active: 'Can sign in',
+  invited: 'Invited',
+  no_login: 'No login',
+};
+
 export default function MemberDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -48,10 +74,44 @@ export default function MemberDetailPage() {
   const [member, setMember] = useState<MemberDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [attendance, setAttendance] = useState<AttendanceTotals | null>(null);
+  const [welfare, setWelfare] = useState<WelfareProfile | null>(null);
+  const { can } = usePermissions();
+  const canSeeAttendance = can(PERMISSIONS.MEETING_VIEW);
+  const canSeeWelfare = can(PERMISSIONS.WELFARE_MANAGE);
 
   useEffect(() => {
     fetchMember();
   }, [memberId]);
+
+  // Attendance and welfare summaries are optional extras: a module the plan doesn't include answers non-OK, and the card just stays hidden.
+  useEffect(() => {
+    const load = async () => {
+      if (canSeeAttendance) {
+        try {
+          const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/meetings/attendance-history?memberId=${memberId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setAttendance(data.data?.[0] ?? null);
+          }
+        } catch (error) {
+          console.error('Error fetching member attendance:', error);
+        }
+      }
+      if (canSeeWelfare) {
+        try {
+          const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/welfare/members/${memberId}/profile`);
+          if (response.ok) {
+            const data = await response.json();
+            setWelfare(data.data ?? null);
+          }
+        } catch (error) {
+          console.error('Error fetching member welfare profile:', error);
+        }
+      }
+    };
+    load();
+  }, [memberId, canSeeAttendance, canSeeWelfare]);
 
   const fetchMember = async () => {
     setIsLoading(true);
@@ -74,15 +134,16 @@ export default function MemberDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDisable = async () => {
     modals.openConfirmModal({
-      title: 'Delete Member',
+      title: 'Disable Member',
       children: (
         <Text size="sm">
-          Are you sure you want to delete this member? This action cannot be undone.
+          {member?.firstName} {member?.lastName} won&apos;t be able to sign in, and they&apos;re marked Disabled.
+          You can enable them again any time.
         </Text>
       ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      labels: { confirm: 'Disable member', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
         try {
@@ -93,16 +154,35 @@ export default function MemberDetailPage() {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.message || 'Failed to delete member');
+            throw new Error(data.message || 'Failed to disable member');
           }
 
-          toast.success('Member deleted successfully');
-          router.push('/dashboard/members');
+          toast.success('Member disabled');
+          fetchMember();
         } catch (error: any) {
-          toast.error(error.message || 'Failed to delete member');
+          toast.error(error.message || 'Failed to disable member');
         }
       },
     });
+  };
+
+  const handleEnable = async () => {
+    try {
+      const response = await apiPatch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/members/${memberId}`,
+        { status: 'active' }
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to enable member');
+      }
+
+      toast.success('Member enabled');
+      fetchMember();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to enable member');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -115,7 +195,7 @@ export default function MemberDetailPage() {
 
     return (
       <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${badges[status] || badges.active}`}>
-        {status}
+        {status === 'terminated' ? 'disabled' : status}
       </span>
     );
   };
@@ -189,14 +269,52 @@ export default function MemberDetailPage() {
                 {getStatusBadge(member.status)}
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-                ID: {member.memberId}
+                ID: {member.memberId} · {LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}
               </p>
             </div>
           </div>
         </div>
 
         {/* Action Buttons - Full width on mobile */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {telHref(member.phone) && (
+            <a
+              href={telHref(member.phone)!}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Phone className="w-4 h-4" />
+              <span>Call</span>
+            </a>
+          )}
+          {whatsappHref(member.phone) && (
+            <a
+              href={whatsappHref(member.phone)!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>WhatsApp</span>
+            </a>
+          )}
+          {mailHref(member.email) && (
+            <a
+              href={mailHref(member.email)!}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Email</span>
+            </a>
+          )}
+          <Can permission={PERMISSIONS.LEDGER_VIEW_MEMBER_STATEMENT}>
+            <button
+              onClick={() => router.push(`/dashboard/finance/member-ledger/${memberId}`)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Statement</span>
+            </button>
+          </Can>
           <button
             onClick={() => router.push(`/dashboard/cooperatives/members/${memberId}`)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
@@ -214,15 +332,26 @@ export default function MemberDetailPage() {
             </button>
           </Can>
 
-          <Can permission={PERMISSIONS.MEMBER_DELETE}>
-            <button
-              onClick={handleDelete}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete</span>
-            </button>
-          </Can>
+          {member.status === 'terminated' ? (
+            <Can permission={PERMISSIONS.MEMBER_EDIT}>
+              <button
+                onClick={handleEnable}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <span>Enable member</span>
+              </button>
+            </Can>
+          ) : (
+            <Can permission={PERMISSIONS.MEMBER_DELETE}>
+              <button
+                onClick={handleDisable}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Disable</span>
+              </button>
+            </Can>
+          )}
         </div>
       </div>
 
@@ -371,6 +500,60 @@ export default function MemberDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Attendance Summary Card */}
+      {attendance && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+            <CalendarCheck className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Meeting Attendance</h2>
+          </div>
+          <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-5 gap-4">
+            {[
+              { label: 'Attendance', value: `${attendance.attendanceRate}%` },
+              { label: 'Meetings', value: attendance.totalMeetings },
+              { label: 'Attended', value: attendance.attended },
+              { label: 'Absent', value: attendance.absent },
+              { label: 'Apologies', value: attendance.apologies },
+            ].map((item) => (
+              <div key={item.label} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">{item.label}</p>
+                <p className="text-gray-900 dark:text-white mt-1 font-medium">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Welfare Summary Card */}
+      {welfare && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+            <Heart className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Welfare</h2>
+          </div>
+          <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Contributed</p>
+              <p className="text-gray-900 dark:text-white mt-1 font-medium">{formatCurrency(Number(welfare.totalContributions))}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{welfare.contributionCount} contributions</p>
+            </div>
+            <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Received</p>
+              <p className="text-gray-900 dark:text-white mt-1 font-medium">{formatCurrency(Number(welfare.totalPayoutsReceived))}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{welfare.payoutCount} payouts</p>
+            </div>
+            <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Last contribution</p>
+              <p className="text-gray-900 dark:text-white mt-1 font-medium">{formatDate(welfare.lastContributionDate)}</p>
+            </div>
+            <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Requests waiting</p>
+              <p className="text-gray-900 dark:text-white mt-1 font-medium">{welfare.pendingRequests}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Emergency Contact Card */}
       {(member.emergencyContactName || member.emergencyContactPhone) && (

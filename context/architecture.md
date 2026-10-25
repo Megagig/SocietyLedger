@@ -84,7 +84,7 @@ societyledger/                 (Turborepo + pnpm 9 workspaces — pnpm-workspace
 | Lists | **@shopify/flash-list** | All lists > 20 rows. |
 | Animation / gestures | **react-native-reanimated**, **react-native-gesture-handler** | Watch SDK 56 Hermes v1 + worklets memory regression; upgrade to SDK 57 when available. |
 | Bottom sheets | **@gorhom/bottom-sheet** | |
-| Charts | **victory-native** (Skia) via `@shopify/react-native-skia` | Line, bar, donut, stacked bar. |
+| Charts | **react-native-gifted-charts** (SVG, no Skia) | Line, bar, donut. Chosen at F5.1 over victory-native: it was already installed and used by Home and Finance, and needs no native Skia dependency. |
 | Icons | **lucide-react-native** + `react-native-svg` | Web already uses lucide; keeps visual parity. (`@expo/vector-icons` is deprecated in SDK 56.) |
 | Toasts | **sonner-native** | |
 | Dates | **date-fns** (+ `date-fns-tz` if needed) | Web uses date-fns too. Display in device locale, `Africa/Lagos` default. |

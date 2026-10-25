@@ -41,7 +41,8 @@ export function buildPermissions(): { rows: PermissionRow[]; warnings: string[] 
   const warnings: string[] = [];
 
   const registry = parseTsConst(apiRoot('prisma/seeds/rbac-seed.ts'), 'PERMISSION_REGISTRY') as PermissionEntry[];
-  const roleMapping = parseTsConst(apiRoot('prisma/seeds/rbac-seed.ts'), 'ROLE_PERMISSION_MAPPING') as Record<
+  // ROLE_PERMISSION_MAPPING lives in src/lib/role-permission-mapping.ts (moved out of rbac-seed.ts in G66).
+  const roleMapping = parseTsConst(apiRoot('src/lib/role-permission-mapping.ts'), 'ROLE_PERMISSION_MAPPING') as Record<
     string,
     string[]
   >;

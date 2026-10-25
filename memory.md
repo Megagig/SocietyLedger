@@ -1,61 +1,54 @@
-# Memory — SocietyLedger: Track R complete, Milestone RL achieved, post-review fixes applied
+# Memory — Mobile Phase 8: association signup, free trial, blocking, setup wizard
 
-Last updated: 2026-10-18
+Last updated: 2026-10-25 (session dates in the app's own notes say 2026-11-03)
 
 ## What was built
 
-**Track R0–R3**: committed (`411ca32` R0+R1, `8e52a07` R2, `970bbd1` R3). Read git log / `progress-tracker.md` gap rows if needed.
+Phase 8 (F8.1 and F8.2) across API, admin console, web and mobile. Per-feature detail is in `context/progress-tracker.md` (F8.1, F8.2), `context/ui-registry.md` (Phase 8 section) and `docs/deployment/PHASE8_SIGNUP_DEPLOY.md`.
 
-**Track R4 — Settings & billing correctness** (uncommitted): G54 plan-downgrade deferral, G55 PAST_DUE real path, G56 real no-card trial, G51 tenant audit log, G20 member ID format, G53 six settings categories wired. Full detail in prior session's `memory.md` entry (now overwritten) — see `progress-tracker.md` R4 checklist for the complete list.
-
-**Track R5 — Accounting completeness** (committed in `5ebe488`): G46 (welfare/cooperatives accounting sync). Read `progress-tracker.md` R5.
-
-**Track R6 — Remaining functional gaps & hygiene** (uncommitted): 16 items (G21, G25, G26, G28, G29, G36, G38, G40, G44, G57, G58, G60, G64, G66, G68, G71). All resolved. Full detail in `progress-tracker.md` R6 checklist.
-
-**Track R7 — Unbuilt R0 decisions** (uncommitted):
-- **R7.1 (G13)**: module-lock `upgradeRequired` logic fixed (`status.source !== 'tenant_override'`); `FEATURE_FLAG_MODE=enforce` wired in local `.env`; demo association subscription upgraded to Enterprise. Modified: `module-feature.service.ts`, `module-feature.middleware.ts`, `moduleLockStore.ts` (Zustand), `axios.ts` interceptor, `utils/api.ts`.
-- **R7.2 (G17)**: `PaymentProof` Prisma model extended (nullable file fields + `declarationNote` + `transactionIds[]`); member proof-upload flow (`/dashboard/my-finances/pay/page.tsx`); officer verification page Sidebar entry (`IconClipboardCheck`, gated by `PERMISSIONS.PAYMENT_CONFIRM`); G92 (orphaned verification pages) + G93 (permission gate) fixed in same pass.
-- **R7.3 (G65)**: `GET /api/members/approvals` + `PATCH /api/members/approvals/:userId` in `members.controller.ts` + `members.routes.ts`; `pending-approvals/page.tsx` (full approval queue UI with tabs, search, approve/reject modals, pagination); Sidebar entry under Settings gated by `PERMISSIONS.MEMBER_EDIT_ALL`. API routes use `updateUserApproval()` + `sendApprovalNotificationEmail()` from `auth.service.ts`.
-- **Milestone RL** claimed: all gap rows `resolved`, `declined`, or `deferred`. Remaining `open` rows (G2/G4/G8/G9/G10/G11) correctly excluded from Track R.
-
-**Post-review fixes** (same session, uncommitted):
-- `nigerian-payments.service.ts`: `verifyPaymentProof` wrapped in `prisma.$transaction()`; `transactionIds` and `transactionId` paths made mutually exclusive (`if/else if`) — prevents double payment records; `proof.transaction!` non-null assertion replaced with `else if (updated.transaction)` guard; `where: any` → `Prisma.PaymentProofWhereInput` in `getPaymentProofs`.
-- `payments/verification/page.tsx`: hardcoded hex `#fee2e2`/`#dc2626` → `var(--mantine-color-red-1)` / `var(--mantine-color-red-6)`.
-- `my-finances/pay/page.tsx`: `catch (err: any)` → `catch (err: unknown)` with `instanceof Error` guard (×2); `console.error` in bank-accounts catch removed.
-- `members.controller.ts`: 5 debug `console.log` blocks removed from `list()`; `status` query param now validated against `['pending','approved','rejected']` enum in `listPendingApprovals`; server-side `search` param added (filters by email + member first/last name via Prisma nested OR).
-- `pending-approvals/page.tsx`: `search` passed to API; client-side `filtered` array removed; `useEffect` resets page to 1 on search/filter change.
-- Added `import { Prisma } from '@prisma/client'` to both service files above.
+- **Shared (`packages/shared/src`):** `association-signup.ts` (association kinds incl. "other", subdomain rules, naming reminder, signup schema, base domain) and `onboarding.ts` (five steps, officer roles, team-invite schema, finance starter templates, brand colour presets). Web, mobile and API all use these.
+- **API:** new signup (`associations.controller.ts`): founder name and phone, creates their `Member` (MEM0001), always Enterprise, honours platform switches. `services/subscription-access.service.ts` (access rules, `startTrialIfPending`, cache), gate in `middleware/auth.middleware.ts` (403 `SUBSCRIPTION_INACTIVE`), `subscriptionAccess` on login and `/auth/me`. Approval (`auth.service.ts updateUserApproval`) starts the trial. Onboarding: `onboarding-rules.ts`, `complete-step` with `skipped`, `POST /onboarding/team`. Admin: `POST /admin/users/:id/verify-email` and `resend-verification`; approvals list search, `emailVerified` filter, association kind. Reminders at 3 and 1 day in `jobs/subscription-jobs.ts`. Migration `20261103_add_invite_role_and_onboarding_skips`.
+- **Admin console:** Approvals page (verify email, resend code, kind, founder), Settings (blocking switch, trial days 1 to 90).
+- **Web:** rewritten `signup/page.tsx`; all `onboarding/*` steps save real data and record skips; `components/subscription/SubscriptionBanners.tsx` (trial banner, blocked screen) wired into `AuthenticatedLayout`; axios and fetch interceptors mark blocked; Settings > Association uses the shared kind list with "other".
+- **Mobile:** `(auth)/create-association.tsx`, `(app)/onboarding/*` (overview, profile, team, members, finance, complete), `features/onboarding`, `features/associationSignup`, `features/session/landing.ts` and components (blocked screen, trial banner), guard in `(app)/_layout.tsx`, `stores/session.ts markSubscriptionBlocked`, client interceptor, Settings kind list with "other".
+- **Docs:** create-your-association, onboarding-wizard, free-trial, when-a-subscription-ends rewritten; frontmatter and link checks pass.
 
 ## Decisions made
 
-- **verifyPaymentProof atomicity**: accounting sync (`onPaymentRecorded`) stays *outside* the Prisma transaction — it is intentionally non-critical and must not roll back a successful approval if the sync fails. Collected in an `accountingSyncs[]` array and awaited after `prisma.$transaction()` resolves.
-- **Mutual exclusion (transactionIds vs transactionId)**: `transactionIds.length > 0` is checked first; the single-transaction bank-transfer path only runs in `else if`. This matches the intended design (two distinct submission flows) and prevents double payment records if both fields happen to be populated.
-- **Search server-side, not client-side**: the approval queue can have 100+ entries across multiple pages; a client-side filter only over the current page is silently incomplete for real workloads.
-- **ui-registry.md / code-standards.md / ui-rules.md / ui-tokens.md scope**: these three docs govern mobile/docs/admin only. `apps/api` and `apps/web`'s dashboard work is checked against the surrounding file's own established convention, not these docs. Confirmed standing decision from prior sessions.
+- Trial: 14 days of Enterprise, starts on **approval** of the founding admin (not signup); length is the platform setting `defaultTrialDays`. After it ends everyone in the association is blocked until paid. Login, `/auth/me`, subscriptions, support, help and devices stay open. Billing overrides respected. Platform switch `enforceSubscriptionAccess` (default on) turns blocking off. No subscription row at all means allowed. Past-due is allowed during its 3-day grace.
+- Mobile never shows prices or a pay button; officers are told to renew on the web (WhatsApp `SupportCard`), members to contact their admin.
+- Association kind is the **existing** setting `association.associationType` (+ `customAssociationType`), one shared list; no new DB columns for it.
+- Wizard order follows web: Profile, Team, Members, Finance, Complete. Skipped is stored apart from done (`skipped_steps`). Invites carry `role_name`, applied on acceptance.
+- Password minimum stays 6 (login, reset and signup already matched).
+- Working rule from the owner: list fixes and get approval before changing code for review findings; the owner approved cross-platform bug fixes for this phase.
 
 ## Problems solved
 
-- **Issue #6 (email failure → 500) was already correctly handled**: `sendApprovalNotificationEmail` in `updateApprovalStatus` was already inside its own `try/catch` with `console.error` — review confirmed correct, no change needed.
-- **Non-null assertion on `proof.transaction`**: the guard `else if (updated.transactionId && updated.transaction)` both prevents the assertion AND eliminates the need for it — TypeScript narrows `updated.transaction` to non-null inside the block.
-- **`Prisma.EnumPaymentProofStatusFilter` for status assignment**: assigning `string` to `PaymentProofWhereInput.status` required a cast (`status as Prisma.EnumPaymentProofStatusFilter`) because Prisma's generated type does not accept a bare `string` — but the value is already validated upstream.
+- The subscription middleware existed but was never applied, so nothing was ever blocked.
+- Platform settings (sign-ups open, email verification, approval, trial days) were saved but ignored by signup.
+- Approval email linked to `.com`, now the association's own address on the live domain.
+- Wizard sent `annually`; the API accepts `annual`.
+- Login 500 after approval was only a missing column: the migration had not been applied to the local DB. Applied with `prisma db execute --file`; verified columns exist. `prisma generate` fails with EPERM while the API runs (engine file locked), but the generated types were already updated.
+- Expo typed routes regenerate unreliably on the dev server; new screens are typed once via `SETUP_HREF` in `landing.ts`. Restart Metro to refresh them.
+- Tooling gotcha: inline shell/heredoc edits mangle backticks; write files with the Write tool and patch with small node scripts.
 
 ## Current state
 
-- **Branch `gap-remediation`, 3 commits ahead of `develop`** (`411ca32` R0+R1, `8e52a07` R2, `970bbd1` R3). **R4 through R7 including all post-review fixes are uncommitted in the working tree.**
-- Both `apps/api` and `apps/web` type-check clean (`npx tsc --noEmit` exit 0 on both).
-- `progress-tracker.md` fully up to date: Milestone RL claimed, all R7 items ticked, post-review decisions logged (two new Decisions log entries).
-- The entire Track R implementation is complete and code-quality-clean. Nothing is partial or broken.
+- Typechecks clean: shared, API, web, mobile. Admin has the 2 old errors (`query-client.tsx`, `session.server.ts`). Tests: API 1151 pass (2 multi-tenancy suites fail to load on an `otplib` ESM error, same without these changes), mobile 1037 pass. Docs checks pass.
+- Local database now has the new columns. Nothing committed. Nothing run end to end against real email, Paystack or a device.
+- Not done: the idea to show "not yet approved" with the WhatsApp card when someone signs in on the **bare** `localhost:3000` (no association in the address). Cause: with no tenant the API finds no user and returns "Invalid credentials". Proposed fix (API only): on a tenant-less login, look the email up across associations, check the password, and for exactly one match that is pending/unverified/rejected return that specific code, never logging anyone in. The owner has not yet confirmed it.
+- `/imprint` and `/review` were not run for Phase 8.
 
 ## Next session starts with
 
-**Commit Track R** — this is a large working tree spanning R4–R7 plus post-review fixes (100+ modified files). Suggested commit strategy: one commit per phase (`R4`, `R5`, `R6`, `R7`, `R7 post-review fixes`), or one single `Track R complete` commit if the user prefers. Then **open a PR `gap-remediation → develop`** unless the user wants to accumulate further.
-
-After merging: **Admin Phase A1** is next (per `progress-tracker.md`'s sequencing rule: A1 does not start until Milestone RL). Run `/architect` for "Admin Phase A1" first — read `build-plan.md`'s A1 section before proposing anything.
+1. Ask the owner whether to build the tenant-less login "pending approval" message (above).
+2. Test end to end: create an association from the phone, verify email (try the admin console "Mark as verified" and "Resend code"), approve, check trial dates and the approval email link, sign in on `<subdomain>.localhost:3000`, walk the wizard on web and mobile.
+3. Test blocking: set a trial end in the past and check the blocked screen on web and mobile, then renew or extend and check access returns.
+4. Run `/review` on Phase 8, then Phase 9 (hardening and release) per `context/build-plan.md`, starting with `/architect`.
 
 ## Open questions
 
-- **How to commit R4–R7**: one big commit, one per phase, or something else? The user hasn't said yet.
-- **PR strategy**: open `gap-remediation → develop` now, or keep accumulating A1 work first?
-- **G58 (member self-service payment method casing)** is still open and blocks extending `enabledChannels` enforcement to member-initiated payments (G85).
-- **G77's attendance half** (markAttendance/bulkMarkAttendance etc.) is still a live cross-tenant IDOR — flagged in R2/R4 sessions, still not addressed. Same standing recommendation: consider before A1.
-- **G86's `changePlan` proration math** was not independently audited when the upgrade-metadata bug was fixed — still worth a closer look if A1 or later ever touches billing again.
+- Associations that already have an Expired or Cancelled subscription are blocked at once when this ships; decide whether to bypass them first (see the deploy note).
+- The mobile blocked screen uses the WhatsApp support card, not a support email.
+- `ai-help.service.ts` and `ai-support.service.ts` are still not on credits (from Phase 7); `GET /ai/reminders/suggestions` still spends a credit.
+- Apply `20261103_add_invite_role_and_onboarding_skips` wherever else the API runs (staging, production).

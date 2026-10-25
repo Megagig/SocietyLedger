@@ -3,6 +3,7 @@ import { exportsController } from './exports.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
+import { requireModule } from '../../middleware/module-feature.middleware';
 
 const router: Router = Router();
 
@@ -18,6 +19,19 @@ router.post(
   '/financial-pdf',
   requirePermission(PERMISSIONS.EXPORT_FINANCIAL),
   exportsController.exportFinancialPDF
+);
+
+/**
+ * @route   POST /api/exports/accounting-statement
+ * @desc    Export an accounting statement (income statement, balance sheet or cash flow) as PDF
+ * @access  Private (exports.financial and ledger.view; the accounting module must be on)
+ */
+router.post(
+  '/accounting-statement',
+  requireModule('accounting'),
+  requirePermission(PERMISSIONS.EXPORT_FINANCIAL),
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  exportsController.exportAccountingStatementPDF
 );
 
 /**

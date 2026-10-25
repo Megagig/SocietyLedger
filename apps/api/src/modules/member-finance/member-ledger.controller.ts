@@ -3,6 +3,33 @@ import { prisma } from '../../lib/prisma';
 import { memberLedgerService, LedgerReportOptions } from './member-ledger.service';
 import { z } from 'zod';
 
+// Shared with member-finance.controller.ts — auto-links admin-created members on first access.
+async function findAndAutoLinkMember(userId: number, associationId: number, userEmail?: string) {
+  let member = await prisma.member.findFirst({ where: { userId, associationId } });
+  if (!member && userEmail) {
+    const byEmail = await prisma.member.findFirst({
+      where: { email: userEmail, associationId, userId: null },
+    });
+    if (byEmail) {
+      member = await prisma.member.update({ where: { id: byEmail.id }, data: { userId } });
+    }
+  }
+  return member;
+}
+
+// Auto-syncs the memberFinancialLedger from Transaction data on first access.
+// Idempotent — skips if entries already exist; swallows errors so the screen
+// degrades to empty rather than crashing.
+async function autoSyncLedgerIfEmpty(associationId: number, memberId: number, userId: number) {
+  const count = await prisma.memberFinancialLedger.count({ where: { associationId, memberId } });
+  if (count > 0) return;
+  try {
+    await memberLedgerService.syncExistingTransactions(associationId, memberId, userId);
+  } catch {
+    // non-critical — continue with empty ledger
+  }
+}
+
 // Ledger category enum (matches Prisma schema)
 const LedgerCategoryEnum = z.enum([
   'DUES', 'LEVY', 'PENALTY', 'DONATION', 'REFUND', 'WAIVER', 
@@ -32,10 +59,12 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }
+      // First access: populate ledger from existing transactions so it's never empty.
+      await autoSyncLedgerIfEmpty(associationId, member.id, userId);
       const summary = await memberLedgerService.getMemberLedgerSummary(associationId, member.id);
       return res.status(200).json({ success: true, data: summary });
     } catch (error) {
@@ -51,10 +80,11 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }
+      await autoSyncLedgerIfEmpty(associationId, member.id, userId);
       const params = dateRangeSchema.parse(req.query);
       const options: LedgerReportOptions = {
         associationId, memberId: member.id,
@@ -79,7 +109,7 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }
@@ -102,7 +132,7 @@ export const memberLedgerController = {
       if (!associationId || !userId) {
         return res.status(400).json({ success: false, message: 'Authentication required' });
       }
-      const member = await prisma.member.findFirst({ where: { userId, associationId } });
+      const member = await findAndAutoLinkMember(userId, associationId, req.user?.email);
       if (!member) {
         return res.status(404).json({ success: false, message: 'Member profile not found' });
       }
@@ -246,6 +276,10 @@ export const memberLedgerController = {
       });
       return res.status(200).json({ success: true, message: `Successfully synced ${result.entriesCreated} ledger entries`, data: result });
     } catch (error: any) {
+      // A refusal to overwrite existing entries is the caller's choice to make (send force=true), not a server failure.
+      if (typeof error?.message === 'string' && error.message.startsWith('Member already has ledger entries')) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
       console.error('Error syncing member ledger:', error);
       return res.status(500).json({ success: false, message: error.message || 'Failed to sync ledger' });
     }
@@ -367,10 +401,15 @@ export const memberLedgerController = {
         prisma.member.findMany({ where: whereClause, select: { id: true, memberId: true, firstName: true, lastName: true, email: true, status: true }, skip: (page - 1) * limit, take: limit, orderBy: { lastName: 'asc' } }),
         prisma.member.count({ where: whereClause }),
       ]);
-      const membersWithBalances = await Promise.all(members.map(async (m) => {
-        const balance = await memberLedgerService.getMemberBalance(associationId, m.id);
-        return { ...m, balance };
-      }));
+      // One query for the latest running balance of every member on the page (it used to be one query per member).
+      const latest = members.length === 0 ? [] : await prisma.memberFinancialLedger.findMany({
+        where: { associationId, memberId: { in: members.map((m) => m.id) } },
+        orderBy: [{ memberId: 'asc' }, { createdAt: 'desc' }],
+        distinct: ['memberId'],
+        select: { memberId: true, runningBalance: true },
+      });
+      const balanceByMember = new Map(latest.map((row) => [row.memberId, Number(row.runningBalance)]));
+      const membersWithBalances = members.map((m) => ({ ...m, balance: balanceByMember.get(m.id) ?? 0 }));
       return res.status(200).json({ success: true, data: { members: membersWithBalances, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } } });
     } catch (error) {
       console.error('Error fetching member balances:', error);

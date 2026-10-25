@@ -17,7 +17,12 @@ export type TicketCategory =
   | 'TECHNICAL'
   | 'BUG'
   | 'FEATURE_REQUEST'
+  | 'BILLING'
+  | 'DATA'
   | 'OTHER';
+
+/** ASSOCIATION = a member asking their own association; PLATFORM = an association admin asking SocietyLedger. */
+export type TicketAudience = 'ASSOCIATION' | 'PLATFORM';
 
 export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
@@ -29,8 +34,20 @@ export type TicketStatus =
   | 'RESOLVED'
   | 'CLOSED';
 
+/** A file on a ticket or reply. Open one with `getAttachmentUrl` — the API never exposes the storage path. */
+export interface TicketAttachment {
+  id: number;
+  ticketId: number;
+  responseId: number | null;
+  originalName: string;
+  mimeType: string;
+  fileSize: number;
+  createdAt: string;
+}
+
 export interface SupportTicket {
   id: number;
+  audience?: TicketAudience;
   ticketNumber: string;
   subject: string;
   description: string;
@@ -69,6 +86,8 @@ export interface SupportTicket {
     };
   };
   responses?: TicketResponse[];
+  /** Files attached when the ticket was opened. Only on a single-ticket read. */
+  attachments?: TicketAttachment[];
   _count?: {
     responses: number;
     attachments: number;
@@ -86,6 +105,7 @@ export interface TicketResponse {
   aiConfidence: number | null;
   createdAt: string;
   updatedAt: string;
+  attachments?: TicketAttachment[];
   user?: {
     id: number;
     email: string;
@@ -167,6 +187,7 @@ export interface ResponseSuggestion {
  * List tickets
  */
 export async function listTickets(params?: {
+  audience?: TicketAudience;
   status?: TicketStatus | TicketStatus[];
   category?: TicketCategory;
   priority?: TicketPriority;
@@ -178,6 +199,7 @@ export async function listTickets(params?: {
 }): Promise<TicketListResult> {
   const searchParams = new URLSearchParams();
   
+  if (params?.audience) searchParams.set('audience', params.audience);
   if (params?.status) {
     if (Array.isArray(params.status)) {
       params.status.forEach(s => searchParams.append('status', s));
@@ -209,21 +231,84 @@ export async function listTickets(params?: {
 /**
  * Create a new ticket
  */
-export async function createTicket(ticketData: CreateTicketData): Promise<SupportTicket> {
+export async function createTicket(
+  ticketData: CreateTicketData,
+  files: File[] = []
+): Promise<SupportTicket & { attachmentError?: string }> {
+  // With files it is multipart (the browser sets the boundary, so no Content-Type); without, plain JSON as before.
+  let body: BodyInit;
+  const headers: Record<string, string> = {};
+  if (files.length > 0) {
+    const form = new FormData();
+    Object.entries(ticketData).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) form.append(key, String(value));
+    });
+    files.forEach((file) => form.append('files', file));
+    body = form;
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(ticketData);
+  }
+
   const response = await fetch(API_ROUTES.SUPPORT.TICKETS, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     credentials: 'include',
-    body: JSON.stringify(ticketData),
+    body,
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'Failed to create ticket');
+    throw new Error(error.message || error.error || 'Failed to create ticket');
   }
-  
+
   const data = await response.json();
-  return data.data;
+  // The ticket exists even when its files could not be stored — the API says so in `attachmentError`.
+  return { ...data.data, attachmentError: data.attachmentError };
+}
+
+/** POSTs a ticket body as JSON, or as multipart when files are attached (the browser sets the boundary). */
+async function postTicketBody(url: string, fields: Record<string, unknown>, files: File[], failure: string): Promise<SupportTicket & { attachmentError?: string }> {
+  let body: BodyInit;
+  const headers: Record<string, string> = {};
+  if (files.length > 0) {
+    const form = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) form.append(key, String(value));
+    });
+    files.forEach((file) => form.append('files', file));
+    body = form;
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(fields);
+  }
+
+  const response = await fetch(url, { method: 'POST', headers, credentials: 'include', body });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || error.error || failure);
+  }
+  const data = await response.json();
+  return { ...data.data, attachmentError: data.attachmentError };
+}
+
+/**
+ * An association admin opens a ticket to SocietyLedger support (Tier 2).
+ */
+export async function createPlatformTicket(ticketData: CreateTicketData, files: File[] = []): Promise<SupportTicket & { attachmentError?: string }> {
+  return postTicketBody(API_ROUTES.SUPPORT.PLATFORM_TICKETS, { ...ticketData }, files, 'Failed to contact SocietyLedger support');
+}
+
+/**
+ * An officer escalates a member's ticket. Opens a new Tier 2 ticket from the officer's own summary — nothing of the
+ * member's ticket is shared.
+ */
+export async function escalateTicket(
+  ticketId: number,
+  data: { subject: string; summary: string; category: TicketCategory; priority?: TicketPriority },
+  files: File[] = []
+): Promise<SupportTicket & { attachmentError?: string }> {
+  return postTicketBody(API_ROUTES.SUPPORT.TICKET_ESCALATE(ticketId), { ...data }, files, 'Failed to escalate ticket');
 }
 
 /**
@@ -274,20 +359,46 @@ export async function updateTicket(
 export async function addResponse(
   ticketId: number,
   message: string,
-  options?: { isInternal?: boolean }
-): Promise<TicketResponse> {
+  options?: { isInternal?: boolean; files?: File[] }
+): Promise<TicketResponse & { attachmentError?: string }> {
+  const files = options?.files ?? [];
+  let body: BodyInit;
+  const headers: Record<string, string> = {};
+  if (files.length > 0) {
+    const form = new FormData();
+    form.append('message', message);
+    if (options?.isInternal !== undefined) form.append('isInternal', String(options.isInternal));
+    files.forEach((file) => form.append('files', file));
+    body = form;
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify({ message, ...(options?.isInternal !== undefined ? { isInternal: options.isInternal } : {}) });
+  }
+
   const response = await fetch(API_ROUTES.SUPPORT.TICKET_RESPOND(ticketId), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     credentials: 'include',
-    body: JSON.stringify({ message, ...options }),
+    body,
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'Failed to add response');
+    throw new Error(error.message || error.error || 'Failed to add response');
   }
-  
+
+  const data = await response.json();
+  return { ...data.data, attachmentError: data.attachmentError };
+}
+
+/**
+ * A short-lived link to open one attachment (owner or staff only).
+ */
+export async function getAttachmentUrl(attachmentId: number): Promise<{ url: string; filename: string; mimeType: string }> {
+  const response = await fetch(API_ROUTES.SUPPORT.ATTACHMENT(attachmentId), { credentials: 'include' });
+  if (!response.ok) {
+    throw new Error('Could not open the file');
+  }
   const data = await response.json();
   return data.data;
 }
@@ -450,8 +561,27 @@ export const TICKET_CATEGORY_LABELS: Record<TicketCategory, string> = {
   TECHNICAL: 'Technical',
   BUG: 'Bug Report',
   FEATURE_REQUEST: 'Feature Request',
+  BILLING: 'Billing',
+  DATA: 'Data',
   OTHER: 'Other',
 };
+
+/** What a member can raise with their association. */
+export const MEMBER_CATEGORIES: TicketCategory[] = ['ACCESS', 'PAYMENTS', 'REPORTS', 'MEMBERS', 'TECHNICAL', 'BUG', 'FEATURE_REQUEST', 'OTHER'];
+
+/** What an association admin can raise with SocietyLedger support (Tier 2). */
+export const PLATFORM_CATEGORIES: TicketCategory[] = ['ACCESS', 'BILLING', 'DATA', 'TECHNICAL', 'BUG', 'FEATURE_REQUEST', 'OTHER'];
+
+/**
+ * Status wording. Staff handling someone else's ticket see "Waiting on User"; the person who opened it sees whose turn
+ * it is from their side: "Waiting on you" / "Waiting on support" (the same words the mobile app uses).
+ */
+export function getStatusLabel(status: TicketStatus, asStaff: boolean): string {
+  if (asStaff) return TICKET_STATUS_LABELS[status];
+  if (status === 'WAITING_ON_USER') return 'Waiting on you';
+  if (status === 'WAITING_ON_STAFF') return 'Waiting on support';
+  return TICKET_STATUS_LABELS[status];
+}
 
 export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
   LOW: 'Low',

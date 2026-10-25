@@ -1,25 +1,52 @@
 ---
 title: "Waiving a penalty"
-description: "Forgiving a late fee for a member — currently not available from the dashboard."
+description: "Forgive all or part of a late fee for a member, with a reason on record."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["FN11"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/finance/penalties-and-late-fees"]
 ---
 
-Sometimes a late fee shouldn't stand — a payment was actually on time, or there's a good reason to forgive it.
-
-<Callout type="warning" title="No waive button on the dashboard yet">
-The **Waivers** tab on the Penalties page is ready to show a history of waived penalties, but there's currently no button anywhere to actually waive one — the feature isn't reachable yet, even though the capability exists behind the scenes. Contact SocietyLedger support if you need a penalty waived in the meantime.
-</Callout>
+Sometimes a late fee shouldn't stand — a payment was actually on time, or there's a good reason to forgive it. Waiving forgives some or all of what is still owed on a penalty.
 
 ## Before you start
 
-Note the member, the penalty amount, and your reason — support will need all three.
+You need the **approve payments** permission, which Administrators and Treasurers have by default. Only a **penalty** can be waived, and only while something is still owed on it. For a due or a levy, [void and replace the charge](/docs/finance/editing-voiding-and-deleting) instead.
+
+## Waive a penalty
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Finance", "Penalties"]} />, then the **Applied Penalties** tab.</Step>
+<Step>Find the penalty and select **Waive**.</Step>
+<Step>Enter the **Waived Amount** (it starts at everything that is owed) and a **Reason**.</Step>
+<Step>Confirm.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Finance", "Penalties"]} />, then the **Charged** tab.</Step>
+<Step>Tap the penalty, then **Waive this penalty**. You can also open the penalty charge and choose **Waive this penalty** from its menu.</Step>
+<Step>Enter the **Amount to waive** (it starts at everything that is owed) and a **Reason**.</Step>
+<Step>Tap **Waive penalty**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 ## What happens next
 
-Once a penalty is waived, it's removed from the member's outstanding balance and appears on the Penalties page's **Waivers** tab with the reason on record.
+- **Waiving part of a penalty** lowers it by that amount, and the rest stays owed. The member's balance, the overdue list and reminders all show the lower amount straight away.
+- **Waiving everything that is owed** marks the penalty **Waived** and it is no longer owed. Anything the member had already paid stays recorded as paid.
+- The member's statement shows a credit for what was forgiven, and the waiver is kept on the **Waivers** tab with the reason, the amount and the date.
+
+## Limits
+
+- You can't waive more than is still owed on the penalty.
+- A reason is required, at least 5 characters.
+- A penalty that is already waived, paid or voided can't be waived.
+- If someone else changes the same penalty at the same moment, the second waiver is refused and asks you to reload — a penalty can't be waived twice by mistake.
+- A waiver can't be undone from the app.

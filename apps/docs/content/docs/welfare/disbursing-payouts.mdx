@@ -3,10 +3,10 @@ title: "Approving and paying out support"
 description: "Mark an approved request as paid, once you've actually sent the money."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["WF4"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-26"
 related: ["/docs/welfare/payout-requests"]
 ---
 
@@ -22,14 +22,27 @@ Once a request shows **Disbursed**, there's no way to reverse it from the interf
 
 ## Disburse an approved request
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>On the Requests list, find the **Approved** request and select the cash icon.</Step>
-<Step>A prompt asks for the **disbursement method** — enter `cash`, `bank_transfer`, or however you paid.</Step>
-<Step>Confirm the prompt.</Step>
+<Step>Choose how it was paid — cash, bank transfer, or another method.</Step>
+<Step>Confirm.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>On <MenuPath items={["Manage", "Welfare", "Payout requests"]} />, open the **To pay out** tab and open the request.</Step>
+<Step>Tap **Pay out**, choose how it was paid, and add an optional reference.</Step>
+<Step>Tap **Pay out** to confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/welfare/disbursing-payouts-1.webp" alt="Payout Requests list with a request showing Disbursed status, and a Success toast confirming Payout disbursed successfully" />
 
 ## What happens next
 
 The request shows **Disbursed**, and the fund's balance decreases by the approved amount — the Welfare dashboard's **Total Payouts** figure updates to match.
+
+The money comes out of the fund in the same step, and only if the fund still holds it, so a fund can never go below zero. A request can only be paid out once: a second attempt, or a double tap, is refused. **You can't pay out your own request** — another officer has to.

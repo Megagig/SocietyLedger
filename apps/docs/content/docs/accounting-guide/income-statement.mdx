@@ -1,44 +1,57 @@
 ---
 title: "Income statement in depth"
-description: "Revenue and expenses by account, for any period, with a comparison to the one before."
+description: "Income and spending by account for a period, with a comparison to the one before."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/accounting/income-statement"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/accounting/income-statement", "AC5"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting/income-statement-at-a-glance", "/docs/accounting-guide/journal-entries"]
 ---
 
-The full income statement breaks revenue and expenses down by individual account, not just the totals shown on the dashboard.
+The income statement breaks income and spending down by account, for the period you choose. It counts what was posted **within that period**, not everything since the books began.
 
 ## How it works
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Accounting", "Income Statement"]} />.</Step>
-<Step>Pick a **Period** — This Month, Last Month, This Quarter, This Year, or a custom range.</Step>
-<Step>Toggle **Include Comparison** to see the same accounts for the period before.</Step>
+<Step>Pick a **Period**: this month, last month, this quarter, this year, or a custom range.</Step>
+<Step>Switch on **Include Comparison** to see the stretch of the same length just before.</Step>
 <Step>Select <UiLabel>Generate Report</UiLabel>.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Accounting", "Financial statements"]} /> and choose **Income**.</Step>
+<Step>Pick a **Period** from the list, or **Choose dates**. Under **Compare with**, choose **The period before** to see how income, expenses and the result changed, in naira and as a percentage.</Step>
+<Step>Tap the share icon at the top to send the statement as text, or the PDF icon (if you may export) to send it as a PDF with your association's name on it.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/accounting-guide/income-statement-1.webp" alt="Income Statement report with revenue and expense accounts, Net Income total, and a period comparison column" />
 
-Worked example, for October 2026 with one posted entry so far:
+Worked example, for October 2026 with ₦50,000 of dues posted in October and ₦20,000 posted in September:
 
-| Account | This period | Last period | Change |
-|---|---|---|---|
-| Revenue — Membership Dues | ₦50,000 | ₦0 | +₦50,000 |
-| **Total Revenue** | **₦50,000** | **₦0** | +₦50,000 |
-| Total Expenses | ₦0 | ₦0 | — |
-| **Net Income** | **₦50,000** | **₦0** | +₦50,000 |
+| Account | October | September |
+|---|---|---|
+| Income — Membership Dues | ₦50,000 | ₦20,000 |
+| **Total income** | **₦50,000** | **₦20,000** |
+| Total expenses | ₦0 | ₦0 |
+| **Net surplus** | **₦50,000** | **₦20,000** |
 
-Only **Posted** entries are included — a draft or pending entry for the same amount wouldn't move these numbers yet.
+## What it counts
 
-## Why it matters
+- **Posted entries only.** A draft, or an entry waiting for approval, is not counted yet.
+- **Days are Lagos days.** A period includes the whole of its last day.
+- **A loss is shown as a loss.** A negative result reads **Net loss**.
 
-The per-account breakdown is what shows *where* income or expense came from, not just whether the period was profitable — useful for spotting a category that's unexpectedly empty, which usually means unsynced activity rather than no activity.
+Select an account or a total to see the entries that make it up, for the same dates. See [Opening a figure to see the entries behind it](/docs/accounting-guide/opening-a-figure).
 
 ## What you can do
 
 - [Your income statement at a glance](/docs/accounting/income-statement-at-a-glance) — the summary version.
-- [Balance sheet in depth](/docs/accounting-guide/balance-sheet) — what this period's net income does to your equity.
+- [Balance sheet in depth](/docs/accounting-guide/balance-sheet) — what the result does to equity.

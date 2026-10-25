@@ -38,6 +38,7 @@ export interface JournalEntry {
   description: string;
   reference: string | null;
   sourceType: string | null;
+  sourceId?: number | null;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'POSTED' | 'VOIDED';
   totalDebit: number;
   totalCredit: number;
@@ -46,6 +47,67 @@ export interface JournalEntry {
   approvedAt: string | null;
   createdAt: string;
   lines: JournalEntryLine[];
+  /** Only on a single entry: the record that made it, in plain facts (null for an entry a person wrote). */
+  source?: EntrySource | null;
+}
+
+export type SourceKind =
+  | 'charge'
+  | 'payment'
+  | 'welfare_contribution'
+  | 'welfare_payout'
+  | 'savings_transaction'
+  | 'loan'
+  | 'loan_repayment'
+  | 'cash_lodgment'
+  | 'expense'
+  | 'reversal';
+
+/** The record behind an automatic entry. `missing` is true when it can no longer be found. */
+export interface EntrySource {
+  kind: SourceKind;
+  id: number;
+  title: string;
+  summary: string;
+  member: string | null;
+  amount: string | number | null;
+  date: string | null;
+  status: string | null;
+  reference: string | null;
+  missing: boolean;
+  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number; expenseId?: number };
+}
+
+/** One posted line of an account's ledger, with the balance after it. */
+export interface LedgerLine {
+  lineId: number;
+  entryId: number;
+  entryNumber: string;
+  entryDate: string | null;
+  entryDescription: string;
+  lineDescription: string | null;
+  reference: string | null;
+  sourceType: string | null;
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  debit: string | number;
+  credit: string | number;
+  effect: string | number;
+  balance: string | number;
+}
+
+export interface Ledger {
+  accounts: { id: number; code: string; name: string; type: ChartOfAccount['type']; normalBalance: 'DEBIT' | 'CREDIT'; parentId: number | null; isActive: boolean }[];
+  range: { from: string | null; to: string | null };
+  opening: string | number;
+  totalDebit: string | number;
+  totalCredit: string | number;
+  movement: string | number;
+  closing: string | number;
+  subAccounts: { id: number; code: string; name: string; balance: string | number }[];
+  lines: LedgerLine[];
+  pagination: { page: number; limit: number; totalCount: number; totalPages: number; hasMore: boolean };
 }
 
 export interface Budget {
@@ -144,6 +206,8 @@ export interface CashFlowItem {
   description: string;
   amount: number;
   accountId?: number;
+  /** The journal entry the movement came from, so it can be opened. */
+  entryId?: number;
 }
 
 export interface CashFlowStatement {
@@ -154,6 +218,7 @@ export interface CashFlowStatement {
   netCashChange: number;
   beginningCash: number;
   endingCash: number;
+  cashAccountIds?: number[];
 }
 
 export interface AccountingDashboard {
@@ -166,7 +231,10 @@ export interface AccountingDashboard {
   };
   recentEntries: JournalEntry[];
   pendingApprovals: number;
+  /** Expense vouchers waiting for an approver. */
+  pendingExpenses?: number;
   budgetStatus?: {
+    budgetId?: number;
     totalBudget: number;
     totalSpent: number;
     remainingBudget: number;
@@ -277,8 +345,26 @@ export const accountingApi = {
     return response.data;
   },
 
-  async postJournalEntry(id: number) {
-    const response = await api.post(`${API_URL}/api/accounting/journal-entries/${id}/post`);
+  async postJournalEntry(id: number, password: string) {
+    const response = await api.post(`${API_URL}/api/accounting/journal-entries/${id}/post`, { password });
+    return response.data;
+  },
+
+  // ==========================================
+  // Ledger: what makes up an account's balance
+  // ==========================================
+
+  async getLedger(params: {
+    accountId?: number;
+    accountIds?: string;
+    scope?: string;
+    from?: string;
+    to?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const response = await api.get(`${API_URL}/api/accounting/ledger`, { params });
     return response.data;
   },
 

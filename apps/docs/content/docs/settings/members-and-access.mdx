@@ -1,40 +1,55 @@
 ---
 title: "Members & access settings"
-description: "Self-registration, approval, invite expiry and member ID rules — none of which the system currently enforces."
+description: "Self-registration, the starting role, invite lifetime and how member IDs are made."
 type: task
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/settings/members-access", "ST6"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/members/inviting-members-to-log-in", "/docs/members/self-registration-and-approvals"]
 ---
 
-Members & Access settings record how you'd like new people to join your association — but as of this version, every toggle on this page is a preference, not an enforced rule.
+These settings decide whether people can sign themselves up, what role they start with, how long an invite link lasts and how member IDs are made.
 
 ## Before you start
 
-You need the **edit settings** permission, which only Administrators have by default.
+You need the **edit settings** permission to change anything; only Administrators have it by default. With only the **view settings** permission you can open this screen and read it, but not change it.
 
 ## Update members & access settings
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Settings", "Members & Access"]} />.</Step>
-<Step>Toggle **Allow Self-Signup**, **Require Admin Approval** and **Require Email Verification**.</Step>
-<Step>Set a **Default Role for New Members** and toggle **Allow Multiple Roles**.</Step>
-<Step>Set **Invite Expiry (Hours)**.</Step>
-<Step>Toggle **Auto-Generate Member IDs** and set a **Member ID Prefix**.</Step>
+<Step>Switch **Allow Self-Signup** on or off and choose the **Default Role for New Members**.</Step>
+<Step>Set **Invite Expiry (Hours)**, and **Allow Multiple Roles** if one person may hold several.</Step>
+<Step>Switch **Auto-Generate Member IDs** on or off, and set a **Member ID Prefix**.</Step>
 <Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Settings", "Members and access"]} />.</Step>
+<Step>Switch **Let people sign themselves up** on or off and choose the role they start with.</Step>
+<Step>Set how many hours an invite lasts, and the member ID options.</Step>
+<Step>Tap **Save changes**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/members/self-registration-and-approvals-1.webp" alt="Members & Access Settings page with self-registration, role, invite and member ID sections" />
 
-<Callout type="danger" title="None of these settings are enforced today">
-Every toggle on this page saves but is never read anywhere else in the system — confirmed by tracing each field through the entire API. The one with real consequence: **turning off Allow Self-Signup does not stop anyone from registering** — the public registration endpoint accepts new sign-ups on your association's subdomain regardless of this setting. New registrations do always require approval and email verification in practice (both are hardcoded, not optional) — but that's incidental, not because this page configured it. Invite links expire on a fixed schedule unrelated to the hours set here, and member IDs are generated in a fixed format regardless of the prefix or auto-generate toggle.
+## What each setting does
+
+- **Self sign-up.** When off, nobody can register on your association's address. They need an invite instead. When on, every new sign-up still waits for an officer to approve it. See [Self-registration and approvals](/docs/members/self-registration-and-approvals).
+- **Role they start with.** The role a self-registered person gets once approved.
+- **Invite lifetime.** How long a new invite link works. Invites already sent keep the time they were sent with. The limit is 30 days.
+- **Member IDs.** With automatic IDs on, new members get the prefix and the next number, such as `OGU0042`. With a blank prefix the prefix is `MEM`. With automatic IDs off, the officer types the ID when adding a member.
+- **Multiple roles.** When off, giving someone a new role takes away the one they had.
+
+<Callout type="note" title="Settings that cannot be changed">
+The web page also shows **Require Admin Approval** and **Require Email Verification**. Both are always on, so switching them does nothing. They are not on the mobile screen.
 </Callout>
-
-## What happens next
-
-Nothing changes elsewhere in the app based on what you set here — see the callout above. For actually bringing someone onto the association today, see [Inviting members to log in](/docs/members/inviting-members-to-log-in).
 
 ## Related

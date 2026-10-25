@@ -8,7 +8,8 @@ import {
   Stack, Group, Button, Text, Pagination, Badge,
   Checkbox, Modal, Textarea, ActionIcon, Tooltip,
 } from '@mantine/core';
-import { IconCheck, IconX, IconCheckbox } from '@tabler/icons-react';
+import { IconCheck, IconX, IconMailCheck, IconMailForward } from '@tabler/icons-react';
+import { ASSOCIATION_TYPES } from '@societyledger/shared';
 import { bff } from '@/lib/bff';
 import { PageHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
@@ -28,8 +29,22 @@ interface Approval {
     role: string;
     emailVerified: boolean;
     createdAt: string;
-    association: { id: number; name: string; subdomain: string } | null;
+    member: { firstName: string; lastName: string; phone: string | null } | null;
+    association: {
+      id: number;
+      name: string;
+      subdomain: string;
+      associationType: string | null;
+      customAssociationType: string | null;
+    } | null;
   };
+}
+
+/** "Alumni association", or the founder's own words when they chose Other. */
+function typeLabel(a: Approval['user']['association']): string | null {
+  if (!a?.associationType) return null;
+  if (a.associationType === 'other') return a.customAssociationType ? `Other: ${a.customAssociationType}` : 'Other';
+  return ASSOCIATION_TYPES.find((t) => t.key === a.associationType)?.label ?? a.associationType;
 }
 
 interface ApprovalsResponse {
@@ -84,6 +99,53 @@ function RejectModal({
   );
 }
 
+// ── Verify email modal ──────────────────────────────────────────────────────────
+
+function VerifyEmailModal({
+  target,
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  target: Approval | null;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+  loading: boolean;
+}) {
+  const [reason, setReason] = useState('');
+
+  function handleClose() {
+    setReason('');
+    onClose();
+  }
+
+  return (
+    <Modal opened={!!target} onClose={handleClose} title="Mark email as verified" centered size="sm">
+      <Stack gap="md">
+        <Text size="sm" c="dimmed">
+          {target?.user.email} will be able to sign in without entering the emailed code. Only do this when you are sure the address
+          belongs to them (for example, you confirmed it with them). Your reason is recorded in the audit log.
+        </Text>
+        <Textarea
+          label="Reason"
+          placeholder="e.g. Code email never arrived; confirmed by phone"
+          value={reason}
+          onChange={(e) => setReason(e.currentTarget.value)}
+          minRows={2}
+          size="sm"
+          required
+        />
+        <Group justify="flex-end">
+          <Button variant="default" size="sm" onClick={handleClose} disabled={loading}>Cancel</Button>
+          <Button size="sm" loading={loading} disabled={reason.trim().length < 3} onClick={() => onConfirm(reason.trim())}>
+            Mark as verified
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ApprovalsPage() {
@@ -92,7 +154,9 @@ export default function ApprovalsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 400);
   const [statusFilter, setStatusFilter] = useState<string | null>('pending');
+  const [emailFilter, setEmailFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [verifyTarget, setVerifyTarget] = useState<Approval | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   // Reject single modal
@@ -103,11 +167,12 @@ export default function ApprovalsPage() {
   const [bulkRejectOpened, { open: openBulkReject, close: closeBulkReject }] = useDisclosure(false);
 
   const q = useQuery({
-    queryKey: ['approvals', page, debouncedSearch, statusFilter],
+    queryKey: ['approvals', page, debouncedSearch, statusFilter, emailFilter],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: '20' });
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (statusFilter) params.set('status', statusFilter);
+      if (emailFilter) params.set('emailVerified', emailFilter);
       return bff<ApprovalsResponse>(`admin/approvals?${params}`);
     },
   });
@@ -138,6 +203,33 @@ export default function ApprovalsPage() {
       qc.invalidateQueries({ queryKey: ['approvals'] });
       closeReject();
       setRejectTarget(null);
+    },
+    onError: (err: Error) => notifications.show({ message: err.message, color: 'red' }),
+  });
+
+  const verifyMut = useMutation({
+    mutationFn: ({ userId, reason }: { userId: number; reason: string }) =>
+      bff(`admin/users/${userId}/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: () => {
+      notifications.show({ message: 'Email marked as verified', color: 'green' });
+      qc.invalidateQueries({ queryKey: ['approvals'] });
+      setVerifyTarget(null);
+    },
+    onError: (err: Error) => notifications.show({ message: err.message, color: 'red' }),
+  });
+
+  const resendMut = useMutation({
+    mutationFn: (userId: number) => bff<{ emailSent: boolean; emailError?: string }>(`admin/users/${userId}/resend-verification`, { method: 'POST' }),
+    onSuccess: (res) => {
+      if (res?.emailSent === false) {
+        notifications.show({ message: 'The code was created but the email could not be sent. Mark the email as verified instead.', color: 'orange' });
+      } else {
+        notifications.show({ message: 'A new verification code was emailed', color: 'green' });
+      }
     },
     onError: (err: Error) => notifications.show({ message: err.message, color: 'red' }),
   });
@@ -175,7 +267,7 @@ export default function ApprovalsPage() {
 
   const approvals = q.data?.approvals ?? [];
   const totalPages = q.data?.totalPages ?? 1;
-  const hasActiveFilters = !!(debouncedSearch || (statusFilter && statusFilter !== 'pending'));
+  const hasActiveFilters = !!(debouncedSearch || emailFilter || (statusFilter && statusFilter !== 'pending'));
   const allSelected = approvals.length > 0 && approvals.every((a) => selected.has(a.user.id));
   const selectedIds = Array.from(selected);
 
@@ -235,9 +327,19 @@ export default function ApprovalsPage() {
               { value: 'rejected', label: 'Rejected' },
             ],
           },
+          {
+            key: 'email',
+            label: 'Email',
+            value: emailFilter,
+            onChange: (v) => { setEmailFilter(v); setPage(1); },
+            options: [
+              { value: 'false', label: 'Not verified' },
+              { value: 'true', label: 'Verified' },
+            ],
+          },
         ]}
         hasActiveFilters={hasActiveFilters}
-        onReset={() => { setSearch(''); setStatusFilter('pending'); setPage(1); }}
+        onReset={() => { setSearch(''); setStatusFilter('pending'); setEmailFilter(null); setPage(1); }}
       />
 
       {q.isError ? (
@@ -275,6 +377,11 @@ export default function ApprovalsPage() {
               render: (r) => (
                 <Stack gap={0}>
                   <Text size="sm" fw={600}>{r.user.email}</Text>
+                  {r.user.member && (
+                    <Text size="xs" c="dimmed">
+                      {r.user.member.firstName} {r.user.member.lastName}{r.user.member.phone ? ` · ${r.user.member.phone}` : ''}
+                    </Text>
+                  )}
                   <Group gap="xs">
                     <Badge
                       size="xs"
@@ -295,6 +402,7 @@ export default function ApprovalsPage() {
                   <Stack gap={0}>
                     <Text size="sm">{r.user.association.name}</Text>
                     <Text size="xs" c="dimmed">{r.user.association.subdomain}</Text>
+                    {typeLabel(r.user.association) && <Text size="xs" c="dimmed">{typeLabel(r.user.association)}</Text>}
                   </Stack>
                 ) : (
                   <Text size="sm" c="dimmed">—</Text>
@@ -326,9 +434,30 @@ export default function ApprovalsPage() {
             {
               key: 'actions',
               header: 'Actions',
-              render: (r) =>
-                r.approvalStatus === 'pending' ? (
-                  <Group gap="xs" wrap="nowrap">
+              render: (r) => (
+                <Group gap="xs" wrap="nowrap">
+                  {!r.user.emailVerified && (
+                    <>
+                      <Tooltip label="Mark email as verified">
+                        <ActionIcon color="blue" variant="light" size="sm" onClick={() => setVerifyTarget(r)}>
+                          <IconMailCheck size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label="Resend verification code">
+                        <ActionIcon
+                          color="gray"
+                          variant="light"
+                          size="sm"
+                          loading={resendMut.isPending && resendMut.variables === r.user.id}
+                          onClick={() => resendMut.mutate(r.user.id)}
+                        >
+                          <IconMailForward size={14} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </>
+                  )}
+                  {r.approvalStatus === 'pending' ? (
+                  <>
                     <Tooltip label="Approve">
                       <ActionIcon
                         color="green"
@@ -350,10 +479,12 @@ export default function ApprovalsPage() {
                         <IconX size={14} />
                       </ActionIcon>
                     </Tooltip>
-                  </Group>
-                ) : (
-                  <Text size="xs" c="dimmed">—</Text>
-                ),
+                  </>
+                  ) : r.user.emailVerified ? (
+                    <Text size="xs" c="dimmed">—</Text>
+                  ) : null}
+                </Group>
+              ),
             },
           ]}
         />
@@ -364,6 +495,13 @@ export default function ApprovalsPage() {
           <Pagination total={totalPages} value={page} onChange={setPage} size="sm" />
         </Group>
       )}
+
+      <VerifyEmailModal
+        target={verifyTarget}
+        onClose={() => setVerifyTarget(null)}
+        loading={verifyMut.isPending}
+        onConfirm={(reason) => verifyTarget && verifyMut.mutate({ userId: verifyTarget.user.id, reason })}
+      />
 
       {/* Single reject modal */}
       <RejectModal

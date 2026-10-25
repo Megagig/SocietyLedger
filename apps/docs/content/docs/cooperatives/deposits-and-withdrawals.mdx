@@ -3,14 +3,18 @@ title: "Recording deposits and withdrawals"
 description: "Record money going into or out of a member's savings account."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["CP2"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/cooperatives/savings-accounts"]
+lastVerified: "2026-10-26"
+related: ["/docs/cooperatives/savings-accounts", "/docs/cooperatives/approving-savings-deposits", "/docs/cooperatives/savings-rule-and-held-savings"]
 ---
 
 Record a deposit or withdrawal against a member's savings account — the balance updates immediately.
+
+<Callout type="note" title="Members can declare their own deposits">
+When a member pays the cooperative's bank account and uploads their receipt, the deposit waits for your approval instead — see [Approving member savings deposits](/docs/cooperatives/approving-savings-deposits). Use this page when you're recording a deposit yourself, for example cash you've received.
+</Callout>
 
 ## Before you start
 
@@ -18,15 +22,31 @@ You need the **Administrator**, **Treasurer** or **Financial Secretary** role. T
 
 ## Record a transaction
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Cooperatives", "Savings"]} /> and find the member's account.</Step>
 <Step>Select the deposit (down arrow) or withdrawal (up arrow) icon on their row.</Step>
 <Step>Enter the **Amount**, choose a **Payment Method**, and add an optional **Reference**.</Step>
 <Step>Select **Record Deposit** or **Process Withdrawal** to confirm.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Cooperatives", "Savings accounts"]} /> and open the member's account. The screen shows how much is **available** and how much is held against a loan.</Step>
+<Step>Tap **Record deposit** or **Record withdrawal**.</Step>
+<Step>Enter the **Amount**, choose **How**, and add an optional reference or note.</Step>
+<Step>Tap **Record deposit** or **Record withdrawal** to confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/cooperatives/deposits-and-withdrawals-1.webp" alt="Record Deposit modal for a savings account with an Amount field showing ₦15,000" />
 
 ## What happens next
 
 The account's balance, **Total Deposits** or **Total Withdrawals**, updates immediately. There's no separate approval step — a recorded deposit or withdrawal takes effect as soon as you confirm it, so only record one you've actually verified.
+
+**The balance can't be overdrawn.** A withdrawal is checked and applied in one step, so two withdrawals at the same moment can't both succeed and take an account below zero; the one that would overdraw is refused with "Insufficient balance".
+
+**Withdrawals and held savings:** if part of a member's savings is held against an active loan, a withdrawal is refused when it would dip into the held amount. The message shows how much is available — see [Your savings rule and held savings](/docs/cooperatives/savings-rule-and-held-savings). Members can't post deposits or withdrawals themselves; only officers can record them here.

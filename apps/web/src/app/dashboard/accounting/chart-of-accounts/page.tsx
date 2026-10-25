@@ -34,6 +34,8 @@ import {
 } from '@tabler/icons-react';
 import { accountingApi, ChartOfAccount } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { entryHref, ledgerHref } from '@/lib/accounting-drill';
 
 const ACCOUNT_TYPES = [
   { value: 'ASSET', label: 'Asset' },
@@ -83,6 +85,7 @@ export default function ChartOfAccountsPage() {
       description: '',
       parentId: '',
       normalBalance: 'DEBIT',
+      isActive: true,
     },
     validate: {
       code: (value) => (!value ? 'Account code is required' : null),
@@ -168,22 +171,32 @@ export default function ChartOfAccountsPage() {
       description: account.description || '',
       parentId: account.parentId?.toString() || '',
       normalBalance: account.normalBalance,
+      isActive: account.isActive,
     });
     open();
   };
 
   const handleSubmit = (values: typeof form.values) => {
-    const data = {
-      ...values,
+    if (editingAccount) {
+      updateMutation.mutate({
+        id: editingAccount.id,
+        data: {
+          name: values.name,
+          subType: values.subType || null,
+          description: values.description || null,
+          // Clearing the parent takes the account out from under it
+          parentId: values.parentId ? parseInt(values.parentId) : null,
+          ...(editingAccount.isSystemAccount ? {} : { isActive: values.isActive }),
+        },
+      });
+      return;
+    }
+    const { isActive: _unused, ...rest } = values;
+    createMutation.mutate({
+      ...rest,
       parentId: values.parentId ? parseInt(values.parentId) : undefined,
       subType: values.subType || undefined,
-    };
-
-    if (editingAccount) {
-      updateMutation.mutate({ id: editingAccount.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
+    });
   };
 
   const handleClose = () => {
@@ -197,7 +210,7 @@ export default function ChartOfAccountsPage() {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -231,7 +244,7 @@ export default function ChartOfAccountsPage() {
           Chart of Accounts
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Manage your association's account structure
+          Manage your association&apos;s account structure
         </p>
       </div>
 
@@ -277,7 +290,7 @@ export default function ChartOfAccountsPage() {
       {accounts.length === 0 ? (
         <Alert icon={<IconReceipt size={20} />} title="No Accounts Found" color="blue">
           <Text size="sm" mb="md">
-            Your chart of accounts is empty. Click "Initialize Standard Accounts" to set up a standard chart of accounts, or add accounts manually.
+            Your chart of accounts is empty. Click &quot;Initialize Standard Accounts&quot; to set up a standard chart of accounts, or add accounts manually.
           </Text>
         </Alert>
       ) : (
@@ -289,25 +302,25 @@ export default function ChartOfAccountsPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <Text fw={600}>{account.code}</Text>
-                    <Text size="sm">{account.name}</Text>
+                    <Text size="sm"><DrillLink href={ledgerHref({ accountId: account.id, title: account.name })} label={account.name}>{account.name}</DrillLink></Text>
                     {account.description && (
                       <Text size="xs" c="dimmed" mt={2}>{account.description}</Text>
                     )}
                   </div>
-                  {!account.isSystemAccount && (
-                    <Menu position="bottom-end" withArrow>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle">
-                          <IconDotsVertical size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<IconEdit size={14} />}
-                          onClick={() => handleEdit(account)}
-                        >
-                          Edit
-                        </Menu.Item>
+                  <Menu position="bottom-end" withArrow>
+                    <Menu.Target>
+                      <ActionIcon variant="subtle" aria-label={`Actions for ${account.name}`}>
+                        <IconDotsVertical size={16} />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        leftSection={<IconEdit size={14} />}
+                        onClick={() => handleEdit(account)}
+                      >
+                        Edit
+                      </Menu.Item>
+                      {!account.isSystemAccount && (
                         <Menu.Item
                           leftSection={<IconTrash size={14} />}
                           color="red"
@@ -315,9 +328,9 @@ export default function ChartOfAccountsPage() {
                         >
                           Delete
                         </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
-                  )}
+                      )}
+                    </Menu.Dropdown>
+                  </Menu>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-2">
                   <Badge color={getTypeColor(account.type)} variant="light" size="sm">
@@ -332,7 +345,7 @@ export default function ChartOfAccountsPage() {
                     {account.subType?.replace(/_/g, ' ') || '-'}
                   </Text>
                   <Text fw={500}>
-                    {account.balance !== undefined ? formatCurrency(account.balance) : '-'}
+                    {account.balance !== undefined ? (<DrillLink href={Number(account.balance) !== 0 ? ledgerHref({ accountId: account.id, title: account.name }) : undefined} label={account.name}>{formatCurrency(account.balance)}</DrillLink>) : '-'}
                   </Text>
                 </div>
               </Card>
@@ -360,7 +373,7 @@ export default function ChartOfAccountsPage() {
                       <Text fw={500}>{account.code}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text>{account.name}</Text>
+                      <Text><DrillLink href={ledgerHref({ accountId: account.id, title: account.name })} label={account.name}>{account.name}</DrillLink></Text>
                       {account.description && (
                         <Text size="xs" c="dimmed">{account.description}</Text>
                       )}
@@ -377,7 +390,7 @@ export default function ChartOfAccountsPage() {
                     </Table.Td>
                     <Table.Td>
                       <Text fw={500}>
-                        {account.balance !== undefined ? formatCurrency(account.balance) : '-'}
+                        {account.balance !== undefined ? (<DrillLink href={Number(account.balance) !== 0 ? ledgerHref({ accountId: account.id, title: account.name }) : undefined} label={account.name}>{formatCurrency(account.balance)}</DrillLink>) : '-'}
                       </Text>
                     </Table.Td>
                     <Table.Td>
@@ -386,20 +399,20 @@ export default function ChartOfAccountsPage() {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      {!account.isSystemAccount && (
-                        <Menu position="bottom-end" withArrow>
-                          <Menu.Target>
-                            <ActionIcon variant="subtle">
-                              <IconDotsVertical size={16} />
-                            </ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item
-                              leftSection={<IconEdit size={14} />}
-                              onClick={() => handleEdit(account)}
-                            >
-                              Edit
-                            </Menu.Item>
+                      <Menu position="bottom-end" withArrow>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle" aria-label={`Actions for ${account.name}`}>
+                            <IconDotsVertical size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            leftSection={<IconEdit size={14} />}
+                            onClick={() => handleEdit(account)}
+                          >
+                            Edit
+                          </Menu.Item>
+                          {!account.isSystemAccount && (
                             <Menu.Item
                               leftSection={<IconTrash size={14} />}
                               color="red"
@@ -407,9 +420,9 @@ export default function ChartOfAccountsPage() {
                             >
                               Delete
                             </Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
-                      )}
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -483,6 +496,20 @@ export default function ChartOfAccountsPage() {
               placeholder="Optional description"
               {...form.getInputProps('description')}
             />
+
+            {editingAccount && !editingAccount.isSystemAccount && (
+              <Switch
+                label="In use"
+                description="Switch off an account you no longer post to. Its past entries stay."
+                checked={form.values.isActive}
+                onChange={(e) => form.setFieldValue('isActive', e.currentTarget.checked)}
+              />
+            )}
+            {editingAccount?.isSystemAccount && (
+              <Text size="xs" c="dimmed">
+                This is a built-in account. You can rename it, describe it and move it, but its code and type stay, and it cannot be switched off or deleted.
+              </Text>
+            )}
 
             <Group justify="flex-end" mt="md">
               <Button variant="light" onClick={handleClose}>

@@ -3,10 +3,10 @@ title: "Cancelling or postponing a meeting"
 description: "Cancel a scheduled meeting with a reason — and what to do if you're just moving the date."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["GV2"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-24"
 related: ["/docs/meetings/scheduling-a-meeting"]
 ---
 
@@ -14,7 +14,7 @@ Cancel a meeting that scheduled but won't go ahead, with a reason that's recorde
 
 ## Before you start
 
-You need the **Administrator** role. Only a **Scheduled** meeting can be cancelled.
+You need the permission to cancel meetings, which Administrators have. A meeting can be cancelled until it has been cancelled or **held** — a meeting that has already taken place (**Held**) can't be cancelled, and cancelling twice is refused.
 
 <Callout type="danger" title="Cancelling can't be undone">
 Once a meeting is cancelled, there's no way to reopen it from the interface. If you're moving the date rather than calling it off entirely, see the postponing note below before you cancel.
@@ -23,7 +23,7 @@ Once a meeting is cancelled, there's no way to reopen it from the interface. If 
 ## Cancel a meeting
 
 <Steps>
-<Step>Open the meeting from <MenuPath items={["Governance", "Meetings"]} /> and select **Cancel**.</Step>
+<Step>Open the meeting from <MenuPath items={["Governance", "Meetings"]} /> and select **Cancel**. In the app, open it from <MenuPath items={["Manage", "Meetings"]} />, tap the **⋮** menu, then **Cancel meeting**.</Step>
 <Step>Enter a **reason for cancellation** — this is required.</Step>
 <Step>Select **Cancel Meeting** to confirm, or **Keep Meeting** to back out.</Step>
 </Steps>
@@ -35,5 +35,8 @@ Cancelling is the only option — there's no button that moves a meeting to a ne
 </Callout>
 
 ## What happens next
+
+Cancelling is the only way to call a meeting off — a meeting's status can't be switched to *Cancelled* by editing it, so the reason is always recorded and members are always told. A meeting where cash was collected can't be deleted; cancel it instead to keep the history.
+
 
 The meeting shows as **Cancelled** with your reason, and every member gets an in-app notification and an email. Its agenda and any attendance already taken stay attached to the cancelled meeting as a record.

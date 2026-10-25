@@ -8,6 +8,7 @@ import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
+import { userOwnsCharge } from '../charge-ownership';
 import { nombaService } from './nomba.service';
 import { SettingsService } from '../../settings/settings.service';
 import {
@@ -56,6 +57,7 @@ export class NombaController {
           member: {
             select: {
               id: true,
+              userId: true,
               firstName: true,
               lastName: true,
               email: true,
@@ -70,7 +72,8 @@ export class NombaController {
         },
       });
 
-      if (!transaction) {
+      // Only the member the charge belongs to can pay it online (a 404, so nobody learns another member's charge exists).
+      if (!transaction || transaction.isVoided || !userOwnsCharge((req as any).user, transaction.member)) {
         res.status(404).json({
           success: false,
           message: 'Transaction not found',

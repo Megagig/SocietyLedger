@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { cooperativesController } from './cooperatives.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
@@ -6,6 +7,21 @@ import { PERMISSIONS } from '../../lib/permissions';
 import { requireModule } from '../../middleware/module-feature.middleware';
 
 const router: Router = Router();
+
+// The deposit receipt goes to memory; the controller streams the buffer to storage right after, so no file
+// ever lands on the server's disk (same as payment proofs).
+const receiptUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and PDF are allowed.'));
+    }
+  },
+});
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
@@ -39,7 +55,7 @@ router.get(
  */
 router.get(
   '/my-profile',
-  requirePermission(PERMISSIONS.COOPERATIVE_VIEW),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_VIEW, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getMyCooperativeProfile
 );
 
@@ -83,7 +99,7 @@ router.post(
  */
 router.get(
   '/savings-accounts/:id',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getSavingsAccount
 );
 
@@ -97,7 +113,7 @@ router.get(
  */
 router.get(
   '/savings-transactions',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getSavingsTransactions
 );
 
@@ -107,8 +123,80 @@ router.get(
  */
 router.post(
   '/savings-transactions',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_VIEW, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]),
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
   cooperativesController.processSavingsTransaction
+);
+
+// ==========================================
+// SAVINGS DEPOSIT REQUEST ROUTES
+// A member declares a deposit with a receipt; an officer approves it, which is what credits the balance.
+// ==========================================
+
+router.post(
+  '/savings-deposits',
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_DEPOSIT_OWN),
+  receiptUpload.single('file'),
+  cooperativesController.createSavingsDeposit
+);
+
+router.get(
+  '/savings-deposits',
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
+  cooperativesController.getSavingsDeposits
+);
+
+router.get(
+  '/savings-deposits/:id/receipt',
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
+  cooperativesController.getSavingsDepositReceipt
+);
+
+router.post(
+  '/savings-deposits/:id/approve',
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
+  cooperativesController.approveSavingsDeposit
+);
+
+router.post(
+  '/savings-deposits/:id/reject',
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
+  cooperativesController.rejectSavingsDeposit
+);
+
+// ==========================================
+// LOAN REPAYMENT REQUEST ROUTES
+// A member declares a repayment with a receipt; an officer confirms it, which is what records the repayment.
+// ==========================================
+
+router.post(
+  '/loan-repayment-requests',
+  requirePermission(PERMISSIONS.COOPERATIVE_REPAY_OWN),
+  receiptUpload.single('file'),
+  cooperativesController.createLoanRepaymentRequest
+);
+
+router.get(
+  '/loan-repayment-requests',
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
+  cooperativesController.getLoanRepaymentRequests
+);
+
+router.get(
+  '/loan-repayment-requests/:id/receipt',
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
+  cooperativesController.getLoanRepaymentRequestReceipt
+);
+
+router.post(
+  '/loan-repayment-requests/:id/approve',
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
+  cooperativesController.approveLoanRepaymentRequest
+);
+
+router.post(
+  '/loan-repayment-requests/:id/reject',
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
+  cooperativesController.rejectLoanRepaymentRequest
 );
 
 // ==========================================
@@ -121,7 +209,7 @@ router.post(
  */
 router.get(
   '/loan-products',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getLoanProducts
 );
 
@@ -155,7 +243,7 @@ router.put(
  */
 router.get(
   '/loan-applications',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getLoanApplications
 );
 
@@ -165,7 +253,7 @@ router.get(
  */
 router.post(
   '/loan-applications',
-  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_APPLY),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_APPLY, PERMISSIONS.COOPERATIVE_APPLY_OWN]),
   cooperativesController.createLoanApplication
 );
 
@@ -175,7 +263,7 @@ router.post(
  */
 router.get(
   '/loan-applications/:id',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getLoanApplication
 );
 
@@ -208,8 +296,14 @@ router.post(
  * GET /api/cooperatives/guarantor-requests/pending
  */
 router.get(
+  '/guarantor-candidates',
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_APPLY, PERMISSIONS.COOPERATIVE_APPLY_OWN]),
+  cooperativesController.getGuarantorCandidates
+);
+
+router.get(
   '/guarantor-requests/pending',
-  requirePermission(PERMISSIONS.COOPERATIVE_GUARANTOR),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_GUARANTOR, PERMISSIONS.COOPERATIVE_GUARANTOR_OWN]),
   cooperativesController.getPendingGuarantorRequests
 );
 
@@ -219,7 +313,7 @@ router.get(
  */
 router.post(
   '/guarantor-requests/:id/respond',
-  requirePermission(PERMISSIONS.COOPERATIVE_GUARANTOR),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_GUARANTOR, PERMISSIONS.COOPERATIVE_GUARANTOR_OWN]),
   cooperativesController.respondToGuarantorRequest
 );
 
@@ -233,7 +327,7 @@ router.post(
  */
 router.get(
   '/loans',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getLoans
 );
 
@@ -243,7 +337,7 @@ router.get(
  */
 router.get(
   '/loans/:id',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getLoan
 );
 
@@ -257,7 +351,7 @@ router.get(
  */
 router.get(
   '/loan-repayments',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
   cooperativesController.getLoanRepayments
 );
 
@@ -267,7 +361,7 @@ router.get(
  */
 router.post(
   '/loan-repayments',
-  requireAnyPermission([PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]),
+  requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
   cooperativesController.processLoanRepayment
 );
 

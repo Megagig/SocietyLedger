@@ -4,6 +4,7 @@ import { calculateSubscriptionAmount } from '../../lib/paystack';
 import { BillingCycle } from '@prisma/client';
 import { PaystackService } from '../payments/paystack/paystack.service';
 import { nombaService } from '../payments/nomba/nomba.service';
+import { resolvePaidPlan } from '../../services/subscription-plan.service';
 
 export const subscriptionController = {
   // Get all available plans
@@ -525,12 +526,10 @@ export const subscriptionController = {
     // deferred downgrade was never cleared when a real change completed.
     // Both are fixed together: an upgrade confirmation applies the real
     // plan and billing cycle, and always clears any pending deferred one.
-    const paystackMetadata = verification.data.metadata as Record<string, any> | undefined;
-    const isPlanChange = paystackMetadata?.type === 'plan_change' && paystackMetadata.newPlanId;
-    const effectivePlanId = isPlanChange ? Number(paystackMetadata!.newPlanId) : subscription.planId;
-    const effectiveBillingCycle = isPlanChange && paystackMetadata!.billingCycle
-      ? paystackMetadata!.billingCycle
-      : subscription.billingCycle;
+    const paidPlan = await resolvePaidPlan(verification.data.metadata, subscription);
+    const isPlanChange = paidPlan.isPlanChange;
+    const effectivePlanId = paidPlan.planId;
+    const effectiveBillingCycle = paidPlan.billingCycle;
 
     const periodMonths = effectiveBillingCycle === 'MONTHLY' ? 1 : 12;
     const currentDate = new Date();
@@ -567,6 +566,7 @@ export const subscriptionController = {
         data: {
           subscriptionExpiresAt: periodEnd,
           status: 'ACTIVE',
+          ...(paidPlan.tier ? { tier: paidPlan.tier } : {}),
         },
       }),
       prisma.auditLog.create({
@@ -665,12 +665,10 @@ export const subscriptionController = {
     // and only then clear any pending deferred change. Not currently
     // reachable (changePlan's upgrade branch only ever initializes
     // Paystack), kept symmetric in case Nomba upgrades are added later.
-    const nombaMetadata = (nombaVerification.data as any)?.metadata as Record<string, any> | undefined;
-    const isPlanChange = nombaMetadata?.type === 'plan_change' && nombaMetadata.newPlanId;
-    const effectivePlanId = isPlanChange ? Number(nombaMetadata!.newPlanId) : subscription.planId;
-    const effectiveBillingCycle = isPlanChange && nombaMetadata!.billingCycle
-      ? nombaMetadata!.billingCycle
-      : subscription.billingCycle;
+    const paidPlan = await resolvePaidPlan((nombaVerification.data as any)?.metadata, subscription);
+    const isPlanChange = paidPlan.isPlanChange;
+    const effectivePlanId = paidPlan.planId;
+    const effectiveBillingCycle = paidPlan.billingCycle;
 
     const periodMonths = effectiveBillingCycle === 'MONTHLY' ? 1 : 12;
     const currentDate = new Date();
@@ -706,6 +704,7 @@ export const subscriptionController = {
         data: {
           subscriptionExpiresAt: periodEnd,
           status: 'ACTIVE',
+          ...(paidPlan.tier ? { tier: paidPlan.tier } : {}),
         },
       }),
       prisma.auditLog.create({

@@ -1,37 +1,57 @@
 ---
 title: "Sending an announcement"
-description: "Broadcast a message to every member in your association at once."
+description: "Send one message to everyone, a kind of member, or hand-picked members, on the web or on your phone."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/communication/announcements"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/communication/announcements", "CM2"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/communication/in-app-notifications", "/docs/communication/email"]
+lastVerified: "2026-10-28"
+related: ["/docs/communication/in-app-notifications", "/docs/communication/email", "/docs/communication/sending-sms"]
 ---
 
-An announcement reaches every active member at once — it lands in each member's notification centre, and can also go out by email.
+An announcement is one message to the members you choose. Members who have signed up get it in their notifications and as a push notification. You can also send it by email and as a text message, which is how members without a login are reached. Every announcement is kept, with who sent it, who it went to and what it cost.
 
 ## Before you start
 
-You need the **Administrator** role — announcements aren't available to other officer roles.
+You need the **send notifications** permission. The Administrator has it by default, and you can give it to other officer roles in Settings. Texts also need the SMS module on your plan and enough [SMS credits](/docs/communication/buying-sms-credits).
 
 ## Send an announcement
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Communication", "Announcements"]} />.</Step>
-<Step>Enter a **Title** (up to 200 characters) and your **Message** (up to 2,000 characters).</Step>
-<Step>Pick a **Priority** — Info, Warning or Urgent. This only changes the colour of the preview; it doesn't change delivery.</Step>
-<Step>Tick **Also send via email** if you want members to receive it in their inbox too, not just in-app.</Step>
-<Step>Select **Send Announcement**.</Step>
+<Step>Enter a **Title** (up to 200 characters) and your **Message** (up to 2,000 characters), and pick a **Priority**: Info, Warning or Urgent.</Step>
+<Step>Under **Who should get it?**, choose **All active members**, **By category** (tick the categories) or **Chosen members** (search and tick them).</Step>
+<Step>Tick **Also send by email** and, if you want texts, **Also send as a text message**. You can write shorter wording for the text; otherwise it uses the title and message.</Step>
+<Step>Check **Who this reaches** on the right, then select **Send**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Communication", "Announcement"]} />.</Step>
+<Step>Enter a **Title** and **Message**, and pick how important it is.</Step>
+<Step>Under **Who gets it**, choose **Everyone**, **Category** (tick the categories) or **Chosen** (search and tick members).</Step>
+<Step>Switch on **Also send by email** and, if you want texts, **Also send as a text message**.</Step>
+<Step>Check **Who this reaches**, then tap **Send** and confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/communication/announcements-1.webp" alt="Send Announcement form with a title, message, priority selector set to Info, and the send-via-email checkbox" />
+## See who it reaches before you send
+
+As you fill in the form, the app shows how many members the announcement reaches and who it misses: members with a login, members without one, how many have an email, how many will get a text, how many have no usable phone number, and how many chose not to receive texts. If you ticked texts it also shows what they cost against your balance.
+
+<Callout type="note" title="An empty choice never means everyone">
+If you pick **By category** or **Chosen members** and choose nobody, the announcement can't be sent. It is never treated as going to everyone.
+</Callout>
 
 ## What happens next
 
-Every active member gets a new notification (title prefixed with 📢) in their [notifications centre](/docs/communication/in-app-notifications). If you ticked **Also send via email**, each member with an email on file also gets it by email. The announcement is recorded in the audit log with the recipient count.
+- **In the app**: each member with a login gets the announcement in their notifications and as a push notification.
+- **Members without a login** are reached only by email or text, if you ticked them. Without either, they are not reached, and the form tells you how many that is.
+- **Texts** use your credits. The credits are set aside before anything is sent. A text that fails is refunded. If you don't have enough credits, nothing is sent and nothing is recorded, and you are told how many more you need. Members who turned on **Don't send me text messages** are skipped.
+- A large announcement keeps sending texts in the background. Its row under **Sent announcements** shows the progress.
 
-<Callout type="note" title="A second, unused version of this page exists">
-There's a duplicate "Create Announcement" screen built with a different look, but nothing in the app links to it — the sidebar and every other page point to the one described here. Both would send the same announcement if you found your way to the other one, so this isn't something you need to worry about day to day.
-</Callout>
+The record is kept under <MenuPath items={["Communication", "Announcements"]} /> on the web (the list below the form) and under **Manage**, **Communication**, **Sent announcements** on your phone.

@@ -168,6 +168,8 @@ export interface ReminderSuggestion {
   suggestedMessage: string;
   reasoning: string;
   confidence: number;
+  /** The charges to remind them about, so the officer can send exactly those. */
+  transactionIds?: number[];
 }
 
 export interface ReminderSuggestionsRequest {

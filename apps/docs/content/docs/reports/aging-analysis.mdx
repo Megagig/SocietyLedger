@@ -1,32 +1,46 @@
 ---
 title: "Aging analysis: how long money has been owed"
-description: "Outstanding balances grouped by how overdue they are — the longer overdue, the more urgent."
+description: "What is owed, grouped by how late it is, so you know where to follow up first."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/reports/aging-analysis", "RP4"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/reports/member-balances", "/docs/finance/overdue-and-reminders"]
+lastVerified: "2026-10-29"
+related: ["/docs/reports/drilling-into-a-figure", "/docs/reports/member-balances", "/docs/finance/overdue-and-reminders"]
 ---
 
-Not all overdue money is equally urgent — aging analysis groups it by how long it's been outstanding, so you know where to focus first.
+Not all unpaid money is equally urgent. Aging analysis groups it by how late it is, so you know where to focus first.
 
 ## How it works
 
-<Screenshot src="/images/reports/aging-analysis-1.webp" alt="Aging Analysis Report showing Total Outstanding, Members with Balance and Outstanding Transactions stats, a bar chart of four age buckets, and Member Details grouped by age" />
+Everything still owed falls into one band:
 
-Every outstanding charge falls into one bucket — **0-30 days**, **31-60 days**, **61-90 days**, or **90+ days** — each shown with its transaction count, amount, and share of the total. **Member Details** breaks each bucket down by who owes what.
+- **Not yet due**: the due date has not come, or the charge has no due date.
+- **1-30 days late**, **31-60 days late**, **61-90 days late** and **Over 90 days late**.
 
-### Worked example
+Each band shows how many charges it holds, how much is owed in it, and its share of the total. The bands always add up to the **Total still owed**. Under each band you can see which members owe what in it.
 
-₦491,500 is outstanding across the association. Of that, ₦289,000 (58.8%) is less than 30 days overdue — recent and likely to be paid soon — while ₦82,500 (16.8%) has been outstanding for over 90 days and may need a direct follow-up.
+A charge is late once its due date has passed, the same as on the overdue list. A cancelled or forgiven charge is not counted, and neither is a member who was disabled.
+
+<PlatformTabs>
+<PlatformTab>
+Go to <MenuPath items={["Reports", "Aging Analysis"]} />. The chart shows each band, and **Member Details** lists who owes what in each.
+</PlatformTab>
+<PlatformTab>
+Go to <MenuPath items={["Manage", "Reports", "Aging"]} />. The bar shows each band's share, and each band lists its biggest debts.
+</PlatformTab>
+</PlatformTabs>
+
+## Open any figure
+
+Select a band to see every charge in it, or a member under a band to see just their charges there. The list adds up to the figure you selected. See [Opening a figure](/docs/reports/drilling-into-a-figure).
 
 ## Why it matters
 
-A member who's 5 days late needs a different response than one who's 95 days late — aging analysis tells you which is which without checking each account individually.
+A member who is 5 days late needs a different response than one who is 95 days late. Aging analysis tells you which is which without checking each account.
 
 ## What you can do
 
 - [Following up overdue members](/docs/finance/overdue-and-reminders) — act on what this report shows.
-- [Member balances report](/docs/reports/member-balances) — see any individual member's full balance.
+- [Member balances report](/docs/reports/member-balances) — see any member's full balance.

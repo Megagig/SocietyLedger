@@ -1,33 +1,57 @@
 ---
 title: "Adding your association's bank accounts"
-description: "Set up the bank account members transfer their dues into."
+description: "Set up the bank accounts your members are shown when they pay by transfer."
 type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/payments/nigerian/bank-accounts", "PY7"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/payments/bank-accounts", "/dashboard/payments/nigerian/bank-accounts", "PY7"]
 status: published
 lastVerified: "2026-10-13"
-related: ["/docs/payments/recording-bank-transfers"]
+related: ["/docs/payments/recording-bank-transfers", "/docs/payments/how-members-pay"]
 ---
 
-Members need somewhere to send a bank transfer — add your association's account here before you start recording transfers.
+Your members need to know where to send their money. The bank accounts you add here are what they see when they pay by bank transfer, on the website and in the app.
 
 ## Before you start
 
-You need the **edit settings** permission, which Administrators have by default.
+- To see the accounts, you need the **view settings** or **record payments** permission.
+- To add, change or remove them, you need the **edit settings** or **record payments** permission. Administrators, Treasurers and Financial Secretaries have these by default.
+- Enter the bank, account number and account name exactly as your bank has them. Members copy these details.
 
 ## Add a bank account
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
-<Step>Go to <MenuPath items={["Payments", "Nigerian", "Bank Accounts"]} />, then select **Add Bank Account**.</Step>
-<Step>Enter the **Bank Name**, **Account Name** and **Account Number**.</Step>
-<Step>Save.</Step>
+<Step>Go to <MenuPath items={["Finance", "Payment Management"]} />, select **Manage Bank Accounts**, then select **Add Bank Account**.</Step>
+<Step>Choose the **Bank**, then enter the **Account Name** and the 10-digit **Account Number**.</Step>
+<Step>Select **Create**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Payments", "Bank accounts"]} />, then select the **+** button.</Step>
+<Step>Choose the **Bank**, then enter the 10-digit **Account number** and the **Account name**.</Step>
+<Step>Select **Add account**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/payments/association-bank-accounts-1.webp" alt="Add Bank Account modal with Bank Name, Bank Code, Account Name and Account Number fields" />
 
-You can add more than one account and mark one as default — members and officers recording a transfer choose which account it went to.
+## The default account
+
+You can add more than one account. The **default** one is shown to members first. Your first account is the default automatically.
+
+To change the default, open another account's menu and select **Set as Default**. An account can't be un-set as the default directly. Making a different account the default is how it moves.
+
+## Edit or remove an account
+
+- **Edit** changes the bank, number, name or note. An account number can't match another account you already have.
+- **Remove** takes the account off what members see. An account that already has transfers or bank statements is kept as **Inactive** so your history stays complete. Select **Reactivate** to bring it back. An account that was never used is deleted.
+- If you remove the default, the oldest remaining account becomes the default.
+- You can't remove your **last** active account. Members are told to pay into it, so add another account first.
 
 ## What happens next
 
-The account appears in your list as **Active** and becomes available wherever a bank transfer needs a receiving account — see [Recording and verifying bank transfers](/docs/payments/recording-bank-transfers).
+Members see your active accounts straight away. If you have none, members are told to ask an officer for the payment details. The accounts also become available wherever a bank transfer needs a receiving account. See [Recording and verifying bank transfers](/docs/payments/recording-bank-transfers).

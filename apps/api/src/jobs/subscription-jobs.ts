@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
 import { sendEmail } from '../lib/email';
+import { tenantBaseUrl } from '../lib/tenant-url';
+import { invalidateAccessCache } from '../services/subscription-access.service';
 
 /**
  * Cron Jobs for Subscription Management
@@ -41,18 +43,19 @@ export const checkTrialExpiry = cron.schedule('0 1 * * *', async () => {
       },
     });
 
-    // Send warning emails for trials expiring soon
+    // Send warning emails for trials expiring soon: once at 3 days left and once at 1 day left.
     for (const subscription of expiringTrials) {
       const daysLeft = Math.ceil(
         (subscription.trialEndsAt!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
       );
+      if (daysLeft !== 3 && daysLeft !== 1) continue;
 
       const adminUser = subscription.association.users[0];
       if (adminUser && adminUser.email) {
         try {
           await sendEmail({
             to: adminUser.email,
-            subject: `Your trial expires in ${daysLeft} days`,
+            subject: `Your free trial ends in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`,
             template: 'trial-expiry-warning',
             data: {
               associationName: subscription.association.name,
@@ -62,7 +65,7 @@ export const checkTrialExpiry = cron.schedule('0 1 * * *', async () => {
                 ? subscription.plan.priceAnnual.toNumber()
                 : subscription.plan.priceMonthly.toNumber(),
               billingCycle: subscription.billingCycle,
-              subscribeUrl: `${process.env.APP_URL}/dashboard/subscription/plans`,
+              subscribeUrl: `${tenantBaseUrl(subscription.association.subdomain)}/dashboard/subscription/plans`,
             },
           });
           
@@ -101,6 +104,7 @@ export const checkTrialExpiry = cron.schedule('0 1 * * *', async () => {
         where: { id: { in: expiredIds } },
         data: { status: 'EXPIRED' },
       });
+      for (const expired of expiredTrials) invalidateAccessCache(expired.associationId);
 
       console.log(`Expired ${expiredTrials.length} trial subscriptions`);
 
@@ -115,7 +119,7 @@ export const checkTrialExpiry = cron.schedule('0 1 * * *', async () => {
               template: 'trial-expired',
               data: {
                 associationName: subscription.association.name,
-                subscribeUrl: `${process.env.APP_URL}/dashboard/subscription/plans`,
+                subscribeUrl: `${tenantBaseUrl(subscription.association.subdomain)}/dashboard/subscription/plans`,
               },
             });
             

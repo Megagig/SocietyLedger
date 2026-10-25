@@ -1,39 +1,41 @@
 ---
 title: "What happens automatically when money moves"
-description: "What syncs to accounting on its own, and what you still have to sync yourself."
+description: "Which activity reaches the books on its own, and what to do when something is missing."
 type: concept
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/settings/accounting-integration"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-24"
 related: ["/docs/accounting-guide/sync-status-and-errors", "/docs/accounting-guide/chart-of-accounts"]
 ---
 
-Less syncs automatically than you'd expect — right now, only Finance module activity can be synced at all, and even that needs a manual step.
+When money moves in the app, an entry is made in the books for it straight away, already posted. You do not approve it, and you do not have to press anything.
 
 ## How it works
 
-Say a member pays their ₦5,000 monthly dues in Finance. That payment does **not** appear in Accounting on its own — nothing in the codebase creates a journal entry automatically when a transaction or payment is recorded. The only way it reaches Accounting is a manual **Sync Now** action at <MenuPath items={["Settings", "Accounting Integration"]} />, which finds every not-yet-synced transaction and payment and posts a journal entry for each one.
+Say a member pays their ₦5,000 monthly dues. The charge being raised makes one entry, and the payment being recorded makes another. Both are posted at once, and both are marked **Automatic** in the journal.
 
-<Callout type="warning" title="The sync page's own banner overstates this">
-Settings → Accounting Integration currently says *"All new financial transactions are automatically synced to the accounting module."* That isn't what happens today — every sync is a manual **Sync Now** click (or a backlog of unsynced records waiting for one). Treat **Sync Now** as something you need to visit, not something you can forget about.
-</Callout>
-
-Welfare contributions and payouts, and cooperative savings, loans and repayments, go further: there's no sync path for them at all yet, manual or automatic. The sync status page shows their numbers stuck at 0% because nothing exists to move them — not because nobody has clicked a button.
-
-| Activity | Syncs to accounting? |
+| Activity | Reaches the books on its own? |
 |---|---|
-| Finance transactions and payments | Yes — manually, via **Sync Now** |
-| Welfare contributions and payouts | Not yet |
-| Cooperative savings, loans and repayments | Not yet |
+| Charges, payments, donations and penalties | Yes |
+| Cash lodgments, once a second officer checks them | Yes |
+| Welfare contributions and payouts, once confirmed or paid | Yes |
+| Savings deposits and withdrawals | Yes |
+| Loans paid out, and repayments | Yes |
 
-## Why it matters
+The book is only as good as its chart of accounts: the app needs the standard accounts (such as Member Dues Receivable and Membership Dues) to exist. Set up the [chart of accounts](/docs/accounting-guide/chart-of-accounts) before money starts to move.
 
-If you set up your chart of accounts and never visit Settings → Accounting Integration, your income statement and balance sheet will keep showing ₦0 no matter how much real activity happens elsewhere in the app. Make **Sync Now** a routine step, not a one-time setup task — see [Sync status and fixing sync errors](/docs/accounting-guide/sync-status-and-errors).
+## When something is missing
+
+An entry can fail to be made. The commonest reasons are that the accounts were not set up yet, or that the date falls in a [closed period](/docs/accounting-guide/accounting-periods). The payment or charge itself is never blocked. Open the accounting dashboard to see what is **not in the books yet**, and why each one failed, then use **Catch up** (mobile) or **Sync Now** (web) once the cause is fixed. See [Sync status and fixing sync errors](/docs/accounting-guide/sync-status-and-errors).
+
+## What you still do by hand
+
+Anything that is not a movement of money in the app, such as buying equipment or a bank charge, is a [journal entry](/docs/accounting-guide/journal-entries) you write yourself. It needs a second officer to approve it before it is posted.
 
 ## What you can do
 
 - [The chart of accounts](/docs/accounting-guide/chart-of-accounts) — set this up first.
-- [Sync status and fixing sync errors](/docs/accounting-guide/sync-status-and-errors) — where **Sync Now** actually lives.
-- [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) — for anything you need to record by hand instead.
+- [Sync status and fixing sync errors](/docs/accounting-guide/sync-status-and-errors) — see what is missing.
+- [Journal entries: draft, approve, post](/docs/accounting-guide/journal-entries) — for anything you record by hand.

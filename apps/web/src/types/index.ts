@@ -1,3 +1,11 @@
+export interface SubscriptionAccess {
+  allowed: boolean;
+  reason: 'OK' | 'TRIAL_NOT_STARTED' | 'TRIAL_ENDED' | 'EXPIRED' | 'CANCELLED' | 'NO_SUBSCRIPTION' | 'NOT_ENFORCED';
+  status: string | null;
+  trialEndsAt: string | null;
+  trialDaysLeft: number | null;
+}
+
 // User Types
 export interface User {
   id: number;
@@ -7,6 +15,8 @@ export interface User {
   platformRole?: 'SUPER_ADMIN' | 'SUPPORT_AGENT';
   isActive: boolean;
   requiresOnboarding?: boolean;
+  /** Where the association's free trial / subscription stands (null for platform staff). */
+  subscriptionAccess?: SubscriptionAccess | null;
   permissions?: string[];
   roles?: string[];
   createdAt: Date;
@@ -49,6 +59,7 @@ export interface Member {
   occupation?: string | null;
   category: string;
   status: string;
+  loginStatus?: string;
   joinDate?: string;
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
@@ -73,6 +84,8 @@ export interface FinancialCategory {
   frequency?: 'monthly' | 'quarterly' | 'annual' | 'one-time';
   description?: string;
   isActive: boolean;
+  /** Charges and levy campaigns that use this category; its type is locked once this is above 0. */
+  usageCount?: number;
   createdAt: Date;
 }
 
@@ -235,6 +248,8 @@ export interface Notification {
   title: string;
   message: string;
   type: 'payment_due' | 'payment_received' | 'system';
+  entityId?: number | null;
+  pushType?: string | null;
   isRead: boolean;
   createdAt: Date;
 }

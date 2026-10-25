@@ -7,6 +7,7 @@ import { cacheInvalidationService } from '../../services/cache-invalidation.serv
 import { SettingsService } from '../settings/settings.service';
 import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.service';
 import type { AuthRequest } from '../../middleware/auth.middleware';
+import { buildMemberWhere, memberQuerySchema, resolvePaging, startOfMonthLagos } from './members.query';
 
 // Validation schemas
 const createMemberSchema = z.object({
@@ -52,16 +53,6 @@ const bulkImportSchema = z.object({
   members: z.array(bulkMemberSchema).min(1, 'At least one member is required'),
 });
 
-const memberQuerySchema = z.object({
-  page: z.string().optional().default('1'),
-  limit: z.string().optional().default('10'),
-  search: z.string().optional(),
-  status: z.string().optional(),
-  category: z.string().optional(),
-  sortBy: z.string().optional().default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-});
-
 export const memberController = {
   // Get all members with pagination, search, and filters
   async list(req: Request, res: Response) {
@@ -86,33 +77,8 @@ export const memberController = {
 
       // Validate and parse query params
       const queryParams = memberQuerySchema.parse(req.query);
-      const page = parseInt(queryParams.page);
-      const limit = parseInt(queryParams.limit);
-      const skip = (page - 1) * limit;
-
-      // Build where clause
-      const where: any = { associationId };
-
-      // Search filter
-      if (queryParams.search) {
-        where.OR = [
-          { firstName: { contains: queryParams.search, mode: 'insensitive' } },
-          { lastName: { contains: queryParams.search, mode: 'insensitive' } },
-          { email: { contains: queryParams.search, mode: 'insensitive' } },
-          { phone: { contains: queryParams.search, mode: 'insensitive' } },
-          { memberId: { contains: queryParams.search, mode: 'insensitive' } },
-        ];
-      }
-
-      // Status filter
-      if (queryParams.status) {
-        where.status = queryParams.status;
-      }
-
-      // Category filter
-      if (queryParams.category) {
-        where.category = queryParams.category;
-      }
+      const { page, limit, skip } = resolvePaging(queryParams);
+      const where = buildMemberWhere(associationId, queryParams);
 
       // Get total count
       const totalCount = await prisma.member.count({ where });
@@ -151,6 +117,9 @@ export const memberController = {
         },
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Invalid filter or sort option', errors: error.issues });
+      }
       console.error('Error fetching members:', error);
       return res.status(500).json({
         success: false,
@@ -317,6 +286,16 @@ export const memberController = {
           email: validatedData.email,
           phone: validatedData.phone,
           address: validatedData.address,
+          city: validatedData.city,
+          state: validatedData.state,
+          country: validatedData.country,
+          gender: validatedData.gender,
+          dateOfBirth: validatedData.dateOfBirth ? new Date(validatedData.dateOfBirth) : undefined,
+          occupation: validatedData.occupation,
+          emergencyContactName: validatedData.emergencyContactName,
+          emergencyContactPhone: validatedData.emergencyContactPhone,
+          emergencyContactRelationship: validatedData.emergencyContactRelationship,
+          notes: validatedData.notes,
           joinDate: validatedData.joinDate ? new Date(validatedData.joinDate) : new Date(),
           status: validatedData.status,
           category: validatedData.category,
@@ -555,12 +534,18 @@ export const memberController = {
         activeMembers,
         inactiveMembers,
         suspendedMembers,
+        terminatedMembers,
+        newThisMonth,
+        withLogin,
         membersByCategory,
       ] = await Promise.all([
         prisma.member.count({ where: { associationId } }),
         prisma.member.count({ where: { associationId, status: 'active' } }),
         prisma.member.count({ where: { associationId, status: 'inactive' } }),
         prisma.member.count({ where: { associationId, status: 'suspended' } }),
+        prisma.member.count({ where: { associationId, status: 'terminated' } }),
+        prisma.member.count({ where: { associationId, createdAt: { gte: startOfMonthLagos() } } }),
+        prisma.member.count({ where: { associationId, loginStatus: 'active' } }),
         prisma.member.groupBy({
           by: ['category'],
           where: { associationId },
@@ -575,6 +560,9 @@ export const memberController = {
           activeMembers,
           inactiveMembers,
           suspendedMembers,
+          terminatedMembers,
+          newThisMonth,
+          withLogin,
           byCategory: membersByCategory.reduce((acc, item) => {
             acc[item.category] = item._count.id;
             return acc;
@@ -996,19 +984,27 @@ export const memberController = {
         },
       });
 
+      // The approval itself already committed, so a delivery failure must not fail the request —
+      // but it is reported back so the admin can tell the member another way instead of assuming
+      // they were notified.
+      let emailSent = true;
+      let emailError: string | undefined;
       try {
         await sendApprovalNotificationEmail(
           user.email,
           status,
           user.association?.name,
           rejectionReason,
-          user.association?.subdomain
+          user.association?.subdomain,
+          result.trial
         );
-      } catch (emailError) {
-        console.error('Failed to send approval notification email:', emailError);
+      } catch (err) {
+        emailSent = false;
+        emailError = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`Failed to send approval notification email to ${user.email}:`, err);
       }
 
-      return res.json({ success: true, message: result.message });
+      return res.json({ success: true, message: result.message, emailSent, emailError });
     } catch (error) {
       console.error('Update approval status error:', error);
       if (error instanceof z.ZodError) {

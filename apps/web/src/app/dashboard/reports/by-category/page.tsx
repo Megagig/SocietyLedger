@@ -21,6 +21,9 @@ import {
 import { IconArrowLeft, IconFileAnalytics } from '@tabler/icons-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { reportsApi } from '@/lib/api/reports';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { chargesHref, paymentsHref } from '@/lib/reports-drill';
+
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import Link from 'next/link';
@@ -55,7 +58,7 @@ export default function CategoryReportPage() {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -198,7 +201,11 @@ export default function CategoryReportPage() {
                       <Text size="xs" c="dimmed">
                         Expected
                       </Text>
-                      <Text fw={600}>{formatCurrency(category.statistics.totalExpected)}</Text>
+                      <Text fw={600}>
+                        <DrillLink href={category.statistics.transactionCount > 0 ? chargesHref({ scope: 'raised', categoryId: category.categoryId }, category.categoryName) : undefined} label={category.categoryName}>
+                          {formatCurrency(category.statistics.totalExpected)}
+                        </DrillLink>
+                      </Text>
                     </div>
                     <div>
                       <Text size="xs" c="dimmed">
@@ -301,7 +308,12 @@ export default function CategoryReportPage() {
                             {status}
                           </Text>
                           <Text size="sm" fw={600}>
-                            {data.count}
+                            <DrillLink
+                              href={data.count > 0 ? chargesHref({ scope: 'raised', categoryId: category.categoryId, status: status as any }, `${category.categoryName}: ${status}`) : undefined}
+                              label={`${data.count} ${status}`}
+                            >
+                              {data.count}
+                            </DrillLink>
                           </Text>
                           <Text size="xs" c="dimmed">
                             {formatCurrency(data.amount)}

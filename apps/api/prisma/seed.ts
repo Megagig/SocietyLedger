@@ -15,6 +15,7 @@ async function main() {
       id: 1 // Use ID for upsert since email alone isn't unique (needs associationId)
     },
     update: {
+      passwordHash: hashedPassword,
       platformRole: 'SUPER_ADMIN',
       emailVerified: true,
       isActive: true,

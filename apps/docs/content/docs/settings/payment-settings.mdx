@@ -1,37 +1,60 @@
 ---
 title: "Payment settings"
-description: "Which payment channels you list, and why this page doesn't control what actually works."
+description: "Which ways to pay you accept, receipts, part payments and the cash lodgment deadline."
 type: task
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/settings/payments", "ST4"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/settings/integrations"]
+lastVerified: "2026-10-24"
+related: ["/docs/settings/integrations", "/docs/settings/financial-settings"]
 ---
 
-Payment settings record which channels you'd like to offer and your default method — cosmetic preferences only, not a switch that turns real payment methods on or off.
+Payment settings decide which ways to pay your association accepts when a payment is recorded, whether receipts are made automatically, and how long an officer has to lodge cash.
 
 ## Before you start
 
-You need the **edit settings** permission, which only Administrators have by default.
+You need the **edit settings** permission or the **billing** permission to change anything. Only Administrators have the edit permission by default. With only the **view settings** permission you can read the screen, but not change it.
 
 ## Update payment settings
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Settings", "Payment Settings"]} />.</Step>
-<Step>Toggle which **Enabled Channels** you want to list (Bank Transfer, Cash, Online), choose a **Default Payment Method**, and toggle **Enable Manual Payments**, **Manual Payment Approval Required**, **Enable Partial Payments** and **Auto-Generate Receipts**.</Step>
+<Step>Switch on the **Enabled Channels** you accept, and set the other options.</Step>
+<Step>When **Cash** is on, set **Days to lodge collected cash**.</Step>
 <Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Settings", "Payment settings"]} />.</Step>
+<Step>Under **Ways members can pay**, switch on the ones you accept. At least one must stay on.</Step>
+<Step>Set **Make a receipt automatically**, **Allow part payments** and **Days to lodge cash**.</Step>
+<Step>Tap **Save changes**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/settings/payment-settings-1.webp" alt="Payment Settings page with enabled channel toggles, default payment method, and receipt and approval toggles" />
 
-<Callout type="warning" title="Nothing currently reads these values">
-These toggles save correctly but nothing elsewhere checks them — Paystack availability is controlled by whether a gateway key is configured (see [Integrations](/docs/settings/integrations)), not by this page's "Enabled Channels" list, and manual payment recording works the same way regardless of what's toggled here.
+## What each setting does
+
+- **Ways members can pay.** Checked when a payment is recorded: a method you switch off cannot be used. **Cash** must be on to use [Cash collections](/docs/cash/how-cash-collections-work).
+- **Allow part payments.** When off, a payment must cover the whole balance. It is also off if it is off under [Financial settings](/docs/settings/financial-settings).
+- **Days to lodge cash.** An officer who still holds cash this many days after closing a collection is reminded, and so are the officers who watch cash. The default is 3.
+
+## Online payments
+
+The mobile screen shows whether card payments (Paystack) and bank payments (Nomba) are on, but cannot change them. They are switched on from the SocietyLedger website. See [Integrations](/docs/settings/integrations).
+
+<Callout type="note" title="Settings with no effect yet">
+The web page also shows **Default Payment Method**, **Enable Manual Payments** and **Manual Payment Approval Required**. Nothing in the app uses them yet, so they are not on the mobile screen.
 </Callout>
 
 ## What happens next
 
-Nothing changes elsewhere in the app yet — see the callout above.
+The settings take effect straight away for new payments.
 
 ## Related

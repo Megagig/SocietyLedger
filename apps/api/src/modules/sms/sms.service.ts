@@ -22,6 +22,10 @@ import {
 } from '../../lib/sms';
 import { Prisma, SMSStatus, SMSCampaignStatus, SMSRecipientType, SMSTemplateCategory } from '@prisma/client';
 import { SettingsService } from '../settings/settings.service';
+import { RuleError } from '../finance/rule-error';
+import { dispatchMessages, INLINE_LIMIT, reserveCredits } from './sms-engine';
+import { resolveSmsAudience } from './sms-audience';
+import { assertCampaignStartable, assertMessageUsable, CAMPAIGN_CANCELLABLE, dedupeRecipients, normalizePhone, type Recipient } from './sms-rules';
 import {
   QuickSMSData,
   QuickSMSResult,
@@ -174,7 +178,7 @@ export class SMSService {
     // saved but never read — 'none' should actually block sending.
     const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
     if (smsProvider === 'none') {
-      throw new Error('SMS sending is disabled for this association');
+      throw new RuleError('SMS sending is disabled for this association', 403, 'SMS_DISABLED');
     }
 
     // Get or apply template
@@ -193,85 +197,64 @@ export class SMSService {
       }
     }
 
-    // Calculate segments
-    const segments = calculateSMSSegments(finalMessage);
+    const segments = assertMessageUsable(finalMessage);
 
-    // Resolve recipients (could be phone numbers or member IDs)
-    const resolvedRecipients = await this.resolveRecipients(associationId, recipients);
-
-    // Check credit balance
-    const creditBalance = await this.getOrCreateCreditBalance(associationId);
-    const requiredCredits = resolvedRecipients.length * segments;
-    
-    if (Number(creditBalance.balance) < requiredCredits) {
-      throw new Error(`Insufficient SMS credits. Required: ${requiredCredits}, Available: ${creditBalance.balance}`);
+    // Who it goes to: numbers we can text, once each (a member listed twice, or by id and by number, is texted and charged once)
+    const resolved = await this.resolveRecipients(associationId, recipients);
+    const texts: (Recipient & { phone: string })[] = [];
+    for (const r of resolved) {
+      const phone = normalizePhone(r.phone);
+      if (phone) texts.push({ ...r, phone });
+    }
+    const unique = dedupeRecipients(texts);
+    if (unique.length === 0) {
+      throw new RuleError('There is no one to text: none of those have a number we can send to.', 400, 'NO_RECIPIENTS');
     }
 
-    // Send SMS to each recipient
-    const results: QuickSMSResult['messages'] = [];
-    let totalSent = 0;
-    let totalFailed = 0;
-
-    for (const recipient of resolvedRecipients) {
-      const smsResult = await sendSMS({
-        to: recipient.phone,
-        message: finalMessage,
-      });
-
-      // Create message record
-      await prisma.sMSMessage.create({
-        data: {
-          associationId,
-          recipientPhone: formatPhoneNumber(recipient.phone),
-          recipientName: recipient.name,
-          memberId: recipient.memberId,
-          message: finalMessage,
-          messageType: 'SINGLE',
-          status: smsResult.success ? 'SENT' : 'FAILED',
-          termiiMessageId: smsResult.messageId,
-          segments,
-          errorMessage: smsResult.error,
-          sentAt: smsResult.success ? new Date() : null,
-        },
-      });
-
-      results.push({
-        phone: formatPhoneNumber(recipient.phone),
-        success: smsResult.success,
-        messageId: smsResult.messageId,
-        error: smsResult.error,
-      });
-
-      if (smsResult.success) {
-        totalSent++;
-      } else {
-        totalFailed++;
-      }
-    }
-
-    // Deduct credits for sent messages
-    const creditsUsed = totalSent * segments;
-    if (creditsUsed > 0) {
-      await this.deductCredits(associationId, creditsUsed, 'Quick SMS send');
-    }
-
-    // Get updated balance
-    const updatedBalance = await prisma.sMSCreditBalance.findUnique({
-      where: { associationId },
+    // Credits are reserved before anything goes out; a small send finishes inside the request, a big one carries on in the background.
+    const inline = unique.length <= INLINE_LIMIT;
+    const dispatch = await dispatchMessages({
+      associationId,
+      description: 'Quick SMS send',
+      recipients: unique,
+      text: finalMessage,
+      segments,
+      messageType: 'SINGLE',
+      inline,
     });
 
+    const balance = await prisma.sMSCreditBalance.findUnique({ where: { associationId } });
+
+    if (!inline) {
+      return {
+        totalSent: 0,
+        totalFailed: 0,
+        messages: [],
+        creditsUsed: dispatch.credits,
+        remainingCredits: balance ? Number(balance.balance) : 0,
+        accepted: dispatch.accepted,
+        inProgress: true,
+      };
+    }
+
+    const totals = await dispatch.done;
+    const rows = await prisma.sMSMessage.findMany({ where: { id: { in: dispatch.messageIds } }, orderBy: { id: 'asc' } });
+
     return {
-      totalSent,
-      totalFailed,
-      messages: results,
-      creditsUsed,
-      remainingCredits: updatedBalance ? Number(updatedBalance.balance) : 0,
+      totalSent: totals.sent,
+      totalFailed: totals.failed,
+      messages: rows.map((row) => ({
+        phone: row.recipientPhone,
+        success: row.status === 'SENT' || row.status === 'DELIVERED',
+        messageId: row.termiiMessageId ?? undefined,
+        error: row.errorMessage ?? undefined,
+      })),
+      // What was actually spent: failed texts have been given back
+      creditsUsed: totals.sent * segments,
+      remainingCredits: balance ? Number(balance.balance) : 0,
+      accepted: dispatch.accepted,
     };
   }
-
-  /**
-   * Resolve recipients from phone numbers or member IDs
-   */
   private async resolveRecipients(
     associationId: number,
     recipients: string[]
@@ -328,8 +311,10 @@ export class SMSService {
     userId: number,
     data: CreateCampaignData
   ) {
-    // Get recipient count based on filter
-    const recipientCount = await this.getRecipientCount(associationId, data.recipientType, data.recipientFilter);
+    assertMessageUsable(data.message);
+
+    // How many people it would text, worked out the same way as when it is sent
+    const audience = await resolveSmsAudience(prisma, associationId, data.recipientType, data.recipientFilter);
 
     const campaign = await prisma.sMSCampaign.create({
       data: {
@@ -339,7 +324,7 @@ export class SMSService {
         templateId: data.templateId,
         recipientType: data.recipientType,
         recipientFilter: data.recipientFilter as Prisma.JsonObject || Prisma.JsonNull,
-        totalRecipients: recipientCount,
+        totalRecipients: audience.willText.length,
         status: data.scheduledAt ? 'SCHEDULED' : 'DRAFT',
         scheduledAt: data.scheduledAt,
         createdBy: userId,
@@ -348,10 +333,6 @@ export class SMSService {
 
     return campaign;
   }
-
-  /**
-   * Get campaign by ID
-   */
   async getCampaign(associationId: number, campaignId: number) {
     return prisma.sMSCampaign.findFirst({
       where: { id: campaignId, associationId },
@@ -411,132 +392,74 @@ export class SMSService {
       throw new Error('Campaign not found');
     }
 
-    if (campaign.status !== 'DRAFT' && campaign.status !== 'SCHEDULED') {
-      throw new Error(`Cannot start campaign with status: ${campaign.status}`);
-    }
+    assertCampaignStartable(campaign.status);
 
     const smsProvider = await SettingsService.getSetting(associationId, 'integrations', 'smsProvider');
     if (smsProvider === 'none') {
-      throw new Error('SMS sending is disabled for this association');
+      throw new RuleError('SMS sending is disabled for this association', 403, 'SMS_DISABLED');
     }
 
-    // Get recipients
-    const recipients = await this.getCampaignRecipients(
-      associationId,
-      campaign.recipientType,
-      campaign.recipientFilter as RecipientFilter | null
-    );
-
-    if (recipients.length === 0) {
-      throw new Error('No recipients found for this campaign');
+    // Who gets it: members with a number who haven't opted out, once each
+    const audience = await resolveSmsAudience(prisma, associationId, campaign.recipientType, campaign.recipientFilter as RecipientFilter | null);
+    if (audience.willText.length === 0) {
+      throw new RuleError('No one in this audience can be texted: they have no usable phone number, or have opted out.', 409, 'NO_RECIPIENTS');
     }
 
-    // Check credits
-    const segments = calculateSMSSegments(campaign.message);
-    const requiredCredits = recipients.length * segments;
-    const creditBalance = await this.getOrCreateCreditBalance(associationId);
+    const segments = assertMessageUsable(campaign.message);
 
-    if (Number(creditBalance.balance) < requiredCredits) {
-      throw new Error(`Insufficient credits. Required: ${requiredCredits}, Available: ${creditBalance.balance}`);
-    }
-
-    // Update campaign status
-    await prisma.sMSCampaign.update({
-      where: { id: campaignId },
-      data: {
-        status: 'IN_PROGRESS',
-        startedAt: new Date(),
-        totalRecipients: recipients.length,
-      },
+    // Claim the campaign: of two taps, or two officers, only one gets to send it
+    const previous = campaign.status;
+    const { count } = await prisma.sMSCampaign.updateMany({
+      where: { id: campaignId, associationId, status: { in: ['DRAFT', 'SCHEDULED'] } },
+      data: { status: 'IN_PROGRESS', startedAt: new Date(), totalRecipients: audience.willText.length, sentCount: 0, failedCount: 0 },
     });
+    if (count !== 1) {
+      throw new RuleError('This campaign is already being sent.', 409, 'ALREADY_STARTED');
+    }
 
-    // Send messages
-    let sentCount = 0;
-    let failedCount = 0;
-
-    for (const recipient of recipients) {
-      const result = await sendSMS({
-        to: recipient.phone,
-        message: campaign.message,
+    try {
+      const dispatch = await dispatchMessages({
+        associationId,
+        description: `Campaign: ${campaign.name}`,
+        recipients: audience.willText,
+        text: campaign.message,
+        segments,
+        messageType: 'BULK',
+        campaignId,
       });
 
-      await prisma.sMSMessage.create({
-        data: {
-          associationId,
-          campaignId,
-          recipientPhone: formatPhoneNumber(recipient.phone),
-          recipientName: recipient.name,
-          memberId: recipient.memberId,
-          message: campaign.message,
-          messageType: 'BULK',
-          status: result.success ? 'SENT' : 'FAILED',
-          termiiMessageId: result.messageId,
-          segments,
-          errorMessage: result.error,
-          sentAt: result.success ? new Date() : null,
-        },
-      });
-
-      if (result.success) {
-        sentCount++;
-      } else {
-        failedCount++;
-      }
+      return {
+        totalRecipients: dispatch.accepted,
+        sentCount: 0,
+        deliveredCount: 0,
+        failedCount: 0,
+        pendingCount: dispatch.accepted,
+        deliveryRate: 0,
+        failureRate: 0,
+        inProgress: true,
+        skipped: { noPhone: audience.noPhone.length, optedOut: audience.optedOut.length },
+      };
+    } catch (error) {
+      // Not enough credits (or the like): nothing went out, so the campaign goes back to how it was and can be started once fixed
+      await prisma.sMSCampaign.updateMany({ where: { id: campaignId, status: 'IN_PROGRESS' }, data: { status: previous, startedAt: null } });
+      throw error;
     }
-
-    // Deduct credits
-    const creditsUsed = sentCount * segments;
-    if (creditsUsed > 0) {
-      await this.deductCredits(associationId, creditsUsed, `Campaign: ${campaign.name}`, campaignId);
-    }
-
-    // Update campaign with final stats
-    await prisma.sMSCampaign.update({
-      where: { id: campaignId },
-      data: {
-        status: 'COMPLETED',
-        completedAt: new Date(),
-        sentCount,
-        failedCount,
-      },
-    });
-
-    return {
-      totalRecipients: recipients.length,
-      sentCount,
-      deliveredCount: sentCount, // Will be updated by delivery reports
-      failedCount,
-      pendingCount: 0,
-      deliveryRate: recipients.length > 0 ? (sentCount / recipients.length) * 100 : 0,
-      failureRate: recipients.length > 0 ? (failedCount / recipients.length) * 100 : 0,
-    };
   }
-
-  /**
-   * Cancel a campaign
-   */
   async cancelCampaign(associationId: number, campaignId: number) {
-    const campaign = await prisma.sMSCampaign.findFirst({
-      where: { id: campaignId, associationId },
+    const { count } = await prisma.sMSCampaign.updateMany({
+      where: { id: campaignId, associationId, status: { in: [...CAMPAIGN_CANCELLABLE] } },
+      data: { status: 'CANCELLED', completedAt: new Date() },
     });
 
-    if (!campaign) {
-      throw new Error('Campaign not found');
+    if (count !== 1) {
+      const campaign = await prisma.sMSCampaign.findFirst({ where: { id: campaignId, associationId }, select: { status: true } });
+      if (!campaign) throw new Error('Campaign not found');
+      throw new RuleError(`Cannot cancel a campaign that is ${campaign.status.toLowerCase().replace('_', ' ')}.`, 409, 'NOT_CANCELLABLE');
     }
 
-    if (campaign.status === 'COMPLETED' || campaign.status === 'CANCELLED') {
-      throw new Error(`Cannot cancel campaign with status: ${campaign.status}`);
-    }
-
-    return prisma.sMSCampaign.update({
-      where: { id: campaignId },
-      data: { status: 'CANCELLED' },
-    });
+    // A send already under way stops at its next batch, and the credits for what was not sent go back
+    return prisma.sMSCampaign.findFirstOrThrow({ where: { id: campaignId } });
   }
-
-  /**
-   * Delete a draft campaign
-   */
   async deleteCampaign(associationId: number, campaignId: number) {
     const campaign = await prisma.sMSCampaign.findFirst({
       where: { id: campaignId, associationId },
@@ -546,239 +469,49 @@ export class SMSService {
       throw new Error('Campaign not found');
     }
 
-    if (campaign.status !== 'DRAFT') {
-      throw new Error('Only draft campaigns can be deleted');
+    const { count } = await prisma.sMSCampaign.deleteMany({ where: { id: campaignId, associationId, status: 'DRAFT' } });
+    if (count !== 1) {
+      throw new RuleError('Only draft campaigns can be deleted.', 409, 'NOT_DELETABLE');
     }
-
-    return prisma.sMSCampaign.delete({
-      where: { id: campaignId },
-    });
+    return campaign;
+  }
+  /**
+   * What sending to an audience would do, before it is sent: who gets a text, who is missed and why, and what it would cost against the
+   * balance. Worked out by the same code that sends.
+   */
+  async previewAudience(associationId: number, recipientType: SMSRecipientType, filter: RecipientFilter | null | undefined, message?: string) {
+    const audience = await resolveSmsAudience(prisma, associationId, recipientType, filter);
+    const balance = await this.getCreditBalance(associationId);
+    const segments = message && message.trim() ? assertMessageUsable(message) : null;
+    const credits = segments === null ? null : audience.willText.length * segments;
+    return {
+      members: audience.members.length,
+      willText: audience.willText.length,
+      noPhone: audience.noPhone.length,
+      optedOut: audience.optedOut.length,
+      invalidNumbers: audience.invalidNumbers,
+      segments,
+      credits,
+      balance: balance.balance,
+      enough: credits === null ? null : balance.balance + 0.0001 >= credits,
+      shortBy: credits === null ? null : Math.max(0, Math.ceil(credits - balance.balance)),
+    };
   }
 
-  /**
-   * Get recipient count based on filter
-   */
-  private async getRecipientCount(
+  async getRecipientCount(
     associationId: number,
     recipientType: SMSRecipientType,
     filter?: RecipientFilter | null
   ): Promise<number> {
-    switch (recipientType) {
-      case 'ALL_MEMBERS':
-        return prisma.member.count({
-          where: { associationId, phone: { not: null }, status: 'ACTIVE' },
-        });
-
-      case 'SELECTED_MEMBERS':
-        if (!filter?.memberIds?.length) return 0;
-        return prisma.member.count({
-          where: { 
-            associationId, 
-            id: { in: filter.memberIds },
-            phone: { not: null },
-          },
-        });
-
-      case 'MEMBER_CATEGORY':
-        if (!filter?.categories?.length) return 0;
-        return prisma.member.count({
-          where: { 
-            associationId, 
-            category: { in: filter.categories },
-            phone: { not: null },
-            status: 'ACTIVE',
-          },
-        });
-
-      case 'CUSTOM_NUMBERS':
-        return filter?.customNumbers?.length || 0;
-
-      case 'OWING_MEMBERS':
-        // Members with outstanding balance
-        const owingMembers = await prisma.member.findMany({
-          where: { 
-            associationId, 
-            phone: { not: null },
-            status: 'ACTIVE',
-          },
-          include: {
-            transactions: {
-              where: { status: 'PENDING' },
-              select: { amount: true },
-            },
-          },
-        });
-        const minAmount = filter?.owingMinAmount || 0;
-        return owingMembers.filter(m => {
-          const totalOwing = m.transactions.reduce((sum, t) => sum + Number(t.amount), 0);
-          return totalOwing >= minAmount;
-        }).length;
-
-      case 'PAID_MEMBERS':
-        // Members with no outstanding balance
-        const paidMembers = await prisma.member.findMany({
-          where: { 
-            associationId, 
-            phone: { not: null },
-            status: 'ACTIVE',
-          },
-          include: {
-            transactions: {
-              where: { status: 'PENDING' },
-              select: { amount: true },
-            },
-          },
-        });
-        return paidMembers.filter(m => {
-          const totalOwing = m.transactions.reduce((sum, t) => sum + Number(t.amount), 0);
-          return totalOwing === 0;
-        }).length;
-
-      default:
-        return 0;
-    }
+    return (await resolveSmsAudience(prisma, associationId, recipientType, filter)).willText.length;
   }
-
-  /**
-   * Get campaign recipients based on filter
-   */
-  private async getCampaignRecipients(
+  async getCampaignRecipients(
     associationId: number,
     recipientType: SMSRecipientType,
     filter: RecipientFilter | null
   ): Promise<Array<{ phone: string; name?: string; memberId?: number }>> {
-    const recipients: Array<{ phone: string; name?: string; memberId?: number }> = [];
-
-    switch (recipientType) {
-      case 'ALL_MEMBERS': {
-        const members = await prisma.member.findMany({
-          where: { associationId, phone: { not: null }, status: 'ACTIVE' },
-          select: { id: true, firstName: true, lastName: true, phone: true },
-        });
-        members.forEach(m => {
-          if (m.phone) {
-            recipients.push({
-              phone: m.phone,
-              name: `${m.firstName} ${m.lastName}`,
-              memberId: m.id,
-            });
-          }
-        });
-        break;
-      }
-
-      case 'SELECTED_MEMBERS': {
-        if (!filter?.memberIds?.length) break;
-        const members = await prisma.member.findMany({
-          where: { 
-            associationId, 
-            id: { in: filter.memberIds },
-            phone: { not: null },
-          },
-          select: { id: true, firstName: true, lastName: true, phone: true },
-        });
-        members.forEach(m => {
-          if (m.phone) {
-            recipients.push({
-              phone: m.phone,
-              name: `${m.firstName} ${m.lastName}`,
-              memberId: m.id,
-            });
-          }
-        });
-        break;
-      }
-
-      case 'MEMBER_CATEGORY': {
-        if (!filter?.categories?.length) break;
-        const members = await prisma.member.findMany({
-          where: { 
-            associationId, 
-            category: { in: filter.categories },
-            phone: { not: null },
-            status: 'ACTIVE',
-          },
-          select: { id: true, firstName: true, lastName: true, phone: true },
-        });
-        members.forEach(m => {
-          if (m.phone) {
-            recipients.push({
-              phone: m.phone,
-              name: `${m.firstName} ${m.lastName}`,
-              memberId: m.id,
-            });
-          }
-        });
-        break;
-      }
-
-      case 'CUSTOM_NUMBERS': {
-        if (!filter?.customNumbers?.length) break;
-        filter.customNumbers.forEach(phone => {
-          recipients.push({ phone });
-        });
-        break;
-      }
-
-      case 'OWING_MEMBERS': {
-        const members = await prisma.member.findMany({
-          where: { 
-            associationId, 
-            phone: { not: null },
-            status: 'ACTIVE',
-          },
-          include: {
-            transactions: {
-              where: { status: 'PENDING' },
-              select: { amount: true },
-            },
-          },
-        });
-        const minAmount = filter?.owingMinAmount || 0;
-        members.forEach(m => {
-          const totalOwing = m.transactions.reduce((sum, t) => sum + Number(t.amount), 0);
-          if (totalOwing >= minAmount && m.phone) {
-            recipients.push({
-              phone: m.phone,
-              name: `${m.firstName} ${m.lastName}`,
-              memberId: m.id,
-            });
-          }
-        });
-        break;
-      }
-
-      case 'PAID_MEMBERS': {
-        const members = await prisma.member.findMany({
-          where: { 
-            associationId, 
-            phone: { not: null },
-            status: 'ACTIVE',
-          },
-          include: {
-            transactions: {
-              where: { status: 'PENDING' },
-              select: { amount: true },
-            },
-          },
-        });
-        members.forEach(m => {
-          const totalOwing = m.transactions.reduce((sum, t) => sum + Number(t.amount), 0);
-          if (totalOwing === 0 && m.phone) {
-            recipients.push({
-              phone: m.phone,
-              name: `${m.firstName} ${m.lastName}`,
-              memberId: m.id,
-            });
-          }
-        });
-        break;
-      }
-    }
-
-    return recipients;
+    return (await resolveSmsAudience(prisma, associationId, recipientType, filter)).willText;
   }
-
   // ============================================
   // Credit Management
   // ============================================
@@ -808,37 +541,15 @@ export class SMSService {
   /**
    * Deduct credits from balance
    */
-  private async deductCredits(
+  async deductCredits(
     associationId: number,
     amount: number,
     description: string,
     campaignId?: number
   ) {
-    const balance = await this.getOrCreateCreditBalance(associationId);
-    
-    await prisma.$transaction([
-      prisma.sMSCreditBalance.update({
-        where: { associationId },
-        data: {
-          balance: { decrement: amount },
-          totalUsed: { increment: amount },
-        },
-      }),
-      prisma.sMSCreditTransaction.create({
-        data: {
-          balanceId: balance.id,
-          type: 'USAGE',
-          amount: -amount,
-          description,
-          campaignId,
-        },
-      }),
-    ]);
+    // Atomic and never below zero: used by anything that has to spend credits outside a send
+    await prisma.$transaction((tx) => reserveCredits(tx, associationId, amount, description, { campaignId }));
   }
-
-  /**
-   * Get credit balance
-   */
   async getCreditBalance(associationId: number) {
     const balance = await this.getOrCreateCreditBalance(associationId);
     return {
@@ -858,43 +569,41 @@ export class SMSService {
     reference?: string,
     description?: string
   ) {
-    const balance = await prisma.sMSCreditBalance.upsert({
-      where: { associationId },
-      create: {
-        associationId,
-        balance: amount,
-        totalPurchased: amount,
-        totalUsed: 0,
-        lastTopUpAt: new Date(),
-      },
-      update: {
-        balance: { increment: amount },
-        totalPurchased: { increment: amount },
-        lastTopUpAt: new Date(),
-      },
-    });
+    return prisma.$transaction(async (tx) => {
+      // The same reference is never credited twice
+      if (reference) {
+        const existing = await tx.sMSCreditTransaction.findFirst({ where: { type: 'PURCHASE', reference, balance: { associationId } }, select: { id: true } });
+        if (existing) {
+          const current = await tx.sMSCreditBalance.findUnique({ where: { associationId } });
+          return {
+            balance: Number(current?.balance ?? 0),
+            totalPurchased: Number(current?.totalPurchased ?? 0),
+            totalUsed: Number(current?.totalUsed ?? 0),
+            lastTopUpAt: current?.lastTopUpAt ?? null,
+          };
+        }
+      }
 
-    await prisma.sMSCreditTransaction.create({
-      data: {
-        balanceId: balance.id,
-        type: 'PURCHASE',
-        amount,
-        description: description || 'Credit top-up',
-        reference,
-      },
-    });
+      // The row it returns already includes the credits just added (the old code added them again to what it reported)
+      const balance = await tx.sMSCreditBalance.upsert({
+        where: { associationId },
+        create: { associationId, balance: amount, totalPurchased: amount, totalUsed: 0, lastTopUpAt: new Date() },
+        update: { balance: { increment: amount }, totalPurchased: { increment: amount }, lastTopUpAt: new Date() },
+      });
 
-    return {
-      balance: Number(balance.balance) + amount, // Add amount since upsert returns before increment
-      totalPurchased: Number(balance.totalPurchased) + amount,
-      totalUsed: Number(balance.totalUsed),
-      lastTopUpAt: new Date(),
-    };
+      await tx.sMSCreditTransaction.create({
+        data: { balanceId: balance.id, type: 'PURCHASE', amount, description: description || 'Credit top-up', reference },
+      });
+
+      return {
+        balance: Number(balance.balance),
+        totalPurchased: Number(balance.totalPurchased),
+        totalUsed: Number(balance.totalUsed),
+        lastTopUpAt: balance.lastTopUpAt,
+      };
+    });
   }
 
-  /**
-   * Get credit transaction history
-   */
   async getCreditHistory(
     associationId: number,
     options: { page: number; limit: number }

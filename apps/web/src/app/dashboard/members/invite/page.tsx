@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Send, UserPlus, X, AlertCircle, CheckCircle } from 'lucide-react';
-import { PERMISSIONS } from '@/lib/permissions';
-import { Can } from '@/hooks/usePermissions';
-import { apiGet, apiPost } from '@/utils/api';
+import { ArrowLeft, Send, UserPlus, X, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { Text } from '@mantine/core';
+import { modals } from '@mantine/modals';
+import { apiGet, apiPost, apiDelete } from '@/utils/api';
+import { toast } from '@/lib/toast';
 import { HelpLink } from '@/components/docs/HelpLink';
 
 interface Member {
@@ -20,29 +21,38 @@ interface Member {
 interface InviteResult {
   memberId: number;
   success: boolean;
+  emailSent?: boolean;
   message: string;
 }
 
+interface PendingInvite {
+  id: number;
+  email: string | null;
+  inviteTokenExpiresAt: string;
+  member: { id: number; firstName: string; lastName: string; email: string | null; memberId: string };
+}
+
+type Tab = 'invite' | 'pending';
+
 export default function InviteMembersPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<Tab>('invite');
   const [members, setMembers] = useState<Member[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [busyInvite, setBusyInvite] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [results, setResults] = useState<InviteResult[]>([]);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchEligibleMembers();
-  }, []);
-
-  const fetchEligibleMembers = async () => {
+  const fetchEligibleMembers = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch members who have email and are not yet invited/active
+      // Members with an email, no login yet and not disabled — invites go out by email only.
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?limit=500`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/member-invites/invitable?limit=500`
       );
 
       if (!response.ok) {
@@ -50,18 +60,30 @@ export default function InviteMembersPage() {
       }
 
       const data = await response.json();
-      // Filter members with email who haven't been invited yet
-      const eligible = data.data.members.filter(
-        (m: Member) => m.email && m.loginStatus !== 'active'
-      );
-      setMembers(eligible);
+      setMembers(data.data.members);
     } catch (error: any) {
       console.error('Error fetching members:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  const fetchPendingInvites = useCallback(async () => {
+    try {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/member-invites/pending`);
+      if (!response.ok) return;
+      const data = await response.json();
+      setPendingInvites(data.data.invites ?? []);
+    } catch (error) {
+      console.error('Error fetching pending invites:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEligibleMembers();
+    fetchPendingInvites();
+  }, [fetchEligibleMembers, fetchPendingInvites]);
 
   const handleSelectAll = () => {
     if (selectedMembers.length === filteredMembers.length) {
@@ -101,13 +123,61 @@ export default function InviteMembersPage() {
 
       setResults(data.data.results);
       setSelectedMembers([]);
-      // Refresh the list to update login statuses
+      // Refresh both lists: login statuses changed and new invites are now pending
       fetchEligibleMembers();
+      fetchPendingInvites();
     } catch (error: any) {
       setError(error.message);
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleResend = async (invite: PendingInvite) => {
+    setBusyInvite(invite.id);
+    try {
+      const response = await apiPost(`${process.env.NEXT_PUBLIC_API_URL}/api/member-invites/${invite.id}/resend`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to resend invite');
+      if (data.data?.emailSent === false) {
+        toast.warning("The invite was renewed, but the email couldn't be sent. Try again shortly.");
+      } else {
+        toast.success('Invite resent');
+      }
+      fetchPendingInvites();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend invite');
+    } finally {
+      setBusyInvite(null);
+    }
+  };
+
+  const handleRevoke = (invite: PendingInvite) => {
+    modals.openConfirmModal({
+      title: 'Revoke Invite',
+      children: (
+        <Text size="sm">
+          The link sent to {invite.member.firstName} {invite.member.lastName} stops working. You can invite them again later.
+        </Text>
+      ),
+      labels: { confirm: 'Revoke invite', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        setBusyInvite(invite.id);
+        try {
+          const response = await apiDelete(`${process.env.NEXT_PUBLIC_API_URL}/api/member-invites/${invite.id}`);
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || 'Failed to revoke invite');
+          toast.success('Invite revoked');
+          fetchPendingInvites();
+          fetchEligibleMembers();
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to revoke invite');
+        } finally {
+          setBusyInvite(null);
+        }
+      },
+    });
   };
 
   const filteredMembers = members.filter((m) => {
@@ -140,6 +210,15 @@ export default function InviteMembersPage() {
     );
   };
 
+  const resultStyle = (result: InviteResult) => {
+    if (!result.success) return 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200';
+    // Saved but the email didn't go out — it's in the Pending tab, where Resend retries it.
+    if (result.emailSent === false) return 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200';
+    return 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200';
+  };
+
+  const isExpired = (iso: string) => new Date(iso).getTime() < Date.now();
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -157,11 +236,28 @@ export default function InviteMembersPage() {
               Invite Members
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Send login invitations to members with email addresses
+              Email members a link to activate their login. Members without an email aren&apos;t listed — add one on their profile first.
             </p>
           </div>
         </div>
         <HelpLink />
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+        {(['invite', 'pending'] as Tab[]).map((key) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              tab === key
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            {key === 'invite' ? 'Invite' : pendingInvites.length > 0 ? `Pending (${pendingInvites.length})` : 'Pending'}
+          </button>
+        ))}
       </div>
 
       {/* Results */}
@@ -173,15 +269,8 @@ export default function InviteMembersPage() {
           {results.map((result, idx) => {
             const member = members.find((m) => m.id === result.memberId);
             return (
-              <div
-                key={idx}
-                className={`flex items-center gap-2 p-2 rounded ${
-                  result.success
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-                    : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                }`}
-              >
-                {result.success ? (
+              <div key={idx} className={`flex items-center gap-2 p-2 rounded ${resultStyle(result)}`}>
+                {result.success && result.emailSent !== false ? (
                   <CheckCircle className="w-4 h-4" />
                 ) : (
                   <AlertCircle className="w-4 h-4" />
@@ -212,44 +301,117 @@ export default function InviteMembersPage() {
         </div>
       )}
 
-      {/* Search and Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <div className="flex items-center justify-between gap-4">
-          <input
-            type="text"
-            placeholder="Search members..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {selectedMembers.length} selected
-            </span>
-            <button
-              onClick={handleSendInvites}
-              disabled={selectedMembers.length === 0 || isSending}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              <Send className="w-4 h-4" />
-              {isSending ? 'Sending...' : 'Send Invites'}
-            </button>
+      {tab === 'invite' ? (
+        <>
+          {/* Search and Actions */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div className="flex items-center justify-between gap-4">
+              <input
+                type="text"
+                placeholder="Search members..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {selectedMembers.length} selected
+                </span>
+                <button
+                  onClick={handleSendInvites}
+                  disabled={selectedMembers.length === 0 || isSending}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                  {isSending ? 'Sending...' : 'Send Invites'}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Members List */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <div className="text-gray-600 dark:text-gray-400">Loading members...</div>
-        </div>
-      ) : filteredMembers.length === 0 ? (
+          {/* Members List */}
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="text-gray-600 dark:text-gray-400">Loading members...</div>
+            </div>
+          ) : filteredMembers.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
+              <UserPlus className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+              <div className="text-gray-600 dark:text-gray-400">
+                {members.length === 0
+                  ? 'No one to invite — everyone with an email already has a login'
+                  : 'No members match your search'}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedMembers.length === filteredMembers.length && filteredMembers.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded border-gray-300 dark:border-gray-600"
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      Member ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      Login Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredMembers.map((member) => (
+                    <tr
+                      key={member.id}
+                      className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
+                        selectedMembers.includes(member.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                      }`}
+                      onClick={() => handleToggleMember(member.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedMembers.includes(member.id)}
+                          onChange={() => handleToggleMember(member.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                        {member.memberId}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {member.firstName} {member.lastName}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        {member.email}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {getLoginStatusBadge(member.loginStatus)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      ) : pendingInvites.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <UserPlus className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+          <Send className="w-12 h-12 mx-auto text-gray-400 mb-4" />
           <div className="text-gray-600 dark:text-gray-400">
-            {members.length === 0
-              ? 'No members with email addresses available for invitation'
-              : 'No members match your search'}
+            No invites waiting — invites you send show up here until the member activates their login
           </div>
         </div>
       ) : (
@@ -257,60 +419,46 @@ export default function InviteMembersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-4 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedMembers.length === filteredMembers.length && filteredMembers.length > 0}
-                    onChange={handleSelectAll}
-                    className="rounded border-gray-300 dark:border-gray-600"
-                  />
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Member ID
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Login Status
-                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Link</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredMembers.map((member) => (
-                <tr
-                  key={member.id}
-                  className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
-                    selectedMembers.includes(member.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                  }`}
-                  onClick={() => handleToggleMember(member.id)}
-                >
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedMembers.includes(member.id)}
-                      onChange={() => handleToggleMember(member.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="rounded border-gray-300 dark:border-gray-600"
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                    {member.memberId}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                    {member.firstName} {member.lastName}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                    {member.email}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    {getLoginStatusBadge(member.loginStatus)}
-                  </td>
-                </tr>
-              ))}
+              {pendingInvites.map((invite) => {
+                const expired = isExpired(invite.inviteTokenExpiresAt);
+                return (
+                  <tr key={invite.id}>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                      {invite.member.firstName} {invite.member.lastName}
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">{invite.member.memberId}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{invite.email ?? invite.member.email}</td>
+                    <td className={`px-4 py-3 text-sm ${expired ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {expired ? 'Expired ' : 'Expires '}
+                      {new Date(invite.inviteTokenExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-3 whitespace-nowrap">
+                      <button
+                        onClick={() => handleResend(invite)}
+                        disabled={busyInvite === invite.id}
+                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 disabled:opacity-50"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        {expired ? 'Send again' : 'Resend'}
+                      </button>
+                      <button
+                        onClick={() => handleRevoke(invite)}
+                        disabled={busyInvite === invite.id}
+                        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 disabled:opacity-50"
+                      >
+                        Revoke
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

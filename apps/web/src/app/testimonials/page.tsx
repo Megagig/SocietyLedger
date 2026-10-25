@@ -1,7 +1,8 @@
 'use client';
 
 import { Container, Button } from '@mantine/core';
-import { IconUsers, IconStar, IconArrowRight } from '@tabler/icons-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import { IconStar, IconArrowRight } from '@tabler/icons-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import Header from '@/components/layout/Header';
@@ -83,7 +84,7 @@ export default function TestimonialsPage() {
               </span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Trusted by hundreds of associations across Nigeria. Here's what they have to say about SocietyLedger.
+              Trusted by hundreds of associations across Nigeria. Here&apos;s what they have to say about SocietyLedger.
             </p>
           </div>
         </Container>
@@ -100,7 +101,7 @@ export default function TestimonialsPage() {
                   ))}
                 </div>
                 <p className="text-lg text-gray-700 dark:text-gray-300 mb-6 leading-relaxed italic">
-                  "{testimonial.quote}"
+                  &quot;{testimonial.quote}&quot;
                 </p>
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-white font-bold text-lg">
@@ -146,12 +147,7 @@ export default function TestimonialsPage() {
       <footer className="py-12 px-4 border-t border-gray-200 dark:border-gray-800">
         <Container size="xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center">
-                <IconUsers className="text-white" size={20} />
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">SocietyLedger</span>
-            </div>
+            <BrandLogo height={32} />
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600 dark:text-gray-400">
               <Link href="/" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">Home</Link>
               <Link href="/about" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">About</Link>

@@ -20,6 +20,8 @@ import { IconCreditCard, IconArrowUpRight, IconArrowDownRight, IconCash, IconRef
 import { accountingApi, CashFlowStatement, CashFlowItem } from '@/lib/api/accounting';
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { toast } from '@/lib/toast';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { entryHref, ledgerHref } from '@/lib/accounting-drill';
 import {
   BarChart,
   Bar,
@@ -67,13 +69,16 @@ export default function CashFlowPage() {
   }, [error]);
 
   const report: CashFlowStatement | undefined = reportData?.data;
+  // Cash at the start is what stood the moment before the period began; cash at the end is what stood when it ended
+  const startOf = report ? new Date(new Date(report.period.startDate).getTime() - 1).toISOString() : undefined;
+  const cashAt = (value: unknown, to: string | undefined, datesLabel: string) => (Number(value) !== 0 && to ? ledgerHref({ scope: 'cash', title: 'Cash and bank', to, datesLabel }) : undefined);
 
   const formatCurrency = (amount: any) => {
     const num = typeof amount === 'object' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -110,7 +115,7 @@ export default function CashFlowPage() {
                 {inflows.map((item, index) => (
                   <Table.Tr key={`inflow-${index}`}>
                     <Table.Td pl="xl">
-                      <Text size="sm">{item.description}</Text>
+                      <Text size="sm"><DrillLink href={item.entryId ? entryHref(item.entryId) : undefined} label={item.description}>{item.description}</DrillLink></Text>
                     </Table.Td>
                     <Table.Td align="right">
                       <Text size="sm" c="green">{formatCurrency(item.amount)}</Text>
@@ -138,7 +143,7 @@ export default function CashFlowPage() {
                 {outflows.map((item, index) => (
                   <Table.Tr key={`outflow-${index}`}>
                     <Table.Td pl="xl">
-                      <Text size="sm">{item.description}</Text>
+                      <Text size="sm"><DrillLink href={item.entryId ? entryHref(item.entryId) : undefined} label={item.description}>{item.description}</DrillLink></Text>
                     </Table.Td>
                     <Table.Td align="right">
                       <Text size="sm" c="red">({formatCurrency(item.amount)})</Text>
@@ -245,7 +250,7 @@ export default function CashFlowPage() {
             <li>There are no posted journal entries affecting cash accounts</li>
           </ul>
           <Text size="sm" mt="sm">
-            Go to Chart of Accounts and click "Initialize" to set up your accounts, then create and post journal entries.
+            Go to Chart of Accounts and click &quot;Initialize&quot; to set up your accounts, then create and post journal entries.
           </Text>
         </Alert>
       )}
@@ -272,7 +277,7 @@ export default function CashFlowPage() {
                 <Text size="xs" className="sm:text-sm" c="dimmed">Beginning Cash</Text>
               </Group>
               <Text size="lg" className="text-base sm:text-xl" fw={700}>
-                {formatCurrency(report.beginningCash)}
+                <DrillLink href={cashAt(report.beginningCash, startOf, 'Up to the start')} label="Cash at the start">{formatCurrency(report.beginningCash)}</DrillLink>
               </Text>
             </Card>
 
@@ -300,7 +305,7 @@ export default function CashFlowPage() {
                 <Text size="xs" className="sm:text-sm" c="dimmed">Ending Cash</Text>
               </Group>
               <Text size="lg" className="text-base sm:text-xl" fw={700} c="teal">
-                {formatCurrency(report.endingCash)}
+                <DrillLink href={cashAt(report.endingCash, report.period.endDate, 'Up to the end')} label="Cash at the end">{formatCurrency(report.endingCash)}</DrillLink>
               </Text>
             </Card>
 
@@ -374,7 +379,7 @@ export default function CashFlowPage() {
               <Table.Tbody>
                 <Table.Tr>
                   <Table.Td><Text>Beginning Cash Balance</Text></Table.Td>
-                  <Table.Td align="right"><Text fw={500}>{formatCurrency(report.beginningCash)}</Text></Table.Td>
+                  <Table.Td align="right"><Text fw={500}><DrillLink href={cashAt(report.beginningCash, startOf, 'Up to the start')} label="Cash at the start">{formatCurrency(report.beginningCash)}</DrillLink></Text></Table.Td>
                 </Table.Tr>
                 <Table.Tr>
                   <Table.Td><Text>Net Cash from Operating Activities</Text></Table.Td>
@@ -414,7 +419,7 @@ export default function CashFlowPage() {
                 <Table.Tr>
                   <Table.Td><Text fw={700}>Ending Cash Balance</Text></Table.Td>
                   <Table.Td align="right">
-                    <Text fw={700} size="lg" c="teal">{formatCurrency(report.endingCash)}</Text>
+                    <Text fw={700} size="lg" c="teal"><DrillLink href={cashAt(report.endingCash, report.period.endDate, 'Up to the end')} label="Cash at the end">{formatCurrency(report.endingCash)}</DrillLink></Text>
                   </Table.Td>
                 </Table.Tr>
               </Table.Tbody>

@@ -15,6 +15,9 @@ router.get('/status', (req, res) => controller.getStatus(req, res));
 // Complete a step (admin only)
 router.patch('/complete-step', requireAssociationRole(['admin']), (req, res) => controller.completeStep(req, res));
 
+// Invite the officers who will help run the association (admin only)
+router.post('/team', requireAssociationRole(['admin']), (req, res) => controller.inviteTeam(req, res));
+
 // Skip onboarding (admin only)
 router.post('/skip', requireAssociationRole(['admin']), (req, res) => controller.skip(req, res));
 

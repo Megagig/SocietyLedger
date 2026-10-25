@@ -7,6 +7,8 @@ export interface Notification {
   title: string;
   message: string;
   type: 'payment_due' | 'payment_received' | 'system' | 'approval' | 'announcement';
+  entityId?: number | null;
+  pushType?: string | null;
   isRead: boolean;
   createdAt: string;
   userId: number;
@@ -84,14 +86,21 @@ export const notificationsApi = {
   /**
    * Create announcement (admin only)
    */
-  async createAnnouncement(data: {
-    title: string;
-    message: string;
-    priority?: 'info' | 'warning' | 'urgent';
-    sendEmail?: boolean;
-  }) {
+  async createAnnouncement(data: AnnouncementInput) {
     const response = await api.post(`${API_URL}/api/notifications/announcement`, data);
-    return response.data;
+    return response.data as { success: boolean; message: string; data: AnnouncementResult };
+  },
+
+  /** Who an announcement would reach and miss, and what its texts would cost, before it is sent. */
+  async previewAnnouncement(data: AnnouncementInput) {
+    const response = await api.post(`${API_URL}/api/notifications/announcement/preview`, data);
+    return response.data as { success: boolean; data: AnnouncementPreview };
+  },
+
+  /** The announcements the association has sent, newest first. */
+  async listAnnouncements(params?: { page?: number; limit?: number }) {
+    const response = await api.get(`${API_URL}/api/notifications/announcements`, { params });
+    return response.data as { success: boolean; data: { announcements: SentAnnouncement[]; pagination: { page: number; totalPages: number; totalCount: number; hasMore: boolean } } };
   },
 
   /**
@@ -111,6 +120,69 @@ export const notificationsApi = {
   },
 };
 
+export interface AnnouncementInput {
+  title: string;
+  message: string;
+  priority?: 'info' | 'warning' | 'urgent';
+  audience?: 'ALL' | 'CATEGORY' | 'SELECTED';
+  categories?: string[];
+  memberIds?: number[];
+  sendEmail?: boolean;
+  sendSms?: boolean;
+  smsText?: string;
+}
+
+export interface AnnouncementReach {
+  members: number;
+  withLogin: number;
+  noLogin: number;
+  withEmail: number;
+  willText: number;
+  noPhone: number;
+  optedOut: number;
+}
+
+export interface AnnouncementPreview {
+  reach: AnnouncementReach;
+  smsText: string;
+  sms: { segments: number; credits: number; balance: number; enough: boolean; shortBy: number } | null;
+}
+
+export interface AnnouncementResult {
+  id: number;
+  count: number;
+  inApp: number;
+  noLogin: number;
+  emailsSent: number;
+  smsSent: number;
+  smsFailed: number;
+  smsInProgress: boolean;
+  reach: AnnouncementReach;
+}
+
+export interface SentAnnouncement {
+  id: number;
+  title: string;
+  message: string;
+  priority: string;
+  audience: 'ALL' | 'CATEGORY' | 'SELECTED';
+  sendEmail: boolean;
+  sendSms: boolean;
+  status: 'SENDING' | 'COMPLETED' | 'INTERRUPTED';
+  memberCount: number;
+  inAppCount: number;
+  noLoginCount: number;
+  emailCount: number;
+  smsRequested: number;
+  smsSent: number;
+  smsFailed: number;
+  noPhoneCount: number;
+  optedOutCount: number;
+  creditsUsed: number;
+  sentBy: string;
+  createdAt: string;
+}
+
 export interface NotificationPreferences {
   emailEnabled: boolean;
   smsEnabled: boolean;
@@ -129,6 +201,8 @@ export interface NotificationPreferences {
   approvalInApp: boolean;
   announcementEmail: boolean;
   announcementSMS: boolean;
+  /** "Don't send me text messages": stops announcement and campaign texts from officers. */
+  announcementSmsOptOut: boolean;
   announcementInApp: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;

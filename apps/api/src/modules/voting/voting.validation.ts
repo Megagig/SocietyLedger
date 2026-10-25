@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // Enums - Must match Prisma schema exactly
 const electionTypes = ['GENERAL', 'EXECUTIVE', 'COMMITTEE', 'SPECIAL'] as const;
-const electionStatuses = ['DRAFT', 'NOMINATIONS_OPEN', 'VOTING_OPEN', 'VOTING_CLOSED', 'RESULTS_PUBLISHED', 'CANCELLED'] as const;
+const electionStatuses = ['DRAFT', 'NOMINATIONS_OPEN', 'NOMINATIONS_CLOSED', 'VOTING_OPEN', 'VOTING_CLOSED', 'RESULTS_PUBLISHED', 'CANCELLED'] as const;
 const candidateStatuses = ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN'] as const;
 const pollTypes = ['YES_NO', 'MULTIPLE_CHOICE', 'SINGLE_CHOICE', 'RATING'] as const;
 const pollStatuses = ['DRAFT', 'ACTIVE', 'CLOSED', 'CANCELLED'] as const;
@@ -36,6 +36,8 @@ export const createElectionSchema = z.object({
   requiresQuorum: z.boolean().default(false),
   quorumPercentage: z.number().min(0).max(100).optional().nullable(),
   positions: z.array(createPositionSchema).optional(),
+  // Who can vote and who can stand. Checked against the menu of conditions when saved; left out means the association's template, if it has one.
+  eligibilityRules: z.unknown().optional(),
 }).refine(
   (data) => {
     const votingStart = new Date(data.votingStartDate);
@@ -151,7 +153,7 @@ export const castVoteSchema = z.object({
 }).refine(
   (data) => {
     // Either candidateId or isAbstention must be provided
-    return data.candidateId !== null || data.isAbstention === true;
+    return Boolean(data.candidateId) || data.isAbstention === true;
   },
   { message: 'Either select a candidate or abstain', path: ['candidateId'] }
 );

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { exportsService } from './exports.service';
 import {
   exportFinancialSummarySchema,
+  exportAccountingStatementSchema,
   exportMemberStatementSchema,
   exportAllMembersSchema,
   getExportHistorySchema,
@@ -12,6 +13,12 @@ import { PERMISSIONS } from '../../lib/permissions';
 
 // Holding only exports.view_history (and not exports.financial/exports.members) scopes
 // history/download to exports the user themselves triggered, not the whole association's.
+/** What the client may see of a generated file: never the path it has on the server. */
+function publicExport<T extends object>(result: T): Omit<T, "filepath"> {
+  const { filepath: _filepath, ...rest } = result as T & { filepath?: string };
+  return rest;
+}
+
 async function canSeeAllExports(req: Request): Promise<boolean> {
   return RBACService.hasAnyPermission(
     {
@@ -28,6 +35,31 @@ async function canSeeAllExports(req: Request): Promise<boolean> {
 // ============================================
 
 export const exportsController = {
+  /**
+   * An accounting statement (income statement, balance sheet or cash flow) as a PDF
+   * POST /api/exports/accounting-statement
+   */
+  async exportAccountingStatementPDF(req: Request, res: Response) {
+    try {
+      const validation = exportAccountingStatementSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ success: false, message: 'Validation failed', errors: validation.error.errors });
+      }
+      const { statement, period, startDate, endDate, asOfDate } = validation.data;
+      const result = await exportsService.exportAccountingStatementPDF(req.user!.associationId!, req.user!.id, {
+        statement,
+        period,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        asOfDate: asOfDate ? new Date(asOfDate) : undefined,
+      });
+      res.json({ success: true, message: 'Statement PDF generated successfully', data: publicExport(result) });
+    } catch (error: any) {
+      console.error('Export accounting statement error:', error);
+      res.status(500).json({ success: false, message: 'Failed to generate the statement PDF' });
+    }
+  },
+
   /**
    * TASK-EXP-004: Export Financial Summary as PDF
    * POST /api/exports/financial-pdf
@@ -62,7 +94,7 @@ export const exportsController = {
       res.json({
         success: true,
         message: 'Financial summary PDF generated successfully',
-        data: result,
+        data: publicExport(result),
       });
     } catch (error: any) {
       console.error('Export financial PDF error:', error);
@@ -107,7 +139,7 @@ export const exportsController = {
       res.json({
         success: true,
         message: 'Financial summary Excel generated successfully',
-        data: result,
+        data: publicExport(result),
       });
     } catch (error: any) {
       console.error('Export financial Excel error:', error);
@@ -160,7 +192,7 @@ export const exportsController = {
       res.json({
         success: true,
         message: 'Member statement PDF generated successfully',
-        data: result,
+        data: publicExport(result),
       });
     } catch (error: any) {
       console.error('Export member statement error:', error);
@@ -203,7 +235,7 @@ export const exportsController = {
       res.json({
         success: true,
         message: 'Members Excel generated successfully',
-        data: result,
+        data: publicExport(result),
       });
     } catch (error: any) {
       console.error('Export members Excel error:', error);
@@ -244,7 +276,7 @@ export const exportsController = {
       res.json({
         success: true,
         message: 'Custom members Excel generated successfully',
-        data: result,
+        data: publicExport(result),
       });
     } catch (error: any) {
       console.error('Export custom members Excel error:', error);
@@ -292,7 +324,7 @@ export const exportsController = {
       res.json({
         success: true,
         message: `Custom ${reportType} Excel generated successfully`,
-        data: result,
+        data: publicExport(result),
       });
     } catch (error: any) {
       console.error('Export custom report Excel error:', error);
@@ -335,7 +367,7 @@ export const exportsController = {
 
       res.json({
         success: true,
-        data: result,
+        data: publicExport(result),
       });
     } catch (error: any) {
       console.error('Get export history error:', error);
@@ -396,7 +428,9 @@ export const exportsController = {
       });
     } catch (error: any) {
       console.error('Download export error:', error);
-      res.status(error.message.includes('not found') || error.message.includes('expired') ? 404 : 500).json({
+      const expired = String(error.message).includes('expired');
+      res.status(expired ? 410 : String(error.message).includes('not found') ? 404 : 500).json({
+        code: expired ? 'EXPORT_EXPIRED' : undefined,
         success: false,
         message: error.message || 'Failed to download export',
       });

@@ -38,6 +38,33 @@ export interface ResponseSuggestion {
 // AI SUPPORT SERVICE
 // ============================================
 
+/**
+ * Models do not always return clean JSON (prose around it, markdown fences, or output cut off at the token cap).
+ * Try the JSON object first, then pull the "suggestion" string out of broken JSON, then fall back to plain text.
+ */
+export function parseSuggestionJson(
+  content: string
+): Record<string, any> | null {
+  const match = content.match(/\{[\s\S]*\}/);
+  if (match) {
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      // fall through to the looser strategies
+    }
+  }
+  const field = content.match(/"suggestion"\s*:\s*"((?:[^"\\]|\\.)*)/);
+  if (field) {
+    try {
+      return { suggestion: JSON.parse('"' + field[1] + '"') };
+    } catch {
+      return { suggestion: field[1].replace(/\\n/g, '\n') };
+    }
+  }
+  const text = content.replace(/```(?:json)?/g, '').trim();
+  return text && !text.startsWith('{') ? { suggestion: text } : null;
+}
+
 export const aiSupportService = {
   /**
    * Check if AI is available
@@ -66,6 +93,8 @@ export const aiSupportService = {
       TECHNICAL: 'Technical issues, system errors, performance problems',
       BUG: 'Software bugs, unexpected behavior, crashes',
       FEATURE_REQUEST: 'New feature requests, enhancement suggestions',
+      BILLING: 'Subscription, plan, invoice and billing questions for the association',
+      DATA: 'Data corrections, imports and bulk changes for the association',
       OTHER: 'General inquiries that don\'t fit other categories',
     };
 
@@ -277,7 +306,7 @@ Choose tone based on the issue:
           { role: 'system', content: 'You are a helpful support agent assistant. Always respond with valid JSON.' },
           { role: 'user', content: prompt },
         ],
-        { temperature: 0.5, maxTokens: 800 }
+        { temperature: 0.5, maxTokens: 1500 }
       );
 
       const safeContent = validateAIOutput(response.content, {
@@ -285,12 +314,10 @@ Choose tone based on the issue:
         associationId,
       });
 
-      const jsonMatch = safeContent.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
+      const parsed = parseSuggestionJson(safeContent);
+      if (!parsed) {
         throw new Error('Invalid JSON response');
       }
-
-      const parsed = JSON.parse(jsonMatch[0]);
 
       // Log AI usage
       await this.logAIUsage(associationId, userId, 'response_suggestion', response.tokensUsed.total, response.costUsd);
@@ -326,6 +353,8 @@ Choose tone based on the issue:
       TECHNICAL: ['error', 'slow', 'loading', 'crash', 'not working', 'broken', 'issue'],
       BUG: ['bug', 'glitch', 'wrong', 'incorrect', 'mistake', 'unexpected'],
       FEATURE_REQUEST: ['feature', 'request', 'suggest', 'would be nice', 'add', 'improve', 'enhancement'],
+      BILLING: ['subscription', 'plan', 'billing', 'invoice', 'renew', 'upgrade', 'downgrade', 'trial'],
+      DATA: ['import', 'correct', 'duplicate', 'merge', 'bulk', 'migrate', 'restore'],
       OTHER: [],
     };
 

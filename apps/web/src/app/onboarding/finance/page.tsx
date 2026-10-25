@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
-import { API_ROUTES, FINANCIAL_TYPES, FREQUENCY_TYPES } from '@/utils/constants';
+import { API_ROUTES } from '@/utils/constants';
+import { ONBOARDING_FINANCE_TEMPLATES } from '@societyledger/shared';
 
 interface FinancialCategory {
   name: string;
@@ -13,16 +14,20 @@ interface FinancialCategory {
   description: string;
 }
 
-const categoryTemplates = [
-  { name: 'Monthly Dues', type: 'due', amount: '5000', frequency: 'monthly', description: 'Regular monthly membership dues' },
-  { name: 'Annual Dues', type: 'due', amount: '50000', frequency: 'annually', description: 'Annual membership contribution' },
-  { name: 'Building Levy', type: 'levy', amount: '10000', frequency: 'one-time', description: 'One-time building project levy' },
-  { name: 'Late Payment Penalty', type: 'penalty', amount: '500', frequency: 'one-time', description: 'Penalty for late payments' },
-];
+// The same starter templates the mobile app offers (packages/shared/src/onboarding.ts)
+const categoryTemplates: FinancialCategory[] = ONBOARDING_FINANCE_TEMPLATES.map((t) => ({ ...t, amount: String(t.amount) }));
+
+const inputClass =
+  'px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500';
 
 export default function FinanceSetupPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Names already saved on an earlier attempt, so a retry never creates them twice
+  const [savedNames, setSavedNames] = useState<string[]>([]);
+  const [bankSaved, setBankSaved] = useState(false);
+  const [bank, setBank] = useState({ bankName: '', accountName: '', accountNumber: '' });
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newCategory, setNewCategory] = useState<FinancialCategory>({
@@ -59,19 +64,74 @@ export default function FinanceSetupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    const wantsBank = !!(bank.bankName.trim() || bank.accountName.trim() || bank.accountNumber.trim());
+    if (wantsBank && !bankSaved) {
+      if (bank.bankName.trim().length < 2 || bank.accountName.trim().length < 2) {
+        setError('Enter the bank name and the account name, or clear the bank details.');
+        return;
+      }
+      if (!/^[0-9]{10}$/.test(bank.accountNumber.trim())) {
+        setError('The account number must be 10 digits.');
+        return;
+      }
+    }
+
     setSaving(true);
+    const problems: string[] = [];
+    const saved = [...savedNames];
     try {
-      // Create financial categories via API
-      // Note: This would need a bulk create endpoint or loop through
-      // For now, we'll just complete the step
-      
+      for (const category of categories) {
+        if (saved.includes(category.name)) continue;
+        try {
+          await api.post('/finance/categories', {
+            name: category.name,
+            type: category.type,
+            amount: Number(category.amount),
+            frequency: category.frequency,
+            description: category.description || undefined,
+          });
+          saved.push(category.name);
+        } catch (err) {
+          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          problems.push(`${category.name}: ${message || 'could not be saved'}`);
+        }
+      }
+      setSavedNames(saved);
+
+      let bankDone = bankSaved;
+      if (wantsBank && !bankSaved) {
+        try {
+          await api.post('/payments/nigerian/bank-accounts', {
+            bankName: bank.bankName.trim(),
+            accountName: bank.accountName.trim(),
+            accountNumber: bank.accountNumber.trim(),
+            isDefault: true,
+          });
+          bankDone = true;
+          setBankSaved(true);
+        } catch (err) {
+          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          problems.push(`Bank account: ${message || 'could not be saved'}`);
+        }
+      }
+
+      if (problems.length > 0) {
+        setError(`Some things could not be saved. ${problems.join(' ')} Fix them and try again, or skip this step.`);
+        return;
+      }
+
+      // Nothing entered at all counts as skipped, so the final checklist stays honest
+      const didSomething = saved.length > 0 || bankDone;
       await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 4, stepName: 'finance' }
+        didSomething ? { step: 4, stepName: 'finance' } : { step: 4, stepName: 'finance', skipped: true }
       );
       router.push('/onboarding/complete');
-    } catch (error) {
-      console.error('Failed to save finance settings:', error);
+    } catch (err) {
+      console.error('Failed to save finance settings:', err);
+      setError('We could not save your finance settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -81,7 +141,7 @@ export default function FinanceSetupPage() {
     try {
       await api.patch(
         API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 4, stepName: 'finance' }
+        { step: 4, stepName: 'finance', skipped: true }
       );
       router.push('/onboarding/complete');
     } catch (error) {
@@ -124,6 +184,12 @@ export default function FinanceSetupPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div role="alert" className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
           {/* Quick Templates */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Quick Add Templates</h3>
@@ -207,7 +273,7 @@ export default function FinanceSetupPage() {
                   >
                     <option value="monthly">Monthly</option>
                     <option value="quarterly">Quarterly</option>
-                    <option value="annually">Annually</option>
+                    <option value="annual">Annually</option>
                     <option value="one-time">One-time</option>
                   </select>
                 </div>
@@ -274,6 +340,46 @@ export default function FinanceSetupPage() {
               </div>
             </div>
           )}
+
+          {/* Bank account members pay into */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Bank Account for Transfers</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Members will see this account when they pay by bank transfer. You can add it later in Payments.
+            </p>
+            {bankSaved ? (
+              <p className="text-teal-600 dark:text-teal-400 font-medium">Saved: {bank.bankName} · {bank.accountNumber}</p>
+            ) : (
+              <div className="grid md:grid-cols-3 gap-4">
+                <input
+                  type="text"
+                  placeholder="Bank name"
+                  aria-label="Bank name"
+                  value={bank.bankName}
+                  onChange={(e) => setBank({ ...bank, bankName: e.target.value })}
+                  className={inputClass}
+                />
+                <input
+                  type="text"
+                  placeholder="Account name"
+                  aria-label="Account name"
+                  value={bank.accountName}
+                  onChange={(e) => setBank({ ...bank, accountName: e.target.value })}
+                  className={inputClass}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="Account number (10 digits)"
+                  aria-label="Account number"
+                  value={bank.accountNumber}
+                  onChange={(e) => setBank({ ...bank, accountNumber: e.target.value.replace(/\D/g, '') })}
+                  className={inputClass}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-4">

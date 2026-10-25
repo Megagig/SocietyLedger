@@ -20,7 +20,7 @@ const DASHBOARD_TAGS = {
 export const cachedDashboardService = {
   /**
    * Get dashboard overview with caching
-   * TTL: 5 minutes (MEDIUM)
+   * TTL: 1 minute (SHORT). Most writes clear it straight away; the few that do not (online payments, donations) show within a minute.
    */
   async getDashboardOverview(associationId: number): Promise<DashboardOverview> {
     const cacheKey = cacheService.generateKey(
@@ -33,7 +33,7 @@ export const cachedDashboardService = {
       cacheKey,
       () => dashboardService.getDashboardOverview(associationId),
       {
-        ttl: CACHE_TTL.MEDIUM,
+        ttl: CACHE_TTL.SHORT,
         tags: [
           DASHBOARD_TAGS.OVERVIEW(associationId),
           DASHBOARD_TAGS.MEMBERS(associationId),

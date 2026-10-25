@@ -1,9 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { canSeeOfficerDashboard } from '@/lib/permissions';
 import {
   IconWallet,
   IconUsers,
@@ -15,18 +18,26 @@ import {
 } from '@tabler/icons-react';
 
 export default function AdminDashboardPage() {
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, _hasHydrated } = useAuthStore();
+  const isOfficer = canSeeOfficerDashboard(user);
 
-  // Fetch dashboard data
+  // Fetch dashboard data (officers only: the endpoint needs ledger.view)
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: getDashboardOverview,
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: false,
+    enabled: _hasHydrated && isOfficer,
   });
 
-  // Loading state
-  if (isLoading) {
+  // Everyone else belongs on the member dashboard
+  useEffect(() => {
+    if (_hasHydrated && user && !isOfficer) router.replace('/dashboard/member');
+  }, [_hasHydrated, user, isOfficer, router]);
+
+  // Loading state (also while a non-officer is being sent to the member dashboard)
+  if (isLoading || (user && !isOfficer)) {
     return <DashboardSkeleton />;
   }
 
@@ -76,7 +87,7 @@ export default function AdminDashboardPage() {
           Admin Dashboard
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Welcome back, {user?.email?.split('@')[0] || 'Admin'}! Here's your association overview
+          Welcome back, {user?.email?.split('@')[0] || 'Admin'}! Here&apos;s your association overview
         </p>
       </div>
 

@@ -6,7 +6,7 @@ import { Text, Progress } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
-import { apiGet, apiPost, apiDelete } from '@/utils/api';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { 
   ArrowLeft, Target, Users, Calendar, DollarSign, 
@@ -21,7 +21,7 @@ interface LevyCampaign {
   targetAmount: number;
   amountPerMember: number | null;
   deadline: string;
-  status: 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  status: 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'COMPLETED' | 'CANCELLED';
   category: { id: number; name: string };
   assignments: CampaignAssignment[];
   createdAt: string;
@@ -50,6 +50,8 @@ interface CampaignProgress {
   campaign: LevyCampaign;
   totalAssigned: number;
   totalCollected: number;
+  /** What the assigned members still owe — stays owed after the campaign is closed. */
+  stillOwed: number;
   totalMembers: number;
   paidMembers: number;
   progressPercentage: number;
@@ -102,12 +104,17 @@ export default function LevyCampaignDetailPage() {
 
   const fetchMembers = async () => {
     try {
-      const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?status=active&limit=200`
-      );
-      if (!response.ok) throw new Error('Failed to fetch members');
-      const data = await response.json();
-      setMembers(data.data.members);
+      const all: Member[] = [];
+      for (let page = 1; page <= 50; page++) {
+        const response = await apiGet(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/members?status=active&limit=100&page=${page}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch members');
+        const data = await response.json();
+        all.push(...data.data.members);
+        if (!data.data.pagination?.hasMore) break;
+      }
+      setMembers(all);
     } catch (err: any) {
       console.error('Error fetching members:', err);
     }
@@ -146,12 +153,40 @@ export default function LevyCampaignDetailPage() {
     }
   };
 
+  const handleCloseCampaign = () => {
+    modals.openConfirmModal({
+      title: 'Close this campaign?',
+      children: (
+        <Text size="sm">
+          No more members can be added. Everything already charged stays owed: members keep being reminded and their
+          balances don&apos;t change until they pay, or you waive or void their charge.
+        </Text>
+      ),
+      labels: { confirm: 'Close campaign', cancel: 'Keep open' },
+      onConfirm: async () => {
+        try {
+          const response = await apiPatch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/levies/campaigns/${campaignId}`,
+            { status: 'CLOSED' }
+          );
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message);
+          toast.success('Campaign closed');
+          fetchCampaignProgress();
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to close campaign');
+        }
+      },
+    });
+  };
+
   const handleRemoveAssignment = async (assignmentId: number, memberName: string) => {
     modals.openConfirmModal({
       title: 'Remove Assignment',
       children: (
         <Text size="sm">
-          Are you sure you want to remove {memberName} from this campaign?
+          Remove {memberName} from this campaign? Use this to correct a mistake: their charge is voided and taken off their
+          ledger. It isn&apos;t possible once they have paid something. To drop a debt, waive or void their charge instead.
         </Text>
       ),
       labels: { confirm: 'Remove', cancel: 'Cancel' },
@@ -187,6 +222,7 @@ export default function LevyCampaignDetailPage() {
   const getCampaignStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE': return 'bg-green-100 text-green-800';
+      case 'CLOSED': return 'bg-orange-100 text-orange-800';
       case 'COMPLETED': return 'bg-blue-100 text-blue-800';
       case 'CANCELLED': return 'bg-red-100 text-red-800';
       case 'DRAFT': return 'bg-gray-100 text-gray-800';
@@ -223,7 +259,7 @@ export default function LevyCampaignDetailPage() {
     );
   }
 
-  const { campaign, totalAssigned, totalCollected, totalMembers, paidMembers, progressPercentage } = progress;
+  const { campaign, totalAssigned, totalCollected, stillOwed, totalMembers, paidMembers, progressPercentage } = progress;
   const assignments = campaign.assignments || [];
   const daysRemaining = Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
@@ -251,6 +287,16 @@ export default function LevyCampaignDetailPage() {
           </p>
         </div>
         
+        <Can permission={PERMISSIONS.FINANCE_EDIT}>
+          {campaign.status === 'ACTIVE' && (
+            <button
+              onClick={handleCloseCampaign}
+              className="flex items-center gap-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-lg"
+            >
+              Close campaign
+            </button>
+          )}
+        </Can>
         <Can permission={PERMISSIONS.TRANSACTION_CREATE}>
           {campaign.status === 'ACTIVE' && (
             <button
@@ -263,6 +309,13 @@ export default function LevyCampaignDetailPage() {
           )}
         </Can>
       </div>
+
+      {campaign.status === 'CLOSED' && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200 p-4 rounded-lg text-sm">
+          Closed to new members. {totalMembers - paidMembers} member(s) still owe ₦{Number(stillOwed).toLocaleString()} —
+          these charges stay owed and keep being reminded until they are paid, waived or voided.
+        </div>
+      )}
 
 
       {/* Progress Overview */}

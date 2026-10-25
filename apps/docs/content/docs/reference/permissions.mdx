@@ -6,7 +6,7 @@ audience: ["admin"]
 platforms: ["web", "mobile"]
 covers: ["apps/api/src/lib/permissions.ts", "apps/api/prisma/seeds/rbac-seed.ts", "apps/api/prisma/seeds/help-permissions.seed.ts"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-21"
 ---
 
 
@@ -20,6 +20,16 @@ Permissions control what a role can see and do. This reference lists every permi
 |---|---|---|---|
 | `audit.export` | Export audit logs. | admin | `AUDIT_EXPORT` |
 | `audit.view` | View audit logs. | admin | `AI_USAGE_VIEW`, `AUDIT_VIEW` |
+
+### Cooperatives
+
+| Key | Description | Default roles | Also known as |
+|---|---|---|---|
+| `cooperatives.apply_own` | Apply for a cooperative loan. | member | `COOPERATIVE_APPLY_OWN` |
+| `cooperatives.guarantor_own` | See and answer requests to guarantee another member's loan. | member | `COOPERATIVE_GUARANTOR_OWN` |
+| `cooperatives.repay_own` | Declare a payment you made towards your own loan, with a receipt, for an officer to confirm. | admin, treasurer, financial_secretary, member | `COOPERATIVE_REPAY_OWN` |
+| `cooperatives.savings_deposit_own` | Declare a savings deposit you paid to the cooperative, with a receipt, for an officer to approve. | admin, treasurer, financial_secretary, member | `COOPERATIVE_SAVINGS_DEPOSIT_OWN` |
+| `cooperatives.view_own` | View your own cooperative profile, savings accounts, loans, loan applications and repayments, and the loan products on offer. | member | `COOPERATIVE_VIEW_OWN` |
 
 ### Exports
 
@@ -49,10 +59,18 @@ Permissions control what a role can see and do. This reference lists every permi
 | `help.manage` | Create, edit, and delete help articles and FAQs | admin | `HELP_MANAGE` |
 | `help.view` | View help articles and FAQs | admin, treasurer, financial_secretary, member | `HELP_VIEW` |
 | `support.create` | Create support tickets | admin, treasurer, financial_secretary, member | `SUPPORT_CREATE` |
+| `support.escalate` | Contact SocietyLedger support, and escalate a member's ticket to it | admin | `SUPPORT_ESCALATE` |
 | `support.manage` | Manage support tickets (assign, close, etc.) | admin | `SUPPORT_MANAGE` |
 | `support.respond` | Respond to support tickets | admin | `SUPPORT_RESPOND` |
 | `support.view_all` | View all support tickets | admin | `SUPPORT_VIEW_ALL` |
 | `support.view_own` | View own support tickets | admin, treasurer, financial_secretary, member | `SUPPORT_VIEW_OWN` |
+
+### Meetings
+
+| Key | Description | Default roles | Also known as |
+|---|---|---|---|
+| `meetings.manage_attendance` | Initialize and mark meeting attendance. | admin, treasurer, financial_secretary | `MEETING_ATTENDANCE` |
+| `meetings.manage_minutes` | Create, edit and approve official meeting minutes. | admin, treasurer, financial_secretary | `MEETING_MINUTES` |
 
 ### Members
 
@@ -65,9 +83,9 @@ Permissions control what a role can see and do. This reference lists every permi
 | `members.edit_all` | Edit any member's details. | admin | `MEMBER_EDIT_ALL`, `USER_EDIT` |
 | `members.edit_own` | Edit own member details only. | admin, member | `MEMBER_EDIT_OWN` |
 | `members.manage_roles` | Assign or change member roles. | admin | `MEMBER_MANAGE_ROLES`, `USER_APPROVE` |
-| `members.view` | View member profiles and basic details. | admin, treasurer, financial_secretary | `ELECTION_NOMINATE`, `ELECTION_VIEW`, `ELECTION_VOTE`, `MEMBER_VIEW`, `POLL_VIEW`, `POLL_VOTE` |
+| `members.view` | View member profiles and basic details. | admin, treasurer, financial_secretary | `MEMBER_VIEW` |
 | `members.view_all` | View all members' profiles. | admin, treasurer, financial_secretary | `MEMBER_VIEW_ALL`, `USER_VIEW` |
-| `members.view_own` | View own member profile only. | admin, member | `MEETING_ATTENDANCE`, `MEETING_MINUTES`, `MEETING_VIEW`, `MEMBER_VIEW_OWN` |
+| `members.view_own` | View own member profile only. | admin, member | `MEETING_VIEW`, `MEMBER_VIEW_OWN` |
 
 ### Nigerian Payments
 
@@ -139,3 +157,20 @@ Permissions control what a role can see and do. This reference lists every permi
 |---|---|---|---|
 | `system.cron.trigger` | Manually trigger cron jobs. | admin | `CRON_TRIGGER` |
 | `system.cron.view` | View cron job status and history. | admin | `CRON_VIEW` |
+
+### Voting
+
+| Key | Description | Default roles | Also known as |
+|---|---|---|---|
+| `elections.nominate_own` | Self-nominate as a candidate in an election. | admin, treasurer, financial_secretary, member | `ELECTION_NOMINATE` |
+| `elections.view_own` | View elections and own candidacy/voting status. | admin, treasurer, financial_secretary, member | `ELECTION_VIEW` |
+| `elections.vote_own` | Cast a vote in an election. | admin, treasurer, financial_secretary, member | `ELECTION_VOTE` |
+| `polls.view_own` | View polls and their results. | admin, treasurer, financial_secretary, member | `POLL_VIEW` |
+| `polls.vote_own` | Respond to a poll. | admin, treasurer, financial_secretary, member | `POLL_VOTE` |
+
+### Welfare
+
+| Key | Description | Default roles | Also known as |
+|---|---|---|---|
+| `welfare.request_own` | Submit and cancel your own welfare payout requests. | member | `WELFARE_REQUEST_OWN` |
+| `welfare.view_own` | View your own welfare profile, contributions and payout requests, and the funds you can request from. | member | `WELFARE_VIEW_OWN` |

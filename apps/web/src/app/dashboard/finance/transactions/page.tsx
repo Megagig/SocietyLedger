@@ -909,7 +909,7 @@ export default function TransactionsPage() {
                 </div>
               )}
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                This action can be undone within a short time window using the "Undo" button that appears after deletion.
+                This action can be undone within a short time window using the &quot;Undo&quot; button that appears after deletion.
               </p>
             </div>
             <div className="flex gap-3">

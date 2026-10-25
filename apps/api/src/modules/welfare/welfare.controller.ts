@@ -18,7 +18,42 @@ import {
   disbursePayoutSchema,
   payoutQuerySchema,
 } from './welfare.validation';
+import { PlatformRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { PERMISSIONS } from '../../lib/permissions';
+import { RBACService } from '../../services/rbac.service';
+import { RuleError } from '../finance/rule-error';
+
+/**
+ * A rule the officer broke (their own request, already decided, over the fund's limit, not enough in the fund) answers with its own
+ * status and a stable `code` the apps can react to. Any other failure keeps the plain 500 with its message, as before.
+ */
+function welfareFailure(res: Response, error: unknown, message: string) {
+  if (error instanceof RuleError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+  }
+  return res.status(500).json({ success: false, message });
+}
+
+/**
+ * Officers (members.view_all, or payments.approve for payout review) and super admins see every member's
+ * welfare records; a member only ever gets their own — whatever `memberId` they pass. The list endpoints used
+ * to trust the client's `memberId` query param outright.
+ */
+async function canSeeAllWelfare(req: Request): Promise<boolean> {
+  if (!req.user) return false;
+  if (req.user.platformRole === PlatformRole.SUPER_ADMIN) return true;
+  return RBACService.hasAnyPermission(
+    {
+      userId: req.user.id,
+      associationId: req.user.associationId ?? null,
+      platformRole: req.user.platformRole ?? null,
+    },
+    [PERMISSIONS.MEMBER_VIEW_ALL, PERMISSIONS.WELFARE_PAYOUT_APPROVE]
+  );
+}
+
+const EMPTY_PAGE_INFO = (page: number, limit: number) => ({ page, limit, totalCount: 0, totalPages: 0, hasMore: false });
 
 export const welfareController = {
   // ==========================================
@@ -60,7 +95,7 @@ export const welfareController = {
       }
       console.error('Error creating welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to create welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -99,7 +134,7 @@ export const welfareController = {
       }
       console.error('Error updating welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to update welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -121,7 +156,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error fetching welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to fetch welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -181,7 +216,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error deleting welfare fund:', error);
       const message = error instanceof Error ? error.message : 'Failed to delete welfare fund';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -223,7 +258,7 @@ export const welfareController = {
       }
       console.error('Error recording contribution:', error);
       const message = error instanceof Error ? error.message : 'Failed to record contribution';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -261,7 +296,7 @@ export const welfareController = {
       }
       console.error('Error recording bulk contributions:', error);
       const message = error instanceof Error ? error.message : 'Failed to record contributions';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -306,7 +341,7 @@ export const welfareController = {
       }
       console.error('Error confirming contribution:', error);
       const message = error instanceof Error ? error.message : 'Failed to confirm contribution';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -319,11 +354,18 @@ export const welfareController = {
       }
 
       const queryParams = contributionQuerySchema.parse(req.query);
+      const seeAll = await canSeeAllWelfare(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { contributions: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
       const result = await welfareService.listContributions(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
         fundId: queryParams.fundId ? parseInt(queryParams.fundId) : undefined,
-        memberId: queryParams.memberId ? parseInt(queryParams.memberId) : undefined,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
         status: queryParams.status,
         startDate: queryParams.startDate,
         endDate: queryParams.endDate,
@@ -377,7 +419,7 @@ export const welfareController = {
       }
       console.error('Error creating payout request:', error);
       const message = error instanceof Error ? error.message : 'Failed to create payout request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -421,7 +463,7 @@ export const welfareController = {
       }
       console.error('Error reviewing payout request:', error);
       const message = error instanceof Error ? error.message : 'Failed to review payout request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -465,7 +507,7 @@ export const welfareController = {
       }
       console.error('Error disbursing payout:', error);
       const message = error instanceof Error ? error.message : 'Failed to disburse payout';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -500,7 +542,32 @@ export const welfareController = {
     } catch (error) {
       console.error('Error cancelling payout request:', error);
       const message = error instanceof Error ? error.message : 'Failed to cancel payout request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
+    }
+  },
+
+  /**
+   * One payout request. Someone who cannot see all welfare sees only their own.
+   * GET /api/welfare/payouts/:id
+   */
+  async getPayoutRequest(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      const id = parseInt(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ success: false, message: 'That is not a valid payout' });
+      }
+      const seeAll = await canSeeAllWelfare(req);
+      const request = await welfareService.getPayoutRequest(associationId, id);
+      if (!request || (!seeAll && request.memberId !== req.user?.memberId)) {
+        return res.status(404).json({ success: false, message: 'Payout request not found' });
+      }
+      return res.status(200).json({ success: true, data: request });
+    } catch (error) {
+      return welfareFailure(res, error, 'Failed to get payout request');
     }
   },
 
@@ -513,11 +580,18 @@ export const welfareController = {
       }
 
       const queryParams = payoutQuerySchema.parse(req.query);
+      const seeAll = await canSeeAllWelfare(req);
+      if (!seeAll && !req.user?.memberId) {
+        return res.status(200).json({
+          success: true,
+          data: { requests: [], pagination: EMPTY_PAGE_INFO(parseInt(queryParams.page), parseInt(queryParams.limit)) },
+        });
+      }
       const result = await welfareService.listPayoutRequests(associationId, {
         page: parseInt(queryParams.page),
         limit: parseInt(queryParams.limit),
         fundId: queryParams.fundId ? parseInt(queryParams.fundId) : undefined,
-        memberId: queryParams.memberId ? parseInt(queryParams.memberId) : undefined,
+        memberId: seeAll ? (queryParams.memberId ? parseInt(queryParams.memberId) : undefined) : req.user?.memberId,
         status: queryParams.status,
         payoutType: queryParams.payoutType,
         startDate: queryParams.startDate,
@@ -578,7 +652,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error fetching member welfare profile:', error);
       const message = error instanceof Error ? error.message : 'Failed to fetch profile';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 
@@ -685,7 +759,7 @@ export const welfareController = {
     } catch (error) {
       console.error('Error creating bereavement request:', error);
       const message = error instanceof Error ? error.message : 'Failed to create bereavement request';
-      return res.status(500).json({ success: false, message });
+      return welfareFailure(res, error, message);
     }
   },
 };

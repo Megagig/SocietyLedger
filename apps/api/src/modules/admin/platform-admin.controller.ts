@@ -19,6 +19,7 @@ import { TenantManagementService } from '../../services/tenant-management.servic
 import { ModuleFeatureService } from '../../services/module-feature.service';
 import { BillingOverrideService } from '../../services/billing-override.service';
 import { PlatformActionLogService } from '../../services/platform-action-log.service';
+import { setTenantPlan } from '../../services/subscription-plan.service';
 import { SMSService } from '../sms/sms.service';
 import { sendEmail } from '../../lib/email';
 import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
@@ -69,6 +70,11 @@ const securitySettingsSchema = z.object({
   passwordPolicyLevel: z.enum(['basic', 'standard', 'strict']).optional(),
   sessionTimeoutMinutes: z.number().min(5).max(1440).optional(),
   ipRestrictions: z.array(z.string()).optional(),
+  reason: z.string().min(1, 'Reason is required'),
+});
+
+const changePlanSchema = z.object({
+  planId: z.number().int().positive(),
   reason: z.string().min(1, 'Reason is required'),
 });
 
@@ -447,6 +453,63 @@ export class PlatformAdminController {
       });
     } catch (error) {
       console.error('Get modules and features error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * List the plans a tenant can be moved to (for the admin plan picker)
+   */
+  async listPlans(_req: AuthRequest, res: Response) {
+    try {
+      const plans = await prisma.plan.findMany({
+        where: { isActive: true },
+        orderBy: { priceMonthly: 'asc' },
+        select: { id: true, name: true, code: true, priceMonthly: true, priceAnnual: true, memberLimit: true },
+      });
+      return res.json({ success: true, data: { plans } });
+    } catch (error) {
+      console.error('List plans error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Move a tenant onto another plan without taking payment (support/override path).
+   * Syncs the tenant's subscription and `tier`, so plan-derived module access follows immediately.
+   */
+  async changeTenantPlan(req: AuthRequest, res: Response) {
+    try {
+      const associationId = Number(req.params.associationId);
+      const actorId = req.user?.id;
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const { planId, reason } = changePlanSchema.parse(req.body);
+      const result = await setTenantPlan(associationId, planId);
+
+      await PlatformActionLogService.log({
+        actorId,
+        actorRole: req.user?.platformRole || 'SUPER_ADMIN',
+        actionType: PlatformActionLogService.ActionTypes.PLAN_CHANGED,
+        targetType: 'plan',
+        targetId: result.subscriptionId,
+        associationId,
+        beforeState: { plan: result.from },
+        afterState: { plan: result.to, tier: result.tier },
+        reason,
+      });
+
+      return res.json({ success: true, message: `Plan changed to ${result.to.name}`, data: result });
+    } catch (error) {
+      console.error('Change tenant plan error:', error instanceof Error ? error.message : String(error));
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      if (error instanceof Error) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

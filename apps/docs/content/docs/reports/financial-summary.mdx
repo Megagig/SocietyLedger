@@ -1,33 +1,54 @@
 ---
 title: "Financial summary report"
-description: "Income, collection rate and a category breakdown for any period, compared to the one before."
+description: "Money received in a period, how much of what you charged has been paid, and where it came from, on the web or on your phone."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/reports/financial-summary", "RP2"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/reports/exporting-reports", "/docs/reports/income-by-category", "/docs/accounting/income-statement-at-a-glance"]
+lastVerified: "2026-10-29"
+related: ["/docs/reports/drilling-into-a-figure", "/docs/reports/exporting-reports", "/docs/reports/income-by-category", "/docs/accounting/income-statement-at-a-glance"]
 ---
 
-Your income, how much of it you actually collected, and how this period compares to the last one.
+The money that came in during a period, how much of what you charged in it has been paid, and how this period compares to the one before.
 
 ## Before you start
 
-You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default.
+You need the **view finances** permission, which Administrators, Treasurers and Financial Secretaries have by default. Your plan must include reports.
 
 ## Read the report
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Reports", "Financial Summary"]} />.</Step>
-<Step>Pick a **Period** — the report defaults to this month.</Step>
-<Step>Toggle **Include period comparison** to see it against the previous period.</Step>
+<Step>Pick a **Period**. It starts on this month. Choose **Custom** to pick two dates.</Step>
+<Step>Switch on **Include period comparison** to see it against the period before.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Reports", "Financial summary"]} />.</Step>
+<Step>Pick a period from the row of chips. It starts on this month. **Choose dates** lets you pick a start and an end, then tap **Show**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/reports/financial-summary-1.webp" alt="Financial Summary Report showing Total Income, Total Expected, Total Collected and Collection Rate, a period comparison chart, and a category breakdown table" />
+## What the figures mean
 
-**Total Income**, **Total Expected**, **Total Collected** and **Collection Rate** summarise the period; **Income by Category** and **Category Breakdown** show where it came from.
+- **Money received** is every payment dated in the period, whichever charge it was for. A payment made this month for last month's dues counts as money received this month.
+- **Charged in this period** is what was charged during it. A charge that was cancelled (voided) or forgiven (waived) is not counted.
+- **Paid on those charges** is how much of that has been paid so far, whenever it was paid.
+- **Still owed on them** is the difference, and the **collection rate** is paid divided by charged.
+
+Penalties members pay count as money received. The report does not show spending: that is kept in [Accounting](/docs/accounting/income-statement-at-a-glance).
+
+Periods run on Lagos time, from midnight on the first day to the last moment of the last day.
+
+## Open any figure
+
+Every figure can be opened. Select **Money received** to see each payment, **Charged** to see each charge, **Still owed** to see what is unpaid, and a category to see its payments. The list always adds up to the figure you selected. See [Opening a figure](/docs/reports/drilling-into-a-figure).
 
 ## What happens next
 
-Select **Export PDF** or **Export Excel** to download it — see [Exporting to PDF and Excel](/docs/reports/exporting-reports).
+To keep a copy, make a PDF or Excel file: see [Exporting to PDF and Excel](/docs/reports/exporting-reports).

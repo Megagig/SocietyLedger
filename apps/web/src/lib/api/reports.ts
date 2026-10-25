@@ -75,4 +75,38 @@ export const reportsApi = {
     const response = await api.get(`${API_URL}/api/reports/by-category`, { params });
     return response.data;
   },
+
+  /** The charges that add up to a figure on a report. Totals cover the whole list and equal the figure that was clicked. */
+  async listCharges(params: {
+    scope: 'raised' | 'owing' | 'overdue' | 'aging';
+    startDate?: string;
+    endDate?: string;
+    categoryId?: number;
+    categoryType?: string;
+    memberId?: number;
+    bucket?: string;
+    asOfDate?: string;
+    status?: string;
+    owingOnly?: boolean;
+    page?: number;
+    limit?: number;
+  }) {
+    const response = await api.get(`${API_URL}/api/reports/charges`, { params });
+    return response.data;
+  },
+
+  /** The payments that make up money received. */
+  async listPayments(params: {
+    startDate?: string;
+    endDate?: string;
+    categoryId?: number;
+    categoryType?: string;
+    memberId?: number;
+    paymentMethod?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const response = await api.get(`${API_URL}/api/reports/payments`, { params });
+    return response.data;
+  },
 };

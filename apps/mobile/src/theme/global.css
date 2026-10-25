@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* surfaces */
+  --color-bg: 244 248 245;
+  --color-surface: 255 255 255;
+  --color-surface-raised: 255 255 255;
+  --color-surface-sunken: 236 242 237;
+  --color-border: 210 228 213;
+  --color-border-strong: 180 204 186;
+  /* text */
+  --color-text: 14 36 24;
+  --color-text-secondary: 61 91 68;
+  --color-text-tertiary: 110 140 116;
+  --color-text-inverse: 255 255 255;
+  /* brand */
+  --color-primary: 27 67 50;
+  --color-primary-pressed: 19 46 35;
+  --color-primary-soft: 232 243 235;
+  --color-on-primary-soft: 27 67 50;
+  --color-accent: 200 150 46;
+  --color-accent-text: 138 101 22;
+  --color-accent-soft: 247 235 207;
+  /* status */
+  --color-success: 22 128 74;
+  --color-success-soft: 228 245 235;
+  --color-warning: 194 65 12;
+  --color-warning-soft: 255 237 225;
+  --color-danger: 180 35 24;
+  --color-danger-soft: 254 232 230;
+  --color-info: 37 84 170;
+  --color-info-soft: 231 238 252;
+  /* misc */
+  --color-overlay: 7 24 19;
+  --color-focus: 45 106 79;
+  /* passbook (theme-independent) */
+  --color-passbook: 27 67 50;
+  --color-on-passbook: 255 255 255;
+  --color-on-passbook-muted: 149 201 170;
+  --color-passbook-stamp: 227 194 122;
+  /* premium CTA gradient (theme-independent) */
+  --color-cta-gradient-from: 27 67 50;
+  --color-cta-gradient-to: 212 175 55;
+  --color-on-cta-gradient: 10 31 20;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: 12 25 16;
+    --color-surface: 18 32 24;
+    --color-surface-raised: 25 44 32;
+    --color-surface-sunken: 9 22 16;
+    --color-border: 30 64 40;
+    --color-border-strong: 44 90 58;
+    --color-text: 229 239 231;
+    --color-text-secondary: 146 184 152;
+    --color-text-tertiary: 97 128 104;
+    --color-text-inverse: 12 25 16;
+    --color-primary: 82 183 136;
+    --color-primary-pressed: 116 198 157;
+    --color-primary-soft: 14 48 24;
+    --color-on-primary-soft: 149 201 170;
+    --color-accent: 227 194 122;
+    --color-accent-text: 227 194 122;
+    --color-accent-soft: 58 45 17;
+    --color-success: 74 199 128;
+    --color-success-soft: 16 51 33;
+    --color-warning: 251 146 60;
+    --color-warning-soft: 61 32 14;
+    --color-danger: 248 113 102;
+    --color-danger-soft: 66 20 17;
+    --color-info: 125 165 240;
+    --color-info-soft: 20 34 66;
+    --color-overlay: 0 0 0;
+    --color-focus: 116 198 157;
+  }
+}

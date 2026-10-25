@@ -3,11 +3,11 @@ title: "Recording a payment a member made"
 description: "Confirm a payment against a charge and update the member's balance."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["FN5", "/dashboard/finance/transactions/[id]"]
 status: published
-lastVerified: "2026-10-13"
-related: ["/docs/finance/editing-voiding-and-deleting", "/docs/finance/overdue-and-reminders"]
+lastVerified: "2026-10-24"
+related: ["/docs/cash/how-cash-collections-work", "/docs/finance/editing-voiding-and-deleting", "/docs/finance/overdue-and-reminders"]
 ---
 
 When a member pays by cash, bank transfer or any method outside the app, record it against their charge so their balance updates.
@@ -22,14 +22,30 @@ Recording a payment updates the member's balance immediately and can't be easily
 
 ## Record a payment
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Open the charge from [Transactions](/docs/finance/editing-voiding-and-deleting) or the member's profile.</Step>
 <Step>Select **Record Payment**.</Step>
 <Step>Enter the **Amount Paid** — less than the full balance records a partial payment — the **Payment Date**, and **Payment Method**.</Step>
 <Step>Select **Record Payment** to confirm.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Finance", "Record a payment"]} />, or open a charge and tap **Record payment**.</Step>
+<Step>Choose the **Member**, then the charge the money is for. Only charges with something left to pay are listed.</Step>
+<Step>Enter the **Amount received** (it can't be more than what is left), how it was paid, and the date.</Step>
+<Step>Tap **Record payment**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-<Screenshot src="/images/finance/recording-a-payment-1.webp" alt="Record Payment modal on a transaction's detail page with Amount Paid, Payment Date and Payment Method fields" />
+<Callout type="note" title="Taking cash at a meeting?">
+Use [Cash collections](/docs/cash/how-cash-collections-work) instead. It tracks the cash from your hand to the bank and lets a second officer check it.
+</Callout>
+
+A charge that was voided can't be paid — pay its replacement.
 
 <Callout type="note" title="Online payments go through the platform account">
 Card and bank transfer payments made in-app are settled to your association within 24 hours, with a 2% processing fee deducted — full split-payment integration is planned but not live yet.

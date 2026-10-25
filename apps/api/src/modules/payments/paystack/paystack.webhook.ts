@@ -4,6 +4,9 @@ import { PaystackService } from './paystack.service';
 import { PaystackWebhookEvent } from './paystack.types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
+import { resolvePaidPlan } from '../../../services/subscription-plan.service';
+import { aiCredits } from '../../ai/ai-credits.service';
+import { creditVerifiedPurchase } from '../../sms/sms-engine';
 
 /**
  * Handle Paystack webhook events
@@ -74,6 +77,28 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
   const { reference, amount, metadata, paid_at, channel, authorization } = event.data;
 
   console.log(`✅ [WEBHOOK] Processing charge.success for reference: ${reference}`);
+
+  // Credits bought for the AI assistant or for SMS are added the moment Paystack says the money arrived, whether or not the buyer's app is
+  // still open. Each is credited once, and only when the payment covers the price.
+  if (reference.startsWith('AIC-')) {
+    const result = await aiCredits.creditPurchase(reference, { amountKobo: amount, currency: event.data.currency, paidAt: paid_at, raw: event.data });
+    console.log(`💡 [WEBHOOK] AI credits ${reference}: ${result.credited ? 'added' : result.reason}`);
+    return;
+  }
+  if (reference.startsWith('SMS-')) {
+    const purchase = await prisma.sMSCreditsPurchase.findUnique({ where: { reference } });
+    if (!purchase) {
+      console.error(`❌ [WEBHOOK] SMS credits purchase not found for reference: ${reference}`);
+      return;
+    }
+    if (new Decimal(amount).lt(new Decimal(purchase.amount).times(100)) || (event.data.currency && event.data.currency.toUpperCase() !== 'NGN')) {
+      console.error(`❌ [WEBHOOK] Payment for ${reference} does not cover the SMS credits price; nothing added`);
+      return;
+    }
+    const added = await creditVerifiedPurchase(purchase, paid_at, event.data);
+    console.log(`💬 [WEBHOOK] SMS credits ${reference}: ${added ? 'added' : 'already added'}`);
+    return;
+  }
 
   // Check if this is a subscription payment (reference starts with SUB- or CHANGE-)
   if (reference.startsWith('SUB-') || reference.startsWith('CHANGE-')) {
@@ -254,8 +279,11 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
   const amountPaid = PaystackService.koboToNaira(amount);
 
   try {
+    // Which plan was actually paid for (checkout metadata), not just the one currently on the row.
+    const paidPlan = await resolvePaidPlan(metadata, subscription);
+
     // Calculate new period dates
-    const periodMonths = subscription.billingCycle === 'MONTHLY' ? 1 : 12;
+    const periodMonths = paidPlan.billingCycle === 'MONTHLY' ? 1 : 12;
     const currentDate = new Date();
     const periodEnd = new Date(currentDate);
     periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
@@ -277,9 +305,12 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
         where: { id: subscription.id },
         data: {
           status: 'ACTIVE',
+          planId: paidPlan.planId,
+          billingCycle: paidPlan.billingCycle,
           currentPeriodStart: currentDate,
           currentPeriodEnd: periodEnd,
           renewalDate: periodEnd,
+          ...(paidPlan.isPlanChange ? { pendingPlanId: null, pendingBillingCycle: null } : {}),
         },
       }),
 
@@ -289,6 +320,7 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
         data: {
           subscriptionExpiresAt: periodEnd,
           status: 'ACTIVE',
+          ...(paidPlan.tier ? { tier: paidPlan.tier } : {}),
         },
       }),
 
@@ -305,8 +337,8 @@ async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
             amount: amountPaid,
             provider: 'paystack',
             subscriptionId: subscription.id,
-            planId: subscription.planId,
-            billingCycle: subscription.billingCycle,
+            planId: paidPlan.planId,
+            billingCycle: paidPlan.billingCycle,
             periodEnd: periodEnd.toISOString(),
           },
         },

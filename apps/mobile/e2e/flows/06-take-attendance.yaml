@@ -1,0 +1,22 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${OFFICER_EMAIL}
+---
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Manage
+- scrollUntilVisible:
+    element: Meetings
+- tapOn: Meetings
+- tapOn: General Meeting
+- tapOn:
+    id: meeting-attendance
+- tapOn:
+    id: attendance-mark-all
+- runFlow:
+    when:
+      visible: .*(Mark all|Confirm).*
+    commands:
+      - tapOn: .*(Confirm|Mark all).*
+- assertVisible:
+    id: attendance-quorum

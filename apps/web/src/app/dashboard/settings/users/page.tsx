@@ -120,7 +120,7 @@ export default function UsersRolesPage() {
       title: 'Remove Role',
       children: (
         <Text size="sm">
-          Are you sure you want to remove the "{role.displayName}" role from {user.name}?
+          Are you sure you want to remove the &quot;{role.displayName}&quot; role from {user.name}?
         </Text>
       ),
       labels: { confirm: 'Remove', cancel: 'Cancel' },

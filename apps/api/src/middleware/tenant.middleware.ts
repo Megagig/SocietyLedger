@@ -59,6 +59,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow expense routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/expenses')) {
+      return next();
+    }
+
     // Allow dashboard routes - tenant context comes from authenticated user's associationId
     if (req.path.startsWith('/api/dashboard')) {
       return next();
@@ -87,6 +92,14 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
 
     // Allow notifications routes - tenant context comes from authenticated user's associationId
     if (req.path.startsWith('/api/notifications')) {
+      return next();
+    }
+
+    // F0.2: allow device-token registration without a tenant header — a
+    // device can register before the user has selected/switched an
+    // association in some mobile flows; associationId on DeviceToken is
+    // nullable and just comes from the authenticated user's token instead.
+    if (req.path.startsWith('/api/devices')) {
       return next();
     }
 
@@ -130,6 +143,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       req.path.startsWith('/api/auth/resend-verification') ||
       req.path.startsWith('/api/auth/forgot-password') ||
       req.path.startsWith('/api/auth/reset-password') ||
+      // F0.3: refresh is the mobile credential itself (no X-Tenant needed —
+      // the stored RefreshToken row already carries its own associationId);
+      // sessions are scoped to the caller's own userId, same reasoning.
+      req.path.startsWith('/api/auth/refresh') ||
+      req.path.startsWith('/api/auth/sessions') ||
       req.path.startsWith('/api/member-invites/verify') ||
       req.path.startsWith('/api/member-invites/accept')
     ) {
@@ -183,6 +201,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       res.status(400).json({
         success: false,
         message: 'Association not found. Provide a valid subdomain or tenant header.',
+        code: 'ASSOCIATION_NOT_FOUND', // F0.5
       });
       return;
     }
@@ -191,6 +210,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       res.status(403).json({
         success: false,
         message: 'Association is suspended. Please contact support.',
+        code: 'ASSOCIATION_SUSPENDED', // F0.5
       });
       return;
     }
@@ -199,6 +219,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       res.status(403).json({
         success: false,
         message: 'Association subscription is cancelled.',
+        code: 'ASSOCIATION_CANCELLED', // F0.5
       });
       return;
     }

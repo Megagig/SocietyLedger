@@ -269,6 +269,31 @@ const PERMISSION_REGISTRY = [
     module: "Nigerian Payments",
     examples: ["POST /api/payments/nigerian/import", "Import page"]
   },
+  // Cash collections
+  {
+    key: "cash.collect",
+    description: "Collect cash from members at meetings and record receipts.",
+    module: "Cash Collections",
+    examples: ["POST /api/cash/collections/:id/receipts"]
+  },
+  {
+    key: "cash.lodge",
+    description: "Lodge collected cash into an association bank account.",
+    module: "Cash Collections",
+    examples: ["POST /api/cash/lodgments"]
+  },
+  {
+    key: "cash.verify",
+    description: "Verify a cash lodgment against the bank statement (not your own).",
+    module: "Cash Collections",
+    examples: ["POST /api/cash/lodgments/:id/verify"]
+  },
+  {
+    key: "cash.view",
+    description: "View cash collections, cash in hand and lodgments.",
+    module: "Cash Collections",
+    examples: ["GET /api/cash/overview"]
+  },
   // SMS & Communications
   {
     key: "communication.sms.view",
@@ -327,6 +352,49 @@ const PERMISSION_REGISTRY = [
     module: "Voting",
     examples: ["POST /api/voting/elections/:id/vote"]
   },
+  // Election Committee: the people chosen to conduct elections, separate from the officers.
+  {
+    key: "elections.manage",
+    description: "Create, edit and delete elections and their positions, and cancel an election.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections", "PUT /api/voting/elections/:id", "POST /api/voting/elections/:id/cancel"]
+  },
+  {
+    key: "elections.candidates.manage",
+    description: "Register candidates, and approve or reject nominations.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/candidates", "POST /api/voting/candidates/:id/approve"]
+  },
+  {
+    key: "elections.run",
+    description: "Open and close nominations and voting.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/start-voting", "POST /api/voting/elections/:id/close-voting"]
+  },
+  {
+    key: "elections.results.view",
+    description: "See an election's results as soon as voting closes, before they are published.",
+    module: "Voting",
+    examples: ["GET /api/voting/elections/:id/results"]
+  },
+  {
+    key: "elections.results.publish",
+    description: "Publish an election's results to the members.",
+    module: "Voting",
+    examples: ["POST /api/voting/elections/:id/publish-results"]
+  },
+  {
+    key: "elections.rules.manage",
+    description: "Set the association's rules for who can vote and who can stand in elections.",
+    module: "Voting",
+    examples: ["PUT /api/voting/eligibility/template", "POST /api/voting/eligibility/preview"]
+  },
+  {
+    key: "polls.manage",
+    description: "Create, edit, start, close and cancel polls.",
+    module: "Voting",
+    examples: ["POST /api/voting/polls", "POST /api/voting/polls/:id/start"]
+  },
   {
     key: "polls.view_own",
     description: "View polls and their results.",
@@ -338,6 +406,99 @@ const PERMISSION_REGISTRY = [
     description: "Respond to a poll.",
     module: "Voting",
     examples: ["POST /api/voting/polls/:id/respond"]
+  },
+  // Welfare (member self-service)
+  {
+    key: "welfare.view_own",
+    description: "View your own welfare profile, contributions and payout requests, and the funds you can request from.",
+    module: "Welfare",
+    examples: ["GET /api/welfare/my-profile", "GET /api/welfare/funds", "GET /api/welfare/payouts (own only)"]
+  },
+  {
+    key: "welfare.request_own",
+    description: "Submit and cancel your own welfare payout requests.",
+    module: "Welfare",
+    examples: ["POST /api/welfare/payouts", "POST /api/welfare/payouts/:id/cancel"]
+  },
+  // Cooperatives (member self-service)
+  {
+    key: "cooperatives.view_own",
+    description: "View your own cooperative profile, savings accounts, loans, loan applications and repayments, and the loan products on offer.",
+    module: "Cooperatives",
+    examples: ["GET /api/cooperatives/my-profile", "GET /api/cooperatives/loans (own only)", "GET /api/cooperatives/loan-products"]
+  },
+  {
+    key: "cooperatives.apply_own",
+    description: "Apply for a cooperative loan.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/loan-applications"]
+  },
+  {
+    key: "cooperatives.guarantor_own",
+    description: "See and answer requests to guarantee another member's loan.",
+    module: "Cooperatives",
+    examples: ["GET /api/cooperatives/guarantor-requests/pending", "POST /api/cooperatives/guarantor-requests/:id/respond"]
+  },
+  {
+    key: "cooperatives.savings_deposit_own",
+    description: "Declare a savings deposit you paid to the cooperative, with a receipt, for an officer to approve.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/savings-deposits"]
+  },
+  {
+    key: "cooperatives.repay_own",
+    description: "Declare a payment you made towards your own loan, with a receipt, for an officer to confirm.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/loan-repayment-requests"]
+  },
+  // Help & Support
+  {
+    key: "help.view",
+    description: "Use the help centre's AI answers and article suggestions (reading articles and FAQs needs no permission).",
+    module: "Help & Support",
+    examples: ["POST /api/help/ai/answer", "POST /api/help/ai/suggest-articles"]
+  },
+  {
+    key: "help.manage",
+    description: "Create, edit and delete help articles and FAQs.",
+    module: "Help & Support",
+    examples: ["POST /api/help/articles", "PUT /api/help/faqs/:id"]
+  },
+  {
+    key: "support.create",
+    description: "Open support tickets, and reply to, close or reopen your own.",
+    module: "Help & Support",
+    examples: ["POST /api/support/tickets", "POST /api/support/tickets/:id/respond"]
+  },
+  {
+    key: "support.view_own",
+    description: "View your own support tickets.",
+    module: "Help & Support",
+    examples: ["GET /api/support/tickets", "GET /api/support/tickets/:id"]
+  },
+  {
+    key: "support.view_all",
+    description: "View every support ticket in the association.",
+    module: "Help & Support",
+    examples: ["GET /api/support/tickets (all)", "GET /api/support/tickets/stats"]
+  },
+  {
+    key: "support.manage",
+    description: "Manage support tickets: assign, update status, close and reopen any ticket.",
+    module: "Help & Support",
+    examples: ["PUT /api/support/tickets/:id"]
+  },
+  {
+    key: "support.respond",
+    description: "Reply to support tickets as staff.",
+    module: "Help & Support",
+    examples: ["POST /api/support/tickets/:id/respond"]
+  },
+  {
+    key: "support.escalate",
+    description: "Contact SocietyLedger support on the association's behalf, and escalate a member's ticket to it.",
+    module: "Help & Support",
+    examples: ["POST /api/support/platform-tickets", "POST /api/support/tickets/:id/escalate"]
   },
   // Meetings
   {

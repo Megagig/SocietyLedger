@@ -111,7 +111,7 @@ export default function PaymentHistoryPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
           <IconReceipt size={48} className="mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Payments Found</h3>
-          <p className="text-gray-500">You haven't made any payments yet.</p>
+          <p className="text-gray-500">You haven&apos;t made any payments yet.</p>
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">

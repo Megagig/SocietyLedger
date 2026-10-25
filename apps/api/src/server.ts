@@ -9,9 +9,13 @@ import { tenantMiddleware } from './middleware/tenant.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
+import { startCashLodgmentJobs, stopCashLodgmentJobs } from './jobs/cash-lodgment-jobs';
+import { startSmsJobs, stopSmsJobs } from './jobs/sms-jobs';
 import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
+import { startPushReceiptsJob, stopPushReceiptsJob } from './services/push.service';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
+import { ensureBucketExists } from './lib/storage';
 import { standardRateLimit, authRateLimit, sessionRateLimit } from './middleware/rate-limit.middleware';
 
 // Load environment variables
@@ -30,13 +34,17 @@ import cronRoutes from './modules/cron/cron.routes';
 import paymentRoutes from './modules/payments/payments.routes';
 import onboardingRoutes from './modules/onboarding/onboarding.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
+import devicesRoutes from './modules/devices/devices.routes';
+import mobileReturnRoutes from './modules/payments/mobile-return.routes';
 import memberInviteRoutes from './modules/member-invites/member-invites.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import exportsRoutes from './modules/exports/exports.routes';
 import advancedFinanceRoutes from './modules/finance/advanced/advanced.routes';
 import accountingRoutes from './modules/accounting/accounting.routes';
+import expensesRoutes from './modules/expenses/expenses.routes';
 import nigerianPaymentsRoutes from './modules/nigerian-payments/nigerian-payments.routes';
 import cooperativesRoutes from './modules/cooperatives/cooperatives.routes';
+import cashRoutes from './modules/cash/cash.routes';
 import memberFinanceRoutes from './modules/member-finance/member-finance.routes';
 import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 import meetingsRoutes from './modules/meetings/meetings.routes';
@@ -47,10 +55,12 @@ import votingRoutes from './modules/voting/voting.routes';
 import rbacRoutes from './modules/rbac/rbac.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import modulesRoutes from './modules/modules/modules.routes';
+import { storageConfigProblem } from './lib/storage';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import helpRoutes from './modules/help/help.routes';
 import aiHelpRoutes from './modules/help/ai-help.routes';
 import supportRoutes from './modules/support/support.routes';
+import platformSupportRoutes from './modules/support/support-platform.routes';
 import blogPublicRoutes from './modules/blog/blog-public.routes';
 import blogAdminRoutes from './modules/blog/blog-admin.routes';
 import documentationPublicRoutes from './modules/documentation/documentation-public.routes';
@@ -120,7 +130,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body parsing middleware
-app.use(express.json());
+// The raw bytes are kept for webhooks that sign them (Termii's X-Termii-Signature is computed over the body as sent)
+app.use(express.json({ verify: (req, _res, buf) => { (req as unknown as { rawBody?: Buffer }).rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -151,9 +162,14 @@ app.use('/api/docs', documentationPublicRoutes);
 app.use('/api/admin/blog', blogAdminRoutes);
 app.use('/api/admin/docs', documentationAdminRoutes);
 app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admin console BFF
+// Tier 2 support tickets — SUPPORT_AGENT as well as SUPER_ADMIN, so it must be mounted before the SUPER_ADMIN-only /api/admin router
+app.use('/api/admin/support', platformSupportRoutes);
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);
+
+// F0.4 — mobile Paystack return bridge, must be before tenantMiddleware (public, no tenant context)
+app.use('/api/payments/mobile-return', mobileReturnRoutes);
 
 // Tenant middleware for all other routes
 app.use(tenantMiddleware);
@@ -177,6 +193,7 @@ app.get('/health', (req: Request, res: Response) => {
 // Phase 12: Apply rate limiting to API routes
 // Session check endpoints (high frequency) - 200 req/min
 app.use('/api/auth/me', sessionRateLimit);
+app.use('/api/auth/refresh', sessionRateLimit); // F0.3
 // Sensitive auth endpoints (login, register, password reset) - 10 req/min
 app.use('/api/auth/login', authRateLimit);
 app.use('/api/auth/register', authRateLimit);
@@ -198,13 +215,16 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/devices', devicesRoutes);
 app.use('/api/member-invites', memberInviteRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/exports', exportsRoutes);
 app.use('/api/finance/advanced', advancedFinanceRoutes);
 app.use('/api/accounting', accountingRoutes);
+app.use('/api/expenses', expensesRoutes);
 app.use('/api/payments/nigerian', nigerianPaymentsRoutes);
 app.use('/api/cooperatives', cooperativesRoutes);
+app.use('/api/cash', cashRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);
@@ -240,6 +260,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start server unless running under test
 if (process.env.NODE_ENV !== 'test') {
+  const storageProblem = storageConfigProblem(process.env);
+  if (storageProblem) console.error('⚠️  Storage misconfigured: ' + storageProblem);
+
   // Phase 12: Initialize Redis before starting server
   initializeRedis()
     .then(() => {
@@ -248,10 +271,16 @@ if (process.env.NODE_ENV !== 'test') {
         console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
         console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
         
+        // Ensure MinIO bucket exists (no-op if already created)
+        ensureBucketExists().catch((err) => console.warn('[storage] MinIO bucket init failed:', err));
+
         // Start cron jobs
         startSubscriptionJobs();
         startMeetingJobs();
+        startCashLodgmentJobs();
+        startSmsJobs();
         startPaymentReminderJobs();
+        startPushReceiptsJob();
       });
     })
     .catch((err) => {
@@ -267,7 +296,10 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGTERM received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopCashLodgmentJobs();
+    stopSmsJobs();
     stopPaymentReminderJobs();
+    stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);
   });
@@ -276,7 +308,10 @@ if (process.env.NODE_ENV !== 'test') {
     console.log('SIGINT received, shutting down gracefully...');
     stopSubscriptionJobs();
     stopMeetingJobs();
+    stopCashLodgmentJobs();
+    stopSmsJobs();
     stopPaymentReminderJobs();
+    stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);
   });

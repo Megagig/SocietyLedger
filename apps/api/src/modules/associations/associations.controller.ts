@@ -3,7 +3,10 @@ import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { AssociationStatus, AssociationTier, BillingCycle, SubscriptionStatus } from '@prisma/client';
 import { ROLE_PERMISSION_MAPPING } from '../../lib/role-permission-mapping';
-import { RESERVED_SUBDOMAINS } from '@societyledger/shared';
+import { RESERVED_SUBDOMAINS, ASSOCIATION_TYPE_OTHER, associationSignupSchema } from '@societyledger/shared';
+import { PlatformSettingsService } from '../admin/platform-settings.service';
+import { startTrialIfPending } from '../../services/subscription-access.service';
+import { SettingsService } from '../settings/settings.service';
 
 const createSchema = z.object({
   name: z.string().min(2),
@@ -20,22 +23,6 @@ const updateSchema = z.object({
   primaryColor: z.string().optional(),
   status: z.nativeEnum(AssociationStatus).optional(),
   tier: z.nativeEnum(AssociationTier).optional(),
-});
-
-const signupSchema = z.object({
-  association: z.object({
-    name: z.string().min(2),
-    slug: z.string().min(2).regex(/^[a-z0-9-]+$/),
-    subdomain: z.string().min(2).regex(/^[a-z0-9-]+$/),
-    tier: z.nativeEnum(AssociationTier).default(AssociationTier.STARTER),
-    primaryColor: z.string().optional(),
-    logo: z.string().url().optional(),
-  }),
-  admin: z.object({
-    email: z.string().email(),
-    password: z.string().min(6),
-  }),
-  planCode: z.enum(['starter', 'professional', 'enterprise']).default('starter'),
 });
 
 export class AssociationsController {
@@ -156,29 +143,41 @@ export class AssociationsController {
 
   async signup(req: Request, res: Response) {
     try {
-      const input = signupSchema.parse(req.body);
+      const parsed = associationSignupSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message ?? 'Invalid data', errors: parsed.error.errors });
+      }
+      const input = parsed.data;
+      const subdomain = input.association.subdomain;
 
-      if (
-        RESERVED_SUBDOMAINS.includes(input.association.subdomain as string) ||
-        RESERVED_SUBDOMAINS.includes(input.association.slug as string)
-      ) {
+      if (RESERVED_SUBDOMAINS.includes(subdomain)) {
         return res.status(409).json({ success: false, message: 'Subdomain is reserved', code: 'SUBDOMAIN_RESERVED' });
       }
 
+      const platform = await PlatformSettingsService.getSettings();
+      if (platform.allowNewSignups === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'New associations cannot sign up right now. Please try again later.',
+          code: 'SIGNUPS_CLOSED',
+        });
+      }
+      const needsVerification = platform.requireEmailVerification !== false;
+      const needsApproval = platform.requireAdminApproval !== false;
+
       const conflict = await prisma.association.findFirst({
-        where: {
-          OR: [{ slug: input.association.slug }, { subdomain: input.association.subdomain }],
-        },
+        where: { OR: [{ slug: subdomain }, { subdomain }] },
       });
       if (conflict) {
-        return res.status(409).json({ success: false, message: 'Slug or subdomain already exists' });
+        return res.status(409).json({ success: false, message: 'Slug or subdomain already exists', code: 'SUBDOMAIN_TAKEN' });
       }
 
-      const plan = await prisma.plan.findUnique({ where: { code: input.planCode } });
+      // Every new association starts its free trial on the Enterprise plan.
+      const plan = await prisma.plan.findUnique({ where: { code: 'enterprise' } });
       if (!plan) {
-        console.error('❌ Plan not found:', input.planCode, '- Database may need seeding. Run: npx prisma db seed');
-        return res.status(500).json({ 
-          success: false, 
+        console.error('❌ Plan not found: enterprise - Database may need seeding. Run: npx prisma db seed');
+        return res.status(500).json({
+          success: false,
           message: 'System configuration error. Please contact support.',
           error: 'PLAN_NOT_FOUND'
         });
@@ -186,7 +185,7 @@ export class AssociationsController {
 
       // Import auth service for verification
       const { generateVerificationCode, hashToken, sendVerificationEmail } = await import('../auth/auth.service');
-      
+
       // G66: reuse the shared mapping (rbac-seed.ts's own source of truth) instead of
       // an independent copy — that copy had drifted, missing an entire financial_secretary
       // role and roughly a dozen permissions per role real re-seeded associations already had.
@@ -194,16 +193,16 @@ export class AssociationsController {
 
       // Get all unique permission keys
       const allPermissionKeys = [...new Set(Object.values(rolePermissionMap).flat())];
-      
+
       // Fetch all permissions at once (outside transaction)
       const allPermissions = await prisma.permission.findMany({
         where: { key: { in: allPermissionKeys } }
       });
-      
+
       if (allPermissions.length === 0) {
         console.error('❌ No permissions found in database - Database may need seeding. Run: npx prisma db seed');
-        return res.status(500).json({ 
-          success: false, 
+        return res.status(500).json({
+          success: false,
           message: 'System configuration error. Please contact support.',
           error: 'PERMISSIONS_NOT_SEEDED'
         });
@@ -211,15 +210,17 @@ export class AssociationsController {
 
       // Create permission lookup map
       const permissionMap = new Map(allPermissions.map(p => [p.key, p.id]));
-      
+
       // Hash password outside transaction
       const bcrypt = (await import('bcryptjs')).default;
       const passwordHash = await bcrypt.hash(input.admin.password, 12);
-      
+
       // Generate verification code
       const verificationCode = generateVerificationCode();
       const hashedCode = hashToken(verificationCode);
       const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+      const now = new Date();
 
       // Run transaction with extended timeout (30 seconds)
       const result = await prisma.$transaction(async (tx) => {
@@ -227,26 +228,25 @@ export class AssociationsController {
         const assoc = await tx.association.create({
           data: {
             name: input.association.name,
-            slug: input.association.slug.toLowerCase(),
-            subdomain: input.association.subdomain.toLowerCase(),
-            tier: input.association.tier,
+            slug: subdomain,
+            subdomain,
+            tier: AssociationTier.ENTERPRISE,
             status: AssociationStatus.ACTIVE,
-            logo: input.association.logo,
-            primaryColor: input.association.primaryColor,
           },
         });
 
-        // 2. Create subscription
+        // 2. Create the trial subscription. It carries no end date yet: the clock starts when the SaaS owner approves the
+        // founding admin (startTrialIfPending), so a slow approval or a lost email never uses up the trial.
         await tx.subscription.create({
           data: {
             associationId: assoc.id,
             planId: plan.id,
             status: SubscriptionStatus.TRIALING,
             billingCycle: BillingCycle.MONTHLY,
-            trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            currentPeriodStart: new Date(),
-            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            trialEndsAt: null,
+            currentPeriodStart: now,
+            currentPeriodEnd: now,
+            renewalDate: null,
           },
         });
 
@@ -256,6 +256,7 @@ export class AssociationsController {
           { name: 'treasurer', displayName: 'Treasurer', description: 'Financial management' },
           { name: 'financial_secretary', displayName: 'Financial Secretary', description: 'Financial record keeping' },
           { name: 'member', displayName: 'Member', description: 'Basic member access' },
+          { name: 'election_committee', displayName: 'Election Committee', description: 'People chosen to conduct elections, separate from the officers' },
         ];
 
         const createdRoles: { id: number; name: string }[] = [];
@@ -295,14 +296,30 @@ export class AssociationsController {
         const user = await tx.user.create({
           data: {
             associationId: assoc.id,
-            email: input.admin.email.toLowerCase(),
+            email: input.admin.email,
             passwordHash,
             role: 'admin',
-            isActive: false,
-            emailVerified: false,
-            verificationCode: hashedCode,
-            verificationExpiresAt,
-            userApproval: { create: { approvalStatus: 'pending' } },
+            isActive: !needsApproval,
+            emailVerified: !needsVerification,
+            verificationCode: needsVerification ? hashedCode : null,
+            verificationExpiresAt: needsVerification ? verificationExpiresAt : null,
+            userApproval: { create: { approvalStatus: needsApproval ? 'pending' : 'approved' } },
+          },
+        });
+
+        // 5b. The founder is also the association's first member, so their name shows up across the app.
+        await tx.member.create({
+          data: {
+            associationId: assoc.id,
+            userId: user.id,
+            memberId: 'MEM0001',
+            firstName: input.admin.firstName,
+            lastName: input.admin.lastName,
+            email: input.admin.email,
+            phone: input.admin.phone,
+            status: 'active',
+            loginStatus: 'active',
+            joinDate: now,
           },
         });
 
@@ -325,23 +342,39 @@ export class AssociationsController {
         timeout: 30000, // 30 seconds transaction timeout
       });
 
-      // Send verification email (outside transaction)
+      // The kind of association lives with the rest of the association settings (the same value Settings > Association edits).
       try {
-        console.log('📧 Attempting to send verification email to:', input.admin.email);
-        await sendVerificationEmail(
-          input.admin.email,
-          verificationCode,
-          input.association.name
+        await SettingsService.updateSettings(
+          result.assoc.id,
+          'association',
+          {
+            associationType: input.association.type,
+            customAssociationType: input.association.type === ASSOCIATION_TYPE_OTHER ? input.association.customType : null,
+          },
+          result.user.id,
         );
-        console.log('✅ Verification email sent successfully');
-      } catch (emailError: any) {
-        console.error('❌ Failed to send verification email:', emailError?.message || emailError);
-        console.error('Full error:', emailError);
-        // Don't fail the signup if email fails
+      } catch (settingsError) {
+        // The association itself is created; they can set the type later in Settings.
+        console.error('Could not save the association type at signup:', settingsError);
       }
 
-      return res.status(201).json({ 
-        success: true, 
+      // With approval switched off in the platform settings, there is nobody to wait for: start the trial now.
+      if (!needsApproval) await startTrialIfPending(result.assoc.id);
+
+      // Send verification email (outside transaction)
+      let verificationEmailSent = false;
+      if (needsVerification) {
+        try {
+          await sendVerificationEmail(input.admin.email, verificationCode, input.association.name);
+          verificationEmailSent = true;
+        } catch (emailError: any) {
+          // Don't fail the signup if email fails: they can ask for another code, and the platform owner can verify them by hand.
+          console.error('❌ Failed to send verification email:', emailError?.message || emailError);
+        }
+      }
+
+      return res.status(201).json({
+        success: true,
         data: {
           association: {
             id: result.assoc.id,
@@ -353,8 +386,13 @@ export class AssociationsController {
             email: result.user.email,
             emailVerified: result.user.emailVerified,
           },
+          requiresVerification: needsVerification,
+          pendingApproval: needsApproval,
+          verificationEmailSent,
         },
-        message: 'Association created. Please check your email for a verification code.',
+        message: needsVerification
+          ? 'Association created. Please check your email for a verification code.'
+          : 'Association created.',
       });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -362,16 +400,16 @@ export class AssociationsController {
       }
       console.error('❌ Association signup error:', error?.message || error);
       console.error('Full error stack:', error?.stack);
-      
+
       // Provide more specific error messages for common issues
       const errorMessage = error?.message || '';
       if (errorMessage.includes('Unique constraint') || errorMessage.includes('unique')) {
-        return res.status(409).json({ success: false, message: 'An association with this subdomain or slug already exists' });
+        return res.status(409).json({ success: false, message: 'An association with this subdomain or slug already exists', code: 'SUBDOMAIN_TAKEN' });
       }
       if (errorMessage.includes('Foreign key constraint')) {
         return res.status(500).json({ success: false, message: 'System configuration error. Please contact support.' });
       }
-      
+
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }

@@ -70,32 +70,769 @@ Rules:
 | ConfirmDestructive | admin | Action | `src/components/ConfirmDestructive.tsx` | A1.6 (2026-10-18) |
 | BlogPostForm | admin | Form | `src/components/forms/BlogPostForm.tsx` | A2.10 (2026-10-19) |
 | DocPageForm | admin | Form | `src/components/forms/DocPageForm.tsx` | A2.11 (2026-10-19) |
-| _(first mobile entries with F1.4)_ | | | | |
+| Text | mobile | UI primitive | `src/components/ui/Text.tsx` | F1.4 (2026-10-20) |
+| Button | mobile | UI primitive | `src/components/ui/Button.tsx` | F1.4 (2026-10-20) |
+| IconButton | mobile | UI primitive | `src/components/ui/IconButton.tsx` | F1.4 (2026-10-20) |
+| Card | mobile | UI primitive | `src/components/ui/Card.tsx` | F1.4 (2026-10-20) |
+| Badge | mobile | UI primitive | `src/components/ui/Badge.tsx` | F1.4 (2026-10-20) |
+| StatusChip | mobile | UI primitive | `src/components/ui/StatusChip.tsx` | F1.4 (2026-10-20) |
+| Avatar | mobile | UI primitive | `src/components/ui/Avatar.tsx` | F1.4 (2026-10-20) |
+| Divider | mobile | UI primitive | `src/components/ui/Divider.tsx` | F1.4 (2026-10-20) |
+| Skeleton | mobile | UI primitive | `src/components/ui/Skeleton.tsx` | F1.4 (2026-10-20) |
+| Money | mobile | UI primitive | `src/components/ui/Money.tsx` | F1.4 (2026-10-20) |
+| Spinner | mobile | UI primitive | `src/components/ui/Spinner.tsx` | F1.4 (2026-10-20) |
+| Screen | mobile | Layout | `src/components/layout/Screen.tsx` | F1.4 (2026-10-20) |
+| ScreenHeader | mobile | Layout | `src/components/layout/ScreenHeader.tsx` | F1.4 (2026-10-20) |
+| Section | mobile | Layout | `src/components/layout/Section.tsx` | F1.4 (2026-10-20) |
+| ListItem / ListGroup | mobile | Layout | `src/components/layout/ListItem.tsx` | F1.4 (2026-10-20) |
+| StickyFooter | mobile | Layout | `src/components/layout/StickyFooter.tsx` | F1.4 (2026-10-20) |
+| BottomSheet | mobile | UI primitive | `src/components/ui/BottomSheet.tsx` | F1.5 (2026-10-20) |
+| FieldShell | mobile | Form (internal) | `src/components/forms/FieldShell.tsx` | F1.5 (2026-10-20) |
+| TextField | mobile | Form | `src/components/forms/TextField.tsx` | F1.5 (2026-10-20) |
+| PasswordField | mobile | Form | `src/components/forms/PasswordField.tsx` | F1.5 (2026-10-20) |
+| OtpInput | mobile | Form | `src/components/forms/OtpInput.tsx` | F1.5 (2026-10-20) |
+| AmountField | mobile | Form | `src/components/forms/AmountField.tsx` | F1.5 (2026-10-20) |
+| DateField | mobile | Form | `src/components/forms/DateField.tsx` | F1.5 (2026-10-20) |
+| SelectSheet | mobile | Form | `src/components/forms/SelectSheet.tsx` | F1.5 (2026-10-20) |
+| SearchField | mobile | Form | `src/components/forms/SearchField.tsx` | F1.5 (2026-10-20) |
+| Checkbox | mobile | Form | `src/components/forms/Checkbox.tsx` | F1.5 (2026-10-20) |
+| Switch | mobile | Form | `src/components/forms/Switch.tsx` | F1.5 (2026-10-20) |
+| SegmentedControl | mobile | Form | `src/components/forms/SegmentedControl.tsx` | F1.5 (2026-10-20) |
+| FileAttachField | mobile | Form | `src/components/forms/FileAttachField.tsx` | F1.5 (2026-10-20) |
+| EmptyState | mobile | Feedback | `src/components/feedback/EmptyState.tsx` | F1.5 (2026-10-20) |
+| ErrorState | mobile | Feedback | `src/components/feedback/ErrorState.tsx` | F1.5 (2026-10-20) |
+| OfflineBanner | mobile | Feedback | `src/components/feedback/OfflineBanner.tsx` | F1.5 (2026-10-20) |
+| ModuleLocked | mobile | Feedback | `src/components/feedback/ModuleLocked.tsx` | F1.5 (2026-10-20) |
+| SubscriptionInactive | mobile | Feedback | `src/components/feedback/SubscriptionInactive.tsx` | F1.5 (2026-10-20) |
+| NoPermission | mobile | Feedback | `src/components/feedback/NoPermission.tsx` | F1.5 (2026-10-20) |
+| ConfirmSheet | mobile | Feedback | `src/components/feedback/ConfirmSheet.tsx` | F1.5 (2026-10-20) |
+| TabBar | mobile | Layout (navigation) | `src/components/layout/TabBar.tsx` | F1.8 (2026-10-20) |
 
 ---
 
 # Mobile app (`apps/mobile`)
 
+## Mobile theme & design tokens (F1.2)
+Not reusable UI components, but conventions every future mobile component/screen relies on from F1.2 onward (same pattern as the docs site's own non-component "tooling" sections below).
+- **Tokens:** `src/theme/global.css` (CSS variables, copied verbatim from `ui-tokens.md §10`) + `src/theme/tokens.ts` (JS mirror, `ui-tokens.md §12` shape). A unit test (`src/theme/tokens.test.ts`) asserts every hex in `tokens.ts` equals the RGB channels in `global.css` for both themes — keep both in sync in the same commit.
+- **Tailwind config:** `tailwind.config.js` (`ui-tokens.md §11` shape, verbatim) — stock Tailwind colours/spacing/font sizes are replaced, not extended.
+- **Theme provider:** `src/providers/ThemeProvider.tsx` exports `ThemeProvider` (wraps the app in `app/_layout.tsx`, also owns Manrope font loading and splash-screen hide-on-ready), `useThemeMode()` (`{ preference: 'light'|'dark'|'system', scheme: 'light'|'dark', setPreference }`), and `useThemeTokens()` (returns `tokens.light` or `tokens.dark` from `src/theme/tokens.ts` for the active scheme — use this, never parse CSS at runtime, for any JS-side value like chart colours or the status bar).
+- **Persisted preference:** one MMKV key (`prefs.themeMode`), read via `useSyncExternalStore` with a server-safe snapshot (see `library-docs.md`'s NativeWind section for why this matters under static export). The dedicated MMKV instance inside `ThemeProvider.tsx` is temporary — F1.6's `lib/storage.ts` will absorb it without changing `useThemeMode`'s public API.
+- **Third-party `className` interop:** `src/theme/interop.ts` registers NativeWind's `cssInterop` for third-party components that need `className` support (currently: `expo-router`'s `Link`). Import it once, for its side effects, in `app/_layout.tsx`. Add new registrations here, not inline in screens.
+- **Design-token proof screen:** `app/index.tsx` (temporary — F1.8 replaces it with real splash/redirect logic) renders every color token, the full type scale, the spacing scale and the radius scale in both themes with a manual theme toggle. Not a registered component (one-off, screen-specific); consult it directly for a literal example of every token-backed class name.
+
+## API types & enums (F1.3)
+Not reusable UI components, but the typing foundation every future `api/endpoints/*` file (F1.7+) and feature module builds on.
+- **Response DTOs:** `src/types/api/{associations,auth,members,memberFinance,memberLedger,payments,nigerianPayments,notifications,devices,meetings,voting}.ts` — hand-written, one file per API domain, typed directly from `docs/mobile/api-contract.md` (F0.1's real, controller-verified contract) rather than `packages/shared`'s stale `User`/`Member`/`PaginatedResponse` (confirmed stale — gap **G2**, closed by this feature: mobile deliberately never imports those types; `packages/shared` itself is left untouched, matching the contract doc's own "nothing in Phase 0 touches `packages/shared`" conclusion, which overrides architecture.md §2's "or fix the existing ones" alternative). `src/types/api/common.ts` holds only true cross-endpoint primitives (`MoneyValue`, `IsoDateString`, `ApiErrorResponse`) — deliberately **no** shared pagination/envelope generic, since api-contract.md §10 found 4 incompatible real pagination shapes; each endpoint file types its own list response exactly. Covers every endpoint api-contract.md verified for Phase 2–3 (auth, associations, members self-service, member finance/ledger, Paystack, Nigerian-payments proofs, notifications, devices, meetings, voting-dashboard/active/election-detail). Endpoints the contract doc explicitly didn't re-verify (e.g. the plain `GET /voting/elections` list) are deliberately left untyped with a comment pointing at this, rather than guessed.
+- **Enums:** `src/types/api/enums.ts` is **generated**, not hand-written — `scripts/gen-enums.ts` (`pnpm -F @societyledger/mobile gen:enums`, run with `tsx`) parses every real `enum` block out of `apps/api/prisma/schema.prisma` (currently 59) and emits a `export const Name = [...] as const; export type Name = (typeof Name)[number];` pair per enum (code-standards.md §1 — no TS `enum`), matching architecture.md §10's "do not hand-type enum values from memory" rule literally. Free-form `String` columns that happen to hold enum-like values (`Member.status`, `approvalStatus`, `paymentMethod`, etc.) are **not** Prisma enums and are deliberately not in this file — DTOs type those as `string` (or a verified literal union sourced from the real zod schema/controller, e.g. `auth.ts`'s `ApprovalStatus`), never guessed. The script is idempotent (`gen:enums --check` exits 1 without writing if the schema has drifted) and prints a count; re-run after any `schema.prisma` change and commit the regenerated file. `apps/mobile` gained its own pinned `tsx` devDependency for this (`library-docs.md` updated), same pattern as `apps/docs`'s codegen scripts.
+- **Lint:** `scripts/**/*.ts` is exempted from the app-wide `no-console` ESLint rule (`eslint.config.js`) — these are standalone Node CLI tools, not app code, so `lib/logger.ts` doesn't apply.
+
 ## UI primitives (`src/components/ui`)
-_(none yet)_
+
+### Text
+- **Surface:** mobile
+- **Path:** `src/components/ui/Text.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The only way to render text — pairs every `ui-tokens.md §2` size with its correct Manrope weight class automatically.
+- **Props:** `variant?: 'display'|'h1'|'h2'|'h3'|'body-lg'|'body'|'body-strong'|'label'|'caption'|'micro'|'num-lg'|'num'` (default `body`) · `tone?: 'default'|'secondary'|'tertiary'|'inverse'|'primary'|'onPrimarySoft'|'accent'|'accentText'|'success'|'warning'|'danger'|'info'|'onPassbook'|'onPassbookMuted'` (default `default`) · `align?` · `numberOfLines?` · `maxFontSizeMultiplier?` · `className?` · `style?: TextStyle` (escape hatch for genuinely dynamic values only — see Notes) · `testID?`
+- **Tokens used:** every `text-*`/`font-*` class pair from `ui-tokens.md §2`, every `text-*` colour class from `§1.2`
+- **Used in:** every other UI primitive in this section; will be used by every screen
+- **Example:**
+  ```tsx
+  <Text variant="h2" tone="secondary">Payments</Text>
+  ```
+- **Notes:** `variant="num"`/`"num-lg"` force `fontVariant: ['tabular-nums']` automatically (ui-tokens.md §2's own rule) — `style` is a real escape hatch (code-standards.md §5), used by `Money` to force tabular figures on non-`num` variants and by `Avatar` for its data-derived initials colour; never pass a static design colour through it, use `tone`.
+
+### Button
+- **Surface:** mobile
+- **Path:** `src/components/ui/Button.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The only tappable primary/secondary/destructive action control (ui-rules.md §5.2).
+- **Props:** `variant?: 'primary'|'secondary'|'soft'|'ghost'|'danger'|'danger-ghost'|'onPassbook'` (default `primary`) · `size?: 'lg'|'md'|'sm'` (default `md`) · `loading?` · `disabled?` · `fullWidth?` · `onPress` · `children: string` · `accessibilityLabel?` (defaults to the label text) · `testID?`
+- **Tokens used:** `bg-primary`/`-pressed`, `bg-surface`, `border-border-strong`, `bg-primary-soft`, `bg-danger`, `bg-on-passbook`, `text-passbook`, `rounded-md`
+- **Used in:** `StickyFooter`, gallery; will be used by nearly every screen
+- **Example:**
+  ```tsx
+  <Button variant="primary" loading={mutation.isPending} onPress={handlePay}>Pay ₦25,000</Button>
+  ```
+- **Notes:** `onPassbook` only looks right on the passbook's dark-green fill (it uses `bg-on-passbook`/`text-passbook`, the literal-white/passbook-green token pair ui-tokens.md §1.3 defines specifically for this). Loading replaces the label with an absolutely-positioned `Spinner`, keeping the button's width (ui-rules.md §5.2); disabled is 40% opacity. Press feedback is a 0.97 scale transform — no `android_ripple` (ui-rules.md §5.2 reserves ripple for rows). Tested in `Button.test.tsx` (mocks `@/providers/ThemeProvider` since only the loading-state `Spinner` needs it).
+
+### IconButton
+- **Surface:** mobile
+- **Path:** `src/components/ui/IconButton.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** 44×44dp icon-only tap target for headers (ui-rules.md §5.9).
+- **Props:** `icon: LucideIcon` (a component, not a pre-rendered node — IconButton owns size/colour/strokeWidth) · `onPress?` · `accessibilityLabel: string` (required — no visible text) · `variant?: 'default'|'soft'` (default `default`) · `tone?: 'default'|'secondary'|'primary'|'inverse'|'danger'` (default `default`) · `disabled?` · `testID?`
+- **Tokens used:** `bg-surface-sunken` (soft variant), resolved theme colour via `useThemeTokens()` (icon fill — `lucide-react-native` needs a real colour value, not a className)
+- **Used in:** `ScreenHeader` (back button, right actions), gallery
+- **Example:**
+  ```tsx
+  <IconButton icon={Bell} accessibilityLabel="Notifications" onPress={openInbox} />
+  ```
+- **Notes:** Not RTL-tested — see "Dev tooling & known gaps (F1.4)" below for why rendering any `lucide-react-native` icon currently crashes under Jest (a third-party/test-environment interaction, not a bug in this component). Verified by type-check + lint only.
+
+### StatusChip
+- **Surface:** mobile
+- **Path:** `src/components/ui/StatusChip.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The single status→colour chip every list/detail screen uses (ui-rules.md §5.5, ui-tokens.md §1.4).
+- **Props:** `status: string` (looked up case-insensitively in the shared mapping) · `label?: string` (overrides the auto-humanized text; tone lookup still uses `status`) · `testID?`
+- **Tokens used:** `bg-success-soft`/`text-success`, `bg-warning-soft`/`text-warning`, `bg-danger-soft`/`text-danger`, `bg-surface-sunken`/`text-text-secondary`, `bg-info-soft`/`text-info`
+- **Used in:** gallery; will be used by every list/detail screen with a status
+- **Example:**
+  ```tsx
+  <StatusChip status={transaction.status} />
+  ```
+- **Notes:** `getStatusTone(status)` is also exported — the single source for the status→tone mapping (mirrors `ui-tokens.md §1.4` exactly); an unmapped status falls back to `neutral` rather than throwing. Tested in `StatusChip.test.tsx` (every tone family + case-insensitivity + the fallback).
+
+### Badge
+- **Surface:** mobile
+- **Path:** `src/components/ui/Badge.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** Three small indicators ui-rules.md §5.5 describes separately, bundled behind one variant prop since they're the same visual family: a labelled pill (`"New"`, `"Pro"`), a numeric count badge (tab/bell/menu, 99+ cap), and the unread dot.
+- **Props:** `variant?: 'label'|'count'|'dot'` (default `label`) · `label` variant: `tone?: 'neutral'|'primary'|'accent'|'success'|'warning'|'danger'|'info'` (default `neutral`), `children: string` · `count` variant: `count: number` (renders nothing if `<= 0`) · `dot` variant: no other props · `testID?`
+- **Tokens used:** soft-bg/strong-text pairs per tone (same family as `StatusChip`, but tone is explicit, never looked up from a status string), `bg-danger` (count), `bg-accent` (dot)
+- **Used in:** gallery; will be used by the header bell, Manage tab badge, announcement "new" indicator
+- **Example:**
+  ```tsx
+  <Badge variant="count" count={unreadCount} />
+  ```
+- **Notes:** Deliberately decoupled from `StatusChip`'s status-string lookup (ui-tokens.md §1.4 scopes that mapping to `StatusChip` specifically) — `Badge`'s tone is always explicit.
+
+### Card
+- **Surface:** mobile
+- **Path:** `src/components/ui/Card.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** Generic surface card — meeting/election/KPI/quick-action/bank-account/association cards all compose this (ui-rules.md §5.4). **Not** the Passbook (a distinct, signature component with its own tokens — ui-rules.md §5.1 — not built yet, not a `Card` variant).
+- **Props:** `children` · `noPadding?` (default `false`) · `className?` · `testID?`
+- **Tokens used:** `bg-surface`, `rounded-lg`, `border-border` (light only — `dark:border-transparent` in dark mode)
+- **Used in:** gallery
+- **Example:**
+  ```tsx
+  <Card><Text variant="body-strong">October meeting</Text></Card>
+  ```
+- **Notes:** Never a shadow (ui-rules.md §5.4 is explicit) — dark mode drops the border entirely rather than drawing one in the dark border token, matching the spec's "surface alone reads against bg" wording.
+
+### Avatar
+- **Surface:** mobile
+- **Path:** `src/components/ui/Avatar.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** Member initials-on-tint circle, or an association-logo-fallback square (ui-rules.md §5.14).
+- **Props:** `name: string` (source for initials) · `size?: 32|40|64` (default `40`) · `shape?: 'circle'|'square'` (default `circle`) · `colorSeed?: number|string` (e.g. member id — picks a chart-palette colour; ignored when `tintColor` given) · `tintColor?: string` (a real hex from data, e.g. `Association.primaryColor`) · `testID?`
+- **Tokens used:** `useThemeTokens().chart` (the 6-colour chart palette, at 12% tint for the background, full strength for the initials text — a data-derived pick, not a static class, hence the `style` escape hatch via `Text`)
+- **Used in:** gallery; will be used by member list rows, the association card
+- **Example:**
+  ```tsx
+  <Avatar name={member.firstName + ' ' + member.lastName} colorSeed={member.id} />
+  ```
+- **Notes:** **No image loading yet** — `expo-image` isn't installed (nothing needs a real logo/photo through F1.4); deferred to whichever feature first needs it (likely F1.8 or F2.x), same "defer until a real screen needs it" discipline this project uses elsewhere. Initials-only until then. **F2.1 (2026-10-20):** `expo-image` is now installed (the Association Code screen's logo). `Avatar` itself is unchanged — it's still the initials fallback, used directly whenever a tenant/member has no logo/photo; the real image is rendered by the caller (`AssociationConfirmationCard`), not by `Avatar`.
+
+### Divider
+- **Surface:** mobile
+- **Path:** `src/components/ui/Divider.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** A hairline separator (ui-tokens.md §5 `--border-hairline`).
+- **Props:** `orientation?: 'horizontal'|'vertical'` (default `horizontal`) · `className?`
+- **Tokens used:** `bg-border`
+- **Used in:** `ListGroup` (between rows)
+- **Notes:** Uses `StyleSheet.hairlineWidth` via `style` (not expressible as a className — a platform-resolved sub-pixel value, not a design token).
+
+### Skeleton
+- **Surface:** mobile
+- **Path:** `src/components/ui/Skeleton.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** Loading placeholder shaped like real content (ui-rules.md §5.11 — never a full-screen spinner except Splash).
+- **Props:** `width: number | \`${number}%\`` · `height: number` · `radius?: 'xs'|'sm'|'md'|'lg'|'full'` (default `sm`) · `className?`
+- **Tokens used:** `bg-surface-sunken`, `rounded-*`
+- **Used in:** gallery
+- **Notes:** Opacity-pulse shimmer via `react-native-reanimated`; off entirely under `useReducedMotion()` (renders a static mid-opacity block instead), per ui-rules.md §6. **Not RTL-tested** — see "Dev tooling & known gaps" below; rendering it under Jest needs `react-native-reanimated`'s native Worklets module, which isn't available there (a pre-existing-class gap, not new to this component). Verified by type-check + lint only.
+
+### Money
+- **Surface:** mobile
+- **Path:** `src/components/ui/Money.tsx`
+- **Added / changed:** F1.4 (2026-10-20) · F1.6 (2026-10-20: now imports `formatMoney` from `@/lib/money` instead of owning its own copy; props unchanged)
+- **Purpose:** The only way to display a monetary amount (ui-rules.md §5.16, code-standards.md §11 rule #10 — money is never a float).
+- **Props:** `value: string|number|Decimal` · `size?: TextVariant` (default `body-strong`) · `tone?: TextTone` (default `default`) · `creditLabel?: string` (default `"Credit"`) · `testID?`
+- **Tokens used:** forces `fontVariant: ['tabular-nums']` via `Text`'s `style` escape hatch, regardless of `size`
+- **Used in:** gallery; will be used by every amount in the app
+- **Example:**
+  ```tsx
+  <Money value={summary.outstanding} size="display" tone="onPassbook" />
+  ```
+- **Notes:** `formatMoney()`/`toDecimal()`/`sumMoney()` now live in `src/lib/money.ts` (F1.6) — see that module's entry below for detail; `Money.test.tsx` was trimmed to component-rendering checks only, with formatting edge cases (negative/credit, decimal-precision) moved to `lib/money.test.ts`. Negative values render as `"<creditLabel> <abs amount>"` (e.g. `"Credit ₦2,000.00"`) — ui-rules.md §5.16's prose says "leading minus and the word context" but its own example shows no minus sign; the concrete example was treated as ground truth over the ambiguous prose.
+
+### Spinner
+- **Surface:** mobile
+- **Path:** `src/components/ui/Spinner.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** Thin `ActivityIndicator` wrapper resolving a real token colour (RN's `ActivityIndicator` needs a colour value, not a className).
+- **Props:** `tone?: 'primary'|'inverse'|'secondary'|'danger'` (default `primary`) · `size?: 'sm'|'lg'` (default `sm`, maps to RN's `'small'`/`'large'`)
+- **Used in:** `Button` (loading state), gallery
+- **Notes:** Reads `useThemeTokens()` — components that render `Spinner` conditionally (like `Button`) need `ThemeProvider` mounted (or the hook mocked in tests).
 
 ## Layout (`src/components/layout`)
-_(none yet)_
+
+### Screen
+- **Surface:** mobile
+- **Path:** `src/components/layout/Screen.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The outer wrapper every route screen renders into — safe area, the 16dp gutter + 560dp max content width (ui-rules.md §2), scroll-or-fixed, pull-to-refresh, optional keyboard-avoiding.
+- **Props:** `children` · `scroll?: boolean` (default `true`) · `refreshing?` · `onRefresh?` · `keyboard?: boolean` (default `false`, wraps in `KeyboardAvoidingView` — code-standards.md §8) · `edges?: Edge[]` (default `[]` — pass `['top']`/`['bottom']` only for a screen with no native header/no tab bar below it) · `className?`
+- **Tokens used:** `bg-bg`, `px-4`, `max-w-[560px]`
+- **Used in:** gallery; will wrap nearly every route screen
+- **Example:**
+  ```tsx
+  <Screen refreshing={query.isRefetching} onRefresh={query.refetch}>{children}</Screen>
+  ```
+- **Notes:** Doesn't assume a header or tab bar exists below/above it — `edges` defaults to neither, since most routes already get a safe-area inset from one of those; pass edges explicitly for the screens that don't.
+
+### ScreenHeader
+- **Surface:** mobile
+- **Path:** `src/components/layout/ScreenHeader.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The custom 52px header row for screens that need more than the native `Stack.Screen` title (large-title tab roots, modal `Cancel`/`Save` rows, a bell/action icon) — ui-rules.md §5.9, §2's "Form (modal)" skeleton.
+- **Props:** `title: string` · `large?: boolean` (default `false` — `h1` for tab roots vs `h3` for detail/modal headers) · `onBack?: () => void` (renders a back chevron `IconButton` when given) · `backLabel?` · `rightActions?` (up to 2 `IconButton`s) · `leftAction?` (e.g. a "Cancel" text button for modals; ignored when `onBack` is given) · `showDivider?: boolean` (default `false`)
+- **Used in:** gallery
+- **Notes:** Stays presentational — it never reads scroll position itself (architecture.md §4's layer rule: `components/**` are props-in/props-out only); the caller toggles `showDivider` once the screen has actually scrolled, per ui-rules.md §5.9's "hairline appears on scroll."
+
+### Section
+- **Surface:** mobile
+- **Path:** `src/components/layout/Section.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The "Section heading — See all" pattern (ui-rules.md §2/§3).
+- **Props:** `title?: string` · `onSeeAll?: () => void` (renders the "See all" ghost text button when given) · `seeAllLabel?` (default `"See all"`) · `children` · `className?`
+- **Used in:** gallery
+- **Notes:** Only owns the 12dp heading-to-content gap; the 24dp gap *between* sibling Sections is the parent screen's job (a `gap-6` flex container) — Section doesn't self-margin.
+
+### ListItem / ListGroup
+- **Surface:** mobile
+- **Path:** `src/components/layout/ListItem.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The workhorse row (ui-rules.md §5.3) and its grouping container (the "ledger rows, not card soup" pattern, ui-rules.md §1 rule #2).
+- **Props:** `ListItem`: `leading?` (a pre-built icon-in-circle or `Avatar` — ListItem doesn't compose that itself) · `title: string` · `meta?: string` · `trailing?` · `showChevron?` · `onPress?` (renders a `Pressable` with `android_ripple` tinted `primary/12` when given, else a plain `View`) · `compact?: boolean` (48dp vs 56dp) · `disabled?` · `testID?` — `ListGroup`: `children` (any number of `ListItem`s) · `testID?`
+- **Tokens used:** `bg-surface`, `rounded-md`, `border-border` (light)/`dark:border-transparent`, `bg-border` (dividers)
+- **Used in:** gallery; will be used by every list screen
+- **Example:**
+  ```tsx
+  <ListGroup>
+    <ListItem leading={<CategoryIcon />} title="October dues" meta="Due 31 Oct" trailing={<Money value={25000} />} onPress={onPress} />
+  </ListGroup>
+  ```
+- **Notes:** **Simplification, flagged:** `ListGroup`'s dividers are full-width, not inset to each row's text start as ui-rules.md §5.3 describes — no real screen exists yet to validate per-row leading-icon widths against; revisit when one does.
+
+### StickyFooter
+- **Surface:** mobile
+- **Path:** `src/components/layout/StickyFooter.tsx`
+- **Added / changed:** F1.4 (2026-10-20)
+- **Purpose:** The fixed action row above the keyboard/home indicator for forms and payment flows (ui-rules.md §2).
+- **Props:** `children` (a row of `Button`s)
+- **Tokens used:** `bg-surface`, `border-border` (top hairline), elevation-1 (see Notes)
+- **Used in:** gallery
+- **Notes:** **Found and fixed a real gap while building this:** `ui-tokens.md §6` defines an `elevation` scale (1/2/3, with exact shadow colour/offset/radius/opacity per level) that F1.2 never mirrored into `src/theme/tokens.ts` (only `color`/`space`/`radius`/`icon`/`motion`/`layout`/`z` existed). Added `tokens.elevation` now (first feature that actually needed a shadow) rather than hardcoding the hex inline — `tokens.test.ts`'s parity check only scans `tokens.light.color`/`tokens.dark.color`, so this didn't need a test change.
+
+## UI primitives — BottomSheet (F1.5)
+
+### BottomSheet
+- **Surface:** mobile
+- **Path:** `src/components/ui/BottomSheet.tsx`
+- **Added / changed:** F1.5 (2026-10-20) · Phase 1 retro (2026-10-20: fixed the close button — see Notes) · F5.5 (2026-10-24: the content now has bottom padding equal to the device's bottom safe-area inset, minimum 16 + 8 dp — before, the last button sat behind Android's navigation bar; applies to every sheet)
+- **Purpose:** The one gorhom wrapper every sheet in the app goes through (ui-rules.md §5.10) — filters, pickers (`SelectSheet`), confirmations (`ConfirmSheet`), quick actions (`FileAttachField`).
+- **Props:** `title?: string` · `snapPoints?` (default `['50%','90%']`) · `onDismiss?: () => void` · `children`
+- **Tokens used:** `bg-surface` (sheet background), `border-strong` (grabber), `overlay/45` (backdrop opacity), `rounded-xl` (top corners, 24dp)
+- **Used in:** `SelectSheet`, `FileAttachField`, `ConfirmSheet`
+- **Example:**
+  ```tsx
+  const sheetRef = useRef<BottomSheetModal>(null);
+  <BottomSheet ref={sheetRef} title="Choose a bank">{content}</BottomSheet>
+  // sheetRef.current?.present() / .dismiss()
+  ```
+- **Notes:** A `forwardRef<BottomSheetModal, BottomSheetProps>` — callers own the ref and call `.present()`/`.dismiss()` themselves (no imperative wrapper hook built). Requires `BottomSheetModalProvider` (inside `GestureHandlerRootView`) mounted once at the app root — both wired in `app/_layout.tsx` at F1.5. Never stack more than one (ui-rules.md §5.10) — not enforced in code, a convention for callers to respect. **Bug found and fixed in the Phase 1 retro review:** the header's close (X) button used to only fire the optional `onDismiss` callback — it never called `.dismiss()` on the sheet itself, so pressing it did nothing in `SelectSheet`/`FileAttachField` (neither passes `onDismiss`) and only fired `ConfirmSheet`'s callback without closing. Fixed by giving the component its own internal ref (`useImperativeHandle` forwards it to the caller's ref, same instance either way) and having the X button call that ref's `.dismiss()` directly; `onDismiss` now only ever does what gorhom's own prop means — notify after the sheet closes by any means.
 
 ## Forms (`src/components/forms`)
-_(none yet)_
+Every field below shares `FieldShell` (chrome) and `RHFControlProps<TFieldValues>` (the `control`/`name` pair), both exported from `FieldShell.tsx`. Each is generic over `TFieldValues extends FieldValues` and calls `useController({ control, name })` itself. Two fields (`SearchField`, `SegmentedControl`) are deliberately plain-controlled instead — see their own Notes.
+
+### FieldShell
+- **Surface:** mobile
+- **Path:** `src/components/forms/FieldShell.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Label above / input / helper-or-error below (ui-rules.md §5.6) — composed internally by every other field in this folder, never used directly by screens.
+- **Props:** `label?` · `helper?` · `error?` · `required?` · `children`
+- **Notes:** Also exports `RHFControlProps<TFieldValues>` (`{ control, name }`), the shared base type every field in this folder extends.
+
+### TextField
+- **Surface:** mobile
+- **Path:** `src/components/forms/TextField.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** The default single/multi-line text input (ui-rules.md §5.6) — never wire a raw `TextInput` in a screen (code-standards.md §8).
+- **Props:** `RHFControlProps<TFieldValues>` + `label?` · `helper?` · `placeholder?` · `keyboardType?` · `autoCapitalize?` (default `'none'`) · `returnKeyType?` · `onSubmitEditing?` · `multiline?` · `maxLength?` · `editable?` (default `true`) · `testID?`
+- **Tokens used:** `bg-surface-sunken`, `border-border-strong` → `focus:border-2 focus:border-focus`, `border-danger` on error, `rounded-md`, height 52 (or `min-h-[52px]` multiline)
+- **Example:**
+  ```tsx
+  <TextField control={control} name="fullName" label="Full name" autoCapitalize="words" />
+  ```
+
+### PasswordField
+- **Surface:** mobile
+- **Path:** `src/components/forms/PasswordField.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Show/hide toggle + optional strength meter (ui-rules.md §5.6 — strength "on create/reset screens" only, not login).
+- **Props:** `RHFControlProps<TFieldValues>` + `label?` · `helper?` · `placeholder?` · `showStrength?: boolean` (default `false`) · `testID?`
+- **Notes:** Strength score is a simple 4-point heuristic (length ≥ 8, uppercase, digit, symbol) → 4-segment bar + label (Weak/Fair/Good/Strong). The bar's tone classes are a static lookup array (`['bg-danger','bg-warning','bg-info','bg-success']`), never a template-literal-constructed class name — NativeWind/Tailwind can't statically discover a dynamically-built class string.
+
+### OtpInput
+- **Surface:** mobile
+- **Path:** `src/components/forms/OtpInput.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** A6 Verify Email's 6-digit code (ui-rules.md §5.6) — auto-advance, paste-fills-all, iOS `oneTimeCode` autofill.
+- **Props:** `RHFControlProps<TFieldValues>` + `label?` · `helper?` · `length?` (default `6`) · `testID?`
+- **Notes:** Form value is the joined digit string. Only the first box gets `textContentType="oneTimeCode"` and `maxLength={length}` (so a full autofill/paste lands there); every other box is `maxLength={1}`. Backspace on an empty box focuses the previous one.
+
+### AmountField
+- **Surface:** mobile
+- **Path:** `src/components/forms/AmountField.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Large right-aligned ₦ amount with live thousands separators + preset chips (ui-rules.md §5.6 — M12 Donate, etc.).
+- **Props:** `RHFControlProps<TFieldValues>` + `label?` · `helper?` · `presets?: number[]` (rendered as separate chips) · `testID?`
+- **Notes:** Form value is a **plain numeric string** (code-standards.md §8/§11 — "amount fields hold strings in form state"), never converted to `Decimal` here; that happens with `toDecimal()` at submit. `keyboardType="decimal-pad"` per code-standards.md §8.
+
+### DateField
+- **Surface:** mobile
+- **Path:** `src/components/forms/DateField.tsx`
+- **Added / changed:** F1.5 (2026-10-20) · F1.6 (2026-10-20: display formatting now goes through the real `lib/dates.ts` instead of a temporary local `Intl.DateTimeFormat`)
+- **Purpose:** Opens the native date/time picker (ui-rules.md §5.6 — deliberately **not** a `SelectSheet`).
+- **Props:** `RHFControlProps<TFieldValues>` + `label?` · `helper?` · `mode?: 'date'|'time'|'datetime'` (default `'date'`) · `minimumDate?` · `maximumDate?` · `placeholder?` · `testID?`
+- **Notes:** Pulled in `@react-native-community/datetimepicker` — **owner-approved** at F1.5 (no picker was documented anywhere in context before this feature; see `library-docs.md`). Form value is an ISO string. Android shows the library's own imperative dialog; iOS wraps the inline picker in a plain `Modal` with a "Done" button (`display="spinner"`). Display formatting is `formatDate(iso, 'long')` from `@/lib/dates` (F1.6). Trigger `Pressable` got an explicit `accessibilityRole="button"` + `accessibilityLabel` in the Phase 1 retro review (was relying on its visible text alone, inconsistent with `Section`/`ListItem`'s pattern).
+
+### SelectSheet
+- **Surface:** mobile
+- **Path:** `src/components/forms/SelectSheet.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Picker opening a `BottomSheet` list, searchable above 8 options (ui-rules.md §5.6).
+- **Props:** `RHFControlProps<TFieldValues>` + `label?` · `helper?` · `options: { label: string; value: string }[]` · `placeholder?` · `testID?`
+- **Notes:** Uses a plain `FlatList` (not `@shopify/flash-list`, not installed yet) — fine for the modest option counts this is designed for. The in-sheet search box is a local, un-debounced `TextInput` (filtering an already-in-memory array), not `SearchField`. Trigger `Pressable` got an explicit `accessibilityRole="button"` + `accessibilityLabel` in the Phase 1 retro review.
+
+### SearchField
+- **Surface:** mobile
+- **Path:** `src/components/forms/SearchField.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Leading icon, clear button, 300ms debounce (ui-rules.md §5.6) — live list filtering (MG1 member search, etc.).
+- **Props:** `value: string` · `onChangeText: (text: string) => void` · `placeholder?` (default `'Search'`) · `debounceMs?` (default `300`) · `testID?`
+- **Notes:** **Deliberately not RHF-bound** (build-plan.md's F1.5 bullet says "all RHF-bound," but no real screen in project-overview.md ties a search box to a submitted form value — every use is a live filter). Syncs an externally-changed `value` prop during render (comparing against a tracked previous value), not in a `useEffect` — the `react-hooks/set-state-in-effect` ESLint rule flags the effect form of this pattern.
+
+### Checkbox
+- **Surface:** mobile
+- **Path:** `src/components/forms/Checkbox.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Boolean field, e.g. A5 Register's terms checkbox.
+- **Props:** `RHFControlProps<TFieldValues>` + `label: string` · `testID?`
+- **Notes:** Not the same as C7 Ballot's "selected radio card" (a `Card` + `border-thick`, per ui-tokens.md §5) — different component for a different pattern, not built yet. Got `hitSlop={8}` in the Phase 1 retro review (same convention as `IconButton`) — the row's `py-2` padding alone fell short of the 44dp tap-target minimum.
+
+### Switch
+- **Surface:** mobile
+- **Path:** `src/components/forms/Switch.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Boolean field, e.g. N2 Notification Preferences' per-category toggles.
+- **Props:** `RHFControlProps<TFieldValues>` + `label: string` · `helper?` · `testID?`
+- **Notes:** Wraps RN's built-in `Switch` with themed `trackColor`/`thumbColor` (RN's `Switch` needs resolved colour values, not classNames). **Changed in the Phase 1 retro review:** the whole row is now a `Pressable` (`accessibilityRole="switch"`) that toggles the field, not just the small native `Switch` control — RN's touch responder system gives the inner `Switch` exclusive capture of taps landing directly on it, so this doesn't double-toggle; it only grows the usable tap area to the full row.
+
+### SegmentedControl
+- **Surface:** mobile
+- **Path:** `src/components/forms/SegmentedControl.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** 2–4 peer-view toggle (ui-rules.md §5.7) — e.g. Upcoming|Past, or GV4's per-row Present/Absent/Excused/Late.
+- **Props:** `options: { label: string; value: T }[]` (2–4) · `value: T` · `onChange: (value: T) => void` · `testID?`
+- **Notes:** **Deliberately plain-controlled** (value/onChange), not RHF-bound — same reasoning as `SearchField`. Selected pill gets `elevation-1` in light mode only (`tokens.elevation[1]`, read via `useThemeMode()`'s `scheme`); dark mode uses `bg-surface-raised` with no shadow, per the spec's exact wording.
+
+### FileAttachField
+- **Surface:** mobile
+- **Path:** `src/components/forms/FileAttachField.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** Camera / Photos / Files attachment (library-docs.md's "Files" section) — a `BottomSheet` quick-actions menu.
+- **Props:** `RHFControlProps<TFieldValues>` + `label?` · `helper?` · `allowedTypes?` (default `['image/jpeg','image/png','application/pdf']`, api-contract.md §6's real multer limits) · `maxSizeBytes?` (default 5MB) · `testID?`
+- **Notes:** Form value is `{ uri, name, type, size? } | null`. Images compressed with `quality: 0.7` only — the max-2000px-long-edge resize from library-docs.md's own spec is deferred (no `expo-image-manipulator` pinned; that table's own wording already allows this: "add to table when introduced"). A type/size violation shows as the field's helper text, not a thrown error. **Fixed in the Phase 1 retro review:** `fromCamera`/`fromPhotos`/`fromFiles` had no try/catch and no feedback on a denied permission — both now show through the same helper-text slot (`setAttachError`) rather than silently no-op'ing. The "Attach a file" trigger `Pressable` also got an explicit `accessibilityRole="button"` + `accessibilityLabel`.
 
 ## Feedback (`src/components/feedback`)
-_(none yet)_
+
+### EmptyState
+- **Surface:** mobile
+- **Path:** `src/components/feedback/EmptyState.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** ui-rules.md §5.11's "Empty" data-screen state.
+- **Props:** `icon?: LucideIcon` (default `Inbox`) · `title: string` · `description?` · `actionLabel?` · `onAction?`
+- **Used in:** gallery
+
+### ErrorState
+- **Surface:** mobile
+- **Path:** `src/components/feedback/ErrorState.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** ui-rules.md §5.11's "Error" data-screen state — plain words, "Try again," no apologies.
+- **Props:** `title?` (default `"We couldn't load this."`) · `description?` · `onRetry?`
+- **Used in:** gallery
+
+### OfflineBanner
+- **Surface:** mobile
+- **Path:** `src/components/feedback/OfflineBanner.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** ui-rules.md §5.11's "Offline" banner, under the header.
+- **Props:** `lastUpdatedLabel?: string`
+- **Notes:** Doesn't disable mutations itself — that's the screen's job via `useOnline()` (F1.6+), not this component's.
+
+### ModuleLocked
+- **Surface:** mobile
+- **Path:** `src/components/feedback/ModuleLocked.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** ui-rules.md §5.11's "Module locked" state — deliberately no upgrade/purchase button (rule #16: no in-app selling).
+- **Props:** `moduleName: string`
+
+### SubscriptionInactive
+- **Surface:** mobile
+- **Path:** `src/components/feedback/SubscriptionInactive.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** ui-rules.md §5.11's "Subscription inactive" state.
+- **Props:** none
+
+### NoPermission
+- **Surface:** mobile
+- **Path:** `src/components/feedback/NoPermission.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** ui-rules.md §5.11's "No permission" state — only reachable via deep link.
+- **Props:** `onGoHome?: () => void` (default: `router.replace('/')`)
+
+### ConfirmSheet
+- **Surface:** mobile
+- **Path:** `src/components/feedback/ConfirmSheet.tsx`
+- **Added / changed:** F1.5 (2026-10-20)
+- **Purpose:** ui-rules.md §5.10's destructive/irreversible-action confirmation — title states the action, body states the consequence, "Keep it" + a danger button repeating the verb.
+- **Props:** `title: string` · `description: string` · `confirmLabel: string` · `cancelLabel?` (default `'Keep it'`) · `destructive?` (default `true`) · `onConfirm: () => void` · `onDismiss?`
+- **Notes:** A `forwardRef<BottomSheetModal, ConfirmSheetProps>` that forwards to its own internal ref via `useImperativeHandle` — exposes `.present()`/`.dismiss()` to the caller while also using the same ref for its own "Keep it" button. Biometric re-auth (architecture.md §7.5) runs at the call site after confirm, not inside this component.
+
+### TabBar
+- **Surface:** mobile
+- **Path:** `src/components/layout/TabBar.tsx`
+- **Added / changed:** F1.8 (2026-10-20)
+- **Purpose:** ui-rules.md §5.8's bottom tab bar — height 64 + safe area, `surface` background with a top hairline, icon 24 + `micro` label, active state shown by a 32×4 `primary` pill above the icon (not a filled background blob).
+- **Props:** `BottomTabBarProps` from `expo-router/tabs` (`state`, `descriptors`, `navigateToTab`, `insets`) — passed straight through by `(tabs)/_layout.tsx`'s `tabBar={(props) => <TabBar {...props} />}`, not a custom prop shape of its own.
+- **Example:**
+  ```tsx
+  <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
+  </Tabs>
+  ```
+- **Notes:** `state.routes`/`descriptors` arrive already filtered to visible tabs — Expo Router's own `useVisibleTabsWithRedirect` excludes hidden routes (the Manage tab's `href: canManage ? undefined : null`) before they reach this component, so it does no hidden-tab filtering itself. Not RTL-tested — same pre-existing "rendering a `lucide-react-native` icon crashes under Jest" gap as `IconButton`/`ListItem`'s chevron (`ui-registry.md`'s own "Dev tooling & known gaps (F1.4)" below); verified by type-check + lint + a successful `expo export -p web` bundle only.
 
 ## Charts (`src/components/charts`)
 _(none yet)_
 
+## Dev tooling & known gaps (F1.4)
+Not reusable UI components, but infrastructure every future test/screen that uses an icon or `react-native-reanimated` relies on.
+- **Dev-only component gallery:** `app/(dev)/gallery.tsx` + `app/(dev)/_layout.tsx` (the group's layout `<Redirect>`s to `/` when `!__DEV__` — Metro has no "exclude this route from the bundle" primitive, so this makes it unreachable in production rather than literally absent). Demonstrates every component above in every variant/state, including a real `react-hook-form` + `zod` form (F1.5's DoD) and a `ConfirmSheet` trigger. Verified by type-check + lint + a successful `expo export -p web` **bundle** (Metro resolved and bundled the route with zero errors, both at F1.4 and again at F1.5 with every new dependency) — but **not** by the static HTML's rendered text content, which came back empty for this specific route (see the Jest gap below; the same `lucide-react-native`/`react-native-css-interop` interaction silently empties Expo Router's Suspense-based static prerender on Node, which also lacks a `document`). The real target platforms (iOS/Android dev client, via Metro) aren't expected to hit this — no device was available this session to confirm directly; flagged for before demo, same pattern as several prior sessions' browser-dependent gaps.
+- **lucide-react-native under Jest — fixed:** `jest.config.js` (new — replaces the `"jest"` key that was in `package.json`) extends `jest-expo`'s real preset object (not a hand-copied regex) to (1) allow `lucide-react-native` through `transformIgnorePatterns` and (2) rename the babel-jest transform key from `\.[jt]sx?$` to `\.m?[jt]sx?$` so its ESM-only `.mjs` build actually gets transformed to CJS. Without this, merely *importing* any `lucide-react-native` icon under Jest threw "Must use import to load ES Module."
+- **lucide-react-native icons rendering under Jest — NOT fixed, flagged:** once import succeeds, actually *rendering* a component that uses a `lucide-react-native` icon throws `Cannot read properties of undefined (reading 'documentElement')` from inside `react-native-css-interop`'s web runtime — jest-expo's test environment defines a bare, truthy `window` global with no `document`, which makes css-interop's `typeof window`-based web-vs-native detection pick the web runtime even though the test environment is meant to emulate native. Routing through `react-native-reanimated/jest/resolver` (reanimated's own documented Jest workaround) "fixes" this for reanimated specifically but replaces Jest's module resolver *project-wide* (it delegates to `react-native-worklets/jest/resolver` for everything else), which broke unrelated `.tsx` files too — every file gets `react-native-css-interop/jsx-runtime` auto-injected via `babel.config.js`'s `jsxImportSource: 'nativewind'`. Reverted rather than shipped. **Consequence:** `IconButton`, `ListItem`'s chevron, `Skeleton`, and every F1.5 component that renders an icon (`PasswordField`, `OtpInput`'s autofill, `SelectSheet`, `SearchField`, `FileAttachField`, feedback states, `ScreenHeader`'s back button) are verified by type-check + lint only, not RTL — `Button`/`Money`/`StatusChip` (F1.4's actual RTL-test requirement) import neither and are unaffected, all 25 tests passing. F1.5 added no new RTL-test requirement (its DoD is "registry updated; form example in gallery validates with zod," both satisfied without rendering under Jest). Root-cause and fix properly before any future feature needs to RTL-test a component that renders an icon.
+
+## Storage, permissions & utilities (F1.6)
+Not reusable UI components, but the `lib/`/`hooks/`/`stores/` foundation every future feature/screen builds on.
+- **`lib/cn.ts`:** `cn(...values)` — merges conditional NativeWind classNames. **Not `clsx`-based** (no new dependency): a plain `filter(Boolean-ish).join(' ')`, no dedupe/conflict resolution. Replaced the duplicated local `joinClasses`/`.filter(Boolean).join(' ')` idiom across 11 F1.4/F1.5 files (`Text`, `Button`, `Card`, `Divider`, `IconButton`, `Skeleton`, `Screen`, `ScreenHeader`, `Section`, `TextField`) — behavior-preserving, confirmed by the full test suite still passing after the sweep. `Avatar`/`Badge`/`StatusChip`/`ListItem` were deliberately left alone: their `.join(' ')` calls have no conditional/falsy entries, so there was nothing for `cn()` to fix.
+- **`lib/storage.ts`:** one shared `createMMKV({ id: 'societyledger' })` instance + typed helpers (`get/setString`, `get/setBoolean`, `get/setNumber`, `get/setObject` — JSON — `remove`). **Absorbed `ThemeProvider.tsx`'s (F1.2) own dedicated instance** — same `id`, so existing persisted `prefs.themeMode` values survive; `ThemeProvider`'s public API (`useThemeMode`/`useThemeTokens`) is unchanged.
+- **`lib/secure.ts`:** `loadTokenCache()` (call once at boot — not yet wired into `app/_layout.tsx`, no boot sequence exists until F1.7), `getTokenCache()` (sync, memory-only), `setTokens(partial)`/`clearTokens()` (update both memory and SecureStore). Keys `sl.accessToken`/`sl.refreshToken`/`sl.accessExpiresAt`, `keychainAccessible: AFTER_FIRST_UNLOCK`.
+- **`lib/money.ts`:** `toDecimal()`, `formatMoney()`, `sumMoney()` — absorbed from `Money.tsx` (F1.4), which now imports from here instead of owning its own copy (props unchanged). No static `Decimal.sum(...)` on `decimal.js-light` (that's full `decimal.js`) — `sumMoney()` reduces manually with `.plus()`. 100% test coverage (statements/branches/functions/lines, verified with a real `--coverage` run, not just "tests exist" — this feature's DoD).
+- **`lib/dates.ts`:** `formatDate(iso, variant)` — `'short'` ("Tue 14 Oct"), `'long'` ("14 Oct 2026"), `'time'` ("3:30 PM"), `'monthYear'` ("October 2026"), `'relative'` (`formatDistanceToNowStrict`, e.g. "5 minutes ago"). No built-in "Today, 3:30 PM" variant — compose it yourself from the also-exported `isToday(iso)` + `formatDate(iso, 'time')`. No `date-fns-tz`: this machine's (and real users') local timezone is already `Africa/Lagos` (confirmed via `Intl.DateTimeFormat().resolvedOptions().timeZone`; no DST in Nigeria), so plain local-time formatting already matches. Absorbed `DateField.tsx`'s (F1.5) temporary `Intl.DateTimeFormat`. 100% test coverage.
+- **`lib/i18n.ts` + `en.json`:** `t(key, params?)` — flat `domain.screen.element` string keys (code-standards.md §2), `{{param}}` placeholder substitution. Only the handful of keys actually needed exist so far (`common.*`, `errors.*`, one `validation.*` example) — don't pre-populate speculative keys for screens that don't exist yet.
+- **`lib/permissions.ts`:** `PERMISSIONS` alias map copied **verbatim from `apps/api/src/lib/permissions.ts`** (not web's copy), plus `can`/`canAny`/`canAll` operating on a real `permissions: string[]`. **Resolved the MEETING_MINUTES/MEETING_ATTENDANCE drift** project-overview.md §6.9 flagged — found that the API side was already fixed during Track R's G26 (real dedicated keys `meetings.manage_minutes`/`meetings.manage_attendance`, confirmed server-enforced), but `apps/web`'s own copy was never updated to match — a real, live, currently-unfixed gap, logged as new gap **G94** in `progress-tracker.md` rather than fixed here (out of mobile's scope, architecture.md rule #14) or silently ignored. 100% test coverage.
+- **`lib/docs.ts`:** `docsUrl(path, surface)` (mirrors `apps/web/src/lib/docs.ts`'s shape exactly — UTM-tagged, `EXPO_PUBLIC_DOCS_URL`-based; no `URL`/`URLSearchParams` object, since that's not reliably available in Hermes without a polyfill this app doesn't carry — plain string concatenation instead), `getDocsPathForScreen(screenId)` (looks up the shared `DOCS_LINKS` from `@societyledger/shared`, a new workspace dependency), `openDocs(screenId)` (opens the in-app browser via `expo-web-browser`'s `openBrowserAsync` — pulled forward ahead of the Paystack flow that originally motivated listing that package; never opens a plan-billing path, per rule #16).
+- **`hooks/useCan.ts`:** `useCan(alias | alias[])` — the only way components check permissions (architecture.md §7.4). Reads `stores/session`'s `permissions` array (F1.6's minimal pull-forward shape at the time this line was written — see F1.7's section below for the expanded real shape; `useCan`'s own public API never changed).
+- **`hooks/useOnline.ts` / `hooks/useAppState.ts`:** thin reactive wrappers over `@react-native-community/netinfo` and RN's core `AppState`. `useAppState` needed an explicit `as AppStateStatus` cast — RN's generated `.d.ts` types `AppState.currentState` as a loose `string | null | undefined`, not narrowed to the real `AppStateStatus` union.
+- **`stores/session.ts` — a deliberate minimal pull-forward:** `{ permissions: string[]; setPermissions }` only, via `zustand` (upgraded from `expo install`'s auto-resolved 4.x to the documented 5.x). Exists solely so `useCan` has somewhere real to read from; F1.7 expands it into the full session store (user, tokens, `requiresOnboarding`, populated from `/auth/me`) without changing `useCan`'s public API — same precedent as F1.2's `ThemeProvider` MMKV instance and F1.4's `Money` decimal helpers.
+
+## API client, error handling & session state (F1.7)
+Not reusable UI components, but the `api/`/`stores/`/`providers/` foundation every future screen's data-fetching relies on.
+- **`api/client.ts`:** one `axios` instance, `baseURL: ${EXPO_PUBLIC_API_URL}/api`. Request interceptor attaches `X-Tenant` (`stores/tenant`), a bearer token (proactively refreshed when under 60s from expiry), `X-Client: mobile`, `X-App-Version`. Response interceptor: 401 → single-flight `refreshSession()` (one shared in-flight promise so N concurrent 401s trigger exactly one `/auth/refresh` call, all retried with the new token) → on refresh failure, `forceSignOut()` (clears SecureStore, resets `stores/session` + `stores/modules`, toasts "Session expired"). 403 with `error: 'MODULE_DISABLED' | 'FEATURE_DISABLED'` → `useModulesStore.getState().markDisabled(module)`. Everything rethrows as `ApiError`. Verified by 6 real tests (`client.test.ts`, via `axios-mock-adapter`): single-flight dedup, sign-out on failed refresh, both disabled-error variants, 429 not retried, tokens never logged.
+- **`api/errors.ts`:** `ApiError` — one normalized shape for network failures (`isNetwork`), timeouts (`isTimeout`, detected via `error.code === 'ECONNABORTED'`), and real HTTP failures (`status`, `code?`, `fieldErrors?` from the API's zod-issue-shaped `errors[]`). `ApiError.fromAxiosError()` is the single conversion point — nothing else constructs one from a raw `AxiosError`.
+- **`api/envelope.ts`:** `unwrap(responsePromise)` — the one place that reads the API's `{success:true,data}` / `{success:false,message,code}` envelope, including the rare 2xx-with-`success:false` case; every API call site gets back plain `T`, never the envelope.
+- **`stores/tenant.ts` (new):** `current`/`recent` (max 5, deduped by subdomain), persisted via `zustand/persist` on an MMKV-backed `StateStorage` adapter (`lib/storage.ts`'s shared instance, key `tenant.store`).
+- **`stores/modules.ts` (new):** `disabled: Set<string>` + `markDisabled`/`isDisabled`/`reset`, in-memory only (not persisted — re-derived from the next 403, or cleared on sign-out).
+- **`stores/session.ts` — expanded from F1.6's minimal pull-forward to its real shape:** `user: SessionUser | null` (`id`, `email`, `role`, `permissions`, `roles`, `requiresOnboarding`, `platformRole`, `member`), `status: 'idle' | 'authenticated' | 'unauthenticated'` (starts `'idle'`, distinct from `'unauthenticated'` — lets a boot-time "checking session" state differ from "confirmed signed out"), `setUser`/`setStatus`/`reset`. `useCan`'s selector changed internally (`state.user?.permissions`) but its public signature is unchanged.
+- **`providers/QueryProvider.tsx`:** one `QueryClient` (`staleTime: 60s`, `gcTime: 24h`, retries only `ApiError`s with `isNetwork: true`, up to twice) wrapped in `PersistQueryClientProvider` with an MMKV-backed `AsyncStoragePersister`; `shouldDehydrateQuery` only persists query keys whose domain segment is in `PERSISTED_DOMAINS`. `onlineManager` wired to NetInfo, `focusManager` to `AppState`. Mounted in `app/_layout.tsx`, outermost (inside `GestureHandlerRootView`), alongside a boot-time `loadTokenCache()` call.
+- **Architecture-doc gap, resolved pragmatically, not silently:** `architecture.md §5`'s layer-import table omits `stores/modules` from `api/client.ts`'s allowed imports, but the doc's own data-flow diagram and this feature's build-plan bullet both require the 403→store write. `client.ts` imports it anyway — the table is treated as an incomplete enumeration, not a hard boundary; flagged in `library-docs.md` for the table to be tightened in a future pass.
+- **Testing-stack correction (affects every future feature's tests, not just this one):** `msw` — the tool `library-docs.md`/`code-standards.md` previously named for all mocked-HTTP tests — turned out to be unusable here: no `msw/native` export, ESM-only dependency tree, and even once importable, `msw/node`'s `setupServer` never intercepted axios because axios resolves to its browser build under `jest-expo` (no `XMLHttpRequest`, no real `fetch`-based interception point msw can hook). Switched to `axios-mock-adapter` (wraps the axios instance directly), verified via `client.test.ts`. Full root-cause detail and the doc corrections are in `library-docs.md`'s "Testing stack" section.
+- **`renderHook()` is `async` too, same class of gap as `render()`:** `@testing-library/react-native@14.1.0`'s `renderHook()` (confirmed by reading `dist/render-hook.js`) must be awaited — an un-awaited call destructures `{ result: undefined }`, so `result.current` throws rather than failing with an obvious "did you forget await" message. Hit and fixed in `useCan.test.tsx`.
+
+## App shell & navigation skeleton (F1.8)
+Not components — the route structure, guard and deep-link parser build-plan.md F1.8 asks for.
+- **`app/index.tsx`:** the F1.2 design-tokens proof screen that lived here moved to `app/(dev)/tokens.tsx` (reachable via `/_sitemap`, same as `(dev)/gallery`). This route was a placeholder `<Redirect href="/(app)/(tabs)/home" />` until F2.1 built the real bootstrap — see that section below.
+- **`app/(app)/_layout.tsx` — the one guard (architecture.md §5):** reads `useSessionStore`'s `status`; anything other than `'authenticated'` (both the boot-time `'idle'` and signed-out `'unauthenticated'`) returns `<Redirect href="/(auth)/welcome" />`, else renders a plain `<Stack screenOptions={{ headerShown: false }} />`. Tested directly (`_layout.test.tsx`, 3 tests) by mocking `expo-router`'s `Redirect`/`Stack` and driving `useSessionStore` — avoids pulling in the full router tree (every `(tabs)` screen, MMKV-backed stores) just to test a branch. Independently reconfirmed by `expo export -p web`'s own static prerender: every `(app)/*` route came back as an empty shell at build time, because the guard fires there too (no session exists at build time) and redirects before any screen content renders.
+- **`app/(app)/(tabs)/_layout.tsx`:** 5 tabs (Home, Money, Community, Manage, Profile) via `Tabs` from **`expo-router/tabs`** — not the root `expo-router` export, which is deprecated in this SDK (see `library-docs.md`'s Expo Router section). Custom `tabBar={(props) => <TabBar {...props} />}`. Manage tab visibility: `href: canManage ? undefined : null` where `canManage = useCan(MANAGE_TAB_PERMISSIONS)` — a new exported array in `lib/permissions.ts` (project-overview.md §6.9's "visible if" column, one alias per Manage section).
+- **5 tab-root placeholder screens** (`home`, `money`, `community`, `manage`, `profile` — each `index.tsx` only, no nested `_layout.tsx` yet, added only once a detail screen under that tab needs one) + **`app/(app)/notifications/index.tsx`:** `ScreenHeader` (large title) + a header-bell `IconButton` (`Bell`, no unread badge yet — that's F3.2) that pushes to `/(app)/notifications`, + `EmptyState` naming which future feature fills the tab in. All placeholders, replaced screen-by-screen as Phase 2/3 features land — not a shared abstraction, since each will become structurally different real content.
+- **`app/(auth)/_layout.tsx` + `app/(auth)/welcome.tsx`:** `welcome` was a placeholder `EmptyState` (real content at F2.1 — see below). The other 11 architecture.md-listed `(auth)` screens (association, login, register, verify-email, forgot/reset-password, accept-invite, pending, blocked, web-only, create-association) were deliberately **not** stubbed at F1.8 — they get real content at F2.1–F2.3, and empty stand-ins then would just have been churn to redo.
+- **Deliberately out of scope, not stubbed:** the `(lock)/unlock.tsx` group (F2.4 — app lock) and the `onboarding/*` group (no build-plan feature has claimed it yet) — neither is referenced by any guard this feature builds, so there's no "Unmatched Route" risk from omitting them. Modal-presented routes (`presentation: 'modal'`) aren't configured anywhere either — no form screen exists yet to need one; the first feature that adds one configures it at that point.
+- **`lib/linking.ts`:** `parseDeepLink(url)` — zod-validates `societyledger://invite`, `.../reset-password`, `.../payments/return`, `.../notifications/<route>` into a typed `DeepLink | null` (architecture.md §8.3). Uses `expo-linking`'s `Linking.parse()`, not the DOM `URL`/`URLSearchParams` API (confirmed at F1.6 not reliably available under Hermes without a polyfill this app doesn't carry). 100% test coverage (10 tests) — needed mocking `expo-constants` to avoid a real Jest-only crash inside `Linking.parse()` itself (`library-docs.md`'s Testing stack note has the full diagnosis). Wiring into `+native-intent.tsx` is deferred to F2.3, when Accept Invite/Reset Password exist to route to.
+- **`lib/permissions.ts`:** added `MANAGE_TAB_PERMISSIONS: PermissionAlias[]` — one alias per Manage section from project-overview.md §6.9, used directly as `useCan(MANAGE_TAB_PERMISSIONS)` (no new helper function needed; `useCan` already accepts an alias array and runs `canAny`).
+- **Found and fixed in passing (environment/tooling, not app code):** Expo Router's typed-routes declaration (`.expo/types/router.d.ts`) is only regenerated by the live `expo start` dev server, never by `expo export` — `tsc --noEmit` showed phantom "not assignable" errors against every new route's `href` until a brief `expo start` run caught up. Documented in `library-docs.md` so the next feature that adds routes doesn't re-diagnose this from scratch.
+
+## Mobile Phase 2 — Auth & tenant lookup (F2.1)
+First features in `src/features/*`/`src/api/endpoints/*` — the layering `code-standards.md §3/§6/§7` describes, with nothing built against it yet before this. All pieces below are one-off (used by exactly one screen each), so none are promoted to "Shared feature components"/the Index per this file's own registration rule.
+- **`app/index.tsx` — the real splash (A1):** `features/session/useBootstrap.ts`'s `useSessionBootstrap()` reads `lib/secure`'s token cache; no token → `/(auth)/welcome`; a token → `GET /auth/me` (`api/endpoints/auth.ts`'s new `authApi.getMe`) → `features/session/mappers.ts`'s `mapMeUserToSessionUser()` populates `stores/session` → `/(app)/(tabs)/home`. **Deliberately simple, not F2.4's job duplicated:** no cached-`/auth/me` instant UI, no foreground re-validation, and `platformRole`/`requiresOnboarding` both route to tabs for now (A12 and the onboarding wizard don't exist yet — Phase 8). A network/timeout failure leaves the stored refresh token alone (still routes to Welcome, since there's no offline-cache fallback yet); a genuine 401/403 auth rejection clears it. `(app)/_layout.tsx`'s guard comment updated to describe this as the real source of `setUser`/`setStatus`, not a to-do.
+- **`app/(auth)/welcome.tsx` — the real carousel (A2):** `features/auth/components/WelcomeCarousel.tsx` — plain paging `ScrollView` + dot indicators (no new carousel dependency; nothing else needs one yet), 3 slides, Lucide icons (no illustration assets exist). "Get started" → `/(auth)/association`; "Create an association" (A13, not built before Mobile Phase 8) is a `toast`, not a dead route.
+- **`app/(auth)/association.tsx` — Association Code (A3):** debounced lookup via `hooks/useDebouncedValue.ts` (new, generic 400ms debounce — `SearchField` has its own inline copy of the same idea for its narrower case) feeding `features/tenant/queries.ts`'s `useCheckSubdomain` (`api/endpoints/associations.ts`). Client-side rejects reserved subdomains (`features/tenant/schemas.ts`'s `associationCodeSchema`, using `@societyledger/shared`'s `RESERVED_SUBDOMAINS` — same list the server checks) before ever calling the API. **`SUSPENDED` is not an HTTP error** — `check-subdomain` returns `success: true` with `status: 'SUSPENDED'` (only `CANCELLED` is a 403) — so `features/tenant/components/AssociationConfirmationCard.tsx` branches on `tenant.status` itself: `ACTIVE` shows the Continue button, anything else shows the suspended message instead. Logo via `lib/assets.ts`'s new `resolveAssetUrl()` (prefixes a relative `/uploads/...` path with the API origin) + `expo-image` (newly installed, pre-approved in `library-docs.md`), falling back to `Avatar` when there's no logo. Recent list (`features/tenant/components/RecentAssociationsList.tsx`) reads `stores/tenant`'s existing `recent[]`; picking one sets it current and continues without re-fetching.
+- **Backend fix, found while verifying A5 ahead of F2.3:** `POST /member-invites/self-register` (the endpoint mobile will use for Register, since `/auth/register` creates a bare `User` with no `Member` at all — a pre-existing, real gap, not a mobile-specific one) never checked the association's `selfSignupEnabled` setting, unlike `/auth/register`. Fixed in `member-invites.controller.ts` (same `403 SELF_SIGNUP_DISABLED` gate) — owner-directed, in scope despite architecture.md rule #14's mobile-backend restriction, since this closes a real security/correctness gap rather than adding new behaviour.
+
+## Mobile Phase 2 — Login & account states (F2.2)
+- **`app/(auth)/login.tsx` — the real form (A4), replacing F2.1's placeholder:** `features/auth/schemas.ts`'s `loginSchema` + `features/auth/mutations.ts`'s `useLogin()` (`POST /auth/login` via `api/endpoints/auth.ts`'s new `authApi.login`) — on success, stores the mobile token pair (`lib/secure.setTokens`, always present since `client.ts` always sends `X-Client: mobile`) and populates `stores/session` via new `features/auth/mappers.ts`'s `mapLoginUserToSessionUser()` (the login-shape counterpart to F2.1's `/me`-shape mapper), then `router.replace`s to tabs. New `features/auth/components/AssociationBadge.tsx` ("tap to change" row at the top) reuses `ListItem` the same way `RecentAssociationsList` does. Error-code routing is a lookup table on the screen itself (`code-standards.md §4` — routing logic belongs in the route, not the mutation hook): `EMAIL_NOT_VERIFIED` → `verify-email` (with `email` param), `PENDING_APPROVAL` → `pending`, `PLATFORM_LOGIN_REQUIRED` → `web-only`, `ACCOUNT_REJECTED`/`ACCOUNT_SUSPENDED`/`ASSOCIATION_SUSPENDED`/`ASSOCIATION_CANCELLED`/`ASSOCIATION_NOT_FOUND` → `blocked` with a `variant` param, `429` → a fixed rate-limit toast, anything else → `error.message` as a toast (already user-facing text, per `code-standards.md §10`).
+- **`app/(auth)/verify-email.tsx` (A6):** `OtpInput` (built at F1.5, first real use) + `features/auth/mutations.ts`'s `useVerifyEmail()`/`useResendVerification()` (`POST /auth/verify-email`/`/auth/resend-verification`). 60s resend cooldown via a plain `setInterval`, not a new dependency. On success, always continues to `pending` (the API's own success message says every self-registered account needs admin approval next, regardless of whether email verification itself had a pending approval attached).
+- **`app/(auth)/pending.tsx` (A10):** "Check again" returns to Login with `email` prefilled (new, local — no deep link reaches this screen yet) rather than re-attempting the login call directly: no password is kept around once Login's screen unmounts, by design, so there's nothing to retry with. "Sign out" clears the tenant and returns to Welcome (nothing to revoke server-side — login never succeeded).
+- **`app/(auth)/blocked.tsx` (A11):** one screen, 5 copy variants keyed by a `variant` route param (`account-rejected`/`account-suspended`/`association-suspended`/`association-cancelled`/`association-not-found`) validated by new `lib/params.ts`'s `parseParams()` (code-standards.md §4's named-but-previously-unbuilt pattern — returns `null` on a bad param rather than throwing, since no root `ErrorBoundary` exists yet). "Contact support" opens `mailto:support@societyledger.com.ng` (the `.com.ng` address, matching R6.16/G68's consistency decision); "Switch association" clears the tenant and returns to Welcome.
+- **`app/(auth)/web-only.tsx` (A12):** plain text + a new `expo-clipboard` copy button for `admin.societyledger.com.ng` — deliberately no link button (project-overview.md §6.1 — avoid steering staff credentials through a phone flow). "Sign out" same as Pending/Blocked.
+- **New shared test infra, not a UI component:** `src/test-utils/renderWithProviders.tsx`'s `renderHookWithQueryClient()` — this feature's `useLogin`/etc. tests are this app's first `@tanstack/react-query` hook tests. **QueryClient-only** on purpose, not the fuller theme/safe-area/bottom-sheet wrapper `library-docs.md` previously (and incorrectly) described as already built — see that file's corrected "Testing stack" entry for why.
+
+## Mobile Phase 2 — Register, forgot/reset password, accept invite (F2.3)
+- **`app/(auth)/register.tsx` (A5), replacing F2.2's placeholder:** new `features/auth/schemas.ts`'s `registerSchema` (password/confirm match via `.refine`, `acceptTerms` via `z.boolean().refine` — not `z.literal(true, {message})`, which this zod 3.x pin doesn't accept that form of) + new `useSelfRegister()` (`POST /member-invites/self-register` via new `api/endpoints/memberInvites.ts` — never `/auth/register`, per F2.1's finding). Always continues to `verify-email.tsx` (F2.2, reused as-is) with the email prefilled — self-registered accounts are never pre-verified.
+- **`app/(auth)/forgot-password.tsx` (A7), replacing F2.2's placeholder:** new `useForgotPassword()` (`POST /auth/forgot-password`). Shows a persistent "Check your email" success state in place of the form (not a toast-and-navigate) — matches the API's own always-succeeds, no-enumeration behaviour.
+- **`app/(auth)/reset-password.tsx` (A8), new:** reached only via `app/+native-intent.tsx`'s deep-link rewrite. New `features/auth/schemas.ts`'s `newPasswordSchema` (shared "choose a password" shape, reused by Accept Invite too) + new `useResetPassword()` (`POST /auth/reset-password`). **Real finding:** `associationId` scoping is optional server-side for this endpoint (`auth.service.ts`'s `resetPassword`) — the reset itself works with no tenant resolved at all; the screen resolves one anyway (reusing F2.1's `features/tenant/queries.ts`'s `useCheckSubdomain` with the deep link's `tenant` param) purely so Login works directly afterward without bouncing to Association Code.
+- **`app/(auth)/accept-invite.tsx` (A9), new:** reached only via the deep-link rewrite. New `features/auth/queries.ts`'s `useVerifyInvite()` (`GET /member-invites/verify?token=`, no tenant needed — no `tenantMiddleware` on that route) resolves the invite; its response's `association.subdomain` (server-confirmed, not a client param) feeds the same `useCheckSubdomain` to set the tenant store. New `useAcceptInvite()` (`POST /member-invites/accept`) stores the returned mobile token pair but builds no `SessionUser` — the response is too thin (no `permissions`/`roles`/`requiresOnboarding`) — so the screen hands off to `/` and lets F2.1's `useSessionBootstrap` re-derive the full session from `/auth/me`, the same path a normal login takes, instead of a third duplicate mapper. Skeleton-shaped loading state (not a spinner, per ui-rules.md §5.11) while the invite verifies; an invalid/expired/already-used token is a terminal `EmptyState`, not an `ErrorState` (no "Try again" makes sense for a dead link).
+- **`app/+native-intent.tsx`, new:** wires F1.8's `lib/linking.ts` (deferred twice, until these screens existed) into Expo Router's `redirectSystemPath`. `invite` links don't carry a `tenant` param forward (Accept Invite derives it from the verify response instead); `resetPassword` links do. `paymentsReturn` (F2.8) and `notifications` (F3.x) fall through unchanged — not wired to a screen yet.
+- **New DTOs:** `types/api/memberInvites.ts` (`VerifyInviteResponseDTO`, `AcceptInviteResponseDTO`, `SelfRegisterResponseDTO`).
+
+## Mobile Phase 2 — Session lifecycle & app lock (F2.4)
+- **`features/session/queries.ts`'s `useMe()`, new — makes the splash bootstrap cache-first:** `features/session/useBootstrap.ts` refactored from a plain async function into a `useQuery` consumer. The query key `['session', 'me']` deliberately matches `QueryProvider.tsx`'s `PERSISTED_DOMAINS` allow-list (added at F1.7, unused until now) — a previous session's persisted `/auth/me` response rehydrates into `data` before the network call resolves, giving an instant route decision on a warm start. `staleTime: 5min` alone gets "refetch on foreground" for free, since `QueryProvider.tsx`'s `focusManager` is already wired to `AppState`. **Real nuance handled:** once cached `data` exists, a failed background refetch shows up as `isRefetchError` (status stays `'success'`), not `isError` — the bootstrap's error-handling effect checks both.
+- **`features/session/mutations.ts`'s `useLogout()`, new:** `POST /auth/logout` is best-effort (a documented exception to "never swallow errors silently" — local state wipes regardless of the server call's outcome). Takes an options to accept `{ clearTenant?: boolean }` — plain sign-out keeps the tenant (quick re-login), "Switch association" also clears it. Wired to new minimal rows on the `(tabs)/profile` placeholder (`Security`, `Switch association`, `Sign out`) — not the real P1 menu (F3.3's), but the only way to reach this logic for real before then.
+- **`stores/appLock.ts`, new:** `isLocked`, deliberately **not persisted** — starting `true` on every cold start (fresh JS process) is "lock on cold start" for free, no special-casing. `stores/prefs.ts`, new (first real use of code-standards.md §9's reserved "prefs" store slot): `biometricsEnabled`, `autoLockMinutes` (default 5), `hasSeenBiometricPrompt`, persisted under the existing `prefs.*` MMKV namespace. Theme itself stays on `ThemeProvider`'s own separate mechanism (F1.2) — not migrated into this store, out of scope here.
+- **`app/(lock)/unlock.tsx` (A14), new:** prompts device auth on mount; "Sign out" is a full `useLogout()`, not just a lock bypass. `app/(app)/_layout.tsx`'s guard extended with a second gate (`isLocked && biometricsEnabled` → redirect here) and now mounts new `hooks/useAutoLockTimer.ts` (re-locks after `autoLockMinutes` spent backgrounded — a plain `AppState` timer, no new dependency) and new `components/feedback/PrivacyOverlay.tsx` (an opaque `bg-bg` cover, not an actual blur — no blur library installed, and a solid cover hides the OS app-switcher snapshot equally well).
+- **`app/(app)/(tabs)/profile/security.tsx` (P3), new — biometric toggle + auto-lock timeout only** (password change/sessions list are F3.3's). Deliberately a plain-controlled toggle (raw `RNSwitch`), not the RHF-bound `components/forms/Switch` — same "applies immediately, no submitted form value" reasoning F1.5 used for `SearchField`/`SegmentedControl`. Enabling re-verifies with a real device prompt before flipping the flag, not just a UI toggle.
+- **`features/auth/components/BiometricOptInSheet.tsx`, new:** "prompted once after first login" (architecture.md §7.5) — wired into `login.tsx`'s success path, gated on device support + `prefs.hasSeenBiometricPrompt`, not shown unconditionally.
+- **`hooks/useReauth.ts` + `lib/biometrics.ts`, new:** the reusable re-auth primitive for future sensitive actions (first real caller is likely F3.5's ballot). **Simplified from library-docs.md's own note** ("if none set, shows password confirm sheet"): resolves `false` with an explanatory toast instead of a global confirm-sheet singleton — no real caller exists yet to validate that UX against; revisit when one lands.
+- **`app.config.ts`:** `ios.infoPlist.NSFaceIDUsageDescription` added directly (not a `plugins` array entry — confirmed `expo-local-authentication` ships no `app.plugin.js`, unlike `expo-image-picker`'s permission-string pattern two rows above it).
+
+## Mobile Phase 2 — Home (F2.5)
+- **`app/(app)/(tabs)/home/index.tsx` (H1), replaced:** The real Home screen. `getGreeting()` picks morning/afternoon/evening copy from `new Date().getHours()` — no caching (render frequency is low enough). `refreshing` watches `isRefetching` on the three always-visible queries (`summaryQuery`, `paymentsQuery`, `announcementsQuery`) — meetings/voting are also refetched on pull-to-refresh only when the user has the required permission. Header shows the association `Avatar` (square, tinted with `tenant.primaryColor`) + bell `IconButton` → `/(app)/notifications`. Every detail route that doesn't exist yet (payment history, payment detail, announcement detail, meeting detail, voting) opens a "coming soon" toast — same convention as F2.1/F2.5's `QuickActionsGrid`.
+- **`features/home/components/RecentPaymentsList.tsx`, new:** Renders the 3 most recent payments from `useMemberPayments()` (the full history — this component slices `[0,3]` itself, per the build-plan's "no server-side slice" finding). Row type derived as `Awaited<ReturnType<typeof memberFinanceApi.getPayments>>[number]` — no manually-maintained local type. Status chip always "paid" (the payments endpoint only returns confirmed records). Shows `EmptyState` for zero rows (not a silent degrade — empty-list is a legitimate state to communicate). Error shows `InlineErrorRow`.
+- **`features/home/components/AnnouncementsList.tsx`, new:** Renders up to 3 announcement notifications (pre-filtered by `useAnnouncements`'s client-side `type === 'announcement'` filter — `GET /notifications` has no type param). Each row's `Megaphone` icon is `color.primary` for unread, `color.textTertiary` for read. No permission gate (every member can see announcements). Shows `EmptyState` (not a silent degrade), error shows `InlineErrorRow`.
+- **`features/home/components/InlineErrorRow.tsx`:** In-row error pattern (title + "Try again" `TextButton`) for sections that shouldn't crash the whole screen on failure — BalanceCard (F2.5 earlier), RecentPaymentsList, AnnouncementsList, UpcomingMeetingCard, ActiveVoteCard all use it.
+- **`features/notifications/queries.ts`'s `useAnnouncements(limit)`:** `GET /notifications` → client-side filter `type === 'announcement'`, then `slice(0, limit)` via `select`. No permission gate. Query key `[tenant, 'notifications', 'announcements', limit]`.
+- **`features/meetings/queries.ts`'s `useUpcomingMeetings(limit)`:** `GET /meetings` (the member-facing "my upcoming meetings" endpoint, confirmed by reading the real controller). Gated by `MEETING_VIEW` permission (`enabled: canViewMeetings` in callers).
+- **`features/voting/queries.ts`'s `useActiveVoting()`:** `GET /voting/active`. Gated by `ELECTION_VIEW` permission.
+- **`features/memberFinance/queries.ts`'s `useMemberPayments()` note:** Returns the full newest-first history; no server-side limit. Callers slice to their preview size (H1 uses 3).
+- **i18n:** 44 new `home.*` keys added to `src/lib/en.json` (greeting morning/afternoon/evening/plain, balance, meeting, vote, quickActions × 6, payments, announcements).
+- **Route type fix:** `app/+native-intent.test.ts` renamed → `app/native-intent.test.ts`. Expo Router SDK 58's route scanner treats any `app/+*.ts` file that isn't one of the reserved special prefixes (`+html`, `+native-intent.tsx`, `+api`, `+middleware`) as an invalid route, causing a hard Metro error. The rename unblocked `expo start` and allowed `.expo/types/router.d.ts` to be regenerated with the full route union (47 → 57 routes now that Phase 2 screens are present). The `+native-intent.tsx` route itself is unaffected.
+
+## Mobile Phase 2 — Premium auth surface (F2.5a, 2026-10-21)
+
+A design language for status/auth screens: gold-rimmed hero badge, letterspaced wordmark,
+forest-green-to-gold accent rule, and a green→gold gradient CTA. Built as **shared primitives,
+not per-screen styling**, so screens added later inherit it by composition.
+
+### `Button` — `gradient` and `accent-ghost` variants
+- **Path:** `src/components/ui/Button.tsx`
+- **`gradient`:** the premium primary CTA. Renders an `react-native-svg` `LinearGradient`
+  (`ctaGradientFrom` → `accent` → `ctaGradientTo`) behind the label; label tone `onCtaGradient`.
+  **Every primary CTA in the app uses this** — adopting it on a new screen is one prop.
+- **`accent-ghost`:** gold text-only secondary (replaces `ghost` where the action is a de-escalation
+  like "Sign out").
+- **Pill radius is a style value, not a class.** `SIZE_CLASSES[size].radius` is half the container
+  height (lg 27 / md 22 / sm 18) and feeds both the container `borderRadius` and the SVG `rect`'s
+  `rx`. **An SVG `rect` clamps `rx` to half the _width_,** so a "fully round" value like `rx="999"`
+  turns a wide button into an ellipse rather than a pill. It also sidesteps `twMerge` ordering,
+  since `SIZE_CLASSES.container` is applied after `CONTAINER_CLASSES` and would win a class war.
+- **Gradient `id`s are per-instance** (`useId()`): SVG gradient ids are global, so two gradient
+  Buttons on one screen would otherwise share one definition.
+
+### `AuthHeroScreen`
+- **Path:** `src/components/layout/AuthHeroScreen.tsx`
+- **Props:** `icon`, `title`, `description?`, `wordmark?`, `children`, `actions`
+- **Purpose:** the standard status/auth layout — badge, wordmark, title, accent rule, description,
+  body, actions. **Use this for any new status screen** rather than hand-rolling the composition.
+- **Two layout invariants it exists to protect** (both cost a debugging cycle to find):
+  1. **It passes `Screen scroll={false}` and owns its own `ScrollView`.** `flex: 1` has no effect
+     inside a ScrollView's content container, so the default `Screen` (which *is* a ScrollView)
+     silently collapses any `flex: 1` child to zero height — cards lose their background and
+     siblings overlap.
+  2. **Its content container sets no `alignItems`.** `alignItems: 'center'` makes Yoga size children
+     to their content on the cross axis, so a nested `width: '100%'` has no resolved parent width
+     and collapses — an icon-and-text row renders as a bare icon with its text gone. Children
+     stretch; individual pieces centre via `alignSelf` / `align="center"`.
+- `flexGrow: 1` + `justifyContent: 'center'` centres while content fits and scrolls once it doesn't.
+  `actions` live **inside** the centred group so the gap above them is a constant (28dp / 22dp
+  compact) instead of absorbing every spare pixel on a tall device.
+
+### `HeroBadge`, `AccentRule`
+- **Paths:** `src/components/ui/HeroBadge.tsx`, `src/components/ui/AccentRule.tsx`
+- `HeroBadge` — gold-rimmed arch (top radius = width/2, bottom 16) with a green gradient fill;
+  self-shrinks under 760dp viewport height. `AccentRule` — the 64×3 gold gradient divider.
+  Both are decorative by default and hidden from assistive tech unless given a label.
+
+### `SupportCard`
+- **Path:** `src/components/feedback/SupportCard.tsx`
+- **Props:** `message` (required), `nudge?`, `nudgeLabel?`
+- Two-part WhatsApp block: a lead-in nudge row, then the card (brand logo as an SVG `Path`,
+  "Need help?", the number, an inset action chip). Opens `wa.me/<number>?text=<message>` so the
+  chat is **pre-drafted** — callers pass an account-identifying message. `encodeURIComponent` is
+  required: the copy contains apostrophes that otherwise truncate the draft.
+- `WHATSAPP_GREEN` is a literal by design — a third-party brand mark, not a theme colour (same
+  rationale as `on-passbook` being literal white).
+
+### Tokens added
+`ctaGradientFrom` `#1B4332`, `ctaGradientTo` `#D4AF37`, `onCtaGradient` `#0A1F14` — theme-independent,
+following the `passbook` pattern: present in **both** `tokens.ts` theme objects but declared only in
+`global.css`'s `:root`, which is what lets `tokens.test.ts` skip the dark-mode check. Also mapped in
+`tailwind.config.js` (`cta-gradient-from/to`, `on-cta-gradient`) and exposed as the `onCtaGradient`
+`Text` tone.
+
+### Adopted by
+`pending`, `blocked`, `web-only` (via `AuthHeroScreen`); `welcome`, `login`, `register`,
+`forgot-password`, `reset-password`, `verify-email`, `accept-invite`, `unlock` (gradient CTA);
+`association`, `login`, `register`, `forgot-password`, `reset-password` (`AuthBrandMark`, restyled
+to the gold-rimmed tile + letterspaced wordmark + accent rule).
+
+## Mobile Phase 2 — Money overview & ledger (F2.6, 2026-10-21)
+
+5 screens in `app/(app)/(tabs)/money/`: `index.tsx` (M1), `ledger/index.tsx` (M6),
+`ledger/statement.tsx` (M7), `payments.tsx` (M13), `transaction/[id].tsx` (M14).
+New API layer: `src/api/endpoints/memberLedger.ts` + `src/features/memberLedger/queries.ts`.
+
+### Route paths — nested index.tsx behaviour
+Expo Router registers a nested `index.tsx` (one that is not the tab's own index) at the
+**directory path without `/index`**. The `router.d.ts` shows `/money/ledger`, not `/money/ledger/index`.
+Only the tab-root `index.tsx` files (e.g. `money/index.tsx`) map to `/money`. Always check
+`.expo/types/router.d.ts` before hardcoding a path.
+
+### Money Overview (M1) — `app/(app)/(tabs)/money/index.tsx`
+- **`Passbook` card** at top with `label="Ledger balance"`, `amount` from ledger `currentBalance`
+  (falls back to `toDecimal(summary.totalOutstanding)` while ledger is loading).
+- **`stampLabel`** is either `"N OVERDUE"` or `"PAID UP"` — derived from `summary.overdueCount`.
+- **Recent activity**: up to 3 `recentEntries` from ledger summary, each as a `ListItem` with a
+  trailing `<View>` showing sign+amount (raw `formatMoney()` in `<Text>`) and running balance
+  (`<Money>` component). **Do not nest `<Money>` inside `<Text>`** — `Money` renders its own `<Text>`.
+- Quick-links to `/money/ledger`, `/money/payments`, `/money/ledger/statement`.
+
+### My Ledger (M6) — `app/(app)/(tabs)/money/ledger/index.tsx`
+- **Paginated `FlatList<ListItem>`** where `ListItem = MonthHeader | EntryItem`. Month grouping is
+  done client-side in `groupByMonth()` from a flat stream of `DecimalisedEntry[]` (all pages flat-mapped).
+- **Balance strip** above the list: currentBalance, totalDebits, totalCredits.
+- **Sign + colour**: DEBIT entries use `color.danger`, CREDIT entries use `color.success`.
+  Amount is `{isCredit ? '+' : '–'}{formatMoney(entry.amount)}` inside `<Text style={{color}}>`.
+  Running balance uses `<Money value={entry.runningBalance} size="caption" tone="secondary" />`.
+- **Infinite scroll**: `onEndReached` → `entriesQuery.fetchNextPage()` (only if `hasNextPage && !isFetchingNextPage`).
+- `ListFooterComponent` must be `undefined` (not `null`) when there is nothing to show — FlatList's
+  prop type does not accept `null`.
+- `getItemLayout` returns `length: 56` for both entry rows and month headers (good enough approximation;
+  exact sizes would need measurement).
+- Statement navigation: `router.push('/money/ledger/statement')` via `IconButton` in `ScreenHeader.rightActions`.
+
+### Statement (M7) — `app/(app)/(tabs)/money/ledger/statement.tsx`
+- **4 preset periods** in a `as const` array: 1 / 3 / 6 / 12 months ago → today (computed at
+  module-evaluation time, so dates are stable for the session).
+- `const period = PERIODS[selectedIndex]!` — non-null assertion is safe because `selectedIndex` is
+  bounded to `[0, PERIODS.length - 1]` by the `setSelectedIndex` calls.
+- **Share**: uses `Share.share()` from React Native core (`import { Share } from 'react-native'`).
+  **`expo-sharing` is not installed in this project.** The share payload is a plain text string
+  built from statement data — no file system involved.
+- `StickyFooter` with "Share statement" button disabled until the statement query resolves.
+
+### Payment History (M13) — `app/(app)/(tabs)/money/payments.tsx`
+- `FlatList<Payment>` where `Payment` is derived via `Awaited<ReturnType<typeof memberFinanceApi.getPayments>>[number]`.
+- `METHOD_LABELS: Record<string, string>` maps the API's snake_case method keys to display strings
+  with a `?? payment.paymentMethod` fallback.
+- `StatusChip status="paid"` on every row — all payments returned by this endpoint are confirmed.
+- **`@shopify/flash-list` is not installed.** Always use `FlatList` from `react-native`.
+
+### Transaction Detail (M14) — `app/(app)/(tabs)/money/transaction/[id].tsx`
+- `useLocalSearchParams<{ id: string }>()` extracts the dynamic segment.
+- Data comes from `useMemberOutstanding()` — finds the item by `Number(id)`. No dedicated detail
+  endpoint exists; the outstanding list is the source of truth.
+- `EmptyState` (with `AlertCircle` icon) if the item is not found or the query is still loading.
+- `Skeleton radius="lg"` (not `"xl"` — `SkeletonRadius = 'xs'|'sm'|'md'|'lg'|'full'`).
+
+### `memberLedgerApi` — `src/api/endpoints/memberLedger.ts`
+- **3 methods:** `getLedgerSummary()`, `getLedgerEntries(params?)`, `getStatement(startDate, endDate)`.
+- All `MoneyValue` fields are converted via `toDecimal()` before returning — callers receive `Decimal`.
+- `decimaliseEntry()` is a private helper applied to each entry in both `getLedgerEntries` and `getLedgerSummary.recentEntries`.
+
+### TanStack Query hooks — `src/features/memberLedger/queries.ts`
+- `useMyLedgerSummary()` — `useQuery`, key `[tenant, 'memberLedger', 'summary']`.
+- `useMyLedgerEntries(filters?)` — `useInfiniteQuery`, `initialPageParam: 1`,
+  `getNextPageParam: (lastPage) => page < totalPages ? page + 1 : undefined`.
+- `useMyStatement(startDate, endDate)` — `useQuery`, `enabled: Boolean(startDate && endDate)`.
+- `useMemberOutstanding()` — lives in `src/features/memberFinance/queries.ts` (calls `memberFinanceApi.getOutstanding()`).
+
+### G18 — Ledger sync gap (fixed alongside F2.6)
+`memberLedgerService.createFromTransaction()` (DEBIT) and `createFromPayment()` (CREDIT) existed
+but were never called. Wired into 5 paths — all wrapped in non-critical try/catch so a ledger
+failure never rolls back the payment:
+1. `finance.controller.ts` — `createTransaction` (after accounting sync)
+2. `finance.controller.ts` — `recordPayment` (after cache invalidation)
+3. `finance.controller.ts` — bulk payments loop (per-payment, alongside accounting sync)
+4. `nigerian-payments.service.ts` — reconciliation auto-match (after `onPaymentRecorded`)
+5. `nigerian-payments.service.ts` — proof verification (added to `accountingSyncs` array via `.then(() => {})` to satisfy `Promise<void>` typing)
+
+Existing data can be backfilled via admin `POST /ledger/bulk-sync`.
+
+## Mobile Phase 2 — Dues, levies, penalties, donations (F2.7, 2026-10-21)
+
+5 screens in `app/(app)/(tabs)/money/`: `dues.tsx` (M8), `levies.tsx` (M9), `penalties.tsx` (M10),
+`donations/index.tsx` (M11+M12). M1 (`index.tsx`) updated with Breakdown section.
+New: `src/types/api/memberFinance.ts` extended with 5 DTOs; `src/api/endpoints/memberFinance.ts`
+extended with 5 methods; `src/features/memberFinance/queries.ts` extended with 4 hooks;
+`src/features/memberFinance/mutations.ts` (new) with `useMakeDonation()`.
+
+### My Dues (M8) — `app/(app)/(tabs)/money/dues.tsx`
+- **Status filter**: 3-way `SegmentedControl` (All / Unpaid / Paid) — client-side only.
+- **Outstanding banner**: red `bg-danger/10` when `totalOutstanding > 0`; green `bg-success/10` + "Your account is clear" when zero. Mirrors web's dynamic summary card exactly.
+- **Pay now per row**: rendered inside `View.items-end` inside a custom row View (not `ListItem.trailing`) so the button can stack below the amount + StatusChip. Pay button routes to `/money/pay?transactionId=<id>` (F2.8 placeholder, `as never` until typed route exists).
+- **DueRow** is a custom `View` (not `ListItem`) rendered inside `ListGroup` children — `ListGroup` wraps any children with dividers/border, not just `ListItem`s.
+- `Decimal` is imported from `decimal.js-light` (not `decimal.js` — not installed).
+
+### My Levies (M9) — `app/(app)/(tabs)/money/levies.tsx`
+- **Progress bar**: custom `View`-based bar — `h-1.5 w-full rounded-full bg-border` outer, `bg-primary h-full rounded-full` inner with `width: pct%`. No separate library.
+- `paid%` is computed as `Math.round((Number(paid) / Number(amount)) * 100)`.
+- **Contribute now** button: routes to `/money/pay?transactionId=<item.transactionId>` when `transactionId` is non-null. When null (no transaction linked), shows a disabled "Contact admin to pay" button — no navigation.
+
+### My Penalties (M10) — `app/(app)/(tabs)/money/penalties.tsx`
+- Same dynamic banner pattern as M8 (danger/success). `reason` field from API (sourced from txn.notes) shown in meta; falls back to `referenceNumber`.
+
+### My Donations + Donate (M11+M12) — `app/(app)/(tabs)/money/donations/index.tsx`
+- **M11** (list) + **M12** (donate form) combined in one screen — parity with web's single page + Modal. Mobile uses `BottomSheet` (from `@gorhom/bottom-sheet`, requires `BottomSheetModalProvider` at app root) instead of a Modal.
+- **Cause picker**: `SelectSheet` bound to `categoryId` field; options sourced from `donationCategories[]` returned by `GET /members/me/donations` — the member-safe source (NOT the officer-scoped `GET /finance/advanced/donations/allocations`).
+- **`isAnonymous`**: `Switch` component (RHF-bound).
+- **`paymentMethod`**: hardcoded `'bank_transfer'` — no picker. Matches web implementation exactly.
+- **`onSubmit`** is a sync function calling `makeDonation.mutate()` — NOT `async/await`. Using `async` would cause a TS type error on `Button.onPress` (expects `(event) => void`, not `Promise<void>`).
+- Pattern for calling `handleSubmit` on `Button.onPress`: `onPress={() => handleSubmit(onSubmit)()}`.
+
+### Money Overview (M1) — Breakdown section added
+- 4 new `ListItem` rows in a new "Breakdown" `Section` below the existing quick-links rail.
+- `meta` strings pull live outstanding amounts from `useMemberFinanceSummary()` data when available.
+- Routes use `as never` cast until F2.7's new routes appear in `router.d.ts` (dev server regenerates it on next `expo start`).
+
+## Mobile Phase 2 — Pay online + bank transfer (F2.8 + F2.9, 2026-10-21)
+
+New screens: `app/(app)/(tabs)/money/pay.tsx` (M2/M3/M4/M5) and
+`app/(app)/(tabs)/money/transaction/[reference].tsx` (payment result, Paystack verify).
+API: RBAC fixed on Paystack `initialize`/`verify` routes (added `PAYMENTS_VIEW_OWN`);
+new `GET /members/me/payment-info` returns `{ paystackEnabled, bankAccounts[] }`.
+New hooks: `useInitializePaystackPayment`, `useSubmitPaymentProof`, `usePaymentInfo`,
+`useVerifyPaystackPayment`. `+native-intent.tsx` now routes `paymentsReturn` deep link to
+`/money/transaction/[reference]`.
+
+### Pay screen (M2/M4) — `app/(app)/(tabs)/money/pay.tsx`
+- Receives `transactionId` param; finds levy in cached levies query.
+- **Tab switcher**: two `TouchableOpacity` tabs — "Pay online" / "Bank transfer" — styled with `backgroundColor: color.primary` (active) vs transparent.
+- **Online tab**: disabled state when `paystackEnabled === false` (EmptyState). When enabled: "Pay ₦X now" button calls `useInitializePaystackPayment`, then `WebBrowser.openAuthSessionAsync(authorizationUrl, 'societyledger://')`. On success, parses `reference` from returned URL and calls `router.replace('/money/transaction/[reference]')`.
+- **Bank transfer tab**: lists active bank accounts with copy-to-clipboard per row. Attach receipt via `expo-image-picker` (gallery/camera) or `expo-document-picker` (PDF). Plain `TextInput` for optional notes (not RHF — use this pattern for non-form inputs). "Submit payment proof" calls `useSubmitPaymentProof` (multipart/form-data POST to `/nigerian-payments/proofs`).
+- **Guards**: loading + error state; "Already paid" state when balance ≤ 0.
+
+### Payment Result (M5) — `app/(app)/(tabs)/money/transaction/[reference].tsx`
+- **Web parity** with `/dashboard/finance/payments/verify/page.tsx`: shows amount paid, receipt number, reference, transaction status badge, payment date on success. Shows error message + gateway response on failure.
+- **Loading state**: skeleton hero + skeleton list items (no spinner-only screen).
+- **Done** navigates `router.replace('/(app)/(tabs)/money')` and invalidates `summary`, `levies`, `outstanding` query keys.
+- **Try again**: calls `verifyQuery.refetch()` — does not re-initialize the payment.
+- Route param is `reference` (alphanumeric Paystack reference), not `id` (numeric). Lives alongside existing `[id].tsx` (transaction detail) in same directory — Expo Router resolves by param name.
+
 ## Shared feature components (used by 2+ screens)
-_(none yet)_
+- **`SupportCard`** — `pending` (approval-delay message) and `blocked` (access-reason message).
 
 ## Patterns (recurring compositions, not components)
-_(none yet — e.g. "Money row = ListItem + Money + StatusChip", "Approval detail = summary block + documents + StickyFooter with Reject/Approve")_
+- **"Coming soon" toast** — every detail route that doesn't exist yet calls `toast(t('<domain>.<action>ComingSoon'))`. Established at F2.1's Welcome screen. Used by H1 for payment detail, announcement detail, meeting detail, voting, and "See all payments". The "See all announcements" is the only H1 action that navigates to a real screen (`/(app)/notifications`).
+- **Permission-gated widget** — `UpcomingMeetingCard` / `ActiveVoteCard` accept a `canView: boolean` prop and return `null` when it's `false`; the query itself is also gated (`enabled: canView`) so no request fires for unpermissioned members. Used for `MEETING_VIEW` / `ELECTION_VIEW` on H1.
+- **"Silent degrade" vs "real empty state"** — preview widgets (meetings, voting) return `null` on error/empty/no-permission since their absence from the home screen is graceful. List sections (payments, announcements) show a real `EmptyState` since empty-list is a legitimate state worth communicating to the member.
+- **Premium status screen** — `AuthHeroScreen` + `Button variant="gradient"` for the primary action + `Button variant="accent-ghost"` for the de-escalating one. Any new status/empty/blocked screen should compose this rather than restyling from scratch; see "Premium auth surface" above.
+- **Lazy native-module access** — a native module that throws while its own module body evaluates (e.g. `expo-local-authentication` calling `requireNativeModule`) must be loaded inside a function via `require`, not a top-level `import`. A top-level import propagates the throw to **every screen that transitively imports the file**, which Expo Router then reports as "missing the required default export" — the screens render blank. `src/lib/biometrics.ts` is the reference implementation. Use `require` rather than `await import()` so `jest.mock`'s CJS-shaped mocks still intercept it.
 
 ---
 
@@ -550,11 +1287,364 @@ Not reusable UI components; the pieces behind `build-plan.md`'s D1.7 bullet, whi
 
 ---
 
+## Mobile Phase 3 — Engagement (F3.1–F3.8, 2026-10-21)
+
+### F3.1 Push notifications client
+- **`src/lib/push.ts`:** Permission request, Expo push token registration/unregistration via `POST /devices/push-token` / `DELETE /devices/push-token/:token`. Android channels: `default` (normal), `payments`, `voting` (max importance). Foreground handler dismisses + routes.
+- **`src/hooks/usePushSetup.ts`:** Called once in `app/(app)/_layout.tsx`. Requests permission, registers token. Cleans up on unmount.
+- **`src/api/endpoints/devices.ts`:** `devicesApi.registerPushToken(token)` → `POST /devices/push-token`; `devicesApi.unregisterPushToken(token)` → `DELETE /devices/push-token/:token`.
+
+### F3.2 Notifications inbox & preferences
+- **`app/(app)/notifications/index.tsx` (N1):** Paginated inbox, grouped by date. `NotificationRow` (icon by type, unread dot, relative time). `useMarkAllRead()` in header. Pull-to-refresh.
+- **`app/(app)/notifications/preferences.tsx` (N2):** Channel toggles (in-app, email, SMS, push master) + per-type granularity. RHF + `useUpdateNotificationPreferences()`.
+- **`src/components/ui/NotificationRow.tsx`:** Reusable row with icon (type-mapped), title, message, timestamp, unread dot. Tap → `useMarkRead()`.
+
+### F3.3 Profile & settings
+- **`app/(app)/(tabs)/profile/index.tsx` (P1):** Avatar + name + memberId + category chip. Three ListGroups: account (My Profile → P2, Security → P3, Notifications → N2), preferences (Appearance, Help, About), session (Switch Association, Sign Out).
+- **`app/(app)/(tabs)/profile/details.tsx` (P2):** Edit firstName/lastName/phone. Read-only email + memberId. `useUpdateProfile()` mutation via RHF+zod.
+- **`app/(app)/(tabs)/profile/security.tsx` (P3):** Biometric toggle, auto-lock picker (existing). Added: change-password form (3 `PasswordField`s, `useChangePassword()`), active sessions list (`useSessions()`) with revoke-per-device `useRevokeSession()`.
+- **`app/(app)/(tabs)/profile/appearance.tsx`:** Three-way theme picker (Light/Dark/System) using `useThemeMode().setPreference()`.
+- **`app/(app)/(tabs)/profile/about.tsx`:** App version from `Constants.expoConfig?.version`, Privacy Policy / Terms / Licenses via `Linking.openURL`.
+- **`src/api/endpoints/members.ts`:** `membersApi.getProfile()` → `GET /members/me`; `membersApi.updateProfile(payload)` → `PATCH /members/me`.
+- **`src/features/session/queries.ts` extended:** `useProfile()`, `useSessions()`.
+- **`src/features/session/mutations.ts` extended:** `useChangePassword()`, `useUpdateProfile()`, `useRevokeSession()`.
+
+### F3.4 Meetings (member)
+- **`app/(app)/(tabs)/community/meetings/index.tsx` (C2):** Tab switcher Upcoming/Past. `MeetingCard` with status chip, date/time, location preview. Pull-to-refresh.
+- **`app/(app)/(tabs)/community/meetings/[id].tsx` (C3/C4):** Status+type chips, title/description. Details ListGroup: time, virtualLink (→ `Linking.openURL`) or location (→ Google Maps). "Add to calendar" via `expo-calendar`. "Join Online" button. Agenda items list (upcoming). Attendance stats row + minutes (completed).
+- **`src/api/endpoints/meetings.ts` extended:** `getRecent(limit)`, `getById(id)`.
+- **`src/features/meetings/queries.ts` extended:** `useRecentMeetings()`, `useMeetingDetail()`.
+
+### F3.5 Elections & voting (member)
+- **`app/(app)/(tabs)/community/elections/index.tsx` (C5):** `ElectionCard` with status badge (DRAFT/NOMINATIONS_OPEN/VOTING_OPEN/VOTING_CLOSED/RESULTS_PUBLISHED/CANCELLED), date range, candidate count. FlatList + pull-to-refresh.
+- **`app/(app)/(tabs)/community/elections/[id].tsx` (C6):** Three modes: `view` (stats row, positions+candidates), `nominate` (manifesto form, `useSelfNominate()`), `ballot` (`BallotPosition` radio-select per position + abstain, `useBulkCastVotes()`). Results mode shows vote counts when `RESULTS_PUBLISHED`.
+- **`src/types/api/voting.ts` extended:** `ElectionListItemDTO`, `ElectionsListResponseDTO`, `PollListItemDTO`, `PollsListResponseDTO`, `PollDetailDTO`, `CastVotePayload`, `BulkCastVotePayload`, `SelfNominatePayload`.
+- **`src/api/endpoints/voting.ts` extended:** `listElections`, `getElection`, `selfNominate`, `castVote`, `bulkCastVotes`, `listPolls`, `getPoll`, `respondToPoll`.
+- **`src/features/voting/queries.ts` extended:** `useElections`, `useElectionDetail`, `useSelfNominate`, `useBulkCastVotes`, `usePolls`, `usePollDetail`, `useRespondToPoll`.
+
+### F3.6 Polls (member)
+- **`app/(app)/(tabs)/community/polls/index.tsx` (C9):** `PollCard` with status, description, close date, response count. FlatList + pull-to-refresh.
+- **`app/(app)/(tabs)/community/polls/[id].tsx` (C10):** `OptionRow` (radio = single, checkbox = multi based on `allowMultipleVotes`). Active shows "Choose an option", closed shows results. `useRespondToPoll()` mutation, `StickyFooter` submit.
+
+### F3.7 Welfare (member)
+- **`app/(app)/(tabs)/community/welfare/index.tsx` (C11):** Stats grid (totalContributions, totalPayoutsReceived, pendingRequests, eligibleFunds count). Eligible funds list. "Request payout" CTA. Gated on `WELFARE_VIEW`.
+- **`app/(app)/(tabs)/community/welfare/request.tsx` (C12):** RHF+zod form: fundId (`SelectSheet`), payoutType (`SelectSheet` with 7 PAYOUT_TYPES), amount (`TextField` numeric, coerced), reason (`TextField` multiline). `useCreatePayoutRequest()` mutation. Gated on `WELFARE_PAYOUT_REQUEST`.
+- **`src/types/api/welfare.ts`:** `WelfarePayoutType`, `MemberWelfareProfileDTO`, `WelfareFundDTO`, `WelfareFundsResponseDTO`, `CreatePayoutRequestPayload`, `PayoutRequestDTO`.
+- **`src/api/endpoints/welfare.ts`:** `welfareApi.getMyProfile()`, `welfareApi.listFunds(status)`, `welfareApi.createPayoutRequest(payload)`.
+- **`src/features/welfare/queries.ts`:** `useWelfareProfile()`, `useWelfareFunds()`, `useCreatePayoutRequest()`.
+
+### F3.8 Community hub & announcements
+- **`app/(app)/(tabs)/community/index.tsx` (C1) extended:** Added Welfare section (gated on `WELFARE_VIEW`) and wired Announcements "See all" to dedicated C13 screen. Welfare hub card shows eligible fund count from `useWelfareProfile()`.
+- **`app/(app)/(tabs)/community/announcements.tsx` (C13):** Full announcements feed. Client-side filter `type === 'announcement'` on `useNotificationsList({ limit: 50 })`. Unread dot per row, relative timestamp. FlatList + pull-to-refresh. `EmptyState` when none.
+
+## N1 notifications inbox parity (2026-10-21)
+- **`components/ui/NotificationRow.tsx`:** now takes `type` (leading lucide icon + soft tint per kind: payment_due warning, payment_received success, system info, approval primary, announcement accent), `selectionMode`/`selected` (icon becomes a checkbox) and `onLongPress`.
+- **`features/notifications/NotificationFilterBar.tsx`:** `SearchField` + status `SegmentedControl` + horizontal type chips + date-range chip that opens a `BottomSheet` with two `DateField`s; Clear chip when any filter is active. Logic lives in `filters.ts` (`applyNotificationFilters`, tested).
+- **`app/(app)/notifications/index.tsx`:** unread count line, infinite scroll, long-press selection (header turns into Mark read / Delete actions, "Select all"), delete via `ConfirmSheet`, filter-aware empty states.
+
+
+## Community tab web parity (2026-10-21)
+- **New shared UI:** `ui/FilterChip` (scrolling filter pill; also used by `NotificationFilterBar`), `ui/StatTile` (tinted metric tile — Meetings, Voting, election detail), `ui/IconCircle` (36dp leading circle for `ListItem`), `layout/SectionCard` (titled card with trailing badge + hairline-divided rows), `feedback/InlineEmpty` (in-card empty state).
+- **Screens:** `community/_layout.tsx` (Stack), `meetings/index` (segmented + attendance tiles), `elections/index` (My Voting), `polls/index` (search + status/type filters), `welfare/index` (hub), `welfare/contributions`, `welfare/requests`, `announcements` (expandable, paginated).
+- **Fixes:** `ScreenHeader` drops its inner `px-4`; invalid utility classes in detail screens (`bg-primarySoft`, `bg-surfaceRaised`, raw `bg-white`) replaced with tokens; hardcoded hex status colours replaced by `StatusChip`.
+- **Module gating (2026-10-21):** `hooks/useModuleAccess` (`useModuleAccess(permission, module)`, `useModuleDisabled(module)`), `feedback/ModuleLockedScreen` (header + `ModuleLocked`), hub `LockedCard`. `ErrorState` now accepts `error` and shows "Can't reach the server" for network/timeout.
+- **`forms/FilterDropdown`:** controlled filter dropdown — two-line trigger (caption + value, tinted when not the default) opening a `BottomSheet` of icon + hint rows with a check on the selected one. Used for the Polls status/type filters; `SelectSheet` remains the RHF form-field version.
+- **Attendance (2026-10-21):** `ui/ProgressRing` (SVG ring, percent centred, `lib/ring.ts` geometry) and `community/meetings/attendance.tsx` (C4: ring + breakdown tiles + history `SectionCard`). Meetings stat tiles now navigate there; meeting detail gained a "My attendance" row.
+---
+
 # Web (`apps/web`) — docs links & impersonation only
 
 _(none yet — expected from D6.3: HelpLink, sidebar "User manual" item, docs URL helper; from A2.12/A3.1: `/auth/impersonate` exchange page, updated ContextIndicator banner)_
+
+## Cooperatives savings & loans (Phase 4 web groundwork, 2026-10-21)
+- **`/dashboard/cooperatives/my-savings`** (member): total card with *held against your loan* / *available* split; per-account **Make a Deposit** (gated on `cooperatives.savings_deposit_own`) opens a modal with the cooperative's bank accounts (copy buttons), amount, payment date, receipt `FileInput` (image/PDF, 5MB), reference, note. **My Deposits** list (Awaiting confirmation / Confirmed / Not approved + reason + receipt link) and **Recent Activity**. The old direct Deposit/Withdraw buttons are gone (the API refuses them).
+- **`/dashboard/cooperatives/savings-deposits`** (officer, `payments.approve`): Awaiting/Approved/Rejected `SegmentedControl` queue; View receipt (presigned link), Approve (confirm modal: only after seeing the money), Reject (required reason modal). Sidebar + AdminSidebar entry "Savings Deposits".
+- **`/dashboard/cooperatives/loan-products`:** products can now be **edited** (Edit button reuses the create modal; Active switch in edit mode). New *Savings rule* block: **Savings multiplier** (2 = up to twice available savings; empty/0 = none) and **Hold savings while the loan is running** switch with a worked example. Card shows the rule.
+- **`/dashboard/cooperatives/apply`:** product cards and the amount step show *you can borrow up to ₦X* (min of product cap and multiplier × available savings); amount input capped; the held-savings amount is shown on the amount and review steps. Guarantors now come from `GET /cooperatives/guarantor-candidates` (names only) — a plain member cannot list the member directory.
+- **`/dashboard/cooperatives/my-loans`:** **Pay Now** (gated on `cooperatives.repay_own`) opens a declare-payment modal (loan summary, cooperative bank accounts with copy, amount capped at what is owed, date, receipt `FileInput`, reference, note); **My Payments** list with Awaiting confirmation / Confirmed / Not approved + reason + receipt link. Officers also get **Record Payment** (direct entry, `payments.approve`).
+- **`/dashboard/cooperatives/loan-repayments`** (officer, `payments.approve`): same Awaiting/Approved/Rejected queue pattern as Savings Deposits; approve records the repayment and releases held savings pro-rata. Sidebar + AdminSidebar entry "Loan Repayments".
+
+
+## Mobile Phase 4 — Savings (F4.1, 2026-10-21)
+- **`money/savings/index.tsx` (M15):** plain `Card` summary (total savings `h1` `Money`; when held > 0 a held / available split + one-line explainer — `Passbook` stays reserved for the account detail), then `SectionCard`s: **Accounts** (`ListItem` + `IconCircle` + balance + `StatusChip`, chevron to detail) and **My deposits** (`DepositRow`s). A warning caption totals pending deposits. States: `ModuleLockedScreen`, `NoMemberProfile`, no-access `EmptyState`, `ErrorState`, skeletons.
+- **`money/savings/[id].tsx` (M16):** `Passbook` (label "Current balance", stamp = account status), primary **Make a deposit** button (active account + `cooperatives.savings_deposit_own`), Summary `SectionCard`, non-approved deposits for the account, History (credit/debit coloured with `color.success`/`color.danger`, running balance, "Load more"). The account comes from the profile query (it only lists the caller's own accounts), not a second fetch.
+- **`money/savings/deposit.tsx`:** form screen like `welfare/request` — `SelectSheet` account, `AmountField`, `DateField` (max today), reference, `FileAttachField` receipt (required; uses `superRefine`, not `refine`, so the nullable default type-checks), note; `StickyFooter` submit. Success toast says the deposit shows once an officer confirms.
+- **`features/cooperatives/components/DepositRow`:** amount + `StatusChip` (labels from `labels.ts`, same wording as web), rejection reason in `danger` caption, "View receipt" ghost button that opens the presigned URL with `Linking`.
+- **`features/cooperatives/components/PayToCard`:** "Pay to" `SectionCard` of the cooperative's bank accounts (`Building2` lead, `Copy` trailing → `Clipboard.setStringAsync` + toast). Renders nothing when loading / errored / empty. Used on the deposit and pay-loan screens.
+
+## Mobile Phase 4 — Loans (F4.2, 2026-10-21)
+- **`money/loans/index.tsx` (M17):** primary **Apply for a loan** button (apply access), `SectionCard` **Loans** of pressable loan cards (product + loan number + `StatusChip`, outstanding `h3` `Money`, next payment, `LoanProgressBar`, "% repaid", warning `Badge` for payments awaiting confirmation) and **Applications** rows (amount, status, guarantor statuses, rejection reason in `danger`).
+- **`money/loans/[id].tsx` (M18):** `Passbook` (outstanding balance, stamp = loan status) + `LoanProgressBar`, **Pay this loan** (active/overdue + `cooperatives.repay_own`), Terms, non-approved payments (`RepaymentRequestRow`), recorded payments, repayment schedule rows (due date, principal/interest, total + `StatusChip`).
+- **`money/loans/pay.tsx`:** same form as the savings deposit (PayToCard, `AmountField` capped at outstanding, `DateField`, reference, required `FileAttachField`, note, `StickyFooter` submit).
+- **`money/loans/apply.tsx` (M19):** one screen, local step state — step title + "Step n of 4"; product cards are pressable `Card`s (selected = `border-primary` + check; unavailable = 60% opacity with a danger reason); amount/tenure fields with inline `danger` caption errors and an estimate `Card` (monthly, interest, total, fee, "held" note, labelled *Estimate*); guarantors via `SearchField` + `SectionCard` of add/remove `ListItem`s; review `SectionCard`s; `StickyFooter` Continue / Submit.
+- **Shared:** `LoanProgressBar` (+ `repaidPercent`) — thin track, the fill width is the only inline style. `RepaymentRequestRow` mirrors `DepositRow`. Loan math lives in `features/cooperatives/loanMath.ts` (`estimateLoan`, `borrowingLimit`, `heldSavingsFor`) and mirrors `calculateLoanRepayment` in the API.
+## Mobile Phase 4 — Guarantor requests (F4.3, 2026-10-22)
+- **`ui/SummaryHero`:** deep-green summary panel (passbook green + a soft primary glow and gold corner, gold top rule, gold-ringed icon at top right) with an eyebrow label, one headline figure (children — a `Money size="display" tone="onPassbook"`), a caption and up to three translucent stat pills. The quieter sibling of `Passbook`, which stays reserved for balances; use it to open any non-balance summary screen. Per-instance SVG gradient ids (`useId`).
+- **`features/cooperatives/components/GuarantorRequestCard`:** rounded card with a `warning` top strip; `Avatar` + name + "membership id · asked <relative>"; "wants you to guarantee their <product>"; two tiles (**Loan amount** on `surface-sunken`, **Your guarantee** on `primary-soft`); the purpose as a quoted block (left rule); `secondary` **Decline** + `gradient` **Accept**. **`GuaranteeRow`:** `Avatar` + borrower + "product · loan number | awaiting payout", share `Money` + status `StatusChip`.
+- **`money/guarantor-requests.tsx` (M20):** `SummaryHero` (total guaranteed on active loans; stats *Waiting for you* / *Loans you guarantee*), then `Section` **Waiting for you** (request cards, or a `Card` + `InlineEmpty`) and **My guarantees** (`ListGroup` of `GuaranteeRow`s, or empty `Card`). When both queries fail it shows a single `ErrorState` rather than one per section.
+- **Accept** opens the shared `ConfirmSheet` (non-destructive) with the liability sentence; **Decline** opens `features/cooperatives/components/DeclineGuaranteeSheet` (60% sheet, required reason via `TextField`, "Keep it" + `danger` "Decline request").
+- **Web parity:** `/dashboard/cooperatives/guarantors` has the same **My Guarantees** card list and exposure line; application detail shows decline reasons. Application rows on mobile show `"<name> declined: <reason>"` in `danger`.
+
+## Mobile Phase 4 — Help center & FAQs (F4.4, 2026-10-22)
+- **`ScreenHeader` `docsKey`:** optional screen ID from `DOCS_LINKS` → a `CircleHelp` `IconButton` ("Help for this screen") ahead of `rightActions`, opening that docs page in the in-app browser. Renders nothing for an unmapped ID or a `plan-billing` path. One prop per screen to adopt it.
+- **`features/help/components/QuickLinkTile`:** pressable tile — `IconCircle` over a short caption, `border-border bg-surface`; three fit a row. **`HelpArticleBody`:** renders `parseArticleContent` blocks — `h1/h2/h3` headings, `•` bullet rows, numbered lines as plain text, paragraphs; same subset as the web article page.
+- **`profile/help/index.tsx` (P5):** `SearchField`, then (when not searching) a row of three `QuickLinkTile`s (User manual · FAQs · Contact support), **Featured articles** (`ListItem` + `IconCircle`), **Browse by category** (count `Badge`), **Popular questions** (`Section` with "See all"). While searching, only **Search results**. **P6 article:** `h1` title, category `Badge` + updated date, body, then a `Card` "Was this helpful?" with Yes/No `secondary` buttons that becomes "Thanks for your feedback." **P7 FAQs:** one bordered group per category, each row a `Pressable` with a chevron that expands the answer inline.
+- **Web parity:** `/dashboard/help/articles` (category list with a filter box) and `HelpLink` on the cooperatives pages.
+
+## Mobile Phase 4 — Support tickets (F4.5, 2026-10-22)
+- **`forms/AttachmentsField` (+ `AttachSourceSheet`, `attachmentPickers`):** several files on one message — dashed "Attach files / Attach another file" button (hidden at the limit), removable rows (image/file icon + name), each file checked for type and size as picked, duplicate check; Camera / Photos / Files through the shared `AttachSourceSheet` (which `FileAttachField` now also uses). Defaults: jpeg/png/pdf, 5MB, max 3.
+- **`profile/help/tickets/index.tsx` (P8):** primary **New ticket** button, `SegmentedControl` Open (n) / Closed (n), a `ListGroup` of `TicketRow`s (number caption, subject, status `StatusChip` in the member's wording, category, relative update, paperclip when it has files, a warning dot when **Waiting on you**), empty states per tab.
+- **`tickets/new.tsx` (P9):** short explainer (goes to your association's admins), subject, description, **These articles might help** (`ListGroup` of suggested articles, only when the AI returns some), category `SelectSheet` (helper says when it was suggested), priority `SegmentedControl` (4 options), `AttachmentsField`, `StickyFooter` **Send ticket**.
+- **`tickets/[id].tsx` (P10):** summary `Card` (subject, status chip, category · priority · opened date, a warning line when support is waiting on you), then `ThreadMessage` bubbles — the member's right-aligned on `primary-soft`, support's left on the surface with the staff name — each with its file chips (`TicketAttachmentChips`: tap → short-lived link in the browser); **Close this ticket** (`ConfirmSheet`, non-destructive) while open; `StickyFooter` with the attach field, reply `TextField` and **Send reply**, or **Reopen this ticket** once resolved/closed.
+- **Web parity:** `components/support/AttachmentPicker` and `TicketAttachments` on the new-ticket and ticket pages; `HelpLink` on the three ticket pages.
+
+## Mobile Phase 4 — Support desk & Tier 2 (F4.6, 2026-10-22)
+- **`ThreadMessage` perspective:** `perspective="staff"` flips it (staff's own replies right on `primary-soft`, the member left on the surface); `internal` renders a staff-only note in a `warning`-bordered `warning-soft` bubble labelled "<name> · internal note" so it can't be mistaken for a reply the member sees. **`TicketRow` `staffView`:** adds the opener's name, uses the staff status wording (Waiting on member / Needs reply) and puts the warning dot on tickets that need a reply.
+- **`manage/support/index.tsx` (ST11):** admins get a `SegmentedControl` **Member tickets | To SocietyLedger**; member tickets show three `StatTile`s (Need a reply / Open / Closed), a `SearchField`, an Open/Closed `SegmentedControl` and `TicketRow`s; the SocietyLedger scope shows a primary **Contact SocietyLedger** button and my own Tier 2 tickets (opening the member thread screen).
+- **`manage/support/[id].tsx`:** summary `Card` (staff status chip, opener, category · priority, assignee), a wrap row of `secondary` `sm` buttons (**Assign to me** + the status moves allowed by `STATUS_ACTIONS`, support.manage only), **Escalate to SocietyLedger** (`accent-ghost`), the thread, and a `StickyFooter` with a **Reply to member | Internal note** switch, attachments, the message field and **Suggest a reply** + **Send reply**. **`manage/support/escalate.tsx`:** a "What is shared" `Card`, subject, summary, platform category, priority, attachments, **Escalate**.
+- **Manage hub:** first real section — `Section` "Support" with a `ListItem` "Support tickets" and a warning `Badge` "n need a reply". `manage/_layout.tsx` is an explicit Stack (needed once the tab has sub-folders).
+- **Admin console (`apps/admin`):** `/support` is `Tabs` (Tickets | Documentation feedback); the Tickets tab uses `StatCard`s, `FilterBar` and `DataTable`; `/support/tickets/[id]` is a two-column `Grid` (thread with yellow internal notes and teal SocietyLedger replies + reply `Card` with internal-note `Switch` and `FileInput`; status/priority/assignee `Select`s, **Assign to me**, association and opener details).
+- **Web:** list scope toggle (Association tickets | Contact SocietyLedger), `new?to=platform`, `EscalateTicketModal`, and the staff controls (internal note, Move to, Assign to me, Suggest a reply) on the ticket page.
+
+## Mobile Phase 5 — Manage hub & Home (F5.1, 2026-10-24)
+
+No new primitives; built from existing ones.
+
+- **`NeedsAttentionList` (`features/home/components`):** a `Section` titled "Needs your attention" holding a `ListGroup` of `ListItem`s — an `IconCircle` (`warning` or `info`), a sentence such as "3 payment proofs to verify", a count `Badge` (`warning`, `danger` for overdue money) and a chevron. Loading is one 64dp `Skeleton`; empty is a bordered `bg-surface-raised` card with a `success` check and "You're all caught up"; a failed load renders nothing.
+- **Outstanding Dues:** one more `QuickStatRow` in Quick Stats; its change figure is now optional and the percentage is omitted when there isn't one.
+- **Manage hub:** unchanged layout — only the badge numbers now come from the single attention list.
+
+## Mobile Phase 5 — Members (F5.2, 2026-10-24)
+- **`features/members/components/FactRow`:** label (secondary) left, value right inside a `ListGroup`; `value` renders `–` when empty, `amount` renders through `Money` (`danger` colours an amount owed). The dense key/value row for officer detail screens — reuse it for payment-proof, transaction and ledger details.
+- **`MemberRow`:** `Avatar` + name + "member ID · category" + status `StatusChip` + chevron, as one FlashList row. `position` (`first | middle | last | only`) draws the rounded group edges and hairlines so separately rendered rows still read as one `ListGroup` (there is no `ListSeparator`). Wrapped in `memo`.
+- **`MemberFilterSheet`:** `BottomSheet` (60%) of `FilterChip` groups — Status, Category, Login — where tapping the selected chip clears it; "Clear filters" appears when any is set, "Show members" closes. Filters apply as you tap. The count badge on the filter button is `Badge variant="count"` over the `IconButton`.
+- **`TabState`:** the shared loading skeleton / `ErrorState` with retry / content switch for each member detail tab.
+- **`manage/members/index.tsx` (MG1):** `StatTile` row (header of the list), `SearchField` + filter `IconButton` fixed above a `FlashList`; "n members found" caption only while searching or filtering; empty state offers "Clear filters". **`manage/members/[id].tsx` (MG2):** centred `Avatar` 64, name, member ID, status chip + login `Badge`, three `soft` `sm` contact buttons (only those with data), then a horizontally scrolling `FilterChip` row as tabs (more than four views, ui-rules.md §5.7); single-tab members get no row.
+- **Web parity:** members list stat cards (`bg-white rounded-lg shadow`, 2 → 4 columns), Login filter and column; member detail contact buttons, Statement button and the Meeting Attendance and Welfare cards.
+
+## Mobile Phase 5 — Member management (F5.3, 2026-10-24)
+- **`MemberFormFields`:** the sectioned member form body — `Section`s for Personal, Contact, Membership, Emergency contact and Notes, each a `gap-4` stack of `TextField` / `SelectSheet` / `DateField`. Optional fields say "(optional)" in the label (no asterisks). The Member ID field shows only when `askMemberId`; the Disabled status option only when `allowDisabledStatus`. Used by `manage/members/form.tsx` for add and edit.
+- **`ApprovalRow`:** bordered `rounded-lg` row (`border-border bg-surface`) — `Avatar`, name, email, phone, status `StatusChip`; "Registered <date>" with an `Email verified` (success) / `Email not verified` (warning) `Badge` while pending; **Reject** `secondary` + **Approve** `primary` (both `sm`, equal width) only while pending; decided rows show who decided and a rejected one's reason. **`RejectRegistrationSheet`:** 60% sheet, optional reason `TextField`, "Keep it" + `danger` "Reject registration".
+- **`InviteMemberRow`:** checkbox row (24dp box, `primary` fill with a check when selected), `Avatar` 32, name, email, an "Invited" `info` `Badge` when an invite is already out; role `checkbox`. **`PendingInviteRow`:** bordered row with name, email, "Expires <date>" (or "Expired <date>" in `danger`), **Revoke** `secondary` + **Resend** / **Send again** `soft`.
+- **Screens:** `members/invite.tsx` (`SegmentedControl` Invite | Pending (n); Invite tab has a one-line email-only note, `SearchField`, a `FlashList` of `InviteMemberRow`s and a `StickyFooter` "Send n invites" that appears once something is selected), `members/approvals.tsx` (`SegmentedControl` Pending | Approved | Rejected, `SearchField`, `FlashList` of `ApprovalRow`s), `members/form.tsx` (`StickyFooter` "Save member"). Member detail: pencil `IconButton` in the header; at the foot, separated by a top rule, **Disable member** (`danger-ghost`) or **Enable member** (`soft`). Members list: `MailPlus` and `UserPlus` header icons and a `warning-soft` banner row "n people are waiting for approval · Review". Manage hub: **Pending approvals** (`warning` `Badge` "n waiting") and **Invite members** rows.
+- **Wording rule:** a `terminated` member is shown as **Disabled** everywhere; the action is "Disable member" / "Enable member".
+
+## Mobile Phase 5 — Meetings admin & live attendance (F5.8, 2026-10-24)
+
+One new form field; everything else is built from existing primitives.
+
+- **`DateTimeField` (`components/forms`):** an RHF-bound date AND time — two 52dp boxes side by side (date, then time, `bg-surface-sunken`, `border-border-strong`, `border-danger` on error), an optional × to clear. Android opens the date picker, then the time picker, as separate taps; iOS uses the same bottom modal as `DateField` with a spinner. The merge rule lives in `lib/dateTime.ts` (changing the day keeps the time).
+- **`FieldInput` (`components/forms`):** the one text input every field uses — the bottom sheet's own input inside a sheet (so the keyboard lifts the sheet), a plain `TextInput` elsewhere.
+- **`MeetingRow`:** grouped-edge row — title, "date · time", "kind · venue", a status `StatusChip` (Scheduled / In progress / Held / Cancelled) and "n on the list"; a cancelled title is dimmed.
+- **`AttendanceMemberRow`:** name and member ID over four equal 40dp choices (Present, Absent, Excused, Late) as radio buttons. The chosen one is filled with its status colour (`success-soft`, `danger-soft`, `info-soft`, `warning-soft` with the matching border); unmarked members show "Not marked yet". Disabled (60% opacity) for a cancelled meeting.
+- **Attendance screen:** three `StatTile`s (Present / Late / Not marked), a quorum line (`success` when met, `warning` while short), `SearchField`, and a `StickyFooter` "Mark the n not marked as present".
+- **Meeting detail:** centred title + status chip, `FactRow` details, an agenda as `ListItem`s with ↑ ↓ ✎ 🗑 `IconButton`s when editable, an Attendance summary `ListGroup`, a Minutes row, and ⋮ `BottomSheet` actions (Cancel uses `ReasonSheet`, Mark as held `ConfirmSheet`).
+- **Minutes:** a `bg-success-soft` "Approved" banner (fields read-only) or a `bg-warning-soft` "Waiting for approval" banner; the footer shows Save, and Approve only to an officer who did not write them.
+- **Attendance history:** plain divided rows — name, "n of m attended · late · excused · absent", and the rate in `h3` (green from 80%, red under 50%).
+
+## Mobile Phase 5 — Overdue, reminders & member ledgers (F5.7, 2026-10-24)
+
+Built from existing primitives; nothing new in `components/ui`.
+
+- **`OverdueMemberRow`:** grouped-edge row with an optional leading checkbox (24dp, `border-primary bg-primary` with a check when ticked), name, "n days overdue · n charges" (danger when late), a "Reminded 2 days ago" or "No email or login" line, the amount owed (`Money`) and a round `bg-primary-soft` call button when there is a phone.
+- **`ReminderSheet`:** BottomSheet "Remind n members?" explaining the channels and the 24-hour skip, an optional multiline message, and "Not now" / "Send reminders".
+- **Overdue screen:** `SegmentedControl` (Overdue / All unpaid), three `StatTile`s, a `StickyFooter` "Remind n members" that only appears once someone is ticked, "Select all / Clear" as a ghost header button.
+- **`LedgerMemberRow`:** name and member ID with the balance at the right — red "Owes", green "Credit", or plain "Settled".
+- **Ledger detail:** a `bg-surface-sunken` strip (Owes / Charged / Paid), entries with the amount (green when paid) over "Paid" / "Charged", and a ⋮ `BottomSheet` with Share statement (period buttons, then the system share sheet) and Rebuild this ledger (`ConfirmSheet`).
+
+## Mobile Phase 5 — Finance (F5.6, 2026-10-24)
+
+Built from existing primitives; nothing new in `components/ui`.
+
+- **`ChargeRow`:** grouped-edge row like `TransferRow` — member name, category, "Due …" (or created) date; the amount (`Money`) over a `StatusChip` (Unpaid / Part paid / Paid / Overdue; a voided charge reads **Voided** with the `cancelled` chip and a dimmed name); a part-paid charge adds "₦x left".
+- **Overview (FN1):** `SummaryHero` (display `Money` + three stat pills), a `bg-warning-soft` overdue banner, a `ListGroup` of actions, and the billed-by-kind donut (`PieChart` from gifted-charts, `chart` palette, legend beside it).
+- **Charges list (FN2):** three `StatTile`s, `SearchField`, two horizontal `FilterChip` rows (status, kind).
+- **Charge detail (FN3):** centred amount + chip, `FactRow` details, payments as `ListItem`s; Record payment in `StickyFooter`; ⋮ `IconButton` opens a `BottomSheet` of actions (secondary Edit / Void and replace, danger Delete) and Delete confirms in a `ConfirmSheet` then shows a toast with an **Undo** action (sonner-native `action`).
+- **Forms (FN4 / edit / FN5):** shared `ChargeFormFields` (category `SelectSheet`, `AmountField`, `DateField`, note); `MemberPickerField` for one member and `MembersMultiPickerSheet` (search + tick rows, "Done · n chosen") for many; void-and-replace uses a `bg-warning-soft` explainer and `PasswordField`; record payment lists open charges as radio cards (`border-primary bg-primary-soft` when chosen).
+
+## Mobile Phase 5 — Cash collections & lodgments (F5.5b, 2026-10-24)
+
+Built from existing primitives; nothing new in `components/ui`.
+
+- **Cash overview (CA1):** `SummaryHero` (display `Money`, three stat pills: ready to lodge / on open collections / lodged, awaiting check), a `bg-warning-soft` overdue banner, `ListGroup` of `ListItem` + `IconCircle` + `Badge`; the officers list is `ListItem` with a `Money` trailing (danger when overdue).
+- **Rows:** `CollectionRow`, `LodgmentRow`, `ReceiptRow` follow `TransferRow` exactly (position prop for grouped FlashList edges, min-h 72, `Money` over `StatusChip`); a voided receipt is dimmed with a `cancelled` chip.
+- **`PayableAmountRow`:** label + hint on the left, a 44dp amount box (`bg-surface-sunken`, `border-border-strong`, `border-danger` on error) on the right, and a `bg-primary-soft` "Fill ₦x" pill while empty.
+- **`ReasonSheet`:** BottomSheet with a required reason (multiline `TextField`) and a danger confirm; used to void a receipt and reject a lodgment.
+- **`SlipCard`:** same pattern as `ProofReceiptCard` (inline image with the always-dark Zoom pill using `onPassbook`, `ImageViewerModal`, PDF via the in-app browser).
+- Detail screens use `FactRow` inside `ListGroup`, `StickyFooter` with the button wrappers placed directly inside it, and `ConfirmSheet` for Verify / Close.
+- Collect cash: the donation category / project and the lodge screen's collection picker use `FilterChip` in a horizontal `ScrollView`.
+
+## Mobile Phase 5 — Bank transfers & bank accounts (F5.5, 2026-10-24)
+- **`TransferRow`:** grouped-edge row like `ProofRow` — title is the member's name (else the sender's account name, else the sender's bank), "reference · date", the sender's bank; the amount (`Money`, `body-strong`) stacked over a status `StatusChip` (Waiting / Verified / Matched / Rejected) on the right, chevron. **`StatusChip`** gained `matched` → `info`.
+- **`BankAccountRow`:** 40dp `primary-soft` circle with a `Landmark` icon, bank name, the account number grouped as `0123 456 789` (`Text variant="num"`), the account name, and a `primary` "Default" / neutral "Inactive" `Badge` on the right. Pressable only when the officer can edit; sits inside a `ListGroup`. **Bank accounts screen:** an intro line ("Members see these accounts when they pay…"), a `ListGroup` of active accounts, a `FilterChip` "Show inactive accounts", and a `BottomSheet` of actions (**Edit account** `secondary`, **Make default** / **Reactivate** `soft`, **Remove account** `danger-ghost`), with a `ConfirmSheet` before removing.
+- **`MemberPickerField` (`features/members/components`):** an RHF-bound field that picks one member — a 52dp trigger showing the name (× to clear), opening a 70% `BottomSheet` with a debounced `SearchField` and a `FlatList` of name + member ID. Value is `{ id, name } | null`; optional by design. Reuse it for any form that names a member.
+- **`RejectTransferSheet`:** like `RejectProofSheet` (required reason, "Keep it" + `danger` "Reject transfer"). The Verify confirmation reuses `ConfirmSheet` with `VERIFY_TRANSFER_EXPLAINER` ("This confirms the money reached your account. It does not credit the member…").
+- **Screens:** `transfers/index.tsx` (`SegmentedControl` of four, `SearchField`, `FlashList`, a `Plus` header action), `transfers/[id].tsx` (centred `Money h1` + status chip + reference/date; `Section`s Sent by / Received into / For / Payment proofs / Notes; `StickyFooter` Reject + Verify transfer only while waiting and the officer holds `payments.approve`), `transfers/form.tsx` (Sections The money / Who sent it / More details, `StickyFooter` "Record transfer"), `bank-accounts/form.tsx` (a `Switch` "Make this the default account" shown only when it can change something). The Payments hub has "Waiting for you" (Payment proofs, Bank transfers, each with a `warning` "n waiting" `Badge`) and "Set up" (Bank accounts).
+- **Member screens:** the cooperative `PayToCard` shows "No bank account yet · Ask an officer…" once loaded with none; the web pay, My Savings and My Loans pages show the same line in an amber note.
+- **Web parity:** shared `components/payments/useTransferDecision` (Mantine modal: green explainer for Verify, required-reason `Textarea` for Reject); the bank accounts page's actions menu (Set as Default, Reactivate, Edit, Remove — disabled for the last active account); the transfer detail page's Edit modal (reference, amount, sender's account name, narration, notes) and Verify / Reject buttons.
+
+## Mobile Phase 5 — Payment proofs (F5.4, 2026-10-24)
+- **`ui/ImageViewerModal`:** full-screen image viewer in a transparent `Modal` on a `bg-overlay` backdrop. Props: `visible`, `uri` (a reachable URL — for a private file, a signed link), `title?` (one line, top-left), `onClose`. Gestures (gesture-handler `Gesture.Simultaneous`): pinch 1x–5x, double-tap 2.5x and back, pan a zoomed image (clamped so it can't leave the screen), swipe down to close when not zoomed (the backdrop fades as you drag). A close `IconButton` (`tone="inverse"`, `soft`) sits top-right under the safe-area inset; a `Spinner` shows while loading and a plain message on error. `useReducedMotion()` drops the animation to 0ms. Maths lives in `lib/imageZoom.ts` (worklets, unit-tested); the component itself isn't Jest-testable (reanimated), so it's verified by typecheck and lint and **needs a phone**. Reuse it for any private image (ticket attachments and the Phase 4 savings receipts still open in the system viewer and could move to it).
+- **`ProofReceiptCard`:** the receipt in PY3 — a 260dp inline image with a "Zoom" pill that opens `ImageViewerModal`; a PDF shows a file row and **Open receipt** (`soft`) that opens the in-app browser; a proof with no file shows the member's written declaration in a bordered card ("No receipt — the member wrote this instead"). Fetches the signed link once per proof (`useProofFileLink`, kept 50 minutes).
+- **`ProofRow`:** `Avatar`, name, "member ID · method", a line with a paperclip (receipt) or file (note) icon, "n charges · relative time", status `StatusChip` (Waiting / Verified / Rejected), chevron. `position` draws grouped edges like `MemberRow`. **`DeclaredItemsCard`:** a `ListGroup` of charge rows (category, reference · due date, "Charged … paid … so far" when part-paid) with the balance verifying records on the right — or "Voided" / "Waived" / "Already settled" in `label`/secondary when it records nothing — and a final "Verifying records" total row. **`RejectProofSheet`:** 65% sheet, required reason (min 3 characters), "Keep it" + `danger` "Reject proof".
+- **Screens:** `payments/index.tsx` (a "Waiting for you" `ListGroup`; the proofs row has a `warning` icon circle and "n waiting" `Badge` when something is waiting), `proofs/index.tsx` (`SegmentedControl` Waiting (n) | Verified | Rejected over a `FlashList` of `ProofRow`s), `proofs/[id].tsx` (member header row that opens the profile, status chip, then **Receipt**, **Charges to match**, **Note from the member** and **Linked bank transfer** `Section`s; a `StickyFooter` with **Reject** `secondary` + **Verify payment** `primary` only while the proof is waiting, the officer may decide it, and it isn't their own; an own-proof note in `warning`; Verify is disabled for a proof with nothing to apply). Verify confirms through `ConfirmSheet` ("This records ₦X across n charge(s)…").
+- **Web parity:** `components/payments/ProofQueuePanel` (Mantine `SegmentedControl` Waiting | Verified | Rejected, table with a Review / View button, pagination) and `ProofReviewModal` (receipt, charges table with a total, warnings, an inline confirm step for Verify and a required-reason step for Reject), used by both `/dashboard/payments/verification` and `/dashboard/payments/nigerian/verification`.
+- **Web parity:** invite page tabs (Invite | Pending (n)) with Resend / Revoke; amber result rows when an invite's email didn't send; **Approvals** button with an amber "n waiting" pill on the members list; Disable / Enable member buttons on the profile.
+
+- **Wording rule:** deposit status is always *Awaiting confirmation / Confirmed / Not approved* (never Pending/Approved/Rejected) to match the web.
+
+## Mobile Phase 6 — Categories, dues & levies (F6.1, 2026-10-26)
+
+- **`ProgressBar`** (`components/ui`): thin 8dp bar, `bg-surface-sunken` track, `bg-primary` fill (`bg-success` once completed), `progressbar` role with a spoken label. Used for a campaign's collected-vs-target.
+- **`GroupedRow`** (`features/financeSetup/components`): the `ChargeRow` shell as a reusable wrapper — tappable row, hairline separators, `position` first/middle/last/only so separately rendered rows read as one grouped surface; `positionOf(index, count)`.
+- **`CategoryRow`**: name + kind `Badge` (primary) + "Inactive" `Badge` (neutral, row dimmed), default amount via `Money` · frequency, "Used by n charges and campaigns" caption.
+- **`CampaignRow`**: name + `StatusChip` (Active/Closed/Completed/Draft), `ProgressBar`, "₦collected of ₦target", then "category · n/m paid · 12 days left" (a closed or completed campaign shows its deadline date instead of a countdown).
+- **Screens:** `categories/index.tsx` (search, kind chips, active chips, `FlashList` of `CategoryRow`, + in the header), `categories/form.tsx` (sections The category / Default charge / Status; the type becomes read-only text with the reason when locked; danger "Switch this category off" via `ConfirmSheet`), `dues.tsx` ("What to charge" using `ChargeFormFields`, "Who" `SegmentedControl`, summary card in `surface-sunken`), `levies/index.tsx` (three `StatTile`s, `SegmentedControl` Campaigns | Levy types, a 40% actions sheet for a levy type), `levies/campaign-form.tsx`, `levies/assign.tsx`, `levies/[id].tsx` (header with name and status chip, `ProgressBar`, three tiles Assigned / Still owed / Members paid, a `warning-soft` "Closed to new members" card that says the debt stays owed, Details `ListGroup` of `FactRow`s, Members `ListGroup` with status chips; sheets for ⋮ actions, a member's actions, and `ConfirmSheet`s for Close and Remove).
+- **Rule shown in the UI:** closing a campaign is a non-destructive confirm (primary button, "Keep open"); removing a member is a `danger` confirm and only appears while the member has paid nothing.
+- **Web parity:** campaign page "Close campaign" outline button and an orange "Closed to new members" banner; status pill `bg-orange-100 text-orange-800` for Closed; category type `select` disabled with a caption when in use.
+
+## Mobile Phase 6 — Donations & penalties (F6.2, 2026-10-26)
+
+- **`PagedList`** (`features/financeSetup/components`): a page-at-a-time list for an infinite query — three skeletons while loading, `ErrorState` with retry, pull to refresh, a spinner footer while more load, and the caller's empty state. Used by every tab of Donations and Penalties.
+- **`AllocationRow`:** name + kind `Badge` (primary) + "Inactive" `Badge`, a `ProgressBar` only when there is a target, "₦received of ₦target · n donations". **`DonationRow`:** donor, "cause · fund", date (or "Pledged for <date>"), amount over a `StatusChip` (Received / Pledged / Part paid / Voided). **`RuleRow`:** name + On/Off `Badge` (success / neutral), "₦500.00 flat" or "5% of what is owed (at most …)", "After 7 days · once · All dues and levies". **`WaiverRow`:** member, "penalty · date", the reason, amount on the right.
+- **Screens:** `donations/index.tsx` (three `StatTile`s, `SegmentedControl` Causes | Funds | Recent, a 40% cause actions sheet), `donations/record.tsx` (sections Kind of gift / The gift / Donor; the kind `SegmentedControl` swaps "how it was paid" for the expected date), `donations/allocation-form.tsx`, `donations/receipt.tsx` (amount in `h1`, details in a `ListGroup` of `FactRow`s, sticky **Share receipt**), `penalties/index.tsx` (three tiles, a secondary **Apply late fees now** button, four tabs, actions sheets for a type, a rule and a charged penalty, a `ConfirmSheet` for deleting a rule that says when it is switched off instead), `penalties/rule-form.tsx` (the fee `SegmentedControl` swaps the `AmountField` for a percent `TextField` + cap), `penalties/late-fees.tsx` (a `surface-sunken` headline card, "Who would be charged" `ListGroup`, sticky **Charge n late fees**), `penalties/waive.tsx` (owed amount in `h1`, amount and reason fields).
+- **Rule shown in the UI:** nothing is charged or forgiven without seeing the effect first — late fees are previewed, and the waive amount cannot exceed what is owed.
+
+## Mobile Phase 6 — Cooperatives admin (F6.5, 2026-10-26)
+
+- **`RequestCard`** (`features/coopManage/components`): one member-declared payment — name over "member number · account or loan", "Paid <date> · Ref …", amount over a `StatusChip` (Waiting / Approved / Not approved), the member's note and any rejection reason in captions, a ghost **View receipt** (an image opens in `ImageViewerModal`, a PDF in the in-app browser), and a Reject (secondary) + Approve (primary) pair only while it is waiting and the officer may decide it. An officer's own request shows "This is your own request, so another officer needs to decide it." in secondary text instead of the buttons.
+- **`RequestQueue`:** the screen shell for both queues — `SegmentedControl` Waiting | Approved | Not approved over a `PagedList` of `RequestCard`s, an approve `ConfirmSheet` ("This records ₦X from <member> and tells them…") and a `ReasonSheet`. **`ReasonSheet`:** 60% sheet, required reason (min 3), "Not now" + `danger` confirm.
+- **Rows** (`GroupedRow` shell): **`AccountRow`** (member, "number · kind", balance, a neutral badge when not active), **`ApplicationRow`** (member, "product · months", guarantors accepted and applied date, amount over a `StatusChip`), **`LoanRow`** (member + status chip, `ProgressBar` of repaid, "₦ still owed · loan number · product"), **`ProductRow`** (name + On/Off `Badge`, terms line, guarantors needed).
+- **Screens:** `cooperatives/index.tsx` (`SummaryHero` of total savings with three pills, then "Waiting for you" and "Manage" `ListGroup`s with "n waiting" warning `Badge`s), `savings/[id].tsx` (balance in `h1`, an availability line "Available ₦X · ₦Y held against a loan", Paid in / Taken out tiles, details, history with +/− amounts, sticky Record withdrawal + Record deposit), `applications/[id].tsx` (amount in `h1` over the status chip, a `danger-soft` card for a rejection, purpose, the loan figures, guarantors with status chips, sticky Reject + Approve, or **Pay out this loan** once approved), `applications/disburse.tsx` (method, and the borrower's own open accounts when crediting savings), `loans/[id].tsx` (outstanding in `h1` over a repaid bar, schedule rows with status chips, payments recorded), forms in the usual sections with a sticky primary button.
+- **Rule shown in the UI:** money is never moved or decided without saying what it will do first (approve confirm, availability line, "still owed" caps), and an officer's own items never offer a decision.
+
+## Mobile Phase 6 — Welfare admin (F6.4, 2026-10-27)
+
+- **`FundRow`** (`features/welfareManage/components`): name + kind `Badge` (primary) + a neutral badge when suspended or closed (row dimmed), a `ProgressBar` of balance over target only when there is a target, the balance in `body-strong` ("of ₦target" caption), and the payout rules in one caption line. **`PayoutRow`:** member, "kind · fund", "request number · date", the amount (the approved amount once approved or paid out) over a `StatusChip`. **`ContributionCard`:** member, "member number · fund", date · how · reference, amount over a status chip, the note, and Reject (secondary) + Confirm (primary) only while it is waiting and this officer may decide it; otherwise "This contribution is in your own name…" or "You recorded this contribution…" in secondary text.
+- **Screens:** `welfare/index.tsx` (`SummaryHero` of money held with three pills, "Waiting for you" and "Manage" `ListGroup`s with "n to confirm" / "n to decide" warning badges), `funds/form.tsx` (sections The fund / Contributions / Payouts / Status, a `danger` delete only when the fund has no history), `contributions/record.tsx` (`SegmentedControl` One member | Many members; many shows a summary card "n members × ₦X = ₦Y"), `payouts/[id].tsx` (amount in `h1` over the status chip, a `danger-soft` card for a rejection, the reason, the request facts, "Their standing" facts, sticky Reject + Approve, or **Pay out** once approved), `payouts/review.tsx` (the limit explained under the amount field: asked for, the fund's maximum, or what the fund holds), `payouts/disburse.tsx`.
+- **Shared:** the cooperative `ReasonSheet` is reused for every rejection; Home's attention list gained rows for loan applications, loan payments, savings deposits, welfare requests and welfare contributions.
+- **Rule shown in the UI:** nothing is approved or paid out without saying what limits it, and an officer's own items never offer a decision.
+
+## Mobile Phase 6 — Elections & polls admin (F6.3, 2026-10-28)
+
+- **`ElectionRow`** (`features/electionsManage/components`): title (two lines) with a `StatusChip` on the right, "kind · n positions · n candidates", the voting dates, and — only while voting is open — a `ProgressBar` of turnout with "n of N members have voted". **`PollRow`:** the question, "n answers · n answers so far", the end date, status chip. **`CandidateCard`:** name, member number (and position when positions are mixed), manifesto, status chip, a rejection reason, and Reject (secondary) + Approve (primary) only while it is waiting and this member may decide it; otherwise "This is your own nomination…" in secondary text. **`ResultBar`:** name, a `ProgressBar` of the share (`success` for the winner), "n votes · x%", `Trophy` + a success "Winner" badge, or a warning "Level" badge for a tie.
+- **Screens:** `elections/index.tsx` (three `StatTile`s, a "waiting" `ListGroup` that appears only when something is, status `FilterChip`s, `PagedList` with a scrolling `header`), `elections/form.tsx` (sections The election / When / How votes are counted / Positions, `DateTimeField`s, a `useFieldArray` of position titles on create only), `elections/[id].tsx` (title in `h1`, status chip, a four-stage `ProgressBar` line, a `danger-soft` card when cancelled, a `warning-soft` card for waiting nominations, `StatTile`s once voting has started, a "When" `ListGroup`, a Results `ListItem`, one `Section` per position, sticky footer with the next step — "Open voting now" beside it on a draft with approved candidates), `elections/results.tsx`, `polls/*` (the same shapes; answers become bars once the poll is open).
+- **Sheets (`Sheets.tsx`):** `CandidateSheet` (search members → pick → optional manifesto → "waiting for approval from another member of the committee"), `PositionSheet` (add and rename), `PollOptionSheet`; cancel and reject reuse the cooperative `ReasonSheet`, every step and delete reuses `ConfirmSheet` (the step's confirm is non-destructive).
+- **Rule shown in the UI:** one next step at a time; a step the person may not take is not shown; nobody is offered a decision on their own nomination; results and tallies are not shown until the people allowed to see them can.
+
+## Mobile Phase 6 — Communication (F6.6, 2026-10-29)
+
+- **`AudiencePicker`** (`features/communication/components`): `SegmentedControl` when there are four kinds or fewer, wrapped `FilterChip`s for more; category `FilterChip`s and a `MemberMultiPicker` appear only for the kinds that need them; a kind that needs the member directory is hidden without that permission.
+- **`MemberMultiPicker`:** a field-style row ("n chosen") opening a `BottomSheet` with `SearchField`, tick rows (20dp box, primary fill when ticked), Clear and Done (n).
+- **`CountLine` / `CostNotice` / `SummaryCard`** (`Notices.tsx`): a label with a right-aligned count and optional caption; a sunken (enough) or `danger-soft` (short) box saying parts per text, credits, balance, and that credits are bought on the web; a `Card` with an h3 title.
+- **Rows** (`GroupedRow`): `AnnouncementRow`, `CampaignRow` (progress bar while sending), `MessageRow` (status chip, error in danger), `CreditRow` (+ success / − default), `TemplateRow`.
+- **Screens:** hub with three `StatTile`s and grouped rows; composer and quick text show reach and cost live (debounced) and confirm with `ConfirmSheet` (non-destructive) before sending; campaign detail polls while sending.
+- **Rule shown in the UI:** nothing is sent without showing who it reaches, who it misses and what it costs; a short balance turns the Send button off.
+
+## Mobile Phase 6 — Reports & exports (F6.7, 2026-10-29)
+
+- **`DrillFigure`** (`features/reports/components/Drill.tsx`): a tinted-border card with a caption label, an amount in `h3` (or a plain count), an optional caption, and a small chevron when it can be opened; a figure of nothing is plain and not a button. Used on every report, the hub, Finance and the officer Home.
+- **`ChargeRow` / `PaymentRow`** (`GroupedRow` shell): member over category and number, the amount still owed or paid at the right with a `StatusChip`, and the dates underneath. A payment for a cancelled charge says so.
+- **`PeriodPicker`:** a "Period" dropdown field (52dp, chevron) that opens a bottom sheet listing every option with a check on the current one (this month … last year, Choose dates); Choose dates opens a card with two `DateField`s and a Show button, and nothing is asked until both dates are picked. A dropdown, not a sideways chip row, because seven options don't fit on a phone screen.
+- **`OptionDropdown`:** a labelled 48dp dropdown that opens a bottom sheet of options with a check on the current one; Member balances uses two side by side, **Show** (All members, Owe money, Overdue) and **Sort by** (Owes most, Name, Paid longest ago).
+- **Drill list screens** (`charges.tsx`, `payments.tsx`): a totals card scrolling with the list (charged, paid, still owed / money received), then `PagedList` rows; a member's list has a ledger icon in the header.
+- **Charts:** `PieChart` donut and `BarChart` from `react-native-gifted-charts`, colours from the theme's chart tokens, with a tappable legend or bars; the aging screen uses a segmented bar.
+- **Exports:** a Make-a-file / History `SegmentedControl`; each file is a card with its own button; the share sheet opens as soon as a file is ready; an expired file shows an Expired chip instead of Share.
+- **Rule shown in the UI:** a number is never a dead end — it opens the records that add up to it, and the list says how many and how much, so the two can be compared.
+
+## Mobile Phase 6 — Reconciliation (F6.8, 2026-10-29)
+
+- **Reconciliation screen** (`manage/payments/reconciliation/index.tsx`): a four-way `SegmentedControl` (Suggested, Matches, Unmatched, Imports) under the header, each tab filling the rest of the screen with its own list; a + icon in the header starts an import.
+- **`SuggestionCard`:** a tickable `Card` (primary border when ticked): the money received (success) with a confidence `Badge` (Very likely / Likely / Possible and the percentage), the bank narration and date, then a sunken block "Would pay" with the member, charge, reference and what it still owes, and the reasons underneath. Confident ones are ticked when the screen opens; a footer button says how many and how much, and that nothing is recorded until another officer confirms.
+- **`MatchCard`:** the member and charge with the amount and a `StatusChip`, a sunken block with the bank line, and **Turn down** / **Confirm** buttons while it waits; a match you proposed hides Confirm and says another officer has to.
+- **`LineRow` / `ImportRow`** (`GroupedRow`): an unmatched money-in line (narration, amount, date, account), and an imported statement (file, account, dates, "n to match" or "All matched").
+- **Import screen:** sections Which statement (bank-account dropdown, choose-file button, the file name or the problem), What we found (counts and totals), How the columns were read (one `OptionDropdown` per column, headed by where the choice came from), The first lines; a sticky Import button with a confirm sheet.
+- **Rule shown in the UI:** nothing is recorded until a second officer confirms, and every sheet says exactly what confirming or turning down will do.
+
+## Mobile Phase 7 — Association settings (F7.2, 2026-10-24)
+
+**Read-only view (2026-10-25):** a settings form for someone who may only view is the same form inside `View` with `opacity-60` and `pointerEvents="none"`, under a `ReadOnlyNote` (`pb-4`, `Text caption secondary`: "You can look at these settings but not change them…"); the `SaveFooter` is not rendered. Payment settings gained a "Text messages (SMS)" `ListItem` with an On/Off `StatusChip` beside the Paystack and Nomba rows.
+
+- **Settings hub** (`manage/settings/index.tsx`): `ListGroup` rows with `IconCircle` leading icons in three sections (Your association, Money and messages, Your plan); a row shows only if the officer holds that screen's permission.
+- **`SettingsScreen`** (`features/settings/components`): the frame every settings screen shares — header, `NoPermission`, three `Skeleton` bars while loading, `ErrorState` with retry; it renders its form only once the saved values are here, so the form starts from them.
+- **`SaveFooter`:** one primary **Save changes** button in the `StickyFooter`, off until the form has changed (`formState.isDirty`).
+- **Settings forms** (profile, financial, payments, reminders, members and access): sections of `TextField`, `SelectSheet` and `Switch` rows; a dependent field (late-fee amount, reminder days, member ID prefix, role they start with) appears only while its switch is on; plain helper text under each field says what it does.
+- **`LogoEditor`:** a 64dp logo (or the square `Avatar` fallback tinted by the brand colour), **Change logo** / **Add a logo** and **Remove** buttons; each saves straight away, Remove confirms in a `ConfirmSheet`.
+- **Subscription screen:** read-only `ListGroup` — plan with a status `Badge`, the next date (renews / trial ends / ends), members allowed, a pending plan change, then the modules the plan includes; one line of text says billing is managed on the website. No price, no purchase button, no link out.
+- **Rule shown in the UI:** a setting is shown only if something in the app reads it; the other web switches are left off the phone.
+
+## Mobile Phase 7 — Users, roles and audit (F7.3, 2026-10-24)
+
+**Parity additions (2026-10-25):** `PermissionEditor` now opens with a `SearchField` (`gap-3` above the bordered group list); inside an open group, a first row `min-h-[44px] px-4 py-2` with `Text variant="body" tone="primary"` reading "Turn all of X on/off"; a search opens every matching group and shows `Text body secondary` when nothing matches. The role form is `Section` (name, description) then `Section` "What it can do" with the editor and a caption count; Add role stays disabled until one permission is chosen. `UserRow` gained a caption "Joined …" and a `danger` `Badge` for a platform role; role chips and the role row use `Badge tone="primary"` for built-in, `neutral` for custom. The audit screen filters are `Action` and `Area` side by side (`flex-row gap-3`), then `When` below; the row caption ends with `· #recordId`.
+
+- **`UserRow`** (`GroupedRow` shell): `Avatar` (40), name, email and member ID, and the roles as `Badge` chips (the Administrator in the primary tone, "No role" when empty).
+- **`RoleRow`:** name, "n people · n permissions", and a "Built in" `Badge` for the built-in roles.
+- **`AuditRow`:** the activity in plain words, "who · area", and the date and time; tapping opens a `BottomSheet` listing what changed ("Name: before → after").
+- **`PermissionEditor`:** one bordered surface; each part of the app is a row with "n of m on" and a chevron that opens its switches (description left, `Switch` right). A switch the person could not turn on is left out; with `readOnly` only what is on is listed, without switches.
+- **User roles screen:** the person (64dp `Avatar`, name, email), "Roles they hold" as a `ListGroup` with a ghost **Remove** button each, "Give a role" as a `ListGroup` of tappable rows; both go through a `ConfirmSheet`. Your own screen shows one line of text instead of buttons.
+- **Role detail:** name and description fields for a custom role, the permission editor, a sticky **Save changes** (off until something changes), and a danger ghost **Delete role** for a custom role nobody holds.
+- **Audit screen:** a `SearchField` and two side-by-side `OptionDropdown`s (Area, When) above a `PagedList`.
+- **Rule shown in the UI:** you are only offered what you could do yourself — no role you could not hold, no switch you could not turn on, no buttons on your own account.
+
+## Mobile Phase 7 — Accounting (F7.1, 2026-10-24)
+
+- **Accounting hub** (`manage/accounting/index.tsx`): a `SummaryHero` with cash and bank as the headline and owned / owed / surplus as the pills; "Needs attention" `ListGroup` (entries waiting with a warning `Badge`; records not in the books with a soft **Catch up** button); the last six months; shortcuts as a `ListGroup`; latest entries as `EntryRow`s.
+- **`EntryRow` / `AccountRow` / `BudgetRow` / `PeriodRow` / `SyncErrorRow`** (`GroupedRow` shell): an entry shows its description, number and date, the amount, a `StatusChip` and an **Automatic** `Badge`; an account its name, code, "Built in" / "Switched off" and (when asked) its balance, indented by depth; a budget its year, line count and status; a period its dates and an Open / Closed / Locked chip.
+- **`PlanBar`:** a `ProgressBar` with the amount used on the left and the plan on the right, in the danger tone when over.
+- **`TrendChart`:** income and spending side by side per month (`BarChart`, chart tokens), axis written in full, a legend underneath.
+- **`LinesEditor`:** one bordered card per line (account `SelectSheet`, **Debit** and **Credit** `AmountField`s side by side, a note), **Add a line**, and a sunken totals panel that says "Balanced" in success or "Out by ₦…" in danger. Save is refused until it balances.
+- **`StatementSection`:** a heading, a bordered list of account lines with `Money`, and a sunken total row; an empty part says so.
+- **`PostEntrySheet`:** a `BottomSheet` explaining that posting is for good, a `PasswordField`, and **Keep it** / **Post entry**; a wrong password stays on the sheet with the reason beneath.
+- **Entry detail:** status `StatusChip`, the lines in one bordered list with a total row, a history block, a rejection panel in the danger-soft tone, and a sticky footer whose buttons depend on the state and on who is looking (never Approve on your own entry).
+- **Statements:** a `SegmentedControl` (Income | Balance sheet | Cash flow), the period picker or an "As at" `OptionDropdown`, a share icon in the header; a warning panel when a sheet does not balance.
+- **Rule shown in the UI:** nothing is offered that the server would refuse — no Approve on your own entry, no editing a posted one, no saving an entry that does not balance.
+- **Statement PDF:** the statements header has a second share icon (`FileDown`, "Share this statement as a PDF") next to the text one, shown only to someone with `exports.financial`.
+
+- **Parity additions:** `CompareLine` (label with the change underneath in a success, danger or secondary tone, the earlier amount at the right) inside the bordered-list surface; `CashActivity` (a `StatementSection` whose rows read "In: …" and "Out: …" with the net as its total); the statements controls stack as `gap-3` — a period picker or "As at" dropdown, then "Compare with" or a `DateField`; the **Sync status** screen: one bordered card with "n of m" in `h3`, then a `ListGroup` per module whose trailing is a soft **Catch up n** button, a warning `Badge` ("n missing") when the person cannot change the books, or a success `Badge` ("All in").
+
+**Drill-down (2026-10-25).** *Ledger screen:* a `PagedList` under a search field and a "Dates" dropdown; its header is `LedgerSummary` — one bordered card (`rounded-lg border border-border bg-surface p-4`, `gap-3`) with a caption of the dates and four figures in a wrap (Opening balance, Closing balance in `h3`, Debits, Credits), then a "Sub-accounts" bordered list of `SubAccountRow` (name and code left, money and a chevron right). `LedgerLineRow` is a `GroupedRow` (minHeight 76): the line's description in `body-lg`, "entry number · date (· account)" in a secondary caption, the amount on its side in `body-strong` with "Debit"/"Credit" under it, and "Balance after" in a tertiary caption with the balance. *An openable line:* `StatementSection` rows and totals become a `Pressable` with a `ChevronRight` (16, `textTertiary`) beside the money, only when the figure is not zero; the total keeps `bg-surface-sunken`. *Budget lines and totals:* the bordered card becomes a `Pressable` (same classes). *Dashboard:* the budget bar card is a `Pressable`; `SummaryHero` stats and headline take `onPress`; the trend chart bars take `onSelectMonth` with a tertiary caption "Tap a month to see its statement." *Where this came from:* `SourceCard` — bordered card, `label` secondary title, `body-lg` summary, `body-strong` amount, caption details, a full-width secondary button naming where it goes. *Web:* `DrillLink` (dotted underline) on every openable figure; the ledger page uses Mantine `SimpleGrid` cards, a `Table` with right-aligned Debit, Credit and Balance, and `Pagination`; the detail pages (payment, loan, payout) use a heading with a gradient title, a `Card withBorder` of label/value `Group` rows, and a link back to the journal entry.
+
+**Expenses (2026-10-25).** *List:* `PagedList` under a search field and a "Show" status dropdown; header is one bordered card (`rounded-lg border border-border bg-surface p-4`) with "Approved (n)" money left and "Waiting for approval" count right. `ExpenseRow` is a `GroupedRow` (minHeight 84): payee in `body-lg`, "number · date · category" secondary caption, amount `body-strong`, then a `StatusChip` with optional `warning` "Over budget" and `neutral` "No receipt" badges. *BudgetNote:* a `gap-1 rounded-lg` card — `bg-warning-soft` with a `warning` label when over budget, bordered `bg-surface` when not — budget name as `label`, the sentence in `body`. *ReceiptCard:* the same shape as the cash `SlipCard` (inline image with a Zoom pill, or a file card with an "Open receipt" soft button; a bordered "No receipt was attached" with the reason). *Detail:* status chip row, payee `h3`, amount `h1`, rejected and voided banners in `bg-danger-soft`, a bordered facts list, then "In the books" `ListGroup`; actions in `StickyFooter`. *VoidExpenseSheet:* `BottomSheet` with a reason `TextField`, a `PasswordField` and a `danger` confirm. *Web:* a Mantine `Table` of vouchers with status `Badge`s, `Modal`s for the form, the expense view, approve (password), reject (reason) and void (reason and password).
+
+**AI assistant (2026-10-26).** *UsageBar:* a `Card` with the "7 left today · 80 credits" line in `body-strong` (`danger` when empty), a caption with the plan allowance and request costs, a `ProgressBar` of the free requests used and a `secondary` small "Buy credits" button. *Chat:* `MessageBubble` — mine `bg-primary-soft` right-aligned, the assistant `border border-border bg-surface` left-aligned (`bg-danger-soft` for a failure), max 92% wide, `rounded-lg px-4 py-3`; answers reveal a few words at a time, then `TableCard`s (`rounded-lg border bg-surface-sunken p-3`, label heading, caption column heads, `num` cells). `PromptChips` are bordered `bg-surface` rows with a primary Sparkles icon. The composer is a `StickyFooter` with a multiline `FieldInput` (`border-border-strong bg-surface-sunken`) and a send `IconButton`. *Reminders:* a selectable `Card` per member (`border-primary` when ticked, `rounded-xs` checkbox) with name, days overdue, `Money`, a tone `Badge` (friendly success, formal warning, urgent danger) and the message in caption. *Report:* radio rows (`border-primary bg-primary-soft` when chosen) and a result `Card` with `h2` title, `h3` sections and bullet lines. *Credits:* pack radio rows with the price in `num`, a Paystack `Button`, purchases as `Card`s with a status `Badge`. *Web:* Mantine `Paper` panels on `dashboard/ai/credits` and a free-requests line on the usage page. *Admin:* `ai-section.tsx` — Panels for model, credits and prices, daily free requests by plan and request costs, plus an AI-cost-against-credits-sold table.
+
+**Imprint (F7.1) — the classes these components share.** They are built from tokens only; the one dynamic colour is the chart legend swatch, which takes a chart token from the theme.
+
+| Surface | Classes |
+| --- | --- |
+| Bordered list (entry lines, statement section, permission-style lists) | `overflow-hidden rounded-md border border-border bg-surface dark:border-transparent`, rows `px-4 py-3`, `min-h-[48px]`, hairlines via `Divider` |
+| Total row inside a list | `min-h-[48px] flex-row items-center justify-between gap-3 bg-surface-sunken px-4 py-3`, label `body-strong`, amount `Money size="body-strong"` |
+| Card (a journal line, a budget line, a variance line, the chart) | `rounded-lg border border-border bg-surface p-4 dark:border-transparent`, no shadow, inner `gap-3` |
+| Empty chart | `items-center justify-center rounded-lg border border-border bg-surface p-6 dark:border-transparent` with `body` secondary text |
+| Totals / difference panel | `gap-2 rounded-lg bg-surface-sunken p-4` |
+| Warning / rejection panels | `rounded-lg bg-warning-soft p-4` (balance sheet, cash flow) and `rounded-lg bg-danger-soft p-4` (rejected entry), heading `body-strong` in the matching tone |
+| Rows (`GroupedRow`) | `px-4 py-3`, heights 60–84 by content, title `body-lg`, meta `caption` secondary, amount `Money size="body-strong"` at the right, status as `StatusChip` |
+| Section headings | `Section` (`h3`), hint under it `caption` secondary |
+| Chart legend swatch | `h-3 w-3 rounded-sm`, colour from `chart[n]` |
+
+Pattern notes: amounts are always `Money` (written in full); a status always has its words; the only primary action of a screen is in the `StickyFooter`; sheets use `BottomSheet` (never stacked).
+
+**Noted while imprinting:** `ProgressBar` has only a primary and a success tone, so a budget line that is over its plan shows the bar in primary and signals "over" with the danger-coloured amount and an Over budget chip. If a danger tone is added to `ProgressBar` later, `PlanBar` should use it for over-plan lines.
 
 ---
 
 ## Retired
 _(none)_
+
+- **Notification row "View details →"** (web `dashboard/notifications`): small teal text button above Mark read / Delete, shown only when `notificationHref(pushType, entityId)` resolves; marks the row read then navigates.
+- **"n need a reply" pill** (web `help/tickets` header, staff only): `rounded-full bg-amber-100 text-amber-800` (dark: `bg-amber-900/30 text-amber-300`) inline after the subtitle.
+
+## Phase 8 — signup, setup wizard, trial notices (2026-11-03)
+
+- **`app/(auth)/create-association.tsx` (A13):** the premium auth surface (`AuthBrandMark` + `ScreenHeader large`) with a two-step form. Step caption `Step n of 2`; a `bg-warning-soft` reminder note (`Text caption tone=warning`) carries the shared naming reminder; the address row is a `TextField` followed by a `Card` showing the live preview and the availability line (`Spinner` while checking, `tone=success` available, `tone=danger` taken). Kind of association is a `SelectSheet`; **Other** reveals a `TextField`. Primary action `Button variant=gradient`.
+- **`features/onboarding/components/StepFrame.tsx`:** frame for every wizard step: `ScreenHeader` (back to the overview, `docsKey` O1 to O5), `Step n of 5` caption with `ProgressBar`, description, content, and a `StickyFooter` with **Skip this step** (`Button secondary`) and the primary action (`Button primary`). Use it for any future multi-step setup.
+- **`features/onboarding/components/ColourSwatches.tsx`:** six one-tap brand colours (circle swatches, 44dp hit area, `border-primary` ring when selected). The swatch colours are the association's own data from `BRAND_COLOUR_PRESETS` in the shared package, the one place a literal colour is allowed.
+- **Overview and summary rows:** `SectionCard` of `ListItem`s with an `IconCircle` (success + CheckCircle2 done, warning + SkipForward skipped, neutral + Circle not started) and a `Badge` (Done / Skipped).
+- **`features/session/components/SubscriptionBlockedScreen.tsx`:** `AuthHeroScreen` with the CreditCard icon; officers get the `SupportCard` (WhatsApp) and the text to renew on the web, members the contact-your-admin text; **Sign out** as `accent-ghost`. No prices, no pay button (store billing rules).
+- **`features/session/components/TrialEndingBanner.tsx`:** `bg-warning-soft` row with the Hourglass icon above the Me | Association toggle on Home, shown to admins and billing officers when 3 days or fewer are left.
+
+## Brand kit rollout (2026-10-25)
+
+- **Source of truth:** `SocietyLedger-brand/` (colours, folders and usage rules in its README). Mark = bold S with a ledger card; brand blue `#0B6BFF`, green `#14B866`, slate `#0F172A`.
+- **Mobile:** `assets/images/logo-mark(.png|@2x|@3x)` is the in-app mark (startup 96dp, `AuthBrandMark` 64dp, About 72dp); `app-tile.png` is the rounded gradient tile used on dark surfaces (welcome carousel, 32dp). Use these, never a lucide `Users` icon as the brand. App icon, adaptive icons, splash and notification icon live in `assets/images/` and are wired in `app.config.ts`.
+- **Web/admin/docs:** `public/brand/` holds the horizontal lockups (`-light-notag` for light pages, `-dark-notag` for dark) and `logo-mark.svg`. Web uses `BrandMark` and `BrandLogo` from `components/brand/BrandLogo.tsx` (`tone="auto"` swaps with the theme, `onDark` for the footer). The association's own logo still wins in the sidebars; the brand mark is only the fallback.

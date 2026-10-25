@@ -163,6 +163,19 @@ export const listTemplatesQuerySchema = z.object({
   isActive: z.string().optional().transform(val => val === 'true'),
 });
 
+export const previewAudienceSchema = z.object({
+  recipientType: z.enum(['ALL_MEMBERS', 'SELECTED_MEMBERS', 'MEMBER_CATEGORY', 'CUSTOM_NUMBERS', 'OWING_MEMBERS', 'PAID_MEMBERS']),
+  recipientFilter: z
+    .object({
+      memberIds: z.array(z.number().int().positive()).max(5000).optional(),
+      categories: z.array(z.string()).max(50).optional(),
+      customNumbers: z.array(z.string()).max(2000).optional(),
+      owingMinAmount: z.number().min(0).optional(),
+    })
+    .optional(),
+  message: z.string().max(918).optional(),
+});
+
 // Type exports
 export type QuickSMSInput = z.infer<typeof quickSMSSchema>;
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;

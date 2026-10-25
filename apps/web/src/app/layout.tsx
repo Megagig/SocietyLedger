@@ -58,9 +58,9 @@ export const metadata: Metadata = {
     description: 'Comprehensive financial management system for cooperatives, HOAs, and associations across Africa.',
     images: [
       {
-        url: '/favicon.png',
-        width: 512,
-        height: 512,
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
         alt: 'SocietyLedger - Association Management Software',
       },
     ],
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'SocietyLedger - Association Management Software',
     description: 'Comprehensive financial management system for cooperatives, HOAs, and associations across Africa.',
-    images: ['/favicon.png'],
+    images: ['/og-image.png'],
     creator: '@societyledger',
   },
   manifest: '/manifest.json',
@@ -122,7 +122,7 @@ export default function RootLayout({
     '@type': 'Organization',
     name: 'SocietyLedger',
     url: 'https://societyledger.com.ng',
-    logo: 'https://societyledger.com.ng/favicon.png',
+    logo: 'https://societyledger.com.ng/icons/icon-512.png',
     description: 'Association management software for cooperatives, HOAs, and community organizations across Africa.',
     email: 'support@societyledger.com.ng',
     address: {
@@ -164,13 +164,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         {/* Favicon */}
-        <link rel="icon" type="image/png" sizes="48x48" href="/favicon.png" />
-        <link rel="icon" type="image/png" sizes="96x96" href="/icons/android-launchericon-96-96.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icons/android-launchericon-192-192.png" />
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         {/* PWA Meta Tags */}
-        <link rel="apple-touch-icon" href="/icons/android-launchericon-192-192.png" />
-        <link rel="apple-touch-icon" sizes="144x144" href="/icons/android-launchericon-144-144.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/android-launchericon-192-192.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="SocietyLedger" />

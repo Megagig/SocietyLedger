@@ -1,28 +1,43 @@
 ---
 title: "Poll results"
-description: "See live or final results once members start responding to a poll."
-type: concept
+description: "Start, close and cancel a poll, and see the answers live or at the end."
+type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["C10"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/governance/polls/[id]", "GV10"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-28"
 related: ["/docs/elections/creating-a-poll"]
 ---
 
-Once a poll is active, members respond from its own page — officers can close it and see the final breakdown at any time.
+Once a poll is created, you start it, members answer, and you close it. Whoever runs polls can read the answers at any time.
 
-## How it works
+## Run the poll
 
-While a poll is **Active**, a member sees the options and a **Submit Vote** button; after responding, they see "Your response has been recorded" — but not the running tally, unless the poll was explicitly set to show results before it ends.
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Open the poll from <MenuPath items={["Governance", "Polls"]} /> and select **Start Poll**.</Step>
+<Step>Members answer from the poll's own page.</Step>
+<Step>When the response window should end, select **Close Poll**. The results then show every option's count and percentage.</Step>
+</Steps>
 
 <Screenshot src="/images/elections/poll-results-1.webp" alt="Closed poll showing Results with Yes at 100% (1 vote) and No at 0%" />
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Open the poll from <MenuPath items={["Manage", "Voting", "Polls"]} /> and tap **Start poll**.</Step>
+<Step>Members answer from <MenuPath items={["Community", "Polls"]} />. The poll's page shows how many have answered and each answer's share.</Step>
+<Step>Tap **Close poll** when the window should end.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
-An officer selects **Close Poll** when the response window should end. The Results panel then shows each option's vote count and percentage, visible to anyone who opens the poll.
+A poll can be started once and closed once. A draft or open poll can be **cancelled**, and a draft or cancelled poll nobody answered can be deleted — one with answers is kept as a record.
 
-## Why it matters
+## Who sees the answers
 
-Responses are final — a member can't take back a submitted vote unless the poll was created with **Allow members to change their response** turned on.
+While a poll is open, members don't see the running answers unless the poll was set to show results while it is open; they see them when it closes. The people who run polls always see them. A member answers once, and can't change the answer.
 
 ## What you can do
 

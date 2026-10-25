@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${MEMBER_EMAIL}
+---
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Profile
+- scrollUntilVisible:
+    element:
+      id: profile-switch-association
+- tapOn:
+    id: profile-switch-association
+# Lands on the association picker; the current one is listed under recent associations.
+- assertVisible: .*(Find your association|Recent associations).*

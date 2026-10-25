@@ -64,10 +64,11 @@ export function requirePermission(permission: string) {
       }
 
       if (!hasPermission) {
-        return res.status(403).json({ 
-          success: false, 
+        return res.status(403).json({
+          success: false,
           message: 'Permission denied',
-          requiredPermission: permission
+          requiredPermission: permission,
+          code: 'INSUFFICIENT_PERMISSIONS', // F0.5 — same NoPermission state as the other RBAC checks below
         });
       }
 
@@ -109,19 +110,20 @@ export function requireAnyPermission(permissions: string[]) {
       }
 
       if (!hasPermission) {
-        return res.status(403).json({ 
-          success: false, 
+        return res.status(403).json({
+          success: false,
           message: 'Permission denied',
-          requiredPermissions: permissions
+          requiredPermissions: permissions,
+          code: 'INSUFFICIENT_PERMISSIONS', // F0.5
         });
       }
 
       next();
     } catch (error) {
       console.error('RBAC middleware error:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Authorization check failed' 
+      return res.status(500).json({
+        success: false,
+        message: 'Authorization check failed'
       });
     }
   };
@@ -154,10 +156,11 @@ export function requireAllPermissions(permissions: string[]) {
       }
 
       if (!hasPermission) {
-        return res.status(403).json({ 
-          success: false, 
+        return res.status(403).json({
+          success: false,
           message: 'Insufficient permissions',
-          requiredPermissions: permissions
+          requiredPermissions: permissions,
+          code: 'INSUFFICIENT_PERMISSIONS', // F0.5
         });
       }
 
@@ -273,10 +276,11 @@ export function requireAssociationRole(roleNames: string[]) {
       const hasRole = roleNames.some(roleName => userPermissions.roles.includes(roleName));
 
       if (!hasRole) {
-        return res.status(403).json({ 
-          success: false, 
+        return res.status(403).json({
+          success: false,
           message: 'Access denied',
-          requiredRoles: roleNames
+          requiredRoles: roleNames,
+          code: 'INSUFFICIENT_PERMISSIONS', // F0.5
         });
       }
 

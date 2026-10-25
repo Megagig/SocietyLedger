@@ -3,10 +3,10 @@ title: "Recording and approving minutes"
 description: "Write up what happened at a meeting, then approve it as the official record."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["GV5"]
 status: published
-lastVerified: "2026-10-13"
+lastVerified: "2026-10-24"
 related: ["/docs/meetings/taking-attendance"]
 ---
 
@@ -14,22 +14,33 @@ Record what was discussed, the decisions made and the action items from a meetin
 
 ## Before you start
 
-Whoever is writing the minutes — usually the secretary or an administrator — needs access to the meeting's page.
+Writing and approving minutes needs the **manage minutes** permission (Administrators, Treasurers and Financial Secretaries have it by default). **A different officer has to approve the minutes than the one who wrote them.**
 
 <Callout type="danger" title="Approving locks the minutes">
-Once minutes are approved, the Content, Key Decisions and Action Items fields can no longer be edited from this page. Review carefully before you approve.
+Once minutes are approved they are locked — they can't be edited by anyone. Review carefully before you approve. You can't approve minutes you wrote yourself.
 </Callout>
 
 ## Record minutes
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Open the meeting and select the **Minutes** tab.</Step>
 <Step>Fill in **Minutes Content** — a summary of what was discussed.</Step>
 <Step>Fill in **Key Decisions** — the decisions made and any votes taken.</Step>
 <Step>Fill in **Action Items** — what needs to happen next, and who's responsible.</Step>
-<Step>Select **Save Minutes**. You can keep editing and re-saving until you approve.</Step>
-<Step>When the minutes are ready to stand as the record, select **Approve Minutes**.</Step>
+<Step>Select **Save Minutes**. You can keep editing and re-saving until they are approved.</Step>
+<Step>When the minutes are ready to stand as the record, ask another officer to select **Approve Minutes**.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Meetings"]} />, open the meeting and tap **Minutes**.</Step>
+<Step>Write what was discussed, the decisions and the action items, then tap **Save minutes**.</Step>
+<Step>Another officer opens the same screen, reads them through and taps **Approve**. The button doesn't show for the officer who wrote them.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/meetings/minutes-1.webp" alt="Meeting Minutes tab showing saved Minutes Content and Key Decisions, with an Approved badge" />
 

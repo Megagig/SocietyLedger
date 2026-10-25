@@ -12,6 +12,7 @@ import {
   CreateAgendaItemInput,
   UpdateAgendaItemInput,
 } from './meetings.types';
+import { pastMeetingsWhere } from './meeting-rules';
 
 export const meetingsService = {
   // ==================== MEETING CRUD ====================
@@ -56,7 +57,29 @@ export const meetingsService = {
     return meeting;
   },
 
+  /**
+   * Marks meetings that are over as COMPLETED. Nothing else ever did, so "recent meetings" stayed empty and old meetings sat in
+   * "upcoming". Run before every read and by the hourly job; one cheap updateMany.
+   */
+  async completePastMeetings(associationId?: number) {
+    const result = await prisma.meeting.updateMany({
+      where: { ...(associationId ? { associationId } : {}), ...pastMeetingsWhere() },
+      data: { status: 'COMPLETED' },
+    });
+    return result.count;
+  },
+
+  /** An officer closing a meeting by hand. Only a scheduled or in-progress meeting can be completed. */
+  async completeMeeting(associationId: number, meetingId: number) {
+    const claimed = await prisma.meeting.updateMany({
+      where: { id: meetingId, associationId, status: { in: ['SCHEDULED', 'IN_PROGRESS'] } },
+      data: { status: 'COMPLETED' },
+    });
+    return claimed.count > 0;
+  },
+
   async getMeetings(associationId: number, params: MeetingQueryParams) {
+    await this.completePastMeetings(associationId);
     const page = params.page || 1;
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
@@ -186,6 +209,13 @@ export const meetingsService = {
       return null;
     }
 
+    // Claim-then-act: two officers cancelling at once, or cancelling a held meeting, changes nothing the second time.
+    const claimed = await prisma.meeting.updateMany({
+      where: { id: meetingId, associationId, status: { notIn: ['CANCELLED', 'COMPLETED'] } },
+      data: { status: 'CANCELLED' },
+    });
+    if (claimed.count === 0) return null;
+
     return prisma.meeting.update({
       where: { id: meetingId },
       data: {
@@ -314,6 +344,15 @@ export const meetingsService = {
     return { created: attendanceRecords.length };
   },
 
+  /** Every id must be a member of this association — otherwise attendance could be written for another association's member. */
+  async assertMembersInAssociation(associationId: number, memberIds: number[]) {
+    const unique = [...new Set(memberIds)];
+    const found = await prisma.member.count({ where: { id: { in: unique }, associationId } });
+    if (found !== unique.length) {
+      throw new Error('One or more members were not found in this association');
+    }
+  },
+
   async markAttendance(
     associationId: number,
     meetingId: number,
@@ -321,6 +360,7 @@ export const meetingsService = {
     data: MarkAttendanceInput
   ) {
     await this.assertMeetingInAssociation(associationId, meetingId);
+    await this.assertMembersInAssociation(associationId, [data.memberId]);
     return prisma.meetingAttendance.upsert({
       where: {
         meetingId_memberId: {
@@ -361,6 +401,7 @@ export const meetingsService = {
     attendances: MarkAttendanceInput[]
   ) {
     await this.assertMeetingInAssociation(associationId, meetingId);
+    await this.assertMembersInAssociation(associationId, attendances.map((a) => a.memberId));
     const results = await Promise.all(
       attendances.map((attendance) =>
         this.markAttendance(associationId, meetingId, userId, attendance)
@@ -475,6 +516,12 @@ export const meetingsService = {
   },
 
   async approveMinutes(minutesId: number, userId: number) {
+    // Claim-then-act: only minutes that are still unapproved can be approved, so two approvals can't both land.
+    const claimed = await prisma.meetingMinutes.updateMany({
+      where: { id: minutesId, approvedAt: null },
+      data: { approvedBy: userId, approvedAt: new Date() },
+    });
+    if (claimed.count === 0) return null;
     return prisma.meetingMinutes.update({
       where: { id: minutesId },
       data: {
@@ -500,6 +547,35 @@ export const meetingsService = {
   },
 
   // ==================== ANALYTICS ====================
+
+  /**
+   * One member's own attendance, one row per meeting (newest first). Backs the mobile "My Attendance"
+   * history list — `getMemberAttendanceHistory` only returns per-member totals, never per-meeting rows.
+   */
+  async getMyAttendance(associationId: number, memberId: number) {
+    const rows = await prisma.meetingAttendance.findMany({
+      where: { memberId, meeting: { associationId } },
+      orderBy: { meeting: { startTime: 'desc' } },
+      take: 100,
+      select: {
+        meetingId: true,
+        status: true,
+        checkInTime: true,
+        apologyReason: true,
+        meeting: { select: { title: true, meetingType: true, startTime: true } },
+      },
+    });
+
+    return rows.map((r) => ({
+      meetingId: r.meetingId,
+      title: r.meeting.title,
+      meetingType: r.meeting.meetingType,
+      startTime: r.meeting.startTime,
+      status: r.status,
+      checkInTime: r.checkInTime,
+      apologyReason: r.apologyReason,
+    }));
+  },
 
   async getMemberAttendanceHistory(
     associationId: number,
@@ -568,6 +644,7 @@ export const meetingsService = {
   },
 
   async getUpcomingMeetings(associationId: number, limit = 5) {
+    await this.completePastMeetings(associationId);
     return prisma.meeting.findMany({
       where: {
         associationId,
@@ -584,6 +661,7 @@ export const meetingsService = {
   },
 
   async getRecentMeetings(associationId: number, limit = 5) {
+    await this.completePastMeetings(associationId);
     return prisma.meeting.findMany({
       where: {
         associationId,
@@ -599,6 +677,7 @@ export const meetingsService = {
   },
 
   async getMeetingStats(associationId: number) {
+    await this.completePastMeetings(associationId);
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);

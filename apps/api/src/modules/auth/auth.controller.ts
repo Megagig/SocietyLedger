@@ -2,12 +2,22 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import prisma from '../../lib/prisma';
-import { hashPassword, verifyPassword, generateToken, TokenPayload } from '../../lib/auth';
+import { hashPassword, verifyPassword, generateToken, mobileAccessTokenExpiresAt, TokenPayload } from '../../lib/auth';
+import {
+  issueRefreshToken,
+  rotateRefreshToken,
+  revokeRefreshToken,
+  revokeAllForUser,
+  listActiveSessions,
+  revokeOtherSessions as revokeOtherSessionsService,
+} from '../../services/refresh-token.service';
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
 import { SettingsService } from '../settings/settings.service';
+import { isMemberDisabled, MEMBER_DISABLED_CODE, MEMBER_DISABLED_MESSAGE } from '../../lib/member-access';
 import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
 import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
+import { loadSubscriptionAccess } from '../../services/subscription-access.service';
 import {
   createUserWithVerification,
   verifyEmailCode,
@@ -21,6 +31,10 @@ import {
 const loginSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(1, 'Password is required'),
+});
+
+const refreshSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token is required'),
 });
 
 const registerSchema = z.object({
@@ -66,6 +80,7 @@ export class AuthController {
             member: {
               select: {
                 id: true,
+                status: true,
                 firstName: true,
                 lastName: true,
                 memberId: true,
@@ -198,6 +213,16 @@ export class AuthController {
         }
       }
 
+      // A disabled (terminated) member can't sign in; re-activating the member restores access.
+      if (!user.platformRole && isMemberDisabled((user.member as { status?: string } | null)?.status)) {
+        res.status(401).json({
+          success: false,
+          message: MEMBER_DISABLED_MESSAGE,
+          code: MEMBER_DISABLED_CODE,
+        });
+        return;
+      }
+
       // Check if user is active
       if (!user.isActive) {
         void logSecurityEvent({
@@ -231,7 +256,12 @@ export class AuthController {
       // For platform logins, use the user's actual associationId (Platform Association)
       // For regular tenant logins, use the tenantId from the request
       const tokenAssociationId = isPlatformLogin ? user.associationId : tenantId;
-      
+
+      // F0.3: a mobile client (X-Client: mobile) gets a short-lived access
+      // token paired with a refresh token; everyone else keeps today's
+      // 7-day token exactly as before — this branch never runs for web.
+      const isMobileClient = req.headers['x-client'] === 'mobile';
+
       const token = generateToken({
         id: user.id,
         email: user.email,
@@ -239,7 +269,30 @@ export class AuthController {
         memberId: user.member?.id,
         associationId: tokenAssociationId ?? undefined,
         platformRole: user.platformRole ?? undefined,
-      });
+      }, { isMobile: isMobileClient });
+
+      let mobileAuth: { refreshToken: string; accessTokenExpiresAt: string } | undefined;
+      if (isMobileClient) {
+        const issued = await issueRefreshToken({
+          userId: user.id,
+          associationId: tokenAssociationId ?? null,
+          deviceName: typeof req.headers['x-device-name'] === 'string' ? req.headers['x-device-name'] : undefined,
+          platform: typeof req.headers['x-device-platform'] === 'string' ? req.headers['x-device-platform'] : undefined,
+        });
+        mobileAuth = {
+          refreshToken: issued.token,
+          accessTokenExpiresAt: mobileAccessTokenExpiresAt().toISOString(),
+        };
+      }
+
+      // Ensure the user has a UserRole row — admin-created users may not have one
+      // because the RBAC migration only ran once. Self-heals on every login until fixed.
+      if (tokenAssociationId && user.role) {
+        await RBACService.ensureUserRoles(user.id, tokenAssociationId, user.role);
+      }
+
+      // Where the association's trial/subscription stands, so every app can show the countdown banner or the blocked screen.
+      const subscriptionAccess = await loadSubscriptionAccess(tokenAssociationId, user.platformRole);
 
       // Resolve user permissions from database
       const rbacContext: RBACContext = {
@@ -286,11 +339,13 @@ export class AuthController {
             } : tenant,
             platformRole: user.platformRole,
             requiresOnboarding,
+            subscriptionAccess,
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
             isPlatformLogin, // NEW: Indicates if this is a platform admin login
           },
           token,
+          ...mobileAuth, // F0.3: refreshToken + accessTokenExpiresAt, mobile clients only
         },
         message: 'Login successful',
       });
@@ -594,6 +649,15 @@ export class AuthController {
 
   async logout(req: Request, res: Response): Promise<void> {
     try {
+      // F0.3: best-effort — a web client has no refreshToken to send, so
+      // this is a no-op for it, same as before.
+      const { refreshToken } = req.body ?? {};
+      if (typeof refreshToken === 'string' && refreshToken.length > 0) {
+        await revokeRefreshToken(refreshToken).catch((error) => {
+          console.error('[auth] refresh token revoke on logout failed:', error);
+        });
+      }
+
       const isProduction = process.env.NODE_ENV === 'production';
       res.clearCookie('token', {
         httpOnly: true,
@@ -713,6 +777,7 @@ export class AuthController {
               isPlatformAssociation: true,
             } : tenant,
             requiresOnboarding,
+            subscriptionAccess: await loadSubscriptionAccess(user.associationId, user.platformRole),
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
           },
@@ -787,6 +852,10 @@ export class AuthController {
         where: { id: userId },
         data: { passwordHash: hashedPassword },
       });
+
+      // F0.3: a password change invalidates every existing mobile session —
+      // same reasoning as rotating a stolen credential.
+      await revokeAllForUser(userId);
 
       // Create audit log
       if (user.associationId) {
@@ -890,6 +959,113 @@ export class AuthController {
       }
       console.error('Exchange impersonation code error:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * F0.3 — POST /api/auth/refresh { refreshToken }
+   * Rotates a refresh token and mints a new mobile-lifetime access token.
+   * Public (tenant-optional, rate-limited with sessionRateLimit) — the
+   * refresh token itself is the credential, there's no session cookie here.
+   */
+  async refresh(req: Request, res: Response): Promise<void> {
+    try {
+      const { refreshToken } = refreshSchema.parse(req.body);
+      const result = await rotateRefreshToken(refreshToken);
+
+      if (!result.ok) {
+        const messages: Record<string, string> = {
+          invalid: 'Invalid refresh token',
+          expired: 'Refresh token expired',
+          user_inactive: 'Account is no longer active',
+          association_inactive: 'Association is no longer active',
+          member_disabled: MEMBER_DISABLED_MESSAGE,
+        };
+        res.status(401).json({
+          success: false,
+          message: messages[result.reason],
+          code: 'REFRESH_TOKEN_INVALID',
+        });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: result.userId },
+        select: { id: true, email: true, role: true, platformRole: true, member: { select: { id: true } } },
+      });
+      if (!user) {
+        res.status(401).json({ success: false, message: 'Invalid refresh token', code: 'REFRESH_TOKEN_INVALID' });
+        return;
+      }
+
+      if (result.associationId && user.role) {
+        await RBACService.ensureUserRoles(user.id, result.associationId, user.role);
+      }
+
+      const token = generateToken(
+        {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          memberId: user.member?.id,
+          associationId: result.associationId ?? undefined,
+          platformRole: user.platformRole ?? undefined,
+        },
+        { isMobile: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          token,
+          refreshToken: result.refreshToken.token,
+          accessTokenExpiresAt: mobileAccessTokenExpiresAt().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error('Refresh token error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return;
+      }
+      res.status(500).json({ success: false, message: 'Failed to refresh token' });
+    }
+  }
+
+  /** F0.3 — GET /api/auth/sessions: the caller's own active refresh-token families. */
+  async getSessions(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+      const sessions = await listActiveSessions(userId);
+      res.status(200).json({ success: true, data: { sessions } });
+    } catch (error) {
+      console.error('Get sessions error:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch sessions' });
+    }
+  }
+
+  /** F0.3 — POST /api/auth/sessions/revoke-others { refreshToken }: keeps only the caller's current session. */
+  async revokeOtherSessionsHandler(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+      const { refreshToken } = refreshSchema.parse(req.body);
+      const revokedCount = await revokeOtherSessionsService(userId, refreshToken);
+      res.status(200).json({ success: true, message: `${revokedCount} other session(s) revoked` });
+    } catch (error) {
+      console.error('Revoke other sessions error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+        return;
+      }
+      res.status(500).json({ success: false, message: 'Failed to revoke other sessions' });
     }
   }
 }

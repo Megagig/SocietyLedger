@@ -3,11 +3,11 @@ title: "Reviewing, approving and disbursing loans"
 description: "Approve a loan application and disburse the funds, in two separate steps."
 type: task
 audience: ["officer"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 covers: ["/dashboard/cooperatives/applications*", "CP4"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/cooperatives/applying-for-a-loan", "/docs/cooperatives/repayments-and-schedules"]
+lastVerified: "2026-10-26"
+related: ["/docs/cooperatives/applying-for-a-loan", "/docs/cooperatives/repayments-and-schedules", "/docs/cooperatives/savings-rule-and-held-savings"]
 ---
 
 Once an application reaches **Pending Review** — guarantors in place, or none required — an officer approves or rejects it, then separately disburses the funds.
@@ -18,22 +18,53 @@ You need the **Administrator** or **Treasurer** role.
 
 ## Review and approve
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["Cooperatives", "Applications"]} /> and open a **Pending Review** application.</Step>
 <Step>Check the amount, tenure, repayment figures and purpose.</Step>
 <Step>Select **Approve**, or **Reject** with a reason.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Cooperatives", "Loan applications"]} /> and open an application under **To review**.</Step>
+<Step>Check the amount, tenure, repayment figures, purpose and how many guarantors accepted.</Step>
+<Step>Tap **Approve**, or **Reject** and give a reason the member will read.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 <Screenshot src="/images/cooperatives/reviewing-and-disbursing-loans-1.webp" alt="Loan application detail page showing Pending Review status, loan details, applicant info, and Approve/Reject buttons" />
 
 ## Disburse
 
+<PlatformTabs>
+<PlatformTab>
 <Steps>
 <Step>On an **Approved** application, select **Disburse Loan**.</Step>
-<Step>Choose a **Disbursement Method** and add an optional reference.</Step>
-<Step>Select **Disburse Loan** to confirm.</Step>
+<Step>Choose a **Disbursement Method** — bank transfer, cash, cheque, or **Credit to savings account**. For a savings credit, choose one of the member's open accounts.</Step>
+<Step>Add an optional reference, then select **Disburse Loan** to confirm.</Step>
 </Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>On an **Approved** application, tap **Pay out this loan**.</Step>
+<Step>Choose the **Method** — bank transfer, cash, cheque, or **Credit to savings account**. For a savings credit, choose one of the member's open accounts.</Step>
+<Step>Add an optional reference, then tap **Pay out loan**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
 
 ## What happens next
+
+If the product has a savings rule, approving and disbursing both re-check it against the member's savings **at that moment** — if they've withdrawn savings or borrowed elsewhere since applying, you'll see the new limit and the step is refused. When the product holds savings, disbursing also puts the matching amount on hold (see [Your savings rule and held savings](/docs/cooperatives/savings-rule-and-held-savings)).
+
+## Rules that protect the money
+
+- **You can't decide or pay out your own loan.** If you are also the applicant, another officer has to approve and pay it out.
+- **An application is decided once.** If two officers open the same application, the second to decide is told it was just decided; an approved one can't be rejected afterwards.
+- **A loan is paid out once.** A second attempt is refused, so a double tap can't create two loans.
+- **A savings credit goes to the borrower's own open account.** If the account is missing, closed or someone else's, nothing is created and you are told why — a loan is never made without the money reaching the member.
 
 Disbursing creates a real, active loan with its own repayment schedule, visible to the member under My Loans and to officers under [Repayments and repayment schedules](/docs/cooperatives/repayments-and-schedules). This can't be undone once confirmed.

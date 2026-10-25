@@ -1,34 +1,58 @@
 ---
 title: "Sending an SMS"
-description: "What the SMS dashboard shows today, and why actually sending one currently fails."
-type: concept
+description: "Text a few members or phone numbers, see the cost first, and know every text that failed was refunded."
+type: task
 audience: ["officer"]
-platforms: ["web"]
-covers: ["/dashboard/communications", "/dashboard/communications/quick-send"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/communications", "/dashboard/communications/quick-send", "CM1", "CM3"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/communication/sms-campaigns", "/docs/communication/buying-sms-credits"]
+lastVerified: "2026-10-28"
+related: ["/docs/communication/sms-campaigns", "/docs/communication/buying-sms-credits", "/docs/communication/announcements"]
 ---
 
-SocietyLedger has a full SMS module — a dashboard, Quick Send, campaigns, templates and history — reachable from <MenuPath items={["Communication", "SMS Dashboard"]} />. The dashboard itself loads correctly.
+Quick Send texts a few members or phone numbers straight away. To text a whole group, use an [SMS campaign](/docs/communication/sms-campaigns) or an [announcement](/docs/communication/announcements).
 
-## How it works
+## Before you start
 
-<Callout type="danger" title="Quick Send currently fails every time">
-Opening <MenuPath items={["Communication", "Quick Send SMS"]} />, picking a recipient and a message, and selecting **Send Message** always fails with a validation error. The page sends each recipient as `{ type, value }`, but the API expects a plain phone number or member ID string — so the request is rejected before anything is sent. This isn't occasional; every attempt fails the same way, confirmed directly against the API. It's logged for a fix in a later phase; there's currently no way to send an SMS from this screen.
+- You need the **send SMS** permission, and the SMS module must be on your plan.
+- You need [SMS credits](/docs/communication/buying-sms-credits). Each part of a text costs one credit.
+- Your association's SMS provider must be switched on in Settings.
+
+## Send a text
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Communication", "Quick Send SMS"]} />.</Step>
+<Step>Choose the recipients: members, or phone numbers you type or paste.</Step>
+<Step>Write the message, or pick a template.</Step>
+<Step>Select **Send Message**.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Communication", "Quick text"]} />.</Step>
+<Step>Choose **Members** and tick them, or choose **Phone numbers** and type or paste them, separated by commas, spaces or new lines.</Step>
+<Step>Write the message.</Step>
+<Step>Check **Before you send**, tap **Send** and confirm.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## What you see before you send
+
+Once you have recipients and a message, the app shows how many people will get the text, how many have no usable phone number, any typed numbers that can't be texted, and the cost: how many parts the message has, the credits it uses and your balance. If you don't have enough credits it says by how many you are short, and the Send button stays off. Credits are bought on the web.
+
+<Callout type="note" title="Long messages cost more">
+A plain text holds 160 characters. A longer one is sent in parts of 153 characters, and a message with emoji or some accented letters holds fewer (70 characters, then 67 per part). Each part is one credit per person. The preview works this out for you.
 </Callout>
 
-<Screenshot src="/images/communication/sms-dashboard-1.webp" alt="SMS Dashboard showing 0 credits remaining, 0 messages sent, and Quick Actions for Send, Create Campaign and View History" />
+## What happens next
 
-The dashboard shows your SMS credit balance, messages sent/delivered/failed, and active campaigns — all of which read correctly.
+- Credits are set aside before anything is sent, and every text is recorded before it goes out.
+- A text that fails is marked **Failed** and its credit is refunded. The message you get afterwards says how many went out and how many didn't. Nothing is reported as sent when it wasn't.
+- A text shows **Delivered** only when the phone network says so. Until then it shows **Sent**.
+- Members who turned on **Don't send me text messages** are skipped by announcements and campaigns. A text you send to a member on purpose, one to one, still goes.
+- If the same number appears twice, it is texted once.
 
-## Why it matters
-
-Even if the data-format problem above is fixed, sending still needs **SMS credits** — see [Buying SMS credits](/docs/communication/buying-sms-credits), which has its own problems — and a live connection to the SMS provider (Termii), which isn't configured in this environment. Budget for both before relying on SMS.
-
-## What you can do
-
-<Screenshot src="/images/communication/sending-sms-1.webp" alt="Quick Send page with a recipient selector and message composer" />
-
-- [View message history](/docs/communication/sms-history) — this part works.
-- [SMS campaigns](/docs/communication/sms-campaigns) — has the same sending problem, plus one of its own.
+See every text, and every credit bought or used, in [SMS history](/docs/communication/sms-history).
