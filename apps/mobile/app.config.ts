@@ -98,6 +98,24 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
   ];
 
+  // Native code is compiled once per CPU type, and an unrestricted APK carries all four (arm64, armv7,
+  // x86, x86_64): the first preview build came out at 283 MB. Real phones are arm64.
+  //  - preview: arm64 only, with native libraries compressed inside the APK (smaller download).
+  //  - production: the app bundle for Play is split per device by the store, so keep the two ARM types
+  //    (arm64 for current phones, armv7 for older 32-bit ones) and drop x86 (emulators only).
+  //  - development: untouched, so emulators keep working.
+  if (APP_VARIANT !== 'development') {
+    plugins.push([
+      'expo-build-properties',
+      {
+        android: {
+          buildArchs: APP_VARIANT === 'production' ? ['arm64-v8a', 'armeabi-v7a'] : ['arm64-v8a'],
+          useLegacyPackaging: APP_VARIANT === 'preview',
+        },
+      },
+    ]);
+  }
+
   if (sentryDsn) {
     plugins.push([
       '@sentry/react-native/expo',
