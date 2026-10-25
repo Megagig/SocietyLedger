@@ -1,54 +1,68 @@
-# Memory — Mobile Phase 8: association signup, free trial, blocking, setup wizard
+# Memory — Mobile Phase 9: hardening, brand rollout, deployment and EAS builds
 
-Last updated: 2026-10-25 (session dates in the app's own notes say 2026-11-03)
+Last updated: 2026-10-26
 
 ## What was built
 
-Phase 8 (F8.1 and F8.2) across API, admin console, web and mobile. Per-feature detail is in `context/progress-tracker.md` (F8.1, F8.2), `context/ui-registry.md` (Phase 8 section) and `docs/deployment/PHASE8_SIGNUP_DEPLOY.md`.
+Per-feature detail is in `context/progress-tracker.md` (Phase 9), `context/ui-registry.md` (brand section) and `docs/mobile/`. Start with `docs/mobile/PHASE9_REVIEW_FINDINGS.md`, `STORE_READINESS.md` and `RELEASE_CHECKLIST.md`.
 
-- **Shared (`packages/shared/src`):** `association-signup.ts` (association kinds incl. "other", subdomain rules, naming reminder, signup schema, base domain) and `onboarding.ts` (five steps, officer roles, team-invite schema, finance starter templates, brand colour presets). Web, mobile and API all use these.
-- **API:** new signup (`associations.controller.ts`): founder name and phone, creates their `Member` (MEM0001), always Enterprise, honours platform switches. `services/subscription-access.service.ts` (access rules, `startTrialIfPending`, cache), gate in `middleware/auth.middleware.ts` (403 `SUBSCRIPTION_INACTIVE`), `subscriptionAccess` on login and `/auth/me`. Approval (`auth.service.ts updateUserApproval`) starts the trial. Onboarding: `onboarding-rules.ts`, `complete-step` with `skipped`, `POST /onboarding/team`. Admin: `POST /admin/users/:id/verify-email` and `resend-verification`; approvals list search, `emailVerified` filter, association kind. Reminders at 3 and 1 day in `jobs/subscription-jobs.ts`. Migration `20261103_add_invite_role_and_onboarding_skips`.
-- **Admin console:** Approvals page (verify email, resend code, kind, founder), Settings (blocking switch, trial days 1 to 90).
-- **Web:** rewritten `signup/page.tsx`; all `onboarding/*` steps save real data and record skips; `components/subscription/SubscriptionBanners.tsx` (trial banner, blocked screen) wired into `AuthenticatedLayout`; axios and fetch interceptors mark blocked; Settings > Association uses the shared kind list with "other".
-- **Mobile:** `(auth)/create-association.tsx`, `(app)/onboarding/*` (overview, profile, team, members, finance, complete), `features/onboarding`, `features/associationSignup`, `features/session/landing.ts` and components (blocked screen, trial banner), guard in `(app)/_layout.tsx`, `stores/session.ts markSubscriptionBlocked`, client interceptor, Settings kind list with "other".
-- **Docs:** create-your-association, onboarding-wizard, free-trial, when-a-subscription-ends rewritten; frontmatter and link checks pass.
+- **Brand rollout:** `SocietyLedger-brand/` kit applied to mobile (icon, adaptive icons, light and dark splash, notification icon, in-app mark), web (favicons, PWA icons, manifest, service worker v2, OG image, `components/brand/BrandLogo.tsx`), admin and docs.
+- **Seed for demo/E2E:** `apps/api/prisma/seeds/oko-youth-forum.seed.ts` (`pnpm --filter api seed:oko`, password from env `OKO_DEMO_PASSWORD`). **Not yet run on the deployed API.**
+- **E2E:** 7 Maestro flows in `apps/mobile/e2e/` (written from the code, never run on a device).
+- **Deployment (Dokploy):**
+  - `docker-compose.dokploy.yml` and `.env.dokploy.example` now list every variable the API reads.
+  - Migration `20261019_a0_create_notification_preferences` fixes a gap: a fresh database could not be built from the migrations.
+  - `docker-entrypoint.sh` runs migrations, then 8 idempotent seeds in a fixed order (plans, platform association, super admin, roles, modules, help permissions, help content, blog), then the server. `SEED_ON_START=false` skips them.
+  - New `prisma/seeds/super-admin.seed.ts` (env `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, 12+ chars; creates one only if none exists). `seed-all.ts` must never run in production (hard-coded credentials).
+  - MinIO is a **separate shared stack** (`docker-compose.minio.yml`, container `shared-minio`, domain `files.societyledger.com.ng` on port 9000, console 9001 not public). Per-app bucket and scoped key. Steps in `docs/deployment/MINIO_SETUP.md`.
+- **Fixes after the first deploy:**
+  - Docs page `getting-started/create-your-association.mdx` used `<Callout type="info">`; the docs Callout only accepts note, tip, warning, danger. This broke the whole compose build.
+  - Web: new `apps/web/src/utils/subdomain.ts` stops `societyledger.com.ng` being treated as an association (it caused 404s on `check-subdomain` and a wrong tenant header). Used by middleware, `lib/tenant.ts`, `utils/tenant.ts` and `TenantContext`.
+- **EAS / Expo build fixes:**
+  - `apps/mobile/package.json`: script `eas-build-post-install` builds `@societyledger/shared` (its `dist/` is gitignored); `babel-preset-expo` added as a dependency; `expo-build-properties` added.
+  - Root `.npmrc` (new file): `public-hoist-pattern[]=*babel*`. Gradle runs Metro with plain node, so Babel plugin names must resolve from the repo root.
+  - Two stale `tsconfig.tsbuildinfo` files untracked (they stopped `tsc` from emitting `dist`).
+  - `app.config.ts`: fails a production build when `EXPO_PUBLIC_API_URL` is missing or not https (warns for preview); default EAS project id; arm64-only preview build with compressed native libs, arm64+armv7 for production, via `expo-build-properties`; blocks the default `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` permissions.
+  - `eas.json`: `preview` and `production` env hold the four public `EXPO_PUBLIC_*` addresses (all on societyledger.com.ng); new profile **`website-apk`** (production identity as an APK, for hosting on the website).
 
 ## Decisions made
 
-- Trial: 14 days of Enterprise, starts on **approval** of the founding admin (not signup); length is the platform setting `defaultTrialDays`. After it ends everyone in the association is blocked until paid. Login, `/auth/me`, subscriptions, support, help and devices stay open. Billing overrides respected. Platform switch `enforceSubscriptionAccess` (default on) turns blocking off. No subscription row at all means allowed. Past-due is allowed during its 3-day grace.
-- Mobile never shows prices or a pay button; officers are told to renew on the web (WhatsApp `SupportCard`), members to contact their admin.
-- Association kind is the **existing** setting `association.associationType` (+ `customAssociationType`), one shared list; no new DB columns for it.
-- Wizard order follows web: Profile, Team, Members, Finance, Complete. Skipped is stored apart from done (`skipped_steps`). Invites carry `role_name`, applied on acceptance.
-- Password minimum stays 6 (login, reset and signup already matched).
-- Working rule from the owner: list fixes and get approval before changing code for review findings; the owner approved cross-platform bug fixes for this phase.
+- No CI/CD; the owner deploys with Dokploy and runs builds by hand (`eas build`). Android first; iOS prepared but not device-verified and not submitted.
+- MinIO is shared across apps: one bucket and one key limited to that bucket per app. The API uses an internal endpoint plus a separate public endpoint for signed links.
+- Seeds run on every API start on purpose, so new permissions and modules ship with the code.
+- Working rule from the owner still applies: list review fixes and get approval before changing code. The security and accessibility fixes below are **not yet approved or applied**.
+- `preview` builds point at the deployed (production) API because no staging API exists. Clients get the `website-apk` profile, never `preview`.
 
 ## Problems solved
 
-- The subscription middleware existed but was never applied, so nothing was ever blocked.
-- Platform settings (sign-ups open, email verification, approval, trial days) were saved but ignored by signup.
-- Approval email linked to `.com`, now the association's own address on the live domain.
-- Wizard sent `annually`; the API accepts `annual`.
-- Login 500 after approval was only a missing column: the migration had not been applied to the local DB. Applied with `prisma db execute --file`; verified columns exist. `prisma generate` fails with EPERM while the API runs (engine file locked), but the generated types were already updated.
-- Expo typed routes regenerate unreliably on the dev server; new screens are typed once via `SETUP_HREF` in `landing.ts`. Restart Metro to refresh them.
-- Tooling gotcha: inline shell/heredoc edits mangle backticks; write files with the Write tool and patch with small node scripts.
+- Gradle bundling failed with `Cannot find module 'babel-preset-expo'` and then `@babel/plugin-transform-react-jsx`: fixed by the dependency plus `.npmrc` above. Tested by simulating EAS from a clean copy with a fresh install and a plain-node bundle command.
+- `eas env:create` could not link the project locally (project id only existed in the build profile): fixed with a default id; values now live in `eas.json`.
+- The 283 MB preview APK was a universal APK with four chip types: restricted as above (new size not yet measured).
+- Local `node_modules` had ~27 emptied package folders (cause unknown); repaired by deleting the empty `.pnpm` folders and reinstalling. Tools used: a scan for empty package folders, then `CI=true pnpm install --frozen-lockfile`.
+- In a shell, the MinIO app secret must be 8 to 40 characters (use `head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'`, 32 chars) and `$( )` is for a command, never for a pasted value.
 
 ## Current state
 
-- Typechecks clean: shared, API, web, mobile. Admin has the 2 old errors (`query-client.tsx`, `session.server.ts`). Tests: API 1151 pass (2 multi-tenancy suites fail to load on an `otplib` ESM error, same without these changes), mobile 1037 pass. Docs checks pass.
-- Local database now has the new columns. Nothing committed. Nothing run end to end against real email, Paystack or a device.
-- Not done: the idea to show "not yet approved" with the WhatsApp card when someone signs in on the **bare** `localhost:3000` (no association in the address). Cause: with no tenant the API finds no user and returns "Invalid credentials". Proposed fix (API only): on a tenant-less login, look the email up across associations, check the password, and for exactly one match that is pending/unverified/rejected return that specific code, never logging anyone in. The owner has not yet confirmed it.
-- `/imprint` and `/review` were not run for Phase 8.
+- Deployed on Dokploy; API log shows migrations applied and all 8 seeds `ok`. Docs, web and admin build. API Docker image builds and starts from an empty database.
+- The last edits (`app.config.ts`, `eas.json`, `docs/mobile/RELEASE_CHECKLIST.md`) were uncommitted at the last check; the owner commits and pushes. Before any build make sure `.npmrc`, `pnpm-lock.yaml` and `apps/mobile/package.json` are committed.
+- A preview APK built successfully (283 MB) before the size fix. The `website-apk` profile has not been built.
+- Typechecks: mobile shows 6 type errors after a clean install (`ImageViewerModal`, `Passbook`, `Skeleton`, `PagedList`; className typing and FlashList), which do not affect bundling. Admin has 2 old errors. The API prod `tsc` reports ~100 errors that the Dockerfile hides with `|| true` (types looser than the functions they call).
+- Nothing measured or run on a device yet: cold start, memory, TalkBack, 1.3x text, Maestro flows, payment proof upload against MinIO.
+- Expo checker shows version drift (expo 58.0.16 vs 58.0.19, TypeScript 5.9 vs 6.0, etc.); left alone on purpose.
 
 ## Next session starts with
 
-1. Ask the owner whether to build the tenant-less login "pending approval" message (above).
-2. Test end to end: create an association from the phone, verify email (try the admin console "Mark as verified" and "Resend code"), approve, check trial dates and the approval email link, sign in on `<subdomain>.localhost:3000`, walk the wizard on web and mobile.
-3. Test blocking: set a trial end in the past and check the blocked screen on web and mobile, then renew or extend and check access returns.
-4. Run `/review` on Phase 8, then Phase 9 (hardening and release) per `context/build-plan.md`, starting with `/architect`.
+1. Ask the owner which fixes from `docs/mobile/PHASE9_REVIEW_FINDINGS.md` to apply. Recommended first: A1 (set `trust proxy`, otherwise all users share one rate-limit counter behind Traefik), A2 (Paystack webhook secret fallback and reject when empty), A3 (no fallback JWT secret in production, API and web), A5 (calendar permission text), A6 (About screen privacy and terms links point at the wrong domain). Then A4 (start Sentry with data scrubbing), B5 (tertiary text contrast: light `84 114 90`, dark `121 152 128`), B3, B4, B1. A7 (dependency upgrades: jsPDF, Next in web and admin) as separate passes.
+2. Confirm the deployed server has: `API_PUBLIC_URL` = the API address (it was set to the website address by mistake), `APP_URL`, the MinIO scoped key, and the demo association seeded if the owner wants `oko-youth-forum` to exist there.
+3. Build `website-apk` and the preview APK on the Redmi; record cold start, memory, TalkBack and Maestro results in the table at the end of `docs/mobile/RELEASE_CHECKLIST.md`; confirm the APK size.
+4. Then `/review` on Phase 9 and update `context/progress-tracker.md` (F9.x are still unchecked).
 
 ## Open questions
 
-- Associations that already have an Expired or Cancelled subscription are blocked at once when this ships; decide whether to bypass them first (see the deploy note).
-- The mobile blocked screen uses the WhatsApp support card, not a support email.
-- `ai-help.service.ts` and `ai-support.service.ts` are still not on credits (from Phase 7); `GET /ai/reminders/suggestions` still spends a credit.
-- Apply `20261103_add_invite_role_and_onboarding_skips` wherever else the API runs (staging, production).
+- Phase 8 carry-over: show a "waiting for approval" message when someone signs in on the bare domain with no association (needs the owner's yes).
+- Associations that already had an Expired or Cancelled subscription are blocked at once when Phase 8 ships; bypass or not?
+- Play feature graphic (1024x500) and a data-deletion URL are still needed for the store listing; iOS needs a real iPhone or TestFlight tester.
+- Brand colours are not applied to the app theme (still teal tokens); only logos and icons moved.
+- R8 code shrinking not tried (could save 10 to 20 MB, risk of launch crashes).
+- `ai-help.service.ts` and `ai-support.service.ts` are still not on credits; `GET /ai/reminders/suggestions` still spends a credit.
+- The shared MinIO user creation was in progress; confirm `societyledger-app` exists and the API logs no storage error.
