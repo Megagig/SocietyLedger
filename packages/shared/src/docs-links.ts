@@ -202,6 +202,17 @@ export const DOCS_LINKS: Record<string, string> = {
   RP6: '/docs/reports/income-by-category',
   RP7: '/docs/reports/exporting-reports',
 
+  // AI assistant on the web and mobile (AI1–AI4)
+  '/dashboard/ai/assistant': '/docs/ai/asking-questions',
+  AI1: '/docs/ai/asking-questions',
+  '/dashboard/ai/reminders': '/docs/ai/smart-reminders',
+  AI2: '/docs/ai/smart-reminders',
+  '/dashboard/ai/reports': '/docs/ai/ai-reports',
+  AI3: '/docs/ai/ai-reports',
+  '/dashboard/ai/usage': '/docs/ai/limits-and-privacy',
+  '/dashboard/ai/credits': '/docs/ai/buying-ai-credits',
+  AI4: '/docs/ai/buying-ai-credits',
+
   // Accounting on the web and mobile (AC1–AC6)
   '/dashboard/accounting': '/docs/accounting/accounting-dashboard',
   AC1: '/docs/accounting/accounting-dashboard',

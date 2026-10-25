@@ -1,4 +1,4 @@
-import { Banknote, BookOpen, Bell, CalendarDays, ChartPie, FileBarChart, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, Settings, UserCheck, Users, Vote } from 'lucide-react-native';
+import { Banknote, BookOpen, Bell, CalendarDays, ChartPie, FileBarChart, Wallet, Briefcase, HeartHandshake, LifeBuoy, MailPlus, Megaphone, PiggyBank, ReceiptText, Settings, Sparkles, UserCheck, Users, Vote } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
@@ -22,6 +22,7 @@ import { CASH_ANY_ACCESS, CASH_VERIFY_ACCESS, useCashOverview } from '@/features
 import { MEMBERS_APPROVE_ACCESS, MEMBERS_INVITE_ACCESS, MEMBERS_VIEW_ACCESS, useMemberStats } from '@/features/members/queries';
 import { BANK_ACCOUNTS_VIEW_ACCESS, PROOFS_VIEW_ACCESS } from '@/features/nigerianPayments/queries';
 import { ACCOUNTING_MODULE, ACCOUNTING_VIEW_ACCESS } from '@/features/accounting/labels';
+import { AI_MODULE, AI_VIEW_ACCESS } from '@/features/ai/labels';
 import { COMMUNICATION_ACCESS } from '@/features/communication/labels';
 import { EXPORT_ANY_ACCESS, REPORTS_MODULE, REPORTS_VIEW_ACCESS } from '@/features/reports/labels';
 import { SETTINGS_HUB_ACCESS } from '@/features/settings/labels';
@@ -53,6 +54,7 @@ export default function ManageScreen() {
   const canSettings = useCan(SETTINGS_HUB_ACCESS);
   // Accounting: the permission to read the books and the accounting module on; the badge is entries waiting for this officer to approve or post.
   const canAccounting = useModuleAccess(ACCOUNTING_VIEW_ACCESS, ACCOUNTING_MODULE);
+  const canAi = useModuleAccess(AI_VIEW_ACCESS, AI_MODULE);
   const canMembers = useCan(MEMBERS_VIEW_ACCESS);
   const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
   const canInvite = useCan(MEMBERS_INVITE_ACCESS);
@@ -103,7 +105,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canAccounting || canSettings || canSupport ? (
+      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canAccounting || canAi || canSettings || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -308,6 +310,21 @@ export default function ManageScreen() {
                   showChevron
                   onPress={() => router.push('/(app)/(tabs)/manage/accounting' as never)}
                   testID="manage-accounting"
+                />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canAi ? (
+            <Section title="AI assistant">
+              <ListGroup>
+                <ListItem
+                  leading={<IconCircle icon={Sparkles} tone="primary" />}
+                  title="AI assistant"
+                  meta="Ask about your money, smart reminders and written reports"
+                  showChevron
+                  onPress={() => router.push('/(app)/(tabs)/manage/ai' as never)}
+                  testID="manage-ai"
                 />
               </ListGroup>
             </Section>

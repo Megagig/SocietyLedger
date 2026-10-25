@@ -11,6 +11,7 @@ import { IconAlertTriangle, IconCheck, IconSettings } from '@tabler/icons-react'
 import { bff } from '@/lib/bff';
 import { PageHeader } from '@/components/PageHeader';
 import { ErrorState } from '@/components/ErrorState';
+import { AiSettingsSection } from './ai-section';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -247,6 +248,8 @@ export default function PlatformSettingsPage() {
               </Group>
             </Stack>
           </SectionCard>
+
+          <AiSettingsSection />
 
           {/* Maintenance mode banner */}
           {local.maintenanceMode && (

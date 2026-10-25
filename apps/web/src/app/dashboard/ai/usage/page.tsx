@@ -87,47 +87,41 @@ export default function AIUsagePage() {
         </p>
       </div>
 
-      {/* Rate Limit Status */}
-      {rateLimitStatus && (
-        <Paper className="p-3 sm:p-4 mb-4 sm:mb-6 glass-card" withBorder>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <IconRobot size={20} className="text-teal-500" />
-              <Text fw={600} size="sm" className="sm:text-base">Daily Rate Limit</Text>
+      {/* Free requests and bought credits, kept apart */}
+      {rateLimitStatus && (() => {
+        const s = rateLimitStatus as any;
+        const perDay: number = s.allowancePerDay ?? 0;
+        const used: number = s.allowanceUsed ?? 0;
+        const left: number = s.allowanceLeft ?? 0;
+        const credits: number = s.credits ?? 0;
+        return (
+          <Paper className="p-3 sm:p-4 mb-4 sm:mb-6 glass-card" withBorder>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <IconRobot size={20} className="text-teal-500" />
+                <Text fw={600} size="sm" className="sm:text-base">Your AI requests</Text>
+              </div>
+              <Badge color={rateLimitStatus.isLimited ? 'red' : 'green'} size="sm">
+                {rateLimitStatus.isLimited ? 'None left' : 'Active'}
+              </Badge>
             </div>
-            <Badge color={rateLimitStatus.isLimited ? 'red' : 'green'} size="sm">
-              {rateLimitStatus.isLimited ? 'Limit Reached' : 'Active'}
-            </Badge>
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <Text size="xs" className="sm:text-sm" c="dimmed" mb="xs">Requests</Text>
-              <Progress 
-                value={(rateLimitStatus.requestsUsed / (rateLimitStatus.requestsUsed + rateLimitStatus.requestsRemaining)) * 100}
-                color={rateLimitStatus.isLimited ? 'red' : 'teal'}
-                size="lg"
-              />
-              <Text size="xs" mt="xs">
-                {rateLimitStatus.requestsUsed} / {rateLimitStatus.requestsUsed + rateLimitStatus.requestsRemaining} requests used
-              </Text>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Text size="xs" c="dimmed" mb="xs">Free today, from your plan</Text>
+                <Text fw={700} size="xl">{left} <Text span size="sm" c="dimmed" fw={400}>of {perDay} left</Text></Text>
+                <Progress value={perDay > 0 ? (used / perDay) * 100 : 100} color={left === 0 ? 'red' : 'teal'} size="lg" mt="xs" />
+                <Text size="xs" c="dimmed" mt="xs">Starts again {new Date(rateLimitStatus.resetsAt).toLocaleString()}</Text>
+              </div>
+              <div>
+                <Text size="xs" c="dimmed" mb="xs">Bought credits</Text>
+                <Text fw={700} size="xl">{credits.toLocaleString()} <Text span size="sm" c="dimmed" fw={400}>{credits === 1 ? 'credit' : 'credits'}</Text></Text>
+                <Text size="xs" c="dimmed" mt="xs">Never expire. Used only after the free requests run out.</Text>
+                <a href="/dashboard/ai/credits" className="text-sm text-teal-600 underline">Buy credits</a>
+              </div>
             </div>
-            <div>
-              <Text size="xs" className="sm:text-sm" c="dimmed" mb="xs">Tokens</Text>
-              <Progress 
-                value={(rateLimitStatus.tokensUsed / (rateLimitStatus.tokensUsed + rateLimitStatus.tokensRemaining)) * 100}
-                color="blue"
-                size="lg"
-              />
-              <Text size="xs" mt="xs">
-                {rateLimitStatus.tokensUsed.toLocaleString()} / {(rateLimitStatus.tokensUsed + rateLimitStatus.tokensRemaining).toLocaleString()} tokens used
-              </Text>
-            </div>
-          </div>
-          <Text size="xs" c="dimmed" mt="sm">
-            Resets at {new Date(rateLimitStatus.resetsAt).toLocaleString()}
-          </Text>
-        </Paper>
-      )}
+          </Paper>
+        );
+      })()}
 
       {/* Filters */}
       <Paper className="p-3 sm:p-4 mb-4 sm:mb-6 glass-card" withBorder>

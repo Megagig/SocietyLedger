@@ -21,6 +21,7 @@ interface OpenRouterCompletionRequest {
   temperature?: number;
   top_p?: number;
   stream?: boolean;
+  provider?: { data_collection?: 'allow' | 'deny' };
 }
 
 interface OpenRouterCompletionResponse {
@@ -64,8 +65,9 @@ interface OpenRouterEmbeddingResponse {
 
 const OPENROUTER_CONFIG = {
   baseUrl: 'https://openrouter.ai/api/v1',
-  // OpenRouter retires models over time (gpt-4-turbo-preview already is); set OPENROUTER_MODEL to pin one, otherwise its auto-router picks an available model.
-  defaultModel: process.env.OPENROUTER_MODEL || 'openrouter/auto',
+  // The assistant takes its model from the platform AI settings (admin console). This is only what the other callers use when they name none:
+  // a small, cheap model, never the auto-router, which can pick an expensive one. OPENROUTER_MODEL overrides it.
+  defaultModel: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat',
   embeddingModel: 'openai/text-embedding-ada-002',
   maxRetries: 3,
   retryDelay: 1000,
@@ -81,6 +83,8 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   'anthropic/claude-3-sonnet': { input: 3, output: 15 },
   'anthropic/claude-3-haiku': { input: 0.25, output: 1.25 },
   'google/gemini-pro': { input: 0.5, output: 1.5 },
+  'deepseek/deepseek-chat': { input: 0.27, output: 1.1 },
+  'deepseek/deepseek-r1': { input: 0.55, output: 2.19 },
   'openai/text-embedding-ada-002': { input: 0.1, output: 0 },
 };
 
@@ -142,6 +146,8 @@ class OpenRouterClient {
       max_tokens: options.maxTokens || 2000,
       temperature: options.temperature ?? 0.7,
       stream: false,
+      // Ask OpenRouter not to send this to providers that keep or train on prompts
+      provider: { data_collection: 'deny' },
     };
 
     let lastError: Error | null = null;

@@ -97,6 +97,11 @@ router.get('/settings/platform', PlatformSettingsController.getSettings);
 router.patch('/settings/platform', PlatformSettingsController.updateSettings);
 router.get('/settings/platform/stats', PlatformSettingsController.getStats);
 
+// AI assistant: model, credit price, allowances, and AI cost against credits sold
+router.get('/settings/ai', PlatformSettingsController.getAiSettings);
+router.patch('/settings/ai', PlatformSettingsController.updateAiSettings);
+router.get('/ai/usage', PlatformSettingsController.getAiUsage);
+
 // Association Overrides
 router.get('/associations/:id/override', PlatformSettingsController.getAssociationOverride);
 router.post('/associations/:id/override', PlatformSettingsController.setAssociationOverride);

@@ -1,34 +1,32 @@
 ---
 title: "AI usage limits and data privacy"
-description: "Your association's daily request and token budget, and what's sent to the AI provider."
+description: "Your daily free requests, how credits top them up, and what the AI provider never sees."
 type: concept
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 module: ai
 covers: ["/dashboard/ai/usage"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/ai/asking-questions"]
+lastVerified: "2026-10-26"
+related: ["/docs/ai/buying-ai-credits", "/docs/ai/asking-questions"]
 ---
 
-Every AI feature shares one daily budget, per association.
+Every AI feature shares one daily allowance of free requests per association. Your plan sets it, and it starts again at midnight, Lagos time.
 
 ## How it works
 
 <Steps>
-<Step>Go to <MenuPath items={["AI Assistant", "Usage"]} /> to see where you stand.</Step>
-<Step>**Daily Rate Limit** shows requests and tokens used against your limit, and when it resets.</Step>
-<Step>Below that, **Total Requests**, **Total Tokens** and a usage-over-time chart break down activity by day and by feature.</Step>
+<Step>Go to <MenuPath items={["AI Assistant", "Usage"]} /> on the web, or open the top of any AI screen in the app, to see how many requests are left today and how many credits you have.</Step>
+<Step>A question or a reminders list costs 1 request. A report costs 5.</Step>
+<Step>Free requests are used first, then credits. A request that fails costs nothing.</Step>
 </Steps>
 
-<Screenshot src="/images/ai/limits-and-privacy-1.webp" alt="AI Usage page with Daily Rate Limit, total requests and tokens, and a usage chart" />
+The daily allowance is set by the platform and by your plan, so it can change. The numbers shown on screen are always the current ones. When you need more, see [Buying AI credits](/docs/ai/buying-ai-credits).
 
-Worked example: the default daily budget is 100 requests and 500,000 tokens, resetting at midnight UTC. Every question to the Assistant, every Natural Language Query, every reminder refresh and every report generated counts against this same shared pool.
+## What the AI never sees
 
-## Why it matters
-
-A busy officer running several reports and queries in one session can use up the daily budget faster than expected — if a request fails with a limit message, it resets the next day, not on request.
+Member names, phone numbers and emails are never sent to the AI provider. Members appear to it as "Member 1", "Member 2" and so on, and SocietyLedger puts the real names back in the answer you read. The provider is also asked not to keep what it is sent. The figures come from the same calculations as Reports and Accounting.
 
 ## What you can do
 
-Your question text and relevant association data (the context the AI needs to answer accurately — member names, transaction amounts, dates) are sent to the configured AI provider to generate a response. Avoid including anything in a free-text question you wouldn't want processed by a third-party AI service.
+Avoid typing anything in a question that you would not want processed by an outside service. Names and contact details you type are replaced before they are sent.

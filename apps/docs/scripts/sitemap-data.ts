@@ -334,6 +334,7 @@ export const sections: SectionDef[] = [
       { slug: 'smart-reminders', title: 'Smart reminders', type: 'task', audience: ['admin'], platforms: ['web', 'mobile'], module: 'ai', covers: ['/dashboard/ai/reminders', 'AI2'] },
       { slug: 'ai-reports', title: 'Generating AI reports', type: 'task', audience: ['admin'], platforms: ['web', 'mobile'], module: 'ai', covers: ['/dashboard/ai/reports', 'AI3'] },
       { slug: 'document-questions', title: 'Asking questions about your documents', type: 'task', audience: ['admin'], platforms: ['web'], module: 'ai', covers: ['/dashboard/ai/documents'] },
+      { slug: 'buying-ai-credits', title: 'Buying AI credits', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], module: 'ai', covers: ['/dashboard/ai/credits', 'AI4'] },
       { slug: 'limits-and-privacy', title: 'AI usage limits and data privacy', type: 'concept', audience: ['admin'], platforms: ['web', 'mobile'], module: 'ai', covers: ['/dashboard/ai/usage'] },
     ],
   },

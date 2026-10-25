@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { aiController } from './ai.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
-import { requirePermission } from '../../middleware/rbac';
+import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { requireModule } from '../../middleware/module-feature.middleware';
 
@@ -38,6 +38,17 @@ router.get('/status', aiController.getStatus);
  * Requires: Any authenticated user
  */
 router.get('/rate-limit', aiController.getRateLimitStatus);
+
+// ==========================================
+// AI CREDITS: bought on top of the plan's daily allowance
+// ==========================================
+
+/** What is left, the price, and recent purchases */
+router.get('/credits', requirePermission(PERMISSIONS.FINANCE_VIEW), aiController.getCredits);
+
+/** Buying spends the association's money, so it needs the permission to approve payments or to manage billing */
+router.post('/credits/purchase', requireAnyPermission([PERMISSIONS.FINANCE_APPROVE, PERMISSIONS.SETTINGS_BILLING]), aiController.purchaseCredits);
+router.get('/credits/verify/:reference', requireAnyPermission([PERMISSIONS.FINANCE_APPROVE, PERMISSIONS.SETTINGS_BILLING]), aiController.verifyCredits);
 
 /**
  * Get AI usage statistics

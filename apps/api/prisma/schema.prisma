@@ -95,6 +95,8 @@ model Association {
   smsCreditsPurchases        SMSCreditsPurchase[]
   // Phase 17: AI Integration
   aiAuditLogs                AIAuditLog[]
+  aiCreditBalance            AICreditBalance?
+  aiCreditPurchases          AICreditPurchase[]
   documentEmbeddings         DocumentEmbedding[]
   // Phase 4.5: Voting & Elections
   elections                  Election[]
@@ -183,6 +185,7 @@ model User {
   disbursedWelfarePayouts       WelfarePayoutRequest[] @relation("WelfarePayoutDisburser")
   // Phase 17: AI Integration
   aiAuditLogs                   AIAuditLog[]
+  aiCreditPurchases             AICreditPurchase[]
   // Phase 4.5: Voting & Elections
   createdElections              Election[]             @relation("ElectionCreatedBy")
   publishedElections            Election[]             @relation("ElectionPublishedBy")
@@ -2458,6 +2461,43 @@ model SMSCreditsPurchase {
 // ============================================
 
 // AI Audit Log - Track all AI requests for compliance
+// AI credits: bought on top of the plan's daily allowance. They never expire; the allowance is spent first.
+model AICreditBalance {
+  id             Int         @id @default(autoincrement())
+  associationId  Int         @unique @map("association_id")
+  balance        Int         @default(0)
+  totalPurchased Int         @default(0) @map("total_purchased")
+  totalUsed      Int         @default(0) @map("total_used")
+  lastTopUpAt    DateTime?   @map("last_top_up_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  association    Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_credit_balances")
+}
+
+model AICreditPurchase {
+  id               Int         @id @default(autoincrement())
+  associationId    Int         @map("association_id")
+  userId           Int         @map("user_id")
+  credits          Int
+  pricePerCredit   Decimal     @map("price_per_credit") @db.Decimal(10, 2)
+  amount           Decimal     @db.Decimal(12, 2)
+  reference        String      @unique // Paystack reference (AIC-...)
+  status           String      @default("pending") // pending, success, failed
+  paidAt           DateTime?   @map("paid_at")
+  paystackResponse Json?       @map("paystack_response")
+  metadata         Json?
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  association      Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([associationId])
+  @@index([status])
+  @@map("ai_credit_purchases")
+}
+
 model AIAuditLog {
   id            Int         @id @default(autoincrement())
   associationId Int         @map("association_id")
@@ -2468,8 +2508,12 @@ model AIAuditLog {
   tokensOutput  Int         @default(0) @map("tokens_output")
   costUsd       Decimal     @default(0) @map("cost_usd") @db.Decimal(10, 6)
   outputSummary String?     @map("output_summary") @db.Text
-  status        String      @default("success") // success, error, rate_limited
+  status        String      @default("success") // pending (held while the model works), success, error, rate_limited
   errorMessage  String?     @map("error_message")
+  /// What the request cost in units, and how many came from the day's allowance and from bought credits
+  units          Int         @default(1)
+  allowanceUnits Int         @default(0) @map("allowance_units")
+  creditUnits    Int         @default(0) @map("credit_units")
   createdAt     DateTime    @default(now()) @map("created_at")
   association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)

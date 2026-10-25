@@ -10,6 +10,10 @@ import { z } from 'zod';
 
 export const financialQuerySchema = z.object({
   question: z.string().min(5, 'Question must be at least 5 characters').max(500, 'Question too long'),
+  /** The last few turns of the conversation, sent back by the app (nothing is kept on the server). */
+  history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(2000) })).max(8).optional(),
+  /** Which period's figures the answer is about; this month when left out. */
+  period: z.enum(['this_month', 'last_month', 'this_quarter', 'last_quarter', 'this_year', 'last_year']).optional(),
   context: z.object({
     memberId: z.number().optional(),
     categoryId: z.number().optional(),

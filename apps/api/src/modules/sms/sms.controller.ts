@@ -24,6 +24,7 @@ import { SettingsService } from '../settings/settings.service';
 const smsService = new SMSService();
 
 import { RuleError } from '../finance/rule-error';
+import { tenantBaseUrl } from '../../lib/tenant-url';
 
 /** A rule an officer broke (not enough credits, a campaign already started…) keeps its status and code; a missing record is a 404. */
 function smsFailure(res: Response, error: unknown, fallback: string) {
@@ -661,7 +662,7 @@ export const smsController = {
         email: user.email,
         amount: amountInKobo,
         reference,
-        callback_url: `${process.env.FRONTEND_URL}/dashboard/communications/credits/verify?reference=${reference}`,
+        callback_url: `${tenantBaseUrl(association?.subdomain)}/dashboard/communications/credits/verify?reference=${reference}`,
         metadata: {
           associationId,
           userId,

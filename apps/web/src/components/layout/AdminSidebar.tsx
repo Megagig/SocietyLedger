@@ -10,6 +10,7 @@ import {
   IconCurrencyNaira,
   IconReceipt,
   IconChartBar,
+  IconCoin,
   IconHeart,
   IconBell,
   IconSettings,
@@ -663,6 +664,12 @@ export function AdminSidebar() {
           icon: <IconBrain size={18} />,
           href: '/dashboard/ai/query',
           permission: PERMISSIONS.AI_QUERY,
+        },
+        {
+          label: 'Buy AI Credits',
+          icon: <IconCoin size={18} />,
+          href: '/dashboard/ai/credits',
+          permission: PERMISSIONS.AI_FINANCIAL_ASSISTANT,
         },
         {
           label: 'Usage & Stats',

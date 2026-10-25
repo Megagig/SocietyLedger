@@ -5,6 +5,9 @@
 
 import { Request, Response } from 'express';
 import { aiService } from './ai.service';
+import { assistantService } from './ai-assistant.service';
+import { aiCredits } from './ai-credits.service';
+import { AiCreditsError } from './ai-credits-rules';
 import {
   financialQuerySchema,
   reminderSuggestionsSchema,
@@ -83,21 +86,11 @@ export const aiController = {
       }
 
       // Process the question
-      const response = await aiService.askFinancialQuestion(
-        associationId,
-        userId,
-        {
-          question: validatedData.question,
-          context: validatedData.context ? {
-            memberId: validatedData.context.memberId,
-            categoryId: validatedData.context.categoryId,
-            dateRange: validatedData.context.dateRange ? {
-              startDate: new Date(validatedData.context.dateRange.startDate!),
-              endDate: new Date(validatedData.context.dateRange.endDate!),
-            } : undefined,
-          } : undefined,
-        }
-      );
+      const response = await assistantService.ask(associationId, userId, {
+        question: validatedData.question,
+        history: validatedData.history,
+        period: validatedData.period,
+      });
 
       return res.status(200).json({
         success: true,
@@ -132,15 +125,11 @@ export const aiController = {
         });
       }
 
-      const response = await aiService.getReminderSuggestions(
-        associationId,
-        userId,
-        {
-          limit: validatedData.limit,
-          minDaysOverdue: validatedData.minDaysOverdue,
-          maxDaysOverdue: validatedData.maxDaysOverdue,
-        }
-      );
+      const response = await assistantService.reminders(associationId, userId, {
+        limit: validatedData.limit,
+        minDaysOverdue: validatedData.minDaysOverdue,
+        maxDaysOverdue: validatedData.maxDaysOverdue,
+      });
 
       return res.status(200).json({
         success: true,
@@ -175,7 +164,7 @@ export const aiController = {
         });
       }
 
-      const response = await aiService.generateAIReport(
+      const response = await assistantService.report(
         associationId,
         userId,
         {
@@ -304,6 +293,53 @@ export const aiController = {
   },
 
   /**
+   * What a purchase of credits costs, what is left, and what has been bought
+   * GET /api/ai/credits
+   */
+  async getCredits(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const [status, purchases] = await Promise.all([aiCredits.getStatus(associationId), aiCredits.purchases(associationId, 10)]);
+      return res.status(200).json({ success: true, data: { status, purchases } });
+    } catch (error) {
+      return handleAIError(error, res);
+    }
+  },
+
+  /**
+   * Start buying credits (opens Paystack)
+   * POST /api/ai/credits/purchase  { credits, platform? }
+   */
+  async purchaseCredits(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const userId = req.user?.id;
+      if (!associationId || !userId) return res.status(400).json({ success: false, message: 'Authentication required' });
+      const platform = req.body?.platform === 'mobile' ? 'mobile' : 'web';
+      const data = await aiCredits.startPurchase(associationId, userId, req.body?.credits, platform);
+      return res.status(200).json({ success: true, message: 'Payment initialized successfully', data });
+    } catch (error) {
+      return handleAIError(error, res);
+    }
+  },
+
+  /**
+   * Ask whether a payment has gone through; credits it if it has (a webhook may already have)
+   * GET /api/ai/credits/verify/:reference
+   */
+  async verifyCredits(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const data = await aiCredits.verifyPurchase(associationId, req.params.reference);
+      return res.status(200).json({ success: true, data: { ...data, usage: await aiCredits.getStatus(associationId) } });
+    } catch (error) {
+      return handleAIError(error, res);
+    }
+  },
+
+  /**
    * Simple AI Chat
    * POST /api/ai/chat
    */
@@ -369,9 +405,15 @@ function handleAIError(error: unknown, res: Response) {
   if (error instanceof RateLimitError) {
     return res.status(429).json({ 
       success: false, 
+      code: 'AI_ALLOWANCE_EXHAUSTED',
       message: error.message,
       rateLimit: error.status,
     });
+  }
+
+  // A rule the request broke (assistant switched off, a purchase below the minimum) answers with its own status and plain words
+  if (error instanceof AiCreditsError) {
+    return res.status(error.status).json({ success: false, code: error.code, message: error.message });
   }
   
   if (error instanceof Error) {
