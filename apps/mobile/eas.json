@@ -38,6 +38,12 @@
         "EXPO_PUBLIC_BASE_DOMAIN": "societyledger.com.ng",
         "EXPO_PUBLIC_DOCS_URL": "https://docs.societyledger.com.ng"
       }
+    },
+    "website-apk": {
+      "extends": "production",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

@@ -94,6 +94,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       {
         photosPermission: 'Allow SocietyLedger to access your photos to attach a payment receipt.',
         cameraPermission: 'Allow SocietyLedger to use your camera to take a photo of a payment receipt.',
+        // The app only takes photos. Without this the plugin adds the RECORD_AUDIO permission.
+        microphonePermission: false,
       },
     ],
   ];
@@ -148,6 +150,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: identity.bundleId,
+      // Expo's default Android template adds these two to every app. This app never records audio, and
+      // the overlay permission is only for developer tools, so keep them off the install screen.
+      blockedPermissions: ['android.permission.RECORD_AUDIO', 'android.permission.SYSTEM_ALERT_WINDOW'],
       adaptiveIcon: {
         foregroundImage: './assets/images/android-icon-foreground.png',
         backgroundImage: './assets/images/android-icon-background.png',
