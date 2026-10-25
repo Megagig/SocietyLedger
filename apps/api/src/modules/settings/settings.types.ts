@@ -29,6 +29,7 @@ export interface AssociationProfileSettings {
   primaryColor?: string;
   secondaryColor?: string;
   associationType?: string;
+  customAssociationType?: string | null;
   address?: string;
   city?: string;
   state?: string;

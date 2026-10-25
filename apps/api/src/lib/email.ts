@@ -202,9 +202,9 @@ function getTemplateContent(template: string, data: Record<string, any>): string
           </div>
           <div class="content">
             <h2>Hello ${data.associationName}!</h2>
-            <p>Your <strong>${data.daysLeft}-day free trial</strong> of SocietyLedger will expire in <span class="warning">${data.daysLeft} days</span>.</p>
-            
-            <p>To continue managing your association seamlessly, please subscribe to a plan before your trial ends.</p>
+            <p>Your free trial of SocietyLedger ends in <span class="warning">${data.daysLeft} ${data.daysLeft === 1 ? 'day' : 'days'}</span>.</p>
+
+            <p>When it ends, access for you and your members is paused until a subscription payment is made. To keep managing your association without a break, please subscribe before then.</p>
             
             <div class="highlight-box">
               <strong>Recommended Plan:</strong> ${data.planName}<br>
@@ -553,7 +553,8 @@ function getTemplateContent(template: string, data: Record<string, any>): string
             <p class="success">Great news! Your account has been approved by an administrator.</p>
             
             <p>You can now log in and access all the features available to you.</p>
-            
+            ${data.trialDays ? `<p>Your <strong>${data.trialDays}-day free trial</strong> has started and includes every feature, up to and including <strong>${data.trialEndsOn}</strong>.</p>` : ''}
+
             <center>
               <a href="${data.loginUrl}" class="button">Log In Now</a>
             </center>

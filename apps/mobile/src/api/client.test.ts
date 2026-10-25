@@ -39,6 +39,8 @@ const { setTokens, clearTokens } = require('@/lib/secure');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { useModulesStore } = require('@/stores/modules');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { useSessionStore } = require('@/stores/session');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { toast } = require('sonner-native');
 
 function futureIso(ms: number): string {
@@ -96,6 +98,25 @@ describe('api/client', () => {
 
       await expect(client.get('/ping')).rejects.toMatchObject({ status: 401 });
       expect(toast.error).toHaveBeenCalledWith('Session expired');
+    });
+  });
+
+  describe('SUBSCRIPTION_INACTIVE', () => {
+    it('blocks the signed-in user when the server says the trial has ended', async () => {
+      useSessionStore.getState().setUser({
+        id: 1,
+        email: 'ada@example.com',
+        role: 'admin',
+        permissions: [],
+        roles: ['admin'],
+        requiresOnboarding: false,
+        platformRole: null,
+        member: null,
+      });
+      clientMock.onGet('/members').reply(403, { success: false, code: 'SUBSCRIPTION_INACTIVE', reason: 'TRIAL_ENDED', message: 'Your free trial has ended.' });
+
+      await expect(client.get('/members')).rejects.toMatchObject({ status: 403, code: 'SUBSCRIPTION_INACTIVE' });
+      expect(useSessionStore.getState().user?.subscriptionAccess).toMatchObject({ allowed: false, reason: 'TRIAL_ENDED' });
     });
   });
 

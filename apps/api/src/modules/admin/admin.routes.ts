@@ -92,6 +92,10 @@ router.get('/approvals', (req, res) => ctrl.listPendingApprovals(req as any, res
 router.patch('/approvals/:userId', (req, res) => ctrl.updateApproval(req as any, res));
 router.post('/approvals/bulk', (req, res) => ctrl.bulkUpdateApprovals(req as any, res));
 
+// Email verification by hand, for people who never got the code
+router.post('/users/:userId/verify-email', (req, res) => ctrl.verifyUserEmail(req as any, res));
+router.post('/users/:userId/resend-verification', (req, res) => ctrl.resendUserVerification(req as any, res));
+
 // Platform Settings (TASK-SET-025)
 router.get('/settings/platform', PlatformSettingsController.getSettings);
 router.patch('/settings/platform', PlatformSettingsController.updateSettings);

@@ -17,10 +17,12 @@ import { AssociationBadge } from '@/features/auth/components/AssociationBadge';
 import { BiometricOptInSheet } from '@/features/auth/components/BiometricOptInSheet';
 import { useLogin } from '@/features/auth/mutations';
 import { loginSchema, type LoginFormValues } from '@/features/auth/schemas';
+import { landingHref } from '@/features/session/landing';
 import { isBiometricAuthAvailable } from '@/lib/biometrics';
 import { t } from '@/lib/i18n';
 import { useAppLockStore } from '@/stores/appLock';
 import { usePrefsStore } from '@/stores/prefs';
+import { useSessionStore } from '@/stores/session';
 import { useTenantStore } from '@/stores/tenant';
 
 /** architecture.md §6.3's login error table — each `code` routes somewhere specific; everything
@@ -87,8 +89,9 @@ export default function LoginScreen() {
     toast.error(error.message);
   }
 
+  // A new association's admin goes to the setup wizard first; everyone else lands on Home.
   function goToTabs() {
-    router.replace('/(app)/(tabs)/home');
+    router.replace(landingHref(useSessionStore.getState().user));
   }
 
   // architecture.md §7.5 — "Optional, prompted once after first login." Device-support and

@@ -30,6 +30,7 @@ import { useMemberFinanceSummary, useMemberPayments } from '@/features/memberFin
 import { useUpcomingMeetings } from '@/features/meetings/queries';
 import { useAnnouncements, useUnreadCount } from '@/features/notifications/queries';
 import { triggerPushPermissionPrompt } from '@/hooks/usePushSetup';
+import { TrialEndingBanner } from '@/features/session/components/TrialEndingBanner';
 import { useMe } from '@/features/session/queries';
 import { useActiveVoting } from '@/features/voting/queries';
 import { useCan } from '@/hooks/useCan';
@@ -138,6 +139,11 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+      </View>
+
+      {/* Free trial nearly over: officers only, 3 days or fewer left */}
+      <View style={{ marginBottom: 12 }}>
+        <TrialEndingBanner />
       </View>
 
       {/* Me | Association toggle — officers only */}

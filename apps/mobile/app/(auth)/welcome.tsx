@@ -2,7 +2,6 @@ import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { toast } from 'sonner-native';
 
 import { Button } from '@/components/ui/Button';
 import { WelcomeCarousel } from '@/features/auth/components/WelcomeCarousel';
@@ -44,7 +43,7 @@ export default function WelcomeScreen() {
           size="lg"
           variant="ghost"
           fullWidth
-          onPress={() => toast(t('auth.welcome.createAssociationComingSoon'))}
+          onPress={() => router.push('/(auth)/create-association')}
           testID="welcome-create-association"
         >
           {t('auth.welcome.createAssociation')}

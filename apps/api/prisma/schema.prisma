@@ -328,6 +328,8 @@ model MemberInvite {
   phone                String?
   inviteToken          String      @unique @map("invite_token")
   inviteTokenExpiresAt DateTime    @map("invite_token_expires_at")
+  // Phase 8: the officer role this invite grants when accepted (null = an ordinary member).
+  roleName             String?     @map("role_name")
   status               String      @default("pending")
   invitedById          Int         @map("invited_by")
   acceptedAt           DateTime?   @map("accepted_at")
@@ -770,6 +772,8 @@ model OnboardingProgress {
   associationId      Int       @unique @map("association_id")
   currentStep        Int       @default(1) @map("current_step")
   completedSteps     Json      @default("[]") @map("completed_steps")
+  // Phase 8: steps the admin chose to skip, kept apart from the ones they finished so the final checklist is honest.
+  skippedSteps       Json      @default("[]") @map("skipped_steps")
   profileCompleted   Boolean   @default(false) @map("profile_completed")
   teamInvited        Boolean   @default(false) @map("team_invited")
   membersImported    Boolean   @default(false) @map("members_imported")

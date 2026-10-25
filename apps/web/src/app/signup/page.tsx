@@ -1,117 +1,158 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { API_ROUTES } from '@/utils/constants';
 import { getDisplayDomain, getSubdomainUrl } from '@/utils/domain';
-import { RESERVED_SUBDOMAINS } from '@societyledger/shared';
+import {
+  ASSOCIATION_TYPES,
+  ASSOCIATION_TYPE_OTHER,
+  SUBDOMAIN_MESSAGES,
+  SUBDOMAIN_REMINDER,
+  associationSignupSchema,
+  subdomainProblem,
+  suggestSubdomain,
+} from '@societyledger/shared';
 
 interface SignupForm {
   // Association details
   associationName: string;
   subdomain: string;
+  type: string;
+  customType: string;
   // Admin details
+  firstName: string;
+  lastName: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
 }
 
+interface SignupResult {
+  requiresVerification: boolean;
+  pendingApproval: boolean;
+}
+
+const inputClass =
+  'w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors';
+const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2';
+
 export default function AssociationSignupPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<SignupResult | null>(null);
   const [createdSubdomain, setCreatedSubdomain] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
+  const [subdomainMessage, setSubdomainMessage] = useState<string | null>(null);
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
+  // Once they type their own address we stop rewriting it from the association name.
+  const subdomainTouched = useRef(false);
   const [formData, setFormData] = useState<SignupForm>({
     associationName: '',
     subdomain: '',
+    type: '',
+    customType: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
   });
 
-  // Generate subdomain from association name
-  const generateSubdomain = (name: string): string => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .substring(0, 30);
-  };
-
   const handleNameChange = (name: string) => {
-    const subdomain = generateSubdomain(name);
-    setFormData({ ...formData, associationName: name, subdomain });
-    setSubdomainAvailable(null);
+    setFormData((prev) => ({
+      ...prev,
+      associationName: name,
+      subdomain: subdomainTouched.current ? prev.subdomain : suggestSubdomain(name),
+    }));
   };
 
-  const checkSubdomainAvailability = async (subdomain: string) => {
-    if (!subdomain || subdomain.length < 2) {
-      setSubdomainAvailable(null);
+  const handleSubdomainChange = (value: string) => {
+    subdomainTouched.current = true;
+    setFormData((prev) => ({ ...prev, subdomain: value.toLowerCase().replace(/[^a-z0-9-]/g, '') }));
+  };
+
+  // Check the address a moment after they stop typing.
+  useEffect(() => {
+    const subdomain = formData.subdomain;
+    setSubdomainAvailable(null);
+    setSubdomainMessage(null);
+    if (!subdomain) return;
+
+    const problem = subdomainProblem(subdomain);
+    if (problem) {
+      // "Too short" while they are still typing is noise; the rest are real problems.
+      if (problem !== 'TOO_SHORT') {
+        setSubdomainAvailable(false);
+        setSubdomainMessage(SUBDOMAIN_MESSAGES[problem]);
+      }
       return;
     }
 
-    if (RESERVED_SUBDOMAINS.includes(subdomain as string)) {
-      setSubdomainAvailable(false);
-      return;
-    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setCheckingSubdomain(true);
+      try {
+        const res = await fetch(`${API_ROUTES.ASSOCIATIONS.CHECK_SUBDOMAIN}?subdomain=${encodeURIComponent(subdomain)}`);
+        if (cancelled) return;
+        // 404 means nobody has it yet. Anything else (found, reserved, cancelled) means it is not free.
+        if (res.status === 404) {
+          setSubdomainAvailable(true);
+        } else if (res.status === 409) {
+          setSubdomainAvailable(false);
+          setSubdomainMessage(SUBDOMAIN_MESSAGES.RESERVED);
+        } else {
+          setSubdomainAvailable(false);
+          setSubdomainMessage('That address is already taken.');
+        }
+      } catch {
+        if (!cancelled) setSubdomainAvailable(null);
+      } finally {
+        if (!cancelled) setCheckingSubdomain(false);
+      }
+    }, 450);
 
-    setCheckingSubdomain(true);
-    try {
-      const res = await fetch(`${API_ROUTES.ASSOCIATIONS.CHECK_SUBDOMAIN}?subdomain=${subdomain}`);
-      // If 404, subdomain is available (not found = available)
-      setSubdomainAvailable(res.status === 404);
-    } catch {
-      setSubdomainAvailable(null);
-    } finally {
-      setCheckingSubdomain(false);
-    }
-  };
-
-  const handleSubdomainChange = (subdomain: string) => {
-    const cleaned = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    setFormData({ ...formData, subdomain: cleaned });
-    setSubdomainAvailable(null);
-  };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [formData.subdomain]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // Validation
-    if (!formData.associationName || !formData.subdomain || !formData.email || !formData.password) {
-      setError('Please fill in all required fields');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.subdomain.length < 2) {
-      setError('Subdomain must be at least 2 characters');
-      setLoading(false);
-      return;
-    }
-
-    if (RESERVED_SUBDOMAINS.includes(formData.subdomain as string)) {
-      setError('That subdomain is reserved. Please choose a different one.');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
-
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    const payload = {
+      association: {
+        name: formData.associationName,
+        subdomain: formData.subdomain,
+        type: formData.type,
+        customType: formData.type === ASSOCIATION_TYPE_OTHER ? formData.customType : undefined,
+      },
+      admin: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+      },
+    };
+
+    // The same rules the server applies, so mistakes are caught before anything is sent.
+    const checked = associationSignupSchema.safeParse(payload);
+    if (!checked.success) {
+      setError(checked.error.issues[0]?.message ?? 'Please check the form');
       setLoading(false);
       return;
     }
@@ -120,19 +161,7 @@ export default function AssociationSignupPage() {
       const response = await fetch(API_ROUTES.ASSOCIATIONS.SIGNUP, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          association: {
-            name: formData.associationName,
-            slug: formData.subdomain,
-            subdomain: formData.subdomain,
-            tier: 'STARTER',
-          },
-          admin: {
-            email: formData.email,
-            password: formData.password,
-          },
-          planCode: 'starter',
-        }),
+        body: JSON.stringify(checked.data),
       });
 
       const data = await response.json();
@@ -141,8 +170,11 @@ export default function AssociationSignupPage() {
         throw new Error(data.message || 'Signup failed');
       }
 
-      setCreatedSubdomain(formData.subdomain);
-      setSuccess(true);
+      setCreatedSubdomain(checked.data.association.subdomain);
+      setSuccess({
+        requiresVerification: data.data?.requiresVerification !== false,
+        pendingApproval: data.data?.pendingApproval !== false,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -151,6 +183,12 @@ export default function AssociationSignupPage() {
   };
 
   if (success) {
+    const steps = [
+      success.requiresVerification ? 'Verify your email with the code we sent' : null,
+      success.pendingApproval ? 'Wait for SocietyLedger to approve your association. Your free trial starts then.' : null,
+      'Sign in at your association address',
+    ].filter((s): s is string => s !== null);
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
         <div className="w-full max-w-md">
@@ -161,16 +199,20 @@ export default function AssociationSignupPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Verify Your Email</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                {success.requiresVerification ? 'Verify Your Email' : 'Association Created'}
+              </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 Your association <span className="font-semibold">{formData.associationName}</span> has been created!
               </p>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                We&apos;ve sent a verification code to <span className="font-semibold">{formData.email}</span>. Please verify your email to continue.
-              </p>
-              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              {success.requiresVerification && (
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  We&apos;ve sent a verification code to <span className="font-semibold">{formData.email}</span>. Please verify your email to continue.
+                </p>
+              )}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Your association URL:</p>
-                <p className="font-mono text-blue-600 font-semibold break-all">
+                <p className="font-mono text-blue-600 dark:text-blue-400 font-semibold break-all">
                   {getSubdomainUrl(createdSubdomain)}
                 </p>
               </div>
@@ -182,18 +224,18 @@ export default function AssociationSignupPage() {
                   <div className="text-left">
                     <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">Next Steps</h3>
                     <ol className="text-sm text-amber-700 dark:text-amber-300 mt-1 list-decimal list-inside space-y-1">
-                      <li>Verify your email with the code we sent</li>
-                      <li>Wait for platform admin approval</li>
-                      <li>Once approved, you can login</li>
+                      {steps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
                     </ol>
                   </div>
                 </div>
               </div>
               <Link
-                href={`/auth/verify-email?email=${encodeURIComponent(formData.email)}`}
+                href={success.requiresVerification ? `/auth/verify-email?email=${encodeURIComponent(formData.email)}` : '/auth/login'}
                 className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 dark:bg-blue-500 text-white font-medium py-3 px-4 rounded-lg transition-colors"
               >
-                Enter Verification Code
+                {success.requiresVerification ? 'Enter Verification Code' : 'Go to Sign In'}
               </Link>
             </div>
           </div>
@@ -234,12 +276,16 @@ export default function AssociationSignupPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Association Section */}
-            <div className="pb-4 border-b border-gray-200">
+            <div className="pb-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Association Details</h3>
-              
+
+              <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <p className="text-sm text-amber-800 dark:text-amber-200">{SUBDOMAIN_REMINDER}</p>
+              </div>
+
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="associationName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="associationName" className={labelClass}>
                     Association Name *
                   </label>
                   <input
@@ -248,15 +294,57 @@ export default function AssociationSignupPage() {
                     required
                     value={formData.associationName}
                     onChange={(e) => handleNameChange(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    className={inputClass}
                     placeholder="e.g., Lagos Alumni Association"
                     disabled={loading}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="subdomain" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Subdomain *
+                  <label htmlFor="type" className={labelClass}>
+                    Kind of Association *
+                  </label>
+                  <select
+                    id="type"
+                    required
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className={inputClass}
+                    disabled={loading}
+                  >
+                    <option value="" disabled>
+                      Choose one
+                    </option>
+                    {ASSOCIATION_TYPES.map((t) => (
+                      <option key={t.key} value={t.key}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.type === ASSOCIATION_TYPE_OTHER && (
+                  <div>
+                    <label htmlFor="customType" className={labelClass}>
+                      What kind of association is it? *
+                    </label>
+                    <input
+                      id="customType"
+                      type="text"
+                      required
+                      maxLength={60}
+                      value={formData.customType}
+                      onChange={(e) => setFormData({ ...formData, customType: e.target.value })}
+                      className={inputClass}
+                      placeholder="e.g., Village development union"
+                      disabled={loading}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="subdomain" className={labelClass}>
+                    Your Address *
                   </label>
                   <div className="flex items-center">
                     <input
@@ -265,15 +353,20 @@ export default function AssociationSignupPage() {
                       required
                       value={formData.subdomain}
                       onChange={(e) => handleSubdomainChange(e.target.value)}
-                      onBlur={() => checkSubdomainAvailability(formData.subdomain)}
-                      className="flex-1 px-4 py-3 rounded-l-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className="flex-1 min-w-0 px-4 py-3 rounded-l-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                       placeholder="lagos-alumni"
+                      maxLength={30}
                       disabled={loading}
                     />
                     <span className="px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg text-gray-500 dark:text-gray-400 text-sm">
                       .{getDisplayDomain()}
                     </span>
                   </div>
+                  {formData.subdomain && !subdomainProblem(formData.subdomain) && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">
+                      Members will sign in at <span className="font-mono">{getSubdomainUrl(formData.subdomain)}</span>
+                    </p>
+                  )}
                   {checkingSubdomain && (
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Checking availability...</p>
                   )}
@@ -282,15 +375,15 @@ export default function AssociationSignupPage() {
                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      Subdomain is available
+                      This address is available
                     </p>
                   )}
                   {subdomainAvailable === false && (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1 flex items-center">
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
-                      Subdomain is already taken
+                      {subdomainMessage ?? 'That address is already taken.'}
                     </p>
                   )}
                 </div>
@@ -300,26 +393,77 @@ export default function AssociationSignupPage() {
             {/* Admin Section */}
             <div className="pt-2">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Admin Account</h3>
-              
+
               <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="firstName" className={labelClass}>
+                      First Name *
+                    </label>
+                    <input
+                      id="firstName"
+                      type="text"
+                      required
+                      autoComplete="given-name"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      className={inputClass}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="lastName" className={labelClass}>
+                      Last Name *
+                    </label>
+                    <input
+                      id="lastName"
+                      type="text"
+                      required
+                      autoComplete="family-name"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      className={inputClass}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="email" className={labelClass}>
                     Email Address *
                   </label>
                   <input
                     id="email"
                     type="email"
                     required
+                    autoComplete="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    className={inputClass}
                     placeholder="admin@example.com"
                     disabled={loading}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="phone" className={labelClass}>
+                    Phone Number *
+                  </label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    required
+                    autoComplete="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className={inputClass}
+                    placeholder="0803 123 4567"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="password" className={labelClass}>
                     Password *
                   </label>
                   <div className="relative">
@@ -327,9 +471,10 @@ export default function AssociationSignupPage() {
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       required
+                      autoComplete="new-password"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
+                      className={`${inputClass} pr-12`}
                       placeholder="At least 6 characters"
                       disabled={loading}
                     />
@@ -338,6 +483,7 @@ export default function AssociationSignupPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 transition-colors"
                       disabled={loading}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? (
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -354,7 +500,7 @@ export default function AssociationSignupPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="confirmPassword" className={labelClass}>
                     Confirm Password *
                   </label>
                   <div className="relative">
@@ -362,9 +508,10 @@ export default function AssociationSignupPage() {
                       id="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
                       required
+                      autoComplete="new-password"
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
+                      className={`${inputClass} pr-12`}
                       placeholder="Re-enter password"
                       disabled={loading}
                     />
@@ -373,6 +520,7 @@ export default function AssociationSignupPage() {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 transition-colors"
                       disabled={loading}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     >
                       {showConfirmPassword ? (
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,7 +574,7 @@ export default function AssociationSignupPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>© 2025 SocietyLedger. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} SocietyLedger. All rights reserved.</p>
         </div>
       </div>
     </div>

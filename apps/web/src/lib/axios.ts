@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getTenantHeaders } from '@/utils/tenant';
 import { useModuleLockStore } from '@/store/moduleLockStore';
+import { useAuthStore } from '@/store/authStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -57,6 +58,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // The association's trial or subscription has ended: swap the app for the blocked screen.
+    if (error?.response?.status === 403 && error.response.data?.code === 'SUBSCRIPTION_INACTIVE') {
+      useAuthStore.getState().markSubscriptionBlocked(error.response.data.reason);
+    }
     const code = error?.response?.data?.error;
     if (code === 'MODULE_DISABLED' || code === 'FEATURE_DISABLED' || code === 'MODULES_DISABLED' || code === 'NO_MODULE_AVAILABLE') {
       useModuleLockStore.getState().open(

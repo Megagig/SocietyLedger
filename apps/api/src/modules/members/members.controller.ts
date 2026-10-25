@@ -995,7 +995,8 @@ export const memberController = {
           status,
           user.association?.name,
           rejectionReason,
-          user.association?.subdomain
+          user.association?.subdomain,
+          result.trial
         );
       } catch (err) {
         emailSent = false;

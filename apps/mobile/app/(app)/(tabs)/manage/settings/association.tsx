@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
+import { ASSOCIATION_TYPE_OTHER } from '@societyledger/shared';
 import { View } from 'react-native';
 import { toast } from 'sonner-native';
 
@@ -42,6 +43,8 @@ function ProfileForm({ profile, canEdit }: { profile: AssociationProfileDTO; can
     mode: 'onTouched',
   });
 
+  const type = useWatch({ control, name: 'associationType' });
+
   const submit = (values: ProfileFormValues) =>
     save.mutate(toProfilePayload(values), {
       onSuccess: () => {
@@ -65,6 +68,9 @@ function ProfileForm({ profile, canEdit }: { profile: AssociationProfileDTO; can
           <View className="gap-4">
             <TextField control={control} name="name" label="Name" autoCapitalize="words" testID="profile-name" />
             <SelectSheet control={control} name="associationType" label="Type" options={ASSOCIATION_TYPE_OPTIONS} />
+            {type === ASSOCIATION_TYPE_OTHER ? (
+              <TextField control={control} name="customAssociationType" label="What kind of association is it?" autoCapitalize="sentences" testID="profile-custom-type" />
+            ) : null}
             <TextField control={control} name="primaryColor" label="Brand colour" placeholder="#1a7f5a" helper="Used behind your initials when there is no logo. Leave blank for the default." testID="profile-colour" />
           </View>
         </Section>

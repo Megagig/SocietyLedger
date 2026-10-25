@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 import confetti from 'canvas-confetti';
+import { ONBOARDING_STEPS } from '@societyledger/shared';
 
 const quickActions = [
   {
@@ -47,6 +48,22 @@ const helpResources = [
 export default function CompletePage() {
   const router = useRouter();
   const [completing, setCompleting] = useState(false);
+  const [doneSteps, setDoneSteps] = useState<number[]>([]);
+  const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
+
+  // What got set up and what was skipped, straight from the server
+  useEffect(() => {
+    api
+      .get(API_ROUTES.ONBOARDING.STATUS)
+      .then((response) => {
+        const progress = response.data.data.onboarding;
+        setDoneSteps(progress.completedSteps ?? []);
+        setSkippedSteps(progress.skippedSteps ?? []);
+      })
+      .catch(() => {
+        // The checklist is a nicety: the page works without it
+      });
+  }, []);
 
   useEffect(() => {
     // Trigger confetti on mount
@@ -120,6 +137,35 @@ export default function CompletePage() {
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-md mx-auto">
             Your association is ready to go. Start managing your members and finances with ease.
           </p>
+        </div>
+
+        {/* What you set up */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Your Setup</h2>
+          <ul className="space-y-2">
+            {ONBOARDING_STEPS.filter((s) => s.key !== 'complete').map((step) => {
+              const done = doneSteps.includes(step.id);
+              const skipped = skippedSteps.includes(step.id);
+              return (
+                <li key={step.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                  <span className="text-gray-900 dark:text-gray-100">{step.name}</span>
+                  {done ? (
+                    <span className="text-sm font-medium text-teal-600 dark:text-teal-400">Done</span>
+                  ) : skipped ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/onboarding/${step.key}`)}
+                      className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                      Skipped · Finish now
+                    </button>
+                  ) : (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Not started</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
         {/* Quick Actions */}

@@ -1,6 +1,8 @@
 import { createFetchHeaders } from './tenant';
 import { useModuleLockStore } from '@/store/moduleLockStore';
 
+import { useAuthStore } from '@/store/authStore';
+
 const MODULE_LOCK_ERROR_CODES = new Set(['MODULE_DISABLED', 'FEATURE_DISABLED', 'MODULES_DISABLED', 'NO_MODULE_AVAILABLE']);
 
 /**
@@ -45,6 +47,9 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   if (response.status === 403) {
     try {
       const body = await response.clone().json();
+      if (body?.code === 'SUBSCRIPTION_INACTIVE') {
+        useAuthStore.getState().markSubscriptionBlocked(body.reason);
+      }
       if (MODULE_LOCK_ERROR_CODES.has(body?.error)) {
         useModuleLockStore.getState().open(
           body.message || 'This feature is not available on your current plan.',
@@ -124,6 +129,9 @@ export async function apiPostFormData(url: string, formData: FormData): Promise<
   if (response.status === 403) {
     try {
       const body = await response.clone().json();
+      if (body?.code === 'SUBSCRIPTION_INACTIVE') {
+        useAuthStore.getState().markSubscriptionBlocked(body.reason);
+      }
       if (MODULE_LOCK_ERROR_CODES.has(body?.error)) {
         useModuleLockStore.getState().open(
           body.message || 'This feature is not available on your current plan.',

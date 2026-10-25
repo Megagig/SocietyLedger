@@ -20,6 +20,7 @@ interface PlatformSettings {
   allowNewSignups: boolean;
   requireEmailVerification: boolean;
   requireAdminApproval: boolean;
+  enforceSubscriptionAccess: boolean;
   defaultTrialDays: number;
   maxAssociationsPerUser: number;
 }
@@ -199,6 +200,14 @@ export default function PlatformSettingsPage() {
                 checked={local.requireAdminApproval}
                 onChange={(v) => update('requireAdminApproval', v)}
               />
+              <Divider />
+              <ToggleRow
+                label="Block associations whose trial or subscription has ended"
+                description="When on, an association is blocked (admins and members) as soon as its free trial or paid plan runs out, until a payment is made. Switch off only to let everyone in while you sort out a billing problem."
+                checked={local.enforceSubscriptionAccess !== false}
+                onChange={(v) => update('enforceSubscriptionAccess', v)}
+                danger
+              />
             </Stack>
           </SectionCard>
 
@@ -212,14 +221,14 @@ export default function PlatformSettingsPage() {
                 <Stack gap={2} style={{ flex: 1 }}>
                   <Text size="sm" fw={600}>Default trial days</Text>
                   <Text size="xs" c="dimmed">
-                    How many days new associations get before requiring a paid plan.
+                    How many days of free Enterprise access a new association gets. The clock starts when you approve the founding admin, not when they sign up.
                   </Text>
                 </Stack>
                 <NumberInput
                   value={local.defaultTrialDays}
                   onChange={(v) => update('defaultTrialDays', typeof v === 'number' ? v : 0)}
-                  min={0}
-                  max={365}
+                  min={1}
+                  max={90}
                   step={1}
                   suffix=" days"
                   size="sm"

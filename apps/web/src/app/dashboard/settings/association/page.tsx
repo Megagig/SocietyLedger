@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building, Upload, Save, Loader2, Trash2 } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from '@/lib/toast';
+import { ASSOCIATION_TYPES, ASSOCIATION_TYPE_OTHER, CUSTOM_ASSOCIATION_TYPE_MAX } from '@societyledger/shared';
 
 interface AssociationProfile {
   name: string;
@@ -12,6 +13,7 @@ interface AssociationProfile {
   primaryColor?: string;
   secondaryColor?: string;
   associationType?: string;
+  customAssociationType?: string | null;
   address?: string;
   city?: string;
   state?: string;
@@ -23,18 +25,6 @@ interface AssociationProfile {
   timezone?: string;
   currency?: string;
 }
-
-const ASSOCIATION_TYPES = [
-  { value: 'general', label: 'General Association' },
-  { value: 'hoa', label: 'Homeowners Association (HOA)' },
-  { value: 'cooperative', label: 'Cooperative Society' },
-  { value: 'town_union', label: 'Town Union' },
-  { value: 'professional', label: 'Professional Association' },
-  { value: 'religious', label: 'Religious Organization' },
-  { value: 'club', label: 'Social Club' },
-  { value: 'alumni', label: 'Alumni Association' },
-  { value: 'investment', label: 'Investment Club' },
-];
 
 const MONTHS = [
   { value: 1, label: 'January' },
@@ -177,7 +167,11 @@ export default function AssociationProfilePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate(formData);
+    // The typed-in type only means something when the type is "other"; clear it otherwise.
+    updateMutation.mutate({
+      ...formData,
+      customAssociationType: formData.associationType === ASSOCIATION_TYPE_OTHER ? formData.customAssociationType?.trim() || null : null,
+    });
   };
 
   if (isLoading) {
@@ -240,9 +234,20 @@ export default function AssociationProfilePage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               >
                 {ASSOCIATION_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
+                  <option key={type.key} value={type.key}>{type.label}</option>
                 ))}
               </select>
+              {formData.associationType === ASSOCIATION_TYPE_OTHER && (
+                <input
+                  type="text"
+                  value={formData.customAssociationType || ''}
+                  onChange={(e) => handleChange('customAssociationType', e.target.value)}
+                  maxLength={CUSTOM_ASSOCIATION_TYPE_MAX}
+                  placeholder="What kind of association is it?"
+                  aria-label="Your own association type"
+                  className="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

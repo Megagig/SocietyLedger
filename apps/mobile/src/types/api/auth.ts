@@ -17,6 +17,18 @@ export type AuthMemberSummaryDTO = {
   memberId: string;
 };
 
+/**
+ * Where the association's free trial / subscription stands (login and /auth/me). `null` for platform staff, or when the server could not
+ * work it out. `allowed: false` means the whole association is blocked until it pays.
+ */
+export type SubscriptionAccessDTO = {
+  allowed: boolean;
+  reason: 'OK' | 'TRIAL_NOT_STARTED' | 'TRIAL_ENDED' | 'EXPIRED' | 'CANCELLED' | 'NO_SUBSCRIPTION' | 'NOT_ENFORCED';
+  status: string | null;
+  trialEndsAt: IsoDateString | null;
+  trialDaysLeft: number | null;
+};
+
 export type LoginUserDTO = {
   id: number;
   email: string;
@@ -25,6 +37,7 @@ export type LoginUserDTO = {
   association: AuthAssociationDTO;
   platformRole: PlatformRole | null;
   requiresOnboarding: boolean;
+  subscriptionAccess?: SubscriptionAccessDTO | null;
   permissions: string[];
   roles: string[];
   isPlatformLogin: boolean;
@@ -76,6 +89,7 @@ export type MeResponseDTO = {
     userApproval: MeUserApprovalDTO;
     association: AuthAssociationDTO;
     requiresOnboarding: boolean;
+    subscriptionAccess?: SubscriptionAccessDTO | null;
     permissions: string[];
     roles: string[];
   };

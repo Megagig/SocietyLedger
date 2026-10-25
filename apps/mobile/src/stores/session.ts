@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import type { SubscriptionAccessDTO } from '@/types/api/auth';
 import type { PlatformRole } from '@/types/api/enums';
 
 /**
@@ -25,6 +26,8 @@ export type SessionUser = {
   permissions: string[];
   roles: string[];
   requiresOnboarding: boolean;
+  /** The association's trial / subscription standing; absent when the server did not say. */
+  subscriptionAccess?: SubscriptionAccessDTO | null;
   platformRole: PlatformRole | null;
   member: SessionMember | null;
 };
@@ -36,13 +39,31 @@ export type SessionState = {
   status: SessionStatus;
   setUser: (user: SessionUser | null) => void;
   setStatus: (status: SessionStatus) => void;
+  /** The API answered 403 SUBSCRIPTION_INACTIVE: show the blocked screen instead of the app. */
+  markSubscriptionBlocked: (reason?: string) => void;
   reset: () => void;
 };
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useSessionStore = create<SessionState>((set, get) => ({
   user: null,
   status: 'idle',
   setUser: (user) => set({ user, status: user ? 'authenticated' : 'unauthenticated' }),
   setStatus: (status) => set({ status }),
+  markSubscriptionBlocked: (reason) => {
+    const { user } = get();
+    if (!user || user.platformRole) return;
+    set({
+      user: {
+        ...user,
+        subscriptionAccess: {
+          allowed: false,
+          reason: reason === 'TRIAL_ENDED' ? 'TRIAL_ENDED' : 'EXPIRED',
+          status: user.subscriptionAccess?.status ?? null,
+          trialEndsAt: user.subscriptionAccess?.trialEndsAt ?? null,
+          trialDaysLeft: null,
+        },
+      },
+    });
+  },
   reset: () => set({ user: null, status: 'unauthenticated' }),
 }));

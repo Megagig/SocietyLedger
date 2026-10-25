@@ -1633,3 +1633,12 @@ _(none)_
 
 - **Notification row "View details →"** (web `dashboard/notifications`): small teal text button above Mark read / Delete, shown only when `notificationHref(pushType, entityId)` resolves; marks the row read then navigates.
 - **"n need a reply" pill** (web `help/tickets` header, staff only): `rounded-full bg-amber-100 text-amber-800` (dark: `bg-amber-900/30 text-amber-300`) inline after the subtitle.
+
+## Phase 8 — signup, setup wizard, trial notices (2026-11-03)
+
+- **`app/(auth)/create-association.tsx` (A13):** the premium auth surface (`AuthBrandMark` + `ScreenHeader large`) with a two-step form. Step caption `Step n of 2`; a `bg-warning-soft` reminder note (`Text caption tone=warning`) carries the shared naming reminder; the address row is a `TextField` followed by a `Card` showing the live preview and the availability line (`Spinner` while checking, `tone=success` available, `tone=danger` taken). Kind of association is a `SelectSheet`; **Other** reveals a `TextField`. Primary action `Button variant=gradient`.
+- **`features/onboarding/components/StepFrame.tsx`:** frame for every wizard step: `ScreenHeader` (back to the overview, `docsKey` O1 to O5), `Step n of 5` caption with `ProgressBar`, description, content, and a `StickyFooter` with **Skip this step** (`Button secondary`) and the primary action (`Button primary`). Use it for any future multi-step setup.
+- **`features/onboarding/components/ColourSwatches.tsx`:** six one-tap brand colours (circle swatches, 44dp hit area, `border-primary` ring when selected). The swatch colours are the association's own data from `BRAND_COLOUR_PRESETS` in the shared package, the one place a literal colour is allowed.
+- **Overview and summary rows:** `SectionCard` of `ListItem`s with an `IconCircle` (success + CheckCircle2 done, warning + SkipForward skipped, neutral + Circle not started) and a `Badge` (Done / Skipped).
+- **`features/session/components/SubscriptionBlockedScreen.tsx`:** `AuthHeroScreen` with the CreditCard icon; officers get the `SupportCard` (WhatsApp) and the text to renew on the web, members the contact-your-admin text; **Sign out** as `accent-ghost`. No prices, no pay button (store billing rules).
+- **`features/session/components/TrialEndingBanner.tsx`:** `bg-warning-soft` row with the Hourglass icon above the Me | Association toggle on Home, shown to admins and billing officers when 3 days or fewer are left.

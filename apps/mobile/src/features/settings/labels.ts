@@ -1,3 +1,5 @@
+import { ASSOCIATION_TYPES, associationTypeLabel as sharedAssociationTypeLabel } from '@societyledger/shared';
+
 import type { PermissionAlias } from '@/lib/permissions';
 import type {
   AssociationType,
@@ -22,17 +24,7 @@ export const SUBSCRIPTION_ACCESS: PermissionAlias[] = ['SETTINGS_BILLING', 'SETT
 /** Anything that makes Settings appear in Manage: the settings screens, roles, the audit log. */
 export const SETTINGS_HUB_ACCESS: PermissionAlias[] = ['SETTINGS_VIEW', 'SETTINGS_EDIT', 'SETTINGS_BILLING', 'ROLES_VIEW', 'AUDIT_VIEW'];
 
-export const ASSOCIATION_TYPE_OPTIONS: { label: string; value: AssociationType }[] = [
-  { label: 'General association', value: 'general' },
-  { label: 'Homeowners association', value: 'hoa' },
-  { label: 'Cooperative society', value: 'cooperative' },
-  { label: 'Town union', value: 'town_union' },
-  { label: 'Professional association', value: 'professional' },
-  { label: 'Religious organisation', value: 'religious' },
-  { label: 'Social club', value: 'club' },
-  { label: 'Alumni association', value: 'alumni' },
-  { label: 'Investment club', value: 'investment' },
-];
+export const ASSOCIATION_TYPE_OPTIONS: { label: string; value: AssociationType }[] = ASSOCIATION_TYPES.map((t) => ({ label: t.label, value: t.key }));
 
 export const LATE_FEE_TYPE_OPTIONS: { label: string; value: LateFeeType }[] = [
   { label: 'A fixed amount', value: 'fixed' },
@@ -60,8 +52,8 @@ export const DEFAULT_ROLE_OPTIONS: { label: string; value: DefaultRole }[] = [
   { label: 'Treasurer', value: 'treasurer' },
 ];
 
-export function associationTypeLabel(type: AssociationType | undefined): string {
-  return ASSOCIATION_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? 'General association';
+export function associationTypeLabel(type: AssociationType | undefined, customType?: string | null): string {
+  return sharedAssociationTypeLabel(type, customType);
 }
 
 /** "7, 3, 1" → [7, 3, 1]: whole days from 1 to 60, no repeats, biggest first. Anything else is dropped. */

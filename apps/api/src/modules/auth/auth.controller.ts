@@ -17,6 +17,7 @@ import { SettingsService } from '../settings/settings.service';
 import { isMemberDisabled, MEMBER_DISABLED_CODE, MEMBER_DISABLED_MESSAGE } from '../../lib/member-access';
 import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
 import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
+import { loadSubscriptionAccess } from '../../services/subscription-access.service';
 import {
   createUserWithVerification,
   verifyEmailCode,
@@ -290,6 +291,9 @@ export class AuthController {
         await RBACService.ensureUserRoles(user.id, tokenAssociationId, user.role);
       }
 
+      // Where the association's trial/subscription stands, so every app can show the countdown banner or the blocked screen.
+      const subscriptionAccess = await loadSubscriptionAccess(tokenAssociationId, user.platformRole);
+
       // Resolve user permissions from database
       const rbacContext: RBACContext = {
         userId: user.id,
@@ -335,6 +339,7 @@ export class AuthController {
             } : tenant,
             platformRole: user.platformRole,
             requiresOnboarding,
+            subscriptionAccess,
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
             isPlatformLogin, // NEW: Indicates if this is a platform admin login
@@ -772,6 +777,7 @@ export class AuthController {
               isPlatformAssociation: true,
             } : tenant,
             requiresOnboarding,
+            subscriptionAccess: await loadSubscriptionAccess(user.associationId, user.platformRole),
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
           },

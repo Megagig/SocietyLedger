@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ASSOCIATION_TYPE_OTHER, CUSTOM_ASSOCIATION_TYPE_MAX } from '@societyledger/shared';
 
 import type {
   AssociationProfileDTO,
@@ -30,6 +31,7 @@ const wholeNumber = (label: string, min: number, max: number) =>
 export const profileFormSchema = z.object({
   name: z.string().trim().min(2, 'The name needs at least 2 characters').max(120, 'The name can be 120 characters at most'),
   associationType: z.string().min(1, 'Choose a type'),
+  customAssociationType: z.string().trim().max(CUSTOM_ASSOCIATION_TYPE_MAX, `Use ${CUSTOM_ASSOCIATION_TYPE_MAX} characters or fewer`),
   primaryColor: z
     .string()
     .trim()
@@ -50,6 +52,10 @@ export const profileFormSchema = z.object({
     .string()
     .trim()
     .refine((v) => v === '' || /^https?:\/\/\S+$/i.test(v), 'Start the website with http:// or https://'),
+}).superRefine((values, ctx) => {
+  if (values.associationType === ASSOCIATION_TYPE_OTHER && values.customAssociationType === '') {
+    ctx.addIssue({ code: 'custom', path: ['customAssociationType'], message: 'Tell us what kind of association it is' });
+  }
 });
 export type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
@@ -57,6 +63,7 @@ export function profileToFormValues(profile: AssociationProfileDTO): ProfileForm
   return {
     name: profile.name,
     associationType: profile.associationType ?? 'general',
+    customAssociationType: profile.customAssociationType ?? '',
     primaryColor: profile.primaryColor ?? '',
     address: profile.address ?? '',
     city: profile.city ?? '',
@@ -72,6 +79,8 @@ export function toProfilePayload(values: ProfileFormValues): AssociationProfileP
   return {
     name: values.name.trim(),
     associationType: values.associationType as AssociationType,
+    // The typed-in type only means something for "other"; clear it otherwise.
+    customAssociationType: values.associationType === ASSOCIATION_TYPE_OTHER ? blankToNull(values.customAssociationType) : null,
     primaryColor: blankToNull(values.primaryColor),
     address: blankToNull(values.address),
     city: blankToNull(values.city),

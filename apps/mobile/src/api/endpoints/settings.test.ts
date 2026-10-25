@@ -22,7 +22,7 @@ describe('settingsApi', () => {
     mockGet.mockReturnValue(ok({ name: 'Opuogun Union' }));
     mockPatch.mockReturnValue(ok({ name: 'New' }));
     expect(await settingsApi.getProfile()).toEqual({ name: 'Opuogun Union' });
-    const payload = { name: 'New', primaryColor: null, associationType: 'general' as const, address: null, city: null, state: null, country: null, phone: null, email: null, website: null };
+    const payload = { name: 'New', primaryColor: null, associationType: 'general' as const, customAssociationType: null, address: null, city: null, state: null, country: null, phone: null, email: null, website: null };
     await settingsApi.updateProfile(payload);
     expect(mockGet).toHaveBeenCalledWith('/settings/association/profile');
     expect(mockPatch).toHaveBeenCalledWith('/settings/association/profile', payload);

@@ -1,3 +1,11 @@
+export interface SubscriptionAccess {
+  allowed: boolean;
+  reason: 'OK' | 'TRIAL_NOT_STARTED' | 'TRIAL_ENDED' | 'EXPIRED' | 'CANCELLED' | 'NO_SUBSCRIPTION' | 'NOT_ENFORCED';
+  status: string | null;
+  trialEndsAt: string | null;
+  trialDaysLeft: number | null;
+}
+
 // User Types
 export interface User {
   id: number;
@@ -7,6 +15,8 @@ export interface User {
   platformRole?: 'SUPER_ADMIN' | 'SUPPORT_AGENT';
   isActive: boolean;
   requiresOnboarding?: boolean;
+  /** Where the association's free trial / subscription stands (null for platform staff). */
+  subscriptionAccess?: SubscriptionAccess | null;
   permissions?: string[];
   roles?: string[];
   createdAt: Date;

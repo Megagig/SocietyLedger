@@ -48,6 +48,8 @@ interface AuthState {
   }) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  /** The API said the association's trial or subscription has ended: show the blocked screen. */
+  markSubscriptionBlocked: (reason?: string) => void;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
   
@@ -149,6 +151,23 @@ export const useAuthStore = create<AuthState>()(
           });
           return false;
         }
+      },
+
+      markSubscriptionBlocked: (reason) => {
+        const { user } = get();
+        if (!user || user.platformRole) return;
+        set({
+          user: {
+            ...user,
+            subscriptionAccess: {
+              allowed: false,
+              reason: reason === 'TRIAL_ENDED' ? 'TRIAL_ENDED' : 'EXPIRED',
+              status: user.subscriptionAccess?.status ?? null,
+              trialEndsAt: user.subscriptionAccess?.trialEndsAt ?? null,
+              trialDaysLeft: null,
+            },
+          },
+        });
       },
 
       logout: async () => {

@@ -4,6 +4,7 @@ import type { Href } from 'expo-router';
 import { ApiError } from '@/api/errors';
 import { clearTokens, getTokenCache } from '@/lib/secure';
 import { useSessionStore } from '@/stores/session';
+import { landingHref } from './landing';
 import { mapMeUserToSessionUser } from './mappers';
 import { useMe } from './queries';
 
@@ -50,7 +51,7 @@ export function useSessionBootstrap(): Href | null {
   }, [failed, query.error, setUser]);
 
   if (!hasToken) return '/(auth)/welcome';
-  if (query.data) return '/(app)/(tabs)/home';
+  if (query.data) return landingHref(mapMeUserToSessionUser(query.data.user));
   if (query.isError) return '/(auth)/welcome';
   return null;
 }

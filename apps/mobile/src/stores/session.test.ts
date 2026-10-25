@@ -35,6 +35,26 @@ describe('useSessionStore', () => {
     expect(useSessionStore.getState().user).toBeNull();
   });
 
+  describe('markSubscriptionBlocked', () => {
+    it('flips the signed-in user to blocked, remembering whether it was the trial that ended', () => {
+      useSessionStore.getState().setUser(fakeUser);
+      useSessionStore.getState().markSubscriptionBlocked('TRIAL_ENDED');
+      expect(useSessionStore.getState().user?.subscriptionAccess).toMatchObject({ allowed: false, reason: 'TRIAL_ENDED' });
+      useSessionStore.getState().markSubscriptionBlocked('anything else');
+      expect(useSessionStore.getState().user?.subscriptionAccess).toMatchObject({ allowed: false, reason: 'EXPIRED' });
+    });
+
+    it('does nothing when nobody is signed in, and never blocks platform staff', () => {
+      useSessionStore.getState().reset();
+      useSessionStore.getState().markSubscriptionBlocked('TRIAL_ENDED');
+      expect(useSessionStore.getState().user).toBeNull();
+
+      useSessionStore.getState().setUser({ ...fakeUser, platformRole: 'SUPER_ADMIN' });
+      useSessionStore.getState().markSubscriptionBlocked('TRIAL_ENDED');
+      expect(useSessionStore.getState().user?.subscriptionAccess).toBeUndefined();
+    });
+  });
+
   it('reset clears the user and sets unauthenticated', () => {
     useSessionStore.getState().setUser(fakeUser);
     useSessionStore.getState().reset();

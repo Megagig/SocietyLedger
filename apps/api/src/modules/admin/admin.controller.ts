@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../lib/prisma';
 import { generateToken, TokenPayload } from '../../lib/auth';
 import { AuthRequest } from '../../middleware/auth.middleware';
-import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.service';
+import { updateUserApproval, sendApprovalNotificationEmail, resendVerificationCode, sendVerificationEmail } from '../auth/auth.service';
 import { logImpersonationAction, getImpersonationDuration, formatImpersonationDuration } from '../../utils/audit-helpers';
 import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
 import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
@@ -717,9 +717,22 @@ export class AdminController {
         approvalStatus: status,
       };
 
-      if (associationId) {
-        whereClause.user = { associationId };
+      // The console's search box and "not verified" filter used to be ignored here, so typing in the box changed nothing.
+      const userWhere: any = {};
+      if (associationId) userWhere.associationId = associationId;
+      if (req.query.emailVerified === 'false') userWhere.emailVerified = false;
+      if (req.query.emailVerified === 'true') userWhere.emailVerified = true;
+      const search = String(req.query.search ?? '').trim();
+      if (search) {
+        userWhere.OR = [
+          { email: { contains: search, mode: 'insensitive' } },
+          { association: { name: { contains: search, mode: 'insensitive' } } },
+          { association: { subdomain: { contains: search, mode: 'insensitive' } } },
+          { member: { firstName: { contains: search, mode: 'insensitive' } } },
+          { member: { lastName: { contains: search, mode: 'insensitive' } } },
+        ];
       }
+      if (Object.keys(userWhere).length > 0) whereClause.user = userWhere;
 
       const [approvals, total] = await Promise.all([
         prisma.userApproval.findMany({
@@ -735,6 +748,7 @@ export class AdminController {
                 role: true,
                 emailVerified: true,
                 createdAt: true,
+                member: { select: { firstName: true, lastName: true, phone: true } },
                 association: {
                   select: {
                     id: true,
@@ -755,10 +769,44 @@ export class AdminController {
         prisma.userApproval.count({ where: whereClause }),
       ]);
 
+      // The kind of association is a setting, so fetch it for the associations on this page.
+      const associationIds = [...new Set(approvals.map((a) => a.user.association?.id).filter((id): id is number => typeof id === 'number'))];
+      const typeRows = associationIds.length
+        ? await prisma.settings.findMany({
+            where: { associationId: { in: associationIds }, key: { in: ['association.associationType', 'association.customAssociationType'] } },
+            select: { associationId: true, key: true, value: true },
+          })
+        : [];
+      const readSetting = (associationId: number, key: string): string | null => {
+        const raw = typeRows.find((r) => r.associationId === associationId && r.key === key)?.value;
+        if (!raw) return null;
+        try {
+          const parsed = JSON.parse(raw);
+          return typeof parsed === 'string' ? parsed : null;
+        } catch {
+          return raw;
+        }
+      };
+      const withTypes = approvals.map((a) =>
+        a.user.association
+          ? {
+              ...a,
+              user: {
+                ...a.user,
+                association: {
+                  ...a.user.association,
+                  associationType: readSetting(a.user.association.id, 'association.associationType'),
+                  customAssociationType: readSetting(a.user.association.id, 'association.customAssociationType'),
+                },
+              },
+            }
+          : a,
+      );
+
       return res.json({
         success: true,
         data: {
-          approvals,
+          approvals: withTypes,
           total,
           page,
           limit,
@@ -846,7 +894,8 @@ export class AdminController {
           status,
           user.association?.name,
           rejectionReason,
-          user.association?.subdomain
+          user.association?.subdomain,
+          result.trial
         );
       } catch (err) {
         emailSent = false;
@@ -869,6 +918,125 @@ export class AdminController {
           errors: error.errors,
         });
       }
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Mark a user's email as verified by hand (super admin). For people who never got the code or cannot enter it. Needs a reason, and is
+   * written to the audit log and the security log.
+   */
+  async verifyUserEmail(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.id;
+      if (!adminId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+      const userId = Number(req.params.userId);
+      const { reason } = z.object({ reason: z.string().trim().min(3, 'Give a short reason').max(300) }).parse(req.body);
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, emailVerified: true, associationId: true, platformRole: true },
+      });
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      if (user.platformRole) {
+        return res.status(400).json({ success: false, message: 'Platform staff accounts are not verified from here' });
+      }
+      if (user.emailVerified) {
+        return res.json({ success: true, alreadyVerified: true, message: 'This email is already verified' });
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { emailVerified: true, verificationCode: null, verificationExpiresAt: null },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          associationId: user.associationId || 0,
+          userId: adminId,
+          action: 'USER_EMAIL_VERIFIED_BY_ADMIN',
+          tableName: 'users',
+          recordId: userId,
+          newValues: { emailVerified: true, reason },
+        },
+      });
+
+      void logSecurityEvent({
+        eventType: 'USER_EMAIL_VERIFIED_BY_ADMIN',
+        severity: SecurityEventSeverity.INFO,
+        actorType: SecurityEventActorType.ADMIN,
+        actorId: adminId,
+        actorEmail: req.user?.email,
+        targetType: 'user',
+        targetId: userId,
+        targetName: user.email,
+        associationId: user.associationId ?? undefined,
+        details: { reason },
+        ...requestContext(req),
+      });
+
+      return res.json({ success: true, message: 'Email marked as verified' });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: error.errors[0]?.message ?? 'Validation error', errors: error.errors });
+      }
+      console.error('Verify user email error:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Send a fresh verification code to a user who has not verified yet (super admin). Reports back whether the email went out, so the owner
+   * can verify by hand instead when it did not.
+   */
+  async resendUserVerification(req: AuthRequest, res: Response) {
+    try {
+      const adminId = req.user?.id;
+      if (!adminId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+      const userId = Number(req.params.userId);
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, emailVerified: true, associationId: true, platformRole: true, association: { select: { name: true } } },
+      });
+      if (!user || user.platformRole) return res.status(404).json({ success: false, message: 'User not found' });
+      if (user.emailVerified) return res.status(400).json({ success: false, message: 'This email is already verified' });
+
+      const result = await resendVerificationCode(user.id);
+      if (!result.success || !result.code) {
+        return res.status(400).json({ success: false, message: result.message });
+      }
+
+      let emailSent = true;
+      let emailError: string | undefined;
+      try {
+        await sendVerificationEmail(user.email, result.code, user.association?.name);
+      } catch (err) {
+        emailSent = false;
+        emailError = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`Failed to send verification code to ${user.email}:`, err);
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          associationId: user.associationId || 0,
+          userId: adminId,
+          action: 'USER_VERIFICATION_CODE_RESENT_BY_ADMIN',
+          tableName: 'users',
+          recordId: userId,
+          newValues: { emailSent },
+        },
+      });
+
+      return res.json({
+        success: true,
+        emailSent,
+        emailError,
+        message: emailSent ? 'A new code was sent' : 'The code was created but the email could not be sent',
+      });
+    } catch (error) {
+      console.error('Resend user verification error:', error);
       return res.status(500).json({ success: false, message: 'Internal server error' });
     }
   }
@@ -910,7 +1078,8 @@ export class AdminController {
                 status,
                 user.association?.name,
                 rejectionReason,
-                user.association?.subdomain
+                user.association?.subdomain,
+                result.trial
               );
             } catch (e) {
               console.error(`Failed to send email to ${user.email}:`, e);

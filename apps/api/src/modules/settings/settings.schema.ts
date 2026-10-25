@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { ASSOCIATION_TYPE_KEYS, CUSTOM_ASSOCIATION_TYPE_MAX } from '@societyledger/shared';
 import { PERMISSIONS } from '../../lib/permissions';
 import { RuleError } from '../finance/rule-error';
 import type { SettingsCategory } from './settings.types';
@@ -25,7 +26,8 @@ const blankToNull = <T extends z.ZodTypeAny>(schema: T) => z.preprocess((v) => (
 const month = z.number().int().min(1, 'Choose a month.').max(12, 'Choose a month.');
 const days = (max: number) => z.number().int().min(0, 'Use 0 or more.').max(max, `Use ${max} or fewer.`);
 
-export const ASSOCIATION_TYPES = ['general', 'hoa', 'cooperative', 'town_union', 'professional', 'religious', 'club', 'alumni', 'investment'] as const;
+// One list for signup and for Settings on every platform (packages/shared/src/association-signup.ts).
+export const ASSOCIATION_TYPES = ASSOCIATION_TYPE_KEYS;
 export const PAYMENT_CHANNELS = ['bank_transfer', 'cash', 'card', 'mobile_money', 'cheque'] as const;
 export const DEFAULT_ROLES = ['member', 'financial_secretary', 'treasurer'] as const;
 
@@ -45,6 +47,8 @@ export const associationProfileSchema = z
     primaryColor: hexColour,
     secondaryColor: hexColour,
     associationType: z.enum(ASSOCIATION_TYPES).optional(),
+    // What they call it themselves, when the type is "other".
+    customAssociationType: blankToNull(z.string().trim().max(CUSTOM_ASSOCIATION_TYPE_MAX, `Use ${CUSTOM_ASSOCIATION_TYPE_MAX} characters or fewer.`).nullable().optional()),
     address: text(200),
     city: text(80),
     state: text(80),

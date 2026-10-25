@@ -10,6 +10,8 @@ import { sendEmail } from '../../lib/email';
 import { hashPassword } from '../../lib/auth';
 import { revokeAllForUser } from '../../services/refresh-token.service';
 import { notifyApprovalPending } from '../../services/approval-notifications';
+import { tenantBaseUrl } from '../../lib/tenant-url';
+import { startTrialIfPending } from '../../services/subscription-access.service';
 
 const VERIFICATION_CODE_EXPIRY_MINUTES = 15;
 const PASSWORD_RESET_EXPIRY_MINUTES = 60;
@@ -106,17 +108,11 @@ export async function sendApprovalNotificationEmail(
   status: 'approved' | 'rejected',
   associationName?: string,
   rejectionReason?: string,
-  subdomain?: string
+  subdomain?: string,
+  trial?: { days: number; endsAt: Date } | null
 ): Promise<void> {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  let loginUrl: string;
-  if (subdomain && process.env.NODE_ENV === 'production') {
-    loginUrl = `https://${subdomain}.societyledger.com/auth/login`;
-  } else if (subdomain) {
-    loginUrl = `http://${subdomain}.localhost:3000/auth/login`;
-  } else {
-    loginUrl = `${baseUrl}/auth/login`;
-  }
+  // The association's own address (the old production branch pointed at societyledger.com, not the .com.ng domain).
+  const loginUrl = `${tenantBaseUrl(subdomain)}/auth/login`;
 
   await sendEmail({
     to: email,
@@ -128,6 +124,8 @@ export async function sendApprovalNotificationEmail(
       associationName: associationName || 'SocietyLedger',
       loginUrl,
       rejectionReason,
+      trialDays: trial?.days,
+      trialEndsOn: trial ? trial.endsAt.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined,
     },
   });
 }
@@ -364,7 +362,7 @@ export async function updateUserApproval(
   status: 'approved' | 'rejected',
   approvedById: number,
   rejectionReason?: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; trial?: { days: number; endsAt: Date } | null }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -400,8 +398,16 @@ export async function updateUserApproval(
     }),
   ]);
 
+  // Approving a founding admin starts the association's free trial (it does nothing for anyone approved after that).
+  let trial: { days: number; endsAt: Date } | null = null;
+  if (status === 'approved' && user.role === 'admin' && user.associationId) {
+    const started = await startTrialIfPending(user.associationId);
+    if (started) trial = { days: started.days, endsAt: started.trialEndsAt };
+  }
+
   return {
     success: true,
     message: status === 'approved' ? 'User approved successfully' : 'User rejected',
+    trial,
   };
 }

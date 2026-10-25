@@ -23,6 +23,7 @@ describe('mapLoginUserToSessionUser', () => {
       permissions: ['ledger.view_own'],
       roles: ['member'],
       requiresOnboarding: false,
+      subscriptionAccess: null,
       platformRole: null,
       member: { id: 1, firstName: 'Ada', lastName: 'Eze', memberId: 'MEM0001' },
     });

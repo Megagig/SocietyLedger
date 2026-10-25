@@ -148,6 +148,12 @@ client.interceptors.response.use(
       useModulesStore.getState().markDisabled(data.module);
     }
 
+    // The association's free trial or subscription has ended: the whole app is paused until it pays, so swap it for the blocked screen
+    // instead of letting every list fail on its own.
+    if (status === 403 && typeof data === 'object' && data !== null && (data as { code?: unknown }).code === 'SUBSCRIPTION_INACTIVE') {
+      useSessionStore.getState().markSubscriptionBlocked((data as { reason?: string }).reason);
+    }
+
     // 429: never retried here — architecture.md §6.3 ("never auto-retry"); this interceptor adds
     // no retry logic for it, so it simply falls through to the throw below like any other error.
 

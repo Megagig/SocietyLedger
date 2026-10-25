@@ -53,7 +53,7 @@ export const PAYMENT_METHODS = {
 export const FREQUENCY_TYPES = {
   MONTHLY: 'monthly',
   QUARTERLY: 'quarterly',
-  ANNUALLY: 'annually',
+  ANNUALLY: 'annual', // the API's spelling (finance.controller.ts frequencyTypes)
   ONE_TIME: 'one-time',
 } as const;
 

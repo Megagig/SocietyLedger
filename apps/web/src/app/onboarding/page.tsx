@@ -5,12 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 import { docsUrl } from '@/lib/docs';
+import { ONBOARDING_STEPS } from '@societyledger/shared';
 
 interface OnboardingStatus {
   onboarding: {
     id: number;
     currentStep: number;
     completedSteps: number[];
+    skippedSteps?: number[];
     profileCompleted: boolean;
     teamInvited: boolean;
     membersImported: boolean;
@@ -26,13 +28,8 @@ interface OnboardingStatus {
   };
 }
 
-const steps = [
-  { id: 1, name: 'Profile', path: '/onboarding/profile', description: 'Set up your association profile' },
-  { id: 2, name: 'Team', path: '/onboarding/team', description: 'Invite team members' },
-  { id: 3, name: 'Members', path: '/onboarding/members', description: 'Import your members' },
-  { id: 4, name: 'Finance', path: '/onboarding/finance', description: 'Configure financial settings' },
-  { id: 5, name: 'Complete', path: '/onboarding/complete', description: 'Finish setup' },
-];
+// The same five steps, in the same order, as the mobile app (packages/shared/src/onboarding.ts)
+const steps = ONBOARDING_STEPS.map((s) => ({ id: s.id, name: s.name, description: s.description, path: `/onboarding/${s.key}` }));
 
 function OnboardingContent() {
   const router = useRouter();
@@ -91,6 +88,7 @@ function OnboardingContent() {
 
   const currentStep = status?.onboarding.currentStep || 1;
   const completedSteps = status?.onboarding.completedSteps || [];
+  const skippedSteps = status?.onboarding.skippedSteps || [];
   const isRerunMode = forceAccess && status?.onboarding.onboardingComplete;
 
   return (
@@ -162,7 +160,7 @@ function OnboardingContent() {
             const isCompleted = completedSteps.includes(step.id);
             const isCurrent = currentStep === step.id;
             // In rerun mode, all steps are accessible
-            const isLocked = !isRerunMode && step.id > currentStep && !isCompleted;
+            const isLocked = !isRerunMode && step.id > currentStep && !isCompleted && !skippedSteps.includes(step.id);
 
             return (
               <button
@@ -188,6 +186,11 @@ function OnboardingContent() {
                   {isCompleted && (
                     <span className="bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400 text-xs px-2 py-1 rounded-full">
                       {isRerunMode ? 'Re-run' : 'Complete'}
+                    </span>
+                  )}
+                  {!isCompleted && skippedSteps.includes(step.id) && (
+                    <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs px-2 py-1 rounded-full">
+                      Skipped
                     </span>
                   )}
                   {isCurrent && !isCompleted && (

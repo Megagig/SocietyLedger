@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import { AppState } from 'react-native';
 
 import { PrivacyOverlay } from '@/components/feedback/PrivacyOverlay';
+import { SubscriptionBlockedScreen } from '@/features/session/components/SubscriptionBlockedScreen';
+import { isSetupPending, isSubscriptionBlocked, SETUP_HREF } from '@/features/session/landing';
 import { useAutoLockTimer } from '@/hooks/useAutoLockTimer';
 import { usePushSetup } from '@/hooks/usePushSetup';
 import { useAppLockStore } from '@/stores/appLock';
@@ -31,6 +33,8 @@ export default function AppLayout() {
   const status = useSessionStore((state) => state.status);
   const isLocked = useAppLockStore((state) => state.isLocked);
   const biometricsEnabled = usePrefsStore((state) => state.biometricsEnabled);
+  const user = useSessionStore((state) => state.user);
+  const segments = useSegments();
   useAutoLockTimer();
   usePushSetup();
 
@@ -49,6 +53,16 @@ export default function AppLayout() {
 
   if (isLocked && biometricsEnabled) {
     return <Redirect href="/(lock)/unlock" />;
+  }
+
+  // The association's free trial or subscription has ended: nothing in the app works until it pays, so say so instead of showing empty lists.
+  if (isSubscriptionBlocked(user)) {
+    return <SubscriptionBlockedScreen />;
+  }
+
+  // A new association's admin finishes (or skips) the setup wizard before anything else.
+  if (isSetupPending(user) && segments[1] !== 'onboarding') {
+    return <Redirect href={SETUP_HREF} />;
   }
 
   return (

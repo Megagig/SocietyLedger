@@ -1,24 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { API_ROUTES } from '@/utils/constants';
 
+const inputClass =
+  'w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent';
+const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2';
+
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+const messageFrom = (error: unknown, fallback: string): string => {
+  const data = (error as { response?: { data?: { message?: string } } })?.response?.data;
+  return data?.message || fallback;
+};
+
 export default function ProfileSetupPage() {
   const router = useRouter();
+  const fileInput = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState('');
   const [formData, setFormData] = useState({
     name: '',
-    logo: '',
     primaryColor: '#14b8a6',
-    description: '',
+    address: '',
+    phone: '',
+    email: '',
   });
 
   useEffect(() => {
     fetchAssociationData();
   }, []);
+
+  // Free the temporary preview URL when it is replaced or the page closes
+  useEffect(() => {
+    return () => {
+      if (logoPreview.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
+    };
+  }, [logoPreview]);
 
   const fetchAssociationData = async () => {
     setLoading(true);
@@ -26,39 +49,84 @@ export default function ProfileSetupPage() {
       const response = await api.get(API_ROUTES.ONBOARDING.STATUS);
       const association = response.data.data.association;
       if (association) {
-        setFormData({
+        setFormData((prev) => ({
+          ...prev,
           name: association.name || '',
-          logo: association.logo || '',
-          primaryColor: association.primaryColor || '#14b8a6',
-          description: '',
-        });
+          primaryColor: association.primaryColor || prev.primaryColor,
+        }));
+        setLogoPreview(association.logo || '');
       }
-    } catch (error) {
-      console.error('Failed to fetch association data:', error);
+      // Contact details already saved (for example when they come back to this step)
+      try {
+        const profile = await api.get('/settings/association/profile');
+        const saved = profile.data.data ?? {};
+        setFormData((prev) => ({
+          ...prev,
+          address: saved.address ?? '',
+          phone: saved.phone ?? '',
+          email: saved.email ?? '',
+        }));
+      } catch {
+        // Not critical: the fields just start empty
+      }
+    } catch (err) {
+      console.error('Failed to fetch association data:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogoPicked = (file: File | undefined) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Use a JPEG, PNG or WebP picture for the logo.');
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setError('The logo is larger than 2MB. Choose a smaller picture.');
+      return;
+    }
+    setError(null);
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError(null);
     try {
-      // Complete the step
-      await api.patch(
-        API_ROUTES.ONBOARDING.COMPLETE_STEP,
-        { step: 1, stepName: 'profile' }
-      );
+      // Empty fields are sent as empty text; the server reads that as "cleared".
+      await api.patch('/settings/association/profile', {
+        name: formData.name.trim() || undefined,
+        primaryColor: formData.primaryColor,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.email,
+      });
+
+      if (logoFile) {
+        const body = new FormData();
+        body.append('logo', logoFile);
+        await api.post('/settings/association/logo', body);
+      }
+
+      await api.patch(API_ROUTES.ONBOARDING.COMPLETE_STEP, { step: 1, stepName: 'profile' });
       router.push('/onboarding/team');
-    } catch (error) {
-      console.error('Failed to save profile:', error);
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+      setError(messageFrom(err, 'We could not save your profile. Please try again.'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleSkipStep = () => {
-    router.push('/onboarding/team');
+  const handleSkipStep = async () => {
+    try {
+      await api.patch(API_ROUTES.ONBOARDING.COMPLETE_STEP, { step: 1, stepName: 'profile', skipped: true });
+    } finally {
+      router.push('/onboarding/team');
+    }
   };
 
   if (loading) {
@@ -89,36 +157,48 @@ export default function ProfileSetupPage() {
             Association Profile
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Customize your association&apos;s branding and appearance
+            Customize your association&apos;s branding and contact details
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div role="alert" className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl">
             {/* Logo Upload */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Association Logo
-              </label>
+              <label className={labelClass}>Association Logo</label>
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                  {formData.logo ? (
-                    <img src={formData.logo} alt="Logo" className="w-full h-full object-cover" />
+                  {logoPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
                   ) : (
                     <ImageIcon className="w-8 h-8 text-gray-400" />
                   )}
                 </div>
                 <div>
                   <input
-                    type="url"
-                    placeholder="Enter logo URL"
-                    value={formData.logo}
-                    onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    ref={fileInput}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => handleLogoPicked(e.target.files?.[0])}
                   />
+                  <button
+                    type="button"
+                    onClick={() => fileInput.current?.click()}
+                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    {logoPreview ? 'Change picture' : 'Choose a picture'}
+                  </button>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Recommended: 200x200px, PNG or JPG
+                    JPEG, PNG or WebP, up to 2MB. Square, about 200x200px, looks best.
                   </p>
                 </div>
               </div>
@@ -126,55 +206,76 @@ export default function ProfileSetupPage() {
 
             {/* Association Name */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Association Name
-              </label>
+              <label htmlFor="name" className={labelClass}>Association Name</label>
               <input
+                id="name"
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                className={inputClass}
                 placeholder="Enter your association name"
               />
             </div>
 
-            {/* Primary Color */}
+            {/* Contact details */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Primary Color
-              </label>
+              <label htmlFor="address" className={labelClass}>Address (Optional)</label>
+              <input
+                id="address"
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className={inputClass}
+                placeholder="Where the association meets or is based"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label htmlFor="phone" className={labelClass}>Phone (Optional)</label>
+                <input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className={inputClass}
+                  placeholder="0803 123 4567"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className={labelClass}>Email (Optional)</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={inputClass}
+                  placeholder="info@example.com"
+                />
+              </div>
+            </div>
+
+            {/* Primary Color */}
+            <div>
+              <label className={labelClass}>Primary Color</label>
               <div className="flex items-center gap-4">
                 <input
                   type="color"
                   value={formData.primaryColor}
                   onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
                   className="w-12 h-12 rounded-lg cursor-pointer border-0"
+                  aria-label="Pick a colour"
                 />
                 <input
                   type="text"
                   value={formData.primaryColor}
                   onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                  className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  className={`flex-1 ${inputClass}`}
                   placeholder="#14b8a6"
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 This color will be used throughout your dashboard
               </p>
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Description (Optional)
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-                placeholder="Brief description of your association"
-              />
             </div>
           </div>
 
@@ -183,8 +284,9 @@ export default function ProfileSetupPage() {
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Preview</h3>
             <div className="flex items-center gap-4 p-4 rounded-xl" style={{ backgroundColor: `${formData.primaryColor}15` }}>
               <div className="w-12 h-12 rounded-lg bg-white dark:bg-gray-700 flex items-center justify-center overflow-hidden shadow">
-                {formData.logo ? (
-                  <img src={formData.logo} alt="Logo" className="w-full h-full object-cover" />
+                {logoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-xl font-bold" style={{ color: formData.primaryColor }}>
                     {formData.name?.charAt(0) || 'A'}
@@ -196,7 +298,7 @@ export default function ProfileSetupPage() {
                   {formData.name || 'Your Association'}
                 </h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {formData.description || 'Association description'}
+                  {formData.phone || formData.email || 'Contact details'}
                 </p>
               </div>
             </div>

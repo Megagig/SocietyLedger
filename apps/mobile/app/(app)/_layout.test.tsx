@@ -29,13 +29,24 @@ jest.mock('@/hooks/usePushSetup', () => ({ usePushSetup: jest.fn() }));
 // guard) — mocking `Stack`/`Redirect` keeps this test from pulling in the real router tree (every
 // screen under `(tabs)`, MMKV-backed stores, etc.), which is what `_layout.test.tsx` is and isn't
 // testing: the guard's branch, not the navigator it guards.
-let mockRedirectHref: string | null = null;
+let mockRedirectHref: unknown = null;
+let mockSegments: string[] = ['(app)'];
+let mockShowedBlockedScreen = false;
 jest.mock('expo-router', () => ({
   Redirect: ({ href }: { href: string }) => {
     mockRedirectHref = href;
     return null;
   },
   Stack: () => null,
+  useSegments: () => mockSegments,
+}));
+
+// What the guard shows instead of the app when the association's trial or subscription has ended.
+jest.mock('@/features/session/components/SubscriptionBlockedScreen', () => ({
+  SubscriptionBlockedScreen: () => {
+    mockShowedBlockedScreen = true;
+    return null;
+  },
 }));
 
 const fakeUser: SessionUser = {
@@ -52,6 +63,8 @@ const fakeUser: SessionUser = {
 describe('(app)/_layout guard', () => {
   beforeEach(() => {
     mockRedirectHref = null;
+    mockSegments = ['(app)'];
+    mockShowedBlockedScreen = false;
     useSessionStore.getState().reset();
     useAppLockStore.getState().unlock();
     usePrefsStore.getState().setBiometricsEnabled(false);
@@ -87,5 +100,46 @@ describe('(app)/_layout guard', () => {
     useAppLockStore.getState().lock();
     await render(<AppLayout />);
     expect(mockRedirectHref).toBeNull();
+  });
+
+  describe('free trial and setup wizard', () => {
+    const admin: SessionUser = { ...fakeUser, role: 'admin', requiresOnboarding: true };
+
+    it('shows the blocked screen, not the app, once the trial has ended', async () => {
+      useSessionStore.getState().setUser({
+        ...fakeUser,
+        subscriptionAccess: { allowed: false, reason: 'TRIAL_ENDED', status: 'TRIALING', trialEndsAt: '2026-11-01T00:00:00.000Z', trialDaysLeft: null },
+      });
+      await render(<AppLayout />);
+      expect(mockShowedBlockedScreen).toBe(true);
+    });
+
+    it('keeps the app open while the trial is still running', async () => {
+      useSessionStore.getState().setUser({
+        ...fakeUser,
+        subscriptionAccess: { allowed: true, reason: 'OK', status: 'TRIALING', trialEndsAt: '2026-11-17T00:00:00.000Z', trialDaysLeft: 12 },
+      });
+      await render(<AppLayout />);
+      expect(mockShowedBlockedScreen).toBe(false);
+    });
+
+    it('sends an admin whose setup is pending to the setup wizard', async () => {
+      useSessionStore.getState().setUser(admin);
+      await render(<AppLayout />);
+      expect(mockRedirectHref).toBe('/(app)/onboarding');
+    });
+
+    it('does not bounce the admin around once they are already inside the wizard', async () => {
+      mockSegments = ['(app)', 'onboarding'];
+      useSessionStore.getState().setUser(admin);
+      await render(<AppLayout />);
+      expect(mockRedirectHref).toBeNull();
+    });
+
+    it('leaves a member alone even if the flag is set, and platform staff are never blocked', async () => {
+      useSessionStore.getState().setUser({ ...fakeUser, requiresOnboarding: true });
+      await render(<AppLayout />);
+      expect(mockRedirectHref).toBeNull();
+    });
   });
 });

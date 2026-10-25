@@ -1,6 +1,8 @@
 /** Association settings (project-overview.md §6.9 ST1–ST6, ST10). Shapes verified against settings.service.ts and settings.schema.ts. */
+import type { AssociationTypeKey } from '@societyledger/shared';
 
-export type AssociationType = 'general' | 'hoa' | 'cooperative' | 'town_union' | 'professional' | 'religious' | 'club' | 'alumni' | 'investment';
+// The same list signup and the web use (packages/shared/src/association-signup.ts), so the three never drift apart.
+export type AssociationType = AssociationTypeKey;
 export type PaymentChannel = 'bank_transfer' | 'cash' | 'card' | 'mobile_money' | 'cheque';
 export type DefaultRole = 'member' | 'financial_secretary' | 'treasurer';
 export type LateFeeType = 'fixed' | 'percentage';
@@ -12,6 +14,8 @@ export type AssociationProfileDTO = {
   logo?: string | null;
   primaryColor?: string | null;
   associationType?: AssociationType;
+  /** What they call it themselves, when the type is "other". */
+  customAssociationType?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
@@ -25,6 +29,7 @@ export type AssociationProfilePayload = {
   name: string;
   primaryColor: string | null;
   associationType: AssociationType;
+  customAssociationType: string | null;
   address: string | null;
   city: string | null;
   state: string | null;

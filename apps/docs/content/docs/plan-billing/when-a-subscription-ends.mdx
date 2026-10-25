@@ -1,28 +1,31 @@
 ---
 title: "What happens when a subscription ends"
-description: "No grace period exists yet, and today, nothing actually restricts what you can do either way."
+description: "When a free trial or paid plan runs out, your association is paused until a payment is made. Your data is kept."
 type: concept
 audience: ["admin"]
 platforms: ["web"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/plan-billing/cancelling-and-reactivating", "/docs/core-concepts/plans-and-modules"]
+lastVerified: "2026-11-03"
+related: ["/docs/plan-billing/free-trial", "/docs/plan-billing/cancelling-and-reactivating", "/docs/core-concepts/plans-and-modules"]
 ---
 
-In most billing systems, a lapsed subscription moves through a grace period before anything is restricted. SocietyLedger doesn't have that step yet — and right now, access doesn't change either way.
+When the free trial or a paid plan ends and isn't renewed, SocietyLedger pauses your association until a payment is made.
 
 ## How it works
 
-A scheduled daily check marks a subscription **Expired** the moment its current period ends — there's no past-due or grace window first, despite a status built for one existing in the system. Once marked **Expired**, the subscription page shows exactly what it shows for an association that has never subscribed at all: no subscription found.
+A paid plan that reaches the end of its period moves to **Past due** for a short grace period of 3 days, during which everything keeps working and the admin is emailed. If no payment arrives, it becomes **Expired**. A free trial goes straight to blocked when its last day passes. A cancelled plan keeps working until the period you already paid for ends.
 
-<Callout type="danger" title="Nothing currently depends on this status">
-Whether your account can access a module — Accounting, Cooperatives, or any plan-gated feature — is checked by a separate system that currently runs in "log only" mode: it writes a note that a module would be blocked, but never actually blocks it. Confirmed directly: an association with **no subscription at all** still has full access to every Enterprise-tier module. An expired, cancelled or never-started subscription has no practical effect on what your association can do today.
-</Callout>
+While an association is paused:
+
+- Everyone in it, including officers and members, sees a notice instead of the app, on the web and in the mobile app.
+- Admins and officers who can manage billing can still open the subscription pages on the web to pay. The mobile app doesn't take payments; it tells admins to renew on the web.
+- Members are told to contact their administrator.
+- Nothing is deleted.
 
 ## Why it matters
 
-Don't rely on expiring a subscription as a way to restrict access, and don't assume an upgrade is required to use a module your plan doesn't technically include — enforcement isn't switched on yet. Treat your subscription status as a billing record for now, not an access control.
+Renew before the date shown on the subscription page. As soon as a payment is confirmed, access comes back for everyone.
 
 ## What you can do
 
-Keep paying on schedule regardless — this is expected to change, and your payment history and plan selection are both tracked accurately either way. See [Cancelling and reactivating](/docs/plan-billing/cancelling-and-reactivating) if you want to stop a renewal cleanly.
+Keep payments on schedule. See [Your free trial](/docs/plan-billing/free-trial) for how the trial ends, or [Cancelling and reactivating](/docs/plan-billing/cancelling-and-reactivating) if you want to stop a renewal cleanly.

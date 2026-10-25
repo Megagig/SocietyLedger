@@ -92,8 +92,10 @@ export async function createMemberInvite(data: {
   invitedById: number;
   email?: string;
   phone?: string;
+  /** An officer role to grant when the invite is accepted (onboarding team step). */
+  roleName?: string;
 }): Promise<{ invite: any; token: string }> {
-  const { memberId, associationId, invitedById, email, phone } = data;
+  const { memberId, associationId, invitedById, email, phone, roleName } = data;
 
   // Verify member exists and belongs to association
   const member = await prisma.member.findFirst({
@@ -145,6 +147,7 @@ export async function createMemberInvite(data: {
       memberId,
       email: inviteEmail,
       phone: invitePhone,
+      roleName: roleName ?? null,
       inviteToken: hashedToken,
       inviteTokenExpiresAt: expiresAt,
       status: 'pending',
@@ -265,7 +268,7 @@ export async function acceptMemberInvite(data: {
         associationId: invite.associationId,
         email: invite.email?.toLowerCase() || invite.member.email?.toLowerCase(),
         passwordHash,
-        role: 'member',
+        role: invite.roleName || 'member', // an officer invited from the setup wizard arrives with their role
         isActive: true, // Auto-active since admin invited
         emailVerified: true, // Auto-verified since admin invited
         userApproval: {
@@ -276,6 +279,16 @@ export async function acceptMemberInvite(data: {
         },
       },
     });
+
+    // The role they were invited with becomes a real role assignment now, not only at their first sign-in.
+    if (invite.roleName) {
+      const role = await tx.role.findFirst({ where: { associationId: invite.associationId, name: invite.roleName } });
+      if (role) {
+        await tx.userRole.create({
+          data: { userId: user.id, roleId: role.id, associationId: invite.associationId, assignedBy: invite.invitedById, isActive: true },
+        });
+      }
+    }
 
     // Link user to member
     const member = await tx.member.update({
