@@ -41,6 +41,7 @@ const DEFAULT_SETTINGS: Record<SettingsCategory, Record<string, any>> = {
     lateFeeAmount: 0,
     enablePartialPayments: true,
     requirePaymentApproval: false,
+    receiptRequiredAbove: 5000,
     fiscalYearStart: 1,
     currencyCode: 'NGN',
     currencySymbol: '₦',

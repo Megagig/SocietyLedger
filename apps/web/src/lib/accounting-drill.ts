@@ -91,6 +91,8 @@ export function sourceHref(source: EntrySource): string | null {
       return ids.loanId ? `/dashboard/cooperatives/loans/${ids.loanId}` : null;
     case 'cash_lodgment':
       return `/dashboard/cash/lodgments/${source.id}`;
+    case 'expense':
+      return `${BASE}/expenses?expense=${source.id}`;
     case 'reversal':
       return ids.entryId ? entryHref(ids.entryId) : null;
     default:
@@ -107,6 +109,7 @@ export const SOURCE_OPEN_LABELS: Record<EntrySource['kind'], string> = {
   loan: 'Open the loan',
   loan_repayment: 'Open the loan',
   cash_lodgment: 'Open the lodgment',
+  expense: 'Open the expense and its receipt',
   reversal: 'Open the entry it reversed',
 };
 

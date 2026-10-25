@@ -61,7 +61,7 @@ describe('profile form', () => {
 });
 
 describe('financial form', () => {
-  const settings = { enableLateFees: false, lateFeeType: 'fixed' as const, lateFeeAmount: 0, defaultGracePeriodDays: 7, enablePartialPayments: true };
+  const settings = { enableLateFees: false, lateFeeType: 'fixed' as const, lateFeeAmount: 0, defaultGracePeriodDays: 7, enablePartialPayments: true, receiptRequiredAbove: 5000 };
 
   it('round-trips the saved settings', () => {
     expect(toFinancialPayload(financialToFormValues(settings))).toEqual(settings);
@@ -73,6 +73,18 @@ describe('financial form', () => {
     expect(financialFormSchema.safeParse({ ...on, lateFeeAmount: '500' }).success).toBe(true);
     expect(financialFormSchema.safeParse({ ...on, lateFeeType: 'percentage', lateFeeAmount: '150' }).success).toBe(false);
     expect(financialFormSchema.safeParse({ ...on, lateFeeType: 'percentage', lateFeeAmount: '5' }).success).toBe(true);
+  });
+
+  it('keeps the receipt limit an amount in naira, with zero meaning a receipt is always asked for', () => {
+    const values = financialToFormValues(settings);
+    expect(financialFormSchema.safeParse({ ...values, receiptRequiredAbove: '0' }).success).toBe(true);
+    expect(financialFormSchema.safeParse({ ...values, receiptRequiredAbove: '2500.50' }).success).toBe(true);
+    for (const bad of ['', '-5', 'abc', '10.555']) expect(financialFormSchema.safeParse({ ...values, receiptRequiredAbove: bad }).success).toBe(false);
+    expect(toFinancialPayload({ ...values, receiptRequiredAbove: '20000' }).receiptRequiredAbove).toBe(20000);
+  });
+
+  it('shows the default limit when the server sent none', () => {
+    expect(financialToFormValues({ ...settings, receiptRequiredAbove: undefined as never }).receiptRequiredAbove).toBe('5000');
   });
 
   it('keeps the grace period a whole number of days', () => {

@@ -59,6 +59,11 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       return next();
     }
 
+    // Allow expense routes - tenant context comes from authenticated user's associationId
+    if (req.path.startsWith('/api/expenses')) {
+      return next();
+    }
+
     // Allow dashboard routes - tenant context comes from authenticated user's associationId
     if (req.path.startsWith('/api/dashboard')) {
       return next();

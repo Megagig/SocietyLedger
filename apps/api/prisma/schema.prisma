@@ -56,6 +56,7 @@ model Association {
   // Phase 9: Accounting System
   chartOfAccounts            ChartOfAccount[]
   journalEntries             JournalEntry[]
+  expenseVouchers            ExpenseVoucher[]
   budgets                    Budget[]
   accountingPeriods          AccountingPeriod[]
   // Phase 3.5: Nigerian Payment Features
@@ -985,11 +986,56 @@ model ChartOfAccount {
   children          ChartOfAccount[]   @relation("AccountHierarchy")
   journalEntryLines JournalEntryLine[]
   budgetItems       BudgetItem[]
+  expenseCategories ExpenseVoucher[]   @relation("ExpenseCategory")
+  expensesPaidFrom  ExpenseVoucher[]   @relation("ExpensePaidFrom")
 
   @@unique([associationId, code])
   @@index([associationId, type])
   @@index([parentId])
   @@map("chart_of_accounts")
+}
+
+// Expense voucher: spending recorded after it is paid. A different officer approves it, and approval posts it to the books
+// (debit the category account, credit the account it was paid from). A wrong one is voided, which posts a reversal.
+model ExpenseVoucher {
+  id                Int            @id @default(autoincrement())
+  associationId     Int            @map("association_id")
+  voucherNumber     String         @map("voucher_number") // EXP-2026-00001
+  expenseDate       DateTime       @map("expense_date")
+  payee             String
+  description       String
+  amount            Decimal        @db.Decimal(12, 2)
+  categoryAccountId Int            @map("category_account_id")
+  paidFromAccountId Int            @map("paid_from_account_id")
+  reference         String?
+  noReceiptReason   String?        @map("no_receipt_reason")
+  receiptKey        String?        @map("receipt_key")
+  receiptType       String?        @map("receipt_type")
+  status            ExpenseStatus  @default(DRAFT)
+  createdBy         Int            @map("created_by")
+  submittedAt       DateTime?      @map("submitted_at")
+  approvedBy        Int?           @map("approved_by")
+  approvedAt        DateTime?      @map("approved_at")
+  overBudget        Boolean        @default(false) @map("over_budget")
+  rejectedBy        Int?           @map("rejected_by")
+  rejectedAt        DateTime?      @map("rejected_at")
+  rejectionReason   String?        @map("rejection_reason")
+  voidedBy          Int?           @map("voided_by")
+  voidedAt          DateTime?      @map("voided_at")
+  voidReason        String?        @map("void_reason")
+  journalEntryId    Int?           @map("journal_entry_id")
+  reversalEntryId   Int?           @map("reversal_entry_id")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  association       Association    @relation(fields: [associationId], references: [id])
+  category          ChartOfAccount @relation("ExpenseCategory", fields: [categoryAccountId], references: [id])
+  paidFrom          ChartOfAccount @relation("ExpensePaidFrom", fields: [paidFromAccountId], references: [id])
+
+  @@unique([associationId, voucherNumber])
+  @@index([associationId, status])
+  @@index([associationId, expenseDate])
+  @@index([categoryAccountId])
+  @@map("expense_vouchers")
 }
 
 // Journal Entry (TASK-ACC-002)
@@ -1119,6 +1165,14 @@ enum AccountType {
 enum NormalBalance {
   DEBIT
   CREDIT
+}
+
+enum ExpenseStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  VOIDED
 }
 
 enum JournalEntryStatus {

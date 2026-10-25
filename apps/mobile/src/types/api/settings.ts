@@ -41,6 +41,8 @@ export type FinancialSettingsDTO = {
   lateFeeAmount: number;
   defaultGracePeriodDays: number;
   enablePartialPayments: boolean;
+  /** Spending above this needs its receipt attached; at or below it a reason is enough. */
+  receiptRequiredAbove: number;
 };
 
 export type PaymentsSettingsDTO = {

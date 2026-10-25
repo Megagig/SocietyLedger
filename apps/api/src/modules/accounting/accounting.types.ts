@@ -312,6 +312,8 @@ export interface AccountingDashboard {
   };
   recentEntries: JournalEntryResponse[];
   pendingApprovals: number;
+  /** Expense vouchers waiting for an approver. */
+  pendingExpenses: number;
   budgetStatus?: {
     /** The budget in force, so the figure can open it. */
     budgetId: number;

@@ -63,6 +63,8 @@ export interface FinancialSettings {
   enablePartialPayments: boolean;
   requirePaymentApproval: boolean;
   approvalThreshold?: number;
+  /** Spending above this needs its receipt attached; at or below it a reason is enough. */
+  receiptRequiredAbove?: number;
   fiscalYearStart: number;
   currencyCode: string;
   currencySymbol: string;

@@ -15,6 +15,13 @@ describe('attentionRows', () => {
     expect(rows.map((r) => r.label(r.count))).toEqual(['1 payment proof to verify', '3 payment proofs to verify']);
   });
 
+  it('words the expenses waiting for approval and opens them filtered', () => {
+    const [row] = attentionRows([{ key: 'expenses', count: 2 }]);
+    expect(row!.label(2)).toBe('2 expenses to approve');
+    expect(row!.label(1)).toBe('1 expense to approve');
+    expect(row!.href).toBe('/(app)/(tabs)/manage/accounting/expenses?status=PENDING_APPROVAL');
+  });
+
   it('keeps the order the API sent and links each to its queue', () => {
     const rows = attentionRows([
       { key: 'memberApprovals', count: 2 },

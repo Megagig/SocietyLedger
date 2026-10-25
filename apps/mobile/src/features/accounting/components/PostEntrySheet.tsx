@@ -10,6 +10,10 @@ import { Text } from '@/components/ui/Text';
 
 type Props = {
   entryNumber: string;
+  /** The question and the words on the button, when the sheet confirms something other than posting an entry. */
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
   loading: boolean;
   /** Shown under the password when the server said it was wrong. */
   error?: string | null;
@@ -21,7 +25,7 @@ type Props = {
  * Posting adds an entry to the books for good, so the officer confirms with their password first. The password is sent with the
  * request and checked on the server; it is cleared whenever the sheet closes.
  */
-export const PostEntrySheet = forwardRef<BottomSheetModal, Props>(function PostEntrySheet({ entryNumber, loading, error, onConfirm, onDismiss }, ref) {
+export const PostEntrySheet = forwardRef<BottomSheetModal, Props>(function PostEntrySheet({ entryNumber, title, description, confirmLabel, loading, error, onConfirm, onDismiss }, ref) {
   const localRef = useRef<BottomSheetModal>(null);
   useImperativeHandle(ref, () => localRef.current as BottomSheetModal, []);
   const { control, handleSubmit, reset, setError } = useForm<{ password: string }>({ defaultValues: { password: '' } });
@@ -37,7 +41,7 @@ export const PostEntrySheet = forwardRef<BottomSheetModal, Props>(function PostE
   return (
     <BottomSheet
       ref={localRef}
-      title={`Post ${entryNumber}?`}
+      title={title ?? `Post ${entryNumber}?`}
       snapPoints={['55%']}
       onDismiss={() => {
         reset({ password: '' });
@@ -46,7 +50,7 @@ export const PostEntrySheet = forwardRef<BottomSheetModal, Props>(function PostE
     >
       <View className="gap-4 pb-6">
         <Text variant="body" tone="secondary">
-          Posting adds this entry to the books for good. It can no longer be changed. Enter your password to confirm.
+          {description ?? 'Posting adds this entry to the books for good. It can no longer be changed. Enter your password to confirm.'}
         </Text>
         <PasswordField control={control} name="password" label="Your password" testID="post-password" />
         {error ? (
@@ -67,7 +71,7 @@ export const PostEntrySheet = forwardRef<BottomSheetModal, Props>(function PostE
             }}
             testID="post-confirm"
           >
-            Post entry
+            {confirmLabel ?? 'Post entry'}
           </Button>
         </View>
       </View>

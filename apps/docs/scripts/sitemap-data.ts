@@ -203,6 +203,7 @@ export const sections: SectionDef[] = [
       { slug: 'chart-of-accounts', title: 'The chart of accounts', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/accounting/chart-of-accounts', 'AC2'] },
       { slug: 'how-transactions-post', title: 'How charges and payments post to accounts', type: 'concept', audience: ['officer'], platforms: ['web'], covers: [] },
       { slug: 'journal-entries', title: 'Journal entries: draft, approve, post', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/accounting/journal-entries', 'AC3', 'AC4'] },
+      { slug: 'expenses', title: 'Recording and approving expenses', type: 'task', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/accounting/expenses', 'AC7'] },
       { slug: 'opening-a-figure', title: 'Opening a figure to see the entries behind it', type: 'concept', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/accounting/ledger', 'AC2'] },
       { slug: 'income-statement', title: 'Income statement in depth', type: 'concept', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/accounting/income-statement'] },
       { slug: 'balance-sheet', title: 'Balance sheet in depth', type: 'concept', audience: ['officer'], platforms: ['web', 'mobile'], covers: ['/dashboard/accounting/balance-sheet'] },

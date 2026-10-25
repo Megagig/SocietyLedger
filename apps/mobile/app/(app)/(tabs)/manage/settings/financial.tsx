@@ -83,6 +83,17 @@ function FinancialForm({ settings, canEdit }: { settings: FinancialSettingsDTO; 
           </View>
         </Section>
 
+        <Section title="Spending">
+          <TextField
+            control={control}
+            name="receiptRequiredAbove"
+            label="A receipt is needed above (naira)"
+            helper="Expenses above this cannot be sent for approval without their receipt. At or below it, the officer may say why there is none."
+            keyboardType="decimal-pad"
+            testID="fin-receipt-limit"
+          />
+        </Section>
+
         <Section title="Paying">
           <Switch control={control} name="enablePartialPayments" label="Allow part payments" helper="A member can pay some of a charge and the rest later" testID="fin-partial" />
         </Section>

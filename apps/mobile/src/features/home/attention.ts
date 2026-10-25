@@ -25,6 +25,12 @@ export const ATTENTION_LINES: Partial<Record<AttentionKey, AttentionLine>> = {
     label: (n) => `${plural(n, 'journal entry', 'journal entries')} to approve or post`,
     href: '/(app)/(tabs)/manage/accounting/journal',
   },
+  expenses: {
+    icon: BookOpen,
+    tone: 'warning',
+    label: (n) => `${plural(n, 'expense', 'expenses')} to approve`,
+    href: '/(app)/(tabs)/manage/accounting/expenses?status=PENDING_APPROVAL',
+  },
   memberApprovals: {
     icon: UserCheck,
     tone: 'warning',

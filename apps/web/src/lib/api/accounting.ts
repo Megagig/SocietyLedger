@@ -60,6 +60,7 @@ export type SourceKind =
   | 'loan'
   | 'loan_repayment'
   | 'cash_lodgment'
+  | 'expense'
   | 'reversal';
 
 /** The record behind an automatic entry. `missing` is true when it can no longer be found. */
@@ -74,7 +75,7 @@ export interface EntrySource {
   status: string | null;
   reference: string | null;
   missing: boolean;
-  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number };
+  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number; expenseId?: number };
 }
 
 /** One posted line of an account's ledger, with the balance after it. */
@@ -230,6 +231,8 @@ export interface AccountingDashboard {
   };
   recentEntries: JournalEntry[];
   pendingApprovals: number;
+  /** Expense vouchers waiting for an approver. */
+  pendingExpenses?: number;
   budgetStatus?: {
     budgetId?: number;
     totalBudget: number;

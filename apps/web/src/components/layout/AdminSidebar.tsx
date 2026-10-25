@@ -333,6 +333,11 @@ export function AdminSidebar() {
           href: '/dashboard/accounting/chart-of-accounts',
         },
         {
+          label: 'Expenses',
+          icon: <IconReceipt size={18} />,
+          href: '/dashboard/accounting/expenses',
+        },
+        {
           label: 'Journal Entries',
           icon: <IconFileAnalytics size={18} />,
           href: '/dashboard/accounting/journal-entries',

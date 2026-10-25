@@ -80,6 +80,7 @@ export type SourceKind =
   | 'loan'
   | 'loan_repayment'
   | 'cash_lodgment'
+  | 'expense'
   | 'reversal';
 
 /** The record behind an automatic entry. `missing` is true when it can no longer be found. */
@@ -94,7 +95,7 @@ export type EntrySourceDTO = {
   status: string | null;
   reference: string | null;
   missing: boolean;
-  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number };
+  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number; expenseId?: number };
 };
 
 export type Pagination = { page: number; limit: number; totalCount: number; totalPages: number; hasMore: boolean };
@@ -209,6 +210,7 @@ export type AccountingDashboardDTO = {
   quickStats: { totalAssets: MoneyValue; totalLiabilities: MoneyValue; totalEquity: MoneyValue; netIncome: MoneyValue; cashBalance: MoneyValue };
   recentEntries: JournalEntryDTO[];
   pendingApprovals: number;
+  pendingExpenses?: number;
   budgetStatus?: { budgetId?: number; totalBudget: MoneyValue; totalSpent: MoneyValue; remainingBudget: MoneyValue; percentUsed: number };
   monthlyTrend: { month: string; income: MoneyValue; expenses: MoneyValue }[];
 };

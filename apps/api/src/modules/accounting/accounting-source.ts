@@ -16,6 +16,7 @@ export type SourceKind =
   | 'loan'
   | 'loan_repayment'
   | 'cash_lodgment'
+  | 'expense'
   | 'reversal';
 
 export type EntrySource = {
@@ -33,7 +34,7 @@ export type EntrySource = {
   /** True when the record can no longer be found (it was removed). The entry stays readable. */
   missing: boolean;
   /** Ids a screen may need to open the record, or the nearest screen that exists for it. */
-  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number };
+  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number; expenseId?: number };
 };
 
 const KIND_BY_TABLE: Record<string, { kind: SourceKind; title: string }> = {
@@ -45,6 +46,7 @@ const KIND_BY_TABLE: Record<string, { kind: SourceKind; title: string }> = {
   Loan: { kind: 'loan', title: 'Loan' },
   LoanRepayment: { kind: 'loan_repayment', title: 'Loan repayment' },
   CashLodgment: { kind: 'cash_lodgment', title: 'Cash lodgment' },
+  ExpenseVoucher: { kind: 'expense', title: 'Expense' },
   CashReversal: { kind: 'reversal', title: 'Reversal of an earlier entry' },
 };
 
@@ -161,6 +163,14 @@ export async function resolveEntrySource(associationId: number, sourceType: stri
       return {
         kind, id: row.id, title, summary: 'Cash paid into the bank', member: null, amount: row.amount, date: row.depositDate, status: humanize(row.status),
         reference: row.bankReference, missing: false, ids: {},
+      };
+    }
+    case 'ExpenseVoucher': {
+      const row = await prisma.expenseVoucher.findFirst({ where, include: { category: { select: { name: true } } } });
+      if (!row) return gone();
+      return {
+        kind, id: row.id, title, summary: `${row.category.name}: ${row.payee}`, member: null, amount: row.amount, date: row.expenseDate,
+        status: humanize(row.status), reference: row.voucherNumber, missing: false, ids: { expenseId: row.id },
       };
     }
     case 'CashReversal': {

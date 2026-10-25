@@ -16,6 +16,7 @@ interface FinancialSettings {
   enablePartialPayments: boolean;
   requirePaymentApproval: boolean;
   approvalThreshold?: number;
+  receiptRequiredAbove?: number;
   fiscalYearStart: number;
   currencyCode: string;
   currencySymbol: string;
@@ -56,6 +57,7 @@ export default function FinancialSettingsPage() {
     lateFeeAmount: 0,
     enablePartialPayments: true,
     requirePaymentApproval: false,
+    receiptRequiredAbove: 5000,
     fiscalYearStart: 1,
     currencyCode: 'NGN',
     currencySymbol: '₦',
@@ -336,6 +338,30 @@ export default function FinancialSettingsPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Spending */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Spending
+          </h2>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            A receipt is needed above
+          </label>
+          <div className="relative w-full md:w-48">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.receiptRequiredAbove ?? 5000}
+              onChange={(e) => handleChange('receiptRequiredAbove', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">₦</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Expenses above this cannot be sent for approval without their receipt. At or below it, the officer may say why there is none.
+          </p>
         </div>
 
         {/* Payment Settings */}

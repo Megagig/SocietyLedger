@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, CalendarRange, FileBarChart, Landmark, ListTree, PiggyBank, RefreshCw, RefreshCcw } from 'lucide-react-native';
+import { BookOpen, CalendarRange, FileBarChart, Landmark, ListTree, PiggyBank, Receipt, RefreshCw, RefreshCcw } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { toast } from 'sonner-native';
 
@@ -171,6 +171,15 @@ export default function AccountingDashboardScreen() {
           <Section title="The books">
             <ListGroup>
               <ListItem leading={<IconCircle icon={BookOpen} tone="primary" />} title="Journal entries" meta="Write, approve and post entries" showChevron onPress={() => go('journal')} testID="accounting-journal" />
+              <ListItem
+                leading={<IconCircle icon={Receipt} tone="primary" />}
+                title="Expenses"
+                meta="Record spending, with the receipt, for approval"
+                trailing={(data.pendingExpenses ?? 0) > 0 ? <Badge tone="warning">{String(data.pendingExpenses)}</Badge> : undefined}
+                showChevron
+                onPress={() => go('expenses')}
+                testID="accounting-expenses"
+              />
               <ListItem leading={<IconCircle icon={ListTree} tone="primary" />} title="Chart of accounts" meta="Every account and what it holds" showChevron onPress={() => go('accounts')} testID="accounting-accounts" />
               <ListItem leading={<IconCircle icon={FileBarChart} tone="primary" />} title="Financial statements" meta="Income, balance sheet and cash flow" showChevron onPress={() => go('statements')} testID="accounting-statements" />
               <ListItem leading={<IconCircle icon={PiggyBank} tone="primary" />} title="Budgets" meta="Plan the year and see how you are doing" showChevron onPress={() => go('budgets')} testID="accounting-budgets" />

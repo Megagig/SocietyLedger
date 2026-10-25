@@ -207,6 +207,8 @@ export const DOCS_LINKS: Record<string, string> = {
   AC1: '/docs/accounting/accounting-dashboard',
   '/dashboard/accounting/chart-of-accounts': '/docs/accounting-guide/chart-of-accounts',
   '/dashboard/accounting/ledger': '/docs/accounting-guide/opening-a-figure',
+  '/dashboard/accounting/expenses': '/docs/accounting-guide/expenses',
+  AC7: '/docs/accounting-guide/expenses',
   AC2: '/docs/accounting-guide/chart-of-accounts',
   AC4: '/docs/accounting-guide/journal-entries',
   AC5: '/docs/accounting/income-statement-at-a-glance',

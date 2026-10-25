@@ -306,6 +306,20 @@ export default function AccountingPage() {
         </Alert>
       )}
 
+      {/* Expenses waiting for an approver */}
+      {dashboard && (dashboard.pendingExpenses ?? 0) > 0 && (
+        <Alert icon={<IconClipboardCheck size={20} />} title="Expenses waiting" color="yellow" mb="xl">
+          <Group justify="space-between" align="center">
+            <Text size="sm">
+              {dashboard.pendingExpenses} {dashboard.pendingExpenses === 1 ? 'expense is' : 'expenses are'} waiting for approval.
+            </Text>
+            <Button component={Link} href="/dashboard/accounting/expenses?status=PENDING_APPROVAL" size="xs" variant="light">
+              Review Now
+            </Button>
+          </Group>
+        </Alert>
+      )}
+
       {/* Budget Status */}
       {dashboard?.budgetStatus && (
         <Card withBorder padding="md" className="p-4 sm:p-6 mb-6">

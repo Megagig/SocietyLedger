@@ -95,6 +95,10 @@ export const financialFormSchema = z
       .refine((v) => v === '' || (/^\d+(\.\d{1,2})?$/.test(v) && Number(v) <= 100_000_000), 'Enter an amount like 500 or 2.5'),
     defaultGracePeriodDays: wholeNumber('the grace period in days', 0, 365),
     enablePartialPayments: z.boolean(),
+    receiptRequiredAbove: z
+      .string()
+      .trim()
+      .refine((v) => /^\d+(\.\d{1,2})?$/.test(v) && Number(v) <= 100_000_000_000, 'Enter an amount like 5000, or 0 to always ask for a receipt'),
   })
   .superRefine((v, ctx) => {
     if (v.enableLateFees && (v.lateFeeAmount === '' || Number(v.lateFeeAmount) <= 0)) {
@@ -113,6 +117,7 @@ export function financialToFormValues(s: FinancialSettingsDTO): FinancialFormVal
     lateFeeAmount: s.lateFeeAmount ? String(s.lateFeeAmount) : '',
     defaultGracePeriodDays: String(s.defaultGracePeriodDays),
     enablePartialPayments: s.enablePartialPayments,
+    receiptRequiredAbove: String(s.receiptRequiredAbove ?? 5000),
   };
 }
 
@@ -123,6 +128,7 @@ export function toFinancialPayload(v: FinancialFormValues): FinancialSettingsDTO
     lateFeeAmount: v.lateFeeAmount === '' ? 0 : Number(v.lateFeeAmount),
     defaultGracePeriodDays: Number(v.defaultGracePeriodDays),
     enablePartialPayments: v.enablePartialPayments,
+    receiptRequiredAbove: Number(v.receiptRequiredAbove),
   };
 }
 

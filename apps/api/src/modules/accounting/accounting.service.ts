@@ -1054,6 +1054,7 @@ export const accountingService = {
 
     const recentEntries = await prisma.journalEntry.findMany({ where: { associationId }, include: entryInclude, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 5 });
     const pendingApprovals = await this.getPendingApprovalsCount(associationId);
+    const pendingExpenses = await prisma.expenseVoucher.count({ where: { associationId, status: 'PENDING_APPROVAL' } });
 
     // The active budget's spending: only expense lines, and only what was posted inside the budget's own dates
     const activeBudget = await prisma.budget.findFirst({ where: { associationId, status: 'ACTIVE' }, include: { items: true } });
@@ -1101,6 +1102,7 @@ export const accountingService = {
       },
       recentEntries: recentEntries.map((e) => this.formatJournalEntryResponse(e)),
       pendingApprovals,
+      pendingExpenses,
       budgetStatus,
       monthlyTrend,
     };

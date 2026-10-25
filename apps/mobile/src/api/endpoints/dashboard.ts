@@ -92,7 +92,8 @@ export type AttentionKey =
   | 'electionNominations'
   | 'electionsToClose'
   | 'electionResults'
-  | 'journalEntries';
+  | 'journalEntries'
+  | 'expenses';
 
 export type AttentionItemDTO = { key: AttentionKey; count: number };
 

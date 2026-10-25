@@ -374,6 +374,8 @@ export function sourceHref(source: EntrySourceDTO): string | null {
       return ids.loanId ? `${base}/cooperatives/loans/${ids.loanId}` : null;
     case 'cash_lodgment':
       return `${base}/cash/lodgments/${source.id}`;
+    case 'expense':
+      return `${base}/accounting/expenses/${source.id}`;
     case 'reversal':
       return ids.entryId ? entryHref(ids.entryId) : null;
     default:
@@ -391,6 +393,7 @@ export const SOURCE_OPEN_LABELS: Record<EntrySourceDTO['kind'], string> = {
   loan: 'Open the loan',
   loan_repayment: 'Open the loan',
   cash_lodgment: 'Open the lodgment',
+  expense: 'Open the expense and its receipt',
   reversal: 'Open the entry it reversed',
 };
 

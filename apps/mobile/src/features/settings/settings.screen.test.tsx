@@ -40,7 +40,7 @@ jest.mock('@/features/settings/queries', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockAllowed = ['SETTINGS_EDIT', 'SETTINGS_VIEW'];
-  mockFinancial = { enableLateFees: false, lateFeeType: 'fixed', lateFeeAmount: 0, defaultGracePeriodDays: 7, enablePartialPayments: true };
+  mockFinancial = { enableLateFees: false, lateFeeType: 'fixed', lateFeeAmount: 0, defaultGracePeriodDays: 7, enablePartialPayments: true, receiptRequiredAbove: 5000 };
   mockPayments = { enabledChannels: ['bank_transfer', 'cash'], enablePartialPayments: true, receiptAutoGenerate: true, cashLodgmentDueDays: 3 };
 });
 
@@ -62,6 +62,7 @@ describe('Financial settings', () => {
       lateFeeAmount: 500,
       defaultGracePeriodDays: 7,
       enablePartialPayments: true,
+      receiptRequiredAbove: 5000,
     });
   });
 

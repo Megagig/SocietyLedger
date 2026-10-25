@@ -93,6 +93,7 @@ export const financialSchema = z
     enablePartialPayments: z.boolean(),
     requirePaymentApproval: z.boolean(),
     approvalThreshold: z.number().min(0).max(100_000_000_000).nullable(),
+    receiptRequiredAbove: z.number().min(0, 'The receipt limit cannot be negative.').max(100_000_000_000, 'That receipt limit is too large.'),
     fiscalYearStart: month,
     currencyCode: z.string().trim().regex(/^[A-Z]{3}$/),
     currencySymbol: z.string().trim().min(1).max(4),
