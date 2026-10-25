@@ -18,6 +18,9 @@
       "env": {
         "APP_VARIANT": "preview",
         "EAS_PROJECT_ID": "7deffb9f-b682-45c7-b773-b919a4d8f28b"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {

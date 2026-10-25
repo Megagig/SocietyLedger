@@ -1,0 +1,36 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${MEMBER_EMAIL}
+---
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Money
+- tapOn: Pay now
+- assertVisible: Make Payment
+- assertVisible: Outstanding balance
+- tapOn: Pay with Paystack
+# Paystack hosted checkout opens in the in-app browser (test mode only).
+- extendedWaitUntil:
+    visible: .*(Paystack|Pay with|Card).*
+    timeout: 30000
+- tapOn: .*Card.*
+- inputText: "4084084084084081"
+- tapOn: .*(Expiry|MM).*
+- inputText: "1230"
+- tapOn: .*CVV.*
+- inputText: "408"
+- tapOn: .*Pay.*
+- runFlow:
+    when:
+      visible: .*(PIN|pin).*
+    commands:
+      - inputText: "0000"
+- runFlow:
+    when:
+      visible: .*(OTP|otp).*
+    commands:
+      - inputText: "123456"
+# Back in the app, the return screen verifies the payment.
+- extendedWaitUntil:
+    visible: .*(Payment successful|Verifying payment|Paid).*
+    timeout: 60000

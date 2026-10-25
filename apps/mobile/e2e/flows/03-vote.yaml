@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${MEMBER_EMAIL}
+---
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Community
+- tapOn: Elections
+- tapOn: Executive Committee Election
+- tapOn: Vote
+- assertVisible: Cast your ballot
+# Choose the first candidate for the Chairperson position.
+- tapOn:
+    text: .*Adaeze.*
+- tapOn: Submit votes
+- runFlow:
+    when:
+      visible: .*(Confirm|Submit).*
+    commands:
+      - tapOn: Confirm
+- assertVisible: Already voted

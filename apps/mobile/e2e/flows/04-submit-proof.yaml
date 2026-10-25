@@ -1,0 +1,33 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${MEMBER_EMAIL}
+---
+- addMedia:
+    - ../fixtures/receipt.png
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Money
+- tapOn: Pay now
+- assertVisible: Make Payment
+- scrollUntilVisible:
+    element: Upload receipt
+- tapOn: Upload receipt
+# Choose the image added above from the photo picker (Android system dialog).
+- runFlow:
+    when:
+      visible: .*(Allow|While using).*
+    commands:
+      - tapOn: .*(Allow|While using).*
+- tapOn:
+    text: .*(Photo|Gallery|receipt).*
+- assertVisible: Receipt attached
+- tapOn:
+    text: e.g. Transfer reference or teller number
+- inputText: "E2E-REF-001"
+- hideKeyboard
+- scrollUntilVisible:
+    element: .*(Submit|Send).*
+- tapOn: .*(Submit|Send).*
+- extendedWaitUntil:
+    visible: .*(submitted|received|pending).*
+    timeout: 20000

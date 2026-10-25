@@ -1,0 +1,23 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${OFFICER_EMAIL}
+---
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Manage
+- scrollUntilVisible:
+    element: Payments
+- tapOn: Payments
+- tapOn: .*(Proofs|proofs).*
+# The seed leaves one pending declared payment.
+- tapOn:
+    text: .*(Pending|Chiamaka|Ibrahim|Folake).*
+    index: 0
+- assertVisible:
+    id: proof-member
+- tapOn: Verify
+- assertVisible: Verify this payment?
+- tapOn: Verify payment
+- extendedWaitUntil:
+    visible: .*(verified|Verified).*
+    timeout: 15000

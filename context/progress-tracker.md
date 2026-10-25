@@ -469,12 +469,12 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 ## Phase 9 — Hardening & release
 - **Brand rollout (2026-10-25, part of F9.5):** the `SocietyLedger-brand/` kit now replaces the Expo template icons and the old web icons everywhere. **Mobile:** `icon.png` (RGB, no alpha, valid for iOS), Android adaptive foreground/background/monochrome (brand blue `#0B6BFF`), splash (light = white, dark = slate, `dark` block in the `expo-splash-screen` plugin), Android notification icon (white mark, blue tint, `expo-notifications` plugin), web favicon; in-app mark on the startup screen, `AuthBrandMark`, welcome carousel tile and About. **Web:** favicons (ico, svg, 16/32/96), apple-touch-icon, PWA icons incl. maskable, manifest and service worker (cache bumped to v2), offline page, Open Graph/Twitter image (`og-image.png`, 1200x630), JSON-LD logo, `components/brand/BrandLogo.tsx` (`BrandMark`, `BrandLogo`) used in Header, Footer, testimonials, 404 and the three sidebars' no-logo fallback. **Admin:** favicons, header and login lockups, middleware allows icons while signed out. **Docs:** favicons, OG image, nav logo. Needs a new native build to show on devices; iOS not device-verified; no iOS dark/tinted icon variants supplied. Palette (teal tokens) is unchanged: only logos and icons moved to the brand kit.
 - **F9.1 so far:** list audit passed (FlashList on every large list); Android bundle 8.8 MB Hermes; cold start and memory not yet measured (need a release build on the Redmi). Seed for E2E and store review: `pnpm --filter api seed:oko` (`oko-youth-forum`, password from `OKO_DEMO_PASSWORD`), not yet run.
-- [ ] F9.1 Performance pass
-- [ ] F9.2 Accessibility pass
-- [ ] F9.3 E2E test suite
-- [ ] F9.4 Security review
-- [ ] F9.5 Store readiness
-- [ ] F9.6 Production release
+- [ ] F9.1 Performance pass — static audits done (lists, images, bundle); device numbers wait for the preview build (`docs/mobile/RELEASE_CHECKLIST.md`)
+- [ ] F9.2 Accessibility pass — code audit done: tertiary text fails contrast (3.46 light, 4.13 dark), reduce-motion in 3 components only; device walkthrough pending; fixes await approval (`docs/mobile/PHASE9_REVIEW_FINDINGS.md` B5 to B7)
+- [ ] F9.3 E2E test suite — 7 Maestro flows written in `apps/mobile/e2e/` (not yet run on a device)
+- [ ] F9.4 Security review — findings written, **no code changed yet, awaiting approval**: 7 blockers incl. rate limiter shared by all users behind the proxy (no `trust proxy`), forgeable Paystack webhook when its secret is empty, fallback JWT secret, Sentry never initialised, missing calendar permission string (`docs/mobile/PHASE9_REVIEW_FINDINGS.md`)
+- [ ] F9.5 Store readiness — listing, Data safety, permissions, review notes and age rating drafted (`docs/mobile/STORE_READINESS.md`); brand icons and splash done; feature graphic and data-deletion URL still open
+- [ ] F9.6 Production release — checklist and rollout plan written (`docs/mobile/RELEASE_CHECKLIST.md`); Dokploy env list completed in `.env.dokploy.example` and `docker-compose.dokploy.yml`; builds and submissions are run by the owner (no CI by choice)
 
 **Totals:** Docs 15 / 30 · Admin 0 / 21 · Mobile 0 / 65 features (116 total) · Milestones 0 / 5 (DL, AL, M1, M2, M3)
 

@@ -77,6 +77,43 @@ services:
       # AES-256-GCM key for TOTP secret encryption — generate with:
       # openssl rand -hex 32
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
+      # --- Added in Phase 9: everything else the API reads. Optional ones default to empty. ---
+      # Public URL of the API itself (mobile payment return link, Paystack callback)
+      API_PUBLIC_URL: ${API_PUBLIC_URL}
+      # Public website URL used in emails (renewal and manage-subscription links)
+      APP_URL: ${APP_URL}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      MOBILE_ACCESS_TOKEN_EXPIRY: ${MOBILE_ACCESS_TOKEN_EXPIRY:-15m}
+      IMPERSONATION_EXPIRY: ${IMPERSONATION_EXPIRY:-4h}
+      SUPPORT_WHATSAPP_NUMBER: ${SUPPORT_WHATSAPP_NUMBER:-}
+      # Paystack signs webhooks with the SECRET key, so this must equal PAYSTACK_SECRET_KEY
+      PAYSTACK_WEBHOOK_SECRET: ${PAYSTACK_WEBHOOK_SECRET}
+      # AI assistant
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      # Mobile push notifications (Expo)
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      # SMS (Termii)
+      TERMII_API_KEY: ${TERMII_API_KEY:-}
+      TERMII_SENDER_ID: ${TERMII_SENDER_ID:-}
+      TERMII_BASE_URL: ${TERMII_BASE_URL:-}
+      TERMII_CHANNEL: ${TERMII_CHANNEL:-}
+      TERMII_WEBHOOK_SECRET: ${TERMII_WEBHOOK_SECRET:-}
+      # File storage: payment proofs, receipts, deposit slips, support attachments. MinIO runs as its own
+      # shared stack (docker-compose.minio.yml, see docs/deployment/MINIO_SETUP.md); this app only gets its own
+      # bucket and a key limited to that bucket.
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      # Address phones and browsers use to open signed receipt/attachment links (public https domain)
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-societyledger}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      # First platform super admin, created once on a new database (see docker-entrypoint.sh)
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+      # Set to false to skip the reference-data seeds on start (saves about 30 seconds)
+      SEED_ON_START: ${SEED_ON_START:-true}
     volumes:
       - api_uploads:/app/apps/api/uploads
     networks:
