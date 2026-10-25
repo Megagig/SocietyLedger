@@ -1,5 +1,5 @@
 import type { UseQueryResult } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FileDown, Share2 } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -30,7 +30,10 @@ import {
   COMPARE_OPTIONS,
   dayOf,
   endOfLagosDay,
+  entryHref,
   incomeStatementText,
+  ledgerHref,
+  type LedgerTarget,
   type AsAt,
   type CompareChoice,
 } from '@/features/accounting/labels';
@@ -45,6 +48,12 @@ import { useTenantStore } from '@/stores/tenant';
 import type { BalanceSheetDTO, CashFlowDTO, CashFlowGroupDTO, ChangeDTO, IncomeStatementDTO } from '@/types/api/accounting';
 
 type View3 = 'income' | 'balance' | 'cash';
+
+/** Opens a ledger from a line or total on a statement, for the same dates the statement was drawn for. */
+function useOpenLedger() {
+  const router = useRouter();
+  return (target: LedgerTarget) => router.push(ledgerHref(target) as never);
+}
 
 /** Waits for a statement: a skeleton while it is worked out, a retry if it fails, then the statement. */
 function Loaded<T>({ query, children }: { query: UseQueryResult<T>; children: (data: T) => ReactNode }) {
@@ -65,8 +74,14 @@ export default function StatementsScreen() {
   const router = useRouter();
   const allowed = useAccountingAccess();
   const association = useTenantStore((s) => s.current?.name) ?? 'Association';
-  const [view, setView] = useState<View3>('income');
-  const [period, setPeriod] = useState<PeriodState>(defaultPeriod('this_month'));
+  // The dashboard can open a statement on a view and a stretch: this year's surplus, or one month of the trend
+  const opened = useLocalSearchParams<{ view?: string; period?: string; startDate?: string; endDate?: string }>();
+  const [view, setView] = useState<View3>(() => (opened.view === 'balance' || opened.view === 'cash' ? opened.view : 'income'));
+  const [period, setPeriod] = useState<PeriodState>(() =>
+    opened.period === 'custom' && opened.startDate && opened.endDate
+      ? { period: 'custom', startDate: opened.startDate, endDate: opened.endDate }
+      : defaultPeriod(opened.period === 'this_year' ? 'this_year' : 'this_month'),
+  );
   const [compare, setCompare] = useState<CompareChoice>('none');
   const [asAt, setAsAt] = useState<AsAt>('today');
   // A date picked for "As at" is worked out when it is chosen, so the sheet does not change under the officer's eyes
@@ -200,12 +215,15 @@ function CompareLine({ label, before, change, kind, testID }: { label: string; b
 }
 
 function IncomeView({ report }: { report: IncomeStatementDTO }) {
+  const open = useOpenLedger();
   const loss = toDecimal(report.netIncome).isNegative();
   const c = report.comparison;
+  const dates = { from: report.period.startDate, to: report.period.endDate, datesLabel: report.period.label };
+  const lines = (accounts: IncomeStatementDTO['revenue']['accounts']) => accounts.map((a) => ({ ...a, onPress: () => open({ accountId: a.accountId, title: a.accountName, ...dates }) }));
   return (
     <View className="gap-5" testID="income-statement">
-      <StatementSection title="Income" rows={report.revenue.accounts} totalLabel="Total income" total={report.revenue.total} emptyText="No income posted in this period" />
-      <StatementSection title="Expenses" rows={report.expenses.accounts} totalLabel="Total expenses" total={report.expenses.total} emptyText="No spending posted in this period" />
+      <StatementSection title="Income" rows={lines(report.revenue.accounts)} totalLabel="Total income" total={report.revenue.total} onOpenTotal={() => open({ scope: 'INCOME', title: 'Income', ...dates })} emptyText="No income posted in this period" />
+      <StatementSection title="Expenses" rows={lines(report.expenses.accounts)} totalLabel="Total expenses" total={report.expenses.total} onOpenTotal={() => open({ scope: 'EXPENSE', title: 'Expenses', ...dates })} emptyText="No spending posted in this period" />
       <Section title={loss ? 'Net loss' : 'Net surplus'}>
         <Money value={report.netIncome} size="h1" tone={loss ? 'danger' : 'default'} testID="net-income" />
         <Text variant="caption" tone="secondary">
@@ -226,21 +244,26 @@ function IncomeView({ report }: { report: IncomeStatementDTO }) {
 }
 
 function BalanceView({ report }: { report: BalanceSheetDTO }) {
+  const open = useOpenLedger();
   const a = report.assets;
   const l = report.liabilities;
+  // Everything posted up to the date the sheet is drawn for
+  const dates = { to: report.asOfDate, datesLabel: `Up to ${formatDate(report.asOfDate, 'long')}` };
+  const lines = (accounts: BalanceSheetDTO['assets']['current']) => accounts.map((x) => ({ ...x, onPress: () => open({ accountId: x.accountId, title: x.accountName, ...dates }) }));
+  const together = (title: string, accounts: BalanceSheetDTO['assets']['current']) => () => open({ accountIds: accounts.map((x) => x.accountId), title, ...dates });
   return (
     <View className="gap-5" testID="balance-sheet">
-      <StatementSection title="Current assets" rows={a.current} totalLabel="Total current assets" total={a.totalCurrent} emptyText="None" />
-      <StatementSection title="Fixed assets" rows={a.fixed} totalLabel="Total fixed assets" total={a.totalFixed} emptyText="None" />
-      {a.other.length > 0 ? <StatementSection title="Other assets" rows={a.other} totalLabel="Total other assets" total={a.totalOther} /> : null}
-      <StatementSection title="Total assets" rows={[]} totalLabel="Total assets" total={a.total} emptyText="Everything the association owns" />
-      <StatementSection title="Current liabilities" rows={l.current} totalLabel="Total current liabilities" total={l.totalCurrent} emptyText="Nothing owed" />
-      <StatementSection title="Long-term liabilities" rows={l.longTerm} totalLabel="Total long-term liabilities" total={l.totalLongTerm} emptyText="Nothing owed" />
-      {(l.other ?? []).length > 0 ? <StatementSection title="Other liabilities" rows={l.other ?? []} totalLabel="Total other liabilities" total={l.totalOther ?? 0} /> : null}
-      <StatementSection title="Total liabilities" rows={[]} totalLabel="Total liabilities" total={l.total} emptyText="Everything the association owes" />
+      <StatementSection title="Current assets" rows={lines(a.current)} totalLabel="Total current assets" total={a.totalCurrent} onOpenTotal={together('Current assets', a.current)} emptyText="None" />
+      <StatementSection title="Fixed assets" rows={lines(a.fixed)} totalLabel="Total fixed assets" total={a.totalFixed} onOpenTotal={together('Fixed assets', a.fixed)} emptyText="None" />
+      {a.other.length > 0 ? <StatementSection title="Other assets" rows={lines(a.other)} totalLabel="Total other assets" total={a.totalOther} onOpenTotal={together('Other assets', a.other)} /> : null}
+      <StatementSection title="Total assets" rows={[]} totalLabel="Total assets" total={a.total} onOpenTotal={() => open({ scope: 'ASSET', title: 'All assets', ...dates })} emptyText="Everything the association owns" />
+      <StatementSection title="Current liabilities" rows={lines(l.current)} totalLabel="Total current liabilities" total={l.totalCurrent} onOpenTotal={together('Current liabilities', l.current)} emptyText="Nothing owed" />
+      <StatementSection title="Long-term liabilities" rows={lines(l.longTerm)} totalLabel="Total long-term liabilities" total={l.totalLongTerm} onOpenTotal={together('Long-term liabilities', l.longTerm)} emptyText="Nothing owed" />
+      {(l.other ?? []).length > 0 ? <StatementSection title="Other liabilities" rows={lines(l.other ?? [])} totalLabel="Total other liabilities" total={l.totalOther ?? 0} onOpenTotal={together('Other liabilities', l.other ?? [])} /> : null}
+      <StatementSection title="Total liabilities" rows={[]} totalLabel="Total liabilities" total={l.total} onOpenTotal={() => open({ scope: 'LIABILITY', title: 'All liabilities', ...dates })} emptyText="Everything the association owes" />
       <StatementSection
         title="Equity"
-        rows={[...report.equity.accounts, { accountName: 'Earnings so far', balance: report.equity.retainedEarnings }]}
+        rows={[...lines(report.equity.accounts), { accountName: 'Earnings so far', balance: report.equity.retainedEarnings }]}
         totalLabel="Total equity"
         total={report.equity.total}
       />
@@ -262,15 +285,21 @@ function BalanceView({ report }: { report: BalanceSheetDTO }) {
 
 /** One kind of cash movement, itemised: each thing that came in or went out, and the net. Empty kinds are left out. */
 function CashActivity({ title, group, testID }: { title: string; group: CashFlowGroupDTO; testID: string }) {
+  const router = useRouter();
   if (group.inflows.length === 0 && group.outflows.length === 0) return null;
-  const rows = [
-    ...group.inflows.map((i) => ({ accountName: `In: ${i.description}`, balance: i.amount })),
-    ...group.outflows.map((o) => ({ accountName: `Out: ${o.description}`, balance: o.amount })),
-  ];
+  // Each movement opens the journal entry it came from
+  const line = (prefix: string, item: CashFlowGroupDTO['inflows'][number]) => ({
+    accountName: `${prefix}: ${item.description}`,
+    balance: item.amount,
+    onPress: item.entryId ? () => router.push(entryHref(item.entryId as number) as never) : undefined,
+  });
+  const rows = [...group.inflows.map((i) => line('In', i)), ...group.outflows.map((o) => line('Out', o))];
   return <StatementSection title={title} rows={rows} totalLabel="Net cash" total={group.netCash} testID={testID} />;
 }
 
 function CashView({ report }: { report: CashFlowDTO }) {
+  const open = useOpenLedger();
+  const before = new Date(new Date(report.period.startDate).getTime() - 1).toISOString();
   const rows = [
     { accountName: 'From running the association', balance: report.operating.netCash },
     { accountName: 'From buying or selling assets', balance: report.investing.netCash },
@@ -280,7 +309,7 @@ function CashView({ report }: { report: CashFlowDTO }) {
   const change = start.isZero() ? null : toDecimal(report.netCashChange).dividedBy(start).times(100).toFixed(1);
   return (
     <View className="gap-5" testID="cash-flow">
-      <StatementSection title="Cash at the start" rows={[]} totalLabel="Cash at the start" total={report.beginningCash} emptyText={report.period.label} />
+      <StatementSection title="Cash at the start" rows={[]} totalLabel="Cash at the start" total={report.beginningCash} onOpenTotal={() => open({ scope: 'cash', title: 'Cash and bank', to: before, datesLabel: 'Up to the start' })} emptyText={report.period.label} />
       <StatementSection title="Where cash moved" rows={rows} totalLabel="Change in cash" total={report.netCashChange} />
       {change !== null ? (
         <Text variant="caption" tone="secondary" testID="cash-change-percent">
@@ -290,7 +319,7 @@ function CashView({ report }: { report: CashFlowDTO }) {
       <CashActivity title="Running the association" group={report.operating} testID="cash-operating" />
       <CashActivity title="Buying or selling assets" group={report.investing} testID="cash-investing" />
       <CashActivity title="Loans and equity" group={report.financing} testID="cash-financing" />
-      <StatementSection title="Cash at the end" rows={[]} totalLabel="Cash at the end" total={report.endingCash} emptyText="Bank and cash accounts together" />
+      <StatementSection title="Cash at the end" rows={[]} totalLabel="Cash at the end" total={report.endingCash} onOpenTotal={() => open({ scope: 'cash', title: 'Cash and bank', to: report.period.endDate, datesLabel: 'Up to the end' })} emptyText="Bank and cash accounts together" />
       {report.reconciles === false ? (
         <View className="rounded-lg bg-warning-soft p-4" testID="cash-warning">
           <Text variant="body-strong" tone="warning">

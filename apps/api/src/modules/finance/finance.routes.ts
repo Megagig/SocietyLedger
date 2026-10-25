@@ -145,6 +145,12 @@ router.get('/payments',
   financeController.listPayments
 );
 
+// One payment
+router.get('/payments/:id',
+  requirePermission(PERMISSIONS.PAYMENT_VIEW),
+  financeController.getPayment
+);
+
 // Record payment
 router.post('/payments',
   requirePermission(PERMISSIONS.PAYMENT_CREATE),

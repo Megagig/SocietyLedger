@@ -15,7 +15,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { AccountRow } from '@/features/accounting/components/Rows';
-import { ACCOUNT_TYPE_HINTS, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER, ACCOUNTING_CREATE_ACCESS, ACCOUNTING_EDIT_ACCESS } from '@/features/accounting/labels';
+import { ACCOUNT_TYPE_HINTS, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ORDER, ACCOUNTING_CREATE_ACCESS, ledgerHref } from '@/features/accounting/labels';
 import { useInitializeChart } from '@/features/accounting/mutations';
 import { useAccountingAccess, useAccounts } from '@/features/accounting/queries';
 import { positionOf } from '@/features/financeSetup/components/GroupedRow';
@@ -38,7 +38,6 @@ export default function ChartOfAccountsScreen() {
   const router = useRouter();
   const allowed = useAccountingAccess();
   const canCreate = useCan(ACCOUNTING_CREATE_ACCESS);
-  const canEdit = useCan(ACCOUNTING_EDIT_ACCESS);
   const query = useAccounts(true);
   const init = useInitializeChart();
   const back = () => router.back();
@@ -96,7 +95,7 @@ export default function ChartOfAccountsScreen() {
           {groups.map((group) => (
             <Section key={group.type} title={ACCOUNT_TYPE_LABELS[group.type]}>
               <Text variant="caption" tone="secondary">
-                {ACCOUNT_TYPE_HINTS[group.type]}
+                {ACCOUNT_TYPE_HINTS[group.type]} Tap an account to see every entry behind its balance.
               </Text>
               <View>
                 {group.items.map((account, i) => (
@@ -105,7 +104,7 @@ export default function ChartOfAccountsScreen() {
                     item={account}
                     position={positionOf(i, group.items.length)}
                     indent={depthOf(account, byId) * 12}
-                    onPress={canEdit ? (a) => open(a.id) : undefined}
+                    onPress={(a) => router.push(ledgerHref({ accountId: a.id, title: a.name }) as never)}
                   />
                 ))}
               </View>

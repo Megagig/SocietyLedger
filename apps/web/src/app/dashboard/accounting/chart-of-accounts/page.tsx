@@ -34,6 +34,8 @@ import {
 } from '@tabler/icons-react';
 import { accountingApi, ChartOfAccount } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { entryHref, ledgerHref } from '@/lib/accounting-drill';
 
 const ACCOUNT_TYPES = [
   { value: 'ASSET', label: 'Asset' },
@@ -197,7 +199,7 @@ export default function ChartOfAccountsPage() {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -289,7 +291,7 @@ export default function ChartOfAccountsPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <Text fw={600}>{account.code}</Text>
-                    <Text size="sm">{account.name}</Text>
+                    <Text size="sm"><DrillLink href={ledgerHref({ accountId: account.id, title: account.name })} label={account.name}>{account.name}</DrillLink></Text>
                     {account.description && (
                       <Text size="xs" c="dimmed" mt={2}>{account.description}</Text>
                     )}
@@ -332,7 +334,7 @@ export default function ChartOfAccountsPage() {
                     {account.subType?.replace(/_/g, ' ') || '-'}
                   </Text>
                   <Text fw={500}>
-                    {account.balance !== undefined ? formatCurrency(account.balance) : '-'}
+                    {account.balance !== undefined ? (<DrillLink href={Number(account.balance) !== 0 ? ledgerHref({ accountId: account.id, title: account.name }) : undefined} label={account.name}>{formatCurrency(account.balance)}</DrillLink>) : '-'}
                   </Text>
                 </div>
               </Card>
@@ -360,7 +362,7 @@ export default function ChartOfAccountsPage() {
                       <Text fw={500}>{account.code}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text>{account.name}</Text>
+                      <Text><DrillLink href={ledgerHref({ accountId: account.id, title: account.name })} label={account.name}>{account.name}</DrillLink></Text>
                       {account.description && (
                         <Text size="xs" c="dimmed">{account.description}</Text>
                       )}
@@ -377,7 +379,7 @@ export default function ChartOfAccountsPage() {
                     </Table.Td>
                     <Table.Td>
                       <Text fw={500}>
-                        {account.balance !== undefined ? formatCurrency(account.balance) : '-'}
+                        {account.balance !== undefined ? (<DrillLink href={Number(account.balance) !== 0 ? ledgerHref({ accountId: account.id, title: account.name }) : undefined} label={account.name}>{formatCurrency(account.balance)}</DrillLink>) : '-'}
                       </Text>
                     </Table.Td>
                     <Table.Td>

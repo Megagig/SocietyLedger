@@ -41,6 +41,9 @@ import {
 import { accountingApi, ChartOfAccount, JournalEntry, JournalEntryLine } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { SourceCard } from '@/components/accounting/SourceCard';
+import { ledgerHref } from '@/lib/accounting-drill';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -96,6 +99,30 @@ export default function JournalEntriesPage() {
       }),
     retry: false,
   });
+
+  // A ledger opens an entry by its number in the address
+  const entryParam = Number(searchParams.get('entry'));
+  useEffect(() => {
+    if (!entryParam) return;
+    accountingApi
+      .getJournalEntry(entryParam)
+      .then((result) => {
+        if (result?.data) {
+          setSelectedEntry(result.data);
+          openView();
+        }
+      })
+      .catch(() => toast.error('That journal entry could not be found'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryParam]);
+
+  // The entry on show, with where it came from (the list does not carry that)
+  const { data: entryDetail } = useQuery({
+    queryKey: ['journal-entry-detail', selectedEntry?.id],
+    queryFn: () => accountingApi.getJournalEntry(selectedEntry!.id),
+    enabled: viewOpened && !!selectedEntry,
+  });
+  const entrySource = entryDetail?.data?.source ?? null;
 
   const { data: accountsData } = useQuery({
     queryKey: ['chart-of-accounts-active'],
@@ -650,7 +677,11 @@ export default function JournalEntriesPage() {
                 {selectedEntry.lines.map((line) => (
                   <Table.Tr key={line.id}>
                     <Table.Td>
-                      <Text>{line.accountCode} - {line.accountName}</Text>
+                      <Text>
+                        <DrillLink href={ledgerHref({ accountId: line.accountId, title: line.accountName ?? '' })} label={line.accountName}>
+                          {line.accountCode} - {line.accountName}
+                        </DrillLink>
+                      </Text>
                       {line.description && (
                         <Text size="xs" c="dimmed">{line.description}</Text>
                       )}
@@ -672,6 +703,13 @@ export default function JournalEntriesPage() {
                 </Table.Tr>
               </Table.Tfoot>
             </Table>
+
+            {entrySource ? (
+              <div>
+                <Text size="sm" c="dimmed" mb={4}>Where this came from</Text>
+                <SourceCard source={entrySource} />
+              </div>
+            ) : null}
           </Stack>
         )}
       </Modal>

@@ -1,4 +1,4 @@
-import type { BalanceSheetDTO, CashFlowDTO, IncomeStatementDTO } from '@/types/api/accounting';
+import type { BalanceSheetDTO, CashFlowDTO, EntrySourceDTO, IncomeStatementDTO } from '@/types/api/accounting';
 import {
   ACCOUNT_SUBTYPE_OPTIONS,
   asAtMoment,
@@ -12,7 +12,11 @@ import {
   incomeStatementText,
   isAutomatic,
   isEditable,
+  ledgerHref,
+  ledgerRange,
+  monthRange,
   parentChange,
+  sourceHref,
   SYNC_KINDS,
   sourceLabel,
   totalsOf,
@@ -241,5 +245,68 @@ describe('parentChange', () => {
   it('takes an account out from under its parent when None is chosen, and otherwise sends nothing', () => {
     expect(parentChange('', 5)).toBeNull();
     expect(parentChange('', null)).toBeUndefined();
+  });
+});
+
+describe('opening an account', () => {
+  it('writes a ledger address with only what was given, safely encoded', () => {
+    expect(ledgerHref({ accountId: 7, title: 'Hall hire & fees' })).toBe('/(app)/(tabs)/manage/accounting/ledger?accountId=7&title=Hall%20hire%20%26%20fees');
+    expect(ledgerHref({ accountIds: [1, 2, 3], title: 'Current assets', to: '2026-10-24T22:59:59.999Z' })).toBe(
+      '/(app)/(tabs)/manage/accounting/ledger?accountIds=1%2C2%2C3&title=Current%20assets&to=2026-10-24T22%3A59%3A59.999Z',
+    );
+    expect(ledgerHref({ scope: 'cash', title: 'Cash and bank' })).toBe('/(app)/(tabs)/manage/accounting/ledger?scope=cash&title=Cash%20and%20bank');
+  });
+
+  it('narrows a ledger by the dates it was opened with, all time, this month or this year', () => {
+    const now = new Date('2026-10-24T09:00:00.000Z');
+    expect(ledgerRange('opened', { from: 'a', to: 'b' }, now)).toEqual({ from: 'a', to: 'b' });
+    expect(ledgerRange('all', { from: 'a', to: 'b' }, now)).toEqual({});
+    expect(ledgerRange('month', {}, now)).toEqual({ from: '2026-10-01', to: '2026-10-24' });
+    expect(ledgerRange('year', {}, now)).toEqual({ from: '2026-01-01', to: '2026-10-24' });
+  });
+
+  it('counts the Lagos day, which runs an hour ahead of UTC', () => {
+    // 23:30 UTC on the 31st is already the 1st in Lagos
+    expect(ledgerRange('month', {}, new Date('2026-10-31T23:30:00.000Z'))).toEqual({ from: '2026-11-01', to: '2026-11-01' });
+  });
+
+  it('turns a month of the trend into the whole of that month in Lagos time', () => {
+    expect(monthRange('Oct 2026')).toEqual({ startDate: '2026-10-01T00:00:00.000+01:00', endDate: '2026-10-31T23:59:59.999+01:00' });
+    expect(monthRange('Feb 2028')?.endDate).toBe('2028-02-29T23:59:59.999+01:00');
+    expect(monthRange('nonsense')).toBeNull();
+  });
+});
+
+describe('opening the record behind an entry', () => {
+  const source = (over: Partial<EntrySourceDTO>): EntrySourceDTO => ({
+    kind: 'charge', id: 5, title: 'Charge', summary: '', member: null, amount: null, date: null, status: null, reference: null, missing: false, ids: {}, ...over,
+  });
+  const base = '/(app)/(tabs)/manage';
+
+  it('opens a charge, or the charge a payment paid', () => {
+    expect(sourceHref(source({ kind: 'charge', id: 41 }))).toBe(base + '/finance/transactions/41');
+    expect(sourceHref(source({ kind: 'payment', id: 8, ids: { transactionId: 41 } }))).toBe(base + '/finance/transactions/41');
+  });
+
+  it('opens a contribution at the member’s ledger, and a payout at the payout', () => {
+    expect(sourceHref(source({ kind: 'welfare_contribution', ids: { memberId: 5 } }))).toBe(base + '/finance/ledgers/5');
+    expect(sourceHref(source({ kind: 'welfare_payout', id: 9 }))).toBe(base + '/welfare/payouts/9');
+  });
+
+  it('opens a savings movement at the savings account and a repayment at the loan', () => {
+    expect(sourceHref(source({ kind: 'savings_transaction', ids: { savingsAccountId: 3 } }))).toBe(base + '/cooperatives/savings/3');
+    expect(sourceHref(source({ kind: 'loan', id: 2, ids: { loanId: 2 } }))).toBe(base + '/cooperatives/loans/2');
+    expect(sourceHref(source({ kind: 'loan_repayment', id: 6, ids: { loanId: 2 } }))).toBe(base + '/cooperatives/loans/2');
+  });
+
+  it('opens a lodgment, and points a reversal at the entry it reversed', () => {
+    expect(sourceHref(source({ kind: 'cash_lodgment', id: 4 }))).toBe(base + '/cash/lodgments/4');
+    expect(sourceHref(source({ kind: 'reversal', ids: { entryId: 10 } }))).toBe(base + '/accounting/journal/10');
+  });
+
+  it('offers nothing to open when the record is gone or there is no screen id', () => {
+    expect(sourceHref(source({ kind: 'charge', missing: true }))).toBeNull();
+    expect(sourceHref(source({ kind: 'payment', ids: {} }))).toBeNull();
+    expect(sourceHref(source({ kind: 'loan_repayment', ids: {} }))).toBeNull();
   });
 });

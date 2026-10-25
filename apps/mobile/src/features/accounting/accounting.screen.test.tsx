@@ -32,8 +32,9 @@ const mockActivate = jest.fn();
 const mockSync = jest.fn();
 const mockShare = jest.fn();
 const mockPdf = jest.fn();
+const mockPush = jest.fn();
 
-jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }), useLocalSearchParams: () => mockParams }));
+jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn(), push: mockPush, replace: jest.fn() }), useLocalSearchParams: () => mockParams }));
 jest.mock('sonner-native', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock('@/hooks/useCan', () => ({ useCan: (alias: string | string[]) => (Array.isArray(alias) ? alias.some((a) => mockAllowed.includes(a)) : mockAllowed.includes(alias)) }));
 jest.mock('@/stores/session', () => ({ useSessionStore: (select: (s: unknown) => unknown) => select({ user: mockMe }) }));
@@ -160,9 +161,9 @@ beforeEach(() => {
     quickStats: { totalAssets: '90000', totalLiabilities: '20000', totalEquity: '70000', netIncome: '15000', cashBalance: '45000' },
     recentEntries: [entry({ status: 'POSTED' })], pendingApprovals: 2, monthlyTrend: [],
   };
-  mockIncome = { period: { startDate: '', endDate: '', label: 'October 2026' }, revenue: { total: '12500', accounts: [{ accountId: 3, accountCode: '4110', accountName: 'Dues', balance: '12500' }] }, expenses: { total: '2500', accounts: [] }, netIncome: '10000' };
+  mockIncome = { period: { startDate: '2026-09-30T23:00:00.000Z', endDate: '2026-10-31T22:59:59.999Z', label: 'October 2026' }, revenue: { total: '12500', accounts: [{ accountId: 3, accountCode: '4110', accountName: 'Dues', balance: '12500' }] }, expenses: { total: '2500', accounts: [] }, netIncome: '10000' };
   mockBalance = {
-    asOfDate: '', assets: { current: [], fixed: [], other: [], totalCurrent: '0', totalFixed: '0', totalOther: '0', total: '9000' },
+    asOfDate: '2026-10-24T22:59:59.999Z', assets: { current: [], fixed: [], other: [], totalCurrent: '0', totalFixed: '0', totalOther: '0', total: '9000' },
     liabilities: { current: [], longTerm: [], totalCurrent: '0', totalLongTerm: '0', total: '4000' }, equity: { accounts: [], retainedEarnings: '0', total: '4000' },
     totalLiabilitiesAndEquity: '8000', isBalanced: false,
   };
@@ -382,7 +383,7 @@ describe('as on the website: statements', () => {
   it('itemises the cash flow by activity, and says how much the cash changed', async () => {
     const none = { inflows: [], outflows: [], netCash: '0' };
     mockCash = {
-      period: { startDate: '', endDate: '', label: 'October 2026' },
+      period: { startDate: '2026-09-30T23:00:00.000Z', endDate: '2026-10-31T22:59:59.999Z', label: 'October 2026' },
       operating: { inflows: [{ description: 'October dues', amount: '3000' }], outflows: [{ description: 'Hall hire', amount: '800' }], netCash: '2200' },
       investing: none, financing: none, netCashChange: '2200', beginningCash: '1000', endingCash: '3200', reconciles: true,
     };
@@ -428,5 +429,135 @@ describe('as on the website: sync status', () => {
     mockUnsynced = 0;
     await render(<SyncStatusScreen />);
     expect(screen.getByText('Everything is in the books.')).toBeTruthy();
+  });
+});
+
+describe('opening a figure to see what makes it up', () => {
+  const opened = () => decodeURIComponent(String(mockPush.mock.calls[0]?.[0]));
+  const period = { startDate: '2026-09-30T23:00:00.000Z', endDate: '2026-10-31T22:59:59.999Z', label: 'October 2026' };
+  const nothing = { inflows: [], outflows: [], netCash: '0' };
+
+  it('opens an income line as a ledger for the same dates as the statement', async () => {
+    await render(<StatementsScreen />);
+    await fireEvent.press(screen.getByTestId('statement-line-0'));
+    expect(opened()).toContain('/ledger?accountId=3&title=Dues');
+    expect(opened()).toContain('from=2026-09-30T23:00:00.000Z');
+    expect(opened()).toContain('to=2026-10-31T22:59:59.999Z');
+  });
+
+  it('opens the total of income as the whole section', async () => {
+    await render(<StatementsScreen />);
+    await fireEvent.press(screen.getAllByTestId('statement-total')[0]!);
+    expect(opened()).toContain('scope=INCOME');
+  });
+
+  it('leaves a total of nothing plain', async () => {
+    mockIncome = { ...mockIncome, expenses: { total: '0', accounts: [] } };
+    await render(<StatementsScreen />);
+    // spending is nothing in this period, so only the income total can be opened
+    expect(screen.getAllByTestId('statement-total')).toHaveLength(1);
+  });
+
+  it('opens a balance sheet account as everything up to the date, with no start', async () => {
+    mockBalance = { ...mockBalance, assets: { ...mockBalance.assets, current: [{ accountId: 1, accountCode: '1112', accountName: 'Bank', balance: '9000' }], totalCurrent: '9000' } };
+    await render(<StatementsScreen />);
+    await fireEvent.press(screen.getByText('Balance sheet'));
+    await fireEvent.press(screen.getByTestId('statement-line-0'));
+    expect(opened()).toContain('accountId=1');
+    expect(opened()).toContain('to=2026-10-24T22:59:59.999Z');
+    expect(opened()).not.toContain('from=');
+  });
+
+  it('opens the total assets as the whole section', async () => {
+    await render(<StatementsScreen />);
+    await fireEvent.press(screen.getByText('Balance sheet'));
+    await fireEvent.press(screen.getAllByTestId('statement-total')[0]!);
+    expect(opened()).toContain('scope=ASSET');
+  });
+
+  it('opens each cash movement as the journal entry it came from', async () => {
+    mockCash = {
+      period,
+      operating: { inflows: [{ description: 'Dues', amount: '5000', entryId: 77 }], outflows: [], netCash: '5000' },
+      investing: nothing,
+      financing: nothing,
+      netCashChange: '5000',
+      beginningCash: '1000',
+      endingCash: '6000',
+      reconciles: true,
+    };
+    await render(<StatementsScreen />);
+    await fireEvent.press(screen.getByText('Cash flow'));
+    await fireEvent.press(screen.getByText('In: Dues'));
+    expect(mockPush).toHaveBeenCalledWith('/(app)/(tabs)/manage/accounting/journal/77');
+  });
+
+  it('opens the cash at the start as the cash accounts up to the moment before', async () => {
+    mockCash = { period, operating: nothing, investing: nothing, financing: nothing, netCashChange: '0', beginningCash: '1000', endingCash: '1000', reconciles: true };
+    await render(<StatementsScreen />);
+    await fireEvent.press(screen.getByText('Cash flow'));
+    await fireEvent.press(screen.getAllByTestId('statement-total')[0]!);
+    expect(opened()).toContain('scope=cash');
+    expect(opened()).toContain('to=2026-09-30T22:59:59.999Z');
+  });
+
+  it('opens an account of a journal entry as its ledger', async () => {
+    await render(<JournalDetailScreen />);
+    await fireEvent.press(screen.getByTestId('entry-line-1'));
+    expect(opened()).toContain('accountId=1');
+  });
+
+  it('shows where an automatic entry came from, and opens the record', async () => {
+    mockEntry = entry({
+      sourceType: 'auto_sync:Payment',
+      sourceId: 8,
+      source: {
+        kind: 'payment', id: 8, title: 'Payment', summary: 'Payment of Annual dues by Ada Obi', member: 'Ada Obi', amount: '5000', date: '2026-10-02T12:00:00.000Z',
+        status: 'Confirmed', reference: 'RCP-1', missing: false, ids: { transactionId: 41, memberId: 5 },
+      },
+    });
+    await render(<JournalDetailScreen />);
+    expect(screen.getByText('Payment of Annual dues by Ada Obi')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('entry-source-open'));
+    expect(mockPush).toHaveBeenCalledWith('/(app)/(tabs)/manage/finance/transactions/41');
+  });
+
+  it('says so when the record behind an entry is gone, and offers nothing to open', async () => {
+    mockEntry = entry({
+      sourceType: 'auto_sync:Loan',
+      sourceId: 3,
+      source: { kind: 'loan', id: 3, title: 'Loan', summary: 'This loan can no longer be found.', member: null, amount: null, date: null, status: null, reference: null, missing: true, ids: {} },
+    });
+    await render(<JournalDetailScreen />);
+    expect(screen.getByText('This loan can no longer be found.')).toBeTruthy();
+    expect(screen.queryByTestId('entry-source-open')).toBeNull();
+  });
+
+  it('shows no source for an entry an officer wrote', async () => {
+    await render(<JournalDetailScreen />);
+    expect(screen.queryByTestId('entry-source')).toBeNull();
+  });
+
+  it('opens a budget line as the entries posted inside the budget dates', async () => {
+    mockParams = { id: '4' };
+    await render(<BudgetDetailScreen />);
+    await fireEvent.press(screen.getByTestId('variance-4'));
+    expect(opened()).toContain('accountId=4');
+    expect(opened()).toContain('from=2026-01-01T00:00:00.000Z');
+    expect(opened()).toContain('to=2026-12-31T22:59:59.999Z');
+  });
+
+  it('opens the spending total of a budget as all its spending accounts together', async () => {
+    mockParams = { id: '4' };
+    await render(<BudgetDetailScreen />);
+    await fireEvent.press(screen.getByLabelText('Spending against the plan. Opens the entries.'));
+    expect(opened()).toContain('accountIds=4');
+  });
+
+  it('opens the budget in force from the dashboard', async () => {
+    mockDashboard = { ...mockDashboard, budgetStatus: { budgetId: 4, totalBudget: '100', totalSpent: '40', remainingBudget: '60', percentUsed: 40 } };
+    await render(<AccountingDashboardScreen />);
+    await fireEvent.press(screen.getByTestId('accounting-budget'));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/(app)/(tabs)/manage/accounting/budgets/[id]', params: { id: '4' } });
   });
 });

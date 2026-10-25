@@ -20,6 +20,8 @@ import type {
   JournalListDTO,
   JournalPayload,
   JournalStatus,
+  LedgerDTO,
+  LedgerParams,
   PeriodPayload,
   StatementParams,
   SyncErrorDTO,
@@ -62,6 +64,11 @@ export const accountingApi = {
       failed += result.failed ?? 0;
     }
     return { synced, failed };
+  },
+
+  /** GET /accounting/ledger — the posted lines of an account (or of several together), each with the balance after it. Opening + movement = closing. */
+  async getLedger(params: LedgerParams): Promise<LedgerDTO> {
+    return unwrap<LedgerDTO>(client.get('/accounting/ledger', { params }));
   },
 
   // ---- chart of accounts

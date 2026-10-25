@@ -67,6 +67,34 @@ export type JournalEntryDTO = {
   postedAt: IsoDateString | null;
   createdAt: IsoDateString;
   lines: JournalLineDTO[];
+  /** Only on a single entry: the record that made it, in plain facts (null for an entry a person wrote). */
+  source?: EntrySourceDTO | null;
+};
+
+export type SourceKind =
+  | 'charge'
+  | 'payment'
+  | 'welfare_contribution'
+  | 'welfare_payout'
+  | 'savings_transaction'
+  | 'loan'
+  | 'loan_repayment'
+  | 'cash_lodgment'
+  | 'reversal';
+
+/** The record behind an automatic entry. `missing` is true when it can no longer be found. */
+export type EntrySourceDTO = {
+  kind: SourceKind;
+  id: number;
+  title: string;
+  summary: string;
+  member: string | null;
+  amount: MoneyValue | null;
+  date: IsoDateString | null;
+  status: string | null;
+  reference: string | null;
+  missing: boolean;
+  ids: { transactionId?: number; memberId?: number; savingsAccountId?: number; loanId?: number; fundId?: number; entryId?: number };
 };
 
 export type Pagination = { page: number; limit: number; totalCount: number; totalPages: number; hasMore: boolean };
@@ -102,7 +130,7 @@ export type BalanceSheetDTO = {
   isBalanced: boolean;
 };
 
-export type CashFlowItemDTO = { description: string; amount: MoneyValue; accountId?: number };
+export type CashFlowItemDTO = { description: string; amount: MoneyValue; accountId?: number; entryId?: number };
 export type CashFlowGroupDTO = { inflows: CashFlowItemDTO[]; outflows: CashFlowItemDTO[]; netCash: MoneyValue };
 export type CashFlowDTO = {
   period: StatementPeriodDTO;
@@ -113,6 +141,7 @@ export type CashFlowDTO = {
   beginningCash: MoneyValue;
   endingCash: MoneyValue;
   reconciles?: boolean;
+  cashAccountIds?: number[];
 };
 
 export type StatementParams = { period: string; startDate?: string; endDate?: string; includeComparison?: 'true' };
@@ -180,7 +209,7 @@ export type AccountingDashboardDTO = {
   quickStats: { totalAssets: MoneyValue; totalLiabilities: MoneyValue; totalEquity: MoneyValue; netIncome: MoneyValue; cashBalance: MoneyValue };
   recentEntries: JournalEntryDTO[];
   pendingApprovals: number;
-  budgetStatus?: { totalBudget: MoneyValue; totalSpent: MoneyValue; remainingBudget: MoneyValue; percentUsed: number };
+  budgetStatus?: { budgetId?: number; totalBudget: MoneyValue; totalSpent: MoneyValue; remainingBudget: MoneyValue; percentUsed: number };
   monthlyTrend: { month: string; income: MoneyValue; expenses: MoneyValue }[];
 };
 
@@ -207,3 +236,52 @@ export type SyncStatusDTO = {
 };
 export type SyncKind = 'transactions' | 'payments' | 'welfare-contributions' | 'welfare-payouts' | 'savings-transactions' | 'loans' | 'loan-repayments';
 export type SyncErrorDTO = { id: number; tableName: string | null; recordId: number | null; message: string; createdAt: IsoDateString };
+
+// ---- the ledger of an account (GET /accounting/ledger)
+
+export type LedgerParams = {
+  accountId?: number;
+  accountIds?: string;
+  /** "cash", or an account type: a whole section at once */
+  scope?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+  page: number;
+  limit: number;
+};
+
+export type LedgerAccountDTO = { id: number; code: string; name: string; type: AccountType; normalBalance: NormalBalance; parentId: number | null; isActive: boolean };
+
+export type LedgerLineDTO = {
+  lineId: number;
+  entryId: number;
+  entryNumber: string;
+  entryDate: IsoDateString | null;
+  entryDescription: string;
+  lineDescription: string | null;
+  reference: string | null;
+  sourceType: string | null;
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  debit: MoneyValue;
+  credit: MoneyValue;
+  /** What the line adds to the balance: positive in the direction the account normally grows. */
+  effect: MoneyValue;
+  /** The balance after this line. */
+  balance: MoneyValue;
+};
+
+export type LedgerDTO = {
+  accounts: LedgerAccountDTO[];
+  range: { from: IsoDateString | null; to: IsoDateString | null };
+  opening: MoneyValue;
+  totalDebit: MoneyValue;
+  totalCredit: MoneyValue;
+  movement: MoneyValue;
+  closing: MoneyValue;
+  subAccounts: { id: number; code: string; name: string; balance: MoneyValue }[];
+  lines: LedgerLineDTO[];
+  pagination: Pagination;
+};

@@ -20,6 +20,9 @@ import { IconChartBar, IconTrendingUp, IconTrendingDown, IconArrowUp, IconArrowD
 import { accountingApi, IncomeStatement, AccountBalance } from '@/lib/api/accounting';
 import { DateRangePicker, PeriodOption } from '@/components/DateRangePicker';
 import { toast } from '@/lib/toast';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { entryHref, ledgerHref } from '@/lib/accounting-drill';
+import { useSearchParams } from 'next/navigation';
 import {
   PieChart,
   Pie,
@@ -32,13 +35,16 @@ import {
 const COLORS = ['#12b886', '#228be6', '#7950f2', '#fa5252', '#fab005', '#20c997'];
 
 export default function IncomeStatementPage() {
+  const opened = useSearchParams();
   const [dateRange, setDateRange] = useState<{
     period: PeriodOption;
     startDate?: Date;
     endDate?: Date;
-  }>({
-    period: 'this_year',
-  });
+  }>(() =>
+    opened.get('period') === 'custom' && opened.get('startDate') && opened.get('endDate')
+      ? { period: 'custom', startDate: new Date(opened.get('startDate') as string), endDate: new Date(opened.get('endDate') as string) }
+      : { period: 'this_year' },
+  );
   const [includeComparison, setIncludeComparison] = useState(true);
 
   const { data: reportData, isLoading, error, refetch, isFetching } = useQuery({
@@ -69,13 +75,16 @@ export default function IncomeStatementPage() {
   }, [error]);
 
   const report: IncomeStatement | undefined = reportData?.data;
+  // A figure opens the entries behind it, for the same dates the statement was drawn for
+  const dates = { from: report?.period.startDate, to: report?.period.endDate, datesLabel: report?.period.label };
+  const drill = (balance: unknown, target: { accountId?: number; scope?: string; title: string }) => (Number(balance) !== 0 ? ledgerHref({ ...target, ...dates }) : undefined);
 
   const formatCurrency = (amount: any) => {
     const num = typeof amount === 'object' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -195,7 +204,7 @@ export default function IncomeStatementPage() {
                 <IconTrendingUp size={20} className="text-green-500" />
               </Group>
               <Text size="lg" className="text-base sm:text-xl" fw={700} c="green">
-                {formatCurrency(report.revenue.total)}
+                <DrillLink href={drill(report.revenue.total, { scope: 'INCOME', title: 'Income' })} label="Total revenue">{formatCurrency(report.revenue.total)}</DrillLink>
               </Text>
               {report.comparison && (
                 <Group gap="xs" mt="xs">
@@ -217,7 +226,7 @@ export default function IncomeStatementPage() {
                 <IconTrendingDown size={20} className="text-red-500" />
               </Group>
               <Text size="lg" className="text-base sm:text-xl" fw={700} c="red">
-                {formatCurrency(report.expenses.total)}
+                <DrillLink href={drill(report.expenses.total, { scope: 'EXPENSE', title: 'Expenses' })} label="Total expenses">{formatCurrency(report.expenses.total)}</DrillLink>
               </Text>
               {report.comparison && (
                 <Group gap="xs" mt="xs">
@@ -332,10 +341,10 @@ export default function IncomeStatementPage() {
                 {report.revenue.accounts.map((account) => (
                   <Table.Tr key={account.accountId}>
                     <Table.Td pl="xl">
-                      <Text>{account.accountCode} - {account.accountName}</Text>
+                      <Text><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                     </Table.Td>
                     <Table.Td align="right">
-                      <Text>{formatCurrency(account.balance)}</Text>
+                      <Text><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -344,7 +353,7 @@ export default function IncomeStatementPage() {
                     <Text fw={600}>Total Revenue</Text>
                   </Table.Td>
                   <Table.Td align="right">
-                    <Text fw={600} c="green">{formatCurrency(report.revenue.total)}</Text>
+                    <Text fw={600} c="green"><DrillLink href={drill(report.revenue.total, { scope: 'INCOME', title: 'Income' })} label="Total revenue">{formatCurrency(report.revenue.total)}</DrillLink></Text>
                   </Table.Td>
                 </Table.Tr>
 
@@ -362,10 +371,10 @@ export default function IncomeStatementPage() {
                 {report.expenses.accounts.map((account) => (
                   <Table.Tr key={account.accountId}>
                     <Table.Td pl="xl">
-                      <Text>{account.accountCode} - {account.accountName}</Text>
+                      <Text><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                     </Table.Td>
                     <Table.Td align="right">
-                      <Text>{formatCurrency(account.balance)}</Text>
+                      <Text><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -374,7 +383,7 @@ export default function IncomeStatementPage() {
                     <Text fw={600}>Total Expenses</Text>
                   </Table.Td>
                   <Table.Td align="right">
-                    <Text fw={600} c="red">{formatCurrency(report.expenses.total)}</Text>
+                    <Text fw={600} c="red"><DrillLink href={drill(report.expenses.total, { scope: 'EXPENSE', title: 'Expenses' })} label="Total expenses">{formatCurrency(report.expenses.total)}</DrillLink></Text>
                   </Table.Td>
                 </Table.Tr>
 

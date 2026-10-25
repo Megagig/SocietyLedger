@@ -151,6 +151,17 @@ router.post(
 // ==========================================
 
 /**
+ * The ledger of an account, or of several together: every posted line with a running balance
+ * GET /api/accounting/ledger
+ * Query params: accountId | accountIds | scope (cash, or an account type), from, to, search, page, limit
+ */
+router.get(
+  '/ledger',
+  requirePermission(PERMISSIONS.FINANCE_VIEW),
+  accountingController.getLedger
+);
+
+/**
  * Get Income Statement (P&L)
  * GET /api/accounting/income-statement
  * Query params: period, startDate, endDate, includeComparison

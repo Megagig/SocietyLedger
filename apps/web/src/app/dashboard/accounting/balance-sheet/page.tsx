@@ -20,6 +20,8 @@ import { DateInput } from '@mantine/dates';
 import { IconWallet, IconCheck, IconX, IconScale, IconRefresh } from '@tabler/icons-react';
 import { accountingApi, BalanceSheet, AccountBalance } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { entryHref, ledgerHref } from '@/lib/accounting-drill';
 
 export default function BalanceSheetPage() {
   const [asOfDate, setAsOfDate] = useState<Date | null>(new Date());
@@ -49,13 +51,17 @@ export default function BalanceSheetPage() {
   }, [error]);
 
   const report: BalanceSheet | undefined = reportData?.data;
+  // A figure opens everything posted up to the date the sheet is drawn for
+  const dates = { to: report?.asOfDate, datesLabel: 'Up to the date shown' };
+  const drill = (balance: unknown, target: { accountId?: number; accountIds?: number[]; scope?: string; title: string }) => (Number(balance) !== 0 ? ledgerHref({ ...target, ...dates }) : undefined);
+  const idsOf = (list?: { accountId: number }[]) => (list ?? []).map((a) => a.accountId);
 
   const formatCurrency = (amount: any) => {
     const num = typeof amount === 'object' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -73,10 +79,10 @@ export default function BalanceSheetPage() {
         {accounts.map((account) => (
           <Table.Tr key={account.accountId}>
             <Table.Td pl={40}>
-              <Text size="sm">{account.accountCode} - {account.accountName}</Text>
+              <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
             </Table.Td>
             <Table.Td align="right">
-              <Text size="sm">{formatCurrency(account.balance)}</Text>
+              <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
             </Table.Td>
           </Table.Tr>
         ))}
@@ -191,7 +197,7 @@ export default function BalanceSheetPage() {
                 <Text size="xs" className="sm:text-sm" c="dimmed">Total Assets</Text>
               </Group>
               <Text size="lg" className="text-base sm:text-xl" fw={700} c="blue">
-                {formatCurrency(report.assets.total)}
+                <DrillLink href={drill(report.assets.total, { scope: 'ASSET', title: 'All assets' })} label="Total assets">{formatCurrency(report.assets.total)}</DrillLink>
               </Text>
             </Card>
 
@@ -203,7 +209,7 @@ export default function BalanceSheetPage() {
                 <Text size="xs" className="sm:text-sm" c="dimmed">Total Liabilities</Text>
               </Group>
               <Text size="lg" className="text-base sm:text-xl" fw={700} c="red">
-                {formatCurrency(report.liabilities.total)}
+                <DrillLink href={drill(report.liabilities.total, { scope: 'LIABILITY', title: 'All liabilities' })} label="Total liabilities">{formatCurrency(report.liabilities.total)}</DrillLink>
               </Text>
             </Card>
 
@@ -252,10 +258,10 @@ export default function BalanceSheetPage() {
                       {report.assets.current.map((account) => (
                         <Table.Tr key={account.accountId}>
                           <Table.Td pl="xl">
-                            <Text size="sm">{account.accountCode} - {account.accountName}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                           </Table.Td>
                           <Table.Td align="right">
-                            <Text size="sm">{formatCurrency(account.balance)}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                           </Table.Td>
                         </Table.Tr>
                       ))}
@@ -264,7 +270,7 @@ export default function BalanceSheetPage() {
                           <Text size="sm" fw={500}>Total Current Assets</Text>
                         </Table.Td>
                         <Table.Td align="right">
-                          <Text size="sm" fw={500}>{formatCurrency(report.assets.totalCurrent)}</Text>
+                          <Text size="sm" fw={500}><DrillLink href={drill(report.assets.totalCurrent, { accountIds: idsOf(report?.assets.current), title: 'Current assets' })} label="Total current assets">{formatCurrency(report.assets.totalCurrent)}</DrillLink></Text>
                         </Table.Td>
                       </Table.Tr>
                     </>
@@ -285,10 +291,10 @@ export default function BalanceSheetPage() {
                       {report.assets.fixed.map((account) => (
                         <Table.Tr key={account.accountId}>
                           <Table.Td pl="xl">
-                            <Text size="sm">{account.accountCode} - {account.accountName}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                           </Table.Td>
                           <Table.Td align="right">
-                            <Text size="sm">{formatCurrency(account.balance)}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                           </Table.Td>
                         </Table.Tr>
                       ))}
@@ -297,7 +303,7 @@ export default function BalanceSheetPage() {
                           <Text size="sm" fw={500}>Total Fixed Assets</Text>
                         </Table.Td>
                         <Table.Td align="right">
-                          <Text size="sm" fw={500}>{formatCurrency(report.assets.totalFixed)}</Text>
+                          <Text size="sm" fw={500}><DrillLink href={drill(report.assets.totalFixed, { accountIds: idsOf(report?.assets.fixed), title: 'Fixed assets' })} label="Total fixed assets">{formatCurrency(report.assets.totalFixed)}</DrillLink></Text>
                         </Table.Td>
                       </Table.Tr>
                     </>
@@ -318,10 +324,10 @@ export default function BalanceSheetPage() {
                       {report.assets.other.map((account) => (
                         <Table.Tr key={account.accountId}>
                           <Table.Td pl="xl">
-                            <Text size="sm">{account.accountCode} - {account.accountName}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                           </Table.Td>
                           <Table.Td align="right">
-                            <Text size="sm">{formatCurrency(account.balance)}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                           </Table.Td>
                         </Table.Tr>
                       ))}
@@ -330,7 +336,7 @@ export default function BalanceSheetPage() {
                           <Text size="sm" fw={500}>Total Other Assets</Text>
                         </Table.Td>
                         <Table.Td align="right">
-                          <Text size="sm" fw={500}>{formatCurrency(report.assets.totalOther)}</Text>
+                          <Text size="sm" fw={500}><DrillLink href={drill(report.assets.totalOther, { accountIds: idsOf(report?.assets.other), title: 'Other assets' })} label="Total other assets">{formatCurrency(report.assets.totalOther)}</DrillLink></Text>
                         </Table.Td>
                       </Table.Tr>
                     </>
@@ -345,7 +351,7 @@ export default function BalanceSheetPage() {
                       <Text fw={700}>TOTAL ASSETS</Text>
                     </Table.Td>
                     <Table.Td align="right">
-                      <Text fw={700} c="blue">{formatCurrency(report.assets.total)}</Text>
+                      <Text fw={700} c="blue"><DrillLink href={drill(report.assets.total, { scope: 'ASSET', title: 'All assets' })} label="Total assets">{formatCurrency(report.assets.total)}</DrillLink></Text>
                     </Table.Td>
                   </Table.Tr>
                 </Table.Tbody>
@@ -370,10 +376,10 @@ export default function BalanceSheetPage() {
                       {report.liabilities.current.map((account) => (
                         <Table.Tr key={account.accountId}>
                           <Table.Td pl="xl">
-                            <Text size="sm">{account.accountCode} - {account.accountName}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                           </Table.Td>
                           <Table.Td align="right">
-                            <Text size="sm">{formatCurrency(account.balance)}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                           </Table.Td>
                         </Table.Tr>
                       ))}
@@ -382,7 +388,7 @@ export default function BalanceSheetPage() {
                           <Text size="sm" fw={500}>Total Current Liabilities</Text>
                         </Table.Td>
                         <Table.Td align="right">
-                          <Text size="sm" fw={500}>{formatCurrency(report.liabilities.totalCurrent)}</Text>
+                          <Text size="sm" fw={500}><DrillLink href={drill(report.liabilities.totalCurrent, { accountIds: idsOf(report?.liabilities.current), title: 'Current liabilities' })} label="Total current liabilities">{formatCurrency(report.liabilities.totalCurrent)}</DrillLink></Text>
                         </Table.Td>
                       </Table.Tr>
                     </>
@@ -403,10 +409,10 @@ export default function BalanceSheetPage() {
                       {report.liabilities.longTerm.map((account) => (
                         <Table.Tr key={account.accountId}>
                           <Table.Td pl="xl">
-                            <Text size="sm">{account.accountCode} - {account.accountName}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                           </Table.Td>
                           <Table.Td align="right">
-                            <Text size="sm">{formatCurrency(account.balance)}</Text>
+                            <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                           </Table.Td>
                         </Table.Tr>
                       ))}
@@ -415,7 +421,7 @@ export default function BalanceSheetPage() {
                           <Text size="sm" fw={500}>Total Long-term Liabilities</Text>
                         </Table.Td>
                         <Table.Td align="right">
-                          <Text size="sm" fw={500}>{formatCurrency(report.liabilities.totalLongTerm)}</Text>
+                          <Text size="sm" fw={500}><DrillLink href={drill(report.liabilities.totalLongTerm, { accountIds: idsOf(report?.liabilities.longTerm), title: 'Long-term liabilities' })} label="Total long-term liabilities">{formatCurrency(report.liabilities.totalLongTerm)}</DrillLink></Text>
                         </Table.Td>
                       </Table.Tr>
                     </>
@@ -430,7 +436,7 @@ export default function BalanceSheetPage() {
                       <Text fw={700}>TOTAL LIABILITIES</Text>
                     </Table.Td>
                     <Table.Td align="right">
-                      <Text fw={700} c="red">{formatCurrency(report.liabilities.total)}</Text>
+                      <Text fw={700} c="red"><DrillLink href={drill(report.liabilities.total, { scope: 'LIABILITY', title: 'All liabilities' })} label="Total liabilities">{formatCurrency(report.liabilities.total)}</DrillLink></Text>
                     </Table.Td>
                   </Table.Tr>
 
@@ -446,10 +452,10 @@ export default function BalanceSheetPage() {
                   {report.equity.accounts.map((account) => (
                     <Table.Tr key={account.accountId}>
                       <Table.Td pl="xl">
-                        <Text size="sm">{account.accountCode} - {account.accountName}</Text>
+                        <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{account.accountCode} - {account.accountName}</DrillLink></Text>
                       </Table.Td>
                       <Table.Td align="right">
-                        <Text size="sm">{formatCurrency(account.balance)}</Text>
+                        <Text size="sm"><DrillLink href={drill(account.balance, { accountId: account.accountId, title: account.accountName })} label={account.accountName}>{formatCurrency(account.balance)}</DrillLink></Text>
                       </Table.Td>
                     </Table.Tr>
                   ))}

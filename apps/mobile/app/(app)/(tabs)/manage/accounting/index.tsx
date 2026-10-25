@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { BookOpen, CalendarRange, FileBarChart, Landmark, ListTree, PiggyBank, RefreshCw, RefreshCcw } from 'lucide-react-native';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { toast } from 'sonner-native';
 
 import { ApiError } from '@/api/errors';
@@ -19,7 +19,7 @@ import { SummaryHero } from '@/components/ui/SummaryHero';
 import { Text } from '@/components/ui/Text';
 import { EntryRow, PlanBar, SyncErrorRow } from '@/features/accounting/components/Rows';
 import { TrendChart } from '@/features/accounting/components/TrendChart';
-import { ACCOUNTING_APPROVE_ACCESS, ACCOUNTING_EDIT_ACCESS } from '@/features/accounting/labels';
+import { ACCOUNTING_APPROVE_ACCESS, ACCOUNTING_EDIT_ACCESS, ledgerHref, monthRange } from '@/features/accounting/labels';
 import { useRunSync } from '@/features/accounting/mutations';
 import { useAccountingAccess, useAccountingDashboard, useSyncErrors, useSyncStatus } from '@/features/accounting/queries';
 import { positionOf } from '@/features/financeSetup/components/GroupedRow';
@@ -38,6 +38,16 @@ export default function AccountingDashboardScreen() {
   const syncErrors = useSyncErrors().data ?? [];
   const back = () => router.back();
   const go = (path: string) => router.push(`/(app)/(tabs)/manage/accounting/${path}` as never);
+  // The big figures open the entries behind them: what stood in each account up to now, or this year's statement
+  const toNow = () => ({ to: new Date().toISOString(), datesLabel: 'Up to now' });
+  const openCash = () => router.push(ledgerHref({ scope: 'cash', title: 'Cash and bank', ...toNow() }) as never);
+  const openOwned = () => router.push(ledgerHref({ scope: 'ASSET', title: 'What is owned', ...toNow() }) as never);
+  const openOwed = () => router.push(ledgerHref({ scope: 'LIABILITY', title: 'What is owed', ...toNow() }) as never);
+  const openSurplus = () => router.push('/(app)/(tabs)/manage/accounting/statements?view=income&period=this_year' as never);
+  const openMonth = (month: string) => {
+    const range = monthRange(month);
+    if (range) router.push(`/(app)/(tabs)/manage/accounting/statements?view=income&period=custom&startDate=${encodeURIComponent(range.startDate)}&endDate=${encodeURIComponent(range.endDate)}` as never);
+  };
 
   if (!allowed) {
     return (
@@ -74,10 +84,11 @@ export default function AccountingDashboardScreen() {
             icon={Landmark}
             eyebrow="Cash and bank"
             stats={[
-              { label: 'Owned', value: formatMoney(data.quickStats.totalAssets) },
-              { label: 'Owed', value: formatMoney(data.quickStats.totalLiabilities) },
-              { label: 'Surplus this year', value: formatMoney(data.quickStats.netIncome) },
+              { label: 'Owned', value: formatMoney(data.quickStats.totalAssets), onPress: openOwned },
+              { label: 'Owed', value: formatMoney(data.quickStats.totalLiabilities), onPress: openOwed },
+              { label: 'Surplus this year', value: formatMoney(data.quickStats.netIncome), onPress: openSurplus },
             ]}
+            onPress={openCash}
             testID="accounting-hero"
           >
             <Money value={data.quickStats.cashBalance} size="display" tone="onPassbook" />
@@ -133,12 +144,19 @@ export default function AccountingDashboardScreen() {
           ) : null}
 
           <Section title="Last six months">
-            <TrendChart points={data.monthlyTrend} />
+            <TrendChart points={data.monthlyTrend} onSelectMonth={openMonth} />
           </Section>
 
           {data.budgetStatus ? (
             <Section title="Spending against the budget">
-              <View className="gap-2 rounded-lg border border-border bg-surface p-4 dark:border-transparent" testID="accounting-budget">
+              <Pressable
+                disabled={!data.budgetStatus.budgetId}
+                onPress={() => router.push({ pathname: '/(app)/(tabs)/manage/accounting/budgets/[id]', params: { id: String(data.budgetStatus?.budgetId) } } as never)}
+                accessibilityRole="button"
+                accessibilityLabel="Spending against the budget. Opens the budget."
+                className="gap-2 rounded-lg border border-border bg-surface p-4 dark:border-transparent"
+                testID="accounting-budget"
+              >
                 <PlanBar
                   label="Spending against the budget"
                   actual={data.budgetStatus.totalSpent}
@@ -146,7 +164,7 @@ export default function AccountingDashboardScreen() {
                   percent={data.budgetStatus.percentUsed}
                   over={data.budgetStatus.percentUsed > 100}
                 />
-              </View>
+              </Pressable>
             </Section>
           ) : null}
 

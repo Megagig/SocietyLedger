@@ -2117,6 +2117,42 @@ export const financeController = {
   },
 
   // Get payment history
+  /**
+   * One payment, with the charge it paid and who confirmed it.
+   * GET /api/finance/payments/:id
+   */
+  async getPayment(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      const id = parseInt(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ success: false, message: 'That is not a valid payment' });
+      }
+      const payment = await prisma.payment.findFirst({
+        where: { id, associationId },
+        include: {
+          transaction: {
+            include: {
+              member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+              category: { select: { id: true, name: true, type: true } },
+            },
+          },
+          confirmer: { select: { id: true, email: true } },
+        },
+      });
+      if (!payment) {
+        return res.status(404).json({ success: false, message: 'Payment not found' });
+      }
+      return res.status(200).json({ success: true, data: payment });
+    } catch (error) {
+      console.error('Error getting payment:', error);
+      return res.status(500).json({ success: false, message: 'Failed to get payment' });
+    }
+  },
+
   async listPayments(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;

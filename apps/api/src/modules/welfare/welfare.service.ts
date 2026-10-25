@@ -766,6 +766,20 @@ export const welfareService = {
     return prisma.welfarePayoutRequest.findUniqueOrThrow({ where: { id: requestId } });
   },
 
+  /** One payout request of this association, with the fund, the member and the officers who handled it. */
+  async getPayoutRequest(associationId: number, id: number) {
+    return prisma.welfarePayoutRequest.findFirst({
+      where: { id, associationId },
+      include: {
+        fund: { select: { id: true, name: true, fundType: true } },
+        member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
+        reviewer: { select: { id: true, email: true } },
+        approver: { select: { id: true, email: true } },
+        disburser: { select: { id: true, email: true } },
+      },
+    });
+  },
+
   async listPayoutRequests(
     associationId: number,
     params: {

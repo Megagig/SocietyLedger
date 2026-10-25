@@ -1,7 +1,7 @@
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { toast } from 'sonner-native';
 
 import { ApiError } from '@/api/errors';
@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { PlanBar } from '@/features/accounting/components/Rows';
-import { ACCOUNTING_APPROVE_ACCESS, ACCOUNTING_EDIT_ACCESS, BUDGET_STATUS_LABELS, budgetStatusKey, usedPercent, VARIANCE_LABELS } from '@/features/accounting/labels';
+import { ACCOUNTING_APPROVE_ACCESS, ACCOUNTING_EDIT_ACCESS, BUDGET_STATUS_LABELS, budgetStatusKey, ledgerHref, usedPercent, VARIANCE_LABELS } from '@/features/accounting/labels';
 import { useActivateBudget, useApproveBudget } from '@/features/accounting/mutations';
 import { useAccountingAccess, useBudget, useBudgetVariance } from '@/features/accounting/queries';
 import { useCan } from '@/hooks/useCan';
@@ -27,9 +27,16 @@ import { useSessionStore } from '@/stores/session';
 import type { BudgetVarianceItemDTO, VarianceSummaryDTO } from '@/types/api/accounting';
 
 /** One account against its plan: a bar for how much is used, and whether it is over, under or on track. */
-function VarianceLine({ item, note }: { item: BudgetVarianceItemDTO; note?: string | null }) {
+function VarianceLine({ item, note, onOpen }: { item: BudgetVarianceItemDTO; note?: string | null; onOpen?: () => void }) {
   return (
-    <View className="gap-2 rounded-lg border border-border bg-surface p-4 dark:border-transparent" testID={`variance-${item.accountId}`}>
+    <Pressable
+      disabled={!onOpen}
+      onPress={onOpen}
+      accessibilityRole={onOpen ? 'button' : undefined}
+      accessibilityLabel={onOpen ? `${item.accountName}. Opens the entries.` : undefined}
+      className="gap-2 rounded-lg border border-border bg-surface p-4 dark:border-transparent"
+      testID={`variance-${item.accountId}`}
+    >
       <View className="flex-row items-center justify-between gap-3">
         <Text variant="body-lg" className="flex-1" numberOfLines={1}>
           {item.accountName}
@@ -42,18 +49,24 @@ function VarianceLine({ item, note }: { item: BudgetVarianceItemDTO; note?: stri
         </Text>
       ) : null}
       <PlanBar label={item.accountName} actual={item.actualAmount} budget={item.budgetAmount} percent={usedPercent(item.actualAmount, item.budgetAmount)} over={toDecimal(item.actualAmount).gt(item.budgetAmount)} />
-    </View>
+    </Pressable>
   );
 }
 
-function SummaryBar({ title, summary }: { title: string; summary: VarianceSummaryDTO }) {
+function SummaryBar({ title, summary, onOpen }: { title: string; summary: VarianceSummaryDTO; onOpen?: () => void }) {
   return (
-    <View className="gap-2 rounded-lg border border-border bg-surface p-4 dark:border-transparent">
+    <Pressable
+      disabled={!onOpen}
+      onPress={onOpen}
+      accessibilityRole={onOpen ? 'button' : undefined}
+      accessibilityLabel={onOpen ? `${title}. Opens the entries.` : undefined}
+      className="gap-2 rounded-lg border border-border bg-surface p-4 dark:border-transparent"
+    >
       <Text variant="label" tone="secondary">
         {title}
       </Text>
       <PlanBar label={title} actual={summary.totalActual} budget={summary.totalBudget} percent={usedPercent(summary.totalActual, summary.totalBudget)} over={toDecimal(summary.totalActual).gt(summary.totalBudget)} />
-    </View>
+    </Pressable>
   );
 }
 
@@ -113,6 +126,10 @@ export default function BudgetDetailScreen() {
   const noteOf = (accountId: number) => budget.items.find((i) => i.accountId === accountId)?.notes ?? null;
   const income = data?.items.filter((i) => i.accountType === 'INCOME') ?? [];
   const spending = data?.items.filter((i) => i.accountType !== 'INCOME') ?? [];
+  // The entries behind a figure are those posted inside the dates the plan is measured over
+  const dates = data ? { from: data.period.startDate, to: data.period.endDate, datesLabel: 'The budget’s dates' } : {};
+  const openAccount = (item: BudgetVarianceItemDTO) => () => router.push(ledgerHref({ accountId: item.accountId, title: item.accountName, ...dates }) as never);
+  const openTogether = (title: string, items: BudgetVarianceItemDTO[]) => () => router.push(ledgerHref({ accountIds: items.map((i) => i.accountId), title, ...dates }) as never);
 
   return (
     <Screen edges={['top']}>
@@ -140,8 +157,8 @@ export default function BudgetDetailScreen() {
           <>
             <Section title="So far">
               <View className="gap-3">
-                {spending.length > 0 ? <SummaryBar title="Spending against the plan" summary={data.expenseSummary} /> : null}
-                {income.length > 0 ? <SummaryBar title="Income against the plan" summary={data.incomeSummary} /> : null}
+                {spending.length > 0 ? <SummaryBar title="Spending against the plan" summary={data.expenseSummary} onOpen={openTogether('Spending', spending)} /> : null}
+                {income.length > 0 ? <SummaryBar title="Income against the plan" summary={data.incomeSummary} onOpen={openTogether('Income', income)} /> : null}
               </View>
               <Text variant="caption" tone="secondary">
                 Only entries that have been posted, from {formatDate(data.period.startDate, 'long')}.
@@ -152,7 +169,7 @@ export default function BudgetDetailScreen() {
               <Section title="Spending">
                 <View className="gap-3">
                   {spending.map((item) => (
-                    <VarianceLine key={item.accountId} item={item} note={noteOf(item.accountId)} />
+                    <VarianceLine key={item.accountId} item={item} note={noteOf(item.accountId)} onOpen={openAccount(item)} />
                   ))}
                 </View>
               </Section>
@@ -161,7 +178,7 @@ export default function BudgetDetailScreen() {
               <Section title="Income">
                 <View className="gap-3">
                   {income.map((item) => (
-                    <VarianceLine key={item.accountId} item={item} note={noteOf(item.accountId)} />
+                    <VarianceLine key={item.accountId} item={item} note={noteOf(item.accountId)} onOpen={openAccount(item)} />
                   ))}
                 </View>
               </Section>

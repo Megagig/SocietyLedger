@@ -546,6 +546,31 @@ export const welfareController = {
     }
   },
 
+  /**
+   * One payout request. Someone who cannot see all welfare sees only their own.
+   * GET /api/welfare/payouts/:id
+   */
+  async getPayoutRequest(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      const id = parseInt(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({ success: false, message: 'That is not a valid payout' });
+      }
+      const seeAll = await canSeeAllWelfare(req);
+      const request = await welfareService.getPayoutRequest(associationId, id);
+      if (!request || (!seeAll && request.memberId !== req.user?.memberId)) {
+        return res.status(404).json({ success: false, message: 'Payout request not found' });
+      }
+      return res.status(200).json({ success: true, data: request });
+    } catch (error) {
+      return welfareFailure(res, error, 'Failed to get payout request');
+    }
+  },
+
   async listPayoutRequests(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;

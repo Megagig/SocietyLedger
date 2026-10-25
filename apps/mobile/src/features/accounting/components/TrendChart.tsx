@@ -8,7 +8,7 @@ import { useThemeTokens } from '@/providers/ThemeProvider';
 export type TrendPoint = { month: string; income: string | number; expenses: string | number };
 
 /** Income and spending for each of the last months, side by side. Amounts on the axis are written in full. */
-export function TrendChart({ points }: { points: TrendPoint[] }) {
+export function TrendChart({ points, onSelectMonth }: { points: TrendPoint[]; onSelectMonth?: (month: string) => void }) {
   const { color, chart } = useThemeTokens();
   const hasData = points.some((p) => !toDecimal(p.income).isZero() || !toDecimal(p.expenses).isZero());
 
@@ -23,8 +23,8 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
   }
 
   const data = points.flatMap((p) => [
-    { value: Math.round(toDecimal(p.income).toNumber()), label: p.month.slice(0, 3), frontColor: chart[0], spacing: 4 },
-    { value: Math.round(toDecimal(p.expenses).toNumber()), frontColor: chart[1] ?? chart[0], spacing: 20 },
+    { value: Math.round(toDecimal(p.income).toNumber()), label: p.month.slice(0, 3), frontColor: chart[0], spacing: 4, onPress: onSelectMonth ? () => onSelectMonth(p.month) : undefined },
+    { value: Math.round(toDecimal(p.expenses).toNumber()), frontColor: chart[1] ?? chart[0], spacing: 20, onPress: onSelectMonth ? () => onSelectMonth(p.month) : undefined },
   ]);
   const max = Math.max(...data.map((d) => d.value), 1);
 
@@ -53,6 +53,11 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
         <Legend colour={chart[0]} label="Income" />
         <Legend colour={chart[1] ?? chart[0]} label="Spending" />
       </View>
+      {onSelectMonth ? (
+        <Text variant="caption" tone="tertiary">
+          Tap a month to see its statement.
+        </Text>
+      ) : null}
     </View>
   );
 }

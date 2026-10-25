@@ -105,7 +105,7 @@ async function getAccountBalancesByType(associationId: number, type: AccountType
 const sumBalances = (rows: AccountBalance[]): Decimal => rows.reduce((sum, r) => sum.plus(r.balance), new Decimal(0));
 
 /** The accounts that hold the association's cash and bank money. */
-async function cashAccountIds(associationId: number): Promise<number[]> {
+export async function cashAccountIds(associationId: number): Promise<number[]> {
   const accounts = await prisma.chartOfAccount.findMany({
     where: {
       associationId,
@@ -756,7 +756,7 @@ export const accountingService = {
       const isInflow = line.debitAmount.greaterThan(0);
       const amount = isInflow ? line.debitAmount : line.creditAmount;
       const group = groups[cashFlowGroup(others.filter((l) => !cashSet.has(l.accountId)).map((l) => l.account))];
-      const item = { description: line.journalEntry.description, amount, accountId: line.accountId };
+      const item = { description: line.journalEntry.description, amount, accountId: line.accountId, entryId: line.journalEntryId };
       if (isInflow) {
         group.inflows.push(item);
         group.netCash = group.netCash.plus(amount);
@@ -777,6 +777,7 @@ export const accountingService = {
       beginningCash,
       endingCash,
       reconciles: beginningCash.plus(netCashChange).equals(endingCash),
+      cashAccountIds: cashIds,
     };
   },
 
@@ -1066,7 +1067,7 @@ export const accountingService = {
         const sums = activity.get(a.id);
         return sums ? sum.plus(balanceOf(a.normalBalance as 'DEBIT' | 'CREDIT', sums.debit, sums.credit)) : sum;
       }, new Decimal(0));
-      budgetStatus = { totalBudget: planned, totalSpent: spent, remainingBudget: planned.minus(spent), percentUsed: percentOf(spent, planned) };
+      budgetStatus = { budgetId: activeBudget.id, totalBudget: planned, totalSpent: spent, remainingBudget: planned.minus(spent), percentUsed: percentOf(spent, planned) };
     }
 
     // The last six months, income and spending, one query a month

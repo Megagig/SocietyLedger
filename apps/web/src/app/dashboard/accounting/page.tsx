@@ -34,6 +34,9 @@ import {
 import { accountingApi, AccountingDashboard, JournalEntry } from '@/lib/api/accounting';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { DrillLink } from '@/components/reports/DrillLink';
+import { entryHref, ledgerHref, monthRange } from '@/lib/accounting-drill';
 import {
   BarChart,
   Bar,
@@ -60,12 +63,18 @@ export default function AccountingPage() {
 
   const dashboard: AccountingDashboard | undefined = dashboardData?.data;
 
+  const router = useRouter();
+  const openMonth = (bar: { payload?: { month?: string } }) => {
+    const range = bar?.payload?.month ? monthRange(bar.payload.month) : null;
+    if (range) router.push(`/dashboard/accounting/income-statement?period=custom&startDate=${encodeURIComponent(range.startDate)}&endDate=${encodeURIComponent(range.endDate)}`);
+  };
+
   const formatCurrency = (amount: any) => {
     const num = typeof amount === 'object' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(num || 0);
   };
 
@@ -219,7 +228,7 @@ export default function AccountingPage() {
               <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Total Assets</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
-              {formatCurrency(dashboard.quickStats.totalAssets)}
+              <DrillLink href={ledgerHref({ scope: 'ASSET', title: 'What is owned', ...{ to: new Date().toISOString(), datesLabel: 'Up to now' } })} label="Total assets">{formatCurrency(dashboard.quickStats.totalAssets)}</DrillLink>
             </Text>
           </Card>
 
@@ -231,7 +240,7 @@ export default function AccountingPage() {
               <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Total Liabilities</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
-              {formatCurrency(dashboard.quickStats.totalLiabilities)}
+              <DrillLink href={ledgerHref({ scope: 'LIABILITY', title: 'What is owed', ...{ to: new Date().toISOString(), datesLabel: 'Up to now' } })} label="Total liabilities">{formatCurrency(dashboard.quickStats.totalLiabilities)}</DrillLink>
             </Text>
           </Card>
 
@@ -243,7 +252,7 @@ export default function AccountingPage() {
               <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Total Equity</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700}>
-              {formatCurrency(dashboard.quickStats.totalEquity)}
+              <DrillLink href={'/dashboard/accounting/balance-sheet'} label="Total equity">{formatCurrency(dashboard.quickStats.totalEquity)}</DrillLink>
             </Text>
           </Card>
 
@@ -255,7 +264,7 @@ export default function AccountingPage() {
               <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Net Income (YTD)</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c={parseFloat(String(dashboard.quickStats.netIncome)) >= 0 ? 'green' : 'red'}>
-              {formatCurrency(dashboard.quickStats.netIncome)}
+              <DrillLink href={'/dashboard/accounting/income-statement'} label="Net income this year">{formatCurrency(dashboard.quickStats.netIncome)}</DrillLink>
             </Text>
           </Card>
 
@@ -267,7 +276,7 @@ export default function AccountingPage() {
               <Text size="xs" className="text-xs sm:text-sm" c="dimmed">Cash Balance</Text>
             </Group>
             <Text size="lg" className="text-base sm:text-xl" fw={700} c="teal">
-              {formatCurrency(dashboard.quickStats.cashBalance)}
+              <DrillLink href={ledgerHref({ scope: 'cash', title: 'Cash and bank', ...{ to: new Date().toISOString(), datesLabel: 'Up to now' } })} label="Cash balance">{formatCurrency(dashboard.quickStats.cashBalance)}</DrillLink>
             </Text>
           </Card>
         </div>
@@ -326,7 +335,7 @@ export default function AccountingPage() {
               />
               <div className="flex justify-between text-sm">
                 <Text size="sm" c="dimmed">
-                  {formatCurrency(dashboard.budgetStatus.totalSpent)} spent of {formatCurrency(dashboard.budgetStatus.totalBudget)}
+                  <DrillLink href={dashboard.budgetStatus.budgetId ? `/dashboard/accounting/budgets?variance=${dashboard.budgetStatus.budgetId}` : undefined} label="Spending against the budget">{formatCurrency(dashboard.budgetStatus.totalSpent)} spent of {formatCurrency(dashboard.budgetStatus.totalBudget)}</DrillLink>
                 </Text>
                 <Text size="sm" fw={500}>
                   {dashboard.budgetStatus.percentUsed.toFixed(1)}% used
@@ -358,8 +367,8 @@ export default function AccountingPage() {
                   labelStyle={{ color: '#333' }}
                 />
                 <Legend />
-                <Bar dataKey="income" name="Income" fill="#12b886" />
-                <Bar dataKey="expenses" name="Expenses" fill="#fa5252" />
+                <Bar dataKey="income" name="Income" fill="#12b886" cursor="pointer" onClick={openMonth} />
+                <Bar dataKey="expenses" name="Expenses" fill="#fa5252" cursor="pointer" onClick={openMonth} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -389,7 +398,7 @@ export default function AccountingPage() {
               {dashboard.recentEntries.slice(0, 5).map((entry: JournalEntry) => (
                 <Paper key={entry.id} withBorder p="sm">
                   <Group justify="space-between" mb={4}>
-                    <Text size="sm" fw={500}>{entry.entryNumber}</Text>
+                    <Text size="sm" fw={500}><DrillLink href={entryHref(entry.id)} label={entry.entryNumber}>{entry.entryNumber}</DrillLink></Text>
                     <Badge size="xs" color={getStatusColor(entry.status)}>
                       {entry.status}
                     </Badge>

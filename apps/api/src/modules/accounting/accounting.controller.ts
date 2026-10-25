@@ -17,6 +17,9 @@ import {
 import { z } from 'zod';
 import { confirmPassword, reauthFailure } from '../../lib/reauth';
 import { respondWithError } from './accounting-http';
+import { accountingLedgerService } from './accounting-ledger.service';
+import { parseAccountIds, parseLedgerDate } from './accounting-ledger';
+import { resolveEntrySource } from './accounting-source';
 
 const postEntrySchema = z.object({ password: z.string().min(1) });
 
@@ -255,13 +258,47 @@ export const accountingController = {
         return res.status(404).json({ success: false, message: 'Journal entry not found' });
       }
 
+      // Where the entry came from: the record behind it, named in plain facts
+      const source = await resolveEntrySource(associationId, entry.sourceType, entry.sourceId);
+
       return res.status(200).json({
         success: true,
-        data: entry,
+        data: { ...entry, source },
       });
     } catch (error) {
       console.error('Error getting journal entry:', error);
       return res.status(500).json({ success: false, message: 'Failed to get journal entry' });
+    }
+  },
+
+  /**
+   * The ledger of an account (or of several together): every posted line with a running balance.
+   * GET /api/accounting/ledger
+   * Query params: accountId | accountIds | scope (cash, or an account type), from, to, search, page, limit
+   */
+  async getLedger(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      const q = req.query;
+      const from = parseLedgerDate(q.from, 'The start date', false);
+      const to = parseLedgerDate(q.to, 'The end date', true);
+      if (from && to && to < from) {
+        return res.status(400).json({ success: false, code: 'INVALID_DATE', message: 'The end date is before the start date.' });
+      }
+      const data = await accountingLedgerService.getLedger(associationId, {
+        accountIds: typeof q.scope === 'string' && q.scope !== '' ? await accountingLedgerService.accountsInScope(associationId, q.scope) : parseAccountIds(q.accountId, q.accountIds),
+        from,
+        to,
+        search: typeof q.search === 'string' ? q.search.slice(0, 100) : undefined,
+        page: Number(q.page) || 1,
+        limit: Number(q.limit) || 30,
+      });
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      return respondWithError(res, error);
     }
   },
 

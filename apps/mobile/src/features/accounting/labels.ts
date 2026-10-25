@@ -6,6 +6,7 @@ import type {
   ChangeDTO,
   BudgetStatus,
   CashFlowDTO,
+  EntrySourceDTO,
   IncomeStatementDTO,
   JournalEntryDTO,
   JournalStatus,
@@ -293,3 +294,115 @@ export const usedPercent = (actual: string | number, budget: string | number): n
 
 export const PERIOD_STATUS_LABELS: Record<PeriodStatus, string> = { OPEN: 'Open', CLOSED: 'Closed', LOCKED: 'Locked for good' };
 export const periodStatusKey = (status: PeriodStatus): string => (status === 'OPEN' ? 'active' : status === 'CLOSED' ? 'closed' : 'archived');
+
+// ---------------------------------------------------------------- opening a figure (the ledger and the source)
+
+const ACCOUNTING_BASE = '/(app)/(tabs)/manage/accounting';
+
+/** What a ledger is opened for: one account, several together, or a whole section, with the dates the figure was drawn for. */
+export type LedgerTarget = {
+  accountId?: number;
+  accountIds?: number[];
+  /** "cash", or an account type: a whole section at once */
+  scope?: string;
+  title: string;
+  from?: string;
+  to?: string;
+  /** Words for the dates the screen opens with ("This month"). Without them the dates are shown as they are. */
+  datesLabel?: string;
+};
+
+/** The route that opens a ledger. Everything is carried in the address, so going back returns to the same place. */
+export function ledgerHref(target: LedgerTarget): string {
+  const q: [string, string | undefined][] = [
+    ['accountId', target.accountId !== undefined ? String(target.accountId) : undefined],
+    ['accountIds', target.accountIds && target.accountIds.length > 0 ? target.accountIds.join(',') : undefined],
+    ['scope', target.scope],
+    ['title', target.title],
+    ['from', target.from],
+    ['to', target.to],
+    ['datesLabel', target.datesLabel],
+  ];
+  const query = q.filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`);
+  return `${ACCOUNTING_BASE}/ledger?${query.join('&')}`;
+}
+
+export const entryHref = (entryId: number): string => `${ACCOUNTING_BASE}/journal/${entryId}`;
+
+/** The dates a ledger can be narrowed to, besides the ones it was opened with. */
+export const LEDGER_DATE_OPTIONS = [
+  { label: 'As opened', value: 'opened' },
+  { label: 'All time', value: 'all' },
+  { label: 'This month', value: 'month' },
+  { label: 'This year', value: 'year' },
+] as const;
+export type LedgerDates = (typeof LEDGER_DATE_OPTIONS)[number]['value'];
+
+/** The calendar day in Lagos (UTC+1) of a moment, as "2026-10-24". */
+export const lagosDay = (date: Date): string => new Date(date.getTime() + 60 * 60 * 1000).toISOString().slice(0, 10);
+
+/** The `from` and `to` of a ledger choice. "As opened" keeps what the screen was opened with; plain days are cut in Lagos time by the server. */
+export function ledgerRange(choice: LedgerDates, opened: { from?: string; to?: string }, now: Date = new Date()): { from?: string; to?: string } {
+  const today = lagosDay(now);
+  if (choice === 'opened') return { from: opened.from, to: opened.to };
+  if (choice === 'month') return { from: `${today.slice(0, 7)}-01`, to: today };
+  if (choice === 'year') return { from: `${today.slice(0, 4)}-01-01`, to: today };
+  return {};
+}
+
+/** "Debit" or "Credit" for a ledger line, whichever side it is on. */
+export const lineSide = (line: { debit: string | number }): 'Debit' | 'Credit' => (Number(line.debit) > 0 ? 'Debit' : 'Credit');
+
+/** Where the screen for a source record lives on the phone, or the nearest screen that exists for it. Null when there is none to open. */
+export function sourceHref(source: EntrySourceDTO): string | null {
+  if (source.missing) return null;
+  const base = '/(app)/(tabs)/manage';
+  const ids = source.ids;
+  switch (source.kind) {
+    case 'charge':
+      return `${base}/finance/transactions/${source.id}`;
+    case 'payment':
+      return ids.transactionId ? `${base}/finance/transactions/${ids.transactionId}` : null;
+    case 'welfare_contribution':
+      return ids.memberId ? `${base}/finance/ledgers/${ids.memberId}` : null;
+    case 'welfare_payout':
+      return `${base}/welfare/payouts/${source.id}`;
+    case 'savings_transaction':
+      return ids.savingsAccountId ? `${base}/cooperatives/savings/${ids.savingsAccountId}` : null;
+    case 'loan':
+    case 'loan_repayment':
+      return ids.loanId ? `${base}/cooperatives/loans/${ids.loanId}` : null;
+    case 'cash_lodgment':
+      return `${base}/cash/lodgments/${source.id}`;
+    case 'reversal':
+      return ids.entryId ? entryHref(ids.entryId) : null;
+    default:
+      return null;
+  }
+}
+
+/** What the Open button says for each source, so the person knows where it goes. */
+export const SOURCE_OPEN_LABELS: Record<EntrySourceDTO['kind'], string> = {
+  charge: 'Open the charge',
+  payment: 'Open the charge it paid',
+  welfare_contribution: 'Open the member’s ledger',
+  welfare_payout: 'Open the payout',
+  savings_transaction: 'Open the savings account',
+  loan: 'Open the loan',
+  loan_repayment: 'Open the loan',
+  cash_lodgment: 'Open the lodgment',
+  reversal: 'Open the entry it reversed',
+};
+
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/** The whole of a month named like "Oct 2026", from its first moment to its last in Lagos time, for opening a statement on it. */
+export function monthRange(label: string): { startDate: string; endDate: string } | null {
+  const [name, year] = label.trim().split(/\s+/);
+  const month = MONTHS.indexOf((name ?? '').slice(0, 3).toLowerCase());
+  const y = Number(year);
+  if (month < 0 || !Number.isInteger(y)) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const lastDay = new Date(Date.UTC(y, month + 1, 0)).getUTCDate();
+  return { startDate: `${y}-${pad(month + 1)}-01T00:00:00.000+01:00`, endDate: `${y}-${pad(month + 1)}-${pad(lastDay)}T23:59:59.999+01:00` };
+}

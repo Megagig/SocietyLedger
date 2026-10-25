@@ -193,6 +193,20 @@ router.get(
 );
 
 /**
+ * One payout request
+ * GET /api/welfare/payouts/:id
+ */
+router.get(
+  '/payouts/:id',
+  requireAnyPermission([
+    PERMISSIONS.WELFARE_PAYOUT_VIEW,
+    PERMISSIONS.WELFARE_PAYOUT_APPROVE,
+    PERMISSIONS.WELFARE_VIEW_OWN, // members: the controller shows them only their own
+  ]),
+  welfareController.getPayoutRequest
+);
+
+/**
  * Create a payout request (members can request)
  * POST /api/welfare/payouts
  */

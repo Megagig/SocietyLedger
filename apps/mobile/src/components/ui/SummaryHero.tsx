@@ -1,12 +1,12 @@
 import { useId, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from '@/components/ui/Text';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
-export type SummaryHeroStat = { label: string; value: string };
+export type SummaryHeroStat = { label: string; value: string; /** Opens what makes the figure up. */ onPress?: () => void };
 
 export type SummaryHeroProps = {
   icon: LucideIcon;
@@ -17,6 +17,8 @@ export type SummaryHeroProps = {
   caption?: string;
   /** Up to three translucent stat pills along the bottom. */
   stats?: SummaryHeroStat[];
+  /** Opens what makes the headline figure up. */
+  onPress?: () => void;
   testID?: string;
 };
 
@@ -25,7 +27,7 @@ export type SummaryHeroProps = {
  * quieter sibling of `Passbook`, which stays reserved for balances (ui-rules.md §5.1). Same palette (passbook green,
  * gold accent) so the two read as one family; no ruled lines or stamp.
  */
-export function SummaryHero({ icon: Icon, eyebrow, children, caption, stats, testID }: SummaryHeroProps) {
+export function SummaryHero({ icon: Icon, eyebrow, children, caption, stats, onPress, testID }: SummaryHeroProps) {
   const { color } = useThemeTokens();
   // SVG gradient ids are global; two heroes on one screen would otherwise share definitions.
   const gradientId = `summary-hero-${useId()}`;
@@ -52,7 +54,7 @@ export function SummaryHero({ icon: Icon, eyebrow, children, caption, stats, tes
       <View className="absolute inset-x-0 top-0 h-[2px] bg-passbook-stamp" />
 
       <View className="flex-row items-start justify-between gap-3">
-        <View className="flex-1 gap-1">
+        <Pressable disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel={onPress ? `${eyebrow}. Opens the entries.` : undefined} className="flex-1 gap-1">
           <Text variant="label" tone="onPassbookMuted">
             {eyebrow}
           </Text>
@@ -62,7 +64,7 @@ export function SummaryHero({ icon: Icon, eyebrow, children, caption, stats, tes
               {caption}
             </Text>
           ) : null}
-        </View>
+        </Pressable>
         <View className="h-11 w-11 items-center justify-center rounded-full border border-passbook-stamp/40 bg-on-passbook/10">
           <Icon size={22} color={color.passbookStamp} strokeWidth={1.75} />
         </View>
@@ -71,14 +73,21 @@ export function SummaryHero({ icon: Icon, eyebrow, children, caption, stats, tes
       {stats && stats.length > 0 ? (
         <View className="mt-4 flex-row gap-3">
           {stats.slice(0, 3).map((stat) => (
-            <View key={stat.label} className="flex-1 gap-0.5 rounded-lg bg-on-passbook/10 px-3 py-2">
+            <Pressable
+              key={stat.label}
+              disabled={!stat.onPress}
+              onPress={stat.onPress}
+              accessibilityRole={stat.onPress ? 'button' : undefined}
+              accessibilityLabel={stat.onPress ? `${stat.label}. Opens the entries.` : undefined}
+              className="flex-1 gap-0.5 rounded-lg bg-on-passbook/10 px-3 py-2"
+            >
               <Text variant="h2" tone="onPassbook">
                 {stat.value}
               </Text>
               <Text variant="caption" tone="onPassbookMuted" numberOfLines={1}>
                 {stat.label}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : null}

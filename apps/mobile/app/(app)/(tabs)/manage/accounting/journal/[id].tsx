@@ -1,7 +1,7 @@
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { toast } from 'sonner-native';
 
 import { ApiError } from '@/api/errors';
@@ -19,8 +19,9 @@ import { Money } from '@/components/ui/Money';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
+import { SourceCard } from '@/features/accounting/components/LedgerParts';
 import { PostEntrySheet } from '@/features/accounting/components/PostEntrySheet';
-import { ACCOUNTING_APPROVE_ACCESS, ACCOUNTING_CREATE_ACCESS, ACCOUNTING_EDIT_ACCESS, isAutomatic, isEditable, JOURNAL_STATUS_LABELS, journalStatusKey, sourceLabel } from '@/features/accounting/labels';
+import { ACCOUNTING_APPROVE_ACCESS, ACCOUNTING_CREATE_ACCESS, ACCOUNTING_EDIT_ACCESS, isAutomatic, isEditable, JOURNAL_STATUS_LABELS, journalStatusKey, ledgerHref, sourceLabel } from '@/features/accounting/labels';
 import { useDecideEntry, usePostEntry, useSubmitEntry } from '@/features/accounting/mutations';
 import { useAccountingAccess, useEntry } from '@/features/accounting/queries';
 import { ReasonSheet } from '@/features/coopManage/components/ReasonSheet';
@@ -148,7 +149,13 @@ export default function JournalDetailScreen() {
               return (
                 <View key={line.id}>
                   {i > 0 ? <Divider /> : null}
-                  <View className="min-h-[56px] flex-row items-center justify-between gap-3 px-4 py-3">
+                  <Pressable
+                    onPress={() => router.push(ledgerHref({ accountId: line.accountId, title: line.accountName }) as never)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${line.accountName}. Opens its ledger.`}
+                    testID={`entry-line-${line.id}`}
+                    className="min-h-[56px] flex-row items-center justify-between gap-3 px-4 py-3"
+                  >
                     <View className="flex-1">
                       <Text variant="body" numberOfLines={2}>
                         {line.accountName}
@@ -159,7 +166,7 @@ export default function JournalDetailScreen() {
                       </Text>
                     </View>
                     <Money value={debit ? line.debitAmount : line.creditAmount} size="body-strong" />
-                  </View>
+                  </Pressable>
                 </View>
               );
             })}
@@ -170,6 +177,12 @@ export default function JournalDetailScreen() {
             </View>
           </View>
         </Section>
+
+        {entry.source ? (
+          <Section title="Where this came from">
+            <SourceCard source={entry.source} onOpen={(href) => router.push(href as never)} />
+          </Section>
+        ) : null}
 
         <Section title="History">
           <View className="gap-2">

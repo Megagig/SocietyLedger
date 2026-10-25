@@ -193,6 +193,8 @@ export interface CashFlowReport {
   endingCash: Decimal;
   /** Whether beginning cash plus the net change equals ending cash. False means a movement was missed. */
   reconciles: boolean;
+  /** The cash and bank accounts the statement is made of, so beginning, ending and net cash can be opened. */
+  cashAccountIds: number[];
 }
 
 export interface AccountBalance {
@@ -207,6 +209,8 @@ export interface CashFlowItem {
   description: string;
   amount: Decimal;
   accountId?: number;
+  /** The journal entry the movement came from, so it can be opened. */
+  entryId?: number;
 }
 
 // Budget
@@ -309,6 +313,8 @@ export interface AccountingDashboard {
   recentEntries: JournalEntryResponse[];
   pendingApprovals: number;
   budgetStatus?: {
+    /** The budget in force, so the figure can open it. */
+    budgetId: number;
     totalBudget: Decimal;
     totalSpent: Decimal;
     remainingBudget: Decimal;

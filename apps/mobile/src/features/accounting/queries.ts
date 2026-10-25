@@ -3,7 +3,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { accountingApi } from '@/api/endpoints/accounting';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useTenantKey } from '@/hooks/useTenantKey';
-import type { BudgetStatus, JournalStatus, StatementParams } from '@/types/api/accounting';
+import type { BudgetStatus, JournalStatus, LedgerParams, StatementParams } from '@/types/api/accounting';
 import { ACCOUNTING_MODULE, ACCOUNTING_VIEW_ACCESS } from './labels';
 
 export const accountingKeys = {
@@ -21,6 +21,7 @@ export const accountingKeys = {
   budget: (tenant: string, id: number) => [...accountingKeys.all(tenant), 'budget', id] as const,
   variance: (tenant: string, id: number) => [...accountingKeys.all(tenant), 'variance', id] as const,
   periods: (tenant: string) => [...accountingKeys.all(tenant), 'periods'] as const,
+  ledger: (tenant: string, filters: object) => [...accountingKeys.all(tenant), 'ledger', filters] as const,
 };
 
 const PAGE = 20;
@@ -119,4 +120,18 @@ export function usePeriods() {
   const tenant = useTenantKey();
   const enabled = useAccountingAccess();
   return useQuery({ queryKey: accountingKeys.periods(tenant), queryFn: () => accountingApi.listPeriods(), enabled });
+}
+
+/** The lines of an account's ledger, a page at a time. The totals come with every page and are the same on each. */
+export function useLedgerInfinite(filters: Omit<LedgerParams, 'page' | 'limit'>, enabled = true) {
+  const tenant = useTenantKey();
+  const allowed = useAccountingAccess();
+  return useInfiniteQuery({
+    queryKey: accountingKeys.ledger(tenant, filters),
+    queryFn: ({ pageParam }) => accountingApi.getLedger({ ...filters, page: pageParam, limit: 30 }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.pagination.hasMore ? last.pagination.page + 1 : undefined),
+    placeholderData: keepPreviousData,
+    enabled: allowed && enabled,
+  });
 }

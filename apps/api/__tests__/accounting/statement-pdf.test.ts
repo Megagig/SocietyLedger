@@ -52,7 +52,7 @@ describe('the statement documents', () => {
 
   it('lays out the cash flow from start to end', () => {
     const zero = { inflows: [], outflows: [], netCash: new Decimal(0) };
-    const doc = cashFlowDocument({ period, operating: { ...zero, netCash: new Decimal(2200) }, investing: zero, financing: zero, netCashChange: new Decimal(2200), beginningCash: new Decimal(1000), endingCash: new Decimal(3200), reconciles: true });
+    const doc = cashFlowDocument({ period, operating: { ...zero, netCash: new Decimal(2200) }, investing: zero, financing: zero, netCashChange: new Decimal(2200), beginningCash: new Decimal(1000), endingCash: new Decimal(3200), reconciles: true, cashAccountIds: [] });
     expect(doc.sections.map((s) => s.total)).toEqual(['NGN 1,000.00', 'NGN 2,200.00', 'NGN 3,200.00']);
     expect(doc.notes[0]).not.toContain('WARNING');
   });
@@ -68,6 +68,7 @@ describe('the statement documents', () => {
       beginningCash: new Decimal(1000),
       endingCash: new Decimal(3200),
       reconciles: true,
+      cashAccountIds: [],
     });
     const operating = doc.sections.find((s) => s.title === 'Running the association')!;
     expect(operating.rows).toEqual([{ label: 'In: October dues', amount: 'NGN 3,000.00' }, { label: 'Out: Hall hire', amount: 'NGN 800.00' }]);
