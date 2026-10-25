@@ -1,4 +1,6 @@
 import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import type { ReactNode } from 'react';
 
 export interface Marker {
@@ -26,11 +28,17 @@ function darkSrc(src: string): string {
   return i === -1 ? `${src}-dark` : `${src.slice(0, i)}-dark${src.slice(i)}`;
 }
 
+/** Resolved at build time (static export), so a missing capture never ships a broken <img>. */
+function hasDarkVariant(src: string): boolean {
+  return existsSync(path.join(process.cwd(), 'public', darkSrc(src)));
+}
+
 /**
  * Light/dark pair, zoom (lightbox), numbered markers, `pending` placeholder
  * (`ui-rules.md §11.5`, `architecture.md §14.7`). Dark variant is derived
  * from `src` (`-<n>.webp` / `-<n>-dark.webp`, `code-standards.md §17.2`) —
- * never pass it separately. Pass either `pending` or both `src` and `alt`
+ * never pass it separately; falls back to the light image when no dark file
+ * exists. Pass either `pending` or both `src` and `alt`
  * (not enforced at the type level — the two call shapes didn't narrow
  * cleanly through a discriminated union with destructuring; checked at
  * runtime instead, with a dev-only console error if neither is given).
@@ -61,12 +69,20 @@ export function Screenshot({ caption, variant = 'desktop', pending, src, alt, ma
   }
 
   const { width, height } = defaultSize[variant];
+  const dark = hasDarkVariant(src);
 
   return (
     <figure className="my-4 not-prose">
       <div className={frameClass} style={{ borderColor: 'var(--docs-screenshot-frame)' }}>
-        <ImageZoom src={src} alt={alt} width={width} height={height} className="dark:hidden" />
-        <ImageZoom src={darkSrc(src)} alt={alt} width={width} height={height} className="hidden dark:block" />
+        {dark ? (
+          <>
+            <ImageZoom src={src} alt={alt} width={width} height={height} className="dark:hidden" />
+            <ImageZoom src={darkSrc(src)} alt={alt} width={width} height={height} className="hidden dark:block" />
+          </>
+        ) : (
+          // No dark capture yet — the light one serves both themes.
+          <ImageZoom src={src} alt={alt} width={width} height={height} />
+        )}
         {markers?.map((marker) => (
           <span
             key={marker.n}
