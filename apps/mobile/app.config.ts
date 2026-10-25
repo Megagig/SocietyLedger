@@ -34,7 +34,26 @@ const IDENTITY: Record<AppVariant, { name: string; bundleId: string; scheme: str
   },
 };
 
+/**
+ * `eas build` never reads apps/mobile/.env.local, so a build made on EAS without EXPO_PUBLIC_API_URL
+ * falls back to http://localhost:4001 and cannot reach any server. Fail the production build early
+ * instead of shipping that, and warn on the others. (Android release builds also block plain http.)
+ */
+function checkApiUrl(): void {
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  const problem = !apiUrl
+    ? 'EXPO_PUBLIC_API_URL is not set, so the app would call http://localhost:4001.'
+    : APP_VARIANT !== 'development' && !apiUrl.startsWith('https://')
+      ? `EXPO_PUBLIC_API_URL (${apiUrl}) is not https, and Android release builds block plain http.`
+      : null;
+  if (!problem) return;
+  const hint = 'Set it in the build profile env in eas.json, or with "eas env:create".';
+  if (APP_VARIANT === 'production') throw new Error(`${problem} ${hint}`);
+  if (APP_VARIANT === 'preview') console.warn(`[app.config] ${problem} ${hint}`);
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
+  checkApiUrl();
   const identity = IDENTITY[APP_VARIANT];
   const easProjectId = process.env.EAS_PROJECT_ID;
   const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;

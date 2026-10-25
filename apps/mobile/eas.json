@@ -28,7 +28,11 @@
       "autoIncrement": true,
       "env": {
         "APP_VARIANT": "production",
-        "EAS_PROJECT_ID": "7deffb9f-b682-45c7-b773-b919a4d8f28b"
+        "EAS_PROJECT_ID": "7deffb9f-b682-45c7-b773-b919a4d8f28b",
+        "EXPO_PUBLIC_API_URL": "https://api.societyledger.com.ng",
+        "EXPO_PUBLIC_WEB_URL": "https://societyledger.com.ng",
+        "EXPO_PUBLIC_BASE_DOMAIN": "societyledger.com.ng",
+        "EXPO_PUBLIC_DOCS_URL": "https://docs.societyledger.com.ng"
       }
     }
   },

@@ -504,6 +504,9 @@ importers:
       axios-mock-adapter:
         specifier: ^2.1.0
         version: 2.1.0(axios@1.20.0)
+      babel-preset-expo:
+        specifier: 58.0.18
+        version: 58.0.18(@babel/core@7.29.7)(@babel/runtime@7.29.10)(expo@58.0.16)(react-refresh@0.14.2)
       eslint:
         specifier: ^9.39.1
         version: 9.39.5(jiti@1.21.7)
