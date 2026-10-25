@@ -669,7 +669,7 @@ export function AdminSidebar() {
           label: 'Buy AI Credits',
           icon: <IconCoin size={18} />,
           href: '/dashboard/ai/credits',
-          permission: PERMISSIONS.AI_FINANCIAL_ASSISTANT,
+          permission: PERMISSIONS.LEDGER_VIEW,
         },
         {
           label: 'Usage & Stats',

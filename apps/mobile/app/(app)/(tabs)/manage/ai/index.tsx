@@ -13,7 +13,7 @@ import { Text } from '@/components/ui/Text';
 import { AiGate } from '@/features/ai/components/AiGate';
 import { MessageBubble, PromptChips, ThinkingBubble, UsageBar } from '@/features/ai/components/AiParts';
 import { clearChat, historyFor, loadChat, saveChat, type ChatMessage } from '@/features/ai/history';
-import { AI_BUY_ACCESS, SUGGESTED_PROMPTS, aiErrorMessage, canAfford, isOutOfRequests } from '@/features/ai/labels';
+import { AI_BUY_ACCESS, AI_REPORT_ACCESS, SUGGESTED_PROMPTS, aiErrorMessage, canAfford, isOutOfRequests } from '@/features/ai/labels';
 import { useAskAi } from '@/features/ai/mutations';
 import { useAiCredits } from '@/features/ai/queries';
 import { useCan } from '@/hooks/useCan';
@@ -40,6 +40,7 @@ function AssistantChat() {
   const userId = useSessionStore((s) => s.user?.id ?? 0);
   const credits = useAiCredits();
   const canBuy = useCan(AI_BUY_ACCESS);
+  const canReport = useCan(AI_REPORT_ACCESS);
   const ask = useAskAi();
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -106,7 +107,7 @@ function AssistantChat() {
         rightActions={
           <>
             <IconButton icon={Bell} accessibilityLabel="Smart reminders" onPress={() => router.push('/(app)/(tabs)/manage/ai/reminders' as never)} testID="ai-reminders" />
-            <IconButton icon={FileText} accessibilityLabel="AI report" onPress={() => router.push('/(app)/(tabs)/manage/ai/report' as never)} testID="ai-report" />
+            {canReport ? <IconButton icon={FileText} accessibilityLabel="AI report" onPress={() => router.push('/(app)/(tabs)/manage/ai/report' as never)} testID="ai-report" /> : null}
             {messages.length > 0 ? <IconButton icon={Trash2} accessibilityLabel="Clear the conversation" onPress={startOver} testID="ai-clear" /> : null}
           </>
         }

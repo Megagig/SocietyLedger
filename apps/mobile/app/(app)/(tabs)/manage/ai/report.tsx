@@ -11,7 +11,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Text } from '@/components/ui/Text';
 import { AiGate } from '@/features/ai/components/AiGate';
 import { UsageBar } from '@/features/ai/components/AiParts';
-import { AI_BUY_ACCESS, REPORT_TYPE_OPTIONS, aiErrorMessage, canAfford, costWords, isOutOfRequests } from '@/features/ai/labels';
+import { AI_BUY_ACCESS, AI_REPORT_ACCESS, REPORT_TYPE_OPTIONS, aiErrorMessage, canAfford, costWords, isOutOfRequests } from '@/features/ai/labels';
 import { useAiReport } from '@/features/ai/mutations';
 import { useAiCredits } from '@/features/ai/queries';
 import { reportShareText } from '@/features/ai/reportText';
@@ -23,7 +23,7 @@ import type { AiReportType } from '@/types/api/ai';
 /** project-overview.md §6.9 AI3 — a written report for the committee, from the same figures as Reports and Accounting. It is not saved; share it to keep it. */
 export default function AiReportScreen() {
   return (
-    <AiGate title="AI report">
+    <AiGate title="AI report" also={AI_REPORT_ACCESS}>
       <ReportBuilder />
     </AiGate>
   );

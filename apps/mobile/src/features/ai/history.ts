@@ -1,7 +1,6 @@
-import { getObject, remove, setObject } from '@/lib/storage';
 import type { AiTableDTO, AiTurn } from '@/types/api/ai';
 
-/** One message in the conversation. The history lives on this phone only; the server keeps none of it. */
+/** One message in the conversation. The history lives in this phone's memory only; the server keeps none of it. */
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
@@ -15,19 +14,27 @@ export type ChatMessage = {
 };
 
 const KEEP = 40;
-const key = (tenant: string, userId: number | string) => `ai.chat.${tenant}.${userId}`;
+
+// Answers hold real member names and balances, so they are never written to the phone's storage (it is not encrypted): they stay in
+// memory, survive leaving the screen, and are gone when the app closes.
+const chats = new Map<string, ChatMessage[]>();
+const key = (tenant: string, userId: number | string) => `${tenant}:${userId}`;
 
 export function loadChat(tenant: string, userId: number | string): ChatMessage[] {
-  const saved = getObject<ChatMessage[]>(key(tenant, userId));
-  return Array.isArray(saved) ? saved.filter((m) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant')) : [];
+  return chats.get(key(tenant, userId)) ?? [];
 }
 
 export function saveChat(tenant: string, userId: number | string, messages: ChatMessage[]): void {
-  setObject(key(tenant, userId), messages.slice(-KEEP));
+  chats.set(key(tenant, userId), messages.slice(-KEEP));
 }
 
 export function clearChat(tenant: string, userId: number | string): void {
-  remove(key(tenant, userId));
+  chats.delete(key(tenant, userId));
+}
+
+/** Forgets every conversation, for example when the person signs out. */
+export function clearAllChats(): void {
+  chats.clear();
 }
 
 /** The last few turns sent with a question so a follow-up makes sense. Failures are left out. */

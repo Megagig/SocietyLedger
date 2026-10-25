@@ -1,10 +1,8 @@
 import { ApiError } from '@/api/errors';
 import { aiErrorMessage, allowanceLine, canAfford, costWords, isOutOfRequests, packsFor, priceOf } from './labels';
-import { historyFor, type ChatMessage } from './history';
+import { clearChat, historyFor, loadChat, saveChat, type ChatMessage } from './history';
 import { waitForCredit } from './purchase';
 import { reportShareText } from './reportText';
-
-jest.mock('@/lib/storage', () => ({ getObject: jest.fn(), setObject: jest.fn(), remove: jest.fn() }));
 
 const status = { allowanceLeft: 7, credits: 80, allowancePerDay: 10, weights: { question: 1, reminders: 1, report: 5 }, creditPriceNaira: 20, minimumCredits: 150 };
 
@@ -82,5 +80,25 @@ describe('a report to share', () => {
     expect(text).toContain('MONEY\nReceived ₦100.00');
     expect(text).toContain('• Chase dues');
     expect(text).toMatch(/check the figures/);
+  });
+});
+
+describe('the conversation is kept in memory only', () => {
+  const at = '2026-10-26T00:00:00Z';
+  const one = (content: string): ChatMessage[] => [{ id: '1', role: 'user', content, at }];
+
+  it('is remembered per person and association, and can be cleared', () => {
+    saveChat('oko', 7, one('hello'));
+    expect(loadChat('oko', 7)[0]?.content).toBe('hello');
+    expect(loadChat('oko', 8)).toEqual([]);
+    expect(loadChat('other', 7)).toEqual([]);
+    clearChat('oko', 7);
+    expect(loadChat('oko', 7)).toEqual([]);
+  });
+
+  it('keeps only the last 40 messages', () => {
+    saveChat('oko', 7, Array.from({ length: 50 }, (_, i) => ({ id: String(i), role: 'user' as const, content: `m${i}`, at })));
+    expect(loadChat('oko', 7)).toHaveLength(40);
+    expect(loadChat('oko', 7)[0]?.content).toBe('m10');
   });
 });

@@ -6,6 +6,8 @@ import type { AiKind, AiPeriod, AiReportType, AiStatusDTO, ReminderTone } from '
 export const AI_MODULE = 'ai';
 /** Asking, and reading what is left: the same access as the finance screens. */
 export const AI_VIEW_ACCESS: PermissionAlias = 'FINANCE_VIEW';
+/** Writing a report: the API asks for the reports permission on top of finance access. */
+export const AI_REPORT_ACCESS: PermissionAlias = 'REPORT_VIEW';
 /** Buying credits spends the association's money. */
 export const AI_BUY_ACCESS: PermissionAlias[] = ['FINANCE_APPROVE', 'SETTINGS_BILLING'];
 /** Sending the reminders the assistant wrote. */

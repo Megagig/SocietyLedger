@@ -51,17 +51,20 @@ function Credits() {
   const [waiting, setWaiting] = useState<string | null>(null);
   const credits = chosen ?? packs[0];
 
-  async function settle(reference: string, added: number) {
-    const outcome = await waitForCredit(() => verify.mutateAsync(reference));
+  /** `returned` is true when the buyer came back from Paystack; closing the page without paying is checked once and left quiet. */
+  async function settle(reference: string, added: number, returned: boolean) {
+    const outcome = await waitForCredit(() => verify.mutateAsync(reference), returned ? {} : { tries: 1 });
     if (outcome === 'success') {
       setWaiting(null);
       toast.success(`${added} credits added.`);
     } else if (outcome === 'failed') {
       setWaiting(null);
       toast.error('The payment did not go through. You have not been charged.');
-    } else {
+    } else if (returned) {
       setWaiting(reference);
       toast('Waiting for Paystack to confirm. The credits are added as soon as it does.');
+    } else {
+      setWaiting(null);
     }
     void query.refetch();
   }
@@ -71,9 +74,9 @@ function Credits() {
     setBusy(true);
     try {
       const init = await start.mutateAsync(credits);
-      await WebBrowser.openAuthSessionAsync(init.authorizationUrl, 'societyledger://');
+      const browser = await WebBrowser.openAuthSessionAsync(init.authorizationUrl, 'societyledger://');
       // Whatever the buyer did in the browser, ask: closing it early after paying is common
-      await settle(init.reference, init.credits);
+      await settle(init.reference, init.credits, browser.type === 'success');
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : 'Could not start the payment. Nothing was charged.');
     } finally {
@@ -86,7 +89,7 @@ function Credits() {
     setBusy(true);
     try {
       const pending = purchases.find((p) => p.reference === waiting);
-      await settle(waiting, pending?.credits ?? 0);
+      await settle(waiting, pending?.credits ?? 0, true);
     } finally {
       setBusy(false);
     }
