@@ -45,7 +45,7 @@ function ProofRowBase({ proof, position, onPress }: ProofRowProps) {
         testID={`proof-row-${proof.id}`}
       >
         <View className="mr-3">
-          <Avatar name={name} colorSeed={proof.member.id} />
+          <Avatar name={name} colorSeed={proof.member.id} imageUrl={proof.member.thumbUrl} />
         </View>
         <View className="flex-1 gap-0.5">
           <Text variant="body-lg" numberOfLines={1}>

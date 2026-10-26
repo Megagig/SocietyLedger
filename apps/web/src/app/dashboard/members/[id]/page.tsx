@@ -8,6 +8,8 @@ import { modals } from '@mantine/modals';
 import { PERMISSIONS } from '@/lib/permissions';
 import { mailHref, telHref, whatsappHref } from '@/lib/contact';
 import { Can, usePermissions } from '@/hooks/usePermissions';
+import { MemberAvatar } from '@/components/members/MemberAvatar';
+import { ProfilePhotoEditor } from '@/components/members/ProfilePhotoEditor';
 import { apiGet, apiDelete, apiPatch } from '@/utils/api';
 import { toast } from '@/lib/toast';
 
@@ -33,6 +35,8 @@ interface MemberDetails {
   emergencyContactRelationship: string | null;
   notes: string | null;
   loginStatus?: string;
+  photoUrl?: string | null;
+  thumbUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   financialSummary?: {
@@ -257,9 +261,17 @@ export default function MemberDetailPage() {
           
           <div className="flex items-center gap-3">
             {/* Avatar */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-white font-bold text-lg sm:text-xl flex-shrink-0">
-              {member.firstName.charAt(0)}{member.lastName.charAt(0)}
-            </div>
+            {can(PERMISSIONS.MEMBER_EDIT) ? (
+              <ProfilePhotoEditor
+                name={`${member.firstName} ${member.lastName}`}
+                imageUrl={member.photoUrl}
+                target={member.id}
+                size={72}
+                onChanged={(photoUrl, thumbUrl) => setMember((current) => (current ? { ...current, photoUrl, thumbUrl } : current))}
+              />
+            ) : (
+              <MemberAvatar name={`${member.firstName} ${member.lastName}`} imageUrl={member.photoUrl} size={56} />
+            )}
             
             <div>
               <div className="flex items-center gap-2 flex-wrap">

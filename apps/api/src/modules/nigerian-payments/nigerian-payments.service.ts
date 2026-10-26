@@ -2,6 +2,7 @@
 // PHASE 3.5: NIGERIAN PAYMENT FEATURES SERVICE
 // ============================================
 
+import { presentMemberPhoto } from '../../services/member-photo.service';
 import { prisma } from '../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Prisma } from '@prisma/client';
@@ -668,7 +669,8 @@ export const nigerianPaymentsService = {
       status?: string;
       memberId?: number;
       transactionId?: number;
-    }
+    },
+    requestHost?: string
   ) {
     const { page, limit, status, memberId, transactionId } = options;
     const skip = (page - 1) * limit;
@@ -692,7 +694,7 @@ export const nigerianPaymentsService = {
             select: { id: true, reference: true, amount: true },
           },
           member: {
-            select: { id: true, memberId: true, firstName: true, lastName: true },
+            select: { id: true, memberId: true, firstName: true, lastName: true, photoKey: true, photoThumbKey: true },
           },
         },
       }),
@@ -701,7 +703,9 @@ export const nigerianPaymentsService = {
 
     return {
       // The storage key stays server-side — clients only learn whether a file is attached and fetch it through the link endpoints.
-      proofs: proofs.map(({ filepath, ...rest }) => ({ ...rest, hasFile: Boolean(filepath) })),
+      proofs: await Promise.all(
+        proofs.map(async ({ filepath, member, ...rest }) => ({ ...rest, member: await presentMemberPhoto(member, requestHost), hasFile: Boolean(filepath) }))
+      ),
       pagination: {
         page,
         limit,
@@ -717,7 +721,7 @@ export const nigerianPaymentsService = {
    * statement. `declaredBalance` is what approving will record: each charge's remaining balance, summed — voided and waived
    * charges and ones already settled count for nothing. `file` is never the storage key, only whether one is attached.
    */
-  async getPaymentProofById(id: number, associationId: number) {
+  async getPaymentProofById(id: number, associationId: number, requestHost?: string) {
     const proof = await prisma.paymentProof.findFirst({
       where: { id, associationId },
       include: {
@@ -762,6 +766,7 @@ export const nigerianPaymentsService = {
 
     return {
       ...proof,
+      member: await presentMemberPhoto(proof.member, requestHost),
       // Never expose the storage key — the file is fetched through the short-lived link endpoints.
       filepath: undefined,
       hasFile: Boolean(proof.filepath),

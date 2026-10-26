@@ -11,6 +11,7 @@ import { apiGet, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { Search, Plus, Edit, Trash2, Eye, UserPlus } from 'lucide-react';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { MemberAvatar } from '@/components/members/MemberAvatar';
 
 interface MemberStats {
   totalMembers: number;
@@ -410,7 +411,12 @@ export default function MembersPage() {
                         {member.memberId}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {member.firstName} {member.lastName}
+                        <div className="flex items-center gap-3">
+                          <MemberAvatar name={`${member.firstName} ${member.lastName}`} imageUrl={member.thumbUrl} size={32} />
+                          <span>
+                            {member.firstName} {member.lastName}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                         {member.email || '-'}

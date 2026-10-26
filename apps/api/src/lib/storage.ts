@@ -115,6 +115,30 @@ export async function getPresignedUrl(key: string, expiresInSeconds = 3600, requ
   return getSignedUrl(clientFor(endpoint), new GetObjectCommand({ Bucket: STORAGE_BUCKET, Key: key }), { expiresIn: expiresInSeconds });
 }
 
+/** Stable links are signed as if at the start of the current window, so every request inside a window gets the identical URL. */
+export const STABLE_URL_WINDOW_SECONDS = 6 * 60 * 60;
+
+/**
+ * A private read link that does not change on every request. A normal signed link carries the moment it was made, so the same file
+ * gets a different URL each time and phones and browsers download it again (and again for every row of a list). This signs at the start
+ * of a six-hour window and stays valid for twelve hours from there, so a link handed out at any point in the window works for at least six
+ * hours and is identical for everyone asking in that window. Use it for things shown in lists, such as member photos.
+ */
+export async function getStablePresignedUrl(key: string, requestHost?: string, now: Date = new Date()): Promise<string> {
+  const endpoint = resolvePublicEndpoint({
+    endpoint: process.env.MINIO_ENDPOINT!,
+    publicEndpoint: process.env.MINIO_PUBLIC_ENDPOINT,
+    requestHost,
+    nodeEnv: process.env.NODE_ENV,
+  });
+  const windowMs = STABLE_URL_WINDOW_SECONDS * 1000;
+  const signingDate = new Date(Math.floor(now.getTime() / windowMs) * windowMs);
+  return getSignedUrl(clientFor(endpoint), new GetObjectCommand({ Bucket: STORAGE_BUCKET, Key: key }), {
+    expiresIn: STABLE_URL_WINDOW_SECONDS * 2,
+    signingDate,
+  });
+}
+
 /**
  * In production, a signed link made from an internal storage address (`http://minio:9000`, localhost, a private IP) can't be opened
  * by a phone or browser, so every receipt, slip and attachment would silently fail to load. Returns what is wrong, or null when fine.

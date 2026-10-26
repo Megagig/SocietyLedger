@@ -2,6 +2,7 @@ import { requireFeature } from '../../middleware/module-feature.middleware';
 import { memberLimitMiddleware } from '../../middleware/subscription.middleware';
 import { Router } from 'express';
 import { memberController } from './members.controller';
+import { memberPhotoController, photoUpload } from './member-photo.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission } from '../../middleware/rbac';
@@ -22,6 +23,10 @@ router.get('/me',
 router.patch('/me',
   memberController.updateMe
 );
+
+// Profile photo. A member manages their own; admins with the member-edit permission manage anyone's in their association.
+router.put('/me/photo', photoUpload, memberPhotoController.setMine);
+router.delete('/me/photo', memberPhotoController.removeMine);
 
 // Get member statistics (dashboard)
 router.get('/stats',
@@ -71,6 +76,17 @@ router.post('/',
 router.patch('/:id',
   requirePermission(PERMISSIONS.MEMBER_EDIT),
   memberController.update
+);
+
+router.put('/:id/photo',
+  requirePermission(PERMISSIONS.MEMBER_EDIT),
+  photoUpload,
+  memberPhotoController.setFor
+);
+
+router.delete('/:id/photo',
+  requirePermission(PERMISSIONS.MEMBER_EDIT),
+  memberPhotoController.removeFor
 );
 
 // Delete member (soft delete)

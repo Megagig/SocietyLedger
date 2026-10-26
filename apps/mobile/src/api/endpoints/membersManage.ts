@@ -1,6 +1,7 @@
 import { client } from '../client';
 import { unwrap } from '../envelope';
-import type { MemberSelfDTO } from '@/types/api/members';
+import type { MemberSelfDTO, MemberPhotoDTO, PhotoFile } from '@/types/api/members';
+import { photoForm } from './members';
 import type {
   ApprovalDecisionResult,
   ApprovalListDTO,
@@ -65,6 +66,16 @@ export const membersManageApi = {
   /** POST /members — verified against members.controller.ts create (2026-10-24; now saves every field it validates). 400 for a duplicate email or, with automatic IDs off, a missing/duplicate member ID. */
   async createMember(payload: MemberFormPayload): Promise<MemberSelfDTO> {
     return unwrap<MemberSelfDTO>(client.post('/members', payload));
+  },
+
+  /** PUT /members/:id/photo (multipart) — an officer sets a member's photo (members.edit). */
+  async setMemberPhoto(id: number, file: PhotoFile): Promise<MemberPhotoDTO> {
+    return unwrap<MemberPhotoDTO>(client.put(`/members/${id}/photo`, photoForm(file), { headers: { 'Content-Type': 'multipart/form-data' } }));
+  },
+
+  /** DELETE /members/:id/photo */
+  async removeMemberPhoto(id: number): Promise<MemberPhotoDTO> {
+    return unwrap<MemberPhotoDTO>(client.delete(`/members/${id}/photo`));
   },
 
   /** PATCH /members/:id — the member ID can't be changed. Setting `status` back to active re-enables a disabled member. */

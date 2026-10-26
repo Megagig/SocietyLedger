@@ -122,7 +122,7 @@ export default function ProofDetailScreen() {
             className="flex-row items-center gap-3"
             testID="proof-member"
           >
-            <Avatar name={proofMemberName(proof)} colorSeed={proof.member.id} size={40} />
+            <Avatar name={proofMemberName(proof)} colorSeed={proof.member.id} size={40} imageUrl={proof.member.thumbUrl} />
             <View className="flex-1">
               <Text variant="h3" numberOfLines={1}>
                 {proofMemberName(proof)}

@@ -975,7 +975,7 @@ export const nigerianPaymentsController = {
         status: query.status,
         memberId: query.memberId ? parseInt(query.memberId) : undefined,
         transactionId: query.transactionId ? parseInt(query.transactionId) : undefined,
-      });
+      }, req.hostname);
 
       return res.status(200).json({
         success: true,
@@ -996,7 +996,7 @@ export const nigerianPaymentsController = {
         return res.status(400).json({ success: false, message: 'Association ID is required' });
       }
 
-      const proof = await nigerianPaymentsService.getPaymentProofById(parseInt(id), associationId);
+      const proof = await nigerianPaymentsService.getPaymentProofById(parseInt(id), associationId, req.hostname);
 
       if (!proof) {
         return res.status(404).json({ success: false, message: 'Payment proof not found' });

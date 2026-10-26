@@ -8,6 +8,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { toast } from '@/lib/toast';
 import api from '@/lib/axios';
+import { ProfilePhotoEditor } from '@/components/members/ProfilePhotoEditor';
 
 interface Member {
   id: number;
@@ -26,6 +27,8 @@ interface Member {
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;
   joinDate: string;
+  photoUrl?: string | null;
+  thumbUrl?: string | null;
 }
 
 export default function MyProfilePage() {
@@ -158,9 +161,12 @@ export default function MyProfilePage() {
         {/* Profile Card */}
         <div className="glass rounded-2xl p-6 shadow-xl">
           <div className="flex items-center gap-6 mb-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-white text-3xl font-bold">
-              {memberData?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'M'}
-            </div>
+            <ProfilePhotoEditor
+              name={memberData ? `${memberData.firstName} ${memberData.lastName}` : user?.email?.split('@')[0] || 'Member'}
+              imageUrl={memberData?.photoUrl}
+              target="me"
+              onChanged={() => fetchMemberData()}
+            />
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {memberData ? `${memberData.firstName} ${memberData.lastName}` : user?.email?.split('@')[0] || 'Member'}

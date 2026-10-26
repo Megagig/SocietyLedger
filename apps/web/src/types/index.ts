@@ -47,6 +47,9 @@ export interface UserApproval {
 
 // Member Types
 export interface Member {
+  /** Signed links to the profile photo (full size and thumbnail); null or missing means show initials. */
+  photoUrl?: string | null;
+  thumbUrl?: string | null;
   id: number;
   userId?: number;
   associationId: number;

@@ -4,7 +4,7 @@ import type { PaymentProofDTO } from './nigerianPayments';
 
 export type ProofStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
-type ProofMember = { id: number; memberId: string; firstName: string; lastName: string };
+type ProofMember = { id: number; memberId: string; firstName: string; lastName: string; photoUrl?: string | null; thumbUrl?: string | null };
 
 /**
  * GET /payments/nigerian/proofs (needs payments.view). The storage key is never sent — `hasFile` says whether a receipt is

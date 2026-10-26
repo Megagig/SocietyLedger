@@ -18,6 +18,7 @@ import { SettingsService } from '../settings/settings.service';
 import { isMemberDisabled, MEMBER_DISABLED_CODE, MEMBER_DISABLED_MESSAGE } from '../../lib/member-access';
 import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
 import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
+import { presentMemberPhoto } from '../../services/member-photo.service';
 import { loadSubscriptionAccess } from '../../services/subscription-access.service';
 import {
   createUserWithVerification,
@@ -85,6 +86,8 @@ export class AuthController {
                 firstName: true,
                 lastName: true,
                 memberId: true,
+                photoKey: true,
+                photoThumbKey: true,
               },
             },
             association: {
@@ -122,6 +125,8 @@ export class AuthController {
                 firstName: true,
                 lastName: true,
                 memberId: true,
+                photoKey: true,
+                photoThumbKey: true,
               },
             },
             association: {
@@ -331,7 +336,7 @@ export class AuthController {
             id: user.id,
             email: user.email,
             role: user.role,
-            member: user.member,
+            member: user.member ? await presentMemberPhoto(user.member, req.hostname) : user.member,
             association: isPlatformLogin ? {
               id: user.associationId,
               name: 'SocietyLedger Platform',
@@ -722,6 +727,8 @@ export class AuthController {
               memberId: true,
               email: true,
               phone: true,
+              photoKey: true,
+              photoThumbKey: true,
             },
           },
           userApproval: {
@@ -771,6 +778,7 @@ export class AuthController {
         data: {
           user: {
             ...user,
+            member: user.member ? await presentMemberPhoto(user.member, req.hostname) : user.member,
             association: isPlatformLogin ? {
               id: user.associationId,
               name: 'SocietyLedger Platform',

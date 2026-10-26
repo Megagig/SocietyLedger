@@ -1,9 +1,11 @@
+import { Image } from 'expo-image';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/Text';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
-export type AvatarSize = 32 | 40 | 64;
+export type AvatarSize = 32 | 40 | 64 | 96;
 export type AvatarShape = 'circle' | 'square';
 
 export type AvatarProps = {
@@ -16,11 +18,10 @@ export type AvatarProps = {
   colorSeed?: number | string;
   /** Association `primaryColor` override (ui-rules.md §5.14's logo fallback) — a real hex from data, not a hardcoded design value. */
   tintColor?: string;
+  /** The member's photo. Use the small `thumbUrl` for lists and the full `photoUrl` for profile screens. Null or a failed load shows initials. */
+  imageUrl?: string | null;
   testID?: string;
 };
-
-// No image loading yet (expo-image isn't installed — no screen needs a real logo/photo
-// through F1.4; added when the first feature that does starts, e.g. F1.8 or F2.x).
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -45,23 +46,37 @@ function withAlpha(hex: string, alpha: number): string {
   return `${hex}${channel}`;
 }
 
-const SIZE_CLASSES: Record<AvatarSize, string> = { 32: 'h-8 w-8', 40: 'h-10 w-10', 64: 'h-16 w-16' };
-const TEXT_VARIANT: Record<AvatarSize, 'caption' | 'body-strong' | 'h3'> = { 32: 'caption', 40: 'body-strong', 64: 'h3' };
+const SIZE_CLASSES: Record<AvatarSize, string> = { 32: 'h-8 w-8', 40: 'h-10 w-10', 64: 'h-16 w-16', 96: 'h-24 w-24' };
+const TEXT_VARIANT: Record<AvatarSize, 'caption' | 'body-strong' | 'h3' | 'h2'> = { 32: 'caption', 40: 'body-strong', 64: 'h3', 96: 'h2' };
 const SHAPE_CLASSES: Record<AvatarShape, string> = { circle: 'rounded-full', square: 'rounded-md' };
 
-export function Avatar({ name, size = 40, shape = 'circle', colorSeed, tintColor, testID }: AvatarProps) {
+export function Avatar({ name, size = 40, shape = 'circle', colorSeed, tintColor, imageUrl, testID }: AvatarProps) {
   const { chart } = useThemeTokens();
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const showImage = !!imageUrl && imageUrl !== failedUrl;
   const baseColor = tintColor ?? chart[hashSeed(colorSeed ?? name) % chart.length]!;
 
   return (
     <View
       testID={testID}
-      className={['items-center justify-center', SIZE_CLASSES[size], SHAPE_CLASSES[shape]].join(' ')}
+      className={['items-center justify-center overflow-hidden', SIZE_CLASSES[size], SHAPE_CLASSES[shape]].join(' ')}
       style={{ backgroundColor: withAlpha(baseColor, 0.12) }}
     >
-      <Text variant={TEXT_VARIANT[size]} style={{ color: baseColor }}>
-        {getInitials(name)}
-      </Text>
+      {showImage ? (
+        <Image
+          source={{ uri: imageUrl }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+          cachePolicy="disk"
+          accessibilityLabel={name}
+          onError={() => setFailedUrl(imageUrl ?? null)}
+          testID={testID ? `${testID}-image` : undefined}
+        />
+      ) : (
+        <Text variant={TEXT_VARIANT[size]} style={{ color: baseColor }}>
+          {getInitials(name)}
+        </Text>
+      )}
     </View>
   );
 }

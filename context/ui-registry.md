@@ -1664,3 +1664,10 @@ _(none)_
 - **`PlansOverview`** (tabs: Plans, Add-ons, Pricing preview, Migrations), **`MigrationsTab`** (preview, schedule with date and reason, history). Pages: `/plans`, `/plans/[id]`, `/plans/addons/[id]`, `/subscriptions`, `/subscriptions/[associationId]`.
 - **Receipt page** (`apps/web/src/app/dashboard/subscription/receipt/[id]/page.tsx`) - white card with receipt number, billed-to, what was paid for, quoted lines, total, and a print-hidden "Print or save as PDF" button. Linked as "Receipt" beside each confirmed payment on the Subscription page.
 - **Licences page** (`apps/web/src/app/licenses/page.tsx`) - same shell as the Privacy and Terms pages (gradient page, icon tile, `glass-strong` prose card, outline buttons to the sibling legal pages). Groups open-source packages with their licences.
+
+## Member photos
+- **Mobile `Avatar`** - new `imageUrl` prop (use `thumbUrl` in lists, `photoUrl` on profile screens) and a 96 size. Shows initials when there is no photo or the link fails to load.
+- **Mobile `EditableAvatar`** (`features/members/components`) - avatar with a small camera badge; tap opens the native options (take, choose, remove). Used on Profile and the officer's member detail. Logic lives in `useProfilePhoto`.
+- **Web `MemberAvatar`** (`components/members`) - round photo or gradient initials circle, any size. Replace the hand-made initials circles with it.
+- **Web `ProfilePhotoEditor`** - avatar with camera badge, Change/Remove links and a preview dialog (nothing saves until "Save photo"). `target="me"` for own photo, a member id for officers.
+- **Web `SidebarAvatar`** - the signed-in person's avatar in the sidebars, kept fresh by `useMyPhoto`.

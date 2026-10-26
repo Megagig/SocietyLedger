@@ -130,6 +130,7 @@ export default function HomeScreen() {
           shape="circle"
           size={40}
           colorSeed={member?.id ?? tenant?.name}
+          imageUrl={member?.thumbUrl}
         />
         <View>
           <IconButton icon={Bell} accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`} onPress={() => router.push('/(app)/notifications')} />

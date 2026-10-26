@@ -280,6 +280,10 @@ model Member {
   occupation                   String?
   state                        String?
   loginStatus                  String                   @default("no_login") @map("login_status")
+  /// Storage keys of the profile photo (512px) and its list thumbnail (128px). Null = no photo, the apps show initials.
+  photoKey                     String?                  @map("photo_key")
+  photoThumbKey                String?                  @map("photo_thumb_key")
+  photoUpdatedAt               DateTime?                @map("photo_updated_at")
   invites                      MemberInvite[]
   association                  Association              @relation(fields: [associationId], references: [id])
   user                         User?                    @relation(fields: [userId], references: [id])
