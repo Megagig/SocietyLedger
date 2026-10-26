@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { API_ROUTES } from '@/utils/constants';
+import { OnboardingNote } from '@/components/pricing/OnboardingNote';
 import { getDisplayDomain, getSubdomainUrl } from '@/utils/domain';
 import {
   ASSOCIATION_TYPES,
@@ -185,7 +186,7 @@ export default function AssociationSignupPage() {
   if (success) {
     const steps = [
       success.requiresVerification ? 'Verify your email with the code we sent' : null,
-      success.pendingApproval ? 'Wait for SocietyLedger to approve your association. Your free trial starts then.' : null,
+      success.pendingApproval ? 'Wait for SocietyLedger to approve your association. Your access starts then.' : null,
       'Sign in at your association address',
     ].filter((s): s is string => s !== null);
 
@@ -256,6 +257,11 @@ export default function AssociationSignupPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create Your Association</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">Start managing your community in minutes</p>
+        </div>
+
+        {/* What the new association is given, from the platform's onboarding settings */}
+        <div className="mb-6">
+          <OnboardingNote />
         </div>
 
         {/* Signup Form Card */}

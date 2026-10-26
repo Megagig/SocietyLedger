@@ -129,7 +129,7 @@ export default function TestimonialsPage() {
               Join Hundreds of Satisfied Associations
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-              Start your free 14-day trial today and see why associations across Nigeria trust SocietyLedger.
+              Create your association today and see why associations across Nigeria trust SocietyLedger.
             </p>
             <Button 
               component={Link}

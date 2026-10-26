@@ -1,3 +1,4 @@
+import { memberLimitMiddleware } from '../../middleware/subscription.middleware';
 import { Router } from 'express';
 import { memberController } from './members.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
@@ -30,6 +31,7 @@ router.get('/stats',
 // Bulk import members
 router.post('/bulk',
   requirePermission(PERMISSIONS.MEMBER_CREATE),
+  memberLimitMiddleware((req) => (Array.isArray(req.body?.members) ? req.body.members.length : 0)),
   memberController.bulkImport
 );
 
@@ -59,6 +61,7 @@ router.get('/:id',
 // Create new member
 router.post('/',
   requirePermission(PERMISSIONS.MEMBER_CREATE),
+  memberLimitMiddleware(),
   memberController.create
 );
 

@@ -6,8 +6,20 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
+import { usePublicPricing } from '@/components/pricing/usePublicPricing';
+import { lowestMonthlyPrice, onboardingSentence } from '@/lib/pricing';
 
 export default function FAQPage() {
+  // Prices and the free-trial terms are read from the same pricing source as the pricing page, so this page can never contradict it.
+  const pricing = usePublicPricing();
+  const lowest = pricing ? lowestMonthlyPrice(pricing.plans) : null;
+  const startSentence = onboardingSentence(pricing?.onboarding);
+  const costAnswer = lowest
+    ? `Plans start from ${lowest.monthly} a month, and you can pay monthly or annually. Larger plans add more members, modules and features. See the pricing page for every plan, its price and what it includes.${startSentence ? ` ${startSentence}` : ''}`
+    : 'Plans, prices and what each includes are listed on the pricing page. You can pay monthly or annually.';
+  const trialAnswer = startSentence
+    ? `${startSentence} When it ends, access pauses until you choose a plan and pay. Your records are never deleted.`
+    : 'See the pricing page for how a new association gets started.';
   const faqs = [
     {
       category: 'General',
@@ -35,11 +47,11 @@ export default function FAQPage() {
       questions: [
         {
           question: 'How much does SocietyLedger cost?',
-          answer: 'We offer flexible pricing starting from ₦5,000/month for small associations (up to 50 members), ₦15,000/month for growing associations (up to 200 members), and custom enterprise pricing for larger organizations. All plans include a 14-day free trial.'
+          answer: costAnswer
         },
         {
           question: 'Is there a free trial?',
-          answer: 'Yes! We offer a 14-day free trial with full access to all features. No credit card required to start your trial. You can explore the platform and see if it fits your needs before committing.'
+          answer: trialAnswer
         },
         {
           question: 'Can I change plans later?',

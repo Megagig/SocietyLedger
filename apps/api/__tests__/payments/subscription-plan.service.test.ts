@@ -1,7 +1,9 @@
 /**
- * Regression tests for the "paid for Enterprise, stayed on Starter" bug: a plain subscription checkout
- * carries `planId` + `subscriptionId` in its gateway metadata (not `type: 'plan_change'`), and the verify /
- * webhook handlers used to ignore it. Prisma is mocked; no database is touched.
+ * The platform-admin "move this tenant to another plan" override, and the plan-code to tier mapping.
+ *
+ * The old `resolvePaidPlan` (which read the plan out of the payment gateway's metadata) is gone on purpose: activation now takes the plan,
+ * version and amount only from the quote the server stored at checkout, and a metadata plan is never trusted. That behaviour is tested in
+ * __tests__/billing/ (activation, amount mismatch, idempotency). Prisma is mocked here; no database is touched.
  */
 jest.mock('../../src/lib/prisma', () => ({
   prisma: {
@@ -11,15 +13,18 @@ jest.mock('../../src/lib/prisma', () => ({
     $transaction: jest.fn(async (ops: unknown[]) => ops),
   },
 }));
+jest.mock('../../src/services/billing/catalog.service', () => ({ getLatestPublishedPlan: jest.fn() }));
+jest.mock('../../src/services/billing/lifecycle.service', () => ({ afterBillingChange: jest.fn() }));
 
 import { prisma } from '../../src/lib/prisma';
-import { resolvePaidPlan, setTenantPlan, tierForPlanCode } from '../../src/services/subscription-plan.service';
+import { getLatestPublishedPlan } from '../../src/services/billing/catalog.service';
+import { afterBillingChange } from '../../src/services/billing/lifecycle.service';
+import { setTenantPlan, tierForPlanCode } from '../../src/services/subscription-plan.service';
 
 const planFindFirst = prisma.plan.findFirst as jest.Mock;
 const subscriptionFindFirst = prisma.subscription.findFirst as jest.Mock;
 const planFindUnique = prisma.plan.findUnique as jest.Mock;
-
-const subscription = { id: 4, planId: 1, associationId: 15, billingCycle: 'MONTHLY' as const };
+const latestPublished = getLatestPublishedPlan as jest.Mock;
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -33,63 +38,10 @@ describe('tierForPlanCode', () => {
   });
 });
 
-describe('resolvePaidPlan', () => {
-  it('activates the plan from a plain checkout (planId + subscriptionId) — the reported bug', async () => {
-    planFindFirst.mockResolvedValue({ id: 3, code: 'enterprise' });
-
-    const result = await resolvePaidPlan(
-      { planId: 3, subscriptionId: 4, associationId: 15, billingCycle: 'MONTHLY' },
-      subscription,
-    );
-
-    expect(result).toEqual({ planId: 3, billingCycle: 'MONTHLY', isPlanChange: false, tier: 'ENTERPRISE' });
-  });
-
-  it('still honours a plan_change confirmation and flags it so pending downgrades are cleared', async () => {
-    planFindFirst.mockResolvedValue({ id: 2, code: 'professional' });
-
-    const result = await resolvePaidPlan({ type: 'plan_change', newPlanId: 2, billingCycle: 'ANNUAL' }, subscription);
-
-    expect(result).toEqual({ planId: 2, billingCycle: 'ANNUAL', isPlanChange: true, tier: 'PROFESSIONAL' });
-  });
-
-  it('keeps the current plan for a plain renewal with no plan metadata', async () => {
-    planFindFirst.mockResolvedValue({ id: 1, code: 'starter' });
-
-    const result = await resolvePaidPlan({}, subscription);
-
-    expect(result.planId).toBe(1);
-    expect(result.isPlanChange).toBe(false);
-  });
-
-  it('ignores metadata that belongs to another association or subscription', async () => {
-    const otherTenant = await resolvePaidPlan({ planId: 3, subscriptionId: 4, associationId: 99 }, subscription);
-    const otherSubscription = await resolvePaidPlan({ planId: 3, subscriptionId: 77, associationId: 15 }, subscription);
-
-    expect(otherTenant).toEqual({ planId: 1, billingCycle: 'MONTHLY', isPlanChange: false });
-    expect(otherSubscription.planId).toBe(1);
-  });
-
-  it('keeps the current plan when the target plan is missing or inactive', async () => {
-    planFindFirst.mockResolvedValue(null);
-
-    const result = await resolvePaidPlan({ planId: 3, subscriptionId: 4, associationId: 15 }, subscription);
-
-    expect(result).toEqual({ planId: 1, billingCycle: 'MONTHLY', isPlanChange: false });
-  });
-
-  it('falls back to the subscription billing cycle when the metadata value is invalid', async () => {
-    planFindFirst.mockResolvedValue({ id: 3, code: 'enterprise' });
-
-    const result = await resolvePaidPlan({ planId: 3, subscriptionId: 4, billingCycle: 'WEEKLY' }, subscription);
-
-    expect(result.billingCycle).toBe('MONTHLY');
-  });
-});
-
 describe('setTenantPlan', () => {
-  it('points the live subscription at the plan and syncs the association tier', async () => {
+  it('points the live subscription at the plan\'s latest published version and syncs the association tier', async () => {
     planFindFirst.mockResolvedValue({ id: 3, name: 'Enterprise', code: 'enterprise' });
+    latestPublished.mockResolvedValue({ id: 3, versionId: 31 });
     subscriptionFindFirst.mockResolvedValue({ id: 4, planId: 1, status: 'ACTIVE' });
     planFindUnique.mockResolvedValue({ id: 1, name: 'Starter' });
 
@@ -97,17 +49,25 @@ describe('setTenantPlan', () => {
 
     expect(prisma.subscription.update).toHaveBeenCalledWith({
       where: { id: 4 },
-      data: { planId: 3, pendingPlanId: null, pendingBillingCycle: null },
+      data: { planId: 3, planVersionId: 31, pendingPlanId: null, pendingBillingCycle: null },
     });
     expect(prisma.association.update).toHaveBeenCalledWith({ where: { id: 15 }, data: { tier: 'ENTERPRISE' } });
+    expect(afterBillingChange).toHaveBeenCalledWith(15);
     expect(result).toMatchObject({ from: { name: 'Starter' }, to: { name: 'Enterprise' }, tier: 'ENTERPRISE' });
   });
 
-  it('rejects an unknown plan and a tenant with no subscription', async () => {
-    planFindFirst.mockResolvedValueOnce(null);
-    await expect(setTenantPlan(15, 999)).rejects.toThrow('Plan not found');
+  it('only considers plans that are active and not archived', async () => {
+    planFindFirst.mockResolvedValue(null);
+    await expect(setTenantPlan(15, 3)).rejects.toThrow('Plan not found');
+    expect(planFindFirst).toHaveBeenCalledWith({ where: { id: 3, isActive: true, isArchived: false } });
+  });
 
-    planFindFirst.mockResolvedValueOnce({ id: 3, name: 'Enterprise', code: 'enterprise' });
+  it('rejects a plan with nothing published, and a tenant with no subscription', async () => {
+    planFindFirst.mockResolvedValue({ id: 3, name: 'Enterprise', code: 'enterprise' });
+    latestPublished.mockResolvedValueOnce(null);
+    await expect(setTenantPlan(15, 3)).rejects.toThrow('no published version');
+
+    latestPublished.mockResolvedValue({ id: 3, versionId: 31 });
     subscriptionFindFirst.mockResolvedValue(null);
     await expect(setTenantPlan(15, 3)).rejects.toThrow('no subscription');
   });

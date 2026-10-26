@@ -3,13 +3,22 @@
  * the platform settings say (14 by default), and once it ends everyone in that association is blocked until a payment is made.
  */
 const subFindFirst = jest.fn();
+const subFindUnique = jest.fn(async () => ({ planVersionId: 5, billingCycle: 'MONTHLY', plan: { name: 'Enterprise' } }));
+const termCreate = jest.fn();
+const notify = jest.fn();
 const subUpdate = jest.fn((args: unknown) => args);
 const assocUpdate = jest.fn((args: unknown) => args);
 const txMock = jest.fn(async (ops: unknown[]) => ops);
 jest.mock('../../src/lib/prisma', () => ({
   __esModule: true,
   default: {
-    subscription: { findFirst: (...a: unknown[]) => subFindFirst(...a), update: (a: unknown) => subUpdate(a), findMany: jest.fn() },
+    subscription: {
+      findFirst: (...a: unknown[]) => subFindFirst(...a),
+      findUnique: (...a: unknown[]) => subFindUnique(...(a as [])),
+      update: (a: unknown) => subUpdate(a),
+      findMany: jest.fn(),
+    },
+    subscriptionTerm: { create: (a: unknown) => termCreate(a) },
     association: { update: (a: unknown) => assocUpdate(a) },
     $transaction: (ops: unknown[]) => txMock(ops),
   },
@@ -19,11 +28,13 @@ let platform: Record<string, unknown> = { defaultTrialDays: 14 };
 jest.mock('../../src/modules/admin/platform-settings.service', () => ({
   PlatformSettingsService: { getSettings: jest.fn(async () => platform) },
 }));
+jest.mock('../../src/services/billing/billing-notifications.service', () => ({ notifyBillingEvent: (e: unknown) => notify(e) }));
 jest.mock('../../src/services/billing-override.service', () => ({
   BillingOverrideService: { getBillingStatus: jest.fn() },
 }));
 
 import {
+  clampGraceDays,
   clampTrialDays,
   evaluateAccess,
   pickDecidingSubscription,
@@ -72,6 +83,28 @@ describe('evaluateAccess', () => {
     expect(evaluateAccess(sub({ status: 'EXPIRED' }), NOW)).toMatchObject({ allowed: false, reason: 'EXPIRED' });
   });
 
+  it('keeps a paid subscription in during the grace period after its end date, and says so', () => {
+    const justEnded = sub({ status: 'ACTIVE', currentPeriodEnd: days(-1) });
+    expect(evaluateAccess(justEnded, NOW, false, 3)).toMatchObject({ allowed: true, inGrace: true, reason: 'OK' });
+    expect(evaluateAccess(justEnded, NOW, false, 3).graceEndsAt).toBe(days(2).toISOString());
+  });
+
+  it('locks the app once the grace period is over, even if the cron never moved the status', () => {
+    // Status is still ACTIVE, but the stored end date is long past: the clock decides, not the status column.
+    const longGone = sub({ status: 'ACTIVE', currentPeriodEnd: days(-4) });
+    expect(evaluateAccess(longGone, NOW, false, 3)).toMatchObject({ allowed: false, reason: 'EXPIRED' });
+    expect(evaluateAccess(sub({ status: 'PAST_DUE', currentPeriodEnd: days(-4) }), NOW, false, 3).allowed).toBe(false);
+  });
+
+  it('locks straight away at the end date when the grace period is switched off', () => {
+    expect(evaluateAccess(sub({ status: 'ACTIVE', currentPeriodEnd: days(-0.01) }), NOW, false, 0)).toMatchObject({ allowed: false, reason: 'EXPIRED' });
+    expect(evaluateAccess(sub({ status: 'ACTIVE', currentPeriodEnd: days(5) }), NOW, false, 0)).toMatchObject({ allowed: true, inGrace: false });
+  });
+
+  it('does not give a trial any grace', () => {
+    expect(evaluateAccess(sub({ trialEndsAt: days(-0.5) }), NOW, false, 3)).toMatchObject({ allowed: false, reason: 'TRIAL_ENDED' });
+  });
+
   it('lets a cancelled plan run until the paid period ends', () => {
     expect(evaluateAccess(sub({ status: 'CANCELLED', currentPeriodEnd: days(5) }), NOW).allowed).toBe(true);
     expect(evaluateAccess(sub({ status: 'CANCELLED', currentPeriodEnd: days(-1) }), NOW)).toMatchObject({ allowed: false, reason: 'CANCELLED' });
@@ -90,6 +123,17 @@ describe('pickDecidingSubscription', () => {
     const newer = sub({ status: 'CANCELLED', createdAt: days(-2) });
     expect(pickDecidingSubscription([older, newer])).toBe(newer);
     expect(pickDecidingSubscription([])).toBeNull();
+  });
+});
+
+describe('grace period setting', () => {
+  it('allows 0 (off), caps at 30 and falls back to 3 for anything invalid', () => {
+    expect(clampGraceDays(0)).toBe(0);
+    expect(clampGraceDays('7')).toBe(7);
+    expect(clampGraceDays(99)).toBe(30);
+    expect(clampGraceDays(-2)).toBe(3);
+    expect(clampGraceDays(undefined)).toBe(3);
+    expect(clampGraceDays('abc')).toBe(3);
   });
 });
 
@@ -114,6 +158,8 @@ describe('startTrialIfPending', () => {
     subUpdate.mockClear();
     assocUpdate.mockClear();
     txMock.mockClear();
+    termCreate.mockClear();
+    notify.mockClear();
     platform = { defaultTrialDays: 14 };
   });
 
@@ -135,6 +181,40 @@ describe('startTrialIfPending', () => {
     subFindFirst.mockResolvedValue({ id: 7 });
     const started = await startTrialIfPending(42, NOW);
     expect(started?.days).toBe(30);
+  });
+
+  it('records the trial as an unpaid onboarding term and tells the association when it ends', async () => {
+    subFindFirst.mockResolvedValue({ id: 7 });
+    await startTrialIfPending(42, NOW);
+    expect(termCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ subscriptionId: 7, kind: 'ONBOARDING', amountKobo: 0, planVersionId: 5, startsAt: NOW, endsAt: days(14) }),
+    });
+    await new Promise((r) => setImmediate(r));
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'ONBOARDING_STARTED', associationId: 42, policy: 'TRIAL', planName: 'Enterprise' }));
+  });
+
+  it('with a COMPLIMENTARY policy, starts an active complimentary subscription (not a trial) with no payment', async () => {
+    platform = { defaultTrialDays: 30, onboardingPolicy: 'COMPLIMENTARY' };
+    subFindFirst.mockResolvedValue({ id: 7 });
+    await startTrialIfPending(42, NOW);
+    expect(subUpdate).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: { status: 'ACTIVE', source: 'COMPLIMENTARY', trialEndsAt: null, currentPeriodStart: NOW, currentPeriodEnd: days(30), renewalDate: days(30) },
+    });
+    expect(termCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ kind: 'ONBOARDING', amountKobo: 0, reason: 'Complimentary onboarding subscription' }) });
+  });
+
+  it('with a BILLABLE policy, gives nothing free: the subscription ends now so the association must pay first', async () => {
+    platform = { defaultTrialDays: 14, onboardingPolicy: 'BILLABLE' };
+    subFindFirst.mockResolvedValue({ id: 7 });
+    const started = await startTrialIfPending(42, NOW);
+    expect(started?.days).toBe(0);
+    expect(subUpdate).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: { status: 'EXPIRED', currentPeriodStart: NOW, currentPeriodEnd: NOW, renewalDate: null },
+    });
+    expect(txMock).not.toHaveBeenCalled();
+    expect(termCreate).not.toHaveBeenCalled();
   });
 
   it('only looks for a trial that has not started, so approving a second admin cannot restart or extend it', async () => {

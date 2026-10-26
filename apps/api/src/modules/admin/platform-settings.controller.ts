@@ -6,7 +6,7 @@
  */
 
 import { Request, Response } from 'express';
-import { PlatformSettingsService } from './platform-settings.service';
+import { PlatformSettingsService, SettingsValidationError } from './platform-settings.service';
 import { aiSettingsService } from '../ai/ai-settings.service';
 import { aiAdminService } from '../ai/ai-admin.service';
 import { AiCreditsError, DEFAULT_AI_SETTINGS } from '../ai/ai-credits-rules';
@@ -68,6 +68,9 @@ export class PlatformSettingsController {
         data: updatedSettings
       });
     } catch (error) {
+      if (error instanceof SettingsValidationError) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
       console.error('Error updating platform settings:', error);
       res.status(500).json({
         success: false,

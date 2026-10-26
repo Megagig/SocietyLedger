@@ -1,16 +1,16 @@
 ---
 title: "Upgrading or downgrading"
-description: "Upgrades charge a prorated amount immediately; downgrades apply immediately too, despite the message."
+description: "Moving to a higher plan is charged with credit for the time you have left; moving to a cheaper plan starts when your period ends."
 type: task
 audience: ["admin"]
 platforms: ["web"]
 covers: ["change-plan"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-26"
 related: ["/docs/plan-billing/plans-and-whats-included", "/docs/plan-billing/billing-history"]
 ---
 
-An upgrade charges you a prorated top-up right away; a downgrade changes your plan immediately too, even though SocietyLedger tells you otherwise.
+A higher plan starts straight away and you are credited for the unused part of what you paid. A cheaper plan starts when your current period ends, and nothing is charged now.
 
 ## Before you start
 
@@ -19,19 +19,19 @@ You need the **edit settings** permission, which only Administrators have by def
 ## Change your plan
 
 <Steps>
-<Step>Go to <MenuPath items={["Subscription", "Plans"]} /> and select a different plan.</Step>
-<Step>**Upgrading** — SocietyLedger calculates a prorated amount for the rest of your current period and takes you to a real payment page to pay it immediately.</Step>
-<Step>**Downgrading** — SocietyLedger shows a message saying the change is "scheduled" for your current period's end date, with no payment required.</Step>
+<Step>Go to <MenuPath items={["Subscription", "Plans"]} /> and select a different plan, or switch between monthly and annual billing.</Step>
+<Step>**Moving up** — checkout shows the new plan's price, minus a credit for the unused days of what you paid for the current period. You pay the difference and the new plan starts right away, with a fresh period from today.</Step>
+<Step>**Moving down** — checkout shows that nothing is charged now and the date the change takes effect. Confirm to schedule it. Until then you keep your current plan.</Step>
 </Steps>
 
 <Screenshot src="/images/plan-billing/plans-and-whats-included-1.webp" alt="Choose Your Plan page used for both subscribing and changing plans" />
 
-<Callout type="danger" title="A downgrade is not actually scheduled — it applies immediately">
-Confirmed live: right after downgrading, the subscription's plan had already changed — not at the stated future date. The "scheduled for [date]" message describes what was intended, not what the code does; there's no field anywhere that defers a plan change, so a downgrade takes effect the moment you confirm it, same as an upgrade.
-</Callout>
-
 ## What happens next
 
-An upgrade's new plan applies once payment is verified. A downgrade's new plan applies immediately, regardless of what the confirmation message says — plan for that if your association was relying on keeping a higher plan's features until the message's stated date.
+An upgrade applies once the payment is confirmed. A scheduled downgrade is shown on the subscription page; to cancel it, choose your current plan again. If you change your mind before it takes effect, nothing is lost.
+
+If you have add-ons, the ones the new plan allows come with you and are re-priced for the new period with credit for their unused days. An add-on the new plan doesn't allow ends when the change takes effect.
+
+A credit is based on what you actually paid. If your current period was free (a trial or complimentary access), there is nothing to credit.
 
 ## Related

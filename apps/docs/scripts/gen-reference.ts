@@ -141,34 +141,23 @@ function renderModulesByPlanPage(): string {
   const modules = buildModulesByPlan();
 
   const moduleTable = table(
-    ['Module', 'Starter', 'Professional', 'Enterprise'],
-    modules.map((mod) => [
-      mod.isCore ? `${mod.name} (core)` : mod.name,
-      mod.plans.includes('STARTER') ? '✓' : '—',
-      mod.plans.includes('PROFESSIONAL') ? '✓' : '—',
-      mod.plans.includes('ENTERPRISE') ? '✓' : '—',
-    ]),
+    ['Module', 'What it covers'],
+    modules.map((mod) => [mod.isCore ? `${mod.name} (in every plan)` : mod.name, mod.description]),
   );
 
   const allFeatures = modules.flatMap((mod) => mod.features.map((feature) => ({ ...feature, moduleName: mod.name })));
   const featureTable =
     allFeatures.length > 0
       ? table(
-          ['Feature', 'Module', 'Starter', 'Professional', 'Enterprise'],
-          allFeatures.map((feature) => [
-            feature.name,
-            feature.moduleName,
-            feature.plans.includes('STARTER') ? '✓' : '—',
-            feature.plans.includes('PROFESSIONAL') ? '✓' : '—',
-            feature.plans.includes('ENTERPRISE') ? '✓' : '—',
-          ]),
+          ['Feature', 'Module', 'What it does'],
+          allFeatures.map((feature) => [feature.name, feature.moduleName, feature.description]),
         )
       : '';
 
   return [
     frontmatter({
       title: 'Modules by plan',
-      description: 'Which modules and features are included on each plan.',
+      description: 'The modules and features that exist, and where to see which plan includes each.',
       audience: ['admin'],
       platforms: ['web', 'mobile'],
       covers: ['apps/api/prisma/seeds/platform-modules.seed.ts'],
@@ -176,21 +165,24 @@ function renderModulesByPlanPage(): string {
     '',
     GENERATED_BANNER,
     '',
-    '<Callout type="warning" title="Not yet enforced">',
-    "This table shows how modules and features are designed to be tiered by plan. Enforcement isn't switched on yet — as with subscription status (see [When a subscription ends](/docs/plan-billing/when-a-subscription-ends)), every association currently keeps working access to every module regardless of plan. Treat this as the intended design, not a restriction you'll actually hit today.",
-    '</Callout>',
+    'Which plan includes which module or feature is set by SocietyLedger and can change, so it is not listed here. To see exactly what each plan includes today, open **Subscription → Plans**: the cards and the **Compare plans** table show the current plans, and the pricing page shows the same. Your own subscription page shows the version of your plan you are on. See [Understanding your plan and what’s included](/docs/plan-billing/plans-and-whats-included).',
+    '',
+    'Modules marked "in every plan" are part of all plans. Anything else is available only if your plan, or an [add-on](/docs/plan-billing/add-ons) you hold, includes it.',
     '',
     '## Modules',
     '',
     moduleTable,
     '',
-    featureTable ? '## Plan-specific features\n\n' + featureTable + '\n' : '',
+    featureTable ? '## Features\n\n' + featureTable + '\n' : '',
   ].join('\n');
 }
 
 console.log('gen:reference — generating reference pages from apps/api source...');
-writePage('permissions', renderPermissionsPage());
-writePage('statuses', renderStatusesPage());
-writePage('payment-methods', renderPaymentMethodsPage());
-writePage('modules-by-plan', renderModulesByPlanPage());
+// GEN_ONLY=modules-by-plan (comma separated) regenerates just those pages.
+const only = process.env.GEN_ONLY ? process.env.GEN_ONLY.split(',').map((x) => x.trim()) : null;
+const wanted = (name: string) => !only || only.includes(name);
+if (wanted('permissions')) writePage('permissions', renderPermissionsPage());
+if (wanted('statuses')) writePage('statuses', renderStatusesPage());
+if (wanted('payment-methods')) writePage('payment-methods', renderPaymentMethodsPage());
+if (wanted('modules-by-plan')) writePage('modules-by-plan', renderModulesByPlanPage());
 console.log('gen:reference — done (release-notes.mdx is hand-written, not generated).');

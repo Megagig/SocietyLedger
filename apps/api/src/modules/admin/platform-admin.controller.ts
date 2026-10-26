@@ -462,11 +462,33 @@ export class PlatformAdminController {
    */
   async listPlans(_req: AuthRequest, res: Response) {
     try {
-      const plans = await prisma.plan.findMany({
-        where: { isActive: true },
-        orderBy: { priceMonthly: 'asc' },
-        select: { id: true, name: true, code: true, priceMonthly: true, priceAnnual: true, memberLimit: true },
+      // Read from the catalog (the published version of each plan), so this picker can never disagree with what customers are charged.
+      const rows = await prisma.plan.findMany({
+        where: { isActive: true, isArchived: false },
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          versions: { where: { status: 'PUBLISHED' }, orderBy: { version: 'desc' }, take: 1, select: { id: true, version: true, priceMonthlyKobo: true, priceAnnualKobo: true, limits: true } },
+        },
       });
+      const plans = rows
+        .filter((p) => p.versions.length > 0)
+        .map((p) => {
+          const v = p.versions[0];
+          const members = (v.limits as Record<string, number | null> | null)?.members ?? null;
+          return {
+            id: p.id,
+            name: p.name,
+            code: p.code,
+            versionId: v.id,
+            version: v.version,
+            priceMonthlyKobo: v.priceMonthlyKobo,
+            priceAnnualKobo: v.priceAnnualKobo,
+            memberLimit: members,
+          };
+        });
       return res.json({ success: true, data: { plans } });
     } catch (error) {
       console.error('List plans error:', error);
@@ -1209,9 +1231,9 @@ export class PlatformAdminController {
           tenantModules: {
             where: { isEnabled: true },
           },
-          planModules: {
-            where: { isEnabled: true },
-            include: { plan: true },
+          planVersionModules: {
+            where: { planVersion: { status: 'PUBLISHED' } },
+            include: { planVersion: { include: { plan: true } } },
           },
         },
       });
@@ -1230,7 +1252,7 @@ export class PlatformAdminController {
           isCore: module.isCore,
           enabledCount,
           adoptionRate: parseFloat(adoptionRate),
-          plans: module.planModules.map(pm => pm.plan.name),
+          plans: module.planVersionModules.map(pm => pm.planVersion.plan.name),
         };
       });
 

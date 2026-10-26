@@ -1648,3 +1648,17 @@ _(none)_
 - **Source of truth:** `SocietyLedger-brand/` (colours, folders and usage rules in its README). Mark = bold S with a ledger card; brand blue `#0B6BFF`, green `#14B866`, slate `#0F172A`.
 - **Mobile:** `assets/images/logo-mark(.png|@2x|@3x)` is the in-app mark (startup 96dp, `AuthBrandMark` 64dp, About 72dp); `app-tile.png` is the rounded gradient tile used on dark surfaces (welcome carousel, 32dp). Use these, never a lucide `Users` icon as the brand. App icon, adaptive icons, splash and notification icon live in `assets/images/` and are wired in `app.config.ts`.
 - **Web/admin/docs:** `public/brand/` holds the horizontal lockups (`-light-notag` for light pages, `-dark-notag` for dark) and `logo-mark.svg`. Web uses `BrandMark` and `BrandLogo` from `components/brand/BrandLogo.tsx` (`tone="auto"` swaps with the theme, `onDark` for the footer). The association's own logo still wins in the sidebars; the brand mark is only the fallback.
+
+## Billing and pricing components (2026-10-26)
+
+### Web (`apps/web/src/components/pricing/`)
+- **`PlanGrid`** - the plan cards. Props: `plans`, `cycle`, `renderAction(plan, cycle)`, `currentPlanId`, `variant` (full/compact), `tone` (marketing/app). Reads everything from the plan object (price strings, highlights, limits, modules, recommended flag); contains no plan or price. Used by the landing page, homepage, pricing page and the in-app chooser.
+- **`BillingToggle`** - Monthly / Annually segmented control; shows the best saving across the plans on offer, computed from their prices.
+- **`PublicPlans`** - toggle + grid + optional comparison for the marketing pages. Takes the server-fetched pricing, or loads it in the browser when the server could not.
+- **`PlanComparison`** - accessible table of modules and the member limit across plans.
+- **`AddonList`**, **`OnboardingNote`** (what a new association gets, from the onboarding settings), **`usePublicPricing`** (client hook for client-only pages).
+- **`components/subscription/SubscriptionBanners`** - `TrialEndingBanner` now also covers a paid period ending within 7 days and the grace period; `SubscriptionBlockedScreen` shows the end date, **Resubscribe Now**, billing and support links. **`VerifyPayment`** handles success, still-processing (re-checks), needs-review and failed.
+
+### Admin (`apps/admin/src/components/billing/`)
+- **`VersionedEditor`** - one editor for a plan or an add-on: details/visibility (apply at once), a draft of prices, limits, modules and features, version history, and a publish dialog that shows the impact first (price change, modules added/removed, current subscribers, warnings, blockers) and requires a reason when changing something already on sale.
+- **`PlansOverview`** (tabs: Plans, Add-ons, Pricing preview, Migrations), **`MigrationsTab`** (preview, schedule with date and reason, history). Pages: `/plans`, `/plans/[id]`, `/plans/addons/[id]`, `/subscriptions`, `/subscriptions/[associationId]`.

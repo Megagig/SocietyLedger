@@ -25,6 +25,8 @@ dotenv.config();
 import authRoutes from './modules/auth/auth.routes';
 import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import billingAdminRoutes from './modules/admin/billing-admin.routes';
+import publicPricingRoutes from './modules/public/pricing.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
 import webhookHandlerRoutes from './modules/webhooks/webhooks.routes';
 import webhookManagementRoutes from './modules/webhooks/webhooks-management.routes';
@@ -157,6 +159,8 @@ app.use('/api/admin/cron', cronRoutes); // alias for admin console BFF
 // Blog & Documentation routes (Platform-level, must be before tenantMiddleware)
 // Public routes - no auth required
 app.use('/api/blog', blogPublicRoutes);
+// Pricing for the public website: published plans only, no sign-in, no tenant
+app.use('/api/public', publicPricingRoutes);
 app.use('/api/docs', documentationPublicRoutes);
 // Admin routes - Super Admin only
 app.use('/api/admin/blog', blogAdminRoutes);
@@ -206,6 +210,7 @@ app.use('/api', standardRateLimit);
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/associations', associationRoutes);
+app.use('/api/admin/billing', billingAdminRoutes); // Plan Builder and subscription administration (Super Admin only)
 app.use('/api/admin', adminRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 // IMPORTANT: /api/members/me must come BEFORE /api/members to avoid /:id matching 'me'

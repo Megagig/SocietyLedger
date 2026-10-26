@@ -98,6 +98,16 @@ services:
       TERMII_SENDER_ID: ${TERMII_SENDER_ID:-}
       TERMII_BASE_URL: ${TERMII_BASE_URL:-}
       TERMII_CHANNEL: ${TERMII_CHANNEL:-}
+      # --- Plans and billing ---
+      # Modules and features are enforced by default. Set to "shadow" ONLY as an emergency switch (logs what would be blocked but lets
+      # it through) if a bad plan configuration ever locks tenants out.
+      FEATURE_FLAG_MODE: ${FEATURE_FLAG_MODE:-enforce}
+      # Nomba is off for subscription checkout (Paystack only) until the Nomba KYC is done. Set to "true" to offer it again.
+      SUBSCRIPTION_NOMBA_ENABLED: ${SUBSCRIPTION_NOMBA_ENABLED:-false}
+      # When the owner publishes pricing, the API asks the website to refresh its cached pages at this address
+      # (e.g. https://societyledger.com.ng/api/revalidate). Both values must match the web service's REVALIDATE_SECRET.
+      WEB_REVALIDATE_URL: ${WEB_REVALIDATE_URL:-}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
       TERMII_WEBHOOK_SECRET: ${TERMII_WEBHOOK_SECRET:-}
       # File storage: payment proofs, receipts, deposit slips, support attachments. MinIO runs as its own
       # shared stack (docker-compose.minio.yml, see docs/deployment/MINIO_SETUP.md); this app only gets its own
@@ -140,6 +150,8 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
       NEXT_PUBLIC_BASE_DOMAIN: ${NEXT_PUBLIC_BASE_DOMAIN}
+      # Shared secret for the pricing refresh request from the API (same value as the API's REVALIDATE_SECRET)
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
     networks:
       - dokploy-network
     labels:

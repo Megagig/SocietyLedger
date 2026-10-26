@@ -33,9 +33,9 @@ async function main() {
 
   // 2. Run all seed scripts in order
   const seedScripts = [
-    { file: 'seed-plans.ts', name: 'Subscription Plans' },
     { file: 'seeds/rbac-seed.ts', name: 'RBAC Roles & Permissions' },
     { file: 'seeds/platform-modules.seed.ts', name: 'Platform Modules' },
+    { file: 'seeds/plans.seed.ts', name: 'Subscription Plans' },
     { file: 'seeds/platform-association.seed.ts', name: 'Platform Association (Hybrid Super Admin)' },
     { file: 'seeds/help-permissions.seed.ts', name: 'Help Permissions' },
     { file: 'seeds/help-content.seed.ts', name: 'Help Content' },
@@ -59,7 +59,7 @@ async function main() {
   console.log('🎉 Database seeding completed successfully!\n');
   console.log('📝 Summary:');
   console.log('  ✅ Super admin account');
-  console.log('  ✅ Subscription plans (Starter, Professional, Enterprise)');
+  console.log('  ✅ Subscription plans (Starter, Pro, Enterprise)');
   console.log('  ✅ RBAC roles & permissions (54+ permissions)');
   console.log('  ✅ Platform modules (14 modules, 17+ features)');
   console.log('  ✅ Platform association for hybrid super admin');

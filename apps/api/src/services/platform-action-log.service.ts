@@ -13,7 +13,7 @@ export interface PlatformActionLogData {
   actorId: number;
   actorRole: string;
   actionType: string;
-  targetType: 'association' | 'user' | 'module' | 'feature' | 'billing' | 'security' | 'plan';
+  targetType: 'association' | 'user' | 'module' | 'feature' | 'billing' | 'security' | 'plan' | 'addon' | 'subscription';
   targetId?: number;
   associationId?: number;
   beforeState?: object;

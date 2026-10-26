@@ -17,8 +17,62 @@ export interface PlatformSettings {
   requireAdminApproval: boolean;
   /** When on (the default), an association whose trial or subscription has run out is blocked until it pays. */
   enforceSubscriptionAccess: boolean;
+  /**
+   * What a new association gets once its founding admin is approved. TRIAL: a free trial of `defaultTrialDays`. COMPLIMENTARY: the same
+   * length, recorded as a complimentary (unpaid) subscription rather than a trial. BILLABLE: no free time, the association must pay first.
+   */
+  onboardingPolicy: 'TRIAL' | 'COMPLIMENTARY' | 'BILLABLE';
+  /** Code of the plan new associations are given (it must have a published version). */
+  onboardingPlanCode: string;
+  /** Days of continued access after a paid period ends without renewal. 0 turns the grace period off. */
+  gracePeriodDays: number;
+  /** How many days before a period ends the owner is reminded, e.g. [7, 3, 1]. */
+  expiryReminderDays: number[];
   defaultAssociationTier: string;
   platformVersion: string;
+}
+
+export class SettingsValidationError extends Error {}
+
+const POLICIES = ['TRIAL', 'COMPLIMENTARY', 'BILLABLE'] as const;
+
+/**
+ * Check the billing-related settings before they are stored. Everything else is passed through as before. These values decide who is
+ * locked out and when, so a typo must be refused, not saved.
+ */
+async function validateBillingSettings(input: Partial<PlatformSettings>): Promise<Partial<PlatformSettings>> {
+  const out: Record<string, unknown> = { ...input };
+
+  if (input.onboardingPolicy !== undefined && !POLICIES.includes(input.onboardingPolicy as (typeof POLICIES)[number])) {
+    throw new SettingsValidationError('The onboarding policy must be TRIAL, COMPLIMENTARY or BILLABLE.');
+  }
+  if (input.defaultTrialDays !== undefined) {
+    const n = Number(input.defaultTrialDays);
+    if (!Number.isInteger(n) || n < 1 || n > 90) throw new SettingsValidationError('The onboarding duration must be a whole number of days from 1 to 90.');
+    out.defaultTrialDays = n;
+  }
+  if (input.gracePeriodDays !== undefined) {
+    const n = Number(input.gracePeriodDays);
+    if (!Number.isInteger(n) || n < 0 || n > 30) throw new SettingsValidationError('The grace period must be a whole number of days from 0 to 30.');
+    out.gracePeriodDays = n;
+  }
+  if (input.expiryReminderDays !== undefined) {
+    const list = Array.isArray(input.expiryReminderDays) ? input.expiryReminderDays : null;
+    if (!list || list.length > 6 || !list.every((d) => Number.isInteger(Number(d)) && Number(d) >= 1 && Number(d) <= 60)) {
+      throw new SettingsValidationError('Reminder days must be up to 6 whole numbers between 1 and 60.');
+    }
+    out.expiryReminderDays = [...new Set(list.map(Number))].sort((a, b) => b - a);
+  }
+  if (input.onboardingPlanCode !== undefined) {
+    const code = String(input.onboardingPlanCode).trim().toLowerCase();
+    const plan = await prisma.plan.findFirst({
+      where: { code, isArchived: false, versions: { some: { status: 'PUBLISHED' } } },
+      select: { id: true },
+    });
+    if (!plan) throw new SettingsValidationError(`"${code}" is not a plan with a published version, so new associations cannot be given it.`);
+    out.onboardingPlanCode = code;
+  }
+  return out as Partial<PlatformSettings>;
 }
 
 export interface PlatformStats {
@@ -47,6 +101,10 @@ const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   requireEmailVerification: true,
   requireAdminApproval: true,
   enforceSubscriptionAccess: true,
+  onboardingPolicy: 'TRIAL',
+  onboardingPlanCode: 'enterprise',
+  gracePeriodDays: 3,
+  expiryReminderDays: [7, 3, 1],
   defaultAssociationTier: 'STARTER',
   platformVersion: '1.0.0',
 };
@@ -83,6 +141,7 @@ export class PlatformSettingsService {
     settings: Partial<PlatformSettings>,
     userId: number
   ): Promise<PlatformSettings> {
+    settings = await validateBillingSettings(settings);
     for (const [key, value] of Object.entries(settings)) {
       const fullKey = `platform.${key}`;
       const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -118,6 +177,10 @@ export class PlatformSettingsService {
         newValues: JSON.parse(JSON.stringify(settings))
       }
     });
+
+    // The access rules read these (grace period, enforcement) from a short cache; drop it so the change applies at once.
+    const { invalidateAccessCache } = await import('../../services/subscription-access.service');
+    invalidateAccessCache();
 
     return this.getSettings();
   }

@@ -27,6 +27,10 @@ export type SubscriptionAccessDTO = {
   status: string | null;
   trialEndsAt: IsoDateString | null;
   trialDaysLeft: number | null;
+  /** When the paid or complimentary period ends (null for trials). Older servers omit the three fields below. */
+  periodEndsAt?: IsoDateString | null;
+  inGrace?: boolean;
+  graceEndsAt?: IsoDateString | null;
 };
 
 export type LoginUserDTO = {

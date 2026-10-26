@@ -5,10 +5,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import {
   Stack, Card, Group, Text, Button, Switch, NumberInput,
-  Skeleton, Alert, Divider, Badge,
+  Skeleton, Alert, Divider, Badge, Select, TextInput,
 } from '@mantine/core';
 import { IconAlertTriangle, IconCheck, IconSettings } from '@tabler/icons-react';
 import { bff } from '@/lib/bff';
+import { billingKeys, type BuilderPlan } from '@/lib/billing';
 import { PageHeader } from '@/components/PageHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { AiSettingsSection } from './ai-section';
@@ -23,6 +24,10 @@ interface PlatformSettings {
   enforceSubscriptionAccess: boolean;
   defaultTrialDays: number;
   maxAssociationsPerUser: number;
+  onboardingPolicy: 'TRIAL' | 'COMPLIMENTARY' | 'BILLABLE';
+  onboardingPlanCode: string;
+  gracePeriodDays: number;
+  expiryReminderDays: number[];
 }
 
 // ── Section card ──────────────────────────────────────────────────────────────
@@ -93,12 +98,15 @@ export default function PlatformSettingsPage() {
     queryFn: () => bff<PlatformSettings>('admin/settings/platform'),
   });
 
+  const plansQ = useQuery({ queryKey: billingKeys.plans, queryFn: () => bff<BuilderPlan[]>('admin/billing/plans') });
+  const [reminderText, setReminderText] = useState('');
   const [local, setLocal] = useState<PlatformSettings | null>(null);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (q.data && !dirty) {
       setLocal(q.data);
+      setReminderText((q.data.expiryReminderDays ?? [7, 3, 1]).join(', '));
     }
   }, [q.data, dirty]);
 
@@ -123,7 +131,7 @@ export default function PlatformSettingsPage() {
   }
 
   function reset() {
-    if (q.data) { setLocal(q.data); setDirty(false); }
+    if (q.data) { setLocal(q.data); setReminderText((q.data.expiryReminderDays ?? [7, 3, 1]).join(', ')); setDirty(false); }
   }
 
   if (q.isError) {
@@ -219,9 +227,9 @@ export default function PlatformSettingsPage() {
             <Stack gap="lg">
               <Group justify="space-between" wrap="wrap" gap="md">
                 <Stack gap={2} style={{ flex: 1 }}>
-                  <Text size="sm" fw={600}>Default trial days</Text>
+                  <Text size="sm" fw={600}>Onboarding duration</Text>
                   <Text size="xs" c="dimmed">
-                    How many days of free Enterprise access a new association gets. The clock starts when you approve the founding admin, not when they sign up.
+                    How many days a new association gets under the onboarding policy below (the length of the free trial or the complimentary access). The clock starts when you approve the founding admin, not when they sign up.
                   </Text>
                 </Stack>
                 <NumberInput
@@ -253,6 +261,91 @@ export default function PlatformSettingsPage() {
                   size="sm"
                   w={140}
                   allowDecimal={false}
+                />
+              </Group>
+            </Stack>
+          </SectionCard>
+
+          {/* Onboarding, expiry and reminders */}
+          <SectionCard
+            title="Onboarding, expiry and reminders"
+            description="What a new association is given, how long access continues after a paid period ends, and when owners are reminded. Plans, prices and what they include are managed under Plans."
+          >
+            <Stack gap="lg">
+              <Group justify="space-between" wrap="wrap" gap="md" align="flex-start">
+                <Stack gap={2} style={{ flex: 1, minWidth: 260 }}>
+                  <Text size="sm" fw={600}>Onboarding policy</Text>
+                  <Text size="xs" c="dimmed">
+                    Free trial: recorded as a trial. Complimentary: an unpaid subscription of the same length. Must pay first: no free time; the association chooses a plan and pays before it can start. In every case the period has a fixed end date.
+                  </Text>
+                </Stack>
+                <Select
+                  value={local.onboardingPolicy ?? 'TRIAL'}
+                  onChange={(v) => update('onboardingPolicy', (v as PlatformSettings['onboardingPolicy']) ?? 'TRIAL')}
+                  data={[
+                    { value: 'TRIAL', label: 'Free trial' },
+                    { value: 'COMPLIMENTARY', label: 'Complimentary access' },
+                    { value: 'BILLABLE', label: 'Must pay first' },
+                  ]}
+                  allowDeselect={false}
+                  size="sm"
+                  w={220}
+                />
+              </Group>
+              <Divider />
+              <Group justify="space-between" wrap="wrap" gap="md" align="flex-start">
+                <Stack gap={2} style={{ flex: 1, minWidth: 260 }}>
+                  <Text size="sm" fw={600}>Plan given to new associations</Text>
+                  <Text size="xs" c="dimmed">
+                    New associations get whatever this plan includes at the time they register (its current published version). Changing the plan, or publishing a new version of it, never changes associations that already registered.
+                  </Text>
+                </Stack>
+                <Select
+                  value={local.onboardingPlanCode}
+                  onChange={(v) => v && update('onboardingPlanCode', v)}
+                  data={(plansQ.data ?? []).filter((p) => !p.isArchived && p.versions.some((v) => v.status === 'PUBLISHED')).map((p) => ({ value: p.code, label: p.name }))}
+                  allowDeselect={false}
+                  size="sm"
+                  w={220}
+                />
+              </Group>
+              <Divider />
+              <Group justify="space-between" wrap="wrap" gap="md" align="flex-start">
+                <Stack gap={2} style={{ flex: 1, minWidth: 260 }}>
+                  <Text size="sm" fw={600}>Grace period after a paid period ends</Text>
+                  <Text size="xs" c="dimmed">
+                    Days an association can keep using the app after its paid period ends without renewing, so a late or delayed payment does not lock them out at once. After this, everything except billing and support is blocked. 0 turns it off. A free trial has no grace period.
+                  </Text>
+                </Stack>
+                <NumberInput
+                  value={local.gracePeriodDays ?? 3}
+                  onChange={(v) => update('gracePeriodDays', typeof v === 'number' ? v : 0)}
+                  min={0}
+                  max={30}
+                  step={1}
+                  suffix=" days"
+                  size="sm"
+                  w={140}
+                  allowDecimal={false}
+                />
+              </Group>
+              <Divider />
+              <Group justify="space-between" wrap="wrap" gap="md" align="flex-start">
+                <Stack gap={2} style={{ flex: 1, minWidth: 260 }}>
+                  <Text size="sm" fw={600}>Expiry reminders</Text>
+                  <Text size="xs" c="dimmed">
+                    How many days before a subscription or trial ends the association administrators are reminded, by email and in the app. Separate with commas, for example 7, 3, 1.
+                  </Text>
+                </Stack>
+                <TextInput
+                  value={reminderText}
+                  onChange={(e) => {
+                    setReminderText(e.currentTarget.value);
+                    const days = e.currentTarget.value.split(',').map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n >= 1 && n <= 60);
+                    update('expiryReminderDays', Array.from(new Set(days)).sort((a, b) => b - a));
+                  }}
+                  size="sm"
+                  w={220}
                 />
               </Group>
             </Stack>

@@ -3,20 +3,21 @@
  * Phase 19: SaaS Owner / Super Admin Platform Controls
  * 
  * Middleware for enforcing module and feature access.
- * Supports shadow mode (log but don't block) and enforce mode.
- * 
+ * Access is ENFORCED by default: a tenant only reaches the modules and features its plan version (plus add-ons) includes.
+ *
  * Environment Variables:
- * - FEATURE_FLAG_MODE: 'shadow' | 'enforce' (default: 'shadow')
+ * - FEATURE_FLAG_MODE: set to 'shadow' only as an emergency switch (log what would be blocked, but let it through), for example if a
+ *   bad plan configuration locks tenants out. Anything else, or unset, enforces.
  */
 
 import { NextFunction, Response } from 'express';
 import { TenantRequest } from './tenant.middleware';
 import { ModuleFeatureService } from '../services/module-feature.service';
 
-// Get mode from environment (default to shadow for safety)
+// Enforce unless the emergency switch is set to 'shadow'
 const getFeatureFlagMode = (): 'shadow' | 'enforce' => {
   const mode = process.env.FEATURE_FLAG_MODE;
-  return mode === 'enforce' ? 'enforce' : 'shadow';
+  return mode === 'shadow' ? 'shadow' : 'enforce';
 };
 
 /**

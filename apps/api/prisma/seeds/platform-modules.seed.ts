@@ -2,8 +2,8 @@
  * Platform Modules & Features Seed
  * Phase 19: SaaS Owner / Super Admin Platform Controls
  * 
- * Seeds the platform modules, features, and plan-module assignments
- * that define what functionality is available per subscription tier.
+ * Seeds the catalog of platform modules and features (the things a plan can include).
+ * Plan contents are NOT set here: they live on plan versions, managed in the Plan Builder.
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -144,83 +144,6 @@ const PLATFORM_FEATURES = [
   { moduleCode: 'ai', code: 'ai.document_qa', name: 'Document Q&A', description: 'AI-powered document question answering' },
 ];
 
-// Plan-Module Assignments
-// Defines which modules are available for each plan
-const PLAN_MODULE_ASSIGNMENTS: Record<string, string[]> = {
-  STARTER: [
-    'members',
-    'ledger',
-    'payments',
-    'notifications',
-  ],
-  PROFESSIONAL: [
-    'members',
-    'ledger',
-    'payments',
-    'notifications',
-    'reports',
-    'audit',
-    'welfare',
-    'voting',
-    'meetings',
-    'sms',
-  ],
-  ENTERPRISE: [
-    'members',
-    'ledger',
-    'payments',
-    'notifications',
-    'reports',
-    'audit',
-    'welfare',
-    'voting',
-    'meetings',
-    'sms',
-    'accounting',
-    'cooperatives',
-    'integrations',
-    'ai',
-  ],
-};
-
-// Plan-Feature Assignments
-// Defines which features are available for each plan
-const PLAN_FEATURE_ASSIGNMENTS: Record<string, string[]> = {
-  STARTER: [
-    'members.export',
-  ],
-  PROFESSIONAL: [
-    'members.bulk_import',
-    'members.custom_roles',
-    'members.export',
-    'ledger.export',
-    'ledger.bulk_transactions',
-    'ledger.advanced_penalties',
-    'reports.export_pdf',
-    'reports.export_excel',
-    'audit.export',
-  ],
-  ENTERPRISE: [
-    'members.bulk_import',
-    'members.custom_roles',
-    'members.export',
-    'ledger.export',
-    'ledger.bulk_transactions',
-    'ledger.advanced_penalties',
-    'reports.custom',
-    'reports.scheduled',
-    'reports.export_pdf',
-    'reports.export_excel',
-    'audit.export',
-    'audit.advanced',
-    'integrations.api_access',
-    'integrations.webhooks',
-    'ai.financial_assistant',
-    'ai.smart_reports',
-    'ai.document_qa',
-  ],
-};
-
 export async function seedPlatformModules() {
   console.log('🌱 Seeding platform modules...');
 
@@ -269,79 +192,8 @@ export async function seedPlatformModules() {
 
   console.log(`✅ Created/updated ${PLATFORM_FEATURES.length} platform features`);
 
-  // Get all plans
-  const plans = await prisma.plan.findMany();
-  
-  if (plans.length === 0) {
-    console.warn('⚠️ No plans found. Run plan seed first.');
-    return;
-  }
-
-  // Create plan-module assignments
-  let planModuleCount = 0;
-  for (const plan of plans) {
-    const planCode = plan.code.toUpperCase();
-    const moduleAssignments = PLAN_MODULE_ASSIGNMENTS[planCode] || PLAN_MODULE_ASSIGNMENTS.STARTER;
-
-    for (const moduleCode of moduleAssignments) {
-      const module = await prisma.platformModule.findUnique({
-        where: { code: moduleCode },
-      });
-
-      if (!module) continue;
-
-      await prisma.planModule.upsert({
-        where: {
-          planId_moduleId: {
-            planId: plan.id,
-            moduleId: module.id,
-          },
-        },
-        update: { isEnabled: true },
-        create: {
-          planId: plan.id,
-          moduleId: module.id,
-          isEnabled: true,
-        },
-      });
-      planModuleCount++;
-    }
-  }
-
-  console.log(`✅ Created/updated ${planModuleCount} plan-module assignments`);
-
-  // Create plan-feature assignments
-  let planFeatureCount = 0;
-  for (const plan of plans) {
-    const planCode = plan.code.toUpperCase();
-    const featureAssignments = PLAN_FEATURE_ASSIGNMENTS[planCode] || PLAN_FEATURE_ASSIGNMENTS.STARTER;
-
-    for (const featureCode of featureAssignments) {
-      const feature = await prisma.platformFeature.findUnique({
-        where: { code: featureCode },
-      });
-
-      if (!feature) continue;
-
-      await prisma.planFeature.upsert({
-        where: {
-          planId_featureId: {
-            planId: plan.id,
-            featureId: feature.id,
-          },
-        },
-        update: { isEnabled: true },
-        create: {
-          planId: plan.id,
-          featureId: feature.id,
-          isEnabled: true,
-        },
-      });
-      planFeatureCount++;
-    }
-  }
-
-  console.log(`✅ Created/updated ${planFeatureCount} plan-feature assignments`);
+  // Which plan includes which module is configured in the Plan Builder (and created once by plans.seed.ts); this script only
+  // maintains the catalog of what exists, so running it never changes what a plan includes.
   console.log('🎉 Platform modules seed completed!');
 }
 

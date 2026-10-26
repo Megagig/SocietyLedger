@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { useLogout } from '@/features/session/mutations';
 import { useSessionStore } from '@/stores/session';
 import { useTenantStore } from '@/stores/tenant';
+import { formatDate } from '@/lib/dates';
 
 /** Officers who can renew (on the web). Members only get told to contact their admin. */
 const RENEWING_ROLES = ['admin', 'treasurer', 'financial_secretary'];
@@ -20,6 +21,8 @@ export function SubscriptionBlockedScreen() {
   const logout = useLogout();
   const canRenew = !!user && RENEWING_ROLES.includes(user.role);
   const trialEnded = user?.subscriptionAccess?.reason === 'TRIAL_ENDED';
+  const endedOn = trialEnded ? user?.subscriptionAccess?.trialEndsAt : user?.subscriptionAccess?.periodEndsAt;
+  const endedText = endedOn ? ` It ended on ${formatDate(endedOn, 'long')}.` : '';
 
   return (
     <AuthHeroScreen
@@ -27,8 +30,8 @@ export function SubscriptionBlockedScreen() {
       title={trialEnded ? 'Your free trial has ended' : 'Your subscription has ended'}
       description={
         canRenew
-          ? `${associationName} is paused until a subscription payment is made. Sign in on the web to renew. Your data is safe and everything comes back as soon as you do.`
-          : "Your association's subscription has expired. Please contact your administrator."
+          ? `${associationName} is paused until a subscription payment is made.${endedText} Sign in on the web to resubscribe. Your data is safe and everything comes back as soon as you do.`
+          : `Your association's subscription has expired.${endedText} Please contact your administrator.`
       }
       actions={
         <Button variant="accent-ghost" size="lg" fullWidth loading={logout.isPending} onPress={() => logout.mutate({ clearTenant: false })} testID="blocked-sign-out">

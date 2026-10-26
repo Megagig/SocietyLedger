@@ -1,11 +1,9 @@
 /**
- * Builds the modules-by-plan reference table from `platform-modules.seed.ts`.
+ * Builds the list of modules and features that exist, from `platform-modules.seed.ts`.
  *
- * This documents the *intended* tiering design, which is real seed data —
- * but per the known gap G13 (`progress-tracker.md`), module/plan gating is
- * not currently enforced anywhere in the app (`requireModule()` defaults to
- * shadow mode). The generated page must carry a callout saying so; this
- * module only builds the data, the caller adds the callout.
+ * Which plan includes which of them is NOT in the source any more: it is configured by the platform owner in the Plan Builder and stored
+ * in the database (as versions of each plan), so a table of plan columns built from source would go stale the moment a plan is edited.
+ * This only documents what exists; the live plan page shows what each plan includes.
  */
 import path from 'node:path';
 import { parseTsConst } from './parse-ts-const';
@@ -31,7 +29,6 @@ export interface FeatureRow {
   code: string;
   name: string;
   description: string;
-  plans: string[];
 }
 
 export interface ModuleRow {
@@ -39,18 +36,13 @@ export interface ModuleRow {
   name: string;
   description: string;
   isCore: boolean;
-  plans: string[];
   features: FeatureRow[];
 }
-
-const PLANS = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
 
 export function buildModulesByPlan(): ModuleRow[] {
   const seedPath = apiRoot('prisma/seeds/platform-modules.seed.ts');
   const modules = parseTsConst(seedPath, 'PLATFORM_MODULES') as ModuleDef[];
   const features = parseTsConst(seedPath, 'PLATFORM_FEATURES') as FeatureDef[];
-  const moduleAssignments = parseTsConst(seedPath, 'PLAN_MODULE_ASSIGNMENTS') as Record<string, string[]>;
-  const featureAssignments = parseTsConst(seedPath, 'PLAN_FEATURE_ASSIGNMENTS') as Record<string, string[]>;
 
   return [...modules]
     .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -59,14 +51,12 @@ export function buildModulesByPlan(): ModuleRow[] {
       name: mod.name,
       description: mod.description,
       isCore: mod.isCore,
-      plans: PLANS.filter((plan) => moduleAssignments[plan]?.includes(mod.code)),
       features: features
         .filter((feature) => feature.moduleCode === mod.code)
         .map((feature) => ({
           code: feature.code,
           name: feature.name,
           description: feature.description,
-          plans: PLANS.filter((plan) => featureAssignments[plan]?.includes(feature.code)),
         })),
     }));
 }

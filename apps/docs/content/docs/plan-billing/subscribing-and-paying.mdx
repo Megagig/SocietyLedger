@@ -1,16 +1,16 @@
 ---
 title: "Subscribing and paying"
-description: "Pick a plan, choose Paystack or Nomba, and pay."
+description: "Pick a plan and a billing interval, review the amount, and pay with Paystack."
 type: task
 audience: ["admin"]
 platforms: ["web"]
 covers: ["/dashboard/subscription/checkout"]
 status: published
-lastVerified: "2026-10-14"
-related: ["/docs/plan-billing/plans-and-whats-included", "/docs/plan-billing/free-trial"]
+lastVerified: "2026-10-26"
+related: ["/docs/plan-billing/plans-and-whats-included", "/docs/plan-billing/free-trial", "/docs/plan-billing/add-ons"]
 ---
 
-Choosing a plan takes you straight to checkout — there's no separate "add a subscription" step.
+Choosing a plan takes you straight to checkout, where you see exactly what you will pay before you pay it.
 
 ## Before you start
 
@@ -19,16 +19,22 @@ You need the **edit settings** permission, which only Administrators have by def
 ## Choose a plan and pay
 
 <Steps>
-<Step>Go to <MenuPath items={["Subscription", "Plans"]} />, pick **Monthly** or **Annual**, and select a plan.</Step>
-<Step>On checkout, review the order summary, then choose **Paystack** or **Nomba**.</Step>
-<Step>Select <UiLabel>Pay ₦[amount]</UiLabel> — you're redirected to that provider's real hosted checkout page.</Step>
-<Step>Complete payment there. You're returned to SocietyLedger, where the payment is verified automatically.</Step>
+<Step>Go to <MenuPath items={["Subscription", "Plans"]} />, pick **Monthly** or **Annually**, and select a plan. If your subscription has ended, the button says **Resubscribe**.</Step>
+<Step>On checkout, review the order summary. The amount, the date your access runs until, and any credit are all worked out by SocietyLedger, and they update if you change an add-on.</Step>
+<Step>Select <UiLabel>Pay</UiLabel> and the amount. You go to Paystack's secure payment page.</Step>
+<Step>Complete the payment there. You are brought back to SocietyLedger, which confirms the payment with Paystack.</Step>
 </Steps>
 
-<Screenshot src="/images/plan-billing/subscribing-and-paying-1.webp" alt="Checkout page with order summary, Paystack and Nomba provider options, and a Pay button" />
+<Screenshot src="/images/plan-billing/subscribing-and-paying-1.webp" alt="Checkout page with the order summary, the payment method and the Pay button" />
 
 ## What happens next
 
-Once verified, your subscription status becomes **Active**, your billing period starts, and the payment appears in your [billing history](/docs/plan-billing/billing-history).
+Your subscription is activated only once Paystack confirms the payment **for the exact amount shown at checkout**. If a payment is still processing, SocietyLedger keeps checking and activates as soon as it is confirmed. Returning from the payment page on its own never turns anything on. If the amount that arrives doesn't match, nothing is activated, and SocietyLedger contacts you.
+
+Once confirmed, your status becomes **Active**, your next renewal date is shown, you get a confirmation email, and the payment appears in your [billing history](/docs/plan-billing/billing-history).
+
+## If something looks wrong
+
+If you are charged but see no change after a few minutes, don't pay again. Open <MenuPath items={["Subscription"]} />: a payment that is being checked is marked **Being checked**. Contact support from the help page and quote the payment reference from Paystack.
 
 ## Related

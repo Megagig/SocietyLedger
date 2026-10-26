@@ -77,8 +77,8 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     return null;
   }
 
-  // Trial or subscription ended: everything is paused except the billing pages, where officers renew.
-  if (user && !user.platformRole && user.subscriptionAccess && !user.subscriptionAccess.allowed && !pathname.startsWith('/dashboard/subscription')) {
+  // Trial or subscription ended: everything is paused except the billing pages (where officers resubscribe) and help/support.
+  if (user && !user.platformRole && user.subscriptionAccess && !user.subscriptionAccess.allowed && !pathname.startsWith('/dashboard/subscription') && !pathname.startsWith('/dashboard/help')) {
     return <SubscriptionBlockedScreen />;
   }
 

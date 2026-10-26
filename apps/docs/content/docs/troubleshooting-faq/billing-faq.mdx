@@ -1,21 +1,29 @@
 ---
 title: "Plan & billing FAQ"
-description: "Common questions about trials, plan changes, and what happens when a subscription ends."
+description: "Common questions about your starting period, plan changes, add-ons, and what happens when a subscription ends."
 type: faq
 audience: ["admin"]
 platforms: ["web"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-26"
 related: ["/docs/plan-billing/free-trial", "/docs/plan-billing/when-a-subscription-ends"]
 ---
 
-## Does the free trial really not need a card?
+## Do I need to pay to start?
 
-In practice, no — the only way to start a trial today is the checkout page's pay button, which redirects to a real payment page for the full plan price, even though the Plans page says no card is required. The trial itself does genuinely begin in the background regardless. See [Your free trial](/docs/plan-billing/free-trial).
+Not unless SocietyLedger is asking new associations to pay first. A new association is given a plan for a fixed period, as a free trial or as complimentary access, starting when it is approved, and you don't need a card for it. The pricing page always states the current offer. See [Your starting period](/docs/plan-billing/free-trial).
 
-## I downgraded my plan — why did it change immediately instead of waiting until my period ends?
+## I chose a cheaper plan — why hasn't it changed yet?
 
-A downgrade's success message says the change is "scheduled" for your current period's end date, but it actually applies the moment you confirm it, the same as an upgrade. See [Upgrading or downgrading](/docs/plan-billing/changing-your-plan).
+A move to a cheaper plan is scheduled for the end of the period you've already paid for, and nothing is charged now. Until then you keep your current plan. The subscription page shows the switch and its date. See [Upgrading or downgrading](/docs/plan-billing/changing-your-plan).
+
+## Why was I credited when I upgraded?
+
+When you move to a higher plan, you aren't charged twice for the days you had left. The unused part of what you paid is taken off the new plan's price. If your period was free, there is nothing to credit.
+
+## I paid but my subscription isn't active. What do I do?
+
+Don't pay again. Your subscription is activated only when Paystack confirms the payment for the exact amount shown at checkout. A payment that is still processing activates by itself as soon as it's confirmed. If the amount that arrived doesn't match, the payment is marked **Being checked** on your subscription page, and SocietyLedger contacts you. Contact support and quote the Paystack reference. See [Subscribing and paying](/docs/plan-billing/subscribing-and-paying).
 
 ## Can I cancel anytime, and what happens to my association's data?
 
@@ -29,6 +37,10 @@ See [What happens when a subscription ends](/docs/plan-billing/when-a-subscripti
 
 Your full billing history is in one place. See [Billing history](/docs/plan-billing/billing-history).
 
-## Will modules or features actually lock if I don't upgrade my plan?
+## Will modules or features lock if my plan doesn't include them?
 
-Not today — enforcement isn't switched on yet, so don't rely on your subscription status as an access control. See [What happens when a subscription ends](/docs/plan-billing/when-a-subscription-ends) and [Modules by plan](/docs/reference/modules-by-plan) for the tiering this will eventually enforce.
+Yes. A module or feature that isn't in your plan, or in an [add-on](/docs/plan-billing/add-ons) you hold, isn't available, and SocietyLedger enforces that on the server, not just in the menu. See [Understanding your plan](/docs/plan-billing/plans-and-whats-included) and [Modules by plan](/docs/reference/modules-by-plan).
+
+## Can I add extras without changing my whole plan?
+
+Yes, with an add-on, if SocietyLedger offers one for your plan. You pay only for the days left until your renewal date, and it renews with your plan. See [Add-ons](/docs/plan-billing/add-ons).
