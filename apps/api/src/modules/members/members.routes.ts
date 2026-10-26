@@ -1,3 +1,4 @@
+import { requireFeature } from '../../middleware/module-feature.middleware';
 import { memberLimitMiddleware } from '../../middleware/subscription.middleware';
 import { Router } from 'express';
 import { memberController } from './members.controller';
@@ -30,6 +31,7 @@ router.get('/stats',
 
 // Bulk import members
 router.post('/bulk',
+  requireFeature('members.bulk_import'),
   requirePermission(PERMISSIONS.MEMBER_CREATE),
   memberLimitMiddleware((req) => (Array.isArray(req.body?.members) ? req.body.members.length : 0)),
   memberController.bulkImport

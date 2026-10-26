@@ -67,7 +67,7 @@ export function PublicPlans({ initial, variant = 'full', showComparison = false 
             href="/signup"
             fullWidth
             size="lg"
-            className={plan.isRecommended ? 'bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600 text-white' : 'border-2 border-teal-500 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20'}
+            className={plan.isRecommended ? 'bg-gradient-to-r from-primary-500 to-green-500 hover:from-primary-600 hover:to-green-600 text-white' : 'border-2 border-primary-500 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20'}
             variant={plan.isRecommended ? 'filled' : 'outline'}
           >
             {signupLabel(pricing.onboarding)}

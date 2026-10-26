@@ -41,4 +41,4 @@ export async function fetchPublicPricingInBrowser(): Promise<PublicPricing | nul
 }
 
 // Pure display helpers live in ./pricing-text (no network, easy to test) and are re-exported here for the pages.
-export { addonsForPlan, formatKobo, lowestMonthlyPrice, onboardingSentence, signupLabel } from './pricing-text';
+export { addonsForPlan, formatKobo, lowestMonthlyPrice, onboardingSentence, planCardContent, signupLabel } from './pricing-text';

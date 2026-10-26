@@ -27,40 +27,47 @@ export interface DefaultPlan {
   features: string[];
 }
 
-const BASE_MODULES = ['members', 'ledger', 'payments', 'notifications'];
-const PRO_MODULES = [...BASE_MODULES, 'reports', 'audit', 'welfare', 'voting', 'meetings', 'sms'];
-const ENTERPRISE_MODULES = [...PRO_MODULES, 'accounting', 'cooperatives', 'integrations', 'ai'];
+/*
+ * What each default plan includes. Every module and feature listed here is ENFORCED by a real route (see __tests__/billing/plan-gates.test.ts),
+ * so a plan card can only promise what the app actually withholds from the plans below it.
+ *
+ *  Starter    run the association day to day: members, dues and payments, notifications, reports, meetings.
+ *  Pro        add community and governance: welfare, voting and elections, SMS, audit logs, plus exports, bulk tools and custom roles.
+ *  Enterprise add accounting, cooperatives and loans, the AI assistant, and custom report exports.
+ */
+const STARTER_MODULES = ['members', 'ledger', 'payments', 'notifications', 'reports', 'meetings'];
+const PRO_MODULES = [...STARTER_MODULES, 'welfare', 'voting', 'sms', 'audit'];
+const ENTERPRISE_MODULES = [...PRO_MODULES, 'accounting', 'cooperatives', 'ai'];
 
+const STARTER_FEATURES = ['members.export', 'members.bulk_import', 'ledger.export'];
 const PRO_FEATURES = [
-  'members.bulk_import',
-  'members.custom_roles',
-  'members.export',
-  'ledger.export',
-  'ledger.bulk_transactions',
-  'ledger.advanced_penalties',
+  ...STARTER_FEATURES,
   'reports.export_pdf',
   'reports.export_excel',
-  'audit.export',
+  'ledger.bulk_transactions',
+  'ledger.advanced_penalties',
+  'members.custom_roles',
 ];
+const ENTERPRISE_FEATURES = [...PRO_FEATURES, 'reports.custom', 'ai.financial_assistant', 'ai.smart_reports'];
 
 export const DEFAULT_PLANS: DefaultPlan[] = [
   {
     code: 'starter',
     name: 'Starter',
     description: 'Perfect for small associations getting started',
-    highlights: ['Member records and dues', 'Online and bank-transfer payments', 'Notifications to members'],
+    highlights: ['Collect dues online and by bank transfer'],
     sortOrder: 1,
     monthlyNaira: 8_000,
     annualNaira: 80_000,
     limits: { members: 100 },
-    modules: BASE_MODULES,
-    features: ['members.export'],
+    modules: STARTER_MODULES,
+    features: STARTER_FEATURES,
   },
   {
     code: 'professional',
     name: 'Pro',
     description: 'Ideal for growing associations with advanced needs',
-    highlights: ['Everything in Starter', 'Reports and exports', 'Meetings, voting and welfare', 'SMS to members'],
+    highlights: ['Everything in Starter'],
     sortOrder: 2,
     isRecommended: true,
     badgeLabel: 'Most popular',
@@ -74,23 +81,13 @@ export const DEFAULT_PLANS: DefaultPlan[] = [
     code: 'enterprise',
     name: 'Enterprise',
     description: 'Complete solution for large associations',
-    highlights: ['Everything in Pro', 'Accounting and cooperatives', 'AI assistant', 'Unlimited members'],
+    highlights: ['Everything in Pro'],
     sortOrder: 3,
     monthlyNaira: 15_000,
     annualNaira: 150_000,
     limits: {},
     modules: ENTERPRISE_MODULES,
-    features: [
-      ...PRO_FEATURES,
-      'reports.custom',
-      'reports.scheduled',
-      'audit.advanced',
-      'integrations.api_access',
-      'integrations.webhooks',
-      'ai.financial_assistant',
-      'ai.smart_reports',
-      'ai.document_qa',
-    ],
+    features: ENTERPRISE_FEATURES,
   },
 ];
 

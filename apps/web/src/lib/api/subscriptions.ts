@@ -72,9 +72,26 @@ export const subscriptionsApi = {
 
   setAddonRenewal: async (tenantAddonId: number, stop: boolean) => unwrap<unknown>(await apiPost(`${base()}/addons/${tenantAddonId}/renewal`, { stop })),
 
+  receipt: async (paymentId: number) => unwrap<PaymentReceipt>(await apiGet(`${base()}/payments/${paymentId}/receipt`)),
+
   cancel: async () => unwrap<unknown>(await apiPost(`${base()}/cancel`)),
   reactivate: async () => unwrap<unknown>(await apiPost(`${base()}/reactivate`)),
 };
+
+export interface PaymentReceipt {
+  receiptNumber: string;
+  association: string;
+  reference: string | null;
+  provider: string;
+  currency: string;
+  paidAt: string;
+  purpose: string;
+  planName: string | null;
+  billingCycle: string | null;
+  periodEndsAt: string | null;
+  lines: Array<{ label: string; amountKobo: number }>;
+  totalKobo: number;
+}
 
 export interface VerifyOutcome {
   state: 'success' | 'review' | 'pending' | 'failed' | 'error';

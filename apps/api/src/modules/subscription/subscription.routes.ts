@@ -22,6 +22,9 @@ router.get('/plans', subscriptionController.getPlans);
 // Plan and billing details are for the people who manage settings, not every member.
 router.get('/current', requireAnyPermission([PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.SETTINGS_BILLING]), subscriptionController.getCurrentSubscription);
 
+// A receipt for one confirmed payment
+router.get('/payments/:id/receipt', requireAnyPermission([PERMISSIONS.SETTINGS_VIEW, PERMISSIONS.SETTINGS_BILLING]), subscriptionController.getReceipt);
+
 // Everything below changes what the association pays for, so it needs the billing permission.
 // Price a plan checkout (the review step) without paying
 router.post('/quote', requirePermission(PERMISSIONS.SETTINGS_BILLING), subscriptionController.quote);

@@ -1,3 +1,4 @@
+import { requireFeature } from '../../middleware/module-feature.middleware';
 import { Router } from 'express';
 import { RBACController } from './rbac.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
@@ -49,6 +50,7 @@ router.get(
 // POST /api/rbac/roles - Create a new custom role
 router.post(
   '/roles',
+  requireFeature('members.custom_roles'),
   requirePermission(PERMISSIONS.ROLES_CREATE),
   RBACController.createRole
 );
@@ -56,6 +58,7 @@ router.post(
 // PUT /api/rbac/roles/:id - Update a role
 router.put(
   '/roles/:id',
+  requireFeature('members.custom_roles'),
   requirePermission(PERMISSIONS.ROLES_EDIT),
   RBACController.updateRole
 );
@@ -63,6 +66,7 @@ router.put(
 // DELETE /api/rbac/roles/:id - Delete a custom role
 router.delete(
   '/roles/:id',
+  requireFeature('members.custom_roles'),
   requirePermission(PERMISSIONS.ROLES_EDIT),
   RBACController.deleteRole
 );

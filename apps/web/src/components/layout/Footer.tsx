@@ -184,6 +184,11 @@ export default function Footer() {
                   Terms of Service
                 </Link>
               </li>
+              <li>
+                <Link href="/licenses" className="text-gray-400 hover:text-teal-400 transition-colors">
+                  Open-Source Licences
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

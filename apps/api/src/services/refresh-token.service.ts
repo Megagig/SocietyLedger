@@ -177,6 +177,15 @@ export async function listActiveSessions(userId: number): Promise<SessionSummary
   return sessions;
 }
 
+/** Signs one device out. The user id is part of the query, so nobody can revoke another person's session. Returns how many tokens were revoked (0 = not theirs, or already signed out). */
+export async function revokeSessionForUser(userId: number, familyId: string): Promise<number> {
+  const result = await prisma.refreshToken.updateMany({
+    where: { userId, familyId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  return result.count;
+}
+
 /** Revokes every active family for the user except the one `keepPlainToken` belongs to. */
 export async function revokeOtherSessions(userId: number, keepPlainToken: string): Promise<number> {
   const keepTokenHash = hashRefreshToken(keepPlainToken);

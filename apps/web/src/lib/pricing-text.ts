@@ -43,6 +43,44 @@ export function lowestMonthlyPrice(plans: PricingPlan[]): PricingPlan['prices'] 
   return [...plans].sort((a, b) => a.prices.monthlyKobo - b.prices.monthlyKobo)[0].prices;
 }
 
+export interface PlanCardContent {
+  /** The member allowance, then the owner's own selling points, then every module the plan includes (core ones too). */
+  bullets: string[];
+  /** Everything the plan includes beyond its modules, by name. Left out of the compact (homepage) card. */
+  features: string[];
+}
+
+/**
+ * What a plan card lists. Every module the plan includes is shown, including the core ones (member records, ledger, payments), because
+ * those are what a small association is buying. The owner's highlights come before them. Compact cards stop after `maxBullets` and say
+ * how many more there are; the full card lists everything, with the features as a line underneath.
+ */
+export function planCardContent(plan: PricingPlan, variant: 'full' | 'compact', maxBullets = 5): PlanCardContent {
+  const members = plan.limits.members;
+  const limit = typeof members === 'number' ? `Up to ${members.toLocaleString('en-NG')} members` : 'Unlimited members';
+
+  const seen = new Set<string>();
+  const items: string[] = [];
+  const add = (text: string) => {
+    const clean = text.trim();
+    const key = clean.toLowerCase();
+    if (clean && !seen.has(key)) {
+      seen.add(key);
+      items.push(clean);
+    }
+  };
+  plan.highlights.forEach(add);
+  plan.modules.forEach((m) => add(m.name));
+
+  if (variant === 'compact') {
+    const shown = items.length > maxBullets ? [...items.slice(0, maxBullets), `and ${items.length - maxBullets} more`] : items;
+    return { bullets: [limit, ...shown], features: [] };
+  }
+  const featureNames: string[] = [];
+  for (const f of plan.features) if (!seen.has(f.name.trim().toLowerCase()) && !featureNames.includes(f.name)) featureNames.push(f.name);
+  return { bullets: [limit, ...items], features: featureNames };
+}
+
 /** The add-ons a plan may buy: those that name no plan (every plan) and those that name this one. */
 export function addonsForPlan(addons: PricingAddon[], planCode: string): PricingAddon[] {
   return addons.filter((a) => a.eligiblePlanCodes.length === 0 || a.eligiblePlanCodes.includes(planCode));

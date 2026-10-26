@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { donationFigures } from './donation-rules';
 import { Decimal } from '@prisma/client/runtime/library';
 import { SettingsService } from '../settings/settings.service';
+import { assertMemberCapacity, MemberLimitError } from '../../middleware/subscription.middleware';
 
 // Validation schemas
 // Same canonical 6-value set used everywhere else (finance.controller.ts, welfare.validation.ts,
@@ -992,7 +993,15 @@ export const memberFinanceController = {
         }
       }
 
-      // No existing member found - create a new one
+      // No existing member found - create a new one (counts against the plan's member limit)
+      try {
+        await assertMemberCapacity(associationId);
+      } catch (limitError) {
+        if (limitError instanceof MemberLimitError) {
+          return res.status(403).json({ success: false, message: limitError.message, code: limitError.code, requiresUpgrade: true, limit: limitError.limit, currentCount: limitError.currentCount });
+        }
+        throw limitError;
+      }
       // Use email prefix as default name or generic placeholder
       const emailPrefix = userEmail ? userEmail.split('@')[0] : 'User';
       const nameParts = emailPrefix.trim().split(/[._-]/); // Split on common email separators

@@ -195,6 +195,44 @@ export const subscriptionController = {
     }
   },
 
+  /** A receipt for one paid subscription payment, built from what was stored at checkout (the quoted lines), never recalculated. */
+  async getReceipt(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const id = Number(req.params.id);
+      if (!associationId || !Number.isInteger(id)) return res.status(400).json({ success: false, message: 'Payment id is required' });
+
+      const payment = await prisma.paymentHistory.findFirst({
+        where: { id, status: 'SUCCESS', needsReview: false, subscription: { associationId } },
+        include: { subscription: { select: { association: { select: { name: true } } } } },
+      });
+      if (!payment) return res.status(404).json({ success: false, message: 'Receipt not found. Only confirmed payments have a receipt.' });
+
+      const quote = (payment.quote ?? {}) as { planName?: string; billingCycle?: string; lines?: Array<{ label: string; amountKobo: number }>; periodEndsAt?: string };
+      const totalKobo = payment.expectedAmountKobo ?? Math.round(Number(payment.amount) * 100);
+      res.json({
+        success: true,
+        data: {
+          receiptNumber: `SL-${String(payment.id).padStart(6, '0')}`,
+          association: payment.subscription.association.name,
+          reference: payment.reference,
+          provider: payment.provider,
+          currency: payment.currency,
+          paidAt: payment.paidAt ?? payment.createdAt,
+          purpose: payment.purpose,
+          planName: quote.planName ?? null,
+          billingCycle: quote.billingCycle ?? null,
+          periodEndsAt: quote.periodEndsAt ?? null,
+          lines: quote.lines ?? [],
+          totalKobo,
+        },
+      });
+    } catch (error) {
+      console.error('Get receipt error:', error);
+      res.status(500).json({ success: false, message: 'Failed to load the receipt' });
+    }
+  },
+
   // Cancel subscription (mark for cancellation at period end)
   async cancelSubscription(req: Request, res: Response) {
     try {

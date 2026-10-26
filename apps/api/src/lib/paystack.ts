@@ -42,15 +42,6 @@ export function verifyPaystackSignature(payload: string, signature: string): boo
   return hash === signature;
 }
 
-// Helper function to calculate subscription price based on billing cycle
-export function calculateSubscriptionAmount(
-  monthlyPrice: number,
-  annualPrice: number,
-  billingCycle: 'MONTHLY' | 'ANNUAL'
-): number {
-  return billingCycle === 'MONTHLY' ? monthlyPrice : annualPrice;
-}
-
 // Convert amount to Kobo (Paystack uses smallest currency unit)
 export function toKobo(amount: number): number {
   return Math.round(amount * 100);

@@ -6,7 +6,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { addonsForPlan, formatKobo, lowestMonthlyPrice, onboardingSentence, signupLabel } from '../../../web/src/lib/pricing-text';
+import { addonsForPlan, formatKobo, lowestMonthlyPrice, onboardingSentence, planCardContent, signupLabel } from '../../../web/src/lib/pricing-text';
 import type { OnboardingInfo, PricingAddon, PricingPlan } from '../../../web/src/types/pricing';
 
 const WEB_SRC = path.resolve(__dirname, '../../../web/src');
@@ -48,6 +48,46 @@ describe('what a new association is told it gets', () => {
     expect(signupLabel(o('TRIAL'))).toBe('Start Free Trial');
     expect(signupLabel(o('COMPLIMENTARY'))).toBe('Get Started');
     expect(signupLabel(o('BILLABLE'))).toBe('Get Started');
+  });
+});
+
+describe('what a plan card lists', () => {
+  const starter = {
+    ...plan('starter', 800_000, 8_000_000),
+    limits: { members: 100 },
+    modules: [
+      { code: 'members', name: 'Member Management', isCore: true },
+      { code: 'ledger', name: 'Financial Ledger', isCore: true },
+      { code: 'payments', name: 'Payment Processing', isCore: true },
+      { code: 'notifications', name: 'Notifications', isCore: false },
+    ],
+    features: [{ code: 'members.export', name: 'Member Export', moduleCode: 'members' }],
+  };
+
+  it('shows the core modules too: they are most of what a small association is buying', () => {
+    const { bullets } = planCardContent(starter, 'full');
+    expect(bullets).toEqual(['Up to 100 members', 'Member Management', 'Financial Ledger', 'Payment Processing', 'Notifications']);
+  });
+
+  it('lists the features the plan includes, by name', () => {
+    expect(planCardContent(starter, 'full').features).toEqual(['Member Export']);
+  });
+
+  it('puts the highlights the owner wrote first and never repeats a name', () => {
+    const withCopy = { ...starter, highlights: ['Email support', 'notifications'] };
+    expect(planCardContent(withCopy, 'full').bullets).toEqual(['Up to 100 members', 'Email support', 'notifications', 'Member Management', 'Financial Ledger', 'Payment Processing']);
+  });
+
+  it('keeps the homepage card short and says how many more there are', () => {
+    const big = { ...starter, modules: Array.from({ length: 9 }, (_, i) => ({ code: 'm' + i, name: 'Module ' + i, isCore: false })) };
+    const { bullets, features } = planCardContent(big, 'compact');
+    expect(bullets).toHaveLength(1 + 5 + 1);
+    expect(bullets[bullets.length - 1]).toBe('and 4 more');
+    expect(features).toEqual([]);
+  });
+
+  it('says unlimited when the plan has no member limit', () => {
+    expect(planCardContent({ ...starter, limits: {} }, 'full').bullets[0]).toBe('Unlimited members');
   });
 });
 

@@ -32,6 +32,7 @@ import {
   revokeAllForUser,
   listActiveSessions,
   revokeOtherSessions,
+  revokeSessionForUser,
 } from '../../src/services/refresh-token.service';
 
 const refreshTokenCreate = prisma.refreshToken.create as jest.Mock;
@@ -199,6 +200,22 @@ describe('listActiveSessions', () => {
 
     expect(sessions).toHaveLength(2);
     expect(sessions.map((s) => s.familyId)).toEqual(['a', 'b']);
+  });
+});
+
+describe('revokeSessionForUser', () => {
+  it('revokes only that family, and only if it belongs to the user', async () => {
+    refreshTokenUpdateMany.mockResolvedValue({ count: 1 });
+    expect(await revokeSessionForUser(10, 'fam-1')).toBe(1);
+    expect(refreshTokenUpdateMany).toHaveBeenLastCalledWith({
+      where: { userId: 10, familyId: 'fam-1', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('returns 0 for a session that is not theirs or is already signed out', async () => {
+    refreshTokenUpdateMany.mockResolvedValue({ count: 0 });
+    expect(await revokeSessionForUser(10, 'someone-elses')).toBe(0);
   });
 });
 

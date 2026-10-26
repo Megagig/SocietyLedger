@@ -10,7 +10,13 @@ export function PlanComparison({ plans }: { plans: PricingPlan[] }) {
   const rows: { code: string; name: string }[] = [];
   for (const plan of plans) {
     for (const m of plan.modules) {
-      if (!m.isCore && !rows.some((r) => r.code === m.code)) rows.push({ code: m.code, name: m.name });
+      if (!rows.some((r) => r.code === m.code)) rows.push({ code: m.code, name: m.name });
+    }
+  }
+  const featureRows: { code: string; name: string }[] = [];
+  for (const plan of plans) {
+    for (const f of plan.features) {
+      if (!featureRows.some((r) => r.code === f.code)) featureRows.push({ code: f.code, name: f.name });
     }
   }
   const members = (plan: PricingPlan) => (typeof plan.limits.members === 'number' ? plan.limits.members.toLocaleString('en-NG') : 'Unlimited');
@@ -52,7 +58,33 @@ export function PlanComparison({ plans }: { plans: PricingPlan[] }) {
                 return (
                   <td key={p.id} className="text-center px-4 py-3">
                     {included ? (
-                      <IconCheck size={18} className="inline text-teal-600" aria-label="Included" />
+                      <IconCheck size={18} className="inline text-primary-600" aria-label="Included" />
+                    ) : (
+                      <IconMinus size={18} className="inline text-gray-300 dark:text-gray-600" aria-label="Not included" />
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+          {featureRows.length > 0 && (
+            <tr className="border-b border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-900/40">
+              <th scope="colgroup" colSpan={plans.length + 1} className="text-left font-semibold text-gray-900 dark:text-white px-4 py-2">
+                Features
+              </th>
+            </tr>
+          )}
+          {featureRows.map((row) => (
+            <tr key={row.code} className="border-b border-gray-100 dark:border-gray-700/60 last:border-0">
+              <th scope="row" className="text-left font-normal text-gray-700 dark:text-gray-300 px-4 py-3">
+                {row.name}
+              </th>
+              {plans.map((p) => {
+                const included = p.features.some((f) => f.code === row.code);
+                return (
+                  <td key={p.id} className="text-center px-4 py-3">
+                    {included ? (
+                      <IconCheck size={18} className="inline text-primary-600" aria-label="Included" />
                     ) : (
                       <IconMinus size={18} className="inline text-gray-300 dark:text-gray-600" aria-label="Not included" />
                     )}

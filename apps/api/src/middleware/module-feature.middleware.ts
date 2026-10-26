@@ -21,6 +21,14 @@ const getFeatureFlagMode = (): 'shadow' | 'enforce' => {
 };
 
 /**
+ * The association a request belongs to. The tenant resolver sets `tenantId`, but a few routers (exports) skip it and rely on the signed-in
+ * user's association instead. Reading only `tenantId` made a check on those routers silently pass, so fall back to the user.
+ */
+export function tenantOf(req: TenantRequest): number | undefined {
+  return req.tenantId ?? (req as TenantRequest & { user?: { associationId?: number | null } }).user?.associationId ?? undefined;
+}
+
+/**
  * Middleware factory to require a specific module
  * 
  * Usage:
@@ -29,7 +37,7 @@ const getFeatureFlagMode = (): 'shadow' | 'enforce' => {
 export function requireModule(moduleCode: string) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       // Skip check if no tenant context (handled by tenant middleware)
       if (!associationId) {
@@ -85,7 +93,7 @@ export function requireModule(moduleCode: string) {
 export function requireFeature(featureCode: string) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       // Skip check if no tenant context
       if (!associationId) {
@@ -134,7 +142,7 @@ export function requireFeature(featureCode: string) {
 export function requireModules(...moduleCodes: string[]) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       if (!associationId) {
         return next();
@@ -182,7 +190,7 @@ export function requireModules(...moduleCodes: string[]) {
 export function requireAnyModule(...moduleCodes: string[]) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       if (!associationId) {
         return next();
@@ -232,7 +240,7 @@ export function requireAnyModule(...moduleCodes: string[]) {
 export function checkModuleStatus(moduleCode: string) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       if (associationId) {
         const status = await ModuleFeatureService.getModuleStatus(associationId, moduleCode);

@@ -10,6 +10,7 @@ import {
   revokeAllForUser,
   listActiveSessions,
   revokeOtherSessions as revokeOtherSessionsService,
+  revokeSessionForUser,
 } from '../../services/refresh-token.service';
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
@@ -1045,6 +1046,31 @@ export class AuthController {
     } catch (error) {
       console.error('Get sessions error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch sessions' });
+    }
+  }
+
+  /** DELETE /api/auth/sessions/:familyId — signs out one device (the Security screen's "Sign out device"). */
+  async revokeSessionHandler(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+      const familyId = String(req.params.familyId ?? '');
+      if (!familyId) {
+        res.status(400).json({ success: false, message: 'Session id is required' });
+        return;
+      }
+      const revoked = await revokeSessionForUser(userId, familyId);
+      if (revoked === 0) {
+        res.status(404).json({ success: false, message: 'That session was not found or is already signed out' });
+        return;
+      }
+      res.status(200).json({ success: true, message: 'Device signed out' });
+    } catch (error) {
+      console.error('Revoke session error:', error);
+      res.status(500).json({ success: false, message: 'Failed to sign out that device' });
     }
   }
 

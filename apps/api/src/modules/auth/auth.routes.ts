@@ -25,6 +25,7 @@ router.post('/refresh', (req, res) => authController.refresh(req, res));
 router.get('/me', authMiddleware, (req, res) => authController.me(req, res));
 router.post('/change-password', authMiddleware, (req, res) => authController.changePassword(req, res));
 router.get('/sessions', authMiddleware, (req, res) => authController.getSessions(req, res));
+router.delete('/sessions/:familyId', authMiddleware, (req, res) => authController.revokeSessionHandler(req, res));
 router.post('/sessions/revoke-others', authMiddleware, (req, res) => authController.revokeOtherSessionsHandler(req, res));
 
 // Impersonation handoff exchange (B4) — tenant-optional

@@ -20,7 +20,16 @@ How plans, prices and access work, how to deploy the change, and how to test it.
    - `SUBSCRIPTION_NOMBA_ENABLED=true` to offer Nomba at subscription checkout again once its KYC is done.
    - `FEATURE_FLAG_MODE=shadow` only as an emergency switch. Modules and features are enforced by default.
 
-Things that behave differently after this change: modules and features are enforced from the plan version; the member limit is enforced when adding members one at a time or by bulk import; a returning association can no longer start a self-service trial (the onboarding policy decides what a new association is given).
+Things that behave differently after this change: modules and features are enforced from the plan version; the member limit is enforced on every path that creates a member (add, bulk import, sign-up by link, setup-wizard team invites, self-created profiles); each paid subscription payment has a printable receipt; a returning association can no longer start a self-service trial (the onboarding policy decides what a new association is given).
+
+## Before the first production deploy
+
+1. Back up the database. The migration drops the old plan price/feature columns and the old plan-module tables.
+2. Set `REVALIDATE_SECRET` (same value on API and web) and `WEB_REVALIDATE_URL` on the API. Leave `FEATURE_FLAG_MODE` empty and `SUBSCRIPTION_NOMBA_ENABLED` false.
+3. After the container starts, run once: `pnpm -F @societyledger/api exec tsx scripts/rebalance-default-plans.ts` to preview, then `--apply` (and `--migrate` to move current subscribers). Seeds never change an existing plan.
+4. In Admin, open Settings, Billing and confirm the onboarding policy, plan, duration, grace days and reminder days before real sign-ups arrive.
+5. Tell existing associations that Starter no longer includes custom roles, bulk transactions, advanced penalties or PDF/Excel financial exports, and that audit logs need the Audit module.
+6. Smoke test on staging with Paystack test keys: sign up, get approved, expire the subscription, resubscribe, publish a price change and watch the landing page.
 
 ## Testing
 

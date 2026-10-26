@@ -97,13 +97,6 @@ const PLATFORM_MODULES = [
     sortOrder: 12,
   },
   {
-    code: 'integrations',
-    name: 'Integrations & API',
-    description: 'API access, webhooks, and third-party integrations',
-    isCore: false,
-    sortOrder: 13,
-  },
-  {
     code: 'ai',
     name: 'AI Integration',
     description: 'AI financial assistant, smart reports, and natural language queries',
@@ -115,37 +108,44 @@ const PLATFORM_MODULES = [
 // Platform Feature Definitions (fine-grained)
 const PLATFORM_FEATURES = [
   // Members module features
-  { moduleCode: 'members', code: 'members.bulk_import', name: 'Bulk Member Import', description: 'Import members from CSV/Excel files' },
-  { moduleCode: 'members', code: 'members.custom_roles', name: 'Custom Roles', description: 'Create and manage custom roles' },
-  { moduleCode: 'members', code: 'members.export', name: 'Member Export', description: 'Export member data to CSV/Excel' },
+  { moduleCode: 'members', code: 'members.bulk_import', name: 'Bulk Member Import', description: 'Import many members at once from a spreadsheet' },
+  { moduleCode: 'members', code: 'members.custom_roles', name: 'Custom Roles', description: 'Create, edit and delete your own roles with custom permissions' },
+  { moduleCode: 'members', code: 'members.export', name: 'Member Export', description: 'Export members to Excel and download member statements as PDF' },
   
   // Ledger module features
-  { moduleCode: 'ledger', code: 'ledger.export', name: 'Ledger Export', description: 'Export ledger data to PDF/Excel' },
-  { moduleCode: 'ledger', code: 'ledger.bulk_transactions', name: 'Bulk Transactions', description: 'Create transactions in bulk' },
-  { moduleCode: 'ledger', code: 'ledger.advanced_penalties', name: 'Advanced Penalties', description: 'Automated late fee calculation and penalty rules' },
+  { moduleCode: 'ledger', code: 'ledger.export', name: 'Ledger Export', description: 'Download a member ledger statement as PDF' },
+  { moduleCode: 'ledger', code: 'ledger.bulk_transactions', name: 'Bulk Transactions', description: 'Create, edit, delete and mark many transactions as paid at once' },
+  { moduleCode: 'ledger', code: 'ledger.advanced_penalties', name: 'Advanced Penalties', description: 'Penalty rules and automatic late fees' },
   
   // Reports module features
-  { moduleCode: 'reports', code: 'reports.custom', name: 'Custom Reports', description: 'Build custom report templates' },
-  { moduleCode: 'reports', code: 'reports.scheduled', name: 'Scheduled Reports', description: 'Schedule automatic report generation' },
-  { moduleCode: 'reports', code: 'reports.export_pdf', name: 'PDF Export', description: 'Export reports to PDF with branding' },
-  { moduleCode: 'reports', code: 'reports.export_excel', name: 'Excel Export', description: 'Export reports to Excel' },
+  { moduleCode: 'reports', code: 'reports.custom', name: 'Custom Reports', description: 'Export a report with the fields you choose' },
+  { moduleCode: 'reports', code: 'reports.export_pdf', name: 'Financial PDF Export', description: 'Export the financial summary as a PDF' },
+  { moduleCode: 'reports', code: 'reports.export_excel', name: 'Financial Excel Export', description: 'Export the financial summary as an Excel file' },
   
   // Audit module features
-  { moduleCode: 'audit', code: 'audit.export', name: 'Audit Export', description: 'Export audit logs' },
-  { moduleCode: 'audit', code: 'audit.advanced', name: 'Advanced Audit', description: 'Advanced audit analytics and filtering' },
   
   // Integrations module features
-  { moduleCode: 'integrations', code: 'integrations.api_access', name: 'API Access', description: 'REST API access for integrations' },
-  { moduleCode: 'integrations', code: 'integrations.webhooks', name: 'Webhooks', description: 'Configure webhook endpoints' },
   
   // AI module features
-  { moduleCode: 'ai', code: 'ai.financial_assistant', name: 'Financial Assistant', description: 'AI-powered financial queries' },
-  { moduleCode: 'ai', code: 'ai.smart_reports', name: 'Smart Reports', description: 'AI-generated report summaries' },
-  { moduleCode: 'ai', code: 'ai.document_qa', name: 'Document Q&A', description: 'AI-powered document question answering' },
+  { moduleCode: 'ai', code: 'ai.financial_assistant', name: 'Financial Assistant', description: 'Ask the assistant questions about your finances and chat with it' },
+  { moduleCode: 'ai', code: 'ai.smart_reports', name: 'Smart Reports', description: 'Have the assistant write a report summary for you' },
 ];
+
+/**
+ * Things that were once in the catalog but have nothing behind them in the product, so a plan must not be able to promise them.
+ * Removing a row also removes it from any plan version that included it.
+ */
+const RETIRED_FEATURES = ['reports.scheduled', 'audit.export', 'audit.advanced', 'integrations.api_access', 'integrations.webhooks', 'ai.document_qa'];
+const RETIRED_MODULES = ['integrations'];
 
 export async function seedPlatformModules() {
   console.log('🌱 Seeding platform modules...');
+
+  const retiredFeatures = await prisma.platformFeature.deleteMany({ where: { code: { in: RETIRED_FEATURES } } });
+  const retiredModules = await prisma.platformModule.deleteMany({ where: { code: { in: RETIRED_MODULES } } });
+  if (retiredFeatures.count + retiredModules.count > 0) {
+    console.log(`🧹 Retired ${retiredModules.count} module(s) and ${retiredFeatures.count} feature(s) that had nothing behind them`);
+  }
 
   // Create or update modules
   for (const moduleData of PLATFORM_MODULES) {

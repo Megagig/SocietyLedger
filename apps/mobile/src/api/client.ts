@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { toast } from 'sonner-native';
 
+import { deviceHeaders } from '@/lib/device';
 import { clearTokens, getTokenCache, setTokens } from '@/lib/secure';
 import { useModulesStore } from '@/stores/modules';
 import { useSessionStore } from '@/stores/session';
@@ -119,6 +120,10 @@ client.interceptors.request.use(async (config) => {
   }
   config.headers.set('X-Client', 'mobile');
   config.headers.set('X-App-Version', appVersionHeader());
+  // The API stores these when a session starts, so the Security screen can name each device instead of "Unknown device".
+  const device = deviceHeaders();
+  if (device.name) config.headers.set('X-Device-Name', device.name);
+  config.headers.set('X-Device-Platform', device.platform);
 
   return config;
 });

@@ -94,6 +94,8 @@
   "auth.unlock.title": "SocietyLedger is locked",
   "auth.unlock.tryAgain": "Unlock",
   "auth.unlock.signOut": "Sign out",
+  "auth.unlock.failed": "Could not unlock ({{code}}). Try again, or sign out and sign in with your password.",
+  "auth.unlock.lockTurnedOff": "App lock was turned off because this device has no screen lock or biometrics set up. You can turn it back on in Security.",
   "auth.biometricPrompt.title": "Unlock faster next time?",
   "auth.biometricPrompt.description": "Use Face ID or fingerprint to open SocietyLedger without typing your password.",
   "auth.biometricPrompt.enable": "Enable",

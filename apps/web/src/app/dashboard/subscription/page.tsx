@@ -255,6 +255,12 @@ function SubscriptionContent() {
                     {date(payment.createdAt)} · {payment.purpose === 'ADDON' ? 'Add-on' : payment.purpose === 'PLAN_CHANGE' ? 'Plan change' : 'Subscription'}
                   </div>
                 </div>
+                <div className="flex items-center gap-3">
+                {payment.status === 'SUCCESS' && !payment.needsReview && (
+                  <a href={`/dashboard/subscription/receipt/${payment.id}`} className="text-xs sm:text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                    Receipt
+                  </a>
+                )}
                 <span
                   className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
                     payment.needsReview ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : payment.status === 'SUCCESS' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : payment.status === 'FAILED' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
@@ -262,6 +268,7 @@ function SubscriptionContent() {
                 >
                   {payment.needsReview ? 'Being checked' : payment.status === 'SUCCESS' ? 'Paid' : payment.status === 'PENDING' ? 'Pending' : payment.status === 'FAILED' ? 'Failed' : payment.status}
                 </span>
+                </div>
               </div>
             ))}
           </div>

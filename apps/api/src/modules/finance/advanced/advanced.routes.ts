@@ -1,3 +1,4 @@
+import { requireFeature } from '../../../middleware/module-feature.middleware';
 import { Router } from 'express';
 import { advancedController } from './advanced.controller';
 import { authMiddleware } from '../../../middleware/auth.middleware';
@@ -121,6 +122,7 @@ router.get('/penalties/rules',
 
 // Create penalty rule
 router.post('/penalties/rules',
+  requireFeature('ledger.advanced_penalties'),
   requirePermission(PERMISSIONS.FINANCE_CREATE),
   advancedController.createRule
 );
@@ -133,24 +135,28 @@ router.get('/penalties/rules/:id',
 
 // Update rule
 router.patch('/penalties/rules/:id',
+  requireFeature('ledger.advanced_penalties'),
   requirePermission(PERMISSIONS.FINANCE_EDIT),
   advancedController.updateRule
 );
 
 // Delete rule
 router.delete('/penalties/rules/:id',
+  requireFeature('ledger.advanced_penalties'),
   requirePermission(PERMISSIONS.FINANCE_DELETE),
   advancedController.deleteRule
 );
 
 // What applying late fees now would do — shown to the officer before they confirm
 router.get('/penalties/late-fees/preview',
+  requireFeature('ledger.advanced_penalties'),
   requirePermission(PERMISSIONS.FINANCE_APPROVE),
   advancedController.previewLateFees
 );
 
 // Apply late fees (manual trigger)
 router.post('/penalties/apply-late-fees',
+  requireFeature('ledger.advanced_penalties'),
   requirePermission(PERMISSIONS.FINANCE_APPROVE),
   advancedController.applyLateFees
 );

@@ -3,7 +3,7 @@ import { exportsController } from './exports.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
-import { requireModule } from '../../middleware/module-feature.middleware';
+import { requireModule, requireFeature } from '../../middleware/module-feature.middleware';
 
 const router: Router = Router();
 
@@ -17,6 +17,8 @@ router.use(authMiddleware);
  */
 router.post(
   '/financial-pdf',
+  requireModule('reports'),
+  requireFeature('reports.export_pdf'),
   requirePermission(PERMISSIONS.EXPORT_FINANCIAL),
   exportsController.exportFinancialPDF
 );
@@ -41,6 +43,8 @@ router.post(
  */
 router.post(
   '/financial-excel',
+  requireModule('reports'),
+  requireFeature('reports.export_excel'),
   requirePermission(PERMISSIONS.EXPORT_FINANCIAL),
   exportsController.exportFinancialExcel
 );
@@ -52,6 +56,7 @@ router.post(
  */
 router.post(
   '/member-statement/:memberId',
+  requireFeature('members.export'),
   requirePermission(PERMISSIONS.EXPORT_MEMBERS),
   exportsController.exportMemberStatementPDF
 );
@@ -63,6 +68,7 @@ router.post(
  */
 router.post(
   '/members-excel',
+  requireFeature('members.export'),
   requirePermission(PERMISSIONS.EXPORT_MEMBERS),
   exportsController.exportAllMembersExcel
 );
@@ -74,6 +80,7 @@ router.post(
  */
 router.post(
   '/custom-members-excel',
+  requireFeature('members.export'),
   requirePermission(PERMISSIONS.EXPORT_MEMBERS),
   exportsController.exportCustomMembersExcel
 );
@@ -85,6 +92,8 @@ router.post(
  */
 router.post(
   '/custom-report-excel',
+  requireModule('reports'),
+  requireFeature('reports.custom'),
   requirePermission(PERMISSIONS.EXPORT_FINANCIAL),
   exportsController.exportCustomReportExcel
 );

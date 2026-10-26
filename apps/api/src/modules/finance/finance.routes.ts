@@ -1,3 +1,4 @@
+import { requireFeature } from '../../middleware/module-feature.middleware';
 import { Router } from 'express';
 import { financeController } from './finance.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
@@ -89,6 +90,7 @@ router.post('/transactions',
 
 // Bulk create transactions (assign to multiple members)
 router.post('/transactions/bulk',
+  requireFeature('ledger.bulk_transactions'),
   requirePermission(PERMISSIONS.TRANSACTION_CREATE),
   financeController.bulkCreateTransactions
 );
@@ -113,6 +115,7 @@ router.post('/transactions/:id/void-and-replace',
 
 // Bulk edit transactions (unpaid only)
 router.patch('/transactions/bulk-edit',
+  requireFeature('ledger.bulk_transactions'),
   requirePermission(PERMISSIONS.TRANSACTION_EDIT),
   financeController.bulkEditTransactions
 );
@@ -125,6 +128,7 @@ router.delete('/transactions/:id',
 
 // Bulk delete transactions
 router.post('/transactions/bulk-delete',
+  requireFeature('ledger.bulk_transactions'),
   requirePermission(PERMISSIONS.TRANSACTION_DELETE),
   financeController.bulkDeleteTransactions
 );
@@ -159,6 +163,7 @@ router.post('/payments',
 
 // Bulk mark as paid
 router.post('/payments/bulk',
+  requireFeature('ledger.bulk_transactions'),
   requireAnyPermission([PERMISSIONS.PAYMENT_CREATE, PERMISSIONS.PAYMENT_CONFIRM]),
   financeController.bulkMarkPaid
 );

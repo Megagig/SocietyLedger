@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/api/endpoints/auth';
 import { memberInvitesApi } from '@/api/endpoints/memberInvites';
 import { setTokens } from '@/lib/secure';
+import { useAppLockStore } from '@/stores/appLock';
 import { useSessionStore } from '@/stores/session';
 import { mapLoginUserToSessionUser } from './mappers';
 
@@ -18,6 +19,8 @@ export function useLogin() {
     onSuccess: async ({ user, token, refreshToken, accessTokenExpiresAt }) => {
       await setTokens({ accessToken: token, refreshToken, accessTokenExpiresAt });
       setUser(mapLoginUserToSessionUser(user));
+      // The password was just checked. Signing out locks the app and the lock setting stays on, so without this a password sign-in lands on a biometric prompt again, and a phone whose biometrics fail is shut out for good.
+      useAppLockStore.getState().unlock();
       // Clear any stale cached data (e.g. 403 errors from before RBAC was fixed) so
       // queries re-fetch fresh data with the new session's permissions.
       queryClient.clear();

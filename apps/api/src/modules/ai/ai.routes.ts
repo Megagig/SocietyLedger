@@ -9,7 +9,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
-import { requireModule } from '../../middleware/module-feature.middleware';
+import { requireModule, requireFeature } from '../../middleware/module-feature.middleware';
 
 const router: Router = Router();
 
@@ -74,6 +74,7 @@ router.get(
  */
 router.post(
   '/financial/ask',
+  requireFeature('ai.financial_assistant'),
   requirePermission(PERMISSIONS.FINANCE_VIEW),
   aiController.askFinancialQuestion
 );
@@ -106,6 +107,7 @@ router.get(
  */
 router.post(
   '/reports/generate',
+  requireFeature('ai.smart_reports'),
   requirePermission(PERMISSIONS.REPORT_VIEW),
   aiController.generateReport
 );
@@ -122,6 +124,7 @@ router.post(
  */
 router.post(
   '/query',
+  requireFeature('ai.financial_assistant'),
   requirePermission(PERMISSIONS.FINANCE_VIEW),
   aiController.executeNaturalLanguageQuery
 );
@@ -138,6 +141,7 @@ router.post(
  */
 router.post(
   '/chat',
+  requireFeature('ai.financial_assistant'),
   requirePermission(PERMISSIONS.FINANCE_VIEW),
   aiController.chat
 );

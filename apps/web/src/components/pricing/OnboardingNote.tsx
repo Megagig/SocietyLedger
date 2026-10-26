@@ -22,7 +22,7 @@ export function OnboardingNote({ initial = null }: { initial?: OnboardingInfo | 
   const sentence = onboardingSentence(onboarding);
   if (!sentence) return null;
   return (
-    <p className="rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20 px-4 py-3 text-sm text-teal-900 dark:text-teal-100" role="note">
+    <p className="rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3 text-sm text-primary-900 dark:text-primary-100" role="note">
       {sentence}
       {onboarding && onboarding.policy !== 'BILLABLE' ? ' It ends on a fixed date, and your records are never deleted.' : ''}
     </p>

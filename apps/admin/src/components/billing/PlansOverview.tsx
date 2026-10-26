@@ -210,7 +210,7 @@ function AddonsTab() {
 interface PreviewPlan {
   id: number; name: string; description: string | null; badgeLabel: string | null; isRecommended: boolean; isDraft: boolean; isPublic: boolean; isActive: boolean;
   prices: { monthly: string; annual: string; annualSavings: string; annualSavingsKobo: number };
-  limits: { members?: number | null }; highlights: string[]; modules: { name: string; isCore: boolean }[];
+  limits: { members?: number | null }; highlights: string[]; modules: { name: string; isCore: boolean }[]; features: { name: string }[];
 }
 
 function PreviewTab() {
@@ -241,7 +241,10 @@ function PreviewTab() {
             {p.description && <Text size="sm" c="dimmed" mt="xs">{p.description}</Text>}
             <Stack gap={4} mt="md">
               <Text size="sm">{typeof p.limits.members === 'number' ? `Up to ${p.limits.members.toLocaleString('en-NG')} members` : 'Unlimited members'}</Text>
-              {(p.highlights.length ? p.highlights : p.modules.filter((m) => !m.isCore).map((m) => m.name)).map((h) => <Text key={h} size="sm">• {h}</Text>)}
+              {Array.from(new Set([...p.highlights, ...p.modules.map((m) => m.name)])).map((h) => <Text key={h} size="sm">• {h}</Text>)}
+              {p.features.length > 0 && (
+                <Text size="xs" c="dimmed" mt="xs"><b>Also includes:</b> {Array.from(new Set(p.features.map((f) => f.name))).join(', ')}</Text>
+              )}
             </Stack>
           </Card>
         ))}

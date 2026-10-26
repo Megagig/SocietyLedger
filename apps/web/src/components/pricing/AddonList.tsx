@@ -15,10 +15,10 @@ export function AddonList({ addons, planNames }: { addons: PricingAddon[]; planN
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">{addon.name}</h3>
             {addon.description && <p className="mt-1 text-gray-600 dark:text-gray-300">{addon.description}</p>}
             <p className="mt-4 text-gray-900 dark:text-white">
-              <span className="text-2xl font-bold text-teal-600 dark:text-teal-400">{addon.prices.monthly}</span>
+              <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">{addon.prices.monthly}</span>
               <span className="text-gray-600 dark:text-gray-400">/month</span>
               <span className="mx-2 text-gray-400">or</span>
-              <span className="text-xl font-semibold text-teal-600 dark:text-teal-400">{addon.prices.annual}</span>
+              <span className="text-xl font-semibold text-primary-600 dark:text-primary-400">{addon.prices.annual}</span>
               <span className="text-gray-600 dark:text-gray-400">/year</span>
             </p>
             {addon.eligiblePlanCodes.length > 0 && (

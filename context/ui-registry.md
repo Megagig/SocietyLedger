@@ -1655,10 +1655,12 @@ _(none)_
 - **`PlanGrid`** - the plan cards. Props: `plans`, `cycle`, `renderAction(plan, cycle)`, `currentPlanId`, `variant` (full/compact), `tone` (marketing/app). Reads everything from the plan object (price strings, highlights, limits, modules, recommended flag); contains no plan or price. Used by the landing page, homepage, pricing page and the in-app chooser.
 - **`BillingToggle`** - Monthly / Annually segmented control; shows the best saving across the plans on offer, computed from their prices.
 - **`PublicPlans`** - toggle + grid + optional comparison for the marketing pages. Takes the server-fetched pricing, or loads it in the browser when the server could not.
-- **`PlanComparison`** - accessible table of modules and the member limit across plans.
+- **`PlanComparison`** - accessible table of the member limit, every module (core included) and a "Features" section across plans. Card bullets come from `planCardContent` in `lib/pricing-text.ts` (limit, highlights, all module names; full variant also lists features).
 - **`AddonList`**, **`OnboardingNote`** (what a new association gets, from the onboarding settings), **`usePublicPricing`** (client hook for client-only pages).
 - **`components/subscription/SubscriptionBanners`** - `TrialEndingBanner` now also covers a paid period ending within 7 days and the grace period; `SubscriptionBlockedScreen` shows the end date, **Resubscribe Now**, billing and support links. **`VerifyPayment`** handles success, still-processing (re-checks), needs-review and failed.
 
 ### Admin (`apps/admin/src/components/billing/`)
 - **`VersionedEditor`** - one editor for a plan or an add-on: details/visibility (apply at once), a draft of prices, limits, modules and features, version history, and a publish dialog that shows the impact first (price change, modules added/removed, current subscribers, warnings, blockers) and requires a reason when changing something already on sale.
 - **`PlansOverview`** (tabs: Plans, Add-ons, Pricing preview, Migrations), **`MigrationsTab`** (preview, schedule with date and reason, history). Pages: `/plans`, `/plans/[id]`, `/plans/addons/[id]`, `/subscriptions`, `/subscriptions/[associationId]`.
+- **Receipt page** (`apps/web/src/app/dashboard/subscription/receipt/[id]/page.tsx`) - white card with receipt number, billed-to, what was paid for, quoted lines, total, and a print-hidden "Print or save as PDF" button. Linked as "Receipt" beside each confirmed payment on the Subscription page.
+- **Licences page** (`apps/web/src/app/licenses/page.tsx`) - same shell as the Privacy and Terms pages (gradient page, icon tile, `glass-strong` prose card, outline buttons to the sibling legal pages). Groups open-source packages with their licences.

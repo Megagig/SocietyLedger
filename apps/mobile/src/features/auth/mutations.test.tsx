@@ -1,5 +1,6 @@
 import { waitFor } from '@testing-library/react-native';
 
+import { useAppLockStore } from '@/stores/appLock';
 import { useSessionStore } from '@/stores/session';
 import { renderHookWithQueryClient } from '@/test-utils/renderWithProviders';
 
@@ -27,6 +28,7 @@ describe('useLogin', () => {
     mockSetTokens.mockClear();
     mockLogin.mockReset();
     useSessionStore.getState().reset();
+    useAppLockStore.getState().lock();
   });
 
   it('stores the token pair and populates the session store on success', async () => {
@@ -59,6 +61,7 @@ describe('useLogin', () => {
     });
     expect(useSessionStore.getState().status).toBe('authenticated');
     expect(useSessionStore.getState().user?.email).toBe('ada@example.com');
+    expect(useAppLockStore.getState().isLocked).toBe(false);
     unmount();
     queryClient.clear();
   });
@@ -72,6 +75,7 @@ describe('useLogin', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(mockSetTokens).not.toHaveBeenCalled();
     expect(useSessionStore.getState().status).toBe('unauthenticated');
+    expect(useAppLockStore.getState().isLocked).toBe(true);
     unmount();
     queryClient.clear();
   });

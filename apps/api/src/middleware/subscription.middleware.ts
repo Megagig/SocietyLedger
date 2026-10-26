@@ -17,6 +17,23 @@ export async function memberCapacity(associationId: number): Promise<{ limit: nu
   return { limit: limit === undefined ? null : limit, count };
 }
 
+/** Thrown by assertMemberCapacity; carries the same fields the middleware sends back. */
+export class MemberLimitError extends Error {
+  readonly code = 'MEMBER_LIMIT_REACHED';
+  constructor(readonly limit: number, readonly currentCount: number) {
+    super(`Your plan allows ${limit} active members and you have ${currentCount}. Upgrade your plan or add the Extra members add-on to add more.`);
+  }
+}
+
+/**
+ * For code that creates members outside the Members routes (sign-up by link, setup-wizard invites, self-created profiles).
+ * Throws MemberLimitError when adding `adding` more members would pass the plan's limit.
+ */
+export async function assertMemberCapacity(associationId: number, adding = 1): Promise<void> {
+  const { limit, count } = await memberCapacity(associationId);
+  if (limit !== null && count + adding > limit) throw new MemberLimitError(limit, count);
+}
+
 /**
  * Refuse a request that would take the association past its member limit.
  * `adding` says how many members the request creates (1 for a single add, the list length for a bulk import).

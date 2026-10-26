@@ -24,7 +24,7 @@ export function bestAnnualSavingPercent(plans: PricingPlan[]): number {
 export function BillingToggle({ cycle, onChange, plans, tone = 'marketing' }: BillingToggleProps) {
   const saving = bestAnnualSavingPercent(plans);
   const base = 'px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors';
-  const active = tone === 'app' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-300 shadow-sm';
+  const active = tone === 'app' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'bg-white dark:bg-gray-700 text-primary-700 dark:text-primary-300 shadow-sm';
   const idle = 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
 
   return (
