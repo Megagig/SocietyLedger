@@ -10,6 +10,7 @@ import {
   revokeAllForUser,
   listActiveSessions,
   revokeOtherSessions as revokeOtherSessionsService,
+  revokeSessionForUser,
 } from '../../services/refresh-token.service';
 import { TenantRequest } from '../../middleware/tenant.middleware';
 import { RBACService, RBACContext } from '../../services/rbac.service';
@@ -17,6 +18,7 @@ import { SettingsService } from '../settings/settings.service';
 import { isMemberDisabled, MEMBER_DISABLED_CODE, MEMBER_DISABLED_MESSAGE } from '../../lib/member-access';
 import { logSecurityEvent, requestContext } from '../../lib/security-audit-log';
 import { SecurityEventActorType, SecurityEventSeverity } from '@prisma/client';
+import { presentMemberPhoto } from '../../services/member-photo.service';
 import { loadSubscriptionAccess } from '../../services/subscription-access.service';
 import {
   createUserWithVerification,
@@ -84,6 +86,8 @@ export class AuthController {
                 firstName: true,
                 lastName: true,
                 memberId: true,
+                photoKey: true,
+                photoThumbKey: true,
               },
             },
             association: {
@@ -121,6 +125,8 @@ export class AuthController {
                 firstName: true,
                 lastName: true,
                 memberId: true,
+                photoKey: true,
+                photoThumbKey: true,
               },
             },
             association: {
@@ -330,7 +336,7 @@ export class AuthController {
             id: user.id,
             email: user.email,
             role: user.role,
-            member: user.member,
+            member: user.member ? await presentMemberPhoto(user.member, req.hostname) : user.member,
             association: isPlatformLogin ? {
               id: user.associationId,
               name: 'SocietyLedger Platform',
@@ -721,6 +727,8 @@ export class AuthController {
               memberId: true,
               email: true,
               phone: true,
+              photoKey: true,
+              photoThumbKey: true,
             },
           },
           userApproval: {
@@ -770,6 +778,7 @@ export class AuthController {
         data: {
           user: {
             ...user,
+            member: user.member ? await presentMemberPhoto(user.member, req.hostname) : user.member,
             association: isPlatformLogin ? {
               id: user.associationId,
               name: 'SocietyLedger Platform',
@@ -1045,6 +1054,31 @@ export class AuthController {
     } catch (error) {
       console.error('Get sessions error:', error);
       res.status(500).json({ success: false, message: 'Failed to fetch sessions' });
+    }
+  }
+
+  /** DELETE /api/auth/sessions/:familyId — signs out one device (the Security screen's "Sign out device"). */
+  async revokeSessionHandler(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+      const familyId = String(req.params.familyId ?? '');
+      if (!familyId) {
+        res.status(400).json({ success: false, message: 'Session id is required' });
+        return;
+      }
+      const revoked = await revokeSessionForUser(userId, familyId);
+      if (revoked === 0) {
+        res.status(404).json({ success: false, message: 'That session was not found or is already signed out' });
+        return;
+      }
+      res.status(200).json({ success: true, message: 'Device signed out' });
+    } catch (error) {
+      console.error('Revoke session error:', error);
+      res.status(500).json({ success: false, message: 'Failed to sign out that device' });
     }
   }
 

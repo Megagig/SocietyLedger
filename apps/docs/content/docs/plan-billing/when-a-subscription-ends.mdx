@@ -1,31 +1,34 @@
 ---
 title: "What happens when a subscription ends"
-description: "When a free trial or paid plan runs out, your association is paused until a payment is made. Your data is kept."
+description: "When a trial or paid plan runs out, your association is paused after a short grace period until a payment is made. Your data is kept."
 type: concept
 audience: ["admin"]
-platforms: ["web"]
+platforms: ["web", "mobile"]
 status: published
-lastVerified: "2026-11-03"
+lastVerified: "2026-10-26"
 related: ["/docs/plan-billing/free-trial", "/docs/plan-billing/cancelling-and-reactivating", "/docs/core-concepts/plans-and-modules"]
 ---
 
-When the free trial or a paid plan ends and isn't renewed, SocietyLedger pauses your association until a payment is made.
+When the starting period or a paid plan ends and isn't renewed, SocietyLedger pauses your association until a payment is made.
 
 ## How it works
 
-A paid plan that reaches the end of its period moves to **Past due** for a short grace period of 3 days, during which everything keeps working and the admin is emailed. If no payment arrives, it becomes **Expired**. A free trial goes straight to blocked when its last day passes. A cancelled plan keeps working until the period you already paid for ends.
+A paid plan that reaches the end of its period gets a short **grace period** (3 days unless SocietyLedger has set a different number). During it everything keeps working, a banner tells admins the date access will pause, and the admin is emailed. After the grace period, your association is paused, and the server enforces that: it applies to pages that were already open and to anything that tries to use your data directly. A free trial has no grace period. A cancelled plan keeps working until the period you already paid for ends.
 
 While an association is paused:
 
-- Everyone in it, including officers and members, sees a notice instead of the app, on the web and in the mobile app.
-- Admins and officers who can manage billing can still open the subscription pages on the web to pay. The mobile app doesn't take payments; it tells admins to renew on the web.
+- Everyone in it, including officers and members, sees a notice instead of the app, on the web and in the mobile app. The notice says when it ended.
+- Admins and officers who can manage billing can still open the subscription pages on the web, choose a plan and pay (**Resubscribe Now**), and reach help and support.
+- The mobile app doesn't take payments. It tells admins to resubscribe on the web.
 - Members are told to contact their administrator.
-- Nothing is deleted.
+- Nothing is deleted: members, transactions, documents and settings are all kept.
+
+Access comes back only when a payment is confirmed, or when SocietyLedger activates your subscription and records why. Choosing a plan or returning from a payment page on its own doesn't restore it.
 
 ## Why it matters
 
-Renew before the date shown on the subscription page. As soon as a payment is confirmed, access comes back for everyone.
+Renew before the date shown on the subscription page. You get reminders by email seven, three and one day before it ends. As soon as a payment is confirmed, access comes back for everyone.
 
 ## What you can do
 
-Keep payments on schedule. See [Your free trial](/docs/plan-billing/free-trial) for how the trial ends, or [Cancelling and reactivating](/docs/plan-billing/cancelling-and-reactivating) if you want to stop a renewal cleanly.
+Keep payments on schedule. See [Your starting period](/docs/plan-billing/free-trial) for how a new association's period ends, or [Cancelling and reactivating](/docs/plan-billing/cancelling-and-reactivating) if you want to stop a renewal cleanly.

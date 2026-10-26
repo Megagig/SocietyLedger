@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Pricing Plans - Affordable Association Management',
-  description: 'Transparent pricing for associations of all sizes. Start free, upgrade as you grow. Plans for cooperatives, HOAs, and town unions. No hidden fees.',
+  description: 'Transparent pricing for associations of all sizes. Pick the plan that fits and change it as you grow. Plans for cooperatives, HOAs, and town unions. No hidden fees.',
   keywords: [
     'societyledger pricing',
     'association management pricing',
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: 'Pricing | SocietyLedger',
-    description: 'Transparent pricing for associations of all sizes. Start free, upgrade as you grow.',
+    description: 'Transparent pricing for associations of all sizes. Pick the plan that fits and change it as you grow.',
     url: 'https://societyledger.com.ng/pricing',
     type: 'website',
   },

@@ -1,12 +1,12 @@
 ---
 title: "Billing history and receipts"
-description: "Your last 5 payments, right on the subscription page — no separate receipts yet."
+description: "Your last 5 payments, right on the subscription page, with a printable receipt for each confirmed payment."
 type: concept
 audience: ["admin"]
 platforms: ["web"]
 covers: ["PaymentHistory"]
 status: published
-lastVerified: "2026-10-14"
+lastVerified: "2026-10-26"
 related: ["/docs/plan-billing/subscribing-and-paying"]
 ---
 
@@ -16,13 +16,13 @@ Your payment history lives on the main Subscription page, not a separate screen.
 
 <Steps>
 <Step>Go to <MenuPath items={["Subscription"]} />.</Step>
-<Step>**Payment History** lists your 5 most recent payments, each with its amount, date and status (Success or Pending).</Step>
+<Step>**Payment History** lists your 5 most recent payments, each with its amount, date and status (Paid, Pending or Failed). A confirmed payment has a **Receipt** link.</Step>
 </Steps>
 
 <Screenshot src="/images/plan-billing/billing-history-1.webp" alt="Subscription page's Payment History section listing amount, date and status per payment" />
 
-<Callout type="note" title="No downloadable receipts yet">
-There's no invoice or receipt download anywhere in this list — if you need a record for your own accounting, the Paystack or Nomba confirmation from your payment is currently your only receipt.
+<Callout type="note" title="Receipts">
+Select **Receipt** beside a confirmed payment to see what you paid for, the amount and the payment reference. Use **Print or save as PDF** to keep a copy for your own accounting. Payments that are still pending, failed, or being checked have no receipt.
 </Callout>
 
 ## Why it matters

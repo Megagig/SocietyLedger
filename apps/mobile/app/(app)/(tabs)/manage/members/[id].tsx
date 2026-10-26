@@ -12,6 +12,7 @@ import { NoPermission } from '@/components/feedback/NoPermission';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Avatar } from '@/components/ui/Avatar';
+import { EditableAvatar } from '@/features/members/components/EditableAvatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/FilterChip';
@@ -117,7 +118,11 @@ export default function MemberDetailScreen() {
       ) : (
         <View className="gap-5 pb-8">
           <View className="items-center gap-2 pt-1">
-            <Avatar name={memberFullName(member)} size={64} colorSeed={member.id} />
+            {canEdit ? (
+              <EditableAvatar name={memberFullName(member)} size={96} colorSeed={member.id} imageUrl={member.photoUrl} target={{ kind: 'member', id: member.id }} testID="member-photo" />
+            ) : (
+              <Avatar name={memberFullName(member)} size={96} colorSeed={member.id} imageUrl={member.photoUrl} />
+            )}
             <Text variant="h2" align="center">
               {memberFullName(member)}
             </Text>

@@ -4,6 +4,11 @@ export interface SubscriptionAccess {
   status: string | null;
   trialEndsAt: string | null;
   trialDaysLeft: number | null;
+  /** When the paid or complimentary period ends (null for trials). */
+  periodEndsAt?: string | null;
+  /** True while a paid period has ended but the grace period still keeps the association in. */
+  inGrace?: boolean;
+  graceEndsAt?: string | null;
 }
 
 // User Types
@@ -42,6 +47,9 @@ export interface UserApproval {
 
 // Member Types
 export interface Member {
+  /** Signed links to the profile photo (full size and thumbnail); null or missing means show initials. */
+  photoUrl?: string | null;
+  thumbUrl?: string | null;
   id: number;
   userId?: number;
   associationId: number;

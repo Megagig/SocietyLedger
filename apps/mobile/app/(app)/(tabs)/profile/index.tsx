@@ -2,7 +2,7 @@ import { BookOpen, Bell, HelpCircle, Info, LogOut, Moon, Repeat, ShieldCheck, Us
 import { router, useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { Avatar } from '@/components/ui/Avatar';
+import { EditableAvatar } from '@/features/members/components/EditableAvatar';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -53,13 +53,13 @@ export default function ProfileScreen() {
       <View className="items-center gap-3 py-6">
         {profileQuery.isPending ? (
           <>
-            <Skeleton width={64} height={64} radius="full" />
+            <Skeleton width={96} height={96} radius="full" />
             <Skeleton width={160} height={20} />
             <Skeleton width={100} height={14} />
           </>
         ) : (
           <>
-            <Avatar name={displayName || 'Member'} size={64} shape="circle" colorSeed={profile?.id} />
+            <EditableAvatar name={displayName || 'Member'} size={96} colorSeed={profile?.id} imageUrl={profile?.photoUrl} target={{ kind: 'me' }} testID="profile-photo" />
             <View className="items-center gap-1">
               <Text variant="h2">{displayName || '—'}</Text>
               {profile?.memberId ? (

@@ -1,5 +1,6 @@
 'use client';
 
+import { SidebarAvatar } from '@/components/members/SidebarAvatar';
 import { useState, useEffect } from 'react';
 import { BrandMark } from '@/components/brand/BrandLogo';
 import Link from 'next/link';
@@ -1002,9 +1003,7 @@ export function AdminSidebar() {
         {user && user.email && (
           <div className="px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-green-500 flex items-center justify-center text-white font-semibold">
-                {user.email.charAt(0).toUpperCase()}
-              </div>
+              <SidebarAvatar email={user.email} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user.email}

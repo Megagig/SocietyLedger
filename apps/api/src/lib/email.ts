@@ -9,6 +9,7 @@
  */
 
 import { Resend } from 'resend';
+import { escapeHtml } from './escape-html';
 
 interface EmailOptions {
   to: string;
@@ -191,6 +192,41 @@ function getTemplateContent(template: string, data: Record<string, any>): string
   `;
 
   const templates: Record<string, (data: any) => string> = {
+    // One layout for every subscription and billing notice (onboarding, reminders, expiry, payment problems, plan changes).
+    'billing-notice': (data) => `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">${baseStyle}</head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${escapeHtml(String(data.heading ?? 'Your subscription'))}</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${escapeHtml(String(data.associationName ?? ''))},</h2>
+            ${(Array.isArray(data.paragraphs) ? data.paragraphs : []).map((p: string) => `<p>${escapeHtml(String(p))}</p>`).join('')}
+            ${
+              Array.isArray(data.facts) && data.facts.length
+                ? `<div class="highlight-box">${data.facts
+                    .map((f: { label: string; value: string }) => `<strong>${escapeHtml(String(f.label))}:</strong> ${escapeHtml(String(f.value))}<br>`)
+                    .join('')}</div>`
+                : ''
+            }
+            ${
+              data.ctaUrl
+                ? `<center><a href="${escapeHtml(String(data.ctaUrl))}" class="button">${escapeHtml(String(data.ctaLabel ?? 'Open SocietyLedger'))}</a></center>`
+                : ''
+            }
+          </div>
+          <div class="footer">
+            <p><strong>SocietyLedger</strong> - Simplifying Association Management</p>
+            <p><a href="mailto:${SUPPORT_EMAIL}">Contact Support</a> • <a href="${WEBSITE_URL}">Visit Website</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+
     'trial-expiry-warning': (data) => `
       <!DOCTYPE html>
       <html>

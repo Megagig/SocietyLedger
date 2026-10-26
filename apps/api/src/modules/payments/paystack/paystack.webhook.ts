@@ -4,7 +4,8 @@ import { PaystackService } from './paystack.service';
 import { PaystackWebhookEvent } from './paystack.types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
-import { resolvePaidPlan } from '../../../services/subscription-plan.service';
+import { activateFromPayment } from '../../../services/billing/lifecycle.service';
+import { notifyBillingEvent } from '../../../services/billing/billing-notifications.service';
 import { aiCredits } from '../../ai/ai-credits.service';
 import { creditVerifiedPurchase } from '../../sms/sms-engine';
 
@@ -100,8 +101,8 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
     return;
   }
 
-  // Check if this is a subscription payment (reference starts with SUB- or CHANGE-)
-  if (reference.startsWith('SUB-') || reference.startsWith('CHANGE-')) {
+  // Check if this is a subscription payment (reference starts with SUB-, CHANGE- or ADDON-)
+  if (reference.startsWith('SUB-') || reference.startsWith('CHANGE-') || reference.startsWith('ADDON-')) {
     await handleSubscriptionPayment(event);
     return;
   }
@@ -251,109 +252,25 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
 }
 
 /**
- * Handle subscription payment from webhook
+ * Handle subscription payment from webhook.
+ *
+ * The webhook, the verify endpoint and the return page can all report the same payment. They all go through activateFromPayment, which
+ * applies it exactly once, only if the amount Paystack confirms matches the quote stored at checkout, and records anything else for review.
  */
 async function handleSubscriptionPayment(event: PaystackWebhookEvent) {
-  const { reference, amount, paid_at, metadata } = event.data;
+  const { reference, amount, paid_at } = event.data;
 
   console.log(`✅ [WEBHOOK] Processing subscription payment for reference: ${reference}`);
 
-  // Find payment history record
-  const paymentHistory = await prisma.paymentHistory.findUnique({
-    where: { reference },
-    include: { subscription: true },
-  });
-
-  if (!paymentHistory) {
-    console.error(`❌ [WEBHOOK] Payment history not found for reference: ${reference}`);
-    return;
-  }
-
-  // Check if already processed (idempotency)
-  if (paymentHistory.status === 'SUCCESS') {
-    console.log(`⚠️  [WEBHOOK] Subscription payment already processed for reference: ${reference}`);
-    return;
-  }
-
-  const subscription = paymentHistory.subscription;
-  const amountPaid = PaystackService.koboToNaira(amount);
-
   try {
-    // Which plan was actually paid for (checkout metadata), not just the one currently on the row.
-    const paidPlan = await resolvePaidPlan(metadata, subscription);
-
-    // Calculate new period dates
-    const periodMonths = paidPlan.billingCycle === 'MONTHLY' ? 1 : 12;
-    const currentDate = new Date();
-    const periodEnd = new Date(currentDate);
-    periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
-
-    // Atomic transaction: update payment history, subscription, and association
-    await prisma.$transaction([
-      // Update payment history
-      prisma.paymentHistory.update({
-        where: { id: paymentHistory.id },
-        data: {
-          status: 'SUCCESS',
-          paidAt: new Date(paid_at),
-          metadata: event.data as any,
-        },
-      }),
-
-      // Update subscription status
-      prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: 'ACTIVE',
-          planId: paidPlan.planId,
-          billingCycle: paidPlan.billingCycle,
-          currentPeriodStart: currentDate,
-          currentPeriodEnd: periodEnd,
-          renewalDate: periodEnd,
-          ...(paidPlan.isPlanChange ? { pendingPlanId: null, pendingBillingCycle: null } : {}),
-        },
-      }),
-
-      // Update association subscription expiry
-      prisma.association.update({
-        where: { id: subscription.associationId },
-        data: {
-          subscriptionExpiresAt: periodEnd,
-          status: 'ACTIVE',
-          ...(paidPlan.tier ? { tier: paidPlan.tier } : {}),
-        },
-      }),
-
-      // Audit log
-      prisma.auditLog.create({
-        data: {
-          associationId: subscription.associationId,
-          userId: 1, // System user
-          action: 'SUBSCRIPTION_PAYMENT_SUCCESS',
-          tableName: 'subscriptions',
-          recordId: subscription.id,
-          newValues: {
-            reference,
-            amount: amountPaid,
-            provider: 'paystack',
-            subscriptionId: subscription.id,
-            planId: paidPlan.planId,
-            billingCycle: paidPlan.billingCycle,
-            periodEnd: periodEnd.toISOString(),
-          },
-        },
-      }),
-    ]);
-
-    console.log(`✅ [WEBHOOK] Subscription payment recorded successfully`);
-    console.log(`   Reference: ${reference}`);
-    console.log(`   Amount: ₦${amountPaid.toLocaleString()}`);
-    console.log(`   Subscription ID: ${subscription.id}`);
-    console.log(`   Period End: ${periodEnd.toLocaleDateString()}`);
-
-    // TODO: Send subscription confirmation email
-    // TODO: Send notification to association admins
-
+    const result = await activateFromPayment({
+      reference,
+      verifiedAmountKobo: Math.round(amount),
+      paidAt: paid_at ? new Date(paid_at) : undefined,
+      gatewayPayload: event.data,
+    });
+    console.log(`   Outcome: ${result.outcome}${result.subscriptionId ? ` (subscription ${result.subscriptionId})` : ''}`);
+    if (result.outcome === 'NOT_FOUND') console.error(`❌ [WEBHOOK] Payment history not found for reference: ${reference}`);
   } catch (error: any) {
     console.error(`❌ [WEBHOOK] Error recording subscription payment:`, error);
     throw error;
@@ -368,6 +285,16 @@ async function handleChargeFailed(event: PaystackWebhookEvent) {
 
   console.log(`❌ [WEBHOOK] Processing charge.failed for reference: ${reference}`);
   console.log(`   Reason: ${gateway_response}`);
+
+  // A failed subscription or add-on payment: record it as failed (never touching one that was already applied) and tell the association.
+  if (reference.startsWith('SUB-') || reference.startsWith('CHANGE-') || reference.startsWith('ADDON-')) {
+    const payment = await prisma.paymentHistory.findUnique({ where: { reference }, include: { subscription: { select: { associationId: true } } } });
+    if (payment && !payment.appliedAt && payment.status === 'PENDING') {
+      await prisma.paymentHistory.update({ where: { id: payment.id }, data: { status: 'FAILED', metadata: event.data as any } });
+      void notifyBillingEvent({ type: 'PAYMENT_FAILED', associationId: payment.subscription.associationId });
+    }
+    return;
+  }
 
   // Find gateway transaction
   const gatewayTransaction = await prisma.paymentGatewayTransaction.findUnique({

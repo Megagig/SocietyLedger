@@ -1,1064 +1,376 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
-import { calculateSubscriptionAmount } from '../../lib/paystack';
-import { BillingCycle } from '@prisma/client';
 import { PaystackService } from '../payments/paystack/paystack.service';
 import { nombaService } from '../payments/nomba/nomba.service';
-import { resolvePaidPlan } from '../../services/subscription-plan.service';
+import { getAssociationAccess } from '../../services/subscription-access.service';
+import { getPlanVersionTerms, listPurchasableAddons, listPurchasablePlans } from '../../services/billing/catalog.service';
+import { activateFromPayment, cancelAddonAtPeriodEnd } from '../../services/billing/lifecycle.service';
+import { startAddonCheckout, startPlanCheckout, subscriptionProviders } from '../../services/billing/checkout.service';
+import { BillingError, quoteAddonCheckout, quotePlanCheckout } from '../../services/billing/quote.service';
+import { notifyBillingEvent } from '../../services/billing/billing-notifications.service';
+import { nairaToKobo } from '../../services/billing/money';
+import { pickDecidingSubscription } from '../../services/subscription-access.service';
+
+const cycleSchema = z.enum(['MONTHLY', 'ANNUAL']);
+const planCheckoutSchema = z.object({
+  planId: z.coerce.number().int().positive(),
+  billingCycle: cycleSchema,
+  addonIds: z.array(z.coerce.number().int().positive()).max(20).optional(),
+  provider: z.string().optional(),
+});
+const addonCheckoutSchema = z.object({
+  addonIds: z.array(z.coerce.number().int().positive()).min(1).max(20),
+  provider: z.string().optional(),
+});
+
+/** Turn a thrown BillingError / validation error into the API's usual failure shape. */
+function fail(res: Response, error: unknown, fallback: string) {
+  if (error instanceof BillingError) {
+    return res.status(error.status).json({ success: false, message: error.message, code: error.code });
+  }
+  if (error instanceof z.ZodError) {
+    return res.status(400).json({ success: false, message: 'Please check what you selected and try again.', errors: error.issues });
+  }
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message: fallback });
+}
+
+async function currentSubscriptionRow(associationId: number) {
+  const subs = await prisma.subscription.findMany({
+    where: { associationId },
+    include: { plan: true },
+  });
+  return pickDecidingSubscription(subs);
+}
 
 export const subscriptionController = {
-  // Get all available plans
-  async getPlans(req: Request, res: Response) {
+  /** The plans, add-ons and payment providers this association can buy right now (published, visible, purchasable only). */
+  async getPlans(_req: Request, res: Response) {
     try {
-      const plans = await prisma.plan.findMany({
-        where: { isActive: true },
-        orderBy: { priceMonthly: 'asc' },
-      });
-
-      return res.status(200).json({
-        success: true,
-        data: plans,
-      });
+      const [plans, addons] = await Promise.all([listPurchasablePlans(), listPurchasableAddons()]);
+      return res.status(200).json({ success: true, data: { plans, addons, providers: subscriptionProviders() } });
     } catch (error) {
-      console.error('Error fetching plans:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to fetch plans',
-      });
+      return fail(res, error, 'Failed to fetch plans');
     }
   },
 
-  // Get current association's subscription
+  /** The association's subscription, the exact terms it is on, its add-ons, and whether it may use the app right now. */
   async getCurrentSubscription(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
 
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association ID is required',
-        });
-      }
+      const subscription = await currentSubscriptionRow(associationId);
+      if (!subscription) return res.status(404).json({ success: false, message: 'No subscription found' });
 
-      const subscription = await prisma.subscription.findFirst({
-        where: { 
-          associationId,
-          status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] }
-        },
-        include: {
-          plan: true,
-          payments: {
-            orderBy: { createdAt: 'desc' },
-            take: 5,
-          },
-        },
-      });
-
-      if (!subscription) {
-        return res.status(404).json({
-          success: false,
-          message: 'No active subscription found',
-        });
-      }
-
-      // G54: surface the pending downgrade (if any) so the UI can keep
-      // showing it was scheduled, not just at the moment changePlan() ran
-      let pendingPlan = null;
-      if (subscription.pendingPlanId) {
-        pendingPlan = await prisma.plan.findUnique({
-          where: { id: subscription.pendingPlanId },
-        });
-      }
+      const [terms, access, payments, termHistory, addons, pendingPlan] = await Promise.all([
+        getPlanVersionTerms(subscription.planVersionId),
+        getAssociationAccess(associationId),
+        prisma.paymentHistory.findMany({
+          where: { subscriptionId: subscription.id },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: { id: true, amount: true, currency: true, status: true, provider: true, reference: true, paidAt: true, purpose: true, createdAt: true, needsReview: true },
+        }),
+        prisma.subscriptionTerm.findMany({
+          where: { subscriptionId: subscription.id },
+          orderBy: { startsAt: 'desc' },
+          take: 10,
+          select: { id: true, kind: true, billingCycle: true, startsAt: true, endsAt: true, amountKobo: true, reason: true },
+        }),
+        prisma.tenantAddon.findMany({
+          where: { associationId, subscriptionId: subscription.id, status: 'ACTIVE', endsAt: { gt: new Date() } },
+          include: { addonVersion: { include: { addon: { select: { id: true, code: true, name: true } } } } },
+        }),
+        subscription.pendingPlanId ? prisma.plan.findUnique({ where: { id: subscription.pendingPlanId } }) : null,
+      ]);
 
       return res.status(200).json({
         success: true,
-        data: { ...subscription, pendingPlan },
+        data: {
+          ...subscription,
+          terms,
+          access,
+          payments,
+          termHistory,
+          addons: addons.map((a) => ({
+            id: a.id,
+            addonId: a.addonVersion.addon.id,
+            code: a.addonVersion.addon.code,
+            name: a.addonVersion.addon.name,
+            endsAt: a.endsAt,
+            cancelAtPeriodEnd: a.cancelAtPeriodEnd,
+            amountPaidKobo: a.amountPaidKobo,
+          })),
+          pendingPlan,
+        },
       });
     } catch (error) {
-      console.error('Error fetching subscription:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to fetch subscription',
-      });
+      return fail(res, error, 'Failed to fetch subscription');
     }
   },
 
-  // Initialize subscription payment
+  /** Price a checkout without paying: the review step before payment. Always computed from the server's published terms. */
+  async quote(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const input = planCheckoutSchema.parse(req.body);
+      const quote = await quotePlanCheckout(associationId, input);
+      return res.status(200).json({ success: true, data: quote });
+    } catch (error) {
+      return fail(res, error, 'Failed to price this subscription');
+    }
+  },
+
+  /** Start paying for a plan (new, renewal or change). The amount comes from the server's own quote. */
   async initializePayment(req: Request, res: Response) {
     try {
-      const { planId, billingCycle, provider = 'paystack' } = req.body;
       const associationId = req.user?.associationId;
-      const userEmail = req.user?.email;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association ID is required',
-        });
-      }
-
-      if (!planId || !billingCycle) {
-        return res.status(400).json({
-          success: false,
-          message: 'Plan ID and billing cycle are required',
-        });
-      }
-
-      // Validate provider
-      if (!['paystack', 'nomba'].includes(provider)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid payment provider. Use "paystack" or "nomba"',
-        });
-      }
-
-      // Check if Nomba is configured when selected
-      if (provider === 'nomba' && !nombaService.isConfigured()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Nomba payment provider is not configured. Please use Paystack or contact support.',
-        });
-      }
-
-      // Get the plan
-      const plan = await prisma.plan.findUnique({
-        where: { id: parseInt(planId) },
+      if (!associationId || !req.user) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      // `change-plan` posts newPlanId; plain checkout posts planId. Either way only the plan, cycle and add-ons are read.
+      const body = { ...req.body, planId: req.body?.planId ?? req.body?.newPlanId };
+      const input = planCheckoutSchema.parse(body);
+      const result = await startPlanCheckout({
+        associationId,
+        buyer: { userId: req.user.id, email: req.user.email },
+        planId: input.planId,
+        billingCycle: input.billingCycle,
+        addonIds: input.addonIds,
+        provider: input.provider,
       });
-
-      if (!plan || !plan.isActive) {
-        return res.status(404).json({
-          success: false,
-          message: 'Plan not found or inactive',
-        });
-      }
-
-      // Calculate amount based on billing cycle
-      const amount = calculateSubscriptionAmount(
-        parseFloat(plan.priceMonthly.toString()),
-        parseFloat(plan.priceAnnual.toString()),
-        billingCycle as BillingCycle
-      );
-
-      // Get association details
-      const association = await prisma.association.findUnique({
-        where: { id: associationId },
-      });
-
-      if (!association) {
-        return res.status(404).json({
-          success: false,
-          message: 'Association not found',
-        });
-      }
-
-      // Check if subscription already exists
-      let subscription = await prisma.subscription.findFirst({
-        where: {
-          associationId,
-          status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] }
-        },
-      });
-
-      // Create or update subscription
-      if (!subscription) {
-        // G79: don't start a free trial for an association that has ever had one,
-        // even if its old subscription has since expired/been cancelled — the status
-        // filter above only catches a currently-active trial, not a past one. Goes
-        // straight to a real (unpaid, pending-verification) billing period instead —
-        // the same period-length verifyPaystackPayment/verifyNombaPayment use once
-        // the actual payment this function redirects to afterward is confirmed.
-        if (association.hasEverTrialed) {
-          const currentDate = new Date();
-          const periodEnd = new Date(currentDate);
-          periodEnd.setMonth(periodEnd.getMonth() + (billingCycle === 'MONTHLY' ? 1 : 12));
-          // Upsert, not create: (associationId, planId) is unique, and the lookup
-          // above skips EXPIRED/CANCELLED rows — re-subscribing to the same plan
-          // must revive that row rather than collide with it (P2002).
-          const periodData = {
-            status: 'ACTIVE' as const,
-            billingCycle: billingCycle as BillingCycle,
-            currentPeriodStart: currentDate,
-            currentPeriodEnd: periodEnd,
-            trialEndsAt: null,
-            cancelAtPeriodEnd: false,
-            pendingPlanId: null,
-            pendingBillingCycle: null,
-          };
-          subscription = await prisma.subscription.upsert({
-            where: { associationId_planId: { associationId, planId: plan.id } },
-            create: { associationId, planId: plan.id, ...periodData },
-            update: periodData,
-          });
-        } else {
-          const trialDays = 14;
-          const currentDate = new Date();
-          const trialEnd = new Date(currentDate);
-          trialEnd.setDate(trialEnd.getDate() + trialDays);
-
-          const trialData = {
-            status: 'TRIALING' as const,
-            billingCycle: billingCycle as BillingCycle,
-            trialEndsAt: trialEnd,
-            currentPeriodStart: currentDate,
-            currentPeriodEnd: trialEnd,
-          };
-          subscription = await prisma.subscription.upsert({
-            where: { associationId_planId: { associationId, planId: plan.id } },
-            create: { associationId, planId: plan.id, ...trialData },
-            update: trialData,
-          });
-          await prisma.association.update({
-            where: { id: associationId },
-            data: { hasEverTrialed: true },
-          });
-        }
-      }
-
-      // Initialize payment based on provider
-      if (provider === 'paystack') {
-        return await subscriptionController.initializePaystackPayment(
-          req, res, subscription, association, userEmail, amount, plan.id, billingCycle
-        );
-      } else {
-        return await subscriptionController.initializeNombaPayment(
-          req, res, subscription, association, userEmail, amount, plan.id, billingCycle
-        );
-      }
+      return respondToCheckout(res, result);
     } catch (error) {
-      console.error('Error initializing payment:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to initialize payment',
-      });
+      return fail(res, error, 'Failed to initialize payment');
     }
   },
 
-  // G56: start a 14-day trial with no gateway redirect at all — the Plans
-  // page promise ("No credit card required") previously had no path that
-  // actually skipped payment; initializePayment's own TRIALING-row creation
-  // always preceded a forced redirect to Paystack/Nomba.
-  async startTrial(req: Request, res: Response) {
+  async quoteAddons(req: Request, res: Response) {
     try {
-      const { planId } = req.body;
       const associationId = req.user?.associationId;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association ID is required',
-        });
-      }
-
-      if (!planId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Plan ID is required',
-        });
-      }
-
-      const plan = await prisma.plan.findUnique({
-        where: { id: parseInt(planId) },
-      });
-
-      if (!plan || !plan.isActive) {
-        return res.status(404).json({
-          success: false,
-          message: 'Plan not found or inactive',
-        });
-      }
-
-      // Same scoping initializePayment already uses for "does a subscription
-      // already exist" — one free trial per association, not per plan.
-      const existingSubscription = await prisma.subscription.findFirst({
-        where: {
-          associationId,
-          status: { in: ['ACTIVE', 'TRIALING', 'PAST_DUE'] },
-        },
-      });
-
-      if (existingSubscription) {
-        return res.status(400).json({
-          success: false,
-          message: 'A trial or subscription already exists for this association',
-        });
-      }
-
-      // G79: a trial is a once-ever benefit, not scoped to the currently-active
-      // subscription status — an expired/cancelled association can't start a new
-      // free trial by picking a different plan than the one that expired.
-      const association = await prisma.association.findUnique({ where: { id: associationId } });
-      if (association?.hasEverTrialed) {
-        return res.status(400).json({
-          success: false,
-          message: 'This association has already used its free trial. Please choose a plan to subscribe.',
-        });
-      }
-
-      const trialDays = 14;
-      const now = new Date();
-      const trialEnd = new Date(now);
-      trialEnd.setDate(trialEnd.getDate() + trialDays);
-
-      const subscription = await prisma.subscription.create({
-        data: {
-          associationId,
-          planId: plan.id,
-          status: 'TRIALING',
-          billingCycle: 'MONTHLY',
-          trialEndsAt: trialEnd,
-          currentPeriodStart: now,
-          currentPeriodEnd: trialEnd,
-        },
-      });
-
-      await prisma.association.update({
-        where: { id: associationId },
-        data: { hasEverTrialed: true },
-      });
-
-      return res.status(201).json({
-        success: true,
-        message: 'Your 14-day free trial has started',
-        data: subscription,
-      });
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const input = addonCheckoutSchema.parse(req.body);
+      return res.status(200).json({ success: true, data: await quoteAddonCheckout(associationId, input) });
     } catch (error) {
-      console.error('Error starting trial:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to start trial',
-      });
+      return fail(res, error, 'Failed to price these add-ons');
     }
   },
 
-  // Initialize Paystack payment
-  async initializePaystackPayment(
-    req: Request,
-    res: Response,
-    subscription: any,
-    association: any,
-    userEmail: string | undefined,
-    amount: number,
-    planId: number,
-    billingCycle: string
-  ) {
-    const reference = PaystackService.generateReference('SUB');
-    const paystackService = new PaystackService();
-    
-    const paystackResponse = await paystackService.initializePayment({
-      email: userEmail || association.name,
-      amount: PaystackService.nairaToKobo(amount),
-      reference,
-      callback_url: `${process.env.FRONTEND_URL}/subscription/verify`,
-      metadata: {
-        subscriptionId: subscription.id,
-        associationId: association.id,
-        planId,
-        billingCycle,
-        associationName: association.name,
-        subdomain: association.subdomain,
-        provider: 'paystack',
-      },
-    });
-
-    if (!paystackResponse.status) {
-      return res.status(400).json({
-        success: false,
-        message: 'Failed to initialize Paystack payment',
-      });
+  async initializeAddonPayment(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId || !req.user) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const input = addonCheckoutSchema.parse(req.body);
+      const result = await startAddonCheckout({ associationId, buyer: { userId: req.user.id, email: req.user.email }, addonIds: input.addonIds, provider: input.provider });
+      return respondToCheckout(res, result);
+    } catch (error) {
+      return fail(res, error, 'Failed to initialize payment');
     }
-
-    // Create payment history record
-    await prisma.paymentHistory.create({
-      data: {
-        subscriptionId: subscription.id,
-        amount,
-        currency: 'NGN',
-        status: 'PENDING',
-        provider: 'paystack',
-        reference: paystackResponse.data.reference,
-        accessCode: paystackResponse.data.access_code,
-        authorizationUrl: paystackResponse.data.authorization_url,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Payment initialized successfully',
-      data: {
-        provider: 'paystack',
-        authorizationUrl: paystackResponse.data.authorization_url,
-        accessCode: paystackResponse.data.access_code,
-        reference: paystackResponse.data.reference,
-      },
-    });
   },
 
-  // Initialize Nomba payment
-  async initializeNombaPayment(
-    req: Request,
-    res: Response,
-    subscription: any,
-    association: any,
-    userEmail: string | undefined,
-    amount: number,
-    planId: number,
-    billingCycle: string
-  ) {
-    const reference = `NMB-SUB-${Date.now()}-${subscription.id}`;
-    
-    const nombaResponse = await nombaService.initializePayment({
-      amount: nombaService.convertToKobo(amount),
-      email: userEmail || 'noemail@societyledger.com',
-      reference,
-      callbackUrl: `${process.env.FRONTEND_URL}/subscription/verify`,
-      metadata: {
-        subscriptionId: subscription.id,
-        associationId: association.id,
-        planId,
-        billingCycle,
-        associationName: association.name,
-        subdomain: association.subdomain,
-        provider: 'nomba',
-      },
-    });
-
-    // Create payment history record
-    await prisma.paymentHistory.create({
-      data: {
-        subscriptionId: subscription.id,
-        amount,
-        currency: 'NGN',
-        status: 'PENDING',
-        provider: 'nomba',
-        reference,
-        accessCode: nombaResponse.data.orderReference,
-        authorizationUrl: nombaResponse.data.checkoutLink,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Payment initialized successfully',
-      data: {
-        provider: 'nomba',
-        checkoutLink: nombaResponse.data.checkoutLink,
-        orderReference: nombaResponse.data.orderReference,
-        reference,
-      },
-    });
+  /** Stop an add-on renewing (it keeps working until its end date), or turn renewal back on. */
+  async setAddonRenewal(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const id = z.coerce.number().int().positive().parse(req.params.id);
+      const stop = z.object({ stop: z.boolean() }).parse(req.body).stop;
+      const row = await cancelAddonAtPeriodEnd({ associationId, tenantAddonId: id, undo: !stop });
+      return res.status(200).json({ success: true, message: stop ? 'This add-on will not renew.' : 'This add-on will renew with your plan.', data: row });
+    } catch (error) {
+      return fail(res, error, 'Failed to update the add-on');
+    }
   },
 
-  // Verify payment
+  /** Confirm a payment with the gateway and, only if it is verified and matches the quote, activate it. Safe to call repeatedly. */
   async verifyPayment(req: Request, res: Response) {
     try {
       const { reference } = req.params;
-
-      if (!reference) {
-        return res.status(400).json({
-          success: false,
-          message: 'Payment reference is required',
-        });
-      }
-
-      // Determine provider from reference prefix
-      const isNomba = reference.startsWith('NMB-');
-      
-      if (isNomba) {
-        return await subscriptionController.verifyNombaPayment(req, res, reference);
-      } else {
-        return await subscriptionController.verifyPaystackPayment(req, res, reference);
-      }
+      if (!reference) return res.status(400).json({ success: false, message: 'Payment reference is required' });
+      return reference.startsWith('NMB-') ? await verifyNombaPayment(res, reference) : await verifyPaystackPayment(res, reference);
     } catch (error: any) {
       console.error('Error verifying payment:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to verify payment',
-        error: error.message,
-      });
+      return res.status(500).json({ success: false, message: 'Failed to verify payment' });
     }
   },
 
-  // Verify Paystack payment
-  async verifyPaystackPayment(req: Request, res: Response, reference: string) {
-    const paystackService = new PaystackService();
-    const verification = await paystackService.verifyPayment(reference);
+  /** A receipt for one paid subscription payment, built from what was stored at checkout (the quoted lines), never recalculated. */
+  async getReceipt(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      const id = Number(req.params.id);
+      if (!associationId || !Number.isInteger(id)) return res.status(400).json({ success: false, message: 'Payment id is required' });
 
-    if (!verification.status || verification.data.status !== 'success') {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment verification failed',
-        data: {
-          status: verification.data?.status,
-          gateway_response: verification.data?.gateway_response,
-        },
+      const payment = await prisma.paymentHistory.findFirst({
+        where: { id, status: 'SUCCESS', needsReview: false, subscription: { associationId } },
+        include: { subscription: { select: { association: { select: { name: true } } } } },
       });
-    }
+      if (!payment) return res.status(404).json({ success: false, message: 'Receipt not found. Only confirmed payments have a receipt.' });
 
-    // Get payment history record
-    const paymentHistory = await prisma.paymentHistory.findUnique({
-      where: { reference },
-      include: { subscription: true },
-    });
-
-    if (!paymentHistory) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment record not found',
-      });
-    }
-
-    // Check if already processed (idempotency)
-    if (paymentHistory.status === 'SUCCESS') {
-      const association = await prisma.association.findUnique({
-        where: { id: paymentHistory.subscription.associationId },
-        select: { subdomain: true, name: true },
-      });
-
-      return res.status(200).json({
+      const quote = (payment.quote ?? {}) as { planName?: string; billingCycle?: string; lines?: Array<{ label: string; amountKobo: number }>; periodEndsAt?: string };
+      const totalKobo = payment.expectedAmountKobo ?? Math.round(Number(payment.amount) * 100);
+      res.json({
         success: true,
-        message: 'Payment already verified',
         data: {
-          subscription: paymentHistory.subscription,
-          payment: verification.data,
-          subdomain: association?.subdomain,
-          associationName: association?.name,
+          receiptNumber: `SL-${String(payment.id).padStart(6, '0')}`,
+          association: payment.subscription.association.name,
+          reference: payment.reference,
+          provider: payment.provider,
+          currency: payment.currency,
+          paidAt: payment.paidAt ?? payment.createdAt,
+          purpose: payment.purpose,
+          planName: quote.planName ?? null,
+          billingCycle: quote.billingCycle ?? null,
+          periodEndsAt: quote.periodEndsAt ?? null,
+          lines: quote.lines ?? [],
+          totalKobo,
         },
       });
+    } catch (error) {
+      console.error('Get receipt error:', error);
+      res.status(500).json({ success: false, message: 'Failed to load the receipt' });
     }
-
-    // Calculate new period dates
-    const subscription = paymentHistory.subscription;
-
-    // Review fix (R4.1 follow-up): a plan-change upgrade's Paystack
-    // metadata was never read here, so "upgrade" never actually switched
-    // the plan — and separately, a stale pendingPlanId from an earlier
-    // deferred downgrade was never cleared when a real change completed.
-    // Both are fixed together: an upgrade confirmation applies the real
-    // plan and billing cycle, and always clears any pending deferred one.
-    const paidPlan = await resolvePaidPlan(verification.data.metadata, subscription);
-    const isPlanChange = paidPlan.isPlanChange;
-    const effectivePlanId = paidPlan.planId;
-    const effectiveBillingCycle = paidPlan.billingCycle;
-
-    const periodMonths = effectiveBillingCycle === 'MONTHLY' ? 1 : 12;
-    const currentDate = new Date();
-    const periodEnd = new Date(currentDate);
-    periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
-
-    // Atomic transaction: update payment history, subscription, and association
-    await prisma.$transaction([
-      prisma.paymentHistory.update({
-        where: { id: paymentHistory.id },
-        data: {
-          status: 'SUCCESS',
-          paidAt: new Date(verification.data.paid_at),
-          metadata: verification.data as any,
-        },
-      }),
-      prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: 'ACTIVE',
-          planId: effectivePlanId,
-          billingCycle: effectiveBillingCycle,
-          currentPeriodStart: currentDate,
-          currentPeriodEnd: periodEnd,
-          renewalDate: periodEnd,
-          // Only an actual plan-change confirmation supersedes a pending
-          // deferred change — a plain renewal on the current plan must
-          // leave an existing pending downgrade exactly as scheduled.
-          ...(isPlanChange ? { pendingPlanId: null, pendingBillingCycle: null } : {}),
-        },
-      }),
-      prisma.association.update({
-        where: { id: subscription.associationId },
-        data: {
-          subscriptionExpiresAt: periodEnd,
-          status: 'ACTIVE',
-          ...(paidPlan.tier ? { tier: paidPlan.tier } : {}),
-        },
-      }),
-      prisma.auditLog.create({
-        data: {
-          associationId: subscription.associationId,
-          userId: 1,
-          action: 'SUBSCRIPTION_PAYMENT_VERIFIED',
-          tableName: 'subscriptions',
-          recordId: subscription.id,
-          newValues: {
-            reference,
-            amount: PaystackService.koboToNaira(verification.data.amount),
-            provider: 'paystack',
-            subscriptionId: subscription.id,
-            planId: effectivePlanId,
-            billingCycle: effectiveBillingCycle,
-            periodEnd: periodEnd.toISOString(),
-            ...(isPlanChange ? { planChangeFromPlanId: subscription.planId } : {}),
-          },
-        },
-      }),
-    ]);
-
-    console.log(`✅ [VERIFY] Paystack subscription payment verified successfully`);
-
-    const [association, updatedSubscription] = await Promise.all([
-      prisma.association.findUnique({
-        where: { id: subscription.associationId },
-        select: { subdomain: true, name: true },
-      }),
-      prisma.subscription.findUnique({ where: { id: subscription.id }, include: { plan: true } }),
-    ]);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Payment verified successfully',
-      data: {
-        subscription: updatedSubscription,
-        payment: verification.data,
-        subdomain: association?.subdomain,
-        associationName: association?.name,
-      },
-    });
   },
 
-  // Verify Nomba payment
-  async verifyNombaPayment(req: Request, res: Response, reference: string) {
-    const nombaVerification = await nombaService.verifyPayment(reference);
-
-    if (nombaVerification.data.status !== 'success') {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment verification failed',
-        data: {
-          status: nombaVerification.data.status,
-        },
-      });
-    }
-
-    // Get payment history record
-    const paymentHistory = await prisma.paymentHistory.findUnique({
-      where: { reference },
-      include: { subscription: true },
-    });
-
-    if (!paymentHistory) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment record not found',
-      });
-    }
-
-    // Check if already processed (idempotency)
-    if (paymentHistory.status === 'SUCCESS') {
-      const association = await prisma.association.findUnique({
-        where: { id: paymentHistory.subscription.associationId },
-        select: { subdomain: true, name: true },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Payment already verified',
-        data: {
-          subscription: paymentHistory.subscription,
-          subdomain: association?.subdomain,
-          associationName: association?.name,
-        },
-      });
-    }
-
-    // Calculate new period dates
-    const subscription = paymentHistory.subscription;
-
-    // Review fix (R4.1 follow-up): same reasoning as verifyPaystackPayment
-    // — apply a real plan-change confirmation's new plan/cycle for real,
-    // and only then clear any pending deferred change. Not currently
-    // reachable (changePlan's upgrade branch only ever initializes
-    // Paystack), kept symmetric in case Nomba upgrades are added later.
-    const paidPlan = await resolvePaidPlan((nombaVerification.data as any)?.metadata, subscription);
-    const isPlanChange = paidPlan.isPlanChange;
-    const effectivePlanId = paidPlan.planId;
-    const effectiveBillingCycle = paidPlan.billingCycle;
-
-    const periodMonths = effectiveBillingCycle === 'MONTHLY' ? 1 : 12;
-    const currentDate = new Date();
-    const periodEnd = new Date(currentDate);
-    periodEnd.setMonth(periodEnd.getMonth() + periodMonths);
-
-    const amountInNaira = nombaService.convertToNaira(nombaVerification.data.amount);
-
-    // Atomic transaction
-    await prisma.$transaction([
-      prisma.paymentHistory.update({
-        where: { id: paymentHistory.id },
-        data: {
-          status: 'SUCCESS',
-          paidAt: new Date(),
-          metadata: nombaVerification.data as any,
-        },
-      }),
-      prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: 'ACTIVE',
-          planId: effectivePlanId,
-          billingCycle: effectiveBillingCycle,
-          currentPeriodStart: currentDate,
-          currentPeriodEnd: periodEnd,
-          renewalDate: periodEnd,
-          ...(isPlanChange ? { pendingPlanId: null, pendingBillingCycle: null } : {}),
-        },
-      }),
-      prisma.association.update({
-        where: { id: subscription.associationId },
-        data: {
-          subscriptionExpiresAt: periodEnd,
-          status: 'ACTIVE',
-          ...(paidPlan.tier ? { tier: paidPlan.tier } : {}),
-        },
-      }),
-      prisma.auditLog.create({
-        data: {
-          associationId: subscription.associationId,
-          userId: 1,
-          action: 'SUBSCRIPTION_PAYMENT_VERIFIED',
-          tableName: 'subscriptions',
-          recordId: subscription.id,
-          newValues: {
-            reference,
-            amount: amountInNaira,
-            provider: 'nomba',
-            subscriptionId: subscription.id,
-            planId: effectivePlanId,
-            billingCycle: effectiveBillingCycle,
-            periodEnd: periodEnd.toISOString(),
-            ...(isPlanChange ? { planChangeFromPlanId: subscription.planId } : {}),
-          },
-        },
-      }),
-    ]);
-
-    console.log(`✅ [VERIFY] Nomba subscription payment verified successfully`);
-
-    const [association, updatedSubscription] = await Promise.all([
-      prisma.association.findUnique({
-        where: { id: subscription.associationId },
-        select: { subdomain: true, name: true },
-      }),
-      prisma.subscription.findUnique({ where: { id: subscription.id }, include: { plan: true } }),
-    ]);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Payment verified successfully',
-      data: {
-        subscription: updatedSubscription,
-        subdomain: association?.subdomain,
-        associationName: association?.name,
-      },
-    });
-  },
-
-  // Cancel subscription
+  // Cancel subscription (mark for cancellation at period end)
   async cancelSubscription(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association ID is required',
-        });
-      }
-
-      const subscription = await prisma.subscription.findFirst({
-        where: { 
-          associationId,
-          status: { in: ['ACTIVE', 'PAST_DUE'] }
-        },
-      });
-
-      if (!subscription) {
-        return res.status(404).json({
-          success: false,
-          message: 'No active subscription found',
-        });
-      }
-
-      // Mark for cancellation at period end
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          cancelAtPeriodEnd: true,
-        },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Subscription will be cancelled at the end of the billing period',
-        data: subscription,
-      });
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
+      const subscription = await prisma.subscription.findFirst({ where: { associationId, status: { in: ['ACTIVE', 'PAST_DUE'] } } });
+      if (!subscription) return res.status(404).json({ success: false, message: 'No active subscription found' });
+      await prisma.subscription.update({ where: { id: subscription.id }, data: { cancelAtPeriodEnd: true } });
+      return res.status(200).json({ success: true, message: 'Subscription will be cancelled at the end of the billing period', data: subscription });
     } catch (error) {
-      console.error('Error cancelling subscription:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to cancel subscription',
-      });
+      return fail(res, error, 'Failed to cancel subscription');
     }
   },
 
-  // Reactivate subscription
+  // Reactivate subscription (remove cancellation flag)
   async reactivateSubscription(req: Request, res: Response) {
     try {
       const associationId = req.user?.associationId;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association ID is required',
-        });
-      }
-
+      if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
       const subscription = await prisma.subscription.findFirst({
-        where: { 
-          associationId,
-          status: { in: ['ACTIVE', 'PAST_DUE'] },
-          cancelAtPeriodEnd: true,
-        },
+        where: { associationId, status: { in: ['ACTIVE', 'PAST_DUE'] }, cancelAtPeriodEnd: true },
       });
-
-      if (!subscription) {
-        return res.status(404).json({
-          success: false,
-          message: 'No subscription marked for cancellation found',
-        });
-      }
-
-      // Remove cancellation flag
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          cancelAtPeriodEnd: false,
-        },
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Subscription reactivated successfully',
-        data: subscription,
-      });
+      if (!subscription) return res.status(404).json({ success: false, message: 'No subscription marked for cancellation found' });
+      await prisma.subscription.update({ where: { id: subscription.id }, data: { cancelAtPeriodEnd: false } });
+      return res.status(200).json({ success: true, message: 'Subscription reactivated successfully', data: subscription });
     } catch (error) {
-      console.error('Error reactivating subscription:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to reactivate subscription',
-      });
-    }
-  },
-
-  // Change plan (upgrade/downgrade) with proration
-  async changePlan(req: Request, res: Response) {
-    try {
-      const associationId = req.user?.associationId;
-      const { newPlanId, billingCycle } = req.body;
-
-      if (!associationId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Association ID is required',
-        });
-      }
-
-      if (!newPlanId) {
-        return res.status(400).json({
-          success: false,
-          message: 'New plan ID is required',
-        });
-      }
-
-      // Get current subscription
-      const currentSubscription = await prisma.subscription.findFirst({
-        where: { 
-          associationId,
-          status: { in: ['ACTIVE', 'TRIALING'] },
-        },
-        include: { plan: true },
-      });
-
-      if (!currentSubscription) {
-        return res.status(404).json({
-          success: false,
-          message: 'No active subscription found',
-        });
-      }
-
-      // Get new plan
-      const newPlan = await prisma.plan.findUnique({
-        where: { id: newPlanId },
-      });
-
-      if (!newPlan || !newPlan.isActive) {
-        return res.status(404).json({
-          success: false,
-          message: 'Plan not found or inactive',
-        });
-      }
-
-      // G54: requesting the current (already-active) plan while a downgrade
-      // is pending cancels that pending change instead of erroring out —
-      // otherwise a deferred downgrade would have no way back.
-      if (currentSubscription.pendingPlanId && currentSubscription.planId === newPlanId) {
-        await prisma.subscription.update({
-          where: { id: currentSubscription.id },
-          data: { pendingPlanId: null, pendingBillingCycle: null },
-        });
-
-        return res.status(200).json({
-          success: true,
-          message: 'Pending plan change cancelled — you will stay on your current plan',
-          data: { changeType: 'cancelled', requiresPayment: false },
-        });
-      }
-
-      // Check if it's the same plan
-      if (currentSubscription.planId === newPlanId && currentSubscription.billingCycle === (billingCycle || currentSubscription.billingCycle)) {
-        return res.status(400).json({
-          success: false,
-          message: 'You are already on this plan',
-        });
-      }
-
-      // Calculate proration
-      const now = new Date();
-      const currentPeriodEnd = currentSubscription.currentPeriodEnd;
-      const daysRemaining = Math.ceil((currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const totalDays = currentSubscription.billingCycle === 'ANNUAL' ? 365 : 30;
-      const usedDays = totalDays - daysRemaining;
-
-      // Calculate current plan cost
-      const currentPlanPrice = currentSubscription.billingCycle === 'ANNUAL'
-        ? currentSubscription.plan.priceAnnual.toNumber()
-        : currentSubscription.plan.priceMonthly.toNumber();
-
-      // Calculate new plan cost
-      const newBillingCycle = billingCycle || currentSubscription.billingCycle;
-      const newPlanPrice = newBillingCycle === 'ANNUAL'
-        ? newPlan.priceAnnual.toNumber()
-        : newPlan.priceMonthly.toNumber();
-
-      // Calculate prorated amounts
-      const usedAmount = (currentPlanPrice / totalDays) * usedDays;
-      const remainingCredit = currentPlanPrice - usedAmount;
-      const proratedAmount = Math.max(0, newPlanPrice - remainingCredit);
-
-      // Determine if upgrade or downgrade
-      const isUpgrade = newPlanPrice > currentPlanPrice;
-      const changeType = isUpgrade ? 'upgrade' : 'downgrade';
-
-      // For upgrades, charge immediately; for downgrades, apply at period end
-      if (isUpgrade && proratedAmount > 0) {
-        // Initialize payment for prorated amount
-        const reference = PaystackService.generateReference('CHANGE');
-        
-        try {
-          const paystackService = new PaystackService();
-          const response = await paystackService.initializePayment({
-            email: req.user?.email || '',
-            amount: PaystackService.nairaToKobo(proratedAmount),
-            reference,
-            metadata: {
-              type: 'plan_change',
-              subscriptionId: currentSubscription.id,
-              newPlanId,
-              billingCycle: newBillingCycle,
-              proratedAmount,
-              remainingCredit,
-              changeType,
-            },
-          });
-
-          // Create payment history record
-          await prisma.paymentHistory.create({
-            data: {
-              subscriptionId: currentSubscription.id,
-              amount: proratedAmount,
-              reference,
-              status: 'PENDING',
-              provider: 'paystack',
-              accessCode: response.data.access_code,
-              authorizationUrl: response.data.authorization_url,
-            },
-          });
-
-          return res.status(200).json({
-            success: true,
-            message: 'Payment required for plan upgrade',
-            data: {
-              changeType: 'upgrade',
-              requiresPayment: true,
-              proratedAmount,
-              remainingCredit,
-              daysRemaining,
-              authorizationUrl: response.data.authorization_url,
-              reference,
-            },
-          });
-        } catch (paystackError: any) {
-          console.error('Paystack error:', paystackError);
-          return res.status(500).json({
-            success: false,
-            message: paystackError.message || 'Failed to initialize payment',
-          });
-        }
-      } else {
-        // Downgrade - deferred: planId/billingCycle stay as-is until
-        // checkSubscriptionRenewal's pending-change sweep applies these at
-        // currentPeriodEnd (G54 — this used to apply immediately despite
-        // the success message below claiming otherwise).
-        await prisma.subscription.update({
-          where: { id: currentSubscription.id },
-          data: {
-            pendingPlanId: newPlanId,
-            pendingBillingCycle: newBillingCycle,
-          },
-        });
-
-        // Create audit log
-        await prisma.auditLog.create({
-          data: {
-            userId: req.user?.id!,
-            associationId,
-            action: 'CHANGE_PLAN',
-            tableName: 'subscriptions',
-            recordId: currentSubscription.id,
-            newValues: {
-              oldPlanId: currentSubscription.planId,
-              newPlanId,
-              oldBillingCycle: currentSubscription.billingCycle,
-              newBillingCycle,
-              changeType,
-              effectiveDate: currentPeriodEnd,
-            },
-          },
-        });
-
-        return res.status(200).json({
-          success: true,
-          message: `Plan ${changeType} scheduled for ${currentPeriodEnd.toLocaleDateString()}`,
-          data: {
-            changeType,
-            requiresPayment: false,
-            effectiveDate: currentPeriodEnd,
-            daysRemaining,
-            newPlan,
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error changing plan:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to change plan',
-      });
+      return fail(res, error, 'Failed to reactivate subscription');
     }
   },
 };
+
+function respondToCheckout(res: Response, result: Awaited<ReturnType<typeof startPlanCheckout>>) {
+  if (result.type === 'DEFERRED') {
+    return res.status(200).json({
+      success: true,
+      message: `Your move to ${result.quote.planName} is scheduled for the end of your current period. Nothing is charged now.`,
+      data: { type: 'DEFERRED', requiresPayment: false, effectiveDate: result.quote.deferredEffectiveAt, quote: result.quote },
+    });
+  }
+  if (result.type === 'ACTIVATED') {
+    return res.status(200).json({ success: true, message: 'Your subscription has been updated.', data: { type: 'ACTIVATED', requiresPayment: false, quote: result.quote } });
+  }
+  return res.status(200).json({
+    success: true,
+    message: 'Payment initialized successfully',
+    data: {
+      type: 'PAYMENT',
+      requiresPayment: true,
+      provider: result.provider,
+      reference: result.reference,
+      authorizationUrl: result.authorizationUrl,
+      accessCode: result.accessCode,
+      checkoutLink: result.provider === 'nomba' ? result.authorizationUrl : undefined,
+      quote: result.quote,
+    },
+  });
+}
+
+async function afterActivation(res: Response, outcome: Awaited<ReturnType<typeof activateFromPayment>>, gateway: unknown) {
+  if (outcome.outcome === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Payment record not found' });
+  const association = outcome.associationId
+    ? await prisma.association.findUnique({ where: { id: outcome.associationId }, select: { subdomain: true, name: true } })
+    : null;
+  const subscription = outcome.subscriptionId
+    ? await prisma.subscription.findUnique({ where: { id: outcome.subscriptionId }, include: { plan: true } })
+    : null;
+
+  if (outcome.outcome === 'NEEDS_REVIEW') {
+    return res.status(200).json({
+      success: true,
+      message: 'We received your payment but need to check it before activating. We will contact you; please do not pay again.',
+      data: { status: 'REVIEW', outcome: outcome.outcome, subscription, subdomain: association?.subdomain, associationName: association?.name },
+    });
+  }
+  return res.status(200).json({
+    success: true,
+    message: outcome.outcome === 'ALREADY_APPLIED' ? 'Payment already verified' : 'Payment verified successfully',
+    data: { status: 'SUCCESS', outcome: outcome.outcome, subscription, payment: gateway, subdomain: association?.subdomain, associationName: association?.name },
+  });
+}
+
+async function markFailed(reference: string): Promise<number | null> {
+  const payment = await prisma.paymentHistory.findUnique({ where: { reference }, include: { subscription: { select: { associationId: true } } } });
+  if (!payment || payment.appliedAt || payment.status !== 'PENDING') return null;
+  await prisma.paymentHistory.update({ where: { id: payment.id }, data: { status: 'FAILED' } });
+  return payment.subscription.associationId;
+}
+
+async function verifyPaystackPayment(res: Response, reference: string) {
+  const payment = await prisma.paymentHistory.findUnique({ where: { reference }, select: { id: true, appliedAt: true, subscription: { select: { associationId: true } } } });
+  if (!payment) return res.status(404).json({ success: false, message: 'Payment record not found' });
+
+  const verification = await new PaystackService().verifyPayment(reference);
+  if (!verification.status) {
+    return res.status(502).json({ success: false, message: 'We could not confirm this payment with the payment provider yet. Please try again shortly.' });
+  }
+
+  const gatewayStatus = verification.data.status;
+  if (gatewayStatus === 'success') {
+    const outcome = await activateFromPayment({
+      reference,
+      verifiedAmountKobo: Math.round(verification.data.amount),
+      paidAt: verification.data.paid_at ? new Date(verification.data.paid_at) : undefined,
+      gatewayPayload: verification.data,
+    });
+    return afterActivation(res, outcome, verification.data);
+  }
+
+  if (['failed', 'abandoned', 'reversed'].includes(gatewayStatus)) {
+    const associationId = await markFailed(reference);
+    if (associationId) void notifyBillingEvent({ type: 'PAYMENT_FAILED', associationId });
+    return res.status(400).json({
+      success: false,
+      message: 'Payment verification failed',
+      data: { status: 'FAILED', gateway_status: gatewayStatus, gateway_response: verification.data?.gateway_response },
+    });
+  }
+
+  // Still processing at the provider: nothing is activated, and the webhook will finish it when the provider confirms.
+  return res.status(202).json({
+    success: true,
+    message: 'Your payment is still being processed. Your subscription is activated as soon as it is confirmed.',
+    data: { status: 'PENDING', gateway_status: gatewayStatus },
+  });
+}
+
+async function verifyNombaPayment(res: Response, reference: string) {
+  const payment = await prisma.paymentHistory.findUnique({ where: { reference }, select: { id: true } });
+  if (!payment) return res.status(404).json({ success: false, message: 'Payment record not found' });
+
+  const verification = await nombaService.verifyPayment(reference);
+  if (verification.data.status !== 'success') {
+    return res.status(400).json({ success: false, message: 'Payment verification failed', data: { status: verification.data.status } });
+  }
+  const outcome = await activateFromPayment({
+    reference,
+    verifiedAmountKobo: nairaToKobo(nombaService.convertToNaira(verification.data.amount)),
+    gatewayPayload: verification.data,
+  });
+  return afterActivation(res, outcome, verification.data);
+}

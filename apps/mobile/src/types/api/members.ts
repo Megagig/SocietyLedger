@@ -34,6 +34,16 @@ export type MemberSelfDTO = {
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;
   notes: string | null;
+  /** Signed links to the profile photo (full size and list thumbnail); null when the member has no photo. */
+  photoUrl?: string | null;
+  thumbUrl?: string | null;
+  photoUpdatedAt?: IsoDateString | null;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 };
+
+/** What the photo endpoints answer with: the member and their new links (both null after a removal). */
+export type MemberPhotoDTO = { id: number; photoUrl: string | null; thumbUrl: string | null; photoUpdatedAt: IsoDateString | null };
+
+/** A picked picture ready to upload. */
+export type PhotoFile = { uri: string; name: string; type: string };

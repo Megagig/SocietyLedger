@@ -10,6 +10,9 @@ import { Text } from '@/components/ui/Text';
 import { t } from '@/lib/i18n';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
+/** The website the legal pages live on. Override with EXPO_PUBLIC_WEB_URL for staging. */
+const WEB_BASE_URL = (process.env.EXPO_PUBLIC_WEB_URL ?? 'https://societyledger.com.ng').replace(/\/+$/, '');
+
 /** project-overview.md §6.7 — About screen (F3.3). App version + legal links. */
 export default function AboutScreen() {
   const { color } = useThemeTokens();
@@ -38,17 +41,17 @@ export default function AboutScreen() {
           <ListItem
             title={t('profile.about.privacyPolicy')}
             trailing={<ExternalLink size={16} color={color.textTertiary} strokeWidth={1.75} />}
-            onPress={() => Linking.openURL('https://societyledger.com/privacy').catch(() => {})}
+            onPress={() => Linking.openURL(`${WEB_BASE_URL}/privacy`).catch(() => {})}
           />
           <ListItem
             title={t('profile.about.terms')}
             trailing={<ExternalLink size={16} color={color.textTertiary} strokeWidth={1.75} />}
-            onPress={() => Linking.openURL('https://societyledger.com/terms').catch(() => {})}
+            onPress={() => Linking.openURL(`${WEB_BASE_URL}/terms`).catch(() => {})}
           />
           <ListItem
             title={t('profile.about.licenses')}
             trailing={<ExternalLink size={16} color={color.textTertiary} strokeWidth={1.75} />}
-            onPress={() => Linking.openURL('https://societyledger.com/licenses').catch(() => {})}
+            onPress={() => Linking.openURL(`${WEB_BASE_URL}/licenses`).catch(() => {})}
           />
         </ListGroup>
       </View>

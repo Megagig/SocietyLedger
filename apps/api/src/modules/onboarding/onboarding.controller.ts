@@ -6,6 +6,7 @@ import { ONBOARDING_STEP_KEYS, onboardingTeamInviteSchema } from '@societyledger
 import { applyStep, readProgress } from './onboarding-rules';
 import { createMemberInvite, sendMemberInviteEmail } from '../member-invites/member-invites.service';
 import { SettingsService } from '../settings/settings.service';
+import { assertMemberCapacity, MemberLimitError } from '../../middleware/subscription.middleware';
 
 const completeStepSchema = z.object({
   step: z.number().int().min(1).max(5),
@@ -183,6 +184,14 @@ export class OnboardingController {
           const existing = await prisma.member.findFirst({ where: { associationId, email: { equals: person.email, mode: 'insensitive' } } });
           if (existing) {
             results.push({ email: person.email, status: 'already_member', message: 'Someone with this email is already a member. Invite them from Members instead.' });
+            continue;
+          }
+
+          try {
+            await assertMemberCapacity(associationId);
+          } catch (limitError) {
+            if (!(limitError instanceof MemberLimitError)) throw limitError;
+            results.push({ email: person.email, status: 'failed', message: limitError.message });
             continue;
           }
 

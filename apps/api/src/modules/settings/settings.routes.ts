@@ -5,6 +5,7 @@
  * All routes require authentication and appropriate permissions
  */
 
+import { requireModule } from '../../middleware/module-feature.middleware';
 import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import { SettingsController } from './settings.controller';
@@ -120,6 +121,7 @@ router.get(
 // GET /api/settings/audit-logs - tenant-scoped audit log listing
 router.get(
   '/audit-logs',
+  requireModule('audit'),
   requirePermission(PERMISSIONS.AUDIT_VIEW),
   SettingsController.getAuditLogs
 );
@@ -127,6 +129,7 @@ router.get(
 // GET /api/settings/audit-logs/filters - the kinds of activity recorded, for filter choices
 router.get(
   '/audit-logs/filters',
+  requireModule('audit'),
   requirePermission(PERMISSIONS.AUDIT_VIEW),
   SettingsController.getAuditFilters
 );

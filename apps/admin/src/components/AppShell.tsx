@@ -23,6 +23,8 @@ import {
   IconUser,
   IconLogout,
   IconUserShield,
+  IconTags,
+  IconReceipt2,
 } from '@tabler/icons-react';
 
 const navItems = [
@@ -32,6 +34,8 @@ const navItems = [
   { label: 'Approvals', href: '/approvals', icon: IconUsers },
   { label: 'Analytics', href: '/analytics', icon: IconChartBar },
   { label: 'Settlements', href: '/settlements', icon: IconWallet },
+  { label: 'Plans', href: '/plans', icon: IconTags },
+  { label: 'Subscriptions', href: '/subscriptions', icon: IconReceipt2 },
   { label: 'Modules', href: '/modules', icon: IconPuzzle },
   { label: 'Action Logs', href: '/logs/actions', icon: IconClipboardList },
   { label: 'Audit Logs', href: '/logs/audit', icon: IconClipboardList },

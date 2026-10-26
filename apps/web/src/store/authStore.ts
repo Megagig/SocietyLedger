@@ -165,6 +165,9 @@ export const useAuthStore = create<AuthState>()(
               status: user.subscriptionAccess?.status ?? null,
               trialEndsAt: user.subscriptionAccess?.trialEndsAt ?? null,
               trialDaysLeft: null,
+              periodEndsAt: user.subscriptionAccess?.periodEndsAt ?? null,
+              inGrace: false,
+              graceEndsAt: null,
             },
           },
         });

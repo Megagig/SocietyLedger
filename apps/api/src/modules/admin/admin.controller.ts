@@ -285,6 +285,7 @@ export class AdminController {
             take: 5,
             include: {
               plan: true,
+              planVersion: { select: { version: true, priceMonthlyKobo: true, priceAnnualKobo: true } },
               payments: { orderBy: { createdAt: 'desc' }, take: 5 }
             },
           },

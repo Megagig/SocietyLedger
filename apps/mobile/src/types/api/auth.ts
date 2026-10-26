@@ -15,6 +15,8 @@ export type AuthMemberSummaryDTO = {
   firstName: string;
   lastName: string;
   memberId: string;
+  photoUrl?: string | null;
+  thumbUrl?: string | null;
 };
 
 /**
@@ -27,6 +29,10 @@ export type SubscriptionAccessDTO = {
   status: string | null;
   trialEndsAt: IsoDateString | null;
   trialDaysLeft: number | null;
+  /** When the paid or complimentary period ends (null for trials). Older servers omit the three fields below. */
+  periodEndsAt?: IsoDateString | null;
+  inGrace?: boolean;
+  graceEndsAt?: IsoDateString | null;
 };
 
 export type LoginUserDTO = {
@@ -62,6 +68,8 @@ export type MeMemberSummaryDTO = {
   memberId: string;
   email: string;
   phone: string;
+  photoUrl?: string | null;
+  thumbUrl?: string | null;
 };
 
 /** 'pending' | 'approved' | 'rejected' — real values confirmed in auth.controller.ts/member-invites.service.ts; this is a free-form Member-model-style String column, not a Prisma enum, so it isn't in enums.ts. */

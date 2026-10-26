@@ -18,6 +18,7 @@ import { hashPassword } from '../../lib/auth';
 import { sendEmail } from '../../lib/email';
 import { hashToken } from '../auth/auth.service';
 import { SettingsService } from '../settings/settings.service';
+import { assertMemberCapacity } from '../../middleware/subscription.middleware';
 
 const DEFAULT_INVITE_TOKEN_EXPIRY_HOURS = 72; // 3 days — fallback only
 
@@ -505,7 +506,8 @@ export async function memberSelfRegister(data: {
 
     return { ...result, isNewMember: false };
   } else {
-    // No existing member - create both member and user
+    // No existing member - create both member and user (a new member counts against the plan's limit)
+    await assertMemberCapacity(associationId);
     const memberCount = await prisma.member.count({ where: { associationId } });
     const memberIdPrefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';
     const memberId = `${memberIdPrefix}${String(memberCount + 1).padStart(4, '0')}`;

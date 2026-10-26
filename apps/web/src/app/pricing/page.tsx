@@ -1,71 +1,31 @@
-'use client';
-
 import { Container, Button } from '@mantine/core';
-import { IconUsers, IconCheck, IconArrowRight } from '@tabler/icons-react';
+import { IconArrowRight } from '@tabler/icons-react';
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
+import { PublicPlans } from '@/components/pricing/PublicPlans';
+import { AddonList } from '@/components/pricing/AddonList';
+import { fetchPublicPricing, onboardingSentence, PRICING_REVALIDATE_SECONDS } from '@/lib/pricing';
 
-export default function PricingPage() {
-  const plans = [
+// Pricing is read from the API (published plans only) and cached briefly. Publishing in the admin console refreshes this page at once.
+export const revalidate = PRICING_REVALIDATE_SECONDS;
+
+export default async function PricingPage() {
+  const pricing = await fetchPublicPricing();
+  const planNames = Object.fromEntries((pricing?.plans ?? []).map((p) => [p.code, p.name]));
+  const onboarding = onboardingSentence(pricing?.onboarding);
+
+  const faqs = [
     {
-      name: 'Starter',
-      price: '₦5,000',
-      period: '/month',
-      description: 'Perfect for small associations getting started',
-      features: [
-        'Up to 50 members',
-        'Basic financial tracking',
-        'Member management',
-        'Dues and levies tracking',
-        'Email notifications',
-        'Basic reports',
-        'Email support',
-        'Mobile responsive'
-      ],
-      highlighted: false,
-      cta: 'Start Free Trial'
+      q: 'Is there a free trial?',
+      a: onboarding ? `${onboarding} When it ends, access pauses until you choose a plan. Your records are never deleted.` : 'Choose a plan to get started.',
     },
     {
-      name: 'Professional',
-      price: '₦15,000',
-      period: '/month',
-      description: 'Most popular for growing associations',
-      features: [
-        'Up to 200 members',
-        'Advanced financial tracking',
-        'Welfare fund management',
-        'SMS notifications (credits separate)',
-        'Advanced reporting & analytics',
-        'Document storage',
-        'Meeting management',
-        'Priority support',
-        'Custom branding',
-        'Role-based permissions'
-      ],
-      highlighted: true,
-      cta: 'Start Free Trial'
+      q: 'Can I change plans?',
+      a: 'Yes. Moving to a higher plan takes effect straight away, and you are credited for the unused time on your current plan. Moving to a cheaper plan starts at the end of your current period.',
     },
-    {
-      name: 'Enterprise',
-      price: 'Custom',
-      period: '',
-      description: 'For large organizations with complex needs',
-      features: [
-        'Unlimited members',
-        'All Professional features',
-        'Multiple associations',
-        'API access',
-        'Custom integrations',
-        'Dedicated account manager',
-        'Custom training sessions',
-        'SLA guarantee',
-        'White-label options',
-        'Priority feature requests'
-      ],
-      highlighted: false,
-      cta: 'Contact Sales'
-    }
+    { q: 'What payment methods?', a: 'We accept cards, bank transfer and USSD payments through Paystack.' },
+    { q: 'Are there setup fees?', a: 'No setup fees and no hidden charges. You pay the price of your plan for the period you choose, plus any add-ons you pick.' },
   ];
 
   return (
@@ -76,12 +36,11 @@ export default function PricingPage() {
         <Container size="lg">
           <div className="text-center mb-12">
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              <span className="bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
-                Simple, Transparent Pricing
-              </span>
+              <span className="bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">Simple, Transparent Pricing</span>
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Choose a plan that fits your association size and needs. All plans include a 14-day free trial.
+              Choose a plan that fits your association size and needs.
+              {onboarding ? ` ${onboarding}` : ''}
             </p>
           </div>
         </Container>
@@ -89,102 +48,21 @@ export default function PricingPage() {
 
       <section className="pb-20 px-4">
         <Container size="xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {plans.map((plan, idx) => (
-              <div 
-                key={idx}
-                className={`glass-strong p-8 rounded-2xl border-2 transition-all duration-300 hover:scale-105 ${
-                  plan.highlighted 
-                    ? 'border-teal-500 shadow-xl shadow-teal-500/20 relative' 
-                    : 'border-gray-200/50 dark:border-gray-700/50'
-                }`}
-              >
-                {plan.highlighted && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="px-4 py-1 rounded-full bg-gradient-to-r from-teal-500 to-green-500 text-white text-sm font-semibold">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-                <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-                  {plan.name}
-                </h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold text-teal-600 dark:text-teal-400">
-                    {plan.price}
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400">
-                    {plan.period}
-                  </span>
-                </div>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  {plan.description}
-                </p>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, fIdx) => (
-                    <li key={fIdx} className="flex items-start gap-2">
-                      <IconCheck size={20} className="text-teal-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-700 dark:text-gray-300">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button 
-                  component={Link}
-                  href={plan.name === 'Enterprise' ? '/contact' : '/signup'}
-                  fullWidth
-                  size="lg"
-                  className={
-                    plan.highlighted
-                      ? 'bg-gradient-to-r from-teal-500 to-green-500 hover:from-teal-600 hover:to-green-600 text-white'
-                      : 'border-2 border-teal-500 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20'
-                  }
-                  variant={plan.highlighted ? 'filled' : 'outline'}
-                >
-                  {plan.cta}
-                </Button>
-              </div>
-            ))}
-          </div>
+          <PublicPlans initial={pricing} showComparison />
+          {pricing && <AddonList addons={pricing.addons} planNames={planNames} />}
 
           <div className="mt-16 glass-strong p-10 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
-            <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
-              Frequently Asked Questions
-            </h2>
+            <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">Frequently Asked Questions</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Is there a free trial?</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Yes! All plans include a 14-day free trial with full access to features. No credit card required.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Can I change plans?</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Absolutely! You can upgrade or downgrade at any time. Changes take effect immediately.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">What payment methods?</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  We accept bank transfers, card payments via Paystack, and USSD payments.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Are there setup fees?</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  No setup fees, no hidden charges. You only pay the monthly subscription fee.
-                </p>
-              </div>
+              {faqs.map((f) => (
+                <div key={f.q}>
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-2">{f.q}</h3>
+                  <p className="text-gray-600 dark:text-gray-300">{f.a}</p>
+                </div>
+              ))}
             </div>
             <div className="text-center mt-8">
-              <Button 
-                component={Link}
-                href="/faq"
-                size="lg"
-                variant="outline"
-                className="border-2 border-teal-500 text-teal-600 dark:text-teal-400"
-                rightSection={<IconArrowRight size={20} />}
-              >
+              <Button component={Link} href="/faq" size="lg" variant="outline" className="border-2 border-teal-500 text-teal-600 dark:text-teal-400" rightSection={<IconArrowRight size={20} />}>
                 View All FAQs
               </Button>
             </div>

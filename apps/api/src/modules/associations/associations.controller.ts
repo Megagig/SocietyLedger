@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
-import { AssociationStatus, AssociationTier, BillingCycle, SubscriptionStatus } from '@prisma/client';
+import { AssociationStatus, AssociationTier } from '@prisma/client';
 import { ROLE_PERMISSION_MAPPING } from '../../lib/role-permission-mapping';
 import { RESERVED_SUBDOMAINS, ASSOCIATION_TYPE_OTHER, associationSignupSchema } from '@societyledger/shared';
 import { PlatformSettingsService } from '../admin/platform-settings.service';
 import { startTrialIfPending } from '../../services/subscription-access.service';
+import { BillingError } from '../../services/billing/quote.service';
+import { onboardingSubscriptionData, resolveOnboardingPlan } from '../../services/billing/lifecycle.service';
 import { SettingsService } from '../settings/settings.service';
 
 const createSchema = z.object({
@@ -172,15 +174,21 @@ export class AssociationsController {
         return res.status(409).json({ success: false, message: 'Slug or subdomain already exists', code: 'SUBDOMAIN_TAKEN' });
       }
 
-      // Every new association starts its free trial on the Enterprise plan.
-      const plan = await prisma.plan.findUnique({ where: { code: 'enterprise' } });
-      if (!plan) {
-        console.error('❌ Plan not found: enterprise - Database may need seeding. Run: npx prisma db seed');
-        return res.status(500).json({
-          success: false,
-          message: 'System configuration error. Please contact support.',
-          error: 'PLAN_NOT_FOUND'
-        });
+      // Every new association is given the onboarding plan chosen in the platform settings (Enterprise by default), on whatever version
+      // of it is published right now. Nothing about the plan is hardcoded here.
+      let plan;
+      try {
+        plan = await resolveOnboardingPlan();
+      } catch (planError) {
+        if (planError instanceof BillingError) {
+          console.error(`❌ ${planError.message}`);
+          return res.status(500).json({
+            success: false,
+            message: 'System configuration error. Please contact support.',
+            error: 'PLAN_NOT_FOUND'
+          });
+        }
+        throw planError;
       }
 
       // Import auth service for verification
@@ -237,18 +245,7 @@ export class AssociationsController {
 
         // 2. Create the trial subscription. It carries no end date yet: the clock starts when the SaaS owner approves the
         // founding admin (startTrialIfPending), so a slow approval or a lost email never uses up the trial.
-        await tx.subscription.create({
-          data: {
-            associationId: assoc.id,
-            planId: plan.id,
-            status: SubscriptionStatus.TRIALING,
-            billingCycle: BillingCycle.MONTHLY,
-            trialEndsAt: null,
-            currentPeriodStart: now,
-            currentPeriodEnd: now,
-            renewalDate: null,
-          },
-        });
+        await tx.subscription.create({ data: onboardingSubscriptionData(plan, assoc.id, now) });
 
         // 3. Create all roles at once
         const rolesToCreate = [

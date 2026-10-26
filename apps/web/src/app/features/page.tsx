@@ -149,7 +149,7 @@ export default function FeaturesPage() {
               Ready to Transform Your Association?
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-              Start your 14-day free trial today. No credit card required. Experience all features risk-free.
+              Create your association today and see how SocietyLedger fits the way you run it. See the pricing page for how new associations get started.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button 

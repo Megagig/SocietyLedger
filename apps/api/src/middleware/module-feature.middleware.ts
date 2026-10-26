@@ -3,21 +3,30 @@
  * Phase 19: SaaS Owner / Super Admin Platform Controls
  * 
  * Middleware for enforcing module and feature access.
- * Supports shadow mode (log but don't block) and enforce mode.
- * 
+ * Access is ENFORCED by default: a tenant only reaches the modules and features its plan version (plus add-ons) includes.
+ *
  * Environment Variables:
- * - FEATURE_FLAG_MODE: 'shadow' | 'enforce' (default: 'shadow')
+ * - FEATURE_FLAG_MODE: set to 'shadow' only as an emergency switch (log what would be blocked, but let it through), for example if a
+ *   bad plan configuration locks tenants out. Anything else, or unset, enforces.
  */
 
 import { NextFunction, Response } from 'express';
 import { TenantRequest } from './tenant.middleware';
 import { ModuleFeatureService } from '../services/module-feature.service';
 
-// Get mode from environment (default to shadow for safety)
+// Enforce unless the emergency switch is set to 'shadow'
 const getFeatureFlagMode = (): 'shadow' | 'enforce' => {
   const mode = process.env.FEATURE_FLAG_MODE;
-  return mode === 'enforce' ? 'enforce' : 'shadow';
+  return mode === 'shadow' ? 'shadow' : 'enforce';
 };
+
+/**
+ * The association a request belongs to. The tenant resolver sets `tenantId`, but a few routers (exports) skip it and rely on the signed-in
+ * user's association instead. Reading only `tenantId` made a check on those routers silently pass, so fall back to the user.
+ */
+export function tenantOf(req: TenantRequest): number | undefined {
+  return req.tenantId ?? (req as TenantRequest & { user?: { associationId?: number | null } }).user?.associationId ?? undefined;
+}
 
 /**
  * Middleware factory to require a specific module
@@ -28,7 +37,7 @@ const getFeatureFlagMode = (): 'shadow' | 'enforce' => {
 export function requireModule(moduleCode: string) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       // Skip check if no tenant context (handled by tenant middleware)
       if (!associationId) {
@@ -84,7 +93,7 @@ export function requireModule(moduleCode: string) {
 export function requireFeature(featureCode: string) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       // Skip check if no tenant context
       if (!associationId) {
@@ -133,7 +142,7 @@ export function requireFeature(featureCode: string) {
 export function requireModules(...moduleCodes: string[]) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       if (!associationId) {
         return next();
@@ -181,7 +190,7 @@ export function requireModules(...moduleCodes: string[]) {
 export function requireAnyModule(...moduleCodes: string[]) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       if (!associationId) {
         return next();
@@ -231,7 +240,7 @@ export function requireAnyModule(...moduleCodes: string[]) {
 export function checkModuleStatus(moduleCode: string) {
   return async (req: TenantRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const associationId = req.tenantId;
+      const associationId = tenantOf(req);
       
       if (associationId) {
         const status = await ModuleFeatureService.getModuleStatus(associationId, moduleCode);

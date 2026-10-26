@@ -44,7 +44,7 @@ function MemberRowBase({ member, position, onPress }: MemberRowProps) {
         testID={`member-row-${member.id}`}
       >
         <View className="mr-3">
-          <Avatar name={name} colorSeed={member.id} />
+          <Avatar name={name} colorSeed={member.id} imageUrl={member.thumbUrl} />
         </View>
         <View className="flex-1">
           <Text variant="body-lg" numberOfLines={1}>

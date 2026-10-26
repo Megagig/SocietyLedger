@@ -8,16 +8,13 @@ import { Badge, Button, Card, Group, Modal, Select, Stack, Text } from '@mantine
 import { IconArrowsExchange } from '@tabler/icons-react';
 import { bff } from '@/lib/bff';
 import { ReasonField } from '@/components/ReasonField';
+import { formatKobo } from '@/lib/billing';
 
 interface PlanOption {
   id: number;
   name: string;
   code: string;
-  priceMonthly: number | string;
-}
-
-function fmtNaira(n: number | string) {
-  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(Number(n));
+  priceMonthlyKobo: number;
 }
 
 /** Platform-admin plan change: moves the tenant onto another plan with no payment (support / override path). */
@@ -64,7 +61,7 @@ export function ChangePlanCard({
 
   const options = (plans.data?.plans ?? []).map((p) => ({
     value: String(p.id),
-    label: `${p.name} — ${fmtNaira(p.priceMonthly)}/month`,
+    label: `${p.name} — ${formatKobo(p.priceMonthlyKobo)}/month`,
     disabled: p.name === currentPlanName,
   }));
 

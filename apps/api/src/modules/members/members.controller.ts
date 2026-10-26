@@ -7,6 +7,7 @@ import { cacheInvalidationService } from '../../services/cache-invalidation.serv
 import { SettingsService } from '../settings/settings.service';
 import { updateUserApproval, sendApprovalNotificationEmail } from '../auth/auth.service';
 import type { AuthRequest } from '../../middleware/auth.middleware';
+import { presentMemberPhoto, presentMemberPhotos } from '../../services/member-photo.service';
 import { buildMemberWhere, memberQuerySchema, resolvePaging, startOfMonthLagos } from './members.query';
 
 // Validation schemas
@@ -106,7 +107,7 @@ export const memberController = {
       return res.status(200).json({
         success: true,
         data: {
-          members,
+          members: await presentMemberPhotos(members, req.hostname),
           pagination: {
             page,
             limit,
@@ -198,7 +199,7 @@ export const memberController = {
       return res.status(200).json({
         success: true,
         data: {
-          ...member,
+          ...(await presentMemberPhoto(member, req.hostname)),
           financialSummary: {
             totalDues: financialSummary._sum.amount || 0,
             totalPaid: paidAmount._sum.amountPaid || 0,
@@ -730,7 +731,7 @@ export const memberController = {
 
       return res.status(200).json({
         success: true,
-        data: member,
+        data: await presentMemberPhoto(member, req.hostname),
       });
     } catch (error) {
       console.error('Error fetching member profile:', error);

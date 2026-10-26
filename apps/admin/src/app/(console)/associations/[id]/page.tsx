@@ -26,6 +26,7 @@ import { ReasonField } from '@/components/ReasonField';
 import { ChangePlanCard } from '@/components/ChangePlanCard';
 import { TenantModulesManager } from '@/components/TenantModulesManager';
 import { tenantUrl } from '@/lib/tenant-url';
+import { formatKobo } from '@/lib/billing';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,8 @@ interface Subscription {
   status: string;
   billingCycle: string;
   currentPeriodEnd: string;
-  plan: { name: string; priceMonthly: number };
+  plan: { name: string };
+  planVersion: { version: number; priceMonthlyKobo: number; priceAnnualKobo: number };
   payments: Payment[];
 }
 
@@ -262,7 +264,7 @@ function BillingTab({ associationId }: { associationId: number }) {
               <Stack gap={2}>
                 <Text fw={600}>{sub.plan.name}</Text>
                 <Text size="xs" c="dimmed">
-                  {fmtCurrency(sub.plan.priceMonthly)} / month · {sub.billingCycle.toLowerCase()} billing
+                  {formatKobo(sub.billingCycle === 'ANNUAL' ? sub.planVersion.priceAnnualKobo : sub.planVersion.priceMonthlyKobo)} / {sub.billingCycle === 'ANNUAL' ? 'year' : 'month'} · terms v{sub.planVersion.version}
                 </Text>
               </Stack>
               <StatusBadge status={sub.status} />

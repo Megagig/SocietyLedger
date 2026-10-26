@@ -1,21 +1,20 @@
 /**
  * Module & Feature Service
  * Phase 19: SaaS Owner / Super Admin Platform Controls
- * 
- * Service for checking module/feature enablement with resolution order:
- * TenantOverride → PlanModule → Default (enabled)
- * 
- * This service is the single source of truth for determining
- * what modules and features are available for a tenant.
+ *
+ * Answers "is this module/feature enabled for this tenant" for the middleware and the admin screens. The answer is computed by the
+ * entitlements service (core + the subscription's plan version + live add-ons, then per-tenant overrides), so there is exactly one rule
+ * and it follows the plan version each tenant was sold, never the plan's latest definition.
  */
 
 import prisma from '../lib/prisma';
+import { getEntitlements, invalidateEntitlements } from './billing/entitlements.service';
 
 export interface ModuleStatus {
   code: string;
   name: string;
   isEnabled: boolean;
-  source: 'tenant_override' | 'plan' | 'default';
+  source: 'tenant_override' | 'plan' | 'addon' | 'default';
   expiresAt?: Date | null;
 }
 
@@ -24,14 +23,13 @@ export interface FeatureStatus {
   name: string;
   moduleCode: string;
   isEnabled: boolean;
-  source: 'tenant_override' | 'plan' | 'default';
+  source: 'tenant_override' | 'plan' | 'addon' | 'default';
   expiresAt?: Date | null;
 }
 
 export class ModuleFeatureService {
   /**
    * Check if a module is enabled for an association
-   * Resolution order: TenantOverride → PlanModule → Default (enabled)
    */
   static async isModuleEnabled(associationId: number, moduleCode: string): Promise<boolean> {
     const status = await this.getModuleStatus(associationId, moduleCode);
@@ -39,86 +37,26 @@ export class ModuleFeatureService {
   }
 
   /**
-   * Get detailed module status including source
+   * Get detailed module status including where the answer came from
    */
   static async getModuleStatus(associationId: number, moduleCode: string): Promise<ModuleStatus> {
-    // 1. Check tenant override (highest priority)
-    const tenantOverride = await prisma.tenantModule.findFirst({
-      where: {
-        associationId,
-        module: { code: moduleCode },
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } }
-        ]
-      },
-      include: { module: true }
-    });
-
-    if (tenantOverride) {
-      return {
-        code: moduleCode,
-        name: tenantOverride.module.name,
-        isEnabled: tenantOverride.isEnabled,
-        source: 'tenant_override',
-        expiresAt: tenantOverride.expiresAt,
-      };
+    const ent = await getEntitlements(associationId);
+    const m = ent.modules.get(moduleCode);
+    if (!m) {
+      // An unknown module code is not part of the catalog, so nothing grants it.
+      return { code: moduleCode, name: moduleCode, isEnabled: false, source: 'default' };
     }
-
-    // 2. Check plan assignment
-    const association = await prisma.association.findUnique({
-      where: { id: associationId },
-      include: {
-        subscriptions: {
-          where: { status: { in: ['ACTIVE', 'TRIALING'] } },
-          include: {
-            plan: {
-              include: {
-                planModules: {
-                  where: { module: { code: moduleCode } },
-                  include: { module: true }
-                }
-              }
-            }
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        }
-      }
-    });
-
-    const planModule = association?.subscriptions[0]?.plan?.planModules[0];
-    if (planModule) {
-      return {
-        code: moduleCode,
-        name: planModule.module.name,
-        isEnabled: planModule.isEnabled,
-        source: 'plan',
-      };
-    }
-
-    // 3. Get module info for default response
-    const module = await prisma.platformModule.findUnique({
-      where: { code: moduleCode }
-    });
-
-    // 4. Default when no explicit PlanModule row exists for this plan+module: core
-    // modules only (G13) — this now matches getEnabledModules()'s batch default.
-    // Previously defaulted to enabled unconditionally, which meant the UI (reading
-    // the batch helper) could show a non-core module as locked while requireModule()
-    // (reading this per-check path) still let the request through once enforce mode
-    // actually started blocking anything.
     return {
-      code: moduleCode,
-      name: module?.name || moduleCode,
-      isEnabled: module?.isCore ?? true,
-      source: 'default',
+      code: m.code,
+      name: m.name,
+      isEnabled: m.isEnabled,
+      source: m.source,
+      expiresAt: m.override?.expiresAt ? new Date(m.override.expiresAt) : null,
     };
   }
 
   /**
    * Check if a feature is enabled for an association
-   * Resolution order: TenantOverride → PlanFeature → Default (enabled)
    */
   static async isFeatureEnabled(associationId: number, featureCode: string): Promise<boolean> {
     const status = await this.getFeatureStatus(associationId, featureCode);
@@ -126,247 +64,52 @@ export class ModuleFeatureService {
   }
 
   /**
-   * Get detailed feature status including source
+   * Get detailed feature status including where the answer came from
    */
   static async getFeatureStatus(associationId: number, featureCode: string): Promise<FeatureStatus> {
-    // 1. Check tenant override (highest priority)
-    const tenantOverride = await prisma.tenantFeature.findFirst({
-      where: {
-        associationId,
-        feature: { code: featureCode },
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } }
-        ]
-      },
-      include: { 
-        feature: {
-          include: { module: true }
-        }
-      }
-    });
-
-    if (tenantOverride) {
-      return {
-        code: featureCode,
-        name: tenantOverride.feature.name,
-        moduleCode: tenantOverride.feature.module.code,
-        isEnabled: tenantOverride.isEnabled,
-        source: 'tenant_override',
-        expiresAt: tenantOverride.expiresAt,
-      };
+    const ent = await getEntitlements(associationId);
+    const f = ent.features.get(featureCode);
+    if (!f) {
+      return { code: featureCode, name: featureCode, moduleCode: 'unknown', isEnabled: false, source: 'default' };
     }
-
-    // 2. Check plan assignment
-    const association = await prisma.association.findUnique({
-      where: { id: associationId },
-      include: {
-        subscriptions: {
-          where: { status: { in: ['ACTIVE', 'TRIALING'] } },
-          include: {
-            plan: {
-              include: {
-                planFeatures: {
-                  where: { feature: { code: featureCode } },
-                  include: { 
-                    feature: {
-                      include: { module: true }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        }
-      }
-    });
-
-    const planFeature = association?.subscriptions[0]?.plan?.planFeatures[0];
-    if (planFeature) {
-      return {
-        code: featureCode,
-        name: planFeature.feature.name,
-        moduleCode: planFeature.feature.module.code,
-        isEnabled: planFeature.isEnabled,
-        source: 'plan',
-      };
-    }
-
-    // 3. Get feature info for default response
-    const feature = await prisma.platformFeature.findUnique({
-      where: { code: featureCode },
-      include: { module: true }
-    });
-
-    // 4. Default when no explicit PlanFeature row exists: core features only (G13),
-    // same reconciliation as getModuleStatus() above.
     return {
-      code: featureCode,
-      name: feature?.name || featureCode,
-      moduleCode: feature?.module.code || 'unknown',
-      isEnabled: feature?.isCore ?? true,
-      source: 'default',
+      code: f.code,
+      name: f.name,
+      moduleCode: f.moduleCode,
+      isEnabled: f.isEnabled,
+      source: f.source,
+      expiresAt: f.override?.expiresAt ? new Date(f.override.expiresAt) : null,
     };
   }
 
   /**
-   * Get all enabled modules for an association (optimized batch query)
+   * Get every module with its status for an association
    */
   static async getEnabledModules(associationId: number): Promise<ModuleStatus[]> {
-    // Batch fetch all data in parallel
-    const [allModules, tenantOverrides, association] = await Promise.all([
-      prisma.platformModule.findMany({ orderBy: { sortOrder: 'asc' } }),
-      prisma.tenantModule.findMany({
-        where: {
-          associationId,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
-        },
-        include: { module: true }
-      }),
-      prisma.association.findUnique({
-        where: { id: associationId },
-        include: {
-          subscriptions: {
-            where: { status: { in: ['ACTIVE', 'TRIALING'] } },
-            include: {
-              plan: {
-                include: {
-                  planModules: { include: { module: true } }
-                }
-              }
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        }
-      })
-    ]);
-
-    // Create lookup maps for O(1) access
-    const overrideMap = new Map(tenantOverrides.map(o => [o.module.code, o]));
-    const planModules = association?.subscriptions[0]?.plan?.planModules || [];
-    const planModuleMap = new Map(planModules.map(pm => [pm.module.code, pm]));
-
-    // Build status for each module
-    return allModules.map(module => {
-      const override = overrideMap.get(module.code);
-      if (override) {
-        return {
-          code: module.code,
-          name: module.name,
-          isCore: module.isCore,
-          isEnabled: override.isEnabled,
-          source: 'tenant_override' as const,
-          override: {
-            reason: override.reason || '',
-            expiresAt: override.expiresAt?.toISOString() || null,
-          }
-        };
-      }
-
-      const planModule = planModuleMap.get(module.code);
-      if (planModule) {
-        return {
-          code: module.code,
-          name: module.name,
-          isCore: module.isCore,
-          isEnabled: planModule.isEnabled,
-          source: 'plan' as const,
-        };
-      }
-
-      // Default: core modules enabled, others disabled
-      return {
-        code: module.code,
-        name: module.name,
-        isCore: module.isCore,
-        isEnabled: module.isCore,
-        source: 'default' as const,
-      };
-    });
+    const ent = await getEntitlements(associationId);
+    return [...ent.modules.values()].map((m) => ({
+      code: m.code,
+      name: m.name,
+      isCore: m.isCore,
+      isEnabled: m.isEnabled,
+      source: m.source,
+      ...(m.override ? { override: m.override } : {}),
+    }));
   }
 
   /**
-   * Get all enabled features for an association (optimized batch query)
+   * Get every feature with its status for an association
    */
   static async getEnabledFeatures(associationId: number): Promise<FeatureStatus[]> {
-    // Batch fetch all data in parallel
-    const [allFeatures, tenantOverrides, association] = await Promise.all([
-      prisma.platformFeature.findMany({
-        include: { module: true },
-        orderBy: [{ module: { sortOrder: 'asc' } }, { sortOrder: 'asc' }]
-      }),
-      prisma.tenantFeature.findMany({
-        where: {
-          associationId,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
-        },
-        include: { feature: { include: { module: true } } }
-      }),
-      prisma.association.findUnique({
-        where: { id: associationId },
-        include: {
-          subscriptions: {
-            where: { status: { in: ['ACTIVE', 'TRIALING'] } },
-            include: {
-              plan: {
-                include: {
-                  planFeatures: { include: { feature: { include: { module: true } } } }
-                }
-              }
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        }
-      })
-    ]);
-
-    // Create lookup maps
-    const overrideMap = new Map(tenantOverrides.map(o => [o.feature.code, o]));
-    const planFeatures = association?.subscriptions[0]?.plan?.planFeatures || [];
-    const planFeatureMap = new Map(planFeatures.map(pf => [pf.feature.code, pf]));
-
-    // Build status for each feature
-    return allFeatures.map(feature => {
-      const override = overrideMap.get(feature.code);
-      if (override) {
-        return {
-          code: feature.code,
-          name: feature.name,
-          moduleCode: feature.module.code,
-          isEnabled: override.isEnabled,
-          source: 'tenant_override' as const,
-          override: {
-            reason: override.reason || '',
-            expiresAt: override.expiresAt?.toISOString() || null,
-          }
-        };
-      }
-
-      const planFeature = planFeatureMap.get(feature.code);
-      if (planFeature) {
-        return {
-          code: feature.code,
-          name: feature.name,
-          moduleCode: feature.module.code,
-          isEnabled: planFeature.isEnabled,
-          source: 'plan' as const,
-        };
-      }
-
-      // Default: core features only (G13) — matches getEnabledModules()'s batch
-      // default and the now-reconciled getFeatureStatus() per-check default.
-      return {
-        code: feature.code,
-        name: feature.name,
-        moduleCode: feature.module.code,
-        isEnabled: feature.isCore,
-        source: 'default' as const,
-      };
-    });
+    const ent = await getEntitlements(associationId);
+    return [...ent.features.values()].map((f) => ({
+      code: f.code,
+      name: f.name,
+      moduleCode: f.moduleCode,
+      isEnabled: f.isEnabled,
+      source: f.source,
+      ...(f.override ? { override: f.override } : {}),
+    }));
   }
 
   /**
@@ -434,6 +177,7 @@ export class ModuleFeatureService {
         expiresAt: options?.expiresAt,
       }
     });
+    invalidateEntitlements(associationId);
   }
 
   /**
@@ -454,6 +198,7 @@ export class ModuleFeatureService {
         moduleId: module.id,
       }
     });
+    invalidateEntitlements(associationId);
   }
 
   /**
@@ -502,6 +247,7 @@ export class ModuleFeatureService {
         expiresAt: options?.expiresAt,
       }
     });
+    invalidateEntitlements(associationId);
   }
 
   /**
@@ -522,6 +268,7 @@ export class ModuleFeatureService {
         featureId: feature.id,
       }
     });
+    invalidateEntitlements(associationId);
   }
 
   /**

@@ -1,3 +1,4 @@
+import { requireFeature } from '../../middleware/module-feature.middleware';
 import { Router } from 'express';
 import { memberLedgerController, memberLedgerExportController } from './member-ledger.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
@@ -49,6 +50,7 @@ router.get('/my-ledger/balance',
 
 // Export my ledger statement as PDF
 router.post('/my-ledger/export',
+  requireFeature('ledger.export'),
   requireAnyPermission(selfViewPermissions),
   memberLedgerExportController.exportMyStatement
 );
@@ -108,6 +110,7 @@ router.post('/ledger/:memberId/sync',
 
 // Export specific member's ledger statement as PDF
 router.post('/ledger/:memberId/export',
+  requireFeature('ledger.export'),
   requirePermission(PERMISSIONS.FINANCE_VIEW),
   memberLedgerExportController.exportMemberStatement
 );

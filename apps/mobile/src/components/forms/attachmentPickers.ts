@@ -61,3 +61,21 @@ export async function pickFromFiles(allowedTypes: string[] = DEFAULT_ALLOWED_TYP
     return { error: 'Could not open Files. Try again.' };
   }
 }
+
+/** A profile photo: the camera or the photo library, always cropped to a square before it leaves the phone. */
+export async function pickProfilePhoto(source: 'camera' | 'library'): Promise<PickResult> {
+  try {
+    const permission = source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      return { error: source === 'camera' ? 'Camera permission is needed to take a photo.' : 'Photo library permission is needed to choose a photo.' };
+    }
+    const options = { allowsEditing: true, aspect: [1, 1] as [number, number], quality: 0.8 };
+    const result =
+      source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync({ ...options, mediaTypes: ['images'] });
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset) return null;
+    return { attachment: { uri: asset.uri, name: asset.fileName ?? 'profile.jpg', type: asset.mimeType ?? 'image/jpeg', size: asset.fileSize } };
+  } catch {
+    return { error: 'Could not open your photos. Try again.' };
+  }
+}
