@@ -46,6 +46,9 @@ function withAlpha(hex: string, alpha: number): string {
   return `${hex}${channel}`;
 }
 
+/** The photo is drawn at exact pixel sizes, never percentages: percentage sizes inside a ScrollView are unreliable on Android (see Screen.tsx) and a photo that cannot be laid out can leave the whole screen blank. */
+const RADIUS: Record<AvatarShape, (size: number) => number> = { circle: (size) => size / 2, square: () => 6 };
+
 const SIZE_CLASSES: Record<AvatarSize, string> = { 32: 'h-8 w-8', 40: 'h-10 w-10', 64: 'h-16 w-16', 96: 'h-24 w-24' };
 const TEXT_VARIANT: Record<AvatarSize, 'caption' | 'body-strong' | 'h3' | 'h2'> = { 32: 'caption', 40: 'body-strong', 64: 'h3', 96: 'h2' };
 const SHAPE_CLASSES: Record<AvatarShape, string> = { circle: 'rounded-full', square: 'rounded-md' };
@@ -65,7 +68,7 @@ export function Avatar({ name, size = 40, shape = 'circle', colorSeed, tintColor
       {showImage ? (
         <Image
           source={{ uri: imageUrl }}
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: size, height: size, borderRadius: RADIUS[shape](size) }}
           contentFit="cover"
           cachePolicy="disk"
           accessibilityLabel={name}

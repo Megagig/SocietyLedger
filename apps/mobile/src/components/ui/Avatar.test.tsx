@@ -28,6 +28,15 @@ describe('Avatar', () => {
     expect(screen.queryByTestId('av-image')).toBeNull();
   });
 
+  it('draws the photo at exact pixel sizes, never percentages (percentages can blank a screen on Android)', async () => {
+    await render(<Avatar name="Anthony Obi" size={96} imageUrl="https://files.example/photo.jpg" testID="av" />);
+    const style = screen.getByTestId('av-image').props.style;
+    const flat = Array.isArray(style) ? Object.assign({}, ...style.flat(Infinity).filter(Boolean)) : style;
+    expect(flat.width).toBe(96);
+    expect(flat.height).toBe(96);
+    expect(flat.borderRadius).toBe(48);
+  });
+
   it('treats a null link as no photo', async () => {
     await render(<Avatar name="Ada Eze" imageUrl={null} testID="av" />);
     expect(screen.getByText('AE')).toBeTruthy();
