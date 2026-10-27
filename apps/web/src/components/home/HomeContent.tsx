@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppDownloadButton } from '@/components/home/AppDownloadButton';
 import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
 
@@ -120,6 +121,7 @@ export function HomeContent({ pricingSlot, offerDescription, startBadges }: Home
               >
                 Sign In
               </Button>
+              <AppDownloadButton />
             </div>
             
             <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-gray-500 dark:text-gray-400">

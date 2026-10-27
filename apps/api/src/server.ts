@@ -27,6 +27,7 @@ import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import billingAdminRoutes from './modules/admin/billing-admin.routes';
 import publicPricingRoutes from './modules/public/pricing.routes';
+import { publicRouter as appDownloadPublicRoutes, adminRouter as appDownloadAdminRoutes } from './modules/app-downloads/app-download.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
 import webhookHandlerRoutes from './modules/webhooks/webhooks.routes';
 import webhookManagementRoutes from './modules/webhooks/webhooks-management.routes';
@@ -161,9 +162,12 @@ app.use('/api/admin/cron', cronRoutes); // alias for admin console BFF
 app.use('/api/blog', blogPublicRoutes);
 // Pricing for the public website: published plans only, no sign-in, no tenant
 app.use('/api/public', publicPricingRoutes);
+// Website APK download: the form posts here and gets the link back
+app.use('/api/public/app-download', appDownloadPublicRoutes);
 app.use('/api/docs', documentationPublicRoutes);
 // Admin routes - Super Admin only
 app.use('/api/admin/blog', blogAdminRoutes);
+app.use('/api/admin/app-downloads', appDownloadAdminRoutes);
 app.use('/api/admin/docs', documentationAdminRoutes);
 app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admin console BFF
 // Tier 2 support tickets — SUPPORT_AGENT as well as SUPER_ADMIN, so it must be mounted before the SUPER_ADMIN-only /api/admin router

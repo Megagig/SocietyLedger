@@ -15,6 +15,7 @@ export const ADMIN_SECTIONS = {
   webhooks: true,
   jobs: true,
   blog: true,
+  downloads: true,
   helpContent: true,
   support: true,
   impersonation: true,
