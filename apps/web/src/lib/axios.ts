@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getTenantHeaders } from '@/utils/tenant';
 import { useModuleLockStore } from '@/store/moduleLockStore';
+import { accessCopy, moduleDisplayName } from '@societyledger/shared';
 import { useAuthStore } from '@/store/authStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -64,10 +65,9 @@ api.interceptors.response.use(
     }
     const code = error?.response?.data?.error;
     if (code === 'MODULE_DISABLED' || code === 'FEATURE_DISABLED' || code === 'MODULES_DISABLED' || code === 'NO_MODULE_AVAILABLE') {
-      useModuleLockStore.getState().open(
-        error.response.data.message || 'This feature is not available on your current plan.',
-        Boolean(error.response.data.upgradeRequired)
-      );
+      // Same wording as the mobile app and the permission messages: what is missing, and who can add it.
+      const copy = accessCopy('plan', { moduleName: moduleDisplayName(error.response.data.module), surface: 'web' });
+      useModuleLockStore.getState().open(copy.description, Boolean(error.response.data.upgradeRequired), copy.title);
     }
     return Promise.reject(error);
   }

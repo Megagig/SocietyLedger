@@ -7,10 +7,10 @@ import { useModuleLockStore } from '@/store/moduleLockStore';
 
 export function ModuleLockedModal() {
   const router = useRouter();
-  const { isOpen, message, upgradeRequired, close } = useModuleLockStore();
+  const { isOpen, title, message, upgradeRequired, close } = useModuleLockStore();
 
   return (
-    <Modal opened={isOpen} onClose={close} title="Feature Not Available" centered>
+    <Modal opened={isOpen} onClose={close} title={title || 'This feature is not part of your plan'} centered>
       <Group mb="md">
         <IconLock size={32} className="text-orange-500" />
         <Text>{message}</Text>

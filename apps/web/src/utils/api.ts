@@ -1,5 +1,6 @@
 import { createFetchHeaders } from './tenant';
 import { useModuleLockStore } from '@/store/moduleLockStore';
+import { accessCopy, moduleDisplayName } from '@societyledger/shared';
 
 import { useAuthStore } from '@/store/authStore';
 
@@ -51,10 +52,9 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
         useAuthStore.getState().markSubscriptionBlocked(body.reason);
       }
       if (MODULE_LOCK_ERROR_CODES.has(body?.error)) {
-        useModuleLockStore.getState().open(
-          body.message || 'This feature is not available on your current plan.',
-          Boolean(body.upgradeRequired)
-        );
+        // Same wording as the mobile app and the permission messages: what is missing, and who can add it.
+        const copy = accessCopy('plan', { moduleName: moduleDisplayName(body.module), surface: 'web' });
+        useModuleLockStore.getState().open(copy.description, Boolean(body.upgradeRequired), copy.title);
       }
     } catch {
       // Not JSON or already consumed — ignore, not a module-lock response
@@ -133,10 +133,9 @@ export async function apiPostFormData(url: string, formData: FormData): Promise<
         useAuthStore.getState().markSubscriptionBlocked(body.reason);
       }
       if (MODULE_LOCK_ERROR_CODES.has(body?.error)) {
-        useModuleLockStore.getState().open(
-          body.message || 'This feature is not available on your current plan.',
-          Boolean(body.upgradeRequired)
-        );
+        // Same wording as the mobile app and the permission messages: what is missing, and who can add it.
+        const copy = accessCopy('plan', { moduleName: moduleDisplayName(body.module), surface: 'web' });
+        useModuleLockStore.getState().open(copy.description, Boolean(body.upgradeRequired), copy.title);
       }
     } catch {
       // ignore

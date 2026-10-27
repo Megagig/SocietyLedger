@@ -1,5 +1,6 @@
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconX, IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
+import { accessCopy, classifyAccessError, moduleDisplayName } from '@societyledger/shared';
 
 /**
  * Toast notification utilities using Mantine Notifications
@@ -56,18 +57,17 @@ export const toast = {
     if (error?.response?.data) {
       const data = error.response.data;
       
-      // Handle permission denied errors
-      if (error.response.status === 403) {
-        title = 'Access Denied';
-        message = data.message || 'You do not have permission to access this resource';
-        
-        if (data.requiredPermission) {
-          message += `\n\nRequired permission: ${data.requiredPermission}`;
-        }
-        
-        if (data.userRole) {
-          message += `\nYour role: ${data.userRole}`;
-        }
+      // A refusal because of the person's role or their association's plan: say so plainly, the same way everywhere.
+      const kind = classifyAccessError({ status: error.response.status, code: data.code, error: data.error, message: data.message });
+      if (kind) {
+        const copy = accessCopy(kind, { moduleName: moduleDisplayName(data.module), surface: 'web' });
+        title = copy.title;
+        message = copy.description;
+      }
+      // Any other 403 is a rule with its own message (for example "ask another officer"): show it as written.
+      else if (error.response.status === 403) {
+        title = 'Not allowed';
+        message = data.message || "You don't have permission to do this. Ask your association administrator if you need access.";
       }
       // Handle authentication errors
       else if (error.response.status === 401) {

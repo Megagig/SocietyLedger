@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { formatMoney } from '@/lib/money';
 import { Text } from '@/components/ui/Text';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { ErrorState } from '@/components/feedback/ErrorState';
 import { ListGroup, ListItem } from '@/components/layout/ListItem';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -155,7 +156,7 @@ export default function PayScreen() {
     return (
       <Screen edges={['top']}>
         <ScreenHeader title="Pay" onBack={() => router.back()} />
-        <EmptyState icon={AlertCircle} title="Could not load payment details" description="Pull down to retry." />
+        <ErrorState title="We couldn't load the payment details." error={leviesQuery.error ?? paymentInfoQuery.error} onRetry={() => { leviesQuery.refetch(); paymentInfoQuery.refetch(); }} />
       </Screen>
     );
   }

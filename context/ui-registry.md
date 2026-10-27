@@ -1677,3 +1677,11 @@ _(none)_
 - A member ledger line shows a **charge or pledge as `+`** (red: it adds to what the member owes) and a **payment as `-`** (green: it takes it away), the same direction the Balance column moves. Never the other way round.
 - Positive balance = the member owes the association: caption "Owed by the member" (admin) or "You owe this amount" (member). Negative = in credit: "Credit: the member has paid more than they owe". Zero = "Account is balanced".
 - Donation lines: "Donation: <cause>" and "Donation received: <cause>" for a gift made on the spot; "Donation pledge: <cause>" and "Pledge payment: <cause>" for a pledge.
+
+## Access refusals: role, plan, subscription (2026-10-27)
+
+When a request is refused because of who the person is or what their association has paid for, the apps say so plainly and the same way everywhere. They never show "We couldn't load this", the server's raw sentence, or internal detail (permission names, roles).
+
+- **One source of wording:** `packages/shared/src/access-errors.ts` (`classifyAccessError`, `accessCopy`, `moduleDisplayName`). Kinds: `permission`, `plan` (module or feature not in the plan; names the module), `subscription`, `suspended`, `cancelled`, `limit` (member limit), `association`. Only refusals with a known code count; a 403 with its own business message ("This is your own loan", "Only the officer who recorded this can change it") is left exactly as the server wrote it.
+- **Mobile:** `ApiError` carries `accessKind` and `module`, and its `message` is the plain one-liner, so all error toasts read well. `ErrorState` shows `AccessState` (icon, heading, who can fix it) when the error is an access problem and ignores the screen's own "could not load" title. `ModuleLocked`, `NoPermission` and `SubscriptionInactive` are thin wrappers over `AccessState`. A screen must pass `error={query.error}` to `ErrorState`. "Check again" appears only where an administrator can fix it (plan, subscription, limit); never a price or a purchase button (rule #16).
+- **Web:** `toast.apiError` and `ErrorDisplay` use the same wording; the module upgrade modal gets a proper heading and says what is missing and where an administrator adds it. The web copy says "the Subscription page"; the app says "the Subscription page on the website".

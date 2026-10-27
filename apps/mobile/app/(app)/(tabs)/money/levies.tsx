@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { ErrorState } from '@/components/feedback/ErrorState';
 import { ListGroup } from '@/components/layout/ListItem';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -112,10 +113,7 @@ export default function LeviesScreen() {
               <Skeleton width="100%" height={100} radius="md" />
             </View>
           ) : leviesQuery.isError ? (
-            <EmptyState
-              title="Could not load levies"
-              description="Pull down to retry. If this persists, log out and back in."
-            />
+            <ErrorState title="We couldn't load your levies." error={leviesQuery.error} onRetry={() => leviesQuery.refetch()} />
           ) : levies.length === 0 ? (
             <EmptyState
               title="No levies assigned"

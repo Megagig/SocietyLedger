@@ -56,6 +56,7 @@ export function requireModule(moduleCode: string) {
           res.status(403).json({
             success: false,
             error: 'MODULE_DISABLED',
+            code: 'MODULE_DISABLED', // the same tag, under the field the other refusals use, so the apps handle them alike
             message: `The ${status.name} module is not available for your plan.`,
             module: moduleCode,
             // Upgrading helps unless this specific tenant was overridden off — a
@@ -112,6 +113,7 @@ export function requireFeature(featureCode: string) {
           res.status(403).json({
             success: false,
             error: 'FEATURE_DISABLED',
+            code: 'FEATURE_DISABLED', // the same tag, under the field the other refusals use, so the apps handle them alike
             message: `The ${status.name} feature is not available for your plan.`,
             feature: featureCode,
             module: status.moduleCode,
@@ -166,6 +168,7 @@ export function requireModules(...moduleCodes: string[]) {
           res.status(403).json({
             success: false,
             error: 'MODULES_DISABLED',
+            code: 'MODULES_DISABLED', // the same tag, under the field the other refusals use, so the apps handle them alike
             message: 'One or more required modules are not available for your plan.',
             disabledModules,
             upgradeRequired: true,
@@ -215,6 +218,7 @@ export function requireAnyModule(...moduleCodes: string[]) {
           res.status(403).json({
             success: false,
             error: 'NO_MODULE_AVAILABLE',
+            code: 'NO_MODULE_AVAILABLE', // the same tag, under the field the other refusals use, so the apps handle them alike
             message: 'None of the required modules are available for your plan.',
             requiredModules: moduleCodes,
             upgradeRequired: true,

@@ -2,9 +2,10 @@ import { create } from 'zustand';
 
 interface ModuleLockState {
   isOpen: boolean;
+  title: string;
   message: string;
   upgradeRequired: boolean;
-  open: (message: string, upgradeRequired: boolean) => void;
+  open: (message: string, upgradeRequired: boolean, title?: string) => void;
   close: () => void;
 }
 
@@ -13,8 +14,9 @@ interface ModuleLockState {
 // per page. Both lib/axios.ts (api instance) and utils/api.ts (apiFetch) report into this.
 export const useModuleLockStore = create<ModuleLockState>((set) => ({
   isOpen: false,
+  title: '',
   message: '',
   upgradeRequired: false,
-  open: (message, upgradeRequired) => set({ isOpen: true, message, upgradeRequired }),
+  open: (message, upgradeRequired, title = '') => set({ isOpen: true, message, upgradeRequired, title }),
   close: () => set({ isOpen: false }),
 }));

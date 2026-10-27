@@ -86,7 +86,7 @@ export default function MeetingDetailScreen() {
     return (
       <Screen edges={['top']}>
         <ScreenHeader onBack={() => router.back()} title="" />
-        <ErrorState onRetry={() => query.refetch()} />
+        <ErrorState error={query.error} onRetry={() => query.refetch()} />
       </Screen>
     );
   }

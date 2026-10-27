@@ -1,5 +1,6 @@
 import { Alert, Text, Button, Stack } from '@mantine/core';
 import { IconAlertCircle, IconLock, IconRefresh } from '@tabler/icons-react';
+import { accessCopy, classifyAccessError, moduleDisplayName } from '@societyledger/shared';
 
 interface ErrorDisplayProps {
   error: any;
@@ -8,44 +9,27 @@ interface ErrorDisplayProps {
 }
 
 export function ErrorDisplay({ error, title, onRetry }: ErrorDisplayProps) {
-  // Handle 403 Permission Denied
+  // Handle 403: a refusal because of the person's role or their association's plan reads the same here as everywhere else,
+  // names who can fix it, and shows no internal detail (permission names, roles). Any other 403 is a rule with its own message.
   if (error?.response?.status === 403) {
     const data = error.response.data;
+    const kind = classifyAccessError({ status: 403, code: data?.code, error: data?.error, message: data?.message });
+    const copy = kind ? accessCopy(kind, { moduleName: moduleDisplayName(data?.module), surface: 'web' }) : null;
     return (
       <Alert
         icon={<IconLock size={20} />}
-        title={title || 'Access Denied'}
+        title={title || copy?.title || 'Not allowed'}
         color="orange"
       >
         <Stack gap="sm">
           <Text size="sm">
-            {data?.message || 'You do not have permission to access this resource.'}
+            {copy?.description || data?.message || "You don't have permission to do this. Ask your association administrator if you need access."}
           </Text>
-          
-          {data?.requiredPermission && (
-            <Text size="sm" c="dimmed">
-              Required permission: <strong>{data.requiredPermission}</strong>
-            </Text>
+          {onRetry && (kind === 'plan' || kind === 'subscription' || kind === 'limit') && (
+            <Button onClick={onRetry} size="sm" variant="light" leftSection={<IconRefresh size={16} />}>
+              Check again
+            </Button>
           )}
-          
-          {data?.userRole && (
-            <Text size="sm" c="dimmed">
-              Your current role: <strong>{data.userRole}</strong>
-            </Text>
-          )}
-          
-          <Text size="sm" mt="xs">
-            This feature is typically available to:
-          </Text>
-          <ul className="list-disc list-inside text-sm space-y-1">
-            <li>Administrators</li>
-            <li>Treasurers</li>
-            <li>Financial Secretaries</li>
-          </ul>
-          
-          <Text size="sm" mt="xs" c="dimmed">
-            Contact your association administrator to request access.
-          </Text>
         </Stack>
       </Alert>
     );
