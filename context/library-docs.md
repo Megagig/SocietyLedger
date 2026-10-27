@@ -344,3 +344,17 @@ await paymentsApi.verifyPaystack(reference); // ALWAYS verify
 | GitHub | Branches/PRs per feature. |
 | Postgres/Prisma tooling (api only) | Inspect staging data shapes during F0.x — read-only. |
 If a tool is unavailable, proceed from official docs and record any version uncertainty in `progress-tracker.md` notes.
+
+---
+
+## Thrift (Ajo) add-on — third-party services (to be selected, T0.2 / T0.3)
+
+> Nothing here is installed or chosen yet. Before building any T-feature that touches one of these, load its documentation, verify the capability **against the provider's current docs**, and fill in the project-specific rules below.
+
+- **Paystack — collections (Mode C only).** Already used for subscriptions and payments. For Ajo money use the reference prefix `AJO-`, verify the amount against the stored expectation, apply once per reference (see `lifecycle.service.ts` `activateFromPayment`). Do not reuse subscription references or tables.
+- **Paystack — transfers / payouts (Mode C only).** Capability, approval/OTP settings, recipient creation, fees and settlement timing **must be verified in the current Paystack docs and on the live account before design is finalised** (flag F11). Transfers are asynchronous: model `PROCESSING` and handle the webhook and failures.
+- **Escrow partner (Mode B).** Not selected. T0.2 produces a shortlist and a decision; the integration is written against the `SettlementRail` interface so the partner can change.
+- **KYC provider.** Not selected (T0.3). Needs: NIN and/or BVN verification, passport/driver's licence/voter's card verification, address verification, bank-account-name resolution, optional liveness. Record price per check, data residency and the SDK or web-flow model here once chosen. Provider failures must fall back to the manual review queue.
+- **Bank account name resolution.** May be provided by Paystack (resolve account) or the KYC provider; confirm which and the rate limits before building T5.2.
+- **Field encryption.** Use the platform's existing secrets handling for the key; document the algorithm, key rotation and where the key lives here once decided (T2.1).
+- **SMS.** Reuse the existing SMS integration and credit system for receipts and reminders; contribution receipts must not silently fail when credits run out (queue and alert the admin).

@@ -358,3 +358,30 @@ The member gets a notification, the payment is applied to their oldest unpaid ch
 - Shared code (types, zod schemas, reserved subdomains, docs link map) lives in `packages/shared`, which must stay framework-free (no React, no Node-only APIs).
 - Environment variables: each app has `.env.example` committed; real values only in Dokploy (and EAS secrets for mobile). Never commit `.env*` with secrets.
 - Dockerfiles follow the pattern in `architecture.md §17.2` (repo root as build context, `turbo prune`).
+
+---
+
+## Sensitive data and group money (Thrift/Ajo add-on, Track T)
+
+Applies to every file under `modules/ajo/`, the Ajo screens in all apps, and anything that touches KYC or contribution money.
+
+**KYC and personal data**
+- Never log, return or display a raw NIN, BVN, ID number, bank account number or document image URL. Use the masked projection helpers (for example `••••1234`). Add a test for every new endpoint that returns KYC fields.
+- Encrypt identity and banking fields at rest; keep decrypted values in memory only for the verification call that needs them.
+- Every staff view, edit or approval of a KYC record writes an `AjoKycEvent`. No silent reads.
+- Documents live in private storage and are shown through short-lived signed links only.
+- Error reports (Sentry) must scrub KYC fields; add the field names to the scrubber when a new one is introduced.
+
+**Money**
+- Integer kobo in storage, services and APIs; format only in the UI, always in full (`₦10,000.00`).
+- Every money-moving write takes an idempotency key and has a test that replays it twice and a test that reverses it.
+- Never update or delete a ledger entry or a contribution. A correction is a reversal entry with a reason.
+- Subscription payments and contributions are different things: different tables, different Paystack reference prefixes (`AJO-` for Ajo money). A test must fail if one path writes the other's table.
+- Keep calculations (levy, collector fee, late fee, payout, default balance) in pure functions with unit tests; routes and screens only call them.
+- A feature flag for custodial settlement (`ajo.custodial_settlement`) is checked on the server at the point the money would move, not only in the UI.
+
+**Behaviour**
+- Rules a member accepted are versioned; never change what a member agreed to retroactively.
+- No automatic confiscation or deduction from other members or guarantors. Defaults go through a case with an audit trail.
+- Idempotent scheduled jobs: running a job twice must not duplicate a reminder, fee or notification.
+- An expired add-on leaves Ajo data readable and exportable; only writes are refused.

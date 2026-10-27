@@ -5,6 +5,7 @@
 ## Current status
 - **Track / phase:** Mobile Phase 0 — Backend enablement **complete** (F0.1–F0.6, all shipped 2026-10-19). Phase 1 — Foundation **complete** (F1.1–F1.8, all shipped — F1.1/F1.2 on 2026-10-19 ahead of Phase 0 per owner's explicit request, see Decisions log; F1.3–F1.8 on 2026-10-20). Phase 2 — Authentication & member core underway (F2.1–F2.9 shipped).
 - **Latest (2026-10-27):** App Downloads. The landing page offers the Android APK behind a form (first name, last name, email, phone, required consent). The admin console gets an App Downloads section (Overview analytics, Releases, Leads with CSV/Excel export). New tables app_releases, download_leads, download_events (migration 20261106); API in apps/api/src/modules/app-downloads; 14 rules tests pass; flow smoke-tested against the local DB. Also: splash wordmark no longer clipped on Android 12+ (splash images rebuilt to sit inside the circular mask). Owner: upload the APK to Cloudflare, add the release in the admin console and make it current.
+- **Planned (2026-10-27):** Track T — Thrift (Ajo) add-on. Specification written (`thrift-ajo-spec.md`), build plan added (`build-plan.md` Track T, 63 features), architecture section §18, screens and docs pages in `project-overview.md §12`. Nothing built yet; T0 (legal gate, rails, KYC provider, data protection, commercials) and T1 (foundation) come first. Twelve flags (F1–F12) are tracked in the Track T section below.
 - **Next feature:** Milestone M1 — internal build (TestFlight + Play internal).
 - **Last updated:** 2026-10-21 — H2 Home — Dashboard enhancement: `Me | Association` segmented toggle for officers; member view gains `MemberStatRow` (4 stat cards), `RecentActivityList`, `UpcomingObligationsList`; officer Association view adds `OfficerStatRow`, `RevenueChart` (bar chart via `react-native-gifted-charts`), `PaymentMethodsChart` (donut), Quick Stats row, `AssociationRecentTransactions`. New `api/endpoints/dashboard.ts` + `features/dashboard/queries.ts` (`useAssociationDashboard`). `type-check` clean.
 - **Previously:** 2026-10-21 — F2.8 + F2.9 Pay online (Paystack) + bank transfer with proof: new `/money/pay` screen (tab switcher: online/bank), `/money/transaction/[reference]` result screen (success + failure states, web parity). API: `POST /payments/paystack/initialize` + `GET /payments/paystack/verify/:reference` now accept `PAYMENTS_VIEW_OWN` (members); new `GET /members/me/payment-info` endpoint; `paymentsReturn` deep link wired in `+native-intent.tsx`. Levies screen: "Contribute now" disabled with "Contact admin to pay" when transactionId is null. `useInitializePaystackPayment`, `useSubmitPaymentProof`, `usePaymentInfo`, `useVerifyPaystackPayment` hooks added.
@@ -483,6 +484,120 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 
 ---
 
+# Track T — Thrift (Ajo) add-on (`apps/api`, `apps/web`, `apps/mobile`, `apps/admin`, `apps/docs`) — planned 2026-10-27
+
+> Full specification: `thrift-ajo-spec.md`. Build order and Definitions of Done: `build-plan.md` Track T. Data model and rules: `architecture.md §18`. Screens, roles and docs pages: `project-overview.md §12`. **Nothing in Track T is built yet.** Mode C (custodial settlement) and standalone thrift groups stay behind flags until T0.1 is signed off.
+
+## Phase T0 — Decisions & legal gate
+- [ ] T0.1 Legal opinion — Modes A/B/C, standalone groups, KYC tiers, guarantor/default wording, late-fee enforceability (F1, F2, F3, F5)
+- [ ] T0.2 Payment rails selection — verify Paystack collections/transfers against current docs; pick escrow partner (F11)
+- [ ] T0.3 KYC provider selection and cost model (F10)
+- [ ] T0.4 Data protection plan — NDPA 2023, DPIA, retention, NDPC (F4)
+- [ ] T0.5 Commercials — tier prices, trial, levy formula, per-KYC-level limits (F3, F8)
+- [ ] T0.6 Remaining product rules — payout order, trust-score formula, default remedies, guarantee wording (F5, F6, F12)
+
+## Phase T1 — Foundation
+- [ ] T1.1 Ajo data model & migration
+- [ ] T1.2 Module, features & add-on catalogue (four tiers, `ajoContributors` limit, read-only on expiry — F9)
+- [ ] T1.3 Standalone thrift-group tenant kind (flag `ajo.standalone_signup`)
+- [ ] T1.4 RBAC — permissions, Collector and Officer role templates
+- [ ] T1.5 Append-only ledger & idempotency primitives
+- [ ] T1.6 Settings & feature flags (levy, KYC limits, `ajo.custodial_settlement`)
+
+## Phase T2 — KYC
+- [ ] T2.1 KYC data model, encryption, masking, audit
+- [ ] T2.2 Provider abstraction & integration
+- [ ] T2.3 Levels (Basic/Verified/Enhanced) & limit enforcement
+- [ ] T2.4 Address verification & document upload
+- [ ] T2.5 KYC endpoints & retention jobs
+
+## Phase T3 — Groups, rules & schedules
+- [ ] T3.1 Group lifecycle
+- [ ] T3.2 Rule versions & acceptance
+- [ ] T3.3 Memberships & joining checks
+- [ ] T3.4 Schedule engine (collector thrift + rotating pot)
+- [ ] T3.5 Collector assignments
+- [ ] T3.6 Guarantor agreements
+
+## Phase T4 — Contributions & collections
+- [ ] T4.1 Contribution recording & statuses (reported → cash received → confirmed → reversed)
+- [ ] T4.2 Collector cash flow & handover
+- [ ] T4.3 Bank-transfer contributions (Mode A)
+- [ ] T4.4 Paystack collection (Mode C, flag-gated)
+- [ ] T4.5 Receipts & notifications
+
+## Phase T5 — Payouts & settlement
+- [ ] T5.1 Payout calculation & preview
+- [ ] T5.2 Approval workflow & beneficiary controls
+- [ ] T5.3 Settlement rails (Mode A / B / C, B and C flag-gated)
+- [ ] T5.4 Failed payouts & reconciliation jobs
+- [ ] T5.5 Platform levy accounting
+
+## Phase T6 — Defaults & risk
+- [ ] T6.1 Overdue detection, grace & reminders
+- [ ] T6.2 Late-fee assessments (off by default)
+- [ ] T6.3 Default cases & repayment plans
+- [ ] T6.4 Trust score & risk flags
+- [ ] T6.5 Disputes
+
+## Phase T7 — Web
+- [ ] T7.1 Group admin: list, create wizard, rules, settings
+- [ ] T7.2 Members, KYC status, guarantors, payout order
+- [ ] T7.3 Collections, reconciliation, collector management
+- [ ] T7.4 Payouts queue/approval, defaults and cases
+- [ ] T7.5 Member self-service
+- [ ] T7.6 Standalone group sign-up & onboarding (flag-gated)
+
+## Phase T8 — Mobile
+- [ ] T8.1 Member screens
+- [ ] T8.2 KYC flow & guarantor consent
+- [ ] T8.3 Collector dashboard (online only)
+- [ ] T8.4 Officer/admin screens
+- [ ] T8.5 Push routing & deep links
+
+## Phase T9 — Admin console
+- [ ] T9.1 Ajo platform settings
+- [ ] T9.2 Groups & payouts oversight, risk flags
+- [ ] T9.3 KYC exception review queue
+- [ ] T9.4 Add-on analytics
+
+## Phase T10 — Reports & exports
+- [ ] T10.1 The eight reports (API)
+- [ ] T10.2 Web report screens + CSV/PDF/Excel exports
+- [ ] T10.3 Mobile summary reports
+
+## Phase T11 — Documentation
+- [ ] T11.1 Ajo/Thrift docs section (admin, collector, member guides)
+- [ ] T11.2 KYC, privacy & safety pages; troubleshooting & FAQ
+- [ ] T11.3 Reference updates & screenshots
+
+## Phase T12 — Hardening & launch
+- [ ] T12.1 Security & privacy review
+- [ ] T12.2 Failure-mode drills
+- [ ] T12.3 Pilot with 2–3 real groups (Mode A)
+- [ ] T12.4 Release 2 enablement — Mode B/C and standalone groups after T0.1 sign-off
+- **Milestone TL:** Ajo add-on live.
+
+## Track T flags and open questions
+Raised by the agent while turning the owner's specification into a plan. None is a rejection of an owner decision; each gates the work named. Update **Status** as they are resolved.
+
+| ID | Flag / question | Gates | Status |
+|---|---|---|---|
+| F1 | Mode C (SocietyLedger's Paystack account holds and settles contributions) is custody of customer funds; no esusu exemption was found in BOFIA 2020 commentary; may need CBN payment-service licensing or a licensed partner | T0.1, T4.4, T5.3, T12.4 | open |
+| F2 | Standalone/public thrift groups raise public deposit-taking and advertising restrictions (BOFIA s.44 as read in secondary sources) | T0.1, T1.3, T7.6, T12.4 | open |
+| F3 | Contribution/payout limits per KYC level not specified; CBN tier applicability depends on the money-flow mode | T0.5, T2.3 | open |
+| F4 | NDPA 2023: NDPC registration, DPIA, retention periods for KYC data | T0.4, T2.5 | open |
+| F5 | Guarantor liability wording and default remedies need legal review | T0.1, T0.6, T3.6, T6.3 | open |
+| F6 | Trust-score formula undefined | T0.6, T6.4 | open |
+| F7 | Collector tools are online only; weak connectivity in markets is a real risk | T8.3, T12.3 | accepted for release 1, revisit after pilot |
+| F8 | Platform levy (up to ₦5,000 per cycle + up to ₦1,000 per participant): formula, cap interaction, who pays, collection method for Mode A | T0.5, T5.5 | open |
+| F9 | Existing billing lockout blocks a whole tenant on expiry; an expired Ajo add-on must leave history readable | T1.2 | open |
+| F10 | KYC provider not chosen (NIN/BVN/ID/bank-name/liveness, cost) | T0.3, T2.2 | open |
+| F11 | Paystack transfer/payout capabilities and approval rules must be verified against current docs before Mode C | T0.2, T5.3 | open |
+| F12 | Payout order rules (fixed, random draw, need-based) not specified | T0.6, T3.4 | open |
+
+---
+
 ## Backend gaps (API needs that block or limit a screen)
 Log here instead of inventing endpoints. Each: what, which screen, proposed fix, status (open / approved / done / won't do).
 
@@ -738,6 +853,16 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | 2026-10-26 | **Billing: add-ons are aligned to the plan renewal date and prorated** (`price x days left / days in the cycle`, rounded up, uncapped when the plan was extended early). They renew in the same payment, are not refunded, and end with the subscription. Plan changes credit the unused share of what was actually PAID (a trial or complimentary term credits nothing); a cheaper plan is a deferred downgrade with no charge | Owner choice; avoids crediting money that was never paid |
 | 2026-10-26 | **Billing: Nomba is switched off for subscriptions only** (`SUBSCRIPTION_NOMBA_ENABLED`, default false); the checkout page shows only the providers the server lists. No Nomba module code was changed (the subscription controller's own Nomba glue now lives in `checkout.service.ts`) | Owner is waiting on Nomba KYC and wants Paystack only until then; turning it back on needs no code change |
 | 2026-10-26 | **Billing: mobile does not sell or link to web purchase** (architecture rule 16). The blocked screen now shows the end date and tells admins to resubscribe on the web | Store billing policy; the brief's "Resubscribe Now" button is on web only |
+| 2026-10-27 | **Thrift/Ajo add-on: build both models** — collector thrift (daily/weekly/monthly) and rotating pot | Owner decision. The collector model is what markets and associations use most; the rotating pot is the classic esusu. Both are needed to sell to associations. |
+| 2026-10-27 | **Thrift/Ajo: who can use it** — association members (inside their association, with the add-on) and outsiders (a standalone thrift-group tenant using only Ajo) | Owner decision. Standalone sign-up is built but kept behind `ajo.standalone_signup` until the legal opinion (T0.1) — flag F2. |
+| 2026-10-27 | **Thrift/Ajo: where the money sits is chosen per group by the admin** — Mode A the group's own bank account (SocietyLedger records only), Mode B a payment partner's escrow, Mode C SocietyLedger's Paystack account which later settles participants | Owner decision. Mode A ships first. Modes B and C sit behind `ajo.custodial_settlement`, off in production until T0.1 sign-off — flag F1 (Mode C is custody of customer funds). |
+| 2026-10-27 | **Thrift/Ajo: KYC required for everyone using the add-on** — verified residential address plus one of NIN slip, international passport, driver's licence or voter's card; three levels (Basic, Verified, Enhanced); bank-account name match before payout | Owner decision. Level limits not yet set (F3); provider not yet chosen (F10); data protection plan (F4). Agent assumption: L1 to join, L2 before first payout, L3 for higher limits. |
+| 2026-10-27 | **Thrift/Ajo: roles are contributor, collector, officer and admin; the admin approves payouts** | Owner decision. Agent assumption: the person who prepares a payout cannot also approve it (separation of duties). |
+| 2026-10-27 | **Thrift/Ajo: group rules are configurable per group and versioned** — late fee (none/fixed/percent with cap), grace days, guarantor policy, post-payout default procedure, reminders; members accept before joining; changes apply prospectively. Safe defaults: 3 grace days, reminders on, late fees **off** until legal review | Owner decision, from the owner's default-management specification. |
+| 2026-10-27 | **Thrift/Ajo: collector tools are online only in release 1**; cash is recorded as "cash received — awaiting reconciliation" until an officer confirms the handover; reported and confirmed payments are kept separate | Owner decision. Flag F7: weak connectivity in markets; revisit after the pilot. |
+| 2026-10-27 | **Thrift/Ajo: platform levy up to ₦5,000 per cycle plus up to ₦1,000 per participant; add-on subscription tiers by active contributors** — Starter ≤30, Growth 31–150, Business 151–500, Enterprise custom; monthly and annual billing, trial, grace period, read-only after expiry | Owner decision. Prices and the exact levy formula are not yet set (F8, T0.5). Subscription money is never recorded as contribution money. |
+| 2026-10-27 | **Thrift/Ajo: eight reports and a dedicated docs section** — contributions, member ledger, collector performance, payouts, defaults and arrears, group financial summary, fees and revenue, audit and activity; CSV and PDF exports; admin, collector and member guides | Owner decision. |
+| 2026-10-27 | **Thrift/Ajo: release plan** — Release 1 is Mode A, both models, KYC L1–L2, online collector, reports, docs and a pilot with 2–3 groups; Release 2 is Mode B/C, standalone groups and KYC L3 after the legal sign-off | Agent sequencing proposal (nothing the owner asked for is dropped); needs owner confirmation. |
 
 ## Known issues / tech debt
 _All 9 items previously listed here were folded into the Backend gaps table as G64–G72 on 2026-10-14, when Track R (Gap Remediation) was created — see that table for full detail, and the Track R checklist for which remediation phase each one landed in. New known issues that aren't yet worth a full gap write-up can still be logged here; fold them into the gaps table once they're actionable._

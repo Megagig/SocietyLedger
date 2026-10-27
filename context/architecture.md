@@ -910,3 +910,75 @@ The tenant wildcard (`*.societyledger.com.ng` → `web`, via a Traefik router ru
 - All services deploy together as **one Dokploy Compose stack** triggered from a single branch (`main` for production, `develop` for staging) — there is no independent per-app git auto-deploy. Dokploy keeps the previous compose deploy for one-click rollback of the whole stack.
 - Database migrations run only from the `api` service (`prisma migrate deploy`) and must be backward compatible with the previous API version (expand → migrate → contract) so a stack rollback doesn't break against newer data.
 - Order for track A cutover (within the same compose deploy, or as sequential deploys if the owner prefers staging each step): API (B1–B8, backward compatible) → admin app live → web cutover (deletes Super Admin, adds redirect) → API removes the old platform-login branch last.
+
+---
+
+## 18. Thrift (Ajo) add-on
+
+> Specification: `thrift-ajo-spec.md`. Build order: `build-plan.md` Track T. This section is the engineering contract. It extends `apps/api` and the three clients; it does **not** create a second billing, identity or notification system — it reuses the ones in §6–§9 and the dynamic billing system (versioned plans, add-ons, entitlements).
+
+### 18.1 Placement and gating
+- **API:** new module `apps/api/src/modules/ajo/` (routes, controllers, services, jobs) mounted at `/api/ajo`, behind `authMiddleware`, `tenantMiddleware` and `requireModule('ajo')`; feature-level gates with `requireFeature('ajo.<feature>')` (collector thrift, rotating pot, KYC, guarantors, reminders, advanced reports). Money-flow modes B/C additionally check the platform flag `ajo.custodial_settlement`.
+- **Entitlements:** `ajo` is an add-on-only module (in no default plan). The Ajo add-on has four published versions (tiers) with the limit `ajoContributors`, counted on **active** contributors (not invited). Entitlements come from `entitlements.service.ts` like any add-on. **Expiry is read-only, not a lockout:** when the add-on lapses, `requireModule('ajo')` still admits read and export routes (`GET`, report and export endpoints) and rejects writes with `ADDON_EXPIRED` and a clear message; financial records are never deleted or hidden.
+- **Tenant kinds:** `Association.kind` = `ASSOCIATION` (default) or `THRIFT_GROUP` (outsiders using only Ajo). A `THRIFT_GROUP` tenant is entitled to core modules + `ajo` only; every non-Ajo route returns `MODULE_DISABLED`. Sign-up is behind the platform flag `ajo.standalone_signup`.
+- **Identity:** a contributor is a `Member` row in either kind of tenant (reuse; no parallel identity table). Existing `Member` rules (photo, status, login) apply.
+
+### 18.2 Data model (all money in integer kobo; table names `ajo_*`)
+| Model | Purpose / key fields |
+|---|---|
+| `AjoGroup` | `associationId`, `name`, `model` (`COLLECTOR_THRIFT` \| `ROTATING_POT`), `frequency` (`DAILY`/`WEEKLY`/`MONTHLY`), `contributionKobo`, `startDate`, `cycleLength` or `rounds`, `maxParticipants`, `collectorFee` (type + value), `settlementMode` (`OWN_ACCOUNT`/`PARTNER_ESCROW`/`PLATFORM_PAYSTACK`), `bankAccountId?`, `timezone`, `cutoffTime`, `status` (`DRAFT`→`OPEN`→`ACTIVE`→`COMPLETED`/`CANCELLED`) |
+| `AjoGroupRuleVersion` | versioned rules: late-fee policy (none/fixed/percent, amount, cap), `graceDays`, guarantor policy, default procedure, reminders; `effectiveFrom`; never edited, a new version is added |
+| `AjoRuleAcceptance` | membership, rule version, acceptedAt, evidence (IP/device/channel) |
+| `AjoMembership` | `groupId`, `memberId`, `status` (`PENDING`/`ACTIVE`/`SUSPENDED`/`LEFT`/`DEFAULTED`), `payoutPosition`, `guarantorAgreementId?`, `kycLevelAtJoin`, `acceptedRuleVersionId` |
+| `AjoInstallment` | `membershipId`, `dueDate`, `amountKobo`, `status` (`DUE`/`PARTIAL`/`PAID`/`OVERDUE`/`WAIVED`), `paidKobo` |
+| `AjoContribution` | `membershipId`, `installmentId?`, `amountKobo`, `method` (`CASH`/`TRANSFER`/`PAYSTACK`), `status` (`REPORTED`/`CASH_RECEIVED`/`CONFIRMED`/`REVERSED`), `collectorId?`, `reference`, `idempotencyKey` (unique), `receivedAt`, `confirmedAt`, `reversalOfId?` |
+| `AjoCollectorAssignment` | collector (User) ↔ membership, daily target, active dates |
+| `AjoCashHandover` | collector, date, expected, collected, handedOver, difference, reconciledBy/at |
+| `AjoPayout` | `groupId`, `membershipId`/round, `grossKobo`, `collectorFeeKobo`, `platformLevyKobo`, `shortfallKobo`, `netKobo`, `status` (`PREPARED`→`APPROVED`→`PROCESSING`→`PAID`/`FAILED`/`VOID`), `preparedBy`, `approvedBy`, beneficiary account **snapshot** (verified name, masked number), `rail`, `providerRef` |
+| `AjoLateFeeAssessment` | installment, basis, calculation (stored), cap applied, `status` (`PENDING`/`PAYABLE`/`WAIVED`), rule version |
+| `AjoDefaultCase`, `AjoRepaymentPlan` | post-payout default workflow: outstanding balance, notices, member response, plan schedule, resolution |
+| `AjoGuarantorAgreement` | guarantor identity, verified phone, relationship, exact wording accepted, acceptedAt |
+| `AjoKycProfile` | `memberId`, `level`, `status`, encrypted identity fields, masked display values, ID type, provider reference, address fields, bank account (verified name), `verifiedAt` |
+| `AjoKycEvent` | append-only audit: who viewed/edited/approved, when, why |
+| `AjoLedgerEntry` | **append-only** money record: group, membership, `type` (contribution, reversal, fee, levy, payout, adjustment), `amountKobo`, `direction`, `refType/refId`, `idempotencyKey` (unique), `reversalOfId?`; balances are derived, never stored as the source of truth |
+| `AjoTrustSnapshot` | periodic score with the inputs used |
+| `AjoDispute` | member claim ("I paid") with evidence, status, resolution reason |
+
+### 18.3 State machines (guard every transition server-side)
+- **Group:** `DRAFT → OPEN → ACTIVE → COMPLETED | CANCELLED`. Money fields (amount, frequency, participants, collector fee) are locked once `ACTIVE`.
+- **Contribution:** `REPORTED → CASH_RECEIVED → CONFIRMED`, and any state → `REVERSED` (a new reversing entry; the original is never edited). Only `CONFIRMED` counts as money in the account; `CASH_RECEIVED` is cash in the collector's hands.
+- **Payout:** `PREPARED → APPROVED → PROCESSING → PAID | FAILED`. Preparer ≠ approver. Changing beneficiary details after approval voids the approval and starts a cool-off.
+- **Membership:** `PENDING` until KYC level, guarantor (if required) and rule acceptance are all satisfied, then `ACTIVE`.
+
+### 18.4 Settlement rails (`SettlementRail` interface)
+`collect(contribution)`, `payout(payout)`, `balance()`, `verifyAccountName(account)`. Implementations: **`OwnAccountRail`** (Mode A — records manual confirmation/payout, never moves money), **`PartnerEscrowRail`** (Mode B — adapter for the partner chosen in T0.2), **`PaystackPlatformRail`** (Mode C — collections with `AJO-` references and Paystack transfers). Rail selection is per group; B and C are rejected at group creation and at payout time unless `ajo.custodial_settlement` is on. Mode C collection follows the pattern of `lifecycle.service.ts` `activateFromPayment`: the verified amount must equal the stored expectation, the payment is applied once however many times it is reported, and a mismatch is held for review.
+
+### 18.5 Money rules
+1. Integer kobo everywhere; formatting only at the edge (`₦10,000.00`, never abbreviated).
+2. Every money-moving write has a unique `idempotencyKey`; replays are no-ops.
+3. Ledger entries and contributions are never updated or deleted; corrections are reversals with a reason.
+4. **Subscription ≠ contribution.** Add-on subscription charges use the existing `PaymentHistory` (purpose `ADDON`); Ajo money uses `AjoContribution`/`AjoLedgerEntry` and Paystack references prefixed `AJO-`. A test fails if either path writes the other's table.
+5. Platform levy is computed in one place (`ajo-levy.ts`), recorded as its own ledger entry, and billed on the add-on invoice in Mode A; it is never deducted from a contribution in Mode A.
+6. Late fees are assessed only under an accepted rule version, shown with their calculation, and never retroactive. Default balance = remaining agreed contributions − payments − valid credits; other members' savings and guarantors' money are never auto-deducted.
+
+### 18.6 API surface (`/api/ajo`, all behind module + permission gates)
+`groups` (CRUD, lifecycle, rules, schedule preview) · `groups/:id/members` (invite, join, approve, guarantor) · `kyc` (start, status, documents, resubmit; staff review queue) · `contributions` (record, confirm, reverse, receipts) · `collections` (today's list, record cash, handover, reconcile) · `payouts` (prepare, approve, execute, void) · `defaults` (cases, plans, disputes, waive fee) · `reports/*` (eight reports + `export`) · `trust` (own score and inputs). Admin console: `/api/admin/ajo/*` (platform settings, levy, KYC exceptions, oversight, analytics) under the existing Super Admin guard.
+
+### 18.7 Jobs (idempotent; added to `jobs/` beside the subscription jobs)
+Overdue detection and grace expiry · reminders (before/after due date; one per installment per channel) · late-fee assessment (when enabled) · schedule generation guard · provider-balance vs ledger reconciliation (daily, alerts on mismatch) · KYC retention/anonymisation · trust-score refresh · add-on expiry → read-only mode. Running a job twice must not duplicate a reminder, fee or notification.
+
+### 18.8 Notifications
+New `Notification.type` values (mapped in the push routing table, §8): `ajo.contribution_recorded`, `ajo.contribution_confirmed`, `ajo.contribution_reversed`, `ajo.installment_due`, `ajo.installment_overdue`, `ajo.payout_prepared`, `ajo.payout_approved`, `ajo.payout_paid`, `ajo.payout_failed`, `ajo.kyc_status`, `ajo.guarantor_request`, `ajo.default_case_opened`, `ajo.rules_changed`. Receipt SMS/push/email for every contribution, respecting the member's preferences.
+
+### 18.9 Security, privacy and audit
+- **KYC data:** encrypted at rest (application-level field encryption with a key from the secrets store), masked in every API response, log line and admin screen (`NIN ••••1234`), never written to error reports; documents in private storage with signed links (same pattern as member photos); every staff view/edit/approval writes `AjoKycEvent`.
+- **Access:** contributors see only their own records; collectors only their assigned contributors; officers their association; cross-association access is impossible by query scoping and tested.
+- **Payout controls:** separation of duties, beneficiary account-name verification, cool-off on detail change, `useReauth` on mobile for approval.
+- **Audit:** group, rule, role, assignment, reversal, waiver, payout and KYC changes are audited (`AuditLog` for tenant actions, `PlatformActionLog` for platform overrides).
+- **Regulatory posture:** SocietyLedger is a record-keeper in Mode A. It must not advertise to the public to deposit money (BOFIA s.44 as read in secondary sources) and must not hold funds in Modes B/C until legal sign-off (see Decisions log, flags F1/F2).
+
+### 18.10 Client contracts
+- **Mobile:** member screens under `app/(app)/(tabs)/money/thrift/*`; collector and officer screens under `app/(app)/(tabs)/manage/thrift/*` (Manage tab hub section, visible with `ajo.collect`/`ajo.manage`); collector screens require connectivity and show a "needs internet" state (no offline queue in release 1); payout approval uses `useReauth`; no purchase links (rule 16 still applies — subscription is bought on the web).
+- **Web:** `app/dashboard/thrift/*`; standalone sign-up at `/thrift/start` (flag-gated).
+- **Admin:** `apps/admin` section "Thrift" (settings, oversight, KYC exceptions, analytics) through `/bff`.
+- **Docs:** section `ajo-thrift` (`project-overview.md §12.3`).
