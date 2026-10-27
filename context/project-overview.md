@@ -948,7 +948,7 @@ Until approved, v1 behaves as today: platform routes require `SUPER_ADMIN`.
 ## 11. Change log
 | Date | Change | By |
 |---|---|---|
-| 2026-10-27 | Added deliverable D: the Thrift (Ajo) add-on (§12) — roles, screens (THM/THC/THO/THX), documentation pages and success criteria; plan in `build-plan.md` Track T, specification in `thrift-ajo-spec.md`. | Owner + agent |
+| 2026-10-27 | Added deliverable D: the Thrift (Ajo) add-on (§12) — roles, screens (THM/THC/THO/THX), documentation pages and success criteria; plan in `build-plan.md` Track T, specification in `thrift-ajo-spec.md`. Scope: one money-flow mode (the group's own bank account), no government-ID verification. | Owner + agent |
 | 2026-10-11 | Added deliverable C: platform admin console `apps/admin` at admin.societyledger.com.ng (§10), splitting all Super Admin features out of `apps/web`. Recorded the move to pnpm, Dokploy hosting for every app, and Dokploy-managed PostgreSQL (from Neon). | Owner + agent |
 | 2026-10-10 | Added deliverable A: documentation site `apps/docs` at docs.societyledger.com.ng (§9), modelled on docs.businesscopilot.com.ng; docs links from web and mobile. Docs track built before the mobile track. | Owner + agent |
 | 2026-10-10 | Initial version. Scope decisions: near-full parity minus platform admin; `apps/mobile` in monorepo; association-code tenant entry; backend additions: push notifications, mobile payment callback, refresh tokens. | Owner + agent |
@@ -960,15 +960,15 @@ Until approved, v1 behaves as today: platform routes require `SUPER_ADMIN`.
 > Full specification: `thrift-ajo-spec.md`. Plan: `build-plan.md` Track T. Engineering contract: `architecture.md §18`. This section lists who uses it, the screens, and the documentation pages.
 
 ### 12.1 What and for whom
-A paid add-on that runs contribution circles (collector thrift and rotating pot) with verification (KYC), versioned rules, receipts for every contribution, approved payouts, default handling and reports. Sold through the plan builder as the **Ajo add-on** in four tiers by active contributors (Starter ≤30, Growth 31–150, Business 151–500, Enterprise custom). Used by associations (members form circles) and by standalone thrift groups (outsiders using only Ajo; flag-gated).
+A paid add-on that runs contribution circles (collector thrift and rotating pot) with officer approval of participants, versioned rules, receipts for every contribution, approved payouts, default handling and reports. **SocietyLedger is record-keeping software: the group's own bank account holds the money.** Sold through the plan builder as the **Ajo add-on** in four tiers by active contributors (Starter ≤30, Growth 31–150, Business 151–500, Enterprise custom). Used by associations (members form circles) and by standalone thrift groups (outsiders using only Ajo).
 
 | Role | Uses it to |
 |---|---|
-| **Contributor** | Join a group, complete KYC, accept the rules, pay, see schedule, receipts, balance and payout position. |
-| **Collector** | See assigned contributors and today's list, record collections and cash, hand over cash (online only in release 1). |
-| **Officer** | Manage members, schedules, reconciliation of cash and transfers, arrears and disputes; prepare payouts. |
-| **Admin** | Create groups, set rules and settlement mode, manage roles, **approve payouts**. |
-| **Platform staff** | Configure the add-on (levy, limits, flags), review KYC exceptions, oversee groups and payouts (admin console). |
+| **Contributor** | Join a group, accept the rules, pay, see schedule, receipts, balance and payout position. |
+| **Collector** | See assigned contributors and today's list, record collections and cash, hand over cash (online only in the first release). |
+| **Officer** | Approve participants, manage schedules, reconcile cash and transfers, follow up arrears and disputes, prepare payouts. |
+| **Admin** | Create groups, set rules, manage roles, **approve payouts**. |
+| **Platform staff** | Configure the add-on (levy parameters, standalone sign-up), oversee groups and payouts, see analytics (admin console). |
 
 ### 12.2 Screens (IDs use prefix `TH`; M = mobile, W = web, X = admin console)
 **Contributor**
@@ -976,10 +976,10 @@ A paid add-on that runs contribution circles (collector thrift and rotating pot)
 |---|---|---|
 | THM1 | My thrift — my groups, next due, payout position | M, W |
 | THM2 | Group detail — schedule, my contributions, receipts, rules | M, W |
-| THM3 | Pay contribution — transfer details / Paystack (per group's mode), proof upload | M, W |
+| THM3 | Pay contribution — the group's bank details to copy, proof upload | M, W |
 | THM4 | Rules & acceptance — read and accept the current rule version | M, W |
-| THM5 | KYC — steps for phone, ID, address, bank account; status and limits | M, W |
-| THM6 | Guarantor consent — guarantor reviews and accepts exact wording | M, W (link) |
+| THM5 | My payout account — enter bank name, number, account name (shown masked) | M, W |
+| THM6 | Guarantor consent — guarantor reviews and accepts the recorded wording | M, W (link) |
 | THM7 | My trust score — inputs shown in plain language | M, W |
 | THM8 | Raise a dispute — "I paid" with evidence | M, W |
 
@@ -994,45 +994,44 @@ A paid add-on that runs contribution circles (collector thrift and rotating pot)
 | ID | Screen | Platforms |
 |---|---|---|
 | THO1 | Groups — list with status, members, collected vs expected | M, W |
-| THO2 | Create / edit group — wizard: model, frequency, amount, duration, participants, collector fee, settlement mode, rules | W (M view + simple edit) |
-| THO3 | Members & KYC — status per member, guarantors, payout order | M, W |
+| THO2 | Create / edit group — wizard: model, frequency, amount, duration, participants, collector fee, the group's bank account, rules | W (M view + simple edit) |
+| THO3 | Members & approvals — approve participants, guarantors, payout order | M, W |
 | THO4 | Contributions & reconciliation — confirm transfers, reconcile cash handovers, reverse with reason | M, W |
-| THO5 | Payouts — prepare, preview (pot, fee, levy, shortfall), approve (admin), failed payouts | M, W |
+| THO5 | Payouts — prepare, preview (pot, fee, shortfall), approve (admin), record as paid, void | M, W |
 | THO6 | Defaults & cases — overdue, post-payout default cases, repayment plans, disputes, waive fee | M, W |
 | THO7 | Reports — eight reports with filters and exports | W (M summaries) |
 | THO8 | Collectors — assign contributors, targets, performance | W (M view) |
-| THO9 | Standalone group sign-up and onboarding (flag-gated) | W |
+| THO9 | Standalone group sign-up and onboarding | W |
 
 **Admin console (platform)**
 | ID | Screen |
 |---|---|
-| THX1 | Ajo settings — levy parameters, per-KYC-level limits, provider status, flags |
-| THX2 | Groups & payouts oversight, risk flags |
-| THX3 | KYC exception review queue (masked, audited) |
-| THX4 | Add-on analytics — adoption, active contributors, revenue |
+| THX1 | Ajo settings — levy parameters, standalone sign-up switch |
+| THX2 | Groups & payouts oversight |
+| THX3 | Add-on analytics — adoption, active contributors, revenue |
 
 ### 12.3 Documentation pages (section `ajo-thrift`, apps/docs)
 Audience guides: **administrators**, **collectors**, **members**. Pages:
 1. `index` — what Ajo/thrift is in SocietyLedger and how it is sold (no prices; link to `/pricing`).
 2. `getting-started` — buying the add-on, creating your first group.
-3. `creating-a-group` — models, frequency, amount, duration, participants, collector fee, settlement mode.
+3. `creating-a-group` — models, frequency, amount, duration, participants, collector fee, the group's bank account.
 4. `group-rules` — late fees, grace days, guarantors, default procedure, reminders; how rule versions work.
-5. `member-onboarding-and-kyc` — the three KYC levels, accepted IDs, address and bank checks, what members must do.
+5. `joining-and-approval` — how a member joins, officer approval, accepting the rules, optional phone confirmation, the payout account.
 6. `contributions-and-schedules` — due dates, grace periods, receipts, what "reported" and "confirmed" mean.
 7. `collector-operations` — daily list, recording cash, end-of-day handover, reconciliation.
-8. `online-payments-and-reconciliation` — paying by transfer or Paystack, proofs, matching.
-9. `payouts` — preparing, approving, failed payouts.
+8. `transfers-and-reconciliation` — paying into the group's account, proofs, confirming.
+9. `payouts` — preparing, approving, recording that the group paid, voiding.
 10. `guarantors-defaults-and-disputes` — what happens when someone stops paying, repayment plans, raising a dispute.
 11. `reports-and-exports` — the eight reports and CSV/PDF exports.
 12. `permissions-and-roles` — contributor, collector, officer, admin.
 13. `plans-billing-and-limits` — tiers by active contributors, trial, grace and read-only mode (separate from members' contributions).
-14. `privacy-and-safety` — what data is collected, who sees it, how it is protected, how to stay safe.
+14. `staying-safe` — how records are protected, what the app does and does not do (it never holds your group's money), payout-account controls.
 15. `faq-and-troubleshooting` — at least 8 Q&As.
-Every task page follows the Docs Definition of Done (`build-plan.md`); mobile steps via `PlatformTabs`; plan-billing page stays out of the mobile app docs filter per architecture rule 16.
+Every task page follows the Docs Definition of Done (`build-plan.md`); mobile steps via `PlatformTabs`; the plan-billing page stays out of the mobile app docs filter per architecture rule 16.
 
 ### 12.4 Success criteria
-- A pilot group (2–3 real groups, Mode A) runs a full cycle with every contribution receipted and the group's totals reconciling to the ledger with no manual spreadsheet.
+- A pilot group (2–3 real groups) runs a full cycle with every contribution receipted and the group's totals reconciling to the ledger with no manual spreadsheet.
 - A collector can record a day's collections and hand over cash with zero unexplained difference.
-- No raw NIN/BVN/account number appears in any response, log or screenshot (test-enforced).
+- No full bank account number appears in any response or log (test-enforced).
+- No code path in `modules/ajo/` collects, holds or moves contribution money (test-enforced).
 - An expired add-on leaves all Ajo history readable and exportable.
-- Mode C and standalone sign-up remain off until a written legal sign-off is referenced in the Decisions log.
