@@ -255,9 +255,9 @@ export default function MemberLedgerDetailPage() {
             </p>
             <p className="text-teal-100 text-sm mt-2">
               {summary?.currentBalance && summary.currentBalance > 0 
-                ? 'Outstanding balance' 
+                ? 'Owed by the member' 
                 : summary?.currentBalance && summary.currentBalance < 0 
-                  ? 'Credit balance'
+                  ? 'Credit: the member has paid more than they owe'
                   : 'Account is balanced'}
             </p>
           </div>
@@ -418,7 +418,8 @@ export default function MemberLedgerDetailPage() {
                       </Table.Td>
                       <Table.Td className="max-w-xs truncate">{entry.description}</Table.Td>
                       <Table.Td className={`text-right font-medium ${entry.entryType === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
-                        {entry.entryType === 'CREDIT' ? '+' : '-'}{formatCurrency(entry.amount)}
+                        {/* A charge adds to what the member owes (+), a payment takes it away (-): the same direction the Balance column moves. */}
+                        {entry.entryType === 'CREDIT' ? '-' : '+'}{formatCurrency(entry.amount)}
                       </Table.Td>
                       <Table.Td className="text-right font-semibold">
                         {entry.runningBalance >= 0 ? formatCurrency(entry.runningBalance) : `-${formatCurrency(entry.runningBalance)}`}

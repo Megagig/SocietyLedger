@@ -22,8 +22,9 @@ import { formatDate } from '@/lib/dates';
 import { COOPERATIVE_GUARANTOR_ACCESS, COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
 import { formatMoney, toDecimal } from '@/lib/money';
 
+/** A charge adds to what the member owes (+), a payment takes it away (–): the same direction the running balance moves. */
 function entrySign(entryType: string): '+' | '–' {
-  return entryType === 'CREDIT' ? '+' : '–';
+  return entryType === 'CREDIT' ? '–' : '+';
 }
 
 export default function MoneyScreen() {

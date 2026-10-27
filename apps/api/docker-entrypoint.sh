@@ -27,5 +27,13 @@ else
   echo "SEED_ON_START=false, skipping seeds."
 fi
 
+# Brings every association's member ledgers and books into line with their charges and payments (donations used to unbalance both).
+# Safe to repeat: it only adds what is missing, never edits a posted entry, and a second run finds nothing to do. Logs one line per
+# association it changed. It never stops the API from starting. Set REPAIR_BOOKS_ON_START=false to skip.
+if [ "${REPAIR_BOOKS_ON_START:-true}" != "false" ]; then
+  echo "Checking member ledgers and books..."
+  node_modules/.bin/tsx scripts/repair-ledgers-and-books.ts || echo "  Ledger and books check failed; the API will start anyway (see the lines above)."
+fi
+
 echo "Starting API server..."
 exec node dist/server.js

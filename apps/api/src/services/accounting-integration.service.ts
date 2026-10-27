@@ -14,6 +14,8 @@ import { prisma } from '../lib/prisma';
 import { accountingService } from '../modules/accounting/accounting.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import { AsyncLocalStorage } from 'async_hooks';
+import { STANDARD_CHART_OF_ACCOUNTS } from '../modules/accounting/accounting.types';
+import { chargeMapping, receivableCodeFor } from '../modules/accounting/posting-rules';
 
 // Cash collected by an officer sits in "Cash in hand" until it is lodged and verified, not in the bank account.
 // Only code running inside runAsCashCollection() sees that; every other caller keeps the default bank account.
@@ -84,6 +86,43 @@ export const accountingIntegrationService = {
     }
   },
   
+  /**
+   * Find an account by code, or create it from the standard chart when this association's chart was set up before that account
+   * existed (for example 1123 Donation Pledges Receivable). Only call it for an association whose accounting is initialised.
+   */
+  async findOrCreateStandardAccount(associationId: number, code: string) {
+    const existing = await this.findAccount(associationId, code);
+    if (existing) return existing;
+    const standard = STANDARD_CHART_OF_ACCOUNTS.find((account) => account.code === code);
+    if (!standard) return null;
+    try {
+      return await prisma.chartOfAccount.create({
+        data: {
+          associationId,
+          code,
+          name: standard.name,
+          type: standard.type,
+          subType: standard.subType,
+          description: standard.description,
+          normalBalance: standard.normalBalance ?? (standard.type === 'ASSET' || standard.type === 'EXPENSE' ? 'DEBIT' : 'CREDIT'),
+          isSystemAccount: true,
+        },
+      });
+    } catch {
+      // Lost a race with another request creating it.
+      return this.findAccount(associationId, code);
+    }
+  },
+
+  /** Whether a charge or payment has already been posted to the books (so a repeated sync, or a repair, never posts it twice). */
+  async hasPostedEntryFor(associationId: number, sourceTable: 'Transaction' | 'Payment', sourceId: number): Promise<boolean> {
+    const entry = await prisma.journalEntry.findFirst({
+      where: { associationId, sourceType: `auto_sync:${sourceTable}`, sourceId },
+      select: { id: true },
+    });
+    return Boolean(entry);
+  },
+
   /**
    * The account an inflow is debited to: the operating bank account by default, or "Cash in hand"
    * (created on first use) when called inside a cash collection.
@@ -247,6 +286,8 @@ export const accountingIntegrationService = {
           break;
         case 'CashReversal':
           break; // a reversal has no source row of its own to mark
+        case 'BooksCorrection':
+          break; // a correction is tied to its charge by id, and has no flag of its own to set
         default:
           console.warn(`Unknown table name for sync status update: ${tableName}`);
       }
@@ -299,23 +340,19 @@ export const accountingIntegrationService = {
     }
     
     try {
-      // Determine accounts based on transaction type
-      const accountMappings: Record<string, { debitCode: string; creditCode: string }> = {
-        due: { debitCode: '1121', creditCode: '4110' }, // Dues Receivable -> Membership Dues
-        levy: { debitCode: '1122', creditCode: '4200' }, // Levy Receivable -> Levy Income
-        donation: { debitCode: '1112', creditCode: '4300' }, // Bank -> Donation Income
-        penalty: { debitCode: '1121', creditCode: '4400' }, // Receivable -> Penalty Income
-      };
-      
+      // Already on the books (a repeated sync, a restore, a repair): never post a charge twice.
+      if (await this.hasPostedEntryFor(transaction.associationId, 'Transaction', transaction.id)) return;
+
+      // Dues and penalties -> Dues Receivable, levy -> Levy Receivable, donation -> Donation Pledges Receivable; credit the matching income.
       const categoryType = transaction.category?.type || 'due';
-      const mapping = accountMappings[categoryType];
+      const mapping = chargeMapping(categoryType);
 
       if (!mapping) {
         throw new Error(`No account mapping defined for category type "${categoryType}" — add one before using this category`);
       }
 
-      const debitAccount = await this.findAccount(transaction.associationId, mapping.debitCode);
-      const creditAccount = await this.findAccount(transaction.associationId, mapping.creditCode);
+      const debitAccount = await this.findOrCreateStandardAccount(transaction.associationId, mapping.debitCode);
+      const creditAccount = await this.findOrCreateStandardAccount(transaction.associationId, mapping.creditCode);
       
       if (!debitAccount || !creditAccount) {
         throw new Error(`Required accounts not found (${mapping.debitCode}, ${mapping.creditCode}). Please initialize chart of accounts.`);
@@ -369,15 +406,18 @@ export const accountingIntegrationService = {
     }
     
     try {
+      // Already on the books (a repeated sync, a repeated webhook, a repair): never post a payment twice.
+      if (await this.hasPostedEntryFor(payment.associationId, 'Payment', payment.id)) return;
+
       const cashAccount = await this.findInflowAccount(payment.associationId); // Bank Account - Operating (Cash in hand inside a cash collection)
-      
-      // Determine receivable account based on transaction type
+
+      // The payment clears the same receivable its charge created: dues/penalty 1121, levy 1122, donation 1123
       const categoryType = payment.transaction?.category?.type || 'due';
-      const receivableCode = categoryType === 'levy' ? '1122' : '1121';
-      const receivableAccount = await this.findAccount(payment.associationId, receivableCode);
+      const receivableCode = receivableCodeFor(categoryType);
+      const receivableAccount = await this.findOrCreateStandardAccount(payment.associationId, receivableCode);
       
       if (!cashAccount || !receivableAccount) {
-        throw new Error('Required accounts not found (1112, 1121/1122)');
+        throw new Error('Required accounts not found (1112/1114 and the receivable account)');
       }
       
       const memberName = `${payment.transaction?.member?.firstName || ''} ${payment.transaction?.member?.lastName || ''}`.trim();
@@ -414,35 +454,53 @@ export const accountingIntegrationService = {
   },
   
   /**
-   * A donation collected in cash: debit the inflow account (Cash in hand inside a cash collection), credit Donation Income.
-   * The ordinary donation flow doesn't post to the books; this exists so cash handed over at a meeting is accounted for, and the
-   * later lodgment (cash in hand -> bank) has something to move. Posted against the donation's payment row.
+   * Undo the books for charges and payments that no longer exist (deleted, or voided with their receipt): post the mirror image of
+   * every posted entry that came from them, including earlier corrections, skipping any that were already reversed.
+   * Returns how many entries were reversed. One entry failing never stops the rest.
    */
-  async onCashDonation(payment: any, memberName: string, userId: number) {
-    const hasAccounting = await this.checkAccountingInitialized(payment.associationId);
-    if (!hasAccounting) return;
+  async reverseEntriesForSources(
+    associationId: number,
+    userId: number,
+    sources: { transactionIds?: number[]; paymentIds?: number[] },
+    description: string,
+    reference: string,
+  ): Promise<number> {
+    const transactionIds = sources.transactionIds ?? [];
+    const paymentIds = sources.paymentIds ?? [];
+    if (transactionIds.length === 0 && paymentIds.length === 0) return 0;
 
-    const cashAccount = await this.findInflowAccount(payment.associationId);
-    const incomeAccount = await this.findAccount(payment.associationId, '4300'); // Donation Income
-    if (!cashAccount || !incomeAccount) {
-      throw new Error('Required accounts not found (cash, 4300)');
-    }
-
-    await this.createAndPostJournalEntry(
-      payment.associationId,
-      userId,
-      {
-        entryDate: payment.paymentDate.toISOString(),
-        description: `Cash donation - ${memberName}`,
-        reference: payment.receiptNumber,
-        lines: [
-          { accountId: cashAccount.id, debitAmount: Number(payment.amountPaid), creditAmount: 0, description: 'Cash received' },
-          { accountId: incomeAccount.id, debitAmount: 0, creditAmount: Number(payment.amountPaid), description: 'Donation income' },
+    const originals = await prisma.journalEntry.findMany({
+      where: {
+        associationId,
+        status: 'POSTED',
+        OR: [
+          ...(transactionIds.length ? [{ sourceType: { in: ['auto_sync:Transaction', 'auto_sync:BooksCorrection'] }, sourceId: { in: transactionIds } }] : []),
+          ...(paymentIds.length ? [{ sourceType: 'auto_sync:Payment', sourceId: { in: paymentIds } }] : []),
         ],
       },
-      'Payment',
-      payment.id,
+      select: { id: true },
+    });
+    if (originals.length === 0) return 0;
+
+    const alreadyReversed = new Set(
+      (
+        await prisma.journalEntry.findMany({
+          where: { associationId, sourceType: 'auto_sync:CashReversal', sourceId: { in: originals.map((entry) => entry.id) } },
+          select: { sourceId: true },
+        })
+      ).map((entry) => entry.sourceId),
     );
+
+    let reversed = 0;
+    for (const original of originals) {
+      if (alreadyReversed.has(original.id)) continue;
+      try {
+        if (await this.reverseJournalEntry(associationId, userId, original.id, description, reference)) reversed += 1;
+      } catch (error) {
+        console.error(`Could not reverse journal entry ${original.id} (non-critical):`, error);
+      }
+    }
+    return reversed;
   },
 
   /**

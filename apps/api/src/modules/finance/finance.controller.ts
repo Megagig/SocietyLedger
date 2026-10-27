@@ -19,6 +19,7 @@ import { reminderText, splitByCooldown } from './reminder-rules';
 import { isOverdue, overdueWhere } from './overdue-rules';
 import { syncLedgerDebit } from './ledger-sync';
 import { restoreChargeExtras } from './restore-rules';
+import { unwindDeletedCharges } from './charge-unwind';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -1028,6 +1029,17 @@ export const financeController = {
         await tx.transaction.delete({ where: { id: parseInt(id) } });
       });
 
+      // Take it back out of the books and off the member's ledger too (a deleted charge used to leave both counting it).
+      await unwindDeletedCharges({
+        associationId,
+        userId: req.user!.id,
+        memberIds: [transaction.memberId],
+        transactionIds: [transaction.id],
+        paymentIds: transaction.payments.map((p) => p.id),
+        reason: `Charge ${transaction.referenceNumber ?? transaction.id} deleted`,
+        reference: transaction.referenceNumber ?? `TXN-${transaction.id}`,
+      });
+
       const auditLog = await prisma.auditLog.create({
         data: {
           associationId,
@@ -1118,6 +1130,17 @@ export const financeController = {
         await tx.transaction.deleteMany({
           where: { id: { in: validatedData.transactionIds } },
         });
+      });
+
+      // Take them back out of the books and off the members' ledgers too.
+      await unwindDeletedCharges({
+        associationId,
+        userId: req.user!.id,
+        memberIds: transactions.map((t) => t.memberId),
+        transactionIds: transactions.map((t) => t.id),
+        paymentIds: transactions.flatMap((t) => t.payments.map((p) => p.id)),
+        reason: 'Charges deleted',
+        reference: `BULK-DELETE-${Date.now()}`,
       });
 
       // Create audit log

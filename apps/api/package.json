@@ -24,7 +24,8 @@
     "migrate:accounting": "tsx ../../scripts/migrate-to-accounting.ts",
     "rollback:accounting": "tsx ../../scripts/rollback-accounting-sync.ts",
     "check:accounting": "tsx ../../scripts/check-accounting-status.ts",
-    "debug:accounting": "tsx ../../scripts/debug-association-accounting.ts"
+    "debug:accounting": "tsx ../../scripts/debug-association-accounting.ts",
+    "repair:books": "tsx scripts/repair-ledgers-and-books.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1154.0",

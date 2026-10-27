@@ -124,6 +124,8 @@ services:
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
       # Set to false to skip the reference-data seeds on start (saves about 30 seconds)
       SEED_ON_START: ${SEED_ON_START:-true}
+      # Set to false to skip the member-ledger and books check on start (see docs/deployment/DONATIONS_LEDGER_REPAIR.md)
+      REPAIR_BOOKS_ON_START: ${REPAIR_BOOKS_ON_START:-true}
     volumes:
       - api_uploads:/app/apps/api/uploads
     networks:

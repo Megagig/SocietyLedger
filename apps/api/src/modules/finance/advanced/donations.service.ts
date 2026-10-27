@@ -3,6 +3,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
 import { cacheInvalidationService } from '../../../services/cache-invalidation.service';
 import { memberLedgerService } from '../../member-finance/member-ledger.service';
+import { syncLedgerDebit } from '../ledger-sync';
 import { RuleError } from '../rule-error';
 import { assertDonationAllowed } from './donation-entry-rules';
 
@@ -15,13 +16,16 @@ export const donationsService = {
    * Generate unique donation receipt number
    */
   async generateReceiptNumber(associationId: number): Promise<string> {
-    const count = await prisma.donationRecord.count({
-      where: {
-        transaction: { associationId },
-      },
+    // receipt_number is unique across the whole system, so the association is part of the number: DON-2026-12-000001.
+    // Numbered from the highest one issued (not a count), so deleting a donation can never cause a repeat.
+    const prefix = `DON-${new Date().getFullYear()}-${associationId}-`;
+    const last = await prisma.donationRecord.findFirst({
+      where: { receiptNumber: { startsWith: prefix } },
+      orderBy: { receiptNumber: 'desc' },
+      select: { receiptNumber: true },
     });
-    const year = new Date().getFullYear();
-    return `DON-${year}-${String(count + 1).padStart(6, '0')}`;
+    const lastNumber = last ? parseInt(last.receiptNumber.slice(prefix.length), 10) : 0;
+    return `${prefix}${String((Number.isFinite(lastNumber) ? lastNumber : 0) + 1).padStart(6, '0')}`;
   },
 
   /**
@@ -272,9 +276,6 @@ export const donationsService = {
       return `TXN${timestamp}${random}`;
     };
 
-    // Generate receipt number for donation record
-    const receiptNumber = await this.generateReceiptNumber(associationId);
-
     // Determine transaction status and dates based on donation type
     const isInstant = donationType === 'instant';
     const transactionStatus = isInstant ? 'paid' : 'pending';
@@ -283,7 +284,7 @@ export const donationsService = {
 
     // Create transaction, payment (if instant), and donation record in a single transaction
     // Increase timeout for slow database connections (e.g., Neon cold starts)
-    const result = await prisma.$transaction(async (tx) => {
+    const created = await withUniqueReceipt(() => this.generateReceiptNumber(associationId), (receiptNumber) => prisma.$transaction(async (tx) => {
       // Generate unique reference numbers inside transaction to avoid race conditions
       const transactionRef = generateUniqueTransactionRef();
 
@@ -346,7 +347,8 @@ export const donationsService = {
     }, {
       maxWait: 30000, // Maximum time to wait for transaction to start (30 seconds)
       timeout: 30000, // Maximum time for transaction to complete (30 seconds)
-    });
+    }));
+    const { receiptNumber, value: result } = created;
 
     await prisma.auditLog.create({
       data: {
@@ -366,9 +368,10 @@ export const donationsService = {
       },
     });
 
-    // The donation reaches the member's ledger and the books like any other charge and payment. A donation is not a debt, so the
-    // ledger only records the money once it is received (an instant donation now; a pledge when it is paid). Best-effort: a sync
-    // problem never undoes a donation that was recorded (a ledger can be rebuilt).
+    // The donation reaches the member's ledger and the books like any other charge and payment: a debit for the amount given or pledged,
+    // and a credit when it is paid. An instant donation is both at once, so the member's balance is unchanged; a pledge stays owed until
+    // it is paid. Best-effort: a sync problem never undoes a donation that was recorded (a ledger can be rebuilt).
+    await syncLedgerDebit(result.transaction.id, userId);
     if (result.payment) {
       try {
         await memberLedgerService.createFromPayment(result.payment.id, userId);
@@ -681,3 +684,19 @@ export const donationsService = {
     };
   },
 };
+
+/**
+ * Takes the next receipt number and runs the work with it, taking a new number and trying again if another donation got that number
+ * first (the receipt number is unique across the system).
+ */
+async function withUniqueReceipt<T>(nextNumber: () => Promise<string>, work: (receiptNumber: string) => Promise<T>): Promise<{ receiptNumber: string; value: T }> {
+  for (let attempt = 0; ; attempt += 1) {
+    const receiptNumber = await nextNumber();
+    try {
+      return { receiptNumber, value: await work(receiptNumber) };
+    } catch (error) {
+      if (attempt < 4 && (error as { code?: string })?.code === 'P2002') continue;
+      throw error;
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../../lib/prisma';
+import { syncPaymentEffects } from '../../../services/payment-sync.service';
 import { PaystackService } from './paystack.service';
 import { PaystackWebhookEvent } from './paystack.types';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -220,27 +221,8 @@ async function handleChargeSuccess(event: PaystackWebhookEvent) {
     console.log(`   Transaction Status: ${newStatus}`);
     console.log(`   Member: ${transaction.member.firstName} ${transaction.member.lastName}`);
 
-    // G45: a real Paystack-confirmed payment never synced to accounting at
-    // all — the only onPaymentRecorded callers were finance.controller.ts's
-    // manual-record paths. Wire it here too.
-    try {
-      const fullPayment = await prisma.payment.findUnique({
-        where: { receiptNumber },
-        include: {
-          transaction: {
-            include: {
-              member: { select: { id: true, firstName: true, lastName: true } },
-              category: { select: { id: true, name: true, type: true } },
-            },
-          },
-        },
-      });
-      if (fullPayment) {
-        await accountingIntegrationService.onPaymentRecorded(fullPayment, 1);
-      }
-    } catch (syncError) {
-      console.error('Accounting sync failed for Paystack webhook payment (non-critical):', syncError);
-    }
+    // The member's ledger and the books, through the one shared function every payment route uses.
+    await syncPaymentEffects({ receiptNumber, associationId: gatewayTransaction.associationId }, transaction.createdBy ?? 1);
 
     // TODO: Send payment confirmation email to member
     // TODO: Send notification to association admins

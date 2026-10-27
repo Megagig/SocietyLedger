@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
+import { syncPaymentEffects } from '../../../services/payment-sync.service';
 import { nombaService } from './nomba.service';
 import { NombaWebhookPayload } from './nomba.types';
 
@@ -107,6 +108,8 @@ export class NombaWebhookHandler {
       const amountInNaira = nombaService.convertToNaira(transaction.transactionAmount);
 
       // Process payment in atomic transaction
+      let recordedReceipt: string | null = null;
+      let recordedBy = 1;
       await prisma.$transaction(async (tx) => {
         // Update gateway transaction
         await tx.paymentGatewayTransaction.update({
@@ -124,6 +127,7 @@ export class NombaWebhookHandler {
         });
         const timestamp = Date.now().toString().slice(-6);
         const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}-${timestamp}`;
+        recordedReceipt = receiptNumber;
 
         // Fetch transaction to get createdBy
         const txn = await tx.transaction.findUnique({
@@ -134,6 +138,7 @@ export class NombaWebhookHandler {
         if (!txn) {
           throw new Error('Transaction not found');
         }
+        recordedBy = txn.createdBy || 1;
 
         // Create payment record
         await tx.payment.create({
@@ -185,6 +190,9 @@ export class NombaWebhookHandler {
           },
         });
       });
+
+      // The member's ledger and the books, through the one shared function every payment route uses.
+      if (recordedReceipt) await syncPaymentEffects({ receiptNumber: recordedReceipt, associationId: gatewayTxn.associationId }, recordedBy);
 
       console.log('Nomba webhook: Payment processed successfully:', {
         reference,

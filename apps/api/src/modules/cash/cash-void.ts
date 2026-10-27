@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
 import { memberLedgerService } from '../member-finance/member-ledger.service';
+import { unwindDeletedCharges } from '../finance/charge-unwind';
 import { CashRuleError } from './cash-rules';
 import { notifyCashReceiptVoided } from './cash-notifications';
 
@@ -113,7 +114,9 @@ async function reverseDonation(item: Item, ctx: { associationId: number; userId:
   });
   if (!record) return;
 
-  const paymentEntryIds = record.transaction.payments.map((p) => p.accountingEntryId);
+  const paymentIds = record.transaction.payments.map((p) => p.id);
+  const memberId = record.transaction.memberId;
+  const transactionId = record.transactionId;
   // Same unwinding the existing "delete a transaction" action does for a donation: the gift record, its payments, then the charge.
   await prisma.$transaction(async (tx) => {
     await tx.donationRecord.delete({ where: { id: record.id } });
@@ -121,11 +124,17 @@ async function reverseDonation(item: Item, ctx: { associationId: number; userId:
     await tx.transaction.delete({ where: { id: record.transactionId } });
   });
 
-  for (const entryId of paymentEntryIds) {
-    await accountingIntegrationService
-      .reverseJournalEntry(ctx.associationId, ctx.userId, entryId, `Cash receipt ${ctx.receiptNumber} voided`, ctx.receiptNumber)
-      .catch((error) => console.error('Accounting reversal failed (non-critical):', error));
-  }
+  // The donation is gone, so its charge and its payments come out of the books (both used to stay counted: only the payments were
+  // reversed) and off the member's ledger (which was never touched).
+  await unwindDeletedCharges({
+    associationId: ctx.associationId,
+    userId: ctx.userId,
+    memberIds: [memberId],
+    transactionIds: [transactionId],
+    paymentIds,
+    reason: `Cash receipt ${ctx.receiptNumber} voided`,
+    reference: ctx.receiptNumber,
+  });
   await cacheInvalidationService.onPaymentChange(ctx.associationId);
 }
 

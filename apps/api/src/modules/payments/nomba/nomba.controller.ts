@@ -8,6 +8,7 @@ import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../lib/prisma';
+import { syncPaymentEffects } from '../../../services/payment-sync.service';
 import { userOwnsCharge } from '../charge-ownership';
 import { nombaService } from './nomba.service';
 import { SettingsService } from '../../settings/settings.service';
@@ -383,6 +384,7 @@ export class NombaController {
   ): Promise<void> {
     const amountInNaira = nombaService.convertToNaira(amount);
 
+    let recordedReceipt: string | null = null;
     await prisma.$transaction(async (tx) => {
       // Update gateway transaction
       await tx.paymentGatewayTransaction.update({
@@ -399,6 +401,7 @@ export class NombaController {
       });
       const timestamp = Date.now().toString().slice(-6);
       const receiptNumber = `RCP${String(receiptCount + 1).padStart(6, '0')}-${timestamp}`;
+      recordedReceipt = receiptNumber;
 
       // Create payment record
       await tx.payment.create({
@@ -456,6 +459,9 @@ export class NombaController {
         },
       });
     });
+
+    // The member's ledger and the books, through the one shared function every payment route uses.
+    if (recordedReceipt) await syncPaymentEffects({ receiptNumber: recordedReceipt, associationId }, userId);
   }
 }
 

@@ -3,6 +3,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 import { donationFigures } from './donation-rules';
+import { donationsService } from '../finance/advanced/donations.service';
+import { RuleError } from '../finance/rule-error';
 import { Decimal } from '@prisma/client/runtime/library';
 import { SettingsService } from '../settings/settings.service';
 import { assertMemberCapacity, MemberLimitError } from '../../middleware/subscription.middleware';
@@ -851,56 +853,19 @@ export const memberFinanceController = {
         return res.status(404).json({ success: false, message: 'Donation category not found' });
       }
 
-      // Create donation in a transaction
-      const result = await prisma.$transaction(async (tx) => {
-        // Generate reference numbers
-        const txnCount = await tx.transaction.count({ where: { associationId } });
-        const paymentCount = await tx.payment.count({ where: { associationId } });
-        const donationCount = await tx.donationRecord.count({ where: { transaction: { associationId } } });
-
-        const txnRef = `TXN${String(txnCount + 1).padStart(6, '0')}`;
-        const receiptNumber = `PAY${String(paymentCount + 1).padStart(6, '0')}`;
-        const donationReceiptNumber = `DON${String(donationCount + 1).padStart(6, '0')}`;
-
-        // Create transaction
-        const transaction = await tx.transaction.create({
-          data: {
-            associationId,
-            memberId: member.id,
-            categoryId: validatedData.categoryId,
-            amount: validatedData.amount,
-            referenceNumber: txnRef,
-            status: 'paid',
-            notes: validatedData.notes,
-            createdBy: userId,
-          },
-        });
-
-        // Create payment
-        await tx.payment.create({
-          data: {
-            associationId,
-            transactionId: transaction.id,
-            amountPaid: validatedData.amount,
-            paymentDate: new Date(),
-            paymentMethod: validatedData.paymentMethod.toLowerCase(),
-            receiptNumber,
-            confirmedBy: userId,
-            confirmedAt: new Date(),
-          },
-        });
-
-        // Create donation record
-        const donationRecord = await tx.donationRecord.create({
-          data: {
-            transactionId: transaction.id,
-            isAnonymous: validatedData.isAnonymous,
-            receiptNumber: donationReceiptNumber,
-          },
-        });
-
-        return { transaction, donationRecord };
+      // Recorded by the same function as every other donation, so the receipt number is unique across associations, the member's ledger
+      // and the books are updated (a debit and a credit that cancel out), and the caches are cleared. Before, this wrote the rows directly
+      // and touched neither the ledger nor the books, and its count-based receipt numbers collided between associations.
+      const recorded = await donationsService.recordDonation(associationId, userId, {
+        memberId: member.id,
+        categoryId: validatedData.categoryId,
+        amount: validatedData.amount,
+        paymentMethod: validatedData.paymentMethod.toLowerCase(),
+        isAnonymous: validatedData.isAnonymous,
+        notes: validatedData.notes,
+        donationType: 'instant',
       });
+      const result = { transaction: recorded.transaction, donationRecord: recorded.donationRecord };
 
       // Create audit log
       await prisma.auditLog.create({
@@ -930,6 +895,9 @@ export const memberFinanceController = {
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      if (error instanceof RuleError) {
+        return res.status(error.status).json({ success: false, code: error.code, message: error.message });
       }
       console.error('Error making donation:', error);
       return res.status(500).json({ success: false, message: 'Failed to record donation' });

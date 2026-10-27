@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { LedgerEntryType, LedgerCategory } from '@prisma/client';
+import { chargeDescription, ledgerCategoryFor, paymentDescription, planLedgerReconciliation, runningBalances } from './ledger-reconcile-rules';
 
 export interface LedgerEntryInput {
   associationId: number;
@@ -62,50 +63,41 @@ export const memberLedgerService = {
    * Ledger entries are append-only for audit integrity
    */
   async createEntry(input: LedgerEntryInput) {
-    // Calculate running balance
-    const lastEntry = await prisma.memberFinancialLedger.findFirst({
-      where: {
-        associationId: input.associationId,
-        memberId: input.memberId,
-      },
-      orderBy: { createdAt: 'desc' },
-      select: { runningBalance: true },
-    });
-
-    const previousBalance = lastEntry?.runningBalance || new Decimal(0);
     const amount = new Decimal(input.amount);
-    
-    // DEBIT increases what member owes (negative for member)
-    // CREDIT decreases what member owes (positive for member)
-    const balanceChange = input.entryType === 'CREDIT' 
-      ? amount.negated() // Credit reduces outstanding
-      : input.entryType === 'DEBIT' 
-        ? amount // Debit increases outstanding
-        : new Decimal(0); // Adjustment handled separately
-    
-    const newBalance = previousBalance.plus(balanceChange);
+    // DEBIT increases what the member owes; CREDIT decreases it (a negative balance is a credit in the member's favour).
+    // ADJUSTMENT entries are informational and never move the balance.
+    const balanceChange =
+      input.entryType === 'CREDIT' ? amount.negated() : input.entryType === 'DEBIT' ? amount : new Decimal(0);
 
-    return prisma.memberFinancialLedger.create({
-      data: {
-        associationId: input.associationId,
-        memberId: input.memberId,
-        entryType: input.entryType,
-        category: input.category,
-        amount: input.amount,
-        runningBalance: newBalance,
-        effectiveDate: input.effectiveDate,
-        description: input.description,
-        sourceTable: input.sourceTable,
-        sourceId: input.sourceId,
-        referenceNumber: input.referenceNumber,
-        createdBy: input.createdBy,
-      },
+    // One writer per member at a time, and the balance is worked out from the entries (not read off "the last row"), so two payments
+    // arriving together can never write a wrong running balance.
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${input.associationId}::int4, ${input.memberId}::int4)`;
+      const previousBalance = await currentBalance(tx, input.associationId, input.memberId);
+
+      return tx.memberFinancialLedger.create({
+        data: {
+          associationId: input.associationId,
+          memberId: input.memberId,
+          entryType: input.entryType,
+          category: input.category,
+          amount: input.amount,
+          runningBalance: previousBalance.plus(balanceChange),
+          effectiveDate: input.effectiveDate,
+          description: input.description,
+          sourceTable: input.sourceTable,
+          sourceId: input.sourceId,
+          referenceNumber: input.referenceNumber,
+          createdBy: input.createdBy,
+        },
+      });
     });
   },
 
   /**
-   * Create ledger entry from a transaction (dues, levies, penalties)
-   * Note: Donations do NOT create a transaction entry - only the payment creates a credit
+   * Put a charge on the member's ledger as what they owe: dues, levies, penalties and donations alike.
+   * A donation is a charge too. An instant donation is paid the moment it is recorded, so its debit and its payment's credit cancel out;
+   * a pledge stays owed until it is paid. Safe to call twice: a charge already on the ledger is returned, not written again.
    */
   async createFromTransaction(transactionId: number, createdBy: number) {
     const transaction = await prisma.transaction.findUnique({
@@ -120,34 +112,22 @@ export const memberLedgerService = {
       throw new Error('Transaction not found');
     }
 
-    // Donations should NOT create a ledger entry from the transaction
-    // Only the payment should create a CREDIT entry for donations
-    if (transaction.category.type === 'donation') {
-      return null; // No ledger entry for donation transactions - wait for payment
-    }
+    // A voided charge is no longer owed.
+    if (transaction.isVoided) return null;
 
-    // Map transaction category type to ledger category
-    const categoryMap: Record<string, LedgerCategory> = {
-      'due': 'DUES',
-      'levy': 'LEVY',
-      'penalty': 'PENALTY',
-    };
-
-    const ledgerCategory = categoryMap[transaction.category.type] || 'OTHER';
-    
-    // Dues, levies, penalties are debits (member owes money)
-    const entryType: LedgerEntryType = 'DEBIT';
-
-    const description = `${transaction.category.name}${transaction.notes ? ` - ${transaction.notes}` : ''}`;
+    const existing = await prisma.memberFinancialLedger.findFirst({
+      where: { associationId: transaction.associationId, sourceTable: 'transaction', sourceId: transaction.id },
+    });
+    if (existing) return existing;
 
     return this.createEntry({
       associationId: transaction.associationId,
       memberId: transaction.memberId,
-      entryType,
-      category: ledgerCategory,
+      entryType: 'DEBIT',
+      category: ledgerCategoryFor(transaction.category.type) as LedgerCategory,
       amount: transaction.amount,
       effectiveDate: transaction.createdAt,
-      description,
+      description: chargeDescription(transaction.category.type, transaction.category.name, transaction.notes, Boolean(transaction.dueDate)),
       sourceTable: 'transaction',
       sourceId: transaction.id,
       referenceNumber: transaction.referenceNumber || undefined,
@@ -156,9 +136,8 @@ export const memberLedgerService = {
   },
 
   /**
-   * Create ledger entry from a payment
-   * For donations: This is the actual donation being made (CREDIT)
-   * For dues/levies/penalties: This offsets the original DEBIT (CREDIT)
+   * Put a payment on the member's ledger: a credit that reduces what they owe for the charge it pays (dues, levy, penalty, donation or pledge).
+   * Safe to call twice: a payment already on the ledger is returned, not written again.
    */
   async createFromPayment(paymentId: number, createdBy: number) {
     const payment = await prisma.payment.findUnique({
@@ -174,31 +153,19 @@ export const memberLedgerService = {
       throw new Error('Payment not found');
     }
 
-    // Map transaction category type to ledger category
-    const categoryMap: Record<string, LedgerCategory> = {
-      'due': 'DUES',
-      'levy': 'LEVY',
-      'penalty': 'PENALTY',
-      'donation': 'DONATION',
-    };
+    const existing = await prisma.memberFinancialLedger.findFirst({
+      where: { associationId: payment.associationId, sourceTable: 'payment', sourceId: payment.id },
+    });
+    if (existing) return existing;
 
-    const isDonation = payment.transaction.category.type === 'donation';
-    const ledgerCategory = categoryMap[payment.transaction.category.type] || 'OTHER';
-    
-    // For donations, the payment IS the donation, not a payment "for" something
-    const description = isDonation 
-      ? `Donation: ${payment.transaction.category.name}`
-      : `Payment for ${payment.transaction.category.name}`;
-
-    // Payments are always credits (reducing what member owes, or adding credit for donations)
     return this.createEntry({
       associationId: payment.associationId,
       memberId: payment.transaction.memberId,
       entryType: 'CREDIT',
-      category: ledgerCategory,
+      category: ledgerCategoryFor(payment.transaction.category.type) as LedgerCategory,
       amount: payment.amountPaid,
       effectiveDate: payment.paymentDate,
-      description,
+      description: paymentDescription(payment.transaction.category.type, payment.transaction.category.name, Boolean(payment.transaction.dueDate)),
       sourceTable: 'payment',
       sourceId: payment.id,
       referenceNumber: payment.receiptNumber || undefined,
@@ -349,22 +316,7 @@ export const memberLedgerService = {
    * Get member's current balance (computed)
    */
   async getMemberBalance(associationId: number, memberId: number, asOfDate?: Date) {
-    const whereClause: any = {
-      associationId,
-      memberId,
-    };
-
-    if (asOfDate) {
-      whereClause.effectiveDate = { lte: asOfDate };
-    }
-
-    const lastEntry = await prisma.memberFinancialLedger.findFirst({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      select: { runningBalance: true },
-    });
-
-    return Number(lastEntry?.runningBalance || 0);
+    return Number(await currentBalance(prisma, associationId, memberId, asOfDate));
   },
 
   /**
@@ -595,116 +547,118 @@ export const memberLedgerService = {
   },
 
   /**
-   * Sync existing transactions to ledger (for migration/backfill)
-   * @param force - If true, clears existing entries before syncing
+   * Bring a member's ledger in line with their charges and payments (for migration, backfill, and after a delete or a move).
+   * Only entries that come from charges and payments are touched: waivers, savings, loans, welfare and manual adjustments are kept.
+   * With force=false it refuses to run over an existing ledger, as before; force=true reconciles it.
    */
   async syncExistingTransactions(associationId: number, memberId: number, createdBy: number, force: boolean = false) {
-    // Check if member already has ledger entries
-    const existingCount = await prisma.memberFinancialLedger.count({
-      where: { associationId, memberId },
-    });
-
-    if (existingCount > 0) {
-      if (force) {
-        // Clear existing entries before re-syncing
-        await this.clearMemberLedger(associationId, memberId);
-      } else {
-        throw new Error('Member already has ledger entries. Use force=true to clear and re-sync.');
-      }
+    const existingCount = await prisma.memberFinancialLedger.count({ where: { associationId, memberId } });
+    if (existingCount > 0 && !force) {
+      throw new Error('Member already has ledger entries. Use force=true to clear and re-sync.');
     }
-
-    // Get all transactions for this member
-    const transactions = await prisma.transaction.findMany({
-      where: { associationId, memberId },
-      include: { category: true, payments: true },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    const entries: LedgerEntryInput[] = [];
-
-    for (const txn of transactions) {
-      const categoryMap: Record<string, LedgerCategory> = {
-        'due': 'DUES',
-        'levy': 'LEVY',
-        'penalty': 'PENALTY',
-        'donation': 'DONATION',
-      };
-      const ledgerCategory = categoryMap[txn.category.type] || 'OTHER';
-      
-      // For donations: Only payments should create CREDIT entries (the actual donation)
-      // For dues/levies/penalties: Transaction creates DEBIT (what is owed), payment creates CREDIT (payment made)
-      const isDonation = txn.category.type === 'donation';
-      
-      // Only create transaction entry for non-donation types (dues, levies, penalties).
-      // A voided charge is no longer owed — its replacement carries the debt — so it adds no debit; any payments
-      // already made against it were real money received and still count as credits below.
-      if (!isDonation && !txn.isVoided) {
-        entries.push({
-          associationId,
-          memberId,
-          entryType: 'DEBIT',
-          category: ledgerCategory,
-          amount: txn.amount,
-          effectiveDate: txn.createdAt,
-          description: `${txn.category.name}${txn.notes ? ` - ${txn.notes}` : ''}`,
-          sourceTable: 'transaction',
-          sourceId: txn.id,
-          referenceNumber: txn.referenceNumber || undefined,
-          createdBy,
-        });
-      }
-
-      // Add payment entries
-      // For dues/levies/penalties: CREDIT to offset the DEBIT
-      // For donations: CREDIT as the actual donation (only when paid)
-      for (const payment of txn.payments) {
-        entries.push({
-          associationId,
-          memberId,
-          entryType: 'CREDIT',
-          category: ledgerCategory,
-          amount: payment.amountPaid,
-          effectiveDate: payment.paymentDate,
-          description: isDonation 
-            ? `Donation: ${txn.category.name}` 
-            : `Payment for ${txn.category.name}`,
-          sourceTable: 'payment',
-          sourceId: payment.id,
-          referenceNumber: payment.receiptNumber || undefined,
-          createdBy,
-        });
-      }
-    }
-
-    // Sort by effective date
-    entries.sort((a, b) => a.effectiveDate.getTime() - b.effectiveDate.getTime());
-
-    // Create entries in order
-    let runningBalance = new Decimal(0);
-    const createdEntries = [];
-
-    for (const entry of entries) {
-      const amount = new Decimal(entry.amount);
-      const balanceChange = entry.entryType === 'CREDIT' 
-        ? amount.negated() 
-        : entry.entryType === 'DEBIT' 
-          ? amount 
-          : new Decimal(0);
-      
-      runningBalance = runningBalance.plus(balanceChange);
-
-      const created = await prisma.memberFinancialLedger.create({
-        data: {
-          ...entry,
-          runningBalance,
-        },
-      });
-      createdEntries.push(created);
-    }
-
-    return {
-      entriesCreated: createdEntries.length,
-      finalBalance: Number(runningBalance),
-    };
+    const result = await this.reconcileMemberLedger(associationId, memberId, createdBy);
+    return { entriesCreated: result.created, finalBalance: result.balance };
   },
+
+  /**
+   * The repair: make the entries that come from this member's charges and payments match the charges and payments exactly.
+   *  - adds the debit for every charge (including donations and pledges) and the credit for every payment that is missing,
+   *  - removes entries whose charge or payment is gone, voided or moved to someone else, and removes duplicates,
+   *  - corrects an amount that no longer matches,
+   *  - then re-numbers the running balance in date order.
+   * Idempotent: a ledger that is already right is left alone and nothing is written.
+   */
+  async reconcileMemberLedger(associationId: number, memberId: number, createdBy: number, options: { dryRun?: boolean } = {}) {
+    return prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${associationId}::int4, ${memberId}::int4)`;
+
+        const [transactions, existing, voids] = await Promise.all([
+          tx.transaction.findMany({
+            where: { associationId, memberId },
+            include: { category: { select: { type: true, name: true } }, payments: { select: { id: true, amountPaid: true, paymentDate: true, receiptNumber: true } } },
+          }),
+          tx.memberFinancialLedger.findMany({
+            where: { associationId, memberId, sourceTable: { in: ['transaction', 'payment'] } },
+            select: { id: true, sourceTable: true, sourceId: true, entryType: true, amount: true, category: true, description: true },
+          }),
+          tx.memberFinancialLedger.findMany({ where: { associationId, memberId, sourceTable: 'payment_void' }, select: { sourceId: true } }),
+        ]);
+
+        const plan = planLedgerReconciliation({
+          transactions,
+          existing,
+          neutralisedPaymentIds: new Set(voids.map((v) => v.sourceId)),
+        });
+
+        const before = await currentBalance(tx, associationId, memberId);
+        if (options.dryRun) {
+          return { created: plan.toCreate.length, removed: plan.toRemoveIds.length, updated: plan.toUpdate.length, rebalanced: 0, balance: Number(before), balanceBefore: Number(before) };
+        }
+
+        if (plan.toRemoveIds.length) await tx.memberFinancialLedger.deleteMany({ where: { id: { in: plan.toRemoveIds } } });
+        for (const change of plan.toUpdate) {
+          await tx.memberFinancialLedger.update({ where: { id: change.id }, data: { ...(change.amount !== undefined ? { amount: change.amount } : {}), ...(change.description !== undefined ? { description: change.description } : {}) } });
+        }
+        if (plan.toCreate.length) {
+          await tx.memberFinancialLedger.createMany({
+            data: plan.toCreate.map((entry) => ({
+              associationId,
+              memberId,
+              entryType: entry.entryType,
+              category: entry.category as LedgerCategory,
+              amount: entry.amount,
+              runningBalance: 0,
+              effectiveDate: entry.effectiveDate,
+              description: entry.description,
+              sourceTable: entry.sourceTable,
+              sourceId: entry.sourceId,
+              referenceNumber: entry.referenceNumber,
+              createdBy,
+            })),
+          });
+        }
+
+        const rebalanced = await renumberRunningBalances(tx, associationId, memberId);
+        const balance = await currentBalance(tx, associationId, memberId);
+        return { created: plan.toCreate.length, removed: plan.toRemoveIds.length, updated: plan.toUpdate.length, rebalanced, balance: Number(balance), balanceBefore: Number(before) };
+      },
+      { timeout: 120000, maxWait: 30000 },
+    );
+  },
+
 };
+
+type LedgerDb = Pick<typeof prisma, 'memberFinancialLedger'>;
+
+/** What the member owes now: everything charged less everything paid, worked out from the entries. Negative = credit in their favour. */
+async function currentBalance(db: LedgerDb, associationId: number, memberId: number, asOfDate?: Date): Promise<Decimal> {
+  const where: any = { associationId, memberId };
+  if (asOfDate) where.effectiveDate = { lte: asOfDate };
+  const [debits, credits] = await Promise.all([
+    db.memberFinancialLedger.aggregate({ where: { ...where, entryType: 'DEBIT' }, _sum: { amount: true } }),
+    db.memberFinancialLedger.aggregate({ where: { ...where, entryType: 'CREDIT' }, _sum: { amount: true } }),
+  ]);
+  return new Decimal(debits._sum.amount ?? 0).minus(credits._sum.amount ?? 0);
+}
+
+/**
+ * Re-number the running balance down the member's entries in date order. Writes only the rows whose number is wrong,
+ * so a ledger that is already right costs one read and no writes.
+ */
+async function renumberRunningBalances(tx: any, associationId: number, memberId: number): Promise<number> {
+  const entries = await tx.memberFinancialLedger.findMany({
+    where: { associationId, memberId },
+    orderBy: [{ effectiveDate: 'asc' }, { id: 'asc' }],
+    select: { id: true, entryType: true, amount: true, runningBalance: true },
+  });
+  const wanted = runningBalances(entries);
+  let updated = 0;
+  for (const entry of entries) {
+    const want = wanted.get(entry.id) ?? 0;
+    if (Math.abs(Number(entry.runningBalance) - want) < 0.005) continue;
+    await tx.memberFinancialLedger.update({ where: { id: entry.id }, data: { runningBalance: want } });
+    updated += 1;
+  }
+  return updated;
+}

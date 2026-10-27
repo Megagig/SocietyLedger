@@ -1671,3 +1671,9 @@ _(none)_
 - **Web `MemberAvatar`** (`components/members`) - round photo or gradient initials circle, any size. Replace the hand-made initials circles with it.
 - **Web `ProfilePhotoEditor`** - avatar with camera badge, Change/Remove links and a preview dialog (nothing saves until "Save photo"). `target="me"` for own photo, a member id for officers.
 - **Web `SidebarAvatar`** - the signed-in person's avatar in the sidebars, kept fresh by `useMyPhoto`.
+
+## Ledger amounts and balances (2026-10-27)
+
+- A member ledger line shows a **charge or pledge as `+`** (red: it adds to what the member owes) and a **payment as `-`** (green: it takes it away), the same direction the Balance column moves. Never the other way round.
+- Positive balance = the member owes the association: caption "Owed by the member" (admin) or "You owe this amount" (member). Negative = in credit: "Credit: the member has paid more than they owe". Zero = "Account is balanced".
+- Donation lines: "Donation: <cause>" and "Donation received: <cause>" for a gift made on the spot; "Donation pledge: <cause>" and "Pledge payment: <cause>" for a pledge.

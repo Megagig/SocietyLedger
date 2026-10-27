@@ -196,13 +196,7 @@ export async function recordDonationItem(ctx: Context, item: CashItemInput): Pro
     notes: `Cash donation (receipt ${ctx.receiptNumber})`,
   });
 
-  try {
-    if (result.payment) {
-      await accountingIntegrationService.onCashDonation(result.payment, `${ctx.member.firstName} ${ctx.member.lastName}`.trim(), ctx.userId);
-    }
-  } catch (error) {
-    console.error('Accounting sync failed (non-critical):', error);
-  }
+  // The donation reaches the member ledger and the books (Cash in hand, inside a collection) through recordDonation itself.
   return { kind: 'DONATION', sourceId: result.donationRecord.id, label: result.category.name, amount: item.amount };
 }
 

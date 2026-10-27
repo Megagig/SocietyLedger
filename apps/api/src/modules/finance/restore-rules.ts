@@ -1,7 +1,8 @@
 import { prisma } from '../../lib/prisma';
-import { memberLedgerService } from '../member-finance/member-ledger.service';
 import { syncLedgerDebit } from './ledger-sync';
 import { cacheInvalidationService } from '../../services/cache-invalidation.service';
+import { accountingIntegrationService } from '../../services/accounting-integration.service';
+import { syncPaymentEffects } from '../../services/payment-sync.service';
 
 /** What a deleted charge looked like when it was removed (the audit log keeps the charge with its payments and donation record). */
 export interface DeletedCharge {
@@ -59,12 +60,18 @@ export async function restoreChargeExtras(associationId: number, restoredTransac
   }
 
   await syncLedgerDebit(restoredTransactionId, userId);
+  // Deleting a charge now takes it out of the books, so restoring it puts the charge back in (the payments follow below).
+  try {
+    const restored = await prisma.transaction.findUnique({
+      where: { id: restoredTransactionId },
+      include: { member: { select: { id: true, memberId: true, firstName: true, lastName: true } }, category: { select: { id: true, name: true, type: true } } },
+    });
+    if (restored) await accountingIntegrationService.onTransactionCreated(restored, userId);
+  } catch (error) {
+    console.error(`Accounting sync failed for restored charge ${restoredTransactionId} (non-critical):`, error);
+  }
   for (const payment of created) {
-    try {
-      await memberLedgerService.createFromPayment(payment.id, userId);
-    } catch (error) {
-      console.error(`Ledger sync failed for restored payment ${payment.id} (non-critical):`, error);
-    }
+    await syncPaymentEffects({ paymentId: payment.id }, userId); // ledger credit and books, safe to repeat
   }
   await cacheInvalidationService.onPaymentChange(associationId).catch((e) => console.error('Cache invalidation failed (non-critical):', e));
 }

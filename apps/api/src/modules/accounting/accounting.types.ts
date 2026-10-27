@@ -341,6 +341,7 @@ export const STANDARD_CHART_OF_ACCOUNTS: ChartOfAccountInput[] = [
   { code: '1120', name: 'Accounts Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT' },
   { code: '1121', name: 'Member Dues Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT' },
   { code: '1122', name: 'Levy Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT' },
+  { code: '1123', name: 'Donation Pledges Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT', description: 'Donations pledged by members and not yet paid' },
   { code: '1130', name: 'Prepaid Expenses', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT' },
   { code: '1300', name: 'Loans Receivable', type: 'ASSET', subType: 'current_asset', normalBalance: 'DEBIT', description: 'Cooperative loans given to members' },
   { code: '1200', name: 'Fixed Assets', type: 'ASSET', subType: 'fixed_asset', normalBalance: 'DEBIT' },

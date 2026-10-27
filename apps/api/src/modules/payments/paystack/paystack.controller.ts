@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../../lib/prisma';
+import { syncPaymentEffects } from '../../../services/payment-sync.service';
 import { userOwnsCharge } from '../charge-ownership';
 import { PaystackService } from './paystack.service';
 import { z } from 'zod';
@@ -318,26 +319,8 @@ export const paystackController = {
         },
       });
 
-      // G45: same gap as the webhook path — a real Paystack payment
-      // verified here never synced to accounting at all.
-      try {
-        const fullPayment = await prisma.payment.findUnique({
-          where: { id: payment.id },
-          include: {
-            transaction: {
-              include: {
-                member: { select: { id: true, firstName: true, lastName: true } },
-                category: { select: { id: true, name: true, type: true } },
-              },
-            },
-          },
-        });
-        if (fullPayment) {
-          await accountingIntegrationService.onPaymentRecorded(fullPayment, req.user!.id);
-        }
-      } catch (syncError) {
-        console.error('Accounting sync failed for verified Paystack payment (non-critical):', syncError);
-      }
+      // The member's ledger and the books, through the one shared function every payment route uses.
+      await syncPaymentEffects({ paymentId: payment.id }, req.user!.id);
 
       return res.status(200).json({
         success: true,
