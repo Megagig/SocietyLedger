@@ -11,7 +11,7 @@ import prisma from '../../lib/prisma';
 import { PlatformSettingsService } from '../../modules/admin/platform-settings.service';
 import { invalidateEntitlements } from './entitlements.service';
 import { invalidateAccessCache } from '../subscription-access.service';
-import { LIMIT_DEFINITIONS, invalidateCatalogCache } from './catalog.service';
+import { ADDON_ONLY_LIMITS, LIMIT_DEFINITIONS, invalidateCatalogCache } from './catalog.service';
 import { BillingError } from './quote.service';
 import { requestPublicRevalidation } from './revalidate';
 import type { Actor } from './lifecycle.service';
@@ -49,16 +49,24 @@ function assertKobo(value: unknown, label: string): number {
   return value;
 }
 
-function cleanLimits(input: Record<string, number | null> | undefined): Prisma.InputJsonValue {
+function cleanLimits(input: Record<string, number | null> | undefined, scope: 'plan' | 'addon' = 'plan'): Prisma.InputJsonValue {
   const out: Record<string, number | null> = {};
   const known = new Set<string>(LIMIT_DEFINITIONS.map((d) => d.key));
   for (const [key, value] of Object.entries(input ?? {})) {
     if (!known.has(key)) throw new BillingError('INVALID_LIMIT', `"${key}" is not a limit that can be set.`);
+    if (scope === 'plan' && ADDON_ONLY_LIMITS.has(key)) throw new BillingError('INVALID_LIMIT', `"${key}" can only be granted by an add-on, not a plan.`);
     if (value === null) out[key] = null;
     else if (typeof value === 'number' && Number.isInteger(value) && value >= 0) out[key] = value;
     else throw new BillingError('INVALID_LIMIT', `The limit for ${key} must be a whole number of 0 or more, or empty for unlimited.`);
   }
   return out;
+}
+
+function cleanFamily(value: string | null | undefined): string | null {
+  const family = (value ?? '').trim().toLowerCase();
+  if (!family) return null;
+  if (!CODE_RE.test(family)) throw new BillingError('INVALID_FAMILY', 'The add-on family can use lower-case letters, numbers and single dashes only.');
+  return family;
 }
 
 function cleanHighlights(list: string[] | undefined): string[] | undefined {
@@ -495,6 +503,8 @@ export interface AddonMetaInput {
   isPublic?: boolean;
   isActive?: boolean;
   sortOrder?: number;
+  /** Add-ons sharing a family are tiers of one product: a tenant holds at most one. Null or empty = no family. */
+  family?: string | null;
   /** Plan ids that may buy it. Empty or omitted = every plan. */
   eligiblePlanIds?: number[];
 }
@@ -542,6 +552,7 @@ export async function createAddon(input: { code: string; name: string } & AddonM
         name: input.name.trim(),
         description: input.description ?? null,
         highlights: cleanHighlights(input.highlights) ?? [],
+        family: cleanFamily(input.family),
         isPublic: input.isPublic ?? false,
         isActive: input.isActive ?? true,
         sortOrder: input.sortOrder ?? 0,
@@ -557,7 +568,7 @@ export async function createAddon(input: { code: string; name: string } & AddonM
         status: 'DRAFT',
         priceMonthlyKobo: monthly,
         priceAnnualKobo: annual,
-        limits: cleanLimits(input.limits),
+        limits: cleanLimits(input.limits, 'addon'),
         createdBy: actor.id,
         modules: { create: moduleIds.map((moduleId) => ({ moduleId })) },
         features: { create: featureIds.map((featureId) => ({ featureId })) },
@@ -585,6 +596,7 @@ export async function updateAddonMeta(addonId: number, patch: AddonMetaInput, ac
         ...(patch.isPublic !== undefined ? { isPublic: patch.isPublic } : {}),
         ...(patch.isActive !== undefined ? { isActive: patch.isActive } : {}),
         ...(patch.sortOrder !== undefined ? { sortOrder: patch.sortOrder } : {}),
+        ...(patch.family !== undefined ? { family: cleanFamily(patch.family) } : {}),
       },
     });
     await audit(tx, actor, { actionType: 'ADDON_UPDATED', targetType: 'addon', targetId: addonId, before: { name: before.name, isPublic: before.isPublic, isActive: before.isActive }, after: { name: after.name, isPublic: after.isPublic, isActive: after.isActive, eligiblePlanIds: patch.eligiblePlanIds }, reason });
@@ -637,7 +649,7 @@ export async function updateAddonDraft(addonId: number, patch: VersionInput) {
     const data: Prisma.AddonVersionUpdateInput = {};
     if (patch.priceMonthlyKobo !== undefined) data.priceMonthlyKobo = assertKobo(patch.priceMonthlyKobo, 'The monthly price');
     if (patch.priceAnnualKobo !== undefined) data.priceAnnualKobo = assertKobo(patch.priceAnnualKobo, 'The annual price');
-    if (patch.limits !== undefined) data.limits = cleanLimits(patch.limits);
+    if (patch.limits !== undefined) data.limits = cleanLimits(patch.limits, 'addon');
     if (patch.changeNote !== undefined) data.changeNote = patch.changeNote;
     if (patch.moduleCodes !== undefined) {
       const ids = patch.moduleCodes.length ? await resolveModuleIds(tx, patch.moduleCodes) : [];

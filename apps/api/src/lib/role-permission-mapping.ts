@@ -19,8 +19,14 @@ const MEMBER_PERMISSIONS = [
   "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
   "welfare.view_own", "welfare.request_own",
   "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own",
-  "help.view", "support.create", "support.view_own"
+  "help.view", "support.create", "support.view_own",
+  // Thrift (Ajo): a contributor sees and reports their own records. Without the add-on the module gate keeps these out of reach.
+  "ajo.view_own", "ajo.contribute"
 ];
+
+/** Ajo permissions for people who run groups. A collector sees only the contributors assigned to them; an officer runs groups day to day. */
+const AJO_COLLECTOR_PERMISSIONS = ["ajo.collect"];
+const AJO_OFFICER_PERMISSIONS = ["ajo.collect", "ajo.manage", "ajo.reconcile", "ajo.reports", "members.view", "members.view_all"];
 
 /** What only the Election Committee can do. Officers do not hold these: elections are conducted by people outside the officers. */
 export const ELECTION_COMMITTEE_PERMISSIONS = [
@@ -58,7 +64,9 @@ export const ROLE_PERMISSION_MAPPING = {
     // Officers are members too: they can declare a deposit into their own savings.
     "cooperatives.savings_deposit_own", "cooperatives.repay_own",
     "system.cron.view", "system.cron.trigger",
-    "help.view", "help.manage", "support.create", "support.view_own", "support.view_all", "support.manage", "support.respond", "support.escalate"
+    "help.view", "help.manage", "support.create", "support.view_own", "support.view_all", "support.manage", "support.respond", "support.escalate",
+    // Thrift (Ajo): the Administrator runs groups and is the only default role that approves payouts.
+    "ajo.view_own", "ajo.contribute", "ajo.collect", "ajo.manage", "ajo.reconcile", "ajo.approve_payout", "ajo.reports"
   ],
   treasurer: [
     "members.view", "members.view_all",
@@ -99,5 +107,8 @@ export const ROLE_PERMISSION_MAPPING = {
   ],
   member: [...MEMBER_PERMISSIONS],
   // Chosen by the association to conduct elections, outside the officers.
-  election_committee: [...MEMBER_PERMISSIONS, ...ELECTION_COMMITTEE_PERMISSIONS, "elections.rules.manage"]
+  election_committee: [...MEMBER_PERMISSIONS, ...ELECTION_COMMITTEE_PERMISSIONS, "elections.rules.manage"],
+  // Thrift (Ajo) role templates. Both are members first. Neither can approve a payout: that stays with the Administrator.
+  ajo_collector: [...MEMBER_PERMISSIONS, ...AJO_COLLECTOR_PERMISSIONS],
+  ajo_officer: [...MEMBER_PERMISSIONS, ...AJO_OFFICER_PERMISSIONS]
 } satisfies Record<string, string[]>;

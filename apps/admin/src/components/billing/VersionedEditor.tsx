@@ -39,7 +39,7 @@ export function VersionedEditor({ kind, id }: { kind: Kind; id: number }) {
   const refresh = () => qc.invalidateQueries({ queryKey: ['billing'] });
 
   // ---- details (name, copy, visibility)
-  const [meta, setMeta] = useState({ name: '', description: '', highlights: '', badgeLabel: '', isPublic: false, isActive: true, isRecommended: false, sortOrder: 0, eligiblePlanIds: [] as string[] });
+  const [meta, setMeta] = useState({ name: '', description: '', highlights: '', badgeLabel: '', isPublic: false, isActive: true, isRecommended: false, sortOrder: 0, eligiblePlanIds: [] as string[], family: '' });
   const [metaReason, setMetaReason] = useState('');
   useEffect(() => {
     if (!item) return;
@@ -53,6 +53,7 @@ export function VersionedEditor({ kind, id }: { kind: Kind; id: number }) {
       isRecommended: 'isRecommended' in item ? item.isRecommended : false,
       sortOrder: item.sortOrder,
       eligiblePlanIds: 'eligiblePlans' in item ? item.eligiblePlans.map((e) => String(e.plan.id)) : [],
+      family: 'family' in item ? item.family ?? '' : '',
     });
   }, [item]);
 
@@ -62,7 +63,7 @@ export function VersionedEditor({ kind, id }: { kind: Kind; id: number }) {
         name: meta.name,
         description: meta.description.trim() ? meta.description.trim() : null,
         highlights: meta.highlights.split('\n').map((s) => s.trim()).filter(Boolean),
-        ...(kind === 'plan' ? { badgeLabel: meta.badgeLabel.trim() ? meta.badgeLabel.trim() : null, isRecommended: meta.isRecommended } : { eligiblePlanIds: meta.eligiblePlanIds.map(Number) }),
+        ...(kind === 'plan' ? { badgeLabel: meta.badgeLabel.trim() ? meta.badgeLabel.trim() : null, isRecommended: meta.isRecommended } : { eligiblePlanIds: meta.eligiblePlanIds.map(Number), family: meta.family.trim() ? meta.family.trim() : null }),
         isPublic: meta.isPublic,
         isActive: meta.isActive,
         sortOrder: meta.sortOrder,
@@ -79,19 +80,34 @@ export function VersionedEditor({ kind, id }: { kind: Kind; id: number }) {
   // ---- draft terms
   const published = item ? currentVersion(item) : undefined;
   const draft = item ? draftVersion(item) : undefined;
-  const [terms, setTerms] = useState({ monthly: '', annual: '', members: '' as number | '', moduleCodes: [] as string[], featureCodes: [] as string[], note: '' });
+  const [terms, setTerms] = useState({ monthly: '', annual: '', limits: {} as Record<string, number | ''>, moduleCodes: [] as string[], featureCodes: [] as string[], note: '' });
   useEffect(() => {
     const v = draft ?? published;
     if (!v) return;
     setTerms({
       monthly: koboToNairaInput(v.priceMonthlyKobo),
       annual: koboToNairaInput(v.priceAnnualKobo),
-      members: typeof v.limits?.members === 'number' ? v.limits.members : '',
+      limits: Object.fromEntries(Object.entries(v.limits ?? {}).map(([key, value]) => [key, typeof value === 'number' ? value : ''])),
       moduleCodes: v.moduleCodes,
       featureCodes: v.featureCodes,
       note: v.changeNote ?? '',
     });
   }, [draft, published]);
+
+  // A quota only an add-on can grant (Ajo contributors) is offered on an add-on that includes the Ajo module, and nowhere else: left empty
+  // on any other add-on it would be saved as "unlimited" and give every holder an unlimited Ajo quota.
+  const limitShown = (def: { source?: 'plan' | 'addon' }) => def.source !== 'addon' || (kind === 'addon' && terms.moduleCodes.includes('ajo'));
+  const draftLimits = (): Record<string, number | null> => {
+    const out: Record<string, number | null> = {};
+    for (const def of catalogQ.data?.limits ?? []) {
+      if (!limitShown(def)) continue;
+      const value = terms.limits[def.key] ?? '';
+      if (value !== '') out[def.key] = value;
+      // Empty means unlimited. An add-on quota that is missing means none, so unlimited is written out explicitly.
+      else if (def.source === 'addon') out[def.key] = null;
+    }
+    return out;
+  };
 
   const monthlyKobo = nairaToKobo(terms.monthly);
   const annualKobo = nairaToKobo(terms.annual);
@@ -107,7 +123,7 @@ export function VersionedEditor({ kind, id }: { kind: Kind; id: number }) {
       send(`${base}/draft`, 'PATCH', {
         priceMonthlyKobo: monthlyKobo,
         priceAnnualKobo: annualKobo,
-        limits: terms.members === '' ? {} : { members: terms.members },
+        limits: draftLimits(),
         moduleCodes: terms.moduleCodes,
         featureCodes: terms.featureCodes,
         changeNote: terms.note,
@@ -190,6 +206,14 @@ export function VersionedEditor({ kind, id }: { kind: Kind; id: number }) {
                 onChange={(v) => setMeta({ ...meta, eligiblePlanIds: v })}
               />
             )}
+            {kind === 'addon' && (
+              <TextInput
+                label="Product family"
+                description="Add-ons with the same family are tiers of one product. A customer holds only one of them; choosing another swaps it. Leave empty for a stand-alone add-on."
+                value={meta.family}
+                onChange={(e) => setMeta({ ...meta, family: e.currentTarget.value })}
+              />
+            )}
           </SimpleGrid>
           <Textarea label="Description" value={meta.description} onChange={(e) => setMeta({ ...meta, description: e.currentTarget.value })} autosize minRows={2} maxRows={5} />
           <Textarea label="Highlights shown on the pricing card" description="One per line, up to 12." value={meta.highlights} onChange={(e) => setMeta({ ...meta, highlights: e.currentTarget.value })} autosize minRows={3} maxRows={10} />
@@ -240,13 +264,13 @@ export function VersionedEditor({ kind, id }: { kind: Kind; id: number }) {
               error={terms.annual && annualKobo === null ? 'Enter an amount like 100000' : undefined}
               description={annualKobo !== null ? `${formatKobo(annualKobo)}${yearlyAtMonthly !== null && annualKobo < yearlyAtMonthly ? ` (saves ${formatKobo(yearlyAtMonthly - annualKobo)} a year)` : ''}` : undefined}
             />
-            {catalog.limits.map((l) => (
+            {catalog.limits.filter(limitShown).map((l) => (
               <NumberInput
                 key={l.key}
                 label={l.label}
                 description="Leave empty for unlimited"
-                value={terms.members}
-                onChange={(v) => setTerms({ ...terms, members: v === '' ? '' : Number(v) })}
+                value={terms.limits[l.key] ?? ''}
+                onChange={(v) => setTerms({ ...terms, limits: { ...terms.limits, [l.key]: v === '' ? '' : Number(v) } })}
                 min={0}
                 allowDecimal={false}
                 disabled={!editing}

@@ -103,6 +103,14 @@ const PLATFORM_MODULES = [
     isCore: false,
     sortOrder: 14,
   },
+  {
+    // Add-on only: in no default plan. Sold as the four Ajo tiers (see ajo-addons.seed.ts).
+    code: 'ajo',
+    name: 'Ajo / Thrift',
+    description: 'Savings circles: collector thrift and rotating pots, with contributions, payouts and reports',
+    isCore: false,
+    sortOrder: 15,
+  },
 ];
 
 // Platform Feature Definitions (fine-grained)
@@ -129,6 +137,13 @@ const PLATFORM_FEATURES = [
   // AI module features
   { moduleCode: 'ai', code: 'ai.financial_assistant', name: 'Financial Assistant', description: 'Ask the assistant questions about your finances and chat with it' },
   { moduleCode: 'ai', code: 'ai.smart_reports', name: 'Smart Reports', description: 'Have the assistant write a report summary for you' },
+
+  // Ajo module features
+  { moduleCode: 'ajo', code: 'ajo.collector_thrift', name: 'Collector management', description: 'Assign collectors to contributors, record daily collections, cash hand-overs and targets' },
+  { moduleCode: 'ajo', code: 'ajo.rotating_pot', name: 'Rotating pots', description: 'Rotating pot groups with a recorded draw, swaps and payout order' },
+  { moduleCode: 'ajo', code: 'ajo.guarantors', name: 'Guarantors', description: 'Record a guarantor\'s consent before a member joins a group' },
+  { moduleCode: 'ajo', code: 'ajo.reminders', name: 'Automated reminders', description: 'Reminders before and after a contribution is due' },
+  { moduleCode: 'ajo', code: 'ajo.advanced_reports', name: 'Advanced reports', description: 'Collector performance, defaults, audit and fees reports with exports' },
 ];
 
 /**

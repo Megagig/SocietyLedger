@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
-import { AssociationStatus, AssociationTier } from '@prisma/client';
+import { AssociationKind, AssociationStatus, AssociationTier } from '@prisma/client';
 import { ROLE_PERMISSION_MAPPING } from '../../lib/role-permission-mapping';
 import { RESERVED_SUBDOMAINS, ASSOCIATION_TYPE_OTHER, associationSignupSchema } from '@societyledger/shared';
 import { PlatformSettingsService } from '../admin/platform-settings.service';
@@ -9,6 +9,7 @@ import { startTrialIfPending } from '../../services/subscription-access.service'
 import { BillingError } from '../../services/billing/quote.service';
 import { onboardingSubscriptionData, resolveOnboardingPlan } from '../../services/billing/lifecycle.service';
 import { SettingsService } from '../settings/settings.service';
+import { THRIFT_GROUP_PLAN_CODE } from '../ajo/ajo-standalone';
 
 const createSchema = z.object({
   name: z.string().min(2),
@@ -144,8 +145,22 @@ export class AssociationsController {
   }
 
   async signup(req: Request, res: Response) {
+    return this.registerTenant(req, res, AssociationKind.ASSOCIATION);
+  }
+
+  /** Public: an outsider registers a standalone thrift group (core + Ajo only). Closed unless platform staff switch sign-up on. */
+  async thriftSignup(req: Request, res: Response) {
+    return this.registerTenant(req, res, AssociationKind.THRIFT_GROUP);
+  }
+
+  private async registerTenant(req: Request, res: Response, kind: AssociationKind) {
+    const isThrift = kind === AssociationKind.THRIFT_GROUP;
     try {
-      const parsed = associationSignupSchema.safeParse(req.body);
+      // A thrift group has no "kind of association" to choose; record it as what it is.
+      const body = isThrift && req.body?.association
+        ? { ...req.body, association: { ...req.body.association, type: ASSOCIATION_TYPE_OTHER, customType: 'Thrift group' } }
+        : req.body;
+      const parsed = associationSignupSchema.safeParse(body);
       if (!parsed.success) {
         return res.status(400).json({ success: false, message: parsed.error.errors[0]?.message ?? 'Invalid data', errors: parsed.error.errors });
       }
@@ -164,6 +179,13 @@ export class AssociationsController {
           code: 'SIGNUPS_CLOSED',
         });
       }
+      if (isThrift && platform.ajoStandaloneSignup !== true) {
+        return res.status(403).json({
+          success: false,
+          message: 'Thrift group sign-up is not open yet. Please check back soon.',
+          code: 'THRIFT_SIGNUP_CLOSED',
+        });
+      }
       const needsVerification = platform.requireEmailVerification !== false;
       const needsApproval = platform.requireAdminApproval !== false;
 
@@ -178,7 +200,7 @@ export class AssociationsController {
       // of it is published right now. Nothing about the plan is hardcoded here.
       let plan;
       try {
-        plan = await resolveOnboardingPlan();
+        plan = await resolveOnboardingPlan(isThrift ? THRIFT_GROUP_PLAN_CODE : undefined);
       } catch (planError) {
         if (planError instanceof BillingError) {
           console.error(`❌ ${planError.message}`);
@@ -238,7 +260,8 @@ export class AssociationsController {
             name: input.association.name,
             slug: subdomain,
             subdomain,
-            tier: AssociationTier.ENTERPRISE,
+            kind,
+            tier: isThrift ? AssociationTier.STARTER : AssociationTier.ENTERPRISE,
             status: AssociationStatus.ACTIVE,
           },
         });
@@ -254,6 +277,8 @@ export class AssociationsController {
           { name: 'financial_secretary', displayName: 'Financial Secretary', description: 'Financial record keeping' },
           { name: 'member', displayName: 'Member', description: 'Basic member access' },
           { name: 'election_committee', displayName: 'Election Committee', description: 'People chosen to conduct elections, separate from the officers' },
+          { name: 'ajo_collector', displayName: 'Ajo Collector', description: 'Collects contributions from assigned Ajo contributors' },
+          { name: 'ajo_officer', displayName: 'Ajo Officer', description: 'Runs Ajo groups day to day, without approving payouts' },
         ];
 
         const createdRoles: { id: number; name: string }[] = [];
@@ -388,8 +413,8 @@ export class AssociationsController {
           verificationEmailSent,
         },
         message: needsVerification
-          ? 'Association created. Please check your email for a verification code.'
-          : 'Association created.',
+          ? `${isThrift ? 'Thrift group' : 'Association'} created. Please check your email for a verification code.`
+          : `${isThrift ? 'Thrift group' : 'Association'} created.`,
       });
     } catch (error: any) {
       if (error instanceof z.ZodError) {

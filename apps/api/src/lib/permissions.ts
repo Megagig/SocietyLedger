@@ -203,6 +203,15 @@ export const PERMISSIONS = {
   AI_QUERY: 'reports.generate',
   AI_USAGE_VIEW: 'audit.view',
   
+  // Thrift (Ajo) add-on
+  AJO_VIEW_OWN: 'ajo.view_own',
+  AJO_CONTRIBUTE: 'ajo.contribute',
+  AJO_COLLECT: 'ajo.collect',
+  AJO_MANAGE: 'ajo.manage',
+  AJO_RECONCILE: 'ajo.reconcile',
+  AJO_APPROVE_PAYOUT: 'ajo.approve_payout',
+  AJO_REPORTS: 'ajo.reports',
+
   // Voting & Elections
   ELECTION_VIEW: 'elections.view_own',
   // The Election Committee runs elections; officers do not. Each is its own key, so a custom role can take any slice.

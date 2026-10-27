@@ -15,6 +15,8 @@ model Association {
   subdomain                  String                      @unique
   tier                       AssociationTier             @default(STARTER)
   status                     AssociationStatus           @default(ACTIVE)
+  /// ASSOCIATION is every existing tenant; THRIFT_GROUP is an outsider's standalone Ajo group (core + Ajo modules only).
+  kind                       AssociationKind             @default(ASSOCIATION)
   logo                       String?
   primaryColor               String?                     @map("primary_color")
   subscriptionExpiresAt      DateTime?                   @map("subscription_expires_at")
@@ -73,6 +75,8 @@ model Association {
   cashCollections             CashCollection[]
   cashReceipts                CashReceipt[]
   cashLodgments               CashLodgment[]
+  // Track T: Thrift (Ajo) add-on
+  ajoGroups                   AjoGroup[]
   savingsTransactions        SavingsTransaction[]
   loanProducts               LoanProduct[]
   loanApplications           LoanApplication[]
@@ -313,6 +317,10 @@ model Member {
   eligibilityExceptions        ElectionEligibilityException[]
   votes                        Vote[]
   pollResponses                PollResponse[]
+  // Track T: Thrift (Ajo) add-on
+  ajoMemberships               AjoMembership[]
+  ajoPayoutAccount             AjoPayoutAccount?
+  ajoVerifications             AjoVerification[]
 
   @@unique([associationId, memberId])
   // Phase 12: Performance indexes
@@ -699,6 +707,8 @@ model Plan {
   isActive         Boolean             @default(true) @map("is_active")
   /// Shown on the public pricing surfaces.
   isPublic         Boolean             @default(true) @map("is_public")
+  /// Which kind of tenant may buy it: associations see ASSOCIATION plans, standalone thrift groups see THRIFT_GROUP plans.
+  audience         AssociationKind     @default(ASSOCIATION)
   isRecommended    Boolean             @default(false) @map("is_recommended")
   isArchived       Boolean             @default(false) @map("is_archived")
   sortOrder        Int                 @default(0) @map("sort_order")
@@ -3104,6 +3114,8 @@ model Addon {
   name          String
   description   String?
   highlights    Json?
+  /// Add-ons in one family are tiers of one product: a tenant holds at most one of them, and changing tier swaps the held one.
+  family        String?
   isActive      Boolean             @default(true) @map("is_active")
   isPublic      Boolean             @default(true) @map("is_public")
   isArchived    Boolean             @default(false) @map("is_archived")
@@ -4024,4 +4036,587 @@ model DownloadEvent {
   @@index([releaseId, createdAt])
   @@index([leadId])
   @@map("download_events")
+}
+
+// =====================================================================================================================
+// Thrift (Ajo) add-on — Track T1.1. Specification: context/thrift-ajo-spec.md, contract: context/architecture.md §18.
+// Rules these models keep true:
+//  - SocietyLedger records group money; it never holds or moves it. Nothing here references a payment provider.
+//  - Money is integer kobo in BigInt columns (a rotating pot can pass the 32-bit limit of ₦21,474,836.47).
+//  - AjoLedgerEntry, AjoPayoutOrderEvent and rule versions are append-only; a correction is a new row that points at the original.
+//  - Every table carries the tenant (`associationId`) so every query can be scoped to one association.
+// =====================================================================================================================
+
+enum AssociationKind {
+  ASSOCIATION
+  THRIFT_GROUP
+}
+
+enum AjoModel {
+  COLLECTOR_THRIFT
+  ROTATING_POT
+}
+
+enum AjoFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum AjoGroupStatus {
+  DRAFT
+  OPEN
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum AjoFeeType {
+  NONE
+  FIXED
+  PERCENT
+  DAYS
+}
+
+enum AjoMembershipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  LEFT
+  DEFAULTED
+}
+
+enum AjoInstallmentStatus {
+  DUE
+  PARTIAL
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum AjoContributionMethod {
+  CASH
+  TRANSFER
+}
+
+enum AjoContributionStatus {
+  REPORTED
+  CASH_RECEIVED
+  CONFIRMED
+  REVERSED
+}
+
+enum AjoPayoutStatus {
+  PREPARED
+  APPROVED
+  PAID
+  VOID
+}
+
+enum AjoLedgerEntryType {
+  CONTRIBUTION
+  REVERSAL
+  FEE
+  PAYOUT
+  ADJUSTMENT
+}
+
+enum AjoLedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum AjoVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AjoLateFeeStatus {
+  PENDING
+  PAYABLE
+  WAIVED
+}
+
+enum AjoTrustBand {
+  EXCELLENT
+  GOOD
+  FAIR
+  AT_RISK
+  NO_HISTORY
+}
+
+enum AjoOrderEventType {
+  DRAW
+  SWAP
+  EXCEPTION
+}
+
+enum AjoDisputeStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+enum AjoDefaultCaseStatus {
+  OPEN
+  PLAN_AGREED
+  RESOLVED
+  CLOSED_UNRESOLVED
+}
+
+enum AjoRepaymentPlanStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+/// A circle: collector thrift or rotating pot. Money fields lock once the group is ACTIVE (enforced in the service).
+model AjoGroup {
+  id                  Int             @id @default(autoincrement())
+  associationId       Int             @map("association_id")
+  name                String
+  model               AjoModel
+  frequency           AjoFrequency
+  contributionKobo    BigInt          @map("contribution_kobo")
+  startDate           DateTime        @map("start_date") @db.Date
+  /// Number of periods in a collector-thrift cycle.
+  cycleLength         Int?            @map("cycle_length")
+  /// Number of rounds in a rotating pot (equals the participants).
+  rounds              Int?
+  maxParticipants     Int             @map("max_participants")
+  collectorFeeType    AjoFeeType      @default(NONE) @map("collector_fee_type")
+  /// Kobo for FIXED, whole days of contribution for DAYS, basis points for PERCENT.
+  collectorFeeValue   BigInt          @default(0) @map("collector_fee_value")
+  /// The group's OWN bank account, where contributors pay. Shown masked everywhere except to the person entering it and ajo.manage.
+  bankName            String?         @map("bank_name")
+  bankAccountNumber   String?         @map("bank_account_number")
+  bankAccountName     String?         @map("bank_account_name")
+  timezone            String          @default("Africa/Lagos")
+  /// "HH:mm" in the group's timezone; a payment after it counts for the next day.
+  cutoffTime          String          @default("18:00") @map("cutoff_time")
+  requirePhoneConfirm Boolean         @default(false) @map("require_phone_confirm")
+  status              AjoGroupStatus  @default(DRAFT)
+  createdBy           Int?            @map("created_by")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  association         Association     @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  ruleVersions        AjoGroupRuleVersion[]
+  memberships         AjoMembership[]
+  contributions       AjoContribution[]
+  payouts             AjoPayout[]
+  ledgerEntries       AjoLedgerEntry[]
+  orderEvents         AjoPayoutOrderEvent[]
+  handovers           AjoCashHandover[]
+  defaultCases        AjoDefaultCase[]
+
+  @@index([associationId, status])
+  @@map("ajo_groups")
+}
+
+/// Versioned rules. Never edited: a change adds a version that applies from `effectiveFrom`.
+model AjoGroupRuleVersion {
+  id                  Int          @id @default(autoincrement())
+  associationId       Int          @map("association_id")
+  groupId             Int          @map("group_id")
+  version             Int
+  /// NONE | FIXED | PERCENT; the amount is kobo for FIXED and basis points for PERCENT.
+  lateFeeType         AjoFeeType   @default(NONE) @map("late_fee_type")
+  lateFeeValue        BigInt       @default(0) @map("late_fee_value")
+  lateFeeCapKobo      BigInt?      @map("late_fee_cap_kobo")
+  graceDays           Int          @default(3) @map("grace_days")
+  /// NOT_REQUIRED | OPTIONAL | REQUIRED
+  guarantorPolicy     String       @default("OPTIONAL") @map("guarantor_policy")
+  /// NOTIFY_ADMIN | REPAYMENT_PLAN | CASE_AND_PLAN
+  defaultProcedure    String       @default("CASE_AND_PLAN") @map("default_procedure")
+  remindersEnabled    Boolean      @default(true) @map("reminders_enabled")
+  /// Optional rotating-pot rule: AT_RISK participants cannot take the first positions.
+  blockAtRiskEarly    Boolean      @default(false) @map("block_at_risk_early")
+  effectiveFrom       DateTime     @map("effective_from")
+  createdBy           Int?         @map("created_by")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  group               AjoGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  acceptances         AjoRuleAcceptance[]
+
+  @@unique([groupId, version])
+  @@index([associationId])
+  @@map("ajo_group_rule_versions")
+}
+
+model AjoRuleAcceptance {
+  id              Int                 @id @default(autoincrement())
+  associationId   Int                 @map("association_id")
+  membershipId    Int                 @map("membership_id")
+  ruleVersionId   Int                 @map("rule_version_id")
+  acceptedAt      DateTime            @default(now()) @map("accepted_at")
+  /// Where the acceptance came from, e.g. { channel: "mobile", device: "..." }.
+  evidence        Json?
+  membership      AjoMembership       @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  ruleVersion     AjoGroupRuleVersion @relation(fields: [ruleVersionId], references: [id])
+
+  @@unique([membershipId, ruleVersionId])
+  @@index([associationId])
+  @@map("ajo_rule_acceptances")
+}
+
+/// A contributor's place in a group. The contributor is an existing Member (no parallel identity table).
+model AjoMembership {
+  id                    Int                 @id @default(autoincrement())
+  associationId         Int                 @map("association_id")
+  groupId               Int                 @map("group_id")
+  memberId              Int                 @map("member_id")
+  status                AjoMembershipStatus @default(PENDING)
+  approvedBy            Int?                @map("approved_by")
+  approvedAt            DateTime?           @map("approved_at")
+  payoutPosition        Int?                @map("payout_position")
+  guarantorAgreementId  Int?                @unique @map("guarantor_agreement_id")
+  phoneConfirmedAt      DateTime?           @map("phone_confirmed_at")
+  acceptedRuleVersionId Int?                @map("accepted_rule_version_id")
+  joinedAt              DateTime?           @map("joined_at")
+  leftAt                DateTime?           @map("left_at")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  group                 AjoGroup            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member                Member              @relation(fields: [memberId], references: [id])
+  guarantorAgreement    AjoGuarantorAgreement? @relation(fields: [guarantorAgreementId], references: [id])
+  acceptances           AjoRuleAcceptance[]
+  installments          AjoInstallment[]
+  contributions         AjoContribution[]
+  assignments           AjoCollectorAssignment[]
+  payouts               AjoPayout[]
+  ledgerEntries         AjoLedgerEntry[]
+  trustSnapshots        AjoTrustSnapshot[]
+  disputes              AjoDispute[]
+  defaultCases          AjoDefaultCase[]
+
+  @@unique([groupId, memberId])
+  @@index([associationId, status])
+  @@index([memberId])
+  @@map("ajo_memberships")
+}
+
+model AjoInstallment {
+  id            Int                  @id @default(autoincrement())
+  associationId Int                  @map("association_id")
+  membershipId  Int                  @map("membership_id")
+  dueDate       DateTime             @map("due_date") @db.Date
+  amountKobo    BigInt               @map("amount_kobo")
+  paidKobo      BigInt               @default(0) @map("paid_kobo")
+  status        AjoInstallmentStatus @default(DUE)
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+  membership    AjoMembership        @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  contributions AjoContribution[]
+  lateFees      AjoLateFeeAssessment[]
+
+  @@unique([membershipId, dueDate])
+  @@index([associationId, status, dueDate])
+  @@map("ajo_installments")
+}
+
+/// One recorded payment. Amount and identity never change; only the confirmation status moves forward, and a correction is a new
+/// row with status REVERSED that points at the original through `reversalOfId`.
+model AjoContribution {
+  id             Int                   @id @default(autoincrement())
+  associationId  Int                   @map("association_id")
+  groupId        Int                   @map("group_id")
+  membershipId   Int                   @map("membership_id")
+  installmentId  Int?                  @map("installment_id")
+  amountKobo     BigInt                @map("amount_kobo")
+  method         AjoContributionMethod
+  status         AjoContributionStatus @default(REPORTED)
+  collectorId    Int?                  @map("collector_id")
+  reference      String
+  proofKey       String?               @map("proof_key")
+  idempotencyKey String                @unique @map("idempotency_key")
+  reason         String?
+  receivedAt     DateTime              @map("received_at")
+  confirmedAt    DateTime?             @map("confirmed_at")
+  confirmedBy    Int?                  @map("confirmed_by")
+  reversalOfId   Int?                  @unique @map("reversal_of_id")
+  recordedBy     Int?                  @map("recorded_by")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  group          AjoGroup              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  membership     AjoMembership         @relation(fields: [membershipId], references: [id])
+  installment    AjoInstallment?       @relation(fields: [installmentId], references: [id])
+  reversalOf     AjoContribution?      @relation("AjoContributionReversal", fields: [reversalOfId], references: [id])
+  reversedBy     AjoContribution?      @relation("AjoContributionReversal")
+  disputes       AjoDispute[]
+
+  @@index([associationId, groupId, status])
+  @@index([membershipId, receivedAt])
+  @@map("ajo_contributions")
+}
+
+model AjoCollectorAssignment {
+  id              Int           @id @default(autoincrement())
+  associationId   Int           @map("association_id")
+  /// The collector is a User (a login), not a Member.
+  collectorUserId Int           @map("collector_user_id")
+  membershipId    Int           @map("membership_id")
+  dailyTargetKobo BigInt?       @map("daily_target_kobo")
+  startsOn        DateTime      @map("starts_on") @db.Date
+  endsOn          DateTime?     @map("ends_on") @db.Date
+  createdBy       Int?          @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  membership      AjoMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, collectorUserId])
+  @@index([membershipId])
+  @@map("ajo_collector_assignments")
+}
+
+model AjoCashHandover {
+  id               Int       @id @default(autoincrement())
+  associationId    Int       @map("association_id")
+  groupId          Int       @map("group_id")
+  collectorUserId  Int       @map("collector_user_id")
+  forDate          DateTime  @map("for_date") @db.Date
+  expectedKobo     BigInt    @map("expected_kobo")
+  collectedKobo    BigInt    @map("collected_kobo")
+  handedOverKobo   BigInt    @map("handed_over_kobo")
+  differenceKobo   BigInt    @map("difference_kobo")
+  idempotencyKey   String    @unique @map("idempotency_key")
+  reconciledBy     Int?      @map("reconciled_by")
+  reconciledAt     DateTime? @map("reconciled_at")
+  note             String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  group            AjoGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, collectorUserId, forDate])
+  @@index([associationId])
+  @@map("ajo_cash_handovers")
+}
+
+/// A member's payout account: recorded, not verified by any service. The number is masked in every response.
+model AjoPayoutAccount {
+  id            Int      @id @default(autoincrement())
+  associationId Int      @map("association_id")
+  memberId      Int      @unique @map("member_id")
+  bankName      String   @map("bank_name")
+  accountNumber String   @map("account_number")
+  accountName   String   @map("account_name")
+  changedAt     DateTime @default(now()) @map("changed_at")
+  changedBy     Int?     @map("changed_by")
+  /// A payout cannot be approved before this time after a change.
+  coolOffUntil  DateTime? @map("cool_off_until")
+  createdAt     DateTime @default(now()) @map("created_at")
+  member        Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([associationId])
+  @@map("ajo_payout_accounts")
+}
+
+model AjoPayout {
+  id                    Int             @id @default(autoincrement())
+  associationId         Int             @map("association_id")
+  groupId               Int             @map("group_id")
+  membershipId          Int             @map("membership_id")
+  /// The round for a rotating pot; null for collector thrift.
+  round                 Int?
+  grossKobo             BigInt          @map("gross_kobo")
+  collectorFeeKobo      BigInt          @default(0) @map("collector_fee_kobo")
+  shortfallKobo         BigInt          @default(0) @map("shortfall_kobo")
+  netKobo               BigInt          @map("net_kobo")
+  status                AjoPayoutStatus @default(PREPARED)
+  preparedBy            Int             @map("prepared_by")
+  preparedAt            DateTime        @default(now()) @map("prepared_at")
+  approvedBy            Int?            @map("approved_by")
+  approvedAt            DateTime?       @map("approved_at")
+  /// Set when a single-admin group approved its own preparation with the extra confirmation.
+  selfApprovalConfirmed Boolean         @default(false) @map("self_approval_confirmed")
+  /// Masked snapshot of the payout account at preparation: { bankName, accountName, last4 }.
+  accountSnapshot       Json            @map("account_snapshot")
+  paidReference         String?         @map("paid_reference")
+  paidRecordedBy        Int?            @map("paid_recorded_by")
+  paidAt                DateTime?       @map("paid_at")
+  voidReason            String?         @map("void_reason")
+  idempotencyKey        String          @unique @map("idempotency_key")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+  group                 AjoGroup        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  membership            AjoMembership   @relation(fields: [membershipId], references: [id])
+
+  @@index([associationId, groupId, status])
+  @@index([membershipId])
+  @@map("ajo_payouts")
+}
+
+model AjoLateFeeAssessment {
+  id             Int              @id @default(autoincrement())
+  associationId  Int              @map("association_id")
+  installmentId  Int              @map("installment_id")
+  ruleVersionId  Int              @map("rule_version_id")
+  basisKobo      BigInt           @map("basis_kobo")
+  feeKobo        BigInt           @map("fee_kobo")
+  capApplied     Boolean          @default(false) @map("cap_applied")
+  /// The stored calculation, shown to the member: { type, value, basisKobo, rawKobo, capKobo }.
+  calculation    Json
+  status         AjoLateFeeStatus @default(PENDING)
+  waivedBy       Int?             @map("waived_by")
+  waivedReason   String?          @map("waived_reason")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  installment    AjoInstallment   @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+
+  @@unique([installmentId, ruleVersionId])
+  @@index([associationId, status])
+  @@map("ajo_late_fee_assessments")
+}
+
+model AjoDefaultCase {
+  id                  Int                  @id @default(autoincrement())
+  associationId       Int                  @map("association_id")
+  groupId             Int                  @map("group_id")
+  membershipId        Int                  @map("membership_id")
+  status              AjoDefaultCaseStatus @default(OPEN)
+  outstandingKobo     BigInt               @map("outstanding_kobo")
+  memberResponse      String?              @map("member_response")
+  resolution          String?
+  openedBy            Int?                 @map("opened_by")
+  openedAt            DateTime             @default(now()) @map("opened_at")
+  closedAt            DateTime?            @map("closed_at")
+  group               AjoGroup             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  membership          AjoMembership        @relation(fields: [membershipId], references: [id])
+  plans               AjoRepaymentPlan[]
+
+  @@index([associationId, status])
+  @@map("ajo_default_cases")
+}
+
+model AjoRepaymentPlan {
+  id            Int                    @id @default(autoincrement())
+  associationId Int                    @map("association_id")
+  caseId        Int                    @map("case_id")
+  status        AjoRepaymentPlanStatus @default(ACTIVE)
+  /// [{ dueDate, amountKobo }]
+  schedule      Json
+  agreedBy      Int?                   @map("agreed_by")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  defaultCase   AjoDefaultCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([associationId])
+  @@map("ajo_repayment_plans")
+}
+
+/// A recorded consent only. SocietyLedger does not create or enforce a legal guarantee.
+model AjoGuarantorAgreement {
+  id             Int            @id @default(autoincrement())
+  associationId  Int            @map("association_id")
+  name           String
+  phone          String
+  relationship   String
+  /// The exact wording the guarantor accepted, stored as shown.
+  wording        String
+  acceptedAt     DateTime?      @map("accepted_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  membership     AjoMembership?
+
+  @@index([associationId])
+  @@map("ajo_guarantor_agreements")
+}
+
+/// Append-only money record. Balances are derived from these rows, never stored as the source of truth.
+model AjoLedgerEntry {
+  id             Int                @id @default(autoincrement())
+  associationId  Int                @map("association_id")
+  groupId        Int                @map("group_id")
+  membershipId   Int?               @map("membership_id")
+  type           AjoLedgerEntryType
+  direction      AjoLedgerDirection
+  amountKobo     BigInt             @map("amount_kobo")
+  refType        String             @map("ref_type")
+  refId          Int?               @map("ref_id")
+  idempotencyKey String             @unique @map("idempotency_key")
+  /// A reversal points at the entry it cancels; one entry can be reversed once.
+  reversalOfId   Int?               @unique @map("reversal_of_id")
+  reason         String?
+  createdBy      Int?               @map("created_by")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  group          AjoGroup           @relation(fields: [groupId], references: [id])
+  membership     AjoMembership?     @relation(fields: [membershipId], references: [id])
+  reversalOf     AjoLedgerEntry?    @relation("AjoLedgerReversal", fields: [reversalOfId], references: [id])
+  reversedBy     AjoLedgerEntry?    @relation("AjoLedgerReversal")
+
+  @@index([associationId, groupId, createdAt])
+  @@index([membershipId])
+  @@index([refType, refId])
+  @@map("ajo_ledger_entries")
+}
+
+model AjoTrustSnapshot {
+  id            Int           @id @default(autoincrement())
+  associationId Int           @map("association_id")
+  membershipId  Int           @map("membership_id")
+  /// Basis points (9500 = 95.00%); null when there is no history yet.
+  onTimeBps     Int?          @map("on_time_bps")
+  onTimeCount   Int           @map("on_time_count")
+  dueCount      Int           @map("due_count")
+  band          AjoTrustBand
+  computedAt    DateTime      @default(now()) @map("computed_at")
+  membership    AjoMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, computedAt])
+  @@index([associationId])
+  @@map("ajo_trust_snapshots")
+}
+
+/// Step two of joining: SocietyLedger staff check name, phone, address and payout account name. No ID numbers or photos.
+model AjoVerification {
+  id                   Int                   @id @default(autoincrement())
+  associationId        Int                   @map("association_id")
+  memberId             Int                   @map("member_id")
+  submittedName        String                @map("submitted_name")
+  submittedPhone       String?               @map("submitted_phone")
+  submittedAddress     String?               @map("submitted_address")
+  submittedAccountName String?               @map("submitted_account_name")
+  status               AjoVerificationStatus @default(PENDING)
+  nameMatchesAccount   Boolean?              @map("name_matches_account")
+  phoneConfirmed       Boolean?              @map("phone_confirmed")
+  addressFilled        Boolean?              @map("address_filled")
+  reviewedBy           Int?                  @map("reviewed_by")
+  reviewedAt           DateTime?             @map("reviewed_at")
+  rejectionReason      String?               @map("rejection_reason")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  member               Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, status])
+  @@index([memberId, createdAt])
+  @@map("ajo_verifications")
+}
+
+/// Rotating-pot order history. Append-only.
+model AjoPayoutOrderEvent {
+  id             Int               @id @default(autoincrement())
+  associationId  Int               @map("association_id")
+  groupId        Int               @map("group_id")
+  type           AjoOrderEventType
+  /// DRAW: { seed, positions: [{ membershipId, position }] }. SWAP: { a, b }. EXCEPTION: { membershipId, newPosition }.
+  detail         Json
+  reason         String?
+  requestedBy    Int?              @map("requested_by")
+  approvedBy     Int?              @map("approved_by")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  group          AjoGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, groupId, createdAt])
+  @@map("ajo_payout_order_events")
+}
+
+model AjoDispute {
+  id             Int              @id @default(autoincrement())
+  associationId  Int              @map("association_id")
+  membershipId   Int              @map("membership_id")
+  contributionId Int?             @map("contribution_id")
+  claim          String
+  evidenceKey    String?          @map("evidence_key")
+  status         AjoDisputeStatus @default(OPEN)
+  resolution     String?
+  resolvedBy     Int?             @map("resolved_by")
+  resolvedAt     DateTime?        @map("resolved_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  membership     AjoMembership    @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  contribution   AjoContribution? @relation(fields: [contributionId], references: [id])
+
+  @@index([associationId, status])
+  @@map("ajo_disputes")
 }

@@ -12,7 +12,7 @@ import { RuleError } from '../finance/rule-error';
 export class RbacRuleError extends RuleError {}
 
 /** The roles every association starts with. A custom role cannot take one of these names. */
-export const SYSTEM_ROLE_NAMES = ['admin', 'treasurer', 'financial_secretary', 'member', 'election_committee'] as const;
+export const SYSTEM_ROLE_NAMES = ['admin', 'treasurer', 'financial_secretary', 'member', 'election_committee', 'ajo_collector', 'ajo_officer'] as const;
 
 /** The role whose permissions can never be edited, since editing it is how an association would lock itself out. */
 export const ADMIN_ROLE_NAME = 'admin';

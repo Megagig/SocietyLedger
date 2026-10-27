@@ -1,68 +1,72 @@
-# Memory — Mobile Phase 9: hardening, brand rollout, deployment and EAS builds
+# Memory — Billing review fixes, mobile fixes, member photos, and the Ajo/Thrift add-on plan
 
-Last updated: 2026-10-26
+Last updated: 2026-10-27
+
+> Replaces the earlier "Mobile Phase 9" memory. That work (brand rollout, Dokploy deployment, Oko demo seed, Maestro flows, EAS builds) is recorded in `context/progress-tracker.md` (Phase 9) and `docs/mobile/`. Nothing in this file is a secret; env var *names* only.
 
 ## What was built
 
-Per-feature detail is in `context/progress-tracker.md` (Phase 9), `context/ui-registry.md` (brand section) and `docs/mobile/`. Start with `docs/mobile/PHASE9_REVIEW_FINDINGS.md`, `STORE_READINESS.md` and `RELEASE_CHECKLIST.md`.
+**Billing review fixes (Plan Builder / entitlements, branch `Plan-Builder`)**
+- Member limit now enforced on every member-creating path: `assertMemberCapacity` + `MemberLimitError` in `apps/api/src/middleware/subscription.middleware.ts`, used by self-registration (`member-invites.service.ts`), setup-wizard team invites (`onboarding.controller.ts`) and self-created profiles (`member-finance.controller.ts`). Test: `__tests__/billing/member-capacity.test.ts`.
+- Subscription payment receipts: `GET /api/subscriptions/payments/:id/receipt` (`subscription.controller.ts`/`.routes.ts`), page `apps/web/src/app/dashboard/subscription/receipt/[id]/page.tsx`, "Receipt" link on the Subscription page.
+- Removed dead `calculateSubscriptionAmount` (`lib/paystack.ts`); admin `not-found.tsx` uses Mantine colour variables; web pricing components use `primary-*` not `teal-*`.
+- Docs/tracker/registry updated; deploy checklist in `docs/billing/PLAN_BUILDER.md`.
+- Env vars for deploy: `REVALIDATE_SECRET` (same on API and web, generate with `openssl rand -hex 24`), `WEB_REVALIDATE_URL` (`https://societyledger.com.ng/api/revalidate`), `SUBSCRIPTION_NOMBA_ENABLED=false`, `FEATURE_FLAG_MODE` empty (`shadow` = enforcement off, emergency only).
 
-- **Brand rollout:** `SocietyLedger-brand/` kit applied to mobile (icon, adaptive icons, light and dark splash, notification icon, in-app mark), web (favicons, PWA icons, manifest, service worker v2, OG image, `components/brand/BrandLogo.tsx`), admin and docs.
-- **Seed for demo/E2E:** `apps/api/prisma/seeds/oko-youth-forum.seed.ts` (`pnpm --filter api seed:oko`, password from env `OKO_DEMO_PASSWORD`). **Not yet run on the deployed API.**
-- **E2E:** 7 Maestro flows in `apps/mobile/e2e/` (written from the code, never run on a device).
-- **Deployment (Dokploy):**
-  - `docker-compose.dokploy.yml` and `.env.dokploy.example` now list every variable the API reads.
-  - Migration `20261019_a0_create_notification_preferences` fixes a gap: a fresh database could not be built from the migrations.
-  - `docker-entrypoint.sh` runs migrations, then 8 idempotent seeds in a fixed order (plans, platform association, super admin, roles, modules, help permissions, help content, blog), then the server. `SEED_ON_START=false` skips them.
-  - New `prisma/seeds/super-admin.seed.ts` (env `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, 12+ chars; creates one only if none exists). `seed-all.ts` must never run in production (hard-coded credentials).
-  - MinIO is a **separate shared stack** (`docker-compose.minio.yml`, container `shared-minio`, domain `files.societyledger.com.ng` on port 9000, console 9001 not public). Per-app bucket and scoped key. Steps in `docs/deployment/MINIO_SETUP.md`.
-- **Fixes after the first deploy:**
-  - Docs page `getting-started/create-your-association.mdx` used `<Callout type="info">`; the docs Callout only accepts note, tip, warning, danger. This broke the whole compose build.
-  - Web: new `apps/web/src/utils/subdomain.ts` stops `societyledger.com.ng` being treated as an association (it caused 404s on `check-subdomain` and a wrong tenant header). Used by middleware, `lib/tenant.ts`, `utils/tenant.ts` and `TenantContext`.
-- **EAS / Expo build fixes:**
-  - `apps/mobile/package.json`: script `eas-build-post-install` builds `@societyledger/shared` (its `dist/` is gitignored); `babel-preset-expo` added as a dependency; `expo-build-properties` added.
-  - Root `.npmrc` (new file): `public-hoist-pattern[]=*babel*`. Gradle runs Metro with plain node, so Babel plugin names must resolve from the repo root.
-  - Two stale `tsconfig.tsbuildinfo` files untracked (they stopped `tsc` from emitting `dist`).
-  - `app.config.ts`: fails a production build when `EXPO_PUBLIC_API_URL` is missing or not https (warns for preview); default EAS project id; arm64-only preview build with compressed native libs, arm64+armv7 for production, via `expo-build-properties`; blocks the default `RECORD_AUDIO` and `SYSTEM_ALERT_WINDOW` permissions.
-  - `eas.json`: `preview` and `production` env hold the four public `EXPO_PUBLIC_*` addresses (all on societyledger.com.ng); new profile **`website-apk`** (production identity as an APK, for hosting on the website).
+**Mobile fixes**
+- Biometric lockout: `features/auth/mutations.ts` `useLogin` now unlocks the app after a password sign-in; `app/(lock)/unlock.tsx` waits (max 2s) for foreground, shows the failure code, and turns app lock off with a toast on `not_enrolled`/`passcode_not_set`/`not_available`. Tests: `app/(lock)/unlock.test.tsx`, `features/auth/mutations.test.tsx`. Old dev builds lack `expo-local-authentication`, so they need a rebuild.
+- Signed-in devices: API route `DELETE /api/auth/sessions/:familyId` (`revokeSessionForUser` in `refresh-token.service.ts`); mobile sends `X-Device-Name`/`X-Device-Platform` from `src/lib/device.ts` via `api/client.ts`. Old sessions stay "Unknown device".
+- About screen links: `app/(app)/(tabs)/profile/about.tsx` uses `EXPO_PUBLIC_WEB_URL` (default `https://societyledger.com.ng`); new web page `apps/web/src/app/licenses` (+ footer link, sitemap).
+
+**Member profile photos (API + mobile + web)**
+- API: `Member.photoKey/photoThumbKey/photoUpdatedAt`, migration `20261105_member_photos` (applied to the dev DB with `db execute` + `migrate resolve`); `services/member-photo.service.ts` (sharp: 512px + 128px, strips EXIF, 5MB, jpeg/png/webp); `getStablePresignedUrl` in `lib/storage.ts` (6h windows so links cache); routes `PUT/DELETE /api/members/me/photo` and `/api/members/:id/photo` (needs `members.edit`) in `modules/members/member-photo.controller.ts`; `photoUrl`/`thumbUrl` returned by members list/detail/`/members/me`, `/auth/me`, login and payment proofs. Tests: `__tests__/members/member-photo*.test.ts`.
+- Mobile: `Avatar` `imageUrl` prop (exact pixel sizes, 96 size added), `EditableAvatar` + `useProfilePhoto` (camera/library, square crop, remove), used on Profile and the officer's member detail; thumbs in `MemberRow`, Home greeting, proof rows.
+- Web: `components/members/{MemberAvatar,ProfilePhotoEditor,SidebarAvatar}.tsx`, `hooks/useMyPhoto.ts`; wired into My Profile, member detail, Members table and the three sidebars.
+- Blank Profile screen after adding a photo: changed the image from `100%` to exact pixel sizes (`Avatar.tsx`) — a best guess, **not confirmed on a device**.
+
+**Ajo/Thrift add-on — planning only, nothing built**
+- New `context/thrift-ajo-spec.md` (source of truth) plus Track T in `context/build-plan.md` (55 features, T0–T12, whole plan 171), `progress-tracker.md` (checklist, open questions, Decisions log rows), `architecture.md §18`, `project-overview.md §12`, `library-docs.md`, `code-standards.md`.
 
 ## Decisions made
 
-- No CI/CD; the owner deploys with Dokploy and runs builds by hand (`eas build`). Android first; iOS prepared but not device-verified and not submitted.
-- MinIO is shared across apps: one bucket and one key limited to that bucket per app. The API uses an internal endpoint plus a separate public endpoint for signed links.
-- Seeds run on every API start on purpose, so new permissions and modules ship with the code.
-- Working rule from the owner still applies: list review fixes and get approval before changing code. The security and accessibility fixes below are **not yet approved or applied**.
-- `preview` builds point at the deployed (production) API because no staging API exists. Clients get the `website-apk` profile, never `preview`.
+Ajo (all owner decisions, 2026-10-27; recorded in the Decisions log):
+- Both models: collector thrift (daily/weekly/monthly) and rotating pot. Roles: contributor, collector, officer, admin (admin approves payouts; preparer cannot approve).
+- **One money mode only: the group's own bank account.** SocietyLedger is record-keeping software and never holds, collects or moves contribution money. **Removed by the owner:** escrow partner mode, Paystack settlement/payout mode, NIN/BVN/ID verification, KYC levels/provider, NDPA/legal planning items. Do not re-add without a new owner decision. Paystack is used only for the add-on subscription.
+- Verification is two-step: group officer/admin approves; then SocietyLedger staff check name, phone, address and payout account name (no ID numbers or photos). Join/contribute after step 1; **no payout until step 2 verified**; changing the payout account resets to pending.
+- Prices: Starter ≤30 ₦3,000.00/month (₦30,000.00/yr), Growth 31–150 ₦8,000.00, Business 151–500 ₦20,000.00, Enterprise 500+ from ₦40,000.00 custom; annual = 10× monthly; 14-day trial. Levy billed on the add-on invoice: cycle 0.5% (min ₦500, max ₦5,000) + participant 0.25% (min ₦50, max ₦1,000), Starter exempt.
+- Payout order hybrid (recorded draw, swaps before first payout with admin approval, logged emergency exception after). Trust score = on-time % over 12 months with bands (95/85/70). Expired add-on = read-only, not a tenant lockout. Standalone thrift groups for outsiders are kept (tenant kind `THRIFT_GROUP`), no legal gate.
+- Collector tools online only in the first release.
+
+Other:
+- Plan editor: modules/features are locked until "Edit terms (start a draft)" is clicked (versioned plans). The owner declined changing this UX.
+- Photos: private storage with signed links; server cleans every upload; admins can set photos for members without logins (0 of 77 can sign in).
 
 ## Problems solved
 
-- Gradle bundling failed with `Cannot find module 'babel-preset-expo'` and then `@babel/plugin-transform-react-jsx`: fixed by the dependency plus `.npmrc` above. Tested by simulating EAS from a clean copy with a fresh install and a plain-node bundle command.
-- `eas env:create` could not link the project locally (project id only existed in the build profile): fixed with a default id; values now live in `eas.json`.
-- The 283 MB preview APK was a universal APK with four chip types: restricted as above (new size not yet measured).
-- Local `node_modules` had ~27 emptied package folders (cause unknown); repaired by deleting the empty `.pnpm` folders and reinstalling. Tools used: a scan for empty package folders, then `CI=true pnpm install --frozen-lockfile`.
-- In a shell, the MinIO app secret must be 8 to 40 characters (use `head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'`, 32 chars) and `$( )` is for a command, never for a pasted value.
+- `prisma generate` EPERM on Windows: a hung Jest process held `query_engine-windows.dll.node`; ending it (or it finishing) fixed it. Find the holder with `Get-Process node | Modules` filter before retrying.
+- Heredoc/inline `node -e` quoting breaks on large content: write patch scripts or files with the Write tool, then run them. Files are CRLF: normalise `\r\n` in patch scripts.
+- `/recover` rule: diagnose first; if the same problem persists after one corrective prompt, stop.
+- RNTL here is async: `await render(...)`, `await act(async () => ...)`; expo-image error events need `props.onError(...)` in tests.
+- Web has no test runner; web checks are `tsc` + `eslint` only.
 
 ## Current state
 
-- Deployed on Dokploy; API log shows migrations applied and all 8 seeds `ok`. Docs, web and admin build. API Docker image builds and starts from an empty database.
-- The last edits (`app.config.ts`, `eas.json`, `docs/mobile/RELEASE_CHECKLIST.md`) were uncommitted at the last check; the owner commits and pushes. Before any build make sure `.npmrc`, `pnpm-lock.yaml` and `apps/mobile/package.json` are committed.
-- A preview APK built successfully (283 MB) before the size fix. The `website-apk` profile has not been built.
-- Typechecks: mobile shows 6 type errors after a clean install (`ImageViewerModal`, `Passbook`, `Skeleton`, `PagedList`; className typing and FlashList), which do not affect bundling. Admin has 2 old errors. The API prod `tsc` reports ~100 errors that the Dockerfile hides with `|| true` (types looser than the functions they call).
-- Nothing measured or run on a device yet: cold start, memory, TalkBack, 1.3x text, Maestro flows, payment proof upload against MinIO.
-- Expo checker shows version drift (expo 58.0.16 vs 58.0.19, TypeScript 5.9 vs 6.0, etc.); left alone on purpose.
+- API/web/admin typecheck clean at last check; mobile suite 1057 passing (before the last Avatar test, which also passes); API photo/member/auth/billing tests pass. DB-backed billing suites need `BILLING_TEST_DATABASE_URL` (a database whose name contains "test"; the scratch DB was dropped).
+- Pre-existing, unrelated: multi-tenancy Jest suites fail on ESM `otplib`; docs `gen:reference` permissions page fails on a spread; a few mobile `tsc` errors in `ImageViewerModal`, `Passbook`, `Skeleton`, `PagedList`.
+- Not verified in a browser or on a phone: billing checkout/receipts, the biometric fix, devices list, About links, photo upload, the Profile blank-screen fix. Real Paystack not exercised.
+- Photos not yet shown in: approvals queue, invitable list, role users, cooperatives guarantors, meetings, elections, announcements, comments. Web photo upload has a preview but no drag-to-crop box.
+- Owner commits; I do not commit unless asked.
 
 ## Next session starts with
 
-1. Ask the owner which fixes from `docs/mobile/PHASE9_REVIEW_FINDINGS.md` to apply. Recommended first: A1 (set `trust proxy`, otherwise all users share one rate-limit counter behind Traefik), A2 (Paystack webhook secret fallback and reject when empty), A3 (no fallback JWT secret in production, API and web), A5 (calendar permission text), A6 (About screen privacy and terms links point at the wrong domain). Then A4 (start Sentry with data scrubbing), B5 (tertiary text contrast: light `84 114 90`, dark `121 152 128`), B3, B4, B1. A7 (dependency upgrades: jsPDF, Next in web and admin) as separate passes.
-2. Confirm the deployed server has: `API_PUBLIC_URL` = the API address (it was set to the website address by mistake), `APP_URL`, the MinIO scoped key, and the demo association seeded if the owner wants `oko-youth-forum` to exist there.
-3. Build `website-apk` and the preview APK on the Redmi; record cold start, memory, TalkBack and Maestro results in the table at the end of `docs/mobile/RELEASE_CHECKLIST.md`; confirm the APK size.
-4. Then `/review` on Phase 9 and update `context/progress-tracker.md` (F9.x are still unchecked).
+1. If the owner reports results: the Profile blank screen after photo upload (ask for the Metro error / `adb logcat` if still blank); the photo upload end to end on web and phone.
+2. Otherwise the next planned work is **Ajo Track T1 (foundation)**: data model + migration, module/add-on catalogue with `ajoContributors` limit and read-only expiry, standalone tenant kind, RBAC, append-only ledger, settings. Read `context/thrift-ajo-spec.md` first.
+3. Production deploy needs: DB backup, env vars above, run `apps/api/scripts/rebalance-default-plans.ts` (dry run, `--apply`, `--migrate`), new API deploy, new mobile build, `MINIO_PUBLIC_ENDPOINT` for photo links.
 
 ## Open questions
 
-- Phase 8 carry-over: show a "waiting for approval" message when someone signs in on the bare domain with no association (needs the owner's yes).
-- Associations that already had an Expired or Cancelled subscription are blocked at once when Phase 8 ships; bypass or not?
-- Play feature graphic (1024x500) and a data-deletion URL are still needed for the store listing; iOS needs a real iPhone or TestFlight tester.
-- Brand colours are not applied to the app theme (still teal tokens); only logos and icons moved.
-- R8 code shrinking not tried (could save 10 to 20 MB, risk of launch crashes).
-- `ai-help.service.ts` and `ai-support.service.ts` are still not on credits; `GET /ai/reminders/suggestions` still spends a credit.
-- The shared MinIO user creation was in progress; confirm `societyledger-app` exists and the API logs no storage error.
+- Ajo: only one left — online-only collector vs weak connectivity in markets (revisit after the pilot).
+- Whether to extend photos to the remaining places listed above, and whether to add a drag-to-crop box on web.
+- Whether to add a "this device" tag on the signed-in devices list.
+- Whether to add `context/thrift-ajo-spec.md` to the read-first list in `AGENTS.md`.
+- Billing: member limit is still not enforced on the onboarding import path if one exists (none found); docs screenshots for changed billing pages need recapturing.

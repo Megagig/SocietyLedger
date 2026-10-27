@@ -11,7 +11,7 @@ import prisma from '../../lib/prisma';
 import { PlatformSettingsService } from '../../modules/admin/platform-settings.service';
 import { clampGraceDays, pickDecidingSubscription } from '../subscription-access.service';
 import { addDaysUtc } from './money';
-import { LIMIT_DEFINITIONS, type Limits, type LimitKey } from './catalog.service';
+import { ADDON_ONLY_LIMITS, LIMIT_DEFINITIONS, type Limits, type LimitKey } from './catalog.service';
 
 export type EntitlementSource = 'tenant_override' | 'plan' | 'addon' | 'default';
 
@@ -46,6 +46,9 @@ export interface Entitlements {
   limits: Limits;
 }
 
+/** The only non-core module a standalone thrift group can reach. */
+export const THRIFT_GROUP_MODULES: ReadonlySet<string> = new Set(['ajo']);
+
 const CACHE_MS = 20_000;
 const cache = new Map<number, { at: number; value: Entitlements }>();
 
@@ -59,6 +62,12 @@ export function mergeLimits(base: Limits, extras: Limits[]): Limits {
   const out: Limits = { ...base };
   for (const def of LIMIT_DEFINITIONS) {
     const key: LimitKey = def.key;
+    if (ADDON_ONLY_LIMITS.has(key)) {
+      // Only add-ons grant this quota, and it counts from zero: a plan's value is ignored and no add-on means none (never unlimited).
+      const granted = extras.filter((e) => key in e).map((e) => e[key]);
+      out[key] = granted.some((v) => v === null) ? null : granted.reduce<number>((sum, v) => sum + (v as number), 0);
+      continue;
+    }
     const baseHas = key in base;
     const baseVal = base[key];
     const extraVals = extras.filter((e) => key in e).map((e) => e[key]);
@@ -86,7 +95,7 @@ export async function getEntitlements(associationId: number, now = new Date()): 
 }
 
 export async function computeEntitlements(associationId: number, now = new Date()): Promise<Entitlements> {
-  const [allModules, allFeatures, subs, moduleOverrides, featureOverrides, settings] = await Promise.all([
+  const [allModules, allFeatures, subs, moduleOverrides, featureOverrides, settings, tenant] = await Promise.all([
     prisma.platformModule.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.platformFeature.findMany({ include: { module: true }, orderBy: [{ module: { sortOrder: 'asc' } }, { sortOrder: 'asc' }] }),
     prisma.subscription.findMany({
@@ -105,7 +114,9 @@ export async function computeEntitlements(associationId: number, now = new Date(
       include: { feature: { include: { module: true } } },
     }),
     PlatformSettingsService.getSettings(),
+    prisma.association.findUnique({ where: { id: associationId }, select: { kind: true } }),
   ]);
+  const isThriftGroup = tenant?.kind === 'THRIFT_GROUP';
 
   const deciding = pickDecidingSubscription(subs);
   const graceDays = clampGraceDays((settings as unknown as { gracePeriodDays?: unknown }).gracePeriodDays);
@@ -146,6 +157,10 @@ export async function computeEntitlements(associationId: number, now = new Date(
     } else {
       resolved = { code: m.code, name: m.name, isCore: m.isCore, isEnabled: m.isCore, source: 'default' };
     }
+    // A standalone thrift group reaches core modules and Ajo only. Not even a staff override widens that: the kind is the rule.
+    if (isThriftGroup && !m.isCore && !THRIFT_GROUP_MODULES.has(m.code)) {
+      resolved = { code: m.code, name: m.name, isCore: m.isCore, isEnabled: false, source: 'default' };
+    }
     modules.set(m.code, resolved);
   }
 
@@ -168,6 +183,9 @@ export async function computeEntitlements(associationId: number, now = new Date(
       resolved = { code: f.code, name: f.name, moduleCode: f.module.code, isEnabled: true, source: 'addon' };
     } else {
       resolved = { code: f.code, name: f.name, moduleCode: f.module.code, isEnabled: f.isCore, source: 'default' };
+    }
+    if (isThriftGroup && !f.isCore && !THRIFT_GROUP_MODULES.has(f.module.code)) {
+      resolved = { code: f.code, name: f.name, moduleCode: f.module.code, isEnabled: false, source: 'default' };
     }
     features.set(f.code, resolved);
   }

@@ -984,3 +984,12 @@ New `Notification.type` values (mapped in the push routing table, §8): `ajo.con
 - **Web:** `app/dashboard/thrift/*`; standalone sign-up at `/thrift/start`.
 - **Admin:** `apps/admin` section "Thrift" (settings, oversight, analytics) through `/bff`.
 - **Docs:** section `ajo-thrift` (`project-overview.md §12.3`).
+
+### 18.11 Foundation as built (T1, 2026-10-27)
+- **Tiers:** four add-ons `ajo-starter`, `ajo-growth`, `ajo-business`, `ajo-enterprise` share `Addon.family = 'ajo'`. A tenant holds at most one; `buildAddonQuote` credits the unused part of the tier it replaces and refuses a smaller tier mid-term (`ADDON_TIER_DOWNGRADE`); `buildPlanQuote` refuses two tiers together (`ADDON_FAMILY_CONFLICT`); applying a quote ends the replaced row.
+- **Quota:** `ajoContributors` (`LIMIT_DEFINITIONS`, `source: 'addon'`). `mergeLimits` counts it from zero from add-ons only. Counting and the limit check are in `modules/ajo/ajo-capacity.ts`; error `AJO_CONTRIBUTOR_LIMIT`.
+- **Access:** `requireAjoAccess()` (`modules/ajo/ajo-access.ts`) is the one gate for `/api/ajo`: `FULL`, `READ_ONLY` (add-on lapsed and the tenant has groups: reads pass, writes get `ADDON_EXPIRED`) or `DISABLED` (`MODULE_DISABLED`). A staff override that switches Ajo off is a stop, not an expiry. The check failing returns 503 rather than guessing. Exports sent as POST opt in with `allowWhenReadOnly`.
+- **Standalone groups:** `Association.kind = THRIFT_GROUP`; `computeEntitlements` limits it to core modules and `ajo` and ignores overrides; `Plan.audience` decides which plans a tenant is offered; sign-up is `POST /api/associations/thrift-signup`, refused with `THRIFT_SIGNUP_CLOSED` unless `ajoStandaloneSignup` is on.
+- **Money columns** in `ajo_*` are `BigInt` kobo. `AjoContribution` keeps amount and identity fixed and only moves its confirmation status forward; `AjoLedgerEntry` is never updated (`ajo-ledger.service.ts` exposes no update or delete).
+- **Roles:** `ajo_collector`, `ajo_officer`; seven `ajo.*` permissions; members hold `ajo.view_own` and `ajo.contribute`.
+- **Guard tests:** `__tests__/ajo/ajo-money-boundary.test.ts` fails if `modules/ajo` imports a payment client, touches subscription payment tables, or if billing code writes an Ajo money table.

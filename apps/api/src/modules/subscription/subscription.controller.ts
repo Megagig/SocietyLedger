@@ -46,9 +46,11 @@ async function currentSubscriptionRow(associationId: number) {
 
 export const subscriptionController = {
   /** The plans, add-ons and payment providers this association can buy right now (published, visible, purchasable only). */
-  async getPlans(_req: Request, res: Response) {
+  async getPlans(req: Request, res: Response) {
     try {
-      const [plans, addons] = await Promise.all([listPurchasablePlans(), listPurchasableAddons()]);
+      const associationId = req.user?.associationId;
+      const kind = associationId ? (await prisma.association.findUnique({ where: { id: associationId }, select: { kind: true } }))?.kind : undefined;
+      const [plans, addons] = await Promise.all([listPurchasablePlans(kind ?? 'ASSOCIATION'), listPurchasableAddons()]);
       return res.status(200).json({ success: true, data: { plans, addons, providers: subscriptionProviders() } });
     } catch (error) {
       return fail(res, error, 'Failed to fetch plans');

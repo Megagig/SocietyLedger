@@ -5,13 +5,22 @@
  * admin summaries all go through here, so a published change shows up everywhere at once. Only PUBLISHED versions are ever offered;
  * drafts are invisible to customers.
  */
-import { Prisma } from '@prisma/client';
+import { Prisma, type AssociationKind } from '@prisma/client';
 import prisma from '../../lib/prisma';
 import { formatNaira } from './money';
 
-/** Quotas a plan can set. Only `members` is enforced by the API today; the builder lists exactly what is enforced. */
-export const LIMIT_DEFINITIONS = [{ key: 'members', label: 'Active members', unit: 'members' }] as const;
+/**
+ * Quotas the Plan Builder can set; the builder lists exactly what is enforced. `source: 'addon'` marks a quota that only an add-on can
+ * grant: a plan cannot set it, and a tenant with no add-on that grants it has none (0), not "unlimited".
+ */
+export const LIMIT_DEFINITIONS = [
+  { key: 'members', label: 'Active members', unit: 'members', source: 'plan' },
+  { key: 'ajoContributors', label: 'Active Ajo contributors', unit: 'contributors', source: 'addon' },
+] as const;
 export type LimitKey = (typeof LIMIT_DEFINITIONS)[number]['key'];
+
+/** Limit keys only an add-on may grant. */
+export const ADDON_ONLY_LIMITS: ReadonlySet<string> = new Set(LIMIT_DEFINITIONS.filter((d) => d.source === 'addon').map((d) => d.key));
 export type Limits = Partial<Record<LimitKey, number | null>>;
 
 export interface CatalogModule {
@@ -66,6 +75,8 @@ export interface CatalogAddon {
   isPublic: boolean;
   isActive: boolean;
   sortOrder: number;
+  /** Add-ons in one family are tiers of one product; a tenant holds at most one. */
+  family: string | null;
   versionId: number;
   version: number;
   prices: CatalogPrices;
@@ -167,10 +178,10 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
  * Plans a customer may newly buy. `public` is what the marketing pages show; `purchase` is what a signed-in association sees when it
  * subscribes (the same today, kept separate so the owner can later offer private plans to specific customers).
  */
-export async function listPurchasablePlans(): Promise<CatalogPlan[]> {
-  return cached('plans:purchasable', async () => {
+export async function listPurchasablePlans(audience: AssociationKind = 'ASSOCIATION'): Promise<CatalogPlan[]> {
+  return cached(`plans:purchasable:${audience}`, async () => {
     const plans = await prisma.plan.findMany({
-      where: { isActive: true, isPublic: true, isArchived: false },
+      where: { isActive: true, isPublic: true, isArchived: false, audience },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
       include: { versions: publishedVersionArgs },
     });
@@ -198,6 +209,7 @@ export async function listPurchasableAddons(): Promise<CatalogAddon[]> {
           isPublic: a.isPublic,
           isActive: a.isActive,
           sortOrder: a.sortOrder,
+          family: a.family,
           versionId: v.id,
           version: v.version,
           prices: pricesOf(v.priceMonthlyKobo, v.priceAnnualKobo),
@@ -213,8 +225,8 @@ export async function listPurchasableAddons(): Promise<CatalogAddon[]> {
 }
 
 /** A single plan that can be bought right now, or null (hidden, deactivated, archived or with nothing published). */
-export async function getPurchasablePlan(planId: number): Promise<CatalogPlan | null> {
-  const plans = await listPurchasablePlans();
+export async function getPurchasablePlan(planId: number, audience: AssociationKind = 'ASSOCIATION'): Promise<CatalogPlan | null> {
+  const plans = await listPurchasablePlans(audience);
   return plans.find((p) => p.id === planId) ?? null;
 }
 

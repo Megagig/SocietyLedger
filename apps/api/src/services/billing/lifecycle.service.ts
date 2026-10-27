@@ -43,9 +43,10 @@ export interface OnboardingPlan {
 }
 
 /** The plan a new association is given, read from the platform settings and the published catalog (never a hardcoded plan). */
-export async function resolveOnboardingPlan(): Promise<OnboardingPlan> {
+export async function resolveOnboardingPlan(planCode?: string): Promise<OnboardingPlan> {
   const settings = await PlatformSettingsService.getSettings();
-  const code = (settings.onboardingPlanCode || 'enterprise').toString();
+  // A tenant kind with its own base plan (a standalone thrift group) passes it; everyone else gets the configured onboarding plan.
+  const code = (planCode || settings.onboardingPlanCode || 'enterprise').toString();
   const plan = await getOnboardingPlan(code);
   if (!plan) {
     throw new BillingError('ONBOARDING_PLAN_MISSING', `The onboarding plan "${code}" has no published version. Publish it in the Plan Builder.`, 500);
@@ -189,6 +190,10 @@ async function upsertTenantAddons(
   input: ApplyInput,
 ): Promise<void> {
   for (const a of quote.addons) {
+    // A tier change ends the tier it replaces, so a tenant never holds two tiers of one product (their limits would add up).
+    if (a.replacesTenantAddonIds?.length) {
+      await tx.tenantAddon.updateMany({ where: { id: { in: a.replacesTenantAddonIds }, associationId, status: 'ACTIVE' }, data: { status: 'ENDED', endsAt: startsAt } });
+    }
     const data = {
       addonVersionId: a.addonVersionId,
       status: 'ACTIVE' as const,
@@ -639,6 +644,14 @@ export async function grantAddonManually(input: { associationId: number; addonId
     const version = await tx.addonVersion.findFirst({ where: { addonId: input.addonId, status: 'PUBLISHED' }, orderBy: { version: 'desc' } });
     if (!version) throw new BillingError('ADDON_UNAVAILABLE', 'That add-on has no published version.', 404);
     const existing = await tx.tenantAddon.findFirst({ where: { subscriptionId: sub.id, addonVersion: { addonId: input.addonId }, status: 'ACTIVE' } });
+    // A staff grant of one tier replaces the tier of the same product the tenant already holds.
+    const family = (await tx.addon.findUnique({ where: { id: input.addonId }, select: { family: true } }))?.family;
+    if (family) {
+      await tx.tenantAddon.updateMany({
+        where: { subscriptionId: sub.id, status: 'ACTIVE', addonVersion: { addon: { family, id: { not: input.addonId } } } },
+        data: { status: 'ENDED', endsAt: now },
+      });
+    }
     const data = { addonVersionId: version.id, status: 'ACTIVE' as const, billingCycle: sub.billingCycle, endsAt: sub.currentPeriodEnd, cancelAtPeriodEnd: false, source: 'MANUAL' as const, amountPaidKobo: 0, actorId: input.actor.id, reason };
     const row = existing
       ? await tx.tenantAddon.update({ where: { id: existing.id }, data })

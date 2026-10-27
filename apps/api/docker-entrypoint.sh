@@ -14,7 +14,7 @@ node_modules/.bin/prisma migrate deploy --schema=./prisma/schema.prisma
 # Set SEED_ON_START=false to skip (saves about 30 seconds per start).
 if [ "${SEED_ON_START:-true}" != "false" ]; then
   echo "Seeding reference data..."
-  for seed in     prisma/seeds/platform-association.seed.ts     prisma/seeds/super-admin.seed.ts     prisma/seeds/rbac-seed.ts     prisma/seeds/platform-modules.seed.ts     prisma/seeds/plans.seed.ts     prisma/seeds/help-permissions.seed.ts     prisma/seeds/help-content.seed.ts     prisma/seeds/blog-docs.seed.ts
+  for seed in     prisma/seeds/platform-association.seed.ts     prisma/seeds/super-admin.seed.ts     prisma/seeds/rbac-seed.ts     prisma/seeds/platform-modules.seed.ts     prisma/seeds/plans.seed.ts     prisma/seeds/ajo-addons.seed.ts     prisma/seeds/help-permissions.seed.ts     prisma/seeds/help-content.seed.ts     prisma/seeds/blog-docs.seed.ts
   do
     if node_modules/.bin/tsx "$seed" > /tmp/seed.log 2>&1; then
       echo "  ok     $seed"

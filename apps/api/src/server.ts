@@ -52,6 +52,7 @@ import memberFinanceRoutes from './modules/member-finance/member-finance.routes'
 import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 import meetingsRoutes from './modules/meetings/meetings.routes';
 import welfareRoutes from './modules/welfare/welfare.routes';
+import ajoRoutes from './modules/ajo/ajo.routes';
 import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
@@ -237,6 +238,7 @@ app.use('/api/cash', cashRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);
+app.use('/api/ajo', ajoRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/voting', votingRoutes);

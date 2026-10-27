@@ -156,12 +156,12 @@ export const billingAdmin = {
   createAddon: wrap('Failed to create the add-on', async (req, res) => {
     const body = metaSchema
       .merge(versionSchema)
-      .extend({ code: codeSchema, name: z.string().trim().min(1).max(80), eligiblePlanIds: z.array(id).max(50).optional() })
+      .extend({ code: codeSchema, name: z.string().trim().min(1).max(80), eligiblePlanIds: z.array(id).max(50).optional(), family: z.string().trim().max(40).nullable().optional() })
       .parse(req.body);
     ok(res, await builder.createAddon(body, actor(req)), 'Add-on created as a draft. Publish it when it is ready.');
   }),
   updateAddon: wrap('Failed to update the add-on', async (req, res) => {
-    const body = metaSchema.extend({ eligiblePlanIds: z.array(id).max(50).optional(), reason: reason.optional() }).parse(req.body);
+    const body = metaSchema.extend({ eligiblePlanIds: z.array(id).max(50).optional(), family: z.string().trim().max(40).nullable().optional(), reason: reason.optional() }).parse(req.body);
     const { reason: why, ...patch } = body;
     ok(res, await builder.updateAddonMeta(id.parse(req.params.id), patch, actor(req), why), 'Add-on updated.');
   }),
