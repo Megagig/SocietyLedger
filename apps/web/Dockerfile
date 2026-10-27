@@ -57,6 +57,9 @@ COPY --from=builder --chown=webuser:nodejs /app/apps/web/.next/static ./apps/web
 USER webuser
 ENV NODE_ENV=production
 ENV PORT=3000
+# Listen on every network address. Without this Next binds only to the container's own hostname address, which is the wrong
+# network when the container is attached to more than one, and the proxy then gets "connection refused" (a 502).
+ENV HOSTNAME="0.0.0.0"
 EXPOSE 3000
 
 CMD ["node", "apps/web/server.js"]

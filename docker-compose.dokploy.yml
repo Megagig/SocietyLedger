@@ -152,6 +152,8 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
       NEXT_PUBLIC_BASE_DOMAIN: ${NEXT_PUBLIC_BASE_DOMAIN}
+      # Listen on every network address, so the proxy can always reach the app (see apps/web/Dockerfile).
+      HOSTNAME: 0.0.0.0
       # Shared secret for the pricing refresh request from the API (same value as the API's REVALIDATE_SECRET)
       REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
     networks:
