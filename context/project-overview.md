@@ -968,7 +968,7 @@ A paid add-on that runs contribution circles (collector thrift and rotating pot)
 | **Collector** | See assigned contributors and today's list, record collections and cash, hand over cash (online only in the first release). |
 | **Officer** | Approve participants, manage schedules, reconcile cash and transfers, follow up arrears and disputes, prepare payouts. |
 | **Admin** | Create groups, set rules, manage roles, **approve payouts**. |
-| **Platform staff** | Configure the add-on (levy parameters, standalone sign-up), oversee groups and payouts, see analytics (admin console). |
+| **Platform staff** | Verify participants (second step), configure the add-on (levy parameters, standalone sign-up), oversee groups and payouts, see analytics (admin console). |
 
 ### 12.2 Screens (IDs use prefix `TH`; M = mobile, W = web, X = admin console)
 **Contributor**
@@ -982,6 +982,7 @@ A paid add-on that runs contribution circles (collector thrift and rotating pot)
 | THM6 | Guarantor consent — guarantor reviews and accepts the recorded wording | M, W (link) |
 | THM7 | My trust score — inputs shown in plain language | M, W |
 | THM8 | Raise a dispute — "I paid" with evidence | M, W |
+| THM9 | Verification status — group approval and SocietyLedger verification, and what is still needed | M, W |
 
 **Collector**
 | ID | Screen | Platforms |
@@ -995,13 +996,14 @@ A paid add-on that runs contribution circles (collector thrift and rotating pot)
 |---|---|---|
 | THO1 | Groups — list with status, members, collected vs expected | M, W |
 | THO2 | Create / edit group — wizard: model, frequency, amount, duration, participants, collector fee, the group's bank account, rules | W (M view + simple edit) |
-| THO3 | Members & approvals — approve participants, guarantors, payout order | M, W |
+| THO3 | Members & approvals — approve participants, see SocietyLedger verification status, guarantors | M, W |
 | THO4 | Contributions & reconciliation — confirm transfers, reconcile cash handovers, reverse with reason | M, W |
 | THO5 | Payouts — prepare, preview (pot, fee, shortfall), approve (admin), record as paid, void | M, W |
 | THO6 | Defaults & cases — overdue, post-payout default cases, repayment plans, disputes, waive fee | M, W |
 | THO7 | Reports — eight reports with filters and exports | W (M summaries) |
 | THO8 | Collectors — assign contributors, targets, performance | W (M view) |
 | THO9 | Standalone group sign-up and onboarding | W |
+| THO10 | Payout order — recorded draw, swap requests, emergency exceptions | M, W |
 
 **Admin console (platform)**
 | ID | Screen |
@@ -1009,6 +1011,7 @@ A paid add-on that runs contribution circles (collector thrift and rotating pot)
 | THX1 | Ajo settings — levy parameters, standalone sign-up switch |
 | THX2 | Groups & payouts oversight |
 | THX3 | Add-on analytics — adoption, active contributors, revenue |
+| THX4 | Verification review queue — checklist, verify or reject with a reason |
 
 ### 12.3 Documentation pages (section `ajo-thrift`, apps/docs)
 Audience guides: **administrators**, **collectors**, **members**. Pages:
@@ -1016,7 +1019,7 @@ Audience guides: **administrators**, **collectors**, **members**. Pages:
 2. `getting-started` — buying the add-on, creating your first group.
 3. `creating-a-group` — models, frequency, amount, duration, participants, collector fee, the group's bank account.
 4. `group-rules` — late fees, grace days, guarantors, default procedure, reminders; how rule versions work.
-5. `joining-and-approval` — how a member joins, officer approval, accepting the rules, optional phone confirmation, the payout account.
+5. `joining-and-approval` — how a member joins, officer approval, SocietyLedger verification (what is checked, how long it takes, what a rejection means), accepting the rules, optional phone confirmation, the payout account.
 6. `contributions-and-schedules` — due dates, grace periods, receipts, what "reported" and "confirmed" mean.
 7. `collector-operations` — daily list, recording cash, end-of-day handover, reconciliation.
 8. `transfers-and-reconciliation` — paying into the group's account, proofs, confirming.
@@ -1027,6 +1030,7 @@ Audience guides: **administrators**, **collectors**, **members**. Pages:
 13. `plans-billing-and-limits` — tiers by active contributors, trial, grace and read-only mode (separate from members' contributions).
 14. `staying-safe` — how records are protected, what the app does and does not do (it never holds your group's money), payout-account controls.
 15. `faq-and-troubleshooting` — at least 8 Q&As.
+16. `payout-order-and-swaps` — the recorded draw, swaps before the first payout, emergency exceptions, the optional rule for "At risk" participants, and what the trust bands mean.
 Every task page follows the Docs Definition of Done (`build-plan.md`); mobile steps via `PlatformTabs`; the plan-billing page stays out of the mobile app docs filter per architecture rule 16.
 
 ### 12.4 Success criteria
@@ -1034,4 +1038,5 @@ Every task page follows the Docs Definition of Done (`build-plan.md`); mobile st
 - A collector can record a day's collections and hand over cash with zero unexplained difference.
 - No full bank account number appears in any response or log (test-enforced).
 - No code path in `modules/ajo/` collects, holds or moves contribution money (test-enforced).
+- A payout cannot be prepared or approved for anyone SocietyLedger has not verified (test-enforced).
 - An expired add-on leaves all Ajo history readable and exportable.

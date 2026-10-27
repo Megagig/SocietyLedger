@@ -943,31 +943,35 @@ SocietyLedger is **record-keeping software**. The group's own bank account holds
 | `AjoDefaultCase`, `AjoRepaymentPlan` | post-payout default workflow: outstanding balance, notices, member response, plan schedule, resolution |
 | `AjoGuarantorAgreement` | guarantor name, phone, relationship, the exact wording accepted, acceptedAt — **a recorded consent only** |
 | `AjoLedgerEntry` | **append-only** money record: group, membership, `type` (contribution, reversal, fee, payout, adjustment), `amountKobo`, `direction`, `refType/refId`, `idempotencyKey` (unique), `reversalOfId?`; balances are derived, never stored as the source of truth |
-| `AjoTrustSnapshot` | periodic score with the inputs used |
+| `AjoTrustSnapshot` | periodic on-time percentage over the last 12 months with the counts used and the band (`EXCELLENT` 95%+, `GOOD` 85–94%, `FAIR` 70–84%, `AT_RISK` under 70%, `NO_HISTORY`); disputed payments not counted until resolved, waived payments not counted |
+| `AjoVerification` | the second step: `memberId`, `submittedName/Phone/Address/PayoutAccountName` snapshot, `status` (`PENDING`/`VERIFIED`/`REJECTED`), checklist results (name matches payout account name, phone confirmed, address filled in), `reviewedBy` (platform user), `reviewedAt`, `rejectionReason`; no ID numbers or ID photos |
+| `AjoPayoutOrderEvent` | rotating-pot order history: `DRAW` (seed + resulting positions), `SWAP` (two memberships, requested/approved by), `EXCEPTION` (membership, new position, written reason, approved by); append-only |
 | `AjoDispute` | member claim ("I paid") with evidence, status, resolution reason |
 
 ### 18.4 State machines (guard every transition server-side)
 - **Group:** `DRAFT → OPEN → ACTIVE → COMPLETED | CANCELLED`. Money fields (amount, frequency, participants, collector fee, bank account) are locked once `ACTIVE`.
 - **Contribution:** `REPORTED → CASH_RECEIVED → CONFIRMED`, and any state → `REVERSED` (a new reversing entry; the original is never edited). Only `CONFIRMED` counts as money in the group's account; `CASH_RECEIVED` is cash in the collector's hands.
 - **Payout:** `PREPARED → APPROVED → PAID | VOID`. Preparer ≠ approver (single-admin groups get an extra confirmation, logged). Changing the payout account after approval voids the approval and starts a cool-off. `PAID` means an officer **recorded** that the group paid from its own account; SocietyLedger never initiates the transfer.
-- **Membership:** `PENDING` until officer approval, guarantor consent (if required), rule acceptance and (if the group requires it) phone confirmation are all satisfied, then `ACTIVE`.
+- **Membership:** `PENDING` until officer approval, guarantor consent (if required), rule acceptance and (if the group requires it) phone confirmation are all satisfied, then `ACTIVE` (the person can now join and contribute).
+- **Verification (`AjoVerification`):** created when the group approves; `PENDING → VERIFIED | REJECTED` by platform staff in the admin console. **A payout can only be prepared or approved for a `VERIFIED` person.** Changing the payout account resets the status to `PENDING`. A rejection carries a reason shown to the group admin.
+- **Payout order (rotating pot, hybrid):** positions come from a recorded `DRAW` (seed saved; reproducible); `SWAP`s need admin approval and are allowed only before the first payout; after the first payout positions of paid members are immutable and only an admin-approved `EXCEPTION` with a written reason may change the remaining order. Optional group rule (default off): `AT_RISK` participants cannot take the first positions.
 
 ### 18.5 Money rules
 1. Integer kobo everywhere; formatting only at the edge (`₦10,000.00`, never abbreviated).
 2. Every money-recording write has a unique `idempotencyKey`; replays are no-ops.
 3. Ledger entries and contributions are never updated or deleted; corrections are reversals with a reason.
 4. **Subscription ≠ contribution.** Add-on subscription charges use the existing `PaymentHistory` (purpose `ADDON`); Ajo money uses `AjoContribution`/`AjoLedgerEntry`. A test fails if either path writes the other's table.
-5. The platform levy is computed in one place (`ajo-levy.ts`), recorded as its own entry, and **billed on the add-on invoice**; it is never deducted from a contribution.
+5. The platform levy is computed in one place (`ajo-levy.ts`), recorded as its own entry, and **billed on the add-on invoice**; it is never deducted from a contribution. Formula: cycle levy = 0.5% of the cycle's scheduled contributions (min ₦500, max ₦5,000) + participant levy = 0.25% of each participant's scheduled contributions (min ₦50, max ₦1,000); **Starter-tier groups are exempt**. The rates and caps live in platform settings, not in code.
 6. Late fees are assessed only under an accepted rule version, shown with their calculation, and never retroactive. Default balance = remaining agreed contributions − payments − valid credits; other members' savings and guarantors' money are never auto-deducted.
 
 ### 18.6 API surface (`/api/ajo`, all behind module + permission gates)
-`groups` (CRUD, lifecycle, rules, schedule preview) · `groups/:id/members` (invite, join, approve, guarantor) · `payout-account` (own and officer-set) · `contributions` (record, confirm, reverse, receipts, proofs) · `collections` (today's list, record cash, handover, reconcile) · `payouts` (prepare, approve, record paid, void) · `defaults` (cases, plans, disputes, waive fee) · `reports/*` (eight reports + `export`) · `trust` (own score and inputs). Admin console: `/api/admin/ajo/*` (platform settings, levy, oversight, analytics) under the existing Super Admin guard.
+`groups` (CRUD, lifecycle, rules, schedule preview) · `groups/:id/order` (draw, swap request/approve, emergency exception) · `groups/:id/members` (invite, join, approve, guarantor, verification status) · `payout-account` (own and officer-set) · `contributions` (record, confirm, reverse, receipts, proofs) · `collections` (today's list, record cash, handover, reconcile) · `payouts` (prepare, approve, record paid, void) · `defaults` (cases, plans, disputes, waive fee) · `reports/*` (eight reports + `export`) · `trust` (own score and inputs). Admin console: `/api/admin/ajo/*` (platform settings, levy, verification review queue, oversight, analytics) under the existing Super Admin guard.
 
 ### 18.7 Jobs (idempotent; added to `jobs/` beside the subscription jobs)
 Overdue detection and grace expiry · reminders (before/after due date; one per installment per channel) · late-fee assessment (when enabled) · trust-score refresh · add-on expiry → read-only mode. Running a job twice must not duplicate a reminder, fee or notification.
 
 ### 18.8 Notifications
-New `Notification.type` values (mapped in the push routing table, §8): `ajo.contribution_recorded`, `ajo.contribution_confirmed`, `ajo.contribution_reversed`, `ajo.installment_due`, `ajo.installment_overdue`, `ajo.membership_approved`, `ajo.payout_prepared`, `ajo.payout_approved`, `ajo.payout_paid`, `ajo.guarantor_request`, `ajo.default_case_opened`, `ajo.rules_changed`. Receipt SMS/push/email for every contribution, respecting the member's preferences.
+New `Notification.type` values (mapped in the push routing table, §8): `ajo.contribution_recorded`, `ajo.contribution_confirmed`, `ajo.contribution_reversed`, `ajo.installment_due`, `ajo.installment_overdue`, `ajo.membership_approved`, `ajo.verification_status`, `ajo.order_drawn`, `ajo.swap_requested`, `ajo.payout_prepared`, `ajo.payout_approved`, `ajo.payout_paid`, `ajo.guarantor_request`, `ajo.default_case_opened`, `ajo.rules_changed`. Receipt SMS/push/email for every contribution, respecting the member's preferences.
 
 ### 18.9 Security and audit
 - **Bank account numbers** (the group's and members' payout accounts) are masked in every API response, log line and admin screen (`••••1234`) and never written to error reports; full values are returned only to the person entering them and to officers with `ajo.manage`.

@@ -49,18 +49,17 @@ Names: Ajo (Yoruba), Esusu/Isusu (also Igbo), Adashe/Adashi (Hausa), Akawo, Osus
 1. **Association members** form circles inside their association (the association has bought the Ajo add-on).
 2. **Outsiders** can sign up to use only the Ajo module. They register a **standalone thrift group** (a tenant restricted to core + Ajo), invite their own contributors, and are billed on the Ajo tiers.
 
-## 6. Joining a group — member approval (replaces KYC)
+## 6. Joining a group — approval and verification (replaces KYC)
 
-**OWNER DECISION 2026-10-27:** no government-ID, NIN or BVN verification, no KYC levels and no KYC provider. Trust comes from the group itself: the officers who run a circle already know the people in it.
+**OWNER DECISION 2026-10-27:** no government-ID, NIN or BVN verification, no KYC levels and no KYC provider. Verification is done in two steps by people, not by an identity service.
 
-A person becomes an active participant when all of these are true:
-1. They are a member of the association (or were invited into the standalone group by its admin).
-2. An **officer or admin approves** them for the circle.
-3. They have **accepted the current group rules** (a recorded acceptance).
-4. If the group requires a guarantor (§7), the guarantor has consented.
-5. Optional per group (default off): their phone number is confirmed with a one-time code sent by SMS (reuses the existing SMS integration and credits).
+**Step 1 — the group approves.** An officer or admin who knows the person approves them for the circle. The person also accepts the current group rules (a recorded acceptance), the guarantor consents if the group requires one (§7), and — only if the group turns it on (default off) — the person confirms their phone with an SMS one-time code (reuses the existing SMS integration and credits).
 
-Member details used by the add-on: the existing member record (name, phone, address as already held), membership status, group membership and rule acceptance. For payouts, a **payout account** the member (or an officer for them) enters: bank name, account number, account name. It is **recorded, not verified by a service**; it is shown masked (••••1234); it is never written to logs; and changing it after a payout has been approved voids that approval and starts a short cool-off, so a payout cannot be redirected quietly.
+**Step 2 — SocietyLedger verifies.** After the group's approval, SocietyLedger staff review what the person submitted — **full name, phone, residential address and payout account name** — in the admin console against a short checklist: (a) the name matches the payout account name, (b) the phone number is confirmed, (c) the address is filled in. The result is *verified* or *rejected with a reason* (shown to the group admin). **No ID numbers and no ID photos are collected.**
+
+**What a person can do at each step (OWNER DECISION, from the owner's acceptance of the agent's recommendation):** once the group approves they can join and contribute; **no payout can be prepared or approved until they are SocietyLedger-verified**.
+
+Member details used by the add-on: the existing member record (name, phone, address as already held), membership status, group membership, rule acceptance and verification status. For payouts, a **payout account** the member (or an officer for them) enters: bank name, account number, account name. It is **recorded, not verified by a payment or identity service** (SocietyLedger's step-2 check compares the account name with the person's name); it is shown masked (••••1234); it is never written to logs; and changing it after a payout has been approved voids that approval, sends the person back to step 2 and starts a short cool-off, so a payout cannot be redirected quietly.
 
 ## 7. Group rules and defaults (**OWNER DECISION**: configurable per group)
 
@@ -85,7 +84,15 @@ What happens when a member stops paying after being paid:
 
 What is owed is the member's remaining agreed contributions adjusted for payments and valid credits — **not** automatically the full payout plus arbitrary penalties. The system never deducts from other members or guarantors. A guarantor record is **a recorded consent only**; SocietyLedger does not create or enforce a legal guarantee.
 
-Trust score: a reliability rating shown to admins (and to members for themselves) based on on-time payment history and disputes. **OPEN:** the formula is not specified; define it plainly (§14).
+Trust score (**OWNER DECISION 2026-10-27: on-time percentage**): on-time payments ÷ payments due over the last 12 months, shown as a band — **95%+ Excellent, 85–94% Good, 70–84% Fair, under 70% At risk**; a new member shows **No history yet**. A payment under dispute is not counted until the dispute is resolved; a waived payment is not counted either way. It is an aid for officers and a view for the member themselves (with the counts behind it); **it never blocks or penalises anyone automatically.**
+
+## 7a. Payout order for the rotating pot (**OWNER DECISION 2026-10-27: hybrid**)
+
+Collector thrift has no order (everyone is paid at the end of the cycle). For the rotating pot:
+1. **Default: recorded random draw.** The system draws positions, saves the seed and the result, and shows both to every participant. The draw can be reproduced from the seed.
+2. **Swaps before the first payout.** Two participants can agree to swap positions; the admin approves; every swap is logged.
+3. **After the first payout,** the positions of people already paid never change. The only change allowed is an **emergency exception** approved by the admin with a written reason, logged and visible to the group.
+4. **Optional group rule (default off):** participants whose trust band is *At risk* cannot take the first positions, so the group is protected from someone collecting early and then stopping.
 
 ## 8. Collector tools (**OWNER DECISION**: online only)
 
@@ -99,17 +106,22 @@ A dedicated collector interface, available only while online: assigned contribut
 ## 9. Fees and revenue (**OWNER DECISION**)
 
 - **Group-set fees:** circle duration, number of participants (admin chooses), weekly or monthly cycles advised for rotating pots; collector fee set per scheme (fixed amount, or a number of days' contribution — **ASSUMPTION**).
-- **Platform levy:** up to **₦5,000 per cycle** plus up to **₦1,000 per participant**. **OPEN:** define exactly how it is computed (per-cycle cap, per-participant cap, interaction with the collector fee) and who pays it. Because SocietyLedger never touches contribution money, the levy is **billed on the add-on subscription invoice**, never deducted from contributions.
-- **Subscription (add-on)** tiers by active contributors (**OWNER DECISION**, prices not yet set):
+- **Platform levy (**OWNER DECISION 2026-10-27**, within the owner's caps of ₦5,000 per cycle and ₦1,000 per participant):**
+  - **Cycle levy** = 0.5% of the cycle's total scheduled contributions, minimum ₦500, maximum ₦5,000.
+  - **Participant levy** = 0.25% of that participant's scheduled contributions for the cycle, minimum ₦50, maximum ₦1,000.
+  - **Starter-tier groups are exempt** (they pay the subscription only). The levy is independent of the collector fee.
+  - Because SocietyLedger never touches contribution money, the levy is **billed to the group admin on the add-on subscription invoice**, never deducted from contributions.
+  - Worked examples (Growth tier or above): 10 people paying ₦5,000 weekly for 10 weeks (₦500,000 scheduled) → ₦2,500 + 10 × ₦125 = ₦3,750 (0.75%). 40 people paying ₦500 daily for 31 days (₦620,000 scheduled) → ₦3,100 + 40 × ₦50 = ₦5,100 (about 0.8%).
+- **Subscription (add-on)** tiers by active contributors (**OWNER DECISION 2026-10-27**, prices accepted from the agent's suggestion; to be tested with the pilot groups):
 
-| Tier | Active contributors | Includes |
-|---|---|---|
-| Starter | up to 30 | Group management, schedules, member ledger, basic reports |
-| Growth | 31–150 | + collector management, automated reminders, payout tracking, advanced reports |
-| Business | 151–500 | + expanded administration, audit reports, finer permissions |
-| Enterprise | 500+ | Custom pricing, onboarding, support |
+| Tier | Active contributors | Monthly | Annual | Includes |
+|---|---|---|---|---|
+| Starter | up to 30 | ₦3,000.00 | ₦30,000.00 | Group management, schedules, member ledger, basic reports |
+| Growth | 31–150 | ₦8,000.00 | ₦80,000.00 | + collector management, automated reminders, payout tracking, advanced reports |
+| Business | 151–500 | ₦20,000.00 | ₦200,000.00 | + expanded administration, audit reports, finer permissions |
+| Enterprise | 500+ | from ₦40,000.00 (custom) | custom | Custom pricing, onboarding, support |
 
-Pricing rules: monthly and annual billing (annual discount if viable); a defined trial; count **active** contributors, not invited ones; grace period for failed renewals; **read-only mode after expiry — financial records are never deleted or hidden**; payment-processing fees shown separately from the subscription; upgrade/downgrade rules say when new limits take effect. **OPEN:** the existing billing lockout blocks a whole tenant when its plan expires; an expired Ajo add-on must instead leave Ajo data readable (read-only) — needs explicit handling in T1.2. Prices are not set (T0.1).
+Pricing rules: monthly and annual billing (annual = 10 × monthly, i.e. two months free); a 14-day trial at the Starter limit; count **active** contributors, not invited ones; grace period for failed renewals; **read-only mode after expiry — financial records are never deleted or hidden**; payment-processing fees shown separately from the subscription; upgrade/downgrade rules say when new limits take effect. **Decided:** the existing billing lockout blocks a whole tenant when its plan expires; an expired Ajo add-on must instead leave Ajo data readable (read-only) — built in T1.2.
 
 ## 10. Reports (**OWNER DECISION**)
 
@@ -123,7 +135,7 @@ A new "Ajo / Thrift" docs section: getting started and creating a group; joining
 
 ## 12. Data model (proposed; see `architecture.md §18`)
 
-Reuse the existing `Member` as the contributor identity in both association groups and standalone groups (a standalone thrift group is a tenant of kind `THRIFT_GROUP`). New tables: `AjoGroup`, `AjoGroupRuleVersion`, `AjoRuleAcceptance`, `AjoMembership`, `AjoInstallment`, `AjoContribution`, `AjoCollectorAssignment`, `AjoCashHandover`, `AjoPayout`, `AjoPayoutAccount`, `AjoLateFeeAssessment`, `AjoDefaultCase`, `AjoRepaymentPlan`, `AjoGuarantorAgreement`, `AjoLedgerEntry` (append-only), `AjoTrustSnapshot`, `AjoDispute`. All money in integer kobo; every money-recording write has an idempotency key; ledger entries are append-only with reversal entries.
+Reuse the existing `Member` as the contributor identity in both association groups and standalone groups (a standalone thrift group is a tenant of kind `THRIFT_GROUP`). New tables: `AjoGroup`, `AjoGroupRuleVersion`, `AjoRuleAcceptance`, `AjoMembership`, `AjoInstallment`, `AjoContribution`, `AjoCollectorAssignment`, `AjoCashHandover`, `AjoPayout`, `AjoPayoutAccount`, `AjoLateFeeAssessment`, `AjoDefaultCase`, `AjoRepaymentPlan`, `AjoGuarantorAgreement`, `AjoVerification`, `AjoPayoutOrderEvent`, `AjoLedgerEntry` (append-only), `AjoTrustSnapshot`, `AjoDispute`. All money in integer kobo; every money-recording write has an idempotency key; ledger entries are append-only with reversal entries.
 
 ## 13. Release plan
 
@@ -136,12 +148,10 @@ One release: Mode A (the group's own bank account), both models, member approval
 - NIN/BVN and government-ID verification, KYC levels, a KYC provider, bank-account-name verification services, address-verification services, per-level limits, and the data-protection/legal planning items that came with them.
 - The legal-opinion gate on custody and on standalone groups.
 
+**Decided on 2026-10-27:** add-on prices and trial; the platform-levy formula; two-step verification; payout order (hybrid); trust score (on-time percentage); read-only mode when the add-on expires.
+
 **Still open (product questions, tracked in `progress-tracker.md` Track T):**
 
 | ID | Question | Resolved in |
 |---|---|---|
-| F1 | Trust-score formula | T0.2, T6.4 |
 | F2 | Collector tools are online only; weak connectivity in markets is a real risk | revisit after the T12.3 pilot |
-| F3 | Platform-levy formula (caps, interaction with collector fee, who pays) | T0.1, T5.4 |
-| F4 | Expired add-on must leave history readable (existing billing locks a whole tenant) | T1.2 |
-| F5 | Payout order rules (fixed, recorded random draw, need-based by admin) | T0.2, T3.4 |

@@ -612,7 +612,7 @@ ASSOCIATION ADMIN ──ticket (billing, bugs, modules, data)──▶ SOCIETYLE
 >
 > **Scope rules (non-negotiable):**
 > 1. **One money-flow mode: the group's own bank account.** SocietyLedger is record-keeping software. It never holds, collects, moves or pays out contribution money. No code path sends contribution money through SocietyLedger's Paystack account, a wallet or an escrow. (Owner removed the escrow and Paystack-settlement modes on 2026-10-27; do not re-add them without a new owner decision.)
-> 2. **No government-ID verification.** No NIN, BVN, ID-document or bank-name-verification service and no KYC levels. Participants are approved by officers who know them (spec §6).
+> 2. **No government-ID verification.** No NIN, BVN, ID-document or bank-name-verification service and no KYC levels. Participants are approved by the group, then checked by SocietyLedger staff on name, phone, address and payout account name (spec §6); no ID numbers or ID photos are collected.
 > 3. **Subscription money is never contribution money.** Different tables; Paystack is used only for the add-on subscription (existing billing).
 > 4. **Never edit money history.** Corrections are reversal entries with a reason.
 > 5. **Bank account numbers** are shown masked and never written to logs.
@@ -626,18 +626,17 @@ ASSOCIATION ADMIN ──ticket (billing, bugs, modules, data)──▶ SOCIETYLE
 - Tests cover: the happy path, the replay/duplicate path, a permission denial, a cross-association access attempt, and the reversal path where relevant.
 - Affected docs pages are updated in the same change (T11 for new pages).
 
-## Phase T0 — Decisions (owner)
-*Run in parallel with T1.*
-### T0.1 Commercials (F3)
-Add-on tier prices, trial length, annual discount; the platform-levy formula (up to ₦5,000 per cycle + up to ₦1,000 per participant — cap interaction, who pays; billed on the add-on invoice). **DoD:** values entered in the Decisions log and seeded in T1.2/T1.6.
-### T0.2 Remaining product rules (F1, F5)
-Payout order (fixed / recorded random draw / admin-set for need), trust-score formula, default and repayment-plan rules, guarantor consent wording. **DoD:** each rule written in plain language for the docs and recorded in the Decisions log.
+## Phase T0 — Decisions (owner) — **complete 2026-10-27**
+### T0.1 Commercials — decided 2026-10-27
+Add-on tiers: Starter ≤30 contributors ₦3,000.00/month (₦30,000.00/year); Growth 31–150 ₦8,000.00 (₦80,000.00); Business 151–500 ₦20,000.00 (₦200,000.00); Enterprise 500+ from ₦40,000.00, custom. Annual = 10 × monthly. 14-day trial at the Starter limit. Platform levy: cycle levy 0.5% of the cycle's scheduled contributions (min ₦500, max ₦5,000) plus participant levy 0.25% of that participant's scheduled contributions (min ₦50, max ₦1,000), billed on the add-on invoice; **Starter-tier groups are exempt**. **DoD:** values seeded in T1.2/T1.6 and covered by T5.4's tests.
+### T0.2 Remaining product rules — decided 2026-10-27
+Payout order: **hybrid** (recorded random draw by default, swaps before the first payout with admin approval, logged emergency exception afterwards, optional rule keeping "At risk" participants out of the first positions). Trust score: **on-time percentage** with bands. Verification: **two steps** (group approval, then SocietyLedger review; no payout before verified). Default and repayment-plan rules follow spec §7; the guarantor consent wording is plain recorded-consent text written in T3.6. **DoD:** recorded in the Decisions log.
 
 ## Phase T1 — Foundation (apps/api, apps/admin catalogue)
 ### T1.1 Ajo data model & migration
 Tables in `architecture.md §18` (groups, rule versions, acceptances, memberships, installments, contributions, collector assignments, cash handovers, payouts, payout accounts, late-fee assessments, default cases, repayment plans, guarantor agreements, ledger entries, trust snapshots, disputes). Additive migration only. **DoD:** migrates clean on a copy of production; no existing table altered destructively.
 ### T1.2 Module, features & add-on catalogue (F4)
-Register module `ajo` and features (`ajo.collector_thrift`, `ajo.rotating_pot`, `ajo.guarantors`, `ajo.reminders`, `ajo.advanced_reports`). Create the Ajo add-on with four tiers (Starter ≤30, Growth 31–150, Business 151–500, Enterprise custom) using a new limit key `ajoContributors` (counted on **active** contributors); add it to the billing catalogue's `LIMIT_DEFINITIONS`. Expiry or failed renewal puts Ajo into **read-only** mode; history stays visible. **DoD:** an association without the add-on gets `MODULE_DISABLED`; an expired add-on still lets officers read and export history and refuses writes with a clear code; billing tests extended.
+Register module `ajo` and features (`ajo.collector_thrift`, `ajo.rotating_pot`, `ajo.guarantors`, `ajo.reminders`, `ajo.advanced_reports`). Create the Ajo add-on with four tiers (Starter ≤30 ₦3,000.00/month, Growth 31–150 ₦8,000.00, Business 151–500 ₦20,000.00, Enterprise 500+ custom from ₦40,000.00; annual = 10 × monthly; 14-day trial) using a new limit key `ajoContributors` (counted on **active** contributors); add it to the billing catalogue's `LIMIT_DEFINITIONS`. Expiry or failed renewal puts Ajo into **read-only** mode; history stays visible. **DoD:** an association without the add-on gets `MODULE_DISABLED`; an expired add-on still lets officers read and export history and refuses writes with a clear code; billing tests extended.
 ### T1.3 Standalone thrift-group tenant kind
 `Association.kind` (default `ASSOCIATION`, new `THRIFT_GROUP`): sign-up route, modules limited to core + Ajo, subdomain rules, billed on the Ajo tiers. Sign-up can be switched off by platform staff (`ajo.standalone_signup` setting). **DoD:** a standalone group cannot reach any non-Ajo module.
 ### T1.4 RBAC for Ajo
@@ -647,11 +646,14 @@ Permissions (`ajo.view_own`, `ajo.contribute`, `ajo.collect`, `ajo.manage`, `ajo
 ### T1.6 Settings
 Platform settings: levy parameters, `ajo.standalone_signup`. Group settings: rules (T3.2). **DoD:** validated like `PlatformSettingsService`; audited.
 
-## Phase T2 — Member approval & payout account (apps/api)
+## Phase T2 — Member approval, SocietyLedger verification & payout account (apps/api)
 ### T2.1 Member approval & optional phone confirmation
 Officer/admin approves a participant for a circle; optional per-group SMS one-time code to confirm the phone (reuses the SMS integration and credits; default off). **DoD:** an unapproved person cannot be scheduled or contribute; approval is audited.
 ### T2.2 Payout account record & change controls
 Bank name, account number, account name entered by the member or an officer; recorded, not verified by a service; masked in every response and never logged; changing it after a payout is approved voids the approval and starts a cool-off. **DoD:** a test proves the full number never appears in responses or logs; changes are audited.
+
+### T2.3 SocietyLedger verification (second step)
+After the group's officer/admin approves a participant, SocietyLedger staff review what the person submitted — full name, phone, residential address, payout account name (no ID numbers, no ID photos) — against a checklist: name matches the payout account name, phone confirmed, address filled in. Status: pending → verified / rejected (with a reason the group admin can see). A person can join and contribute once the group approves; **no payout can be prepared or approved for a person who is not SocietyLedger-verified.** Changing the payout account sends the person back to pending. **DoD:** a payout for an unverified person is refused with a clear code; every review is audited; a rejection tells the group admin why.
 
 ## Phase T3 — Groups, rules & schedules (apps/api)
 ### T3.1 Group lifecycle
@@ -660,12 +662,15 @@ Create (model, frequency, amount, duration, participant cap, start date, collect
 Versioned rules (late fee, grace days, guarantor policy, default procedure, reminders); a member must accept the current version to join; changes apply prospectively. **DoD:** old versions retained; acceptance evidence stored with timestamp and version.
 ### T3.3 Memberships & joining checks
 Invite/join, officer approval (T2.1), guarantor requirement, rule acceptance, active-contributor limit from the add-on tier. **DoD:** exceeding the tier limit returns an upgrade prompt, never silently fails.
-### T3.4 Schedule engine (F5)
-Generate installments for collector thrift (daily/weekly/monthly, cycle length) and rotating pot (rounds, payout positions by fixed order or recorded random draw); group timezone and cutoff time. **DoD:** deterministic; regenerating a schedule cannot duplicate or move paid installments.
+### T3.4 Schedule engine
+Generate installments for collector thrift (daily/weekly/monthly, cycle length) and rotating pot (rounds, payout positions per T3.7); group timezone and cutoff time. **DoD:** deterministic; regenerating a schedule cannot duplicate or move paid installments.
 ### T3.5 Collector assignments
 Assign contributors to collectors; daily targets; reassignment audited. **DoD:** a collector sees only their assigned contributors.
 ### T3.6 Guarantor agreements
 Guarantor name, phone, relationship, and the exact wording they accept (a recorded consent only). **DoD:** a member with a required but unconsented guarantor stays pending.
+
+### T3.7 Payout order: draw, swaps, emergency exception — decided: hybrid
+Rotating pot only. Default is a **recorded random draw** (seed and result saved and shown to every participant). Two participants may **swap** positions before the first payout, with admin approval. After the first payout, positions of people already paid never change; only an **emergency exception** approved by the admin with a written reason is allowed. Optional group rule (default off): participants in the "At risk" trust band cannot take the first positions. **DoD:** the draw is reproducible from its saved seed; every swap and exception is audited; paid positions are immutable.
 
 ## Phase T4 — Contributions & collections (apps/api)
 ### T4.1 Contribution recording & statuses
@@ -681,10 +686,10 @@ Receipt (SMS, push, email per preference) for every recorded or confirmed contri
 ### T5.1 Payout calculation & preview
 Pot, collector fee, shortfall from missed contributions; preview before approval. **DoD:** calculation is pure and unit-tested; shortfalls shown, never hidden.
 ### T5.2 Approval workflow
-Prepare → approve (admin) with separation of duties; approval voided if the payout account changes. **DoD:** the preparer cannot approve (except the single-admin rule with its extra confirmation).
+Prepare → approve (admin) with separation of duties; approval voided if the payout account changes. Only a SocietyLedger-verified person (T2.3) can be paid. **DoD:** the preparer cannot approve (except the single-admin rule with its extra confirmation).
 ### T5.3 Recording payouts & failures
 The group pays from its own account; an officer records the payment reference or proof and confirms; void/failed handling (amount returns to pending, admin notified). **DoD:** SocietyLedger never initiates a transfer; recording is idempotent.
-### T5.4 Platform levy accounting (F3)
+### T5.4 Platform levy accounting
 Compute and record the levy per T0.1; bill it on the add-on invoice; never mixed into contributions. **DoD:** levy and subscription appear separately in reports.
 
 ## Phase T6 — Defaults & risk (apps/api)
@@ -694,14 +699,14 @@ Idempotent scheduled jobs; reminders before/after the due date; grace pause whil
 Off by default; fixed/percentage with cap; assessments are pending → payable/waived and always shown with their calculation. **DoD:** no fee is ever applied retroactively or without an accepted rule version.
 ### T6.3 Default cases & repayment plans
 Post-payout default workflow per the spec; evidence preserved; plan schedule tracked. **DoD:** other members' savings and guarantors' money are never auto-deducted.
-### T6.4 Trust score (F1)
-Score per T0.2 from on-time history and disputes. **DoD:** score inputs are listed to the member in plain language.
+### T6.4 Trust score — decided: on-time percentage
+On-time payments ÷ payments due over the last 12 months, shown as a band (95%+ Excellent, 85–94% Good, 70–84% Fair, under 70% At risk; new members "No history yet"). A payment under dispute is not counted until resolved; a waived payment is not counted either way. An aid for officers and a view for the member; it never blocks anyone automatically. **DoD:** the member sees the counts behind their band in plain language; unit tests for the bands, disputes and waivers.
 ### T6.5 Disputes
 A member can raise "I paid" with evidence; a dispute pauses late-fee escalation; officer resolves with a reason. **DoD:** resolution is audited and reversible only by reversal entry.
 
 ## Phase T7 — Web (apps/web)
 ### T7.1 Group admin: list, create wizard, rules, settings
-### T7.2 Members, approvals, guarantors, payout order
+### T7.2 Members, approvals and verification status, guarantors, payout order (draw, swaps, exceptions)
 ### T7.3 Collections, reconciliation, collector management
 ### T7.4 Payouts queue/approval, defaults and cases
 ### T7.5 Member self-service: my groups, schedule, pay, receipts, rules acceptance, payout account
@@ -720,6 +725,7 @@ A member can raise "I paid" with evidence; a dispute pauses late-fee escalation;
 ### T9.1 Ajo platform settings (levy parameters, standalone sign-up switch)
 ### T9.2 Groups & payouts oversight
 ### T9.3 Add-on analytics (adoption, active contributors, revenue)
+### T9.4 SocietyLedger verification review queue (second step: checklist, verify or reject with a reason, audited)
 - **DoD (T9):** `ConfirmDestructive` with reason on every override; reasons visible in the Action log.
 
 ## Phase T10 — Reports & exports
@@ -740,7 +746,7 @@ A member can raise "I paid" with evidence; a dispute pauses late-fee escalation;
 ### T12.3 Pilot — 2–3 real groups; collect collector feedback on the online-only constraint (F2)
 - **DoD:** pilot report in `docs/thrift/`. **Milestone TL: Ajo add-on live.**
 
-**Track T totals:** 13 phases, 52 features (T0 2 · T1 6 · T2 2 · T3 6 · T4 4 · T5 4 · T6 5 · T7 6 · T8 5 · T9 3 · T10 3 · T11 3 · T12 3).
+**Track T totals:** 13 phases, 55 features (T0 2 · T1 6 · T2 3 · T3 7 · T4 4 · T5 4 · T6 5 · T7 6 · T8 5 · T9 4 · T10 3 · T11 3 · T12 3).
 
 ---
 
@@ -767,7 +773,7 @@ A member can raise "I paid" with evidence; a dispute pauses late-fee escalation;
 | 7 | 5 | Admin & AI |
 | 8 | 2 | Signup & onboarding |
 | 9 | 6 | Hardening & release |
-| T | 52 | Thrift (Ajo) add-on: 13 phases T0–T12 (Milestone TL) |
-| **Total** | **168** (30 docs + 21 admin + 65 mobile + 52 thrift) | |
+| T | 55 | Thrift (Ajo) add-on: 13 phases T0–T12 (Milestone TL) |
+| **Total** | **171** (30 docs + 21 admin + 65 mobile + 55 thrift) | |
 
 Follow the Master sequence at the top. Mobile Phase 0 and Phase 1 may also run in parallel with each other only if two agents/sessions work simultaneously.

@@ -5,7 +5,7 @@
 ## Current status
 - **Track / phase:** Mobile Phase 0 — Backend enablement **complete** (F0.1–F0.6, all shipped 2026-10-19). Phase 1 — Foundation **complete** (F1.1–F1.8, all shipped — F1.1/F1.2 on 2026-10-19 ahead of Phase 0 per owner's explicit request, see Decisions log; F1.3–F1.8 on 2026-10-20). Phase 2 — Authentication & member core underway (F2.1–F2.9 shipped).
 - **Latest (2026-10-27):** App Downloads. The landing page offers the Android APK behind a form (first name, last name, email, phone, required consent). The admin console gets an App Downloads section (Overview analytics, Releases, Leads with CSV/Excel export). New tables app_releases, download_leads, download_events (migration 20261106); API in apps/api/src/modules/app-downloads; 14 rules tests pass; flow smoke-tested against the local DB. Also: splash wordmark no longer clipped on Android 12+ (splash images rebuilt to sit inside the circular mask). Owner: upload the APK to Cloudflare, add the release in the admin console and make it current.
-- **Planned (2026-10-27):** Track T — Thrift (Ajo) add-on. Specification written (`thrift-ajo-spec.md`), build plan added (`build-plan.md` Track T, 52 features), architecture section §18, screens and docs pages in `project-overview.md §12`. Scope reduced by the owner the same day: one money-flow mode (the group's own bank account), no NIN/BVN or other government-ID verification, no custody of contribution money. Nothing built yet; T0 (two owner decisions) and T1 (foundation) come first.
+- **Planned (2026-10-27):** Track T — Thrift (Ajo) add-on. Specification written (`thrift-ajo-spec.md`), build plan added (`build-plan.md` Track T, 55 features), architecture section §18, screens and docs pages in `project-overview.md §12`. Scope reduced by the owner the same day: one money-flow mode (the group's own bank account), no NIN/BVN or other government-ID verification, no custody of contribution money. All owner decisions (prices, levy, verification, payout order, trust score) were made 2026-10-27, so T0 is complete. Nothing built yet; T1 (foundation) is next.
 - **Next feature:** Milestone M1 — internal build (TestFlight + Play internal).
 - **Last updated:** 2026-10-21 — H2 Home — Dashboard enhancement: `Me | Association` segmented toggle for officers; member view gains `MemberStatRow` (4 stat cards), `RecentActivityList`, `UpcomingObligationsList`; officer Association view adds `OfficerStatRow`, `RevenueChart` (bar chart via `react-native-gifted-charts`), `PaymentMethodsChart` (donut), Quick Stats row, `AssociationRecentTransactions`. New `api/endpoints/dashboard.ts` + `features/dashboard/queries.ts` (`useAssociationDashboard`). `type-check` clean.
 - **Previously:** 2026-10-21 — F2.8 + F2.9 Pay online (Paystack) + bank transfer with proof: new `/money/pay` screen (tab switcher: online/bank), `/money/transaction/[reference]` result screen (success + failure states, web parity). API: `POST /payments/paystack/initialize` + `GET /payments/paystack/verify/:reference` now accept `PAYMENTS_VIEW_OWN` (members); new `GET /members/me/payment-info` endpoint; `paymentsReturn` deep link wired in `+native-intent.tsx`. Levies screen: "Contribute now" disabled with "Contact admin to pay" when transactionId is null. `useInitializePaystackPayment`, `useSubmitPaymentProof`, `usePaymentInfo`, `useVerifyPaystackPayment` hooks added.
@@ -488,9 +488,9 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 
 > Full specification: `thrift-ajo-spec.md`. Build order and Definitions of Done: `build-plan.md` Track T. Data model and rules: `architecture.md §18`. Screens, roles and docs pages: `project-overview.md §12`. **Nothing in Track T is built yet.** Scope: one money-flow mode (the group's own bank account), no government-ID verification, no custody of contribution money.
 
-## Phase T0 — Decisions
-- [ ] T0.1 Commercials — tier prices, trial, levy formula (F3)
-- [ ] T0.2 Remaining product rules — payout order, trust-score formula, default rules, guarantor wording (F1, F5)
+## Phase T0 — Decisions — complete
+- [x] T0.1 Commercials — 2026-10-27 — tiers Starter ₦3,000.00 / Growth ₦8,000.00 / Business ₦20,000.00 / Enterprise from ₦40,000.00 per month (annual = 10 × monthly), 14-day trial; levy = 0.5% cycle (₦500–₦5,000) + 0.25% per participant (₦50–₦1,000), billed on the add-on invoice, Starter exempt
+- [x] T0.2 Remaining product rules — 2026-10-27 — payout order hybrid, trust score on-time percentage with bands, two-step verification (no payout before SocietyLedger verifies)
 
 ## Phase T1 — Foundation
 - [ ] T1.1 Ajo data model & migration
@@ -500,9 +500,10 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 - [ ] T1.5 Append-only ledger & idempotency primitives
 - [ ] T1.6 Settings (levy parameters, standalone sign-up switch)
 
-## Phase T2 — Member approval & payout account
+## Phase T2 — Member approval, SocietyLedger verification & payout account
 - [ ] T2.1 Member approval & optional phone confirmation
 - [ ] T2.2 Payout account record & change controls
+- [ ] T2.3 SocietyLedger verification (second step; no payout before verified)
 
 ## Phase T3 — Groups, rules & schedules
 - [ ] T3.1 Group lifecycle
@@ -511,6 +512,7 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 - [ ] T3.4 Schedule engine (collector thrift + rotating pot)
 - [ ] T3.5 Collector assignments
 - [ ] T3.6 Guarantor agreements
+- [ ] T3.7 Payout order: draw, swaps, emergency exception (hybrid)
 
 ## Phase T4 — Contributions & collections
 - [ ] T4.1 Contribution recording & statuses (reported → cash received → confirmed → reversed)
@@ -528,7 +530,7 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 - [ ] T6.1 Overdue detection, grace & reminders
 - [ ] T6.2 Late-fee assessments (off by default)
 - [ ] T6.3 Default cases & repayment plans
-- [ ] T6.4 Trust score
+- [ ] T6.4 Trust score (on-time percentage bands)
 - [ ] T6.5 Disputes
 
 ## Phase T7 — Web
@@ -550,6 +552,7 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 - [ ] T9.1 Ajo platform settings
 - [ ] T9.2 Groups & payouts oversight
 - [ ] T9.3 Add-on analytics
+- [ ] T9.4 SocietyLedger verification review queue
 
 ## Phase T10 — Reports & exports
 - [ ] T10.1 The eight reports (API)
@@ -572,11 +575,11 @@ Product questions only. None blocks T1.
 
 | ID | Question | Gates | Status |
 |---|---|---|---|
-| F1 | Trust-score formula | T0.2, T6.4 | open |
+| F1 | Trust-score formula | T0.2, T6.4 | resolved 2026-10-27 — on-time percentage over 12 months, bands Excellent/Good/Fair/At risk |
 | F2 | Collector tools are online only; weak connectivity in markets is a real risk | T8.3, T12.3 | accepted for the first release, revisit after the pilot |
-| F3 | Platform-levy formula (up to ₦5,000 per cycle + up to ₦1,000 per participant): caps, interaction with the collector fee, who pays; billed on the add-on invoice | T0.1, T5.4 | open |
-| F4 | Existing billing lockout blocks a whole tenant on expiry; an expired Ajo add-on must leave history readable | T1.2 | open |
-| F5 | Payout order rules (fixed, recorded random draw, admin-set for need) | T0.2, T3.4 | open |
+| F3 | Platform-levy formula (up to ₦5,000 per cycle + up to ₦1,000 per participant): caps, interaction with the collector fee, who pays; billed on the add-on invoice | T0.1, T5.4 | resolved 2026-10-27 — 0.5% cycle (₦500–₦5,000) + 0.25% per participant (₦50–₦1,000), Starter exempt |
+| F4 | Existing billing lockout blocks a whole tenant on expiry; an expired Ajo add-on must leave history readable | T1.2 | decided 2026-10-27 — built as read-only mode in T1.2 |
+| F5 | Payout order rules (fixed, recorded random draw, admin-set for need) | T0.2, T3.7 | resolved 2026-10-27 — hybrid |
 
 ---
 
@@ -844,6 +847,12 @@ Log here instead of inventing endpoints. Each: what, which screen, proposed fix,
 | 2026-10-27 | **Thrift/Ajo: collector tools are online only in the first release**; cash is recorded as "cash received — awaiting reconciliation" until an officer confirms the handover; reported and confirmed payments are kept separate | Owner decision. Open question F2: weak connectivity in markets; revisit after the pilot. |
 | 2026-10-27 | **Thrift/Ajo: platform levy up to ₦5,000 per cycle plus up to ₦1,000 per participant, billed on the add-on subscription invoice; add-on tiers by active contributors** — Starter ≤30, Growth 31–150, Business 151–500, Enterprise custom; monthly and annual billing, trial, grace period, read-only after expiry | Owner decision. Prices and the exact levy formula are not yet set (F3, T0.1). Subscription money is never recorded as contribution money. |
 | 2026-10-27 | **Thrift/Ajo: eight reports and a dedicated docs section** — contributions, member ledger, collector performance, payouts, defaults and arrears, group financial summary, fees and revenue, audit and activity; CSV and PDF exports; admin, collector and member guides | Owner decision. |
+| 2026-10-27 | **Thrift/Ajo: add-on prices and trial** — Starter ≤30 ₦3,000.00/month (₦30,000.00/year), Growth 31–150 ₦8,000.00 (₦80,000.00), Business 151–500 ₦20,000.00 (₦200,000.00), Enterprise 500+ from ₦40,000.00 custom; annual = 10 × monthly; 14-day trial at the Starter limit | Owner accepted the agent's suggestion. Starting points to test with pilot groups, not market-validated. The Starter add-on costs less than half of the Starter plan so small groups can say yes. |
+| 2026-10-27 | **Thrift/Ajo: platform levy** — cycle levy 0.5% of scheduled contributions (min ₦500, max ₦5,000) plus participant levy 0.25% of that participant's scheduled contributions (min ₦50, max ₦1,000); billed on the add-on invoice; **Starter-tier groups exempt** | Owner accepted the agent's recommendation (option B). Stays within the owner's caps (₦5,000 per cycle, ₦1,000 per participant) and well under the ~2% and ~3.33% reported for other products. |
+| 2026-10-27 | **Thrift/Ajo: two-step verification** — step 1 the group's officer/admin approves; step 2 SocietyLedger staff review full name, phone, residential address and payout account name against a checklist (name matches payout account name, phone confirmed, address filled in). No ID numbers or ID photos. A person can join and contribute after step 1; **no payout until step 2 is verified**; changing the payout account sends them back to step 2 | Owner decision (as SaaS owner, verifies after the group admin finishes), details accepted from the agent's recommendation. Replaces the earlier same-day decision to have no second check. |
+| 2026-10-27 | **Thrift/Ajo: payout order is hybrid** — recorded random draw by default; swaps before the first payout with admin approval; after the first payout only a logged emergency exception approved by the admin; optional rule (default off) keeping "At risk" participants out of the first positions | Owner chose option E. Fair by default, flexible for real needs, and paid positions never change. |
+| 2026-10-27 | **Thrift/Ajo: trust score is the on-time percentage** over the last 12 months with bands (95%+ Excellent, 85–94% Good, 70–84% Fair, under 70% At risk, new members "No history yet"); disputed payments are not counted until resolved; waived payments are not counted; it never blocks anyone automatically | Owner chose option A. Easy to explain and defend to members. |
+| 2026-10-27 | **Thrift/Ajo: an expired add-on leaves history readable and exportable** (read-only), instead of the existing whole-tenant lockout | Owner confirmed. Built in T1.2. |
 
 ## Known issues / tech debt
 _All 9 items previously listed here were folded into the Backend gaps table as G64–G72 on 2026-10-14, when Track R (Gap Remediation) was created — see that table for full detail, and the Track R checklist for which remediation phase each one landed in. New known issues that aren't yet worth a full gap write-up can still be logged here; fold them into the gaps table once they're actionable._
