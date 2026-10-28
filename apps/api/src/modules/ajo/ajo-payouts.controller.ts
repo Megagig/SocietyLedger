@@ -6,6 +6,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { PERMISSIONS } from '../../lib/permissions';
 import { uploadProof } from './ajo-contributions.controller';
+import { passwordConfirmed } from './ajo-reauth';
 import { actor, fail, hasAjoPermission } from './ajo-members.controller';
 import { approvePayout, completeGroup, getPayout, listOwnPayouts, listPayouts, preparePayout, prepareAllReady, previewPayout, recordPayoutPaid, reversePaidPayout, voidPayout } from './ajo-payout.service';
 import { listAssociationLevy } from './ajo-levy.service';
@@ -77,6 +78,7 @@ export const ajoPayoutsController = {
   async approve(req: Request, res: Response) {
     try {
       const { associationId, userId } = actor(req);
+      if (!(await passwordConfirmed(res, userId, req.body))) return;
       const body = z.object({ confirmSelfApproval: flag, note: z.string().max(500).optional() }).parse(req.body ?? {});
       const result = await approvePayout({ associationId, payoutId: id.parse(req.params.id), actorUserId: userId, ...body });
       return res.json({ success: true, message: result.replayed ? 'Already approved.' : 'Approved. An officer can now pay it and record the bank reference.', data: result });
@@ -121,6 +123,7 @@ export const ajoPayoutsController = {
   async reverse(req: Request, res: Response) {
     try {
       const { associationId, userId } = actor(req);
+      if (!(await passwordConfirmed(res, userId, req.body))) return;
       const { reason } = z.object({ reason: z.string() }).parse(req.body ?? {});
       const result = await reversePaidPayout({ associationId, payoutId: id.parse(req.params.id), actorUserId: userId, reason });
       return res.json({ success: true, message: result.replayed ? 'Already reversed.' : 'Reversed. The round is back to pending and the reason stays on the record.', data: result });

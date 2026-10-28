@@ -10,6 +10,9 @@
  * Only the edges are replaced: the plan's contributor limit, notifications and the permission lookup for collectors. The transactions,
  * locks, constraints, audit rows and encryption are the real thing. Times are passed in, so nothing depends on today's date.
  */
+
+// This file is a module, so its names never clash with the other suites in the same test run.
+export {};
 const TEST_DB = process.env.AJO_TEST_DATABASE_URL;
 if (TEST_DB && !/test/i.test(new URL(TEST_DB).pathname)) {
   throw new Error('AJO_TEST_DATABASE_URL must point at a database whose name contains "test".');

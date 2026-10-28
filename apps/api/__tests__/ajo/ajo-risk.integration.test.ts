@@ -7,6 +7,9 @@
  *
  *   AJO_TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/sl_ajo_test pnpm -F @societyledger/api exec jest __tests__/ajo/ajo-risk.integration --forceExit
  */
+
+// This file is a module, so its names never clash with the other suites in the same test run.
+export {};
 const TEST_DB = process.env.AJO_TEST_DATABASE_URL;
 if (TEST_DB && !/test/i.test(new URL(TEST_DB).pathname)) {
   throw new Error('AJO_TEST_DATABASE_URL must point at a database whose name contains "test".');
@@ -450,6 +453,58 @@ suite('Ajo defaults, repayment plans and trust (database)', () => {
   });
 
   // ----------------------------------------------------------------------------------------------------------------------------
+  describe('my memberships (T7 member screens)', () => {
+    it('lists only the signed-in person’s own memberships, with what is owed, what is next and where they are in the order', async () => {
+      const views = require('../../src/modules/ajo/ajo-views.service') as typeof import('../../src/modules/ajo/ajo-views.service');
+      const w = await world();
+      const other = await world();
+      const { joined } = await pot(w, undefined, { paid: false });
+      const me = joined[0];
+      const mine = await views.listMyMemberships({ associationId: w.A, userId: me.member.userId as number, now: at('2027-03-09T10:00:00Z') });
+      expect(mine).toHaveLength(1);
+      expect(mine[0]).toMatchObject({ membershipId: me.membership.id, status: 'ACTIVE', shares: 1, overdueKobo: '1000000', totalOwedKobo: '1500000', waitingFor: [] });
+      expect(mine[0].nextDue).toMatchObject({ remainingKobo: '500000' });
+      expect(mine[0].payoutPositions).toHaveLength(1);
+      expect(mine[0].group.bankAccount?.masked).toMatch(/6789$/);
+      expect(JSON.stringify(mine)).not.toContain('0123456789');
+      // Another association's person, and an officer who is not in the group, see nothing of it.
+      expect(await views.listMyMemberships({ associationId: other.A, userId: me.member.userId as number })).toEqual([]);
+      expect(await views.listMyMemberships({ associationId: w.A, userId: w.officer.id })).toEqual([]);
+    });
+
+    it('lets an officer find association members to add, only in their own association, and lists who can be a collector', async () => {
+      const views = require('../../src/modules/ajo/ajo-views.service') as typeof import('../../src/modules/ajo/ajo-views.service');
+      const w = await world();
+      const other = await world();
+      const mine = await mkMember(w);
+      await mkMember(other);
+      const found = await views.searchPeople({ associationId: w.A, search: mine.lastName });
+      expect(found.map((p) => p.id)).toEqual([mine.id]);
+      expect(found[0]).toMatchObject({ name: `${mine.firstName} ${mine.lastName}`, hasLogin: true });
+      expect((await views.searchPeople({ associationId: w.A, search: 'zzz-nobody' })).length).toBe(0);
+      expect((await views.searchPeople({ associationId: other.A, search: mine.lastName })).length).toBe(0); // another association's search never sees them
+      expect((await views.searchPeople({ associationId: w.A })).length).toBeGreaterThanOrEqual(1);
+
+      expect(await views.listCollectorCandidates(w.A)).toEqual([]);
+      await setHolders(w, 'ajo.collect', [w.officer.id]);
+      const candidates = await views.listCollectorCandidates(w.A);
+      expect(candidates.map((c) => c.userId)).toEqual([w.officer.id]);
+      expect(await views.listCollectorCandidates(other.A)).toEqual([]);
+    });
+
+    it('shows a person who has just been added what they are still waiting for', async () => {
+      const views = require('../../src/modules/ajo/ajo-views.service') as typeof import('../../src/modules/ajo/ajo-views.service');
+      const w = await world();
+      const g = await newGroup(w, { model: 'COLLECTOR_THRIFT', cycleLength: 3 });
+      const member = await mkMember(w);
+      await members.addMember({ associationId: w.A, groupId: g.id, memberId: member.id, actorUserId: w.admin.id });
+      const [row] = await views.listMyMemberships({ associationId: w.A, userId: member.userId as number, now: NOW });
+      expect(row.status).toBe('PENDING');
+      expect(row.waitingFor.length).toBeGreaterThan(0);
+      expect(row.waitingFor[0].text).toBeTruthy();
+    });
+  });
+
   describe('the trust score (T6.4)', () => {
     it('has no history for a new person, then counts on-time and late instalments across the person’s groups', async () => {
       const w = await world();

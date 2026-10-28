@@ -13,6 +13,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
 import { ModuleLockedModal } from '@/components/layout/ModuleLockedModal';
 import { SubscriptionBlockedScreen, TrialEndingBanner } from '@/components/subscription/SubscriptionBanners';
+import { ThriftHomeRedirect } from '@/components/ajo/ThriftHomeRedirect';
 import { Loader } from '@mantine/core';
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -129,6 +130,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
         </div>
         <div className="p-4 sm:p-5 lg:p-6 mb-bottom-nav">
           <TrialEndingBanner />
+          <ThriftHomeRedirect />
           <Breadcrumbs />
           {children}
         </div>

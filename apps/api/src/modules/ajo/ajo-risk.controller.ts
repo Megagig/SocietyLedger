@@ -12,6 +12,7 @@ import { addCaseNote, agreePlan, cancelPlan, closeCase, getCase, listCases, open
 import { getEvidenceLink, listDisputes, raiseDispute, resolveDispute } from './ajo-dispute.service';
 import { listLateFees, markFeeNotified, reverseWaiver, waiveLateFee } from './ajo-latefee.service';
 import { actor, canManage, fail, hasAjoPermission } from './ajo-members.controller';
+import { passwordConfirmed } from './ajo-reauth';
 import { getMembershipTrust, listGroupTrust } from './ajo-trust.service';
 
 const id = z.coerce.number().int().positive();
@@ -228,6 +229,7 @@ export const ajoRiskController = {
   async close(req: Request, res: Response) {
     try {
       const { associationId, userId } = actor(req);
+      if (!(await passwordConfirmed(res, userId, req.body))) return;
       const body = z.object({ outcome: z.enum(['RESOLVED', 'CLOSED_UNRESOLVED']), reason: z.string() }).parse(req.body ?? {});
       const r = await closeCase({ associationId, caseId: id.parse(req.params.id), actorUserId: userId, ...body });
       return res.json({ success: true, message: r.replayed ? 'Already closed.' : 'The case is closed. The reason stays on the record.', data: r });

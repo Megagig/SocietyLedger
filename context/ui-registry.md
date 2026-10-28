@@ -1691,3 +1691,63 @@ When a request is refused because of who the person is or what their association
 - **Landing page:** `apps/web/src/components/home/AppDownloadButton.tsx` sits beside Sign In in the hero. It appears only when a version is published. The form posts first name, last name, email, phone and a required consent checkbox (link to /privacy) to `POST /api/public/app-download`; the API answers with the link and the browser starts the download. A hidden honeypot field catches bots. The file link is never in the page.
 - **Admin console:** `/downloads` (nav: App Downloads), super admin only. Tabs: Overview (stat cards, downloads-per-day bars, by version, by device, 7/30/90 days), Releases (add, edit, make current, turn off, delete only when never downloaded), Leads (search, CSV and Excel export, each export audit-logged). Uses Mantine colour variables only.
 - **Counting:** one lead per email; every hand-out is a download event. A download means the link was given, not that the install finished.
+
+## Ajo web components (T7 step 1, 2026-10-28)
+
+### AjoGate
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/AjoGate.tsx`
+- **Added / changed:** T7.5 (2026-10-28)
+- **Purpose:** wraps every Ajo page; draws loading, locked (no add-on), not-allowed or the page, with a read-only banner when the add-on has lapsed.
+- **Props:** `children` · exports `useAjoAccess(): { readOnly, canWrite }`
+- **Tokens used:** Tailwind `gray` / `amber` utilities as elsewhere in the web app
+- **Used in:** THM1–THM5 (via `my-thrift/layout.tsx`)
+- **Notes:** write controls must check `canWrite`. The locked state has no purchase button on purpose.
+
+### AjoStates (`AjoLoading`, `AjoEmpty`, `AjoError`, `AjoLocked`, `AjoReadOnlyBanner`)
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/AjoStates.tsx`
+- **Purpose:** the shared loading (skeletons), empty, error (403/404 read as "no access", otherwise retry), locked and read-only states.
+- **Props:** `AjoLoading rows?` · `AjoEmpty title hint? action?` · `AjoError error onRetry?`
+- **Used in:** all Ajo web pages.
+
+### Money
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/Money.tsx`
+- **Purpose:** an amount in full with tabular figures. **Props:** `kobo: string` · `className?`
+- **Notes:** never abbreviate (no 10k). Uses `formatKobo` from `lib/ajo/format.ts`.
+
+### StatusBadge
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/StatusBadge.tsx`
+- **Purpose:** one table of Ajo statuses (group, membership, instalment, payment, late fee, verification, dispute, trust band) to words and a Mantine colour. **Props:** `status: string` · `label?`
+
+### MembershipCard
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/MembershipCard.tsx`
+- **Purpose:** one of the person's groups with overdue, next payment, payout position, what they are waiting for, and Open / Pay. **Props:** `item: MyMembershipDTO` · **Used in:** THM1.
+
+### DisputeDialog
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/DisputeDialog.tsx`
+- **Purpose:** THM8, "I already paid this": a written claim (10+ characters) and optional evidence file for one instalment. **Props:** `membershipId` · `installment: InstallmentDTO | null` · `onClose`
+- **Notes:** file limits live in `components/ajo/proof.ts` (JPG, PNG, WebP, PDF; 5 MB), the same as the API.
+
+### ActionDialog
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/ActionDialog.tsx`
+- **Added / changed:** T7.1–T7.4 (2026-10-28)
+- **Purpose:** the one confirmation for every sensitive Ajo action: a summary of what will happen, an optional written reason with a minimum length, an optional password re-entry, extra fields, and the server's refusal shown in the dialog.
+- **Props:** `opened` · `onClose` · `title` · `summary?` · `confirmLabel` · `color?: 'green' | 'red' | 'blue'` · `reasonMin?` · `reasonLabel?` · `needPassword?` · `extra?` · `validate?` · `onConfirm({ reason, password })` · `successMessage`
+- **Used in:** group cancel, emergency order change, turn down and reverse a payment, void, fail and reverse a payout, waive and undo a fee, decide a claim, plan agree and cancel, close a case.
+- **Notes:** red for anything not quietly undone. It refreshes every Ajo query on success.
+
+### RulesFields
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/RulesFields.tsx`
+- **Purpose:** the group's rules as a form (naira and percent in, kobo and basis points out through `rulesFormToInput`). **Used in:** THO2 wizard and the rules page.
+
+### ThriftHomeRedirect
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/ThriftHomeRedirect.tsx`
+- **Purpose:** sends a standalone thrift group from the dashboard home into Ajo. Renders nothing; does nothing for an ordinary association. **Used in:** `AuthenticatedLayout`.

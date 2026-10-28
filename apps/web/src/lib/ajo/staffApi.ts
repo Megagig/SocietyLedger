@@ -1,0 +1,140 @@
+/**
+ * The staff side of the Ajo API as functions (T7.1 to T7.4). The server decides who may do what; these only make the calls.
+ * Money goes out as kobo strings, never as floats.
+ */
+import api from '@/lib/axios';
+import type {
+  AssignedContributorDTO,
+  CaseDTO,
+  CollectorAssignmentDTO,
+  CollectorCandidateDTO,
+  CollectorDayDTO,
+  GroupDetailDTO,
+  GroupListItemDTO,
+  HandoverDTO,
+  HandoverDetailDTO,
+  OrderDTO,
+  PayoutDTO,
+  PayoutPreviewDTO,
+  PersonSearchDTO,
+  QueueDTO,
+  RosterDTO,
+  RuleVersionDTO,
+  StaffDisputeDTO,
+  StaffLateFeeDTO,
+  SwapDTO,
+} from './staffTypes';
+
+type Envelope<T> = { success: boolean; message?: string; data: T };
+const unwrap = async <T>(request: Promise<{ data: Envelope<T> }>): Promise<T> => (await request).data.data;
+const post = <T>(url: string, body: unknown = {}, headers?: Record<string, string>) => unwrap<T>(api.post(url, body, headers ? { headers } : undefined));
+
+export type GroupFieldsInput = {
+  name?: string;
+  model?: 'COLLECTOR_THRIFT' | 'ROTATING_POT';
+  frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  contributionKobo?: string;
+  startDate?: string;
+  cycleLength?: number | null;
+  maxParticipants?: number;
+  collectorFeeType?: 'NONE' | 'FIXED' | 'PERCENT' | 'DAYS';
+  collectorFeeValue?: string;
+  timezone?: string;
+  cutoffTime?: string;
+  requirePhoneConfirm?: boolean;
+  maxSharesPerMember?: number;
+  allowLateJoin?: boolean;
+};
+export type RulesInput = {
+  lateFeeType?: 'NONE' | 'FIXED' | 'PERCENT';
+  lateFeeValue?: string;
+  lateFeeCapKobo?: string | null;
+  graceDays?: number;
+  guarantorPolicy?: 'NOT_REQUIRED' | 'OPTIONAL' | 'REQUIRED';
+  defaultProcedure?: 'NOTIFY_ADMIN' | 'REPAYMENT_PLAN' | 'CASE_AND_PLAN';
+  remindersEnabled?: boolean;
+  blockAtRiskEarly?: boolean;
+};
+export type BankInput = { bankName: string; accountNumber: string; accountName: string };
+
+export const ajoStaffApi = {
+  // groups (T7.1)
+  groups: () => unwrap<GroupListItemDTO[]>(api.get('/ajo/groups')),
+  groupDetail: (id: number) => unwrap<GroupDetailDTO>(api.get(`/ajo/groups/${id}`)),
+  createGroup: (body: GroupFieldsInput & { bank?: BankInput; rules?: RulesInput }) => post<GroupDetailDTO>('/ajo/groups', body),
+  updateGroup: (id: number, body: GroupFieldsInput & { bank?: BankInput }) => unwrap<GroupDetailDTO>(api.patch(`/ajo/groups/${id}`, body)),
+  openGroup: (id: number) => post<unknown>(`/ajo/groups/${id}/open`),
+  startGroup: (id: number, confirmSmallerGroup?: boolean) => post<unknown>(`/ajo/groups/${id}/start`, { confirmSmallerGroup }),
+  cancelGroup: (id: number, reason: string) => post<unknown>(`/ajo/groups/${id}/cancel`, { reason }),
+  ruleVersions: (id: number) => unwrap<RuleVersionDTO[]>(api.get(`/ajo/groups/${id}/rules`)),
+  publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, rules),
+
+  // members (T7.2)
+  roster: (id: number) => unwrap<RosterDTO>(api.get(`/ajo/groups/${id}/members`)),
+  searchPeople: (search: string) => unwrap<PersonSearchDTO[]>(api.get('/ajo/people', { params: { search } })),
+  addMember: (id: number, memberId: number, shares?: number) => post<{ membershipId: number }>(`/ajo/groups/${id}/members`, { memberId, shares }),
+  setShares: (membershipId: number, shares: number) => unwrap<unknown>(api.patch(`/ajo/memberships/${membershipId}/shares`, { shares })),
+  approveMember: (membershipId: number) => post<unknown>(`/ajo/memberships/${membershipId}/approve`),
+  guarantorWording: (membershipId: number, name: string) => unwrap<{ wording: string }>(api.get(`/ajo/memberships/${membershipId}/guarantor-wording`, { params: { name } })),
+  recordGuarantor: (membershipId: number, body: { name: string; phone: string; relationship: string; note: string }) => post<unknown>(`/ajo/memberships/${membershipId}/guarantor`, body),
+  order: (id: number) => unwrap<OrderDTO>(api.get(`/ajo/groups/${id}/order`)),
+  runDraw: (id: number) => post<unknown>(`/ajo/groups/${id}/draw`),
+  swaps: (id: number) => unwrap<SwapDTO[]>(api.get(`/ajo/groups/${id}/swaps`)),
+  requestSwap: (id: number, body: { slotAId: number; slotBId: number; reason?: string }) => post<unknown>(`/ajo/groups/${id}/swaps`, body),
+  decideSwap: (swapId: number, body: { decision: 'APPROVED' | 'REJECTED'; note?: string }) => post<unknown>(`/ajo/swaps/${swapId}/decision`, body),
+  exception: (id: number, body: { slotId: number; newPosition: number; reason: string }) => post<unknown>(`/ajo/groups/${id}/exceptions`, body),
+
+  // collections (T7.3)
+  queue: (id: number, params: { status?: string; method?: string } = {}) => unwrap<QueueDTO>(api.get(`/ajo/groups/${id}/contributions`, { params: { take: 100, ...params } })),
+  confirm: (contributionId: number, body: { acknowledgeDuplicate?: boolean; note?: string; confirmOwn?: boolean }) => post<unknown>(`/ajo/contributions/${contributionId}/confirm`, body),
+  reject: (contributionId: number, reason: string) => post<unknown>(`/ajo/contributions/${contributionId}/reject`, { reason }),
+  reverse: (contributionId: number, reason: string) => post<unknown>(`/ajo/contributions/${contributionId}/reverse`, { reason }),
+  proofLink: (contributionId: number) => unwrap<{ url: string }>(api.get(`/ajo/contributions/${contributionId}/proof`)),
+  handovers: (id: number, reconciled?: boolean) => unwrap<HandoverDTO[]>(api.get(`/ajo/groups/${id}/handovers`, { params: reconciled === undefined ? {} : { reconciled } })),
+  handover: (handoverId: number) => unwrap<HandoverDetailDTO>(api.get(`/ajo/handovers/${handoverId}`)),
+  reconcileHandover: (handoverId: number, body: { countedKobo: string; receivedContributionIds?: number[]; note?: string; confirmOwn?: boolean }) => post<unknown>(`/ajo/handovers/${handoverId}/reconcile`, body),
+  collectors: (id: number) => unwrap<CollectorAssignmentDTO[]>(api.get(`/ajo/groups/${id}/collectors`)),
+  collectorCandidates: () => unwrap<CollectorCandidateDTO[]>(api.get('/ajo/collector-candidates')),
+  assignCollector: (membershipId: number, body: { collectorUserId: number; dailyTargetKobo?: string | null }) => post<unknown>(`/ajo/memberships/${membershipId}/collector`, body),
+  unassignCollector: (membershipId: number) => unwrap<unknown>(api.delete(`/ajo/memberships/${membershipId}/collector`)),
+  myContributors: () => unwrap<AssignedContributorDTO[]>(api.get('/ajo/collector/contributors')),
+  collectorDay: (id: number, date?: string) => unwrap<CollectorDayDTO>(api.get(`/ajo/groups/${id}/collector-day`, { params: date ? { date } : {} })),
+  recordCash: (id: number, input: { membershipId: number; amountKobo: string; idempotencyKey: string }) =>
+    post<unknown>(`/ajo/groups/${id}/contributions/cash`, { membershipId: input.membershipId, amountKobo: input.amountKobo }, { 'Idempotency-Key': input.idempotencyKey }),
+  handOver: (id: number, input: { handedOverKobo: string; note?: string; forDate?: string }) => post<unknown>(`/ajo/groups/${id}/handovers`, input),
+
+  // payouts (T7.4)
+  payoutPreview: (id: number, params: { round?: number; membershipId?: number }) => unwrap<PayoutPreviewDTO>(api.get(`/ajo/groups/${id}/payouts/preview`, { params })),
+  payouts: (id: number, params: { status?: string } = {}) => unwrap<PayoutDTO[]>(api.get(`/ajo/groups/${id}/payouts`, { params })),
+  preparePayout: (id: number, body: { round?: number; membershipId?: number }) => post<unknown>(`/ajo/groups/${id}/payouts`, body),
+  approvePayout: (payoutId: number, body: { password: string; confirmSelfApproval?: boolean; note?: string }) => post<unknown>(`/ajo/payouts/${payoutId}/approve`, body),
+  voidPayout: (payoutId: number, reason: string) => post<unknown>(`/ajo/payouts/${payoutId}/void`, { reason }),
+  failPayout: (payoutId: number, reason: string) => post<unknown>(`/ajo/payouts/${payoutId}/fail`, { reason }),
+  recordPayoutPaid: (payoutId: number, input: { reference: string; note?: string; confirmOwn?: boolean; proof?: File | null }) => {
+    const form = new FormData();
+    form.append('reference', input.reference);
+    if (input.note) form.append('note', input.note);
+    if (input.confirmOwn) form.append('confirmOwn', 'true');
+    if (input.proof) form.append('proof', input.proof);
+    return unwrap<unknown>(api.post(`/ajo/payouts/${payoutId}/record-paid`, form));
+  },
+  reversePayout: (payoutId: number, body: { password: string; reason: string }) => post<unknown>(`/ajo/payouts/${payoutId}/reverse`, body),
+  completeGroup: (id: number) => post<unknown>(`/ajo/groups/${id}/complete`),
+
+  // late fees, disputes, cases (T7.4)
+  groupLateFees: (id: number, status?: string) => unwrap<StaffLateFeeDTO[]>(api.get(`/ajo/groups/${id}/late-fees`, { params: status ? { status } : {} })),
+  waiveFee: (feeId: number, reason: string) => post<unknown>(`/ajo/late-fees/${feeId}/waive`, { reason }),
+  reverseWaiver: (feeId: number, reason: string) => post<unknown>(`/ajo/late-fees/${feeId}/reverse-waiver`, { reason }),
+  feeTold: (feeId: number, note: string) => post<unknown>(`/ajo/late-fees/${feeId}/told`, { note }),
+  groupDisputes: (id: number, status?: string) => unwrap<StaffDisputeDTO[]>(api.get(`/ajo/groups/${id}/disputes`, { params: status ? { status } : {} })),
+  resolveDispute: (disputeId: number, body: { outcome: 'UPHELD' | 'NOT_UPHELD'; reason: string }) => post<unknown>(`/ajo/disputes/${disputeId}/resolve`, body),
+  disputeEvidence: (disputeId: number) => unwrap<{ url: string }>(api.get(`/ajo/disputes/${disputeId}/evidence`)),
+  groupCases: (id: number, status?: string) => unwrap<CaseDTO[]>(api.get(`/ajo/groups/${id}/cases`, { params: status ? { status } : {} })),
+  getCase: (caseId: number) => unwrap<CaseDTO>(api.get(`/ajo/cases/${caseId}`)),
+  openCase: (membershipId: number) => post<unknown>(`/ajo/memberships/${membershipId}/cases`),
+  addCaseNote: (caseId: number, note: string) => post<unknown>(`/ajo/cases/${caseId}/notes`, { note }),
+  draftPlan: (caseId: number, periods?: number) => post<unknown>(`/ajo/cases/${caseId}/plan`, { periods }),
+  agreePlan: (planId: number, note?: string) => post<unknown>(`/ajo/plans/${planId}/agree`, { note }),
+  cancelPlan: (planId: number, reason: string) => post<unknown>(`/ajo/plans/${planId}/cancel`, { reason }),
+  closeCase: (caseId: number, body: { password: string; outcome: 'RESOLVED' | 'CLOSED_UNRESOLVED'; reason: string }) => post<unknown>(`/ajo/cases/${caseId}/close`, body),
+};

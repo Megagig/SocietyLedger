@@ -27,6 +27,7 @@ import {
   IconBuildingCommunity,
   IconBadge,
   IconBuildingBank,
+  IconPigMoney,
   IconCash,
   IconCalendarEvent,
   IconClipboardCheck,
@@ -52,6 +53,7 @@ import {
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { THRIFT_ONLY_ADMIN_LABELS, THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
@@ -146,6 +148,10 @@ export function AdminSidebar() {
     return hasPermission(userPermissions, permission as any);
   };
 
+  // Ajo / Thrift entries follow permissions and are marked "Locked" when the add-on is not on the account.
+  const ajoNav = useAjoNav();
+  const ajoBadge = ajoNav.locked ? 'Locked' : undefined;
+
   // MEMBER SECTION - Admin's personal member features
   const memberNavItems: NavItem[] = [
     {
@@ -218,6 +224,17 @@ export function AdminSidebar() {
       permission: PERMISSIONS.COOPERATIVE_VIEW,
       badge: 'Enterprise',
     },
+    {
+      label: 'My Thrift',
+      icon: <IconPigMoney size={20} />,
+      permission: PERMISSIONS.AJO_VIEW_OWN,
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
+      children: [
+        { label: 'My Groups', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
+        { label: 'Payout Account', icon: <IconBuildingBank size={18} />, href: '/dashboard/my-thrift/payout-account' },
+      ],
+    },
   ];
 
   // ADMINISTRATION SECTION - Association management features
@@ -232,6 +249,22 @@ export function AdminSidebar() {
       icon: <IconUsers size={20} />,
       href: '/dashboard/members',
       permission: PERMISSIONS.MEMBER_VIEW,
+    },
+    {
+      label: 'Thrift Groups',
+      icon: <IconPigMoney size={20} />,
+      href: '/dashboard/ajo',
+      permission: [PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT],
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
+    },
+    {
+      label: 'Collect',
+      icon: <IconCurrencyNaira size={20} />,
+      href: '/dashboard/ajo/collect',
+      permission: PERMISSIONS.AJO_COLLECT,
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
     },
     {
       label: 'Finance',
@@ -1024,7 +1057,7 @@ export function AdminSidebar() {
             title="My Member Area" 
             color="blue"
           />
-          {memberNavItems.map(renderNavItem)}
+          {memberNavItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label)).map(renderNavItem)}
 
           {/* ADMINISTRATION SECTION */}
           <SectionDivider 
@@ -1032,7 +1065,7 @@ export function AdminSidebar() {
             title="Administration" 
             color="purple"
           />
-          {adminNavItems.map(renderNavItem)}
+          {adminNavItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_ADMIN_LABELS.includes(item.label)).map(renderNavItem)}
         </nav>
 
         {/* Footer Actions */}

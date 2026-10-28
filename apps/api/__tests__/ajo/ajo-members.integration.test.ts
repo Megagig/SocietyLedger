@@ -9,6 +9,9 @@
  * Only the edges are replaced: the plan's contributor limit, notifications, platform settings and the SMS provider. The transactions, the
  * per-tenant lock, the audit rows and the encryption are the real thing.
  */
+
+// This file is a module, so its names never clash with the other suites in the same test run.
+export {};
 const TEST_DB = process.env.AJO_TEST_DATABASE_URL;
 if (TEST_DB && !/test/i.test(new URL(TEST_DB).pathname)) {
   throw new Error('AJO_TEST_DATABASE_URL must point at a database whose name contains "test".');

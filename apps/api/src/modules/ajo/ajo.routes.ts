@@ -7,7 +7,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requireAnyPermission, requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
-import { contributorCapacity } from './ajo-capacity';
+import { contributorCapacity, tenantKind } from './ajo-capacity';
 import { ajoContributionsController as contributions, uploadProof } from './ajo-contributions.controller';
 import { ajoGroupsController as groups } from './ajo-groups.controller';
 import { ajoPayoutsController as payouts } from './ajo-payouts.controller';
@@ -31,6 +31,7 @@ router.get(
       const associationId = req.user?.associationId;
       if (!associationId) return res.status(400).json({ success: false, message: 'Association ID is required' });
       const capacity = await contributorCapacity(associationId);
+      const kind = await tenantKind(associationId);
       const access = (req as AjoRequest).ajoAccess ?? 'FULL';
       return res.json({
         success: true,
@@ -38,6 +39,7 @@ router.get(
           module: AJO_MODULE,
           access,
           readOnly: access === 'READ_ONLY',
+          tenantKind: kind,
           contributors: { limit: capacity.limit, count: capacity.count, remaining: capacity.limit === null ? null : Math.max(0, capacity.limit - capacity.count) },
         },
       });
@@ -67,6 +69,9 @@ const readers = requireAnyPermission([PERMISSIONS.AJO_VIEW_OWN, PERMISSIONS.AJO_
 const manage = requirePermission(PERMISSIONS.AJO_MANAGE);
 const approve = requirePermission(PERMISSIONS.AJO_APPROVE_PAYOUT);
 
+router.get('/me', readers, groups.mine);
+router.get('/people', manage, groups.people);
+router.get('/collector-candidates', manage, groups.collectorCandidates);
 router.get('/groups', readers, groups.list);
 router.post('/groups', manage, groups.create);
 router.get('/groups/:id', readers, groups.detail);

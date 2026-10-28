@@ -15,7 +15,7 @@ import { actor, assertSelfOrManager, canManage, fail } from './ajo-members.contr
 import { addMember, leaveMembership, setShares } from './ajo-membership.service';
 import { decideSwap, emergencyException, getOrder, listSwapRequests, requestSwap, runDraw } from './ajo-order.service';
 import { acceptanceStats, listRuleVersions, publishRuleVersion } from './ajo-rules.service';
-import { listGroupMembers, listMembershipInstallments } from './ajo-views.service';
+import { listGroupMembers, listMembershipInstallments, listCollectorCandidates, listMyMemberships, searchPeople } from './ajo-views.service';
 
 const id = z.coerce.number().int().positive();
 
@@ -209,6 +209,36 @@ export const ajoGroupsController = {
       return res.json({ success: true, message: result.replayed ? 'Already left.' : 'They have left the group.', data: result });
     } catch (error) {
       return fail(res, error, 'Could not remove this person.');
+    }
+  },
+
+  /** The signed-in person’s own memberships, with what is next for each (the start of every member screen). */
+  async mine(req: Request, res: Response) {
+    try {
+      const { userId, associationId } = actor(req);
+      return res.json({ success: true, data: await listMyMemberships({ associationId, userId }) });
+    } catch (error) {
+      return fail(res, error, 'Could not load your groups.');
+    }
+  },
+
+  /** Association members who can be added to a group (officers only). */
+  async people(req: Request, res: Response) {
+    try {
+      const { associationId } = actor(req);
+      const search = z.string().max(80).optional().parse(req.query.search);
+      return res.json({ success: true, data: await searchPeople({ associationId, search }) });
+    } catch (error) {
+      return fail(res, error, 'Could not search the members.');
+    }
+  },
+
+  async collectorCandidates(req: Request, res: Response) {
+    try {
+      const { associationId } = actor(req);
+      return res.json({ success: true, data: await listCollectorCandidates(associationId) });
+    } catch (error) {
+      return fail(res, error, 'Could not load the collectors.');
     }
   },
 

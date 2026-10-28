@@ -8,6 +8,9 @@
  *
  *   AJO_TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/sl_ajo_test pnpm -F @societyledger/api exec jest __tests__/ajo/ajo-payouts --forceExit
  */
+
+// This file is a module, so its names never clash with the other suites in the same test run.
+export {};
 const TEST_DB = process.env.AJO_TEST_DATABASE_URL;
 if (TEST_DB && !/test/i.test(new URL(TEST_DB).pathname)) {
   throw new Error('AJO_TEST_DATABASE_URL must point at a database whose name contains "test".');

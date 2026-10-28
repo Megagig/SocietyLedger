@@ -257,6 +257,7 @@ export default function AssociationSignupPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create Your Association</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">Start managing your community in minutes</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Running a savings circle (ajo or esusu) and nothing else? <Link href="/signup/thrift" className="text-blue-600 underline dark:text-blue-400">Start a thrift group</Link></p>
         </div>
 
         {/* What the new association is given, from the platform's onboarding settings */}

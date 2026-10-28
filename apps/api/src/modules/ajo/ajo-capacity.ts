@@ -64,3 +64,9 @@ export async function assertContributorCapacity(tx: Tx, associationId: number, m
   const limit = entitlements.limits.ajoContributors ?? null;
   if (wouldExceedLimit(limit, count, existing !== null)) throw new AjoContributorLimitError(limit as number, count);
 }
+
+/** What kind of tenant this is, so the web can send a standalone thrift group straight to Ajo and not to an empty association home. */
+export async function tenantKind(associationId: number): Promise<'ASSOCIATION' | 'THRIFT_GROUP'> {
+  const row = await prisma.association.findUnique({ where: { id: associationId }, select: { kind: true } });
+  return row?.kind === 'THRIFT_GROUP' ? 'THRIFT_GROUP' : 'ASSOCIATION';
+}

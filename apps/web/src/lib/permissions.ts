@@ -157,6 +157,14 @@ export const PERMISSIONS = {
   MEETING_DELETE: 'members.disable',
   MEETING_ATTENDANCE: 'members.view_own', // Members can mark attendance
   MEETING_MINUTES: 'members.edit',
+  // Ajo / Thrift add-on (same keys as apps/api/src/lib/permissions.ts)
+  AJO_VIEW_OWN: 'ajo.view_own',
+  AJO_CONTRIBUTE: 'ajo.contribute',
+  AJO_COLLECT: 'ajo.collect',
+  AJO_MANAGE: 'ajo.manage',
+  AJO_RECONCILE: 'ajo.reconcile',
+  AJO_APPROVE_PAYOUT: 'ajo.approve_payout',
+  AJO_REPORTS: 'ajo.reports',
   WELFARE_VIEW: 'ledger.view',
   WELFARE_MANAGE: 'ledger.create',
   WELFARE_CONTRIBUTION_VIEW: 'ledger.view',

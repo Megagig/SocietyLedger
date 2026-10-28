@@ -49,7 +49,8 @@ jest.mock('../../src/services/rbac.service', () => ({
 jest.mock('../../src/services/module-feature.service', () => ({
   ModuleFeatureService: { getModuleStatus: (...a: unknown[]) => mockModuleStatus(...a), getFeatureStatus: jest.fn() },
 }));
-jest.mock('../../src/modules/ajo/ajo-capacity', () => ({ contributorCapacity: jest.fn(async () => ({ limit: 30, count: 3 })) }));
+const mockTenantKind = jest.fn(async () => 'ASSOCIATION');
+jest.mock('../../src/modules/ajo/ajo-capacity', () => ({ contributorCapacity: jest.fn(async () => ({ limit: 30, count: 3 })), tenantKind: (...a: unknown[]) => (mockTenantKind as (...x: unknown[]) => unknown)(...a) }));
 jest.mock('../../src/modules/ajo/ajo-membership.service', () => ({ approveMembership: (...a: unknown[]) => mockServices.approveMembership(...a) }));
 jest.mock('../../src/modules/ajo/ajo-phone-code.service', () => ({
   requestPhoneCode: (...a: unknown[]) => mockServices.requestPhoneCode(...a),
@@ -111,6 +112,14 @@ describe('the add-on gate', () => {
       expect(res.body.code).toBe('MODULE_DISABLED');
     }
     expect(mockServices.approveMembership).not.toHaveBeenCalled();
+  });
+
+  it('tells the web what the account can do and whether it is a standalone thrift group', async () => {
+    const ok = await request(app).get('/api/ajo/status').set('x-test-user', as(MEMBER));
+    expect(ok.status).toBe(200);
+    expect(ok.body.data).toMatchObject({ module: 'ajo', access: 'FULL', readOnly: false, tenantKind: 'ASSOCIATION', contributors: { limit: 30, count: 3, remaining: 27 } });
+    mockTenantKind.mockResolvedValueOnce('THRIFT_GROUP');
+    expect((await request(app).get('/api/ajo/status').set('x-test-user', as(MEMBER))).body.data.tenantKind).toBe('THRIFT_GROUP');
   });
 
   it('after the add-on expires still lets people read, but refuses every write with ADDON_EXPIRED', async () => {

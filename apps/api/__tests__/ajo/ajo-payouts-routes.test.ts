@@ -50,6 +50,10 @@ jest.mock('../../src/services/rbac.service', () => ({
 jest.mock('../../src/services/module-feature.service', () => ({
   ModuleFeatureService: { getModuleStatus: (...a: unknown[]) => mockModuleStatus(...a), isFeatureEnabled: jest.fn(async () => true), getFeatureStatus: jest.fn() },
 }));
+jest.mock('../../src/lib/reauth', () => ({
+  ...jest.requireActual('../../src/lib/reauth'),
+  confirmPassword: jest.fn(async (_userId: number, password: string) => (password === 'right' ? { ok: true } : password === 'locked' ? { ok: false, reason: 'locked', retryAfterSeconds: 600 } : { ok: false, reason: 'wrong' })),
+}));
 jest.mock('../../src/modules/ajo/ajo-capacity', () => ({ contributorCapacity: jest.fn(async () => ({ limit: 30, count: 3 })) }));
 
 const pass = <K extends keyof typeof svc>(name: K) => (...a: unknown[]) => svc[name](...a);
@@ -162,6 +166,35 @@ describe('who can reach what', () => {
   });
 });
 
+describe('password re-entry', () => {
+  it('refuses approve and reverse without the right password, before anything is done, and says when the person is locked out', async () => {
+    for (const [url, body] of [['/api/ajo/payouts/4/approve', {}], ['/api/ajo/payouts/4/reverse', { reason: 'The money came back to the group' }]] as Array<[string, object]>) {
+      const missing = await request(app).post(url).set('x-test-user', as(ADMIN)).send(body);
+      expect(`${url}: ${missing.status} ${missing.body.code}`).toBe(`${url}: 400 PASSWORD_REQUIRED`);
+      const wrong = await request(app).post(url).set('x-test-user', as(ADMIN)).send({ ...body, password: 'nope' });
+      expect(`${url}: ${wrong.status} ${wrong.body.code}`).toBe(`${url}: 403 REAUTH_FAILED`);
+      const locked = await request(app).post(url).set('x-test-user', as(ADMIN)).send({ ...body, password: 'locked' });
+      expect(`${url}: ${locked.status} ${locked.body.code}`).toBe(`${url}: 429 REAUTH_LOCKED`);
+    }
+    expect(svc.approvePayout).not.toHaveBeenCalled();
+    expect(svc.reversePaidPayout).not.toHaveBeenCalled();
+  });
+
+  it('goes ahead with the right password, and never passes the password on to the service', async () => {
+    svc.approvePayout.mockResolvedValue({ payout: { id: 4 }, replayed: false });
+    svc.reversePaidPayout.mockResolvedValue({ payout: { id: 4 }, replayed: false });
+    expect((await request(app).post('/api/ajo/payouts/4/approve').set('x-test-user', as(ADMIN)).send({ password: 'right' })).status).toBe(200);
+    expect(JSON.stringify(svc.approvePayout.mock.calls)).not.toContain('right');
+    expect((await request(app).post('/api/ajo/payouts/4/reverse').set('x-test-user', as(ADMIN)).send({ password: 'right', reason: 'The money came back to the group' })).status).toBe(200);
+    expect(JSON.stringify(svc.reversePaidPayout.mock.calls)).not.toContain('right');
+  });
+
+  it('does not ask for a password to void a payout', async () => {
+    svc.voidPayout.mockResolvedValue({ payout: { id: 4 }, replayed: false });
+    expect((await request(app).post('/api/ajo/payouts/4/void').set('x-test-user', as(ADMIN)).send({ reason: 'Cancelling it for a reason' })).status).toBe(200);
+  });
+});
+
 describe('the add-on gate', () => {
   it('after the add-on expires, keeps payouts readable and refuses every write with ADDON_EXPIRED', async () => {
     mockModuleStatus.mockResolvedValue({ name: 'Ajo / Thrift', isEnabled: false, source: 'default' });
@@ -216,7 +249,7 @@ describe('what the services receive', () => {
 
   it('passes the self-approval confirmation and note, and nothing that would let a caller choose who they are', async () => {
     svc.approvePayout.mockResolvedValue({ payout: { id: 4 }, replayed: false });
-    await request(app).post('/api/ajo/payouts/4/approve').set('x-test-user', as(ADMIN)).send({ confirmSelfApproval: true, note: 'We have only one admin', actorUserId: 999 });
+    await request(app).post('/api/ajo/payouts/4/approve').set('x-test-user', as(ADMIN)).send({ password: 'right', confirmSelfApproval: true, note: 'We have only one admin', actorUserId: 999 });
     expect(svc.approvePayout).toHaveBeenCalledWith({ associationId: ASSOC, payoutId: 4, actorUserId: ADMIN, confirmSelfApproval: true, note: 'We have only one admin' });
   });
 
@@ -258,7 +291,7 @@ describe('what the services receive', () => {
 
   it('maps a rule error to its status and code, with the reason in words', async () => {
     svc.approvePayout.mockRejectedValue(new RuleError('The recipient changed their payout account, so this payout has been cancelled.', 409, 'ACCOUNT_CHANGED'));
-    const res = await request(app).post('/api/ajo/payouts/4/approve').set('x-test-user', as(ADMIN)).send({});
+    const res = await request(app).post('/api/ajo/payouts/4/approve').set('x-test-user', as(ADMIN)).send({ password: 'right' });
     expect(res.status).toBe(409);
     expect(res.body).toMatchObject({ success: false, code: 'ACCOUNT_CHANGED' });
     svc.preparePayout.mockRejectedValue(new RuleError('Round 1 has not been paid yet.', 409, 'PREVIOUS_ROUND_NOT_PAID'));

@@ -52,6 +52,10 @@ jest.mock('../../src/services/rbac.service', () => ({
 jest.mock('../../src/services/module-feature.service', () => ({
   ModuleFeatureService: { getModuleStatus: (...a: unknown[]) => mockModuleStatus(...a), isFeatureEnabled: jest.fn(async () => true), getFeatureStatus: jest.fn() },
 }));
+jest.mock('../../src/lib/reauth', () => ({
+  ...jest.requireActual('../../src/lib/reauth'),
+  confirmPassword: jest.fn(async (_userId: number, password: string) => (password === 'right' ? { ok: true } : { ok: false, reason: 'wrong' })),
+}));
 jest.mock('../../src/modules/ajo/ajo-capacity', () => ({ contributorCapacity: jest.fn(async () => ({ limit: 30, count: 3 })) }));
 jest.mock('../../src/lib/storage', () => ({ uploadFile: jest.fn(), deleteFile: jest.fn(), getPresignedUrl: jest.fn() }));
 
@@ -131,7 +135,11 @@ describe('who can reach what', () => {
     svc.closeCase.mockResolvedValue({ caseId: 3, status: 'RESOLVED', replayed: false });
     for (const user of [MEMBER, OFFICER, RECONCILER]) expect((await call('post', '/api/ajo/cases/3/close', user, { outcome: 'RESOLVED', reason: 'She paid at the meeting' })).status).toBe(403);
     expect(svc.closeCase).not.toHaveBeenCalled();
-    const ok = await call('post', '/api/ajo/cases/3/close', ADMIN, { outcome: 'RESOLVED', reason: 'She paid at the meeting' });
+    const noPassword = await call('post', '/api/ajo/cases/3/close', ADMIN, { outcome: 'RESOLVED', reason: 'She paid at the meeting' });
+    expect(noPassword.body.code).toBe('PASSWORD_REQUIRED');
+    expect((await call('post', '/api/ajo/cases/3/close', ADMIN, { password: 'nope', outcome: 'RESOLVED', reason: 'She paid at the meeting' })).status).toBe(403);
+    expect(svc.closeCase).not.toHaveBeenCalled();
+    const ok = await call('post', '/api/ajo/cases/3/close', ADMIN, { password: 'right', outcome: 'RESOLVED', reason: 'She paid at the meeting' });
     expect(ok.status).toBe(200);
     expect(svc.closeCase).toHaveBeenCalledWith({ associationId: ASSOC, caseId: 3, actorUserId: ADMIN, outcome: 'RESOLVED', reason: 'She paid at the meeting' });
   });
