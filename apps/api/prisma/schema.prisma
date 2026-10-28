@@ -4271,6 +4271,16 @@ model AjoMembership {
   payoutPosition        Int?                @map("payout_position")
   guarantorAgreementId  Int?                @unique @map("guarantor_agreement_id")
   phoneConfirmedAt      DateTime?           @map("phone_confirmed_at")
+  /// The normalised number that was confirmed; a different number on the Member clears the confirmation.
+  phoneConfirmedNumber  String?             @map("phone_confirmed_number")
+  /// Keyed hash of the SMS code (never the code). Cleared once used, locked or expired.
+  phoneCodeHash         String?             @map("phone_code_hash")
+  phoneCodeExpiresAt    DateTime?           @map("phone_code_expires_at")
+  phoneCodeAttempts     Int                 @default(0) @map("phone_code_attempts")
+  phoneCodeSentAt       DateTime?           @map("phone_code_sent_at")
+  /// Codes sent on phoneCodeDay, counted across all of the person's memberships for the daily cap.
+  phoneCodeDay          DateTime?           @map("phone_code_day") @db.Date
+  phoneCodeDayCount     Int                 @default(0) @map("phone_code_day_count")
   acceptedRuleVersionId Int?                @map("accepted_rule_version_id")
   joinedAt              DateTime?           @map("joined_at")
   leftAt                DateTime?           @map("left_at")
@@ -4394,7 +4404,10 @@ model AjoPayoutAccount {
   associationId Int      @map("association_id")
   memberId      Int      @unique @map("member_id")
   bankName      String   @map("bank_name")
-  accountNumber String   @map("account_number")
+  /// AES-256-GCM, bound to the member (see modules/ajo/ajo-secrets.ts). The full number is never stored in readable form.
+  accountNumberEnc String @map("account_number_enc")
+  /// The last four digits, so lists and masked responses never need to decrypt anything.
+  last4         String   @map("last4")
   accountName   String   @map("account_name")
   changedAt     DateTime @default(now()) @map("changed_at")
   changedBy     Int?     @map("changed_by")

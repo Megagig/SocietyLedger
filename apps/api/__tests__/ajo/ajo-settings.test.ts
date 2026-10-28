@@ -14,6 +14,7 @@ const current = {
   ajoParticipantLevyMinKobo: 5_000,
   ajoParticipantLevyMaxKobo: 100_000,
   ajoLevyExemptAddonCodes: ['ajo-starter'],
+  ajoPayoutCooloffHours: 72,
 } as unknown as PlatformSettings;
 
 describe('validateAjoSettings', () => {
@@ -58,6 +59,14 @@ describe('validateAjoSettings', () => {
   it('checks the exempt add-on codes and removes duplicates', () => {
     expect(validateAjoSettings({ ajoLevyExemptAddonCodes: ['ajo-starter', 'ajo-starter'] }, current).ajoLevyExemptAddonCodes).toEqual(['ajo-starter']);
     expect(() => validateAjoSettings({ ajoLevyExemptAddonCodes: ['Not A Code'] }, current)).toThrow(SettingsValidationError);
+  });
+
+  it('accepts a payout cool-off from none up to two weeks, and refuses anything else', () => {
+    expect(validateAjoSettings({ ajoPayoutCooloffHours: 0 }, current).ajoPayoutCooloffHours).toBe(0);
+    expect(validateAjoSettings({ ajoPayoutCooloffHours: 336 }, current).ajoPayoutCooloffHours).toBe(336);
+    for (const bad of [-1, 337, 1.5, 'soon', null]) {
+      expect(() => validateAjoSettings({ ajoPayoutCooloffHours: bad as unknown as number }, current)).toThrow(SettingsValidationError);
+    }
   });
 
   it('passes settings it does not own through untouched', () => {

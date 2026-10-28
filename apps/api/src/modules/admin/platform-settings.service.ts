@@ -41,12 +41,17 @@ export interface PlatformSettings {
   ajoParticipantLevyMaxKobo: number;
   /** Add-on codes whose groups pay no levy (Starter pays the subscription only). */
   ajoLevyExemptAddonCodes: string[];
+  /** Hours after any payout account change (including the first entry) during which no payout to that person can be approved or recorded. */
+  ajoPayoutCooloffHours: number;
 }
 
 export class SettingsValidationError extends Error {}
 
 /** The owner's caps on the Ajo levy (2026-10-27): at most ₦5,000.00 per cycle and ₦1,000.00 per participant. Settings cannot go above them. */
 export const AJO_LEVY_CEILING = { cycleMaxKobo: 500_000, participantMaxKobo: 100_000, maxBps: 1_000 } as const;
+
+/** The longest payout cool-off staff can set: two weeks. */
+export const AJO_COOLOFF_MAX_HOURS = 336;
 
 function wholeNumber(value: unknown, label: string, min: number, max: number): number {
   const n = Number(value);
@@ -73,6 +78,7 @@ export function validateAjoSettings(input: Partial<PlatformSettings>, current: P
   if (has('ajoCycleLevyMaxKobo')) out.ajoCycleLevyMaxKobo = wholeNumber(input.ajoCycleLevyMaxKobo, 'The cycle levy maximum', 0, AJO_LEVY_CEILING.cycleMaxKobo);
   if (has('ajoParticipantLevyMinKobo')) out.ajoParticipantLevyMinKobo = wholeNumber(input.ajoParticipantLevyMinKobo, 'The participant levy minimum', 0, AJO_LEVY_CEILING.participantMaxKobo);
   if (has('ajoParticipantLevyMaxKobo')) out.ajoParticipantLevyMaxKobo = wholeNumber(input.ajoParticipantLevyMaxKobo, 'The participant levy maximum', 0, AJO_LEVY_CEILING.participantMaxKobo);
+  if (has('ajoPayoutCooloffHours')) out.ajoPayoutCooloffHours = wholeNumber(input.ajoPayoutCooloffHours, 'The payout cool-off (hours)', 0, AJO_COOLOFF_MAX_HOURS);
   if (has('ajoLevyExemptAddonCodes')) {
     const list = input.ajoLevyExemptAddonCodes;
     if (!Array.isArray(list) || list.length > 10 || !list.every((c) => typeof c === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(c))) {
@@ -169,6 +175,7 @@ const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   ajoParticipantLevyMinKobo: 5_000,
   ajoParticipantLevyMaxKobo: 100_000,
   ajoLevyExemptAddonCodes: ['ajo-starter'],
+  ajoPayoutCooloffHours: 72,
 };
 
 export class PlatformSettingsService {

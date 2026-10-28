@@ -4,10 +4,11 @@
  */
 import { Request, Response, Router } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { requireAnyPermission } from '../../middleware/rbac';
+import { requireAnyPermission, requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
 import { contributorCapacity } from './ajo-capacity';
+import { ajoMembersController as members } from './ajo-members.controller';
 
 const router: Router = Router();
 
@@ -42,5 +43,18 @@ router.get(
     }
   },
 );
+
+// ---- approval and phone confirmation (T2.1)
+router.post('/memberships/:id/approve', requirePermission(PERMISSIONS.AJO_MANAGE), members.approve);
+router.post('/memberships/:id/phone-code', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.sendPhoneCode);
+router.post('/memberships/:id/phone-code/confirm', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.confirmCode);
+
+// ---- payout account and SocietyLedger verification (T2.2, T2.3). `:memberId` is a member id, or `me` for the signed-in person's own.
+// A person acts on their own record; an officer with ajo.manage acts on anyone's in the association (checked in the controller).
+router.get('/members/:memberId/payout-account', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.getAccount);
+router.put('/members/:memberId/payout-account', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.setAccount);
+router.post('/members/:memberId/payout-account/reveal', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.reveal);
+router.get('/members/:memberId/verification', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.verificationStatus);
+router.post('/members/:memberId/verification/resubmit', requirePermission(PERMISSIONS.AJO_MANAGE), members.resubmit);
 
 export default router;

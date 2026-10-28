@@ -53,6 +53,7 @@ import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 import meetingsRoutes from './modules/meetings/meetings.routes';
 import welfareRoutes from './modules/welfare/welfare.routes';
 import ajoRoutes from './modules/ajo/ajo.routes';
+import ajoAdminRoutes from './modules/ajo/ajo-admin.routes';
 import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
@@ -173,6 +174,8 @@ app.use('/api/admin/docs', documentationAdminRoutes);
 app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admin console BFF
 // Tier 2 support tickets — SUPPORT_AGENT as well as SUPER_ADMIN, so it must be mounted before the SUPER_ADMIN-only /api/admin router
 app.use('/api/admin/support', platformSupportRoutes);
+// Ajo participant verification: compliance and support staff as well as SUPER_ADMIN, so also ahead of the SUPER_ADMIN-only router
+app.use('/api/admin/ajo', ajoAdminRoutes);
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);
