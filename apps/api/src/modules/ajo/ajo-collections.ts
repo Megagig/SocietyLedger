@@ -64,6 +64,25 @@ export function allocateOldestFirst(open: OpenInstallment[], amountKobo: bigint)
   return { allocations, leftoverKobo: left };
 }
 
+export interface Payable {
+  id: number;
+  remainingKobo: bigint;
+}
+
+/** Split an amount across things to pay, in the order given, filling one before touching the next. The caller orders them (oldest first). */
+export function allocateSequential(items: Payable[], amountKobo: bigint): { parts: Array<{ id: number; amountKobo: bigint }>; leftoverKobo: bigint } {
+  const parts: Array<{ id: number; amountKobo: bigint }> = [];
+  let left = amountKobo > 0n ? amountKobo : 0n;
+  for (const item of items) {
+    if (left === 0n) break;
+    if (item.remainingKobo <= 0n) continue;
+    const take = left < item.remainingKobo ? left : item.remainingKobo;
+    parts.push({ id: item.id, amountKobo: take });
+    left -= take;
+  }
+  return { parts, leftoverKobo: left };
+}
+
 /** The status an installment should show for what has been paid against it. */
 export function installmentStatusFor(amountKobo: bigint, paidKobo: bigint, dueDate: Date, today: Date): 'DUE' | 'PARTIAL' | 'PAID' | 'OVERDUE' {
   if (paidKobo >= amountKobo) return 'PAID';

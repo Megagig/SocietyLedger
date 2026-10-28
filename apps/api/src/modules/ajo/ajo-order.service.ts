@@ -13,6 +13,7 @@ import prisma from '../../lib/prisma';
 import { RuleError } from '../finance/rule-error';
 import { drawOrder, moveWithinUnpaid, newSeed, rosterFingerprint, type SlotKey } from './ajo-draw';
 import { auditAjo, notifyPermissionHolders, notifyUser } from './ajo-support';
+import { atRiskMembershipIds } from './ajo-trust.service';
 
 type Db = Prisma.TransactionClient | typeof prisma;
 type Tx = Prisma.TransactionClient;
@@ -25,11 +26,11 @@ export function expectedSlots(active: Array<{ id: number; shares: number }>): Sl
 }
 
 /**
- * Memberships in the "At risk" trust band. Trust scores are built later (T8), so until then nobody is At risk and the group's optional
- * rule has nothing to act on. This is the one place to replace when they exist.
+ * Memberships whose owner is in the "At risk" trust band, judged on their record in their other groups (this group has no history yet).
+ * The group's optional rule keeps these out of the early positions in the draw.
  */
-export async function atRiskMemberships(_db: Db, _groupId: number): Promise<Set<number>> {
-  return new Set<number>();
+export async function atRiskMemberships(db: Db, groupId: number, now: Date = new Date()): Promise<Set<number>> {
+  return atRiskMembershipIds(db, groupId, now);
 }
 
 async function lockGroup(tx: Tx, associationId: number, groupId: number) {
@@ -105,7 +106,7 @@ export async function runDraw(input: DrawInput) {
 
     const rules = await tx.ajoGroupRuleVersion.findFirst({ where: { groupId: group.id }, orderBy: { version: 'desc' }, select: { blockAtRiskEarly: true } });
     const seed = newSeed();
-    const placed = drawOrder({ slots, seed, blockAtRiskEarly: rules?.blockAtRiskEarly ?? false, atRisk: await atRiskMemberships(tx, group.id) });
+    const placed = drawOrder({ slots, seed, blockAtRiskEarly: rules?.blockAtRiskEarly ?? false, atRisk: await atRiskMemberships(tx, group.id, input.now ?? new Date()) });
 
     await tx.ajoPayoutSlot.deleteMany({ where: { groupId: group.id } });
     await tx.ajoPayoutSlot.createMany({ data: placed.positions.map((p) => ({ associationId: input.associationId, groupId: group.id, membershipId: p.membershipId, shareNo: p.shareNo, position: p.position })) });

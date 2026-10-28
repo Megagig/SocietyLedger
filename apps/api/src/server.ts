@@ -12,6 +12,7 @@ import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 import { startCashLodgmentJobs, stopCashLodgmentJobs } from './jobs/cash-lodgment-jobs';
 import { startSmsJobs, stopSmsJobs } from './jobs/sms-jobs';
 import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
+import { startAjoJobs, stopAjoJobs } from './jobs/ajo-jobs';
 import { startPushReceiptsJob, stopPushReceiptsJob } from './services/push.service';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
@@ -297,6 +298,7 @@ if (process.env.NODE_ENV !== 'test') {
         startCashLodgmentJobs();
         startSmsJobs();
         startPaymentReminderJobs();
+        startAjoJobs();
         startPushReceiptsJob();
       });
     })
@@ -316,6 +318,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopCashLodgmentJobs();
     stopSmsJobs();
     stopPaymentReminderJobs();
+    stopAjoJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);
@@ -328,6 +331,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopCashLodgmentJobs();
     stopSmsJobs();
     stopPaymentReminderJobs();
+    stopAjoJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);

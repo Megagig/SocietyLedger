@@ -11,6 +11,7 @@ import { contributorCapacity } from './ajo-capacity';
 import { ajoContributionsController as contributions, uploadProof } from './ajo-contributions.controller';
 import { ajoGroupsController as groups } from './ajo-groups.controller';
 import { ajoPayoutsController as payouts } from './ajo-payouts.controller';
+import { ajoRiskController as risk } from './ajo-risk.controller';
 import { ajoMembersController as members } from './ajo-members.controller';
 
 const router: Router = Router();
@@ -139,5 +140,34 @@ router.post('/payouts/:id/void', requireAnyPermission([PERMISSIONS.AJO_MANAGE, P
 router.post('/payouts/:id/fail', reconcile, payouts.fail);
 router.post('/payouts/:id/record-paid', reconcile, uploadProof, payouts.recordPaid);
 router.post('/payouts/:id/reverse', admin, payouts.reverse);
+
+// ---- late fees, disputes, default cases, repayment plans and the trust score (T6)
+const anyOfficer = requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE]);
+
+router.get('/memberships/:id/late-fees', readers, risk.memberLateFees);
+router.get('/groups/:id/late-fees', anyOfficer, risk.groupLateFees);
+router.post('/late-fees/:id/waive', manage, risk.waive);
+router.post('/late-fees/:id/reverse-waiver', manage, risk.reverseWaiver);
+router.post('/late-fees/:id/told', manage, risk.told);
+
+router.post('/memberships/:id/disputes', readers, uploadProof, risk.raiseDispute);
+router.get('/memberships/:id/disputes', readers, risk.memberDisputes);
+router.get('/groups/:id/disputes', anyOfficer, risk.groupDisputes);
+router.post('/disputes/:id/resolve', anyOfficer, risk.resolveDispute);
+router.get('/disputes/:id/evidence', readers, risk.evidence);
+
+router.get('/groups/:id/cases', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_APPROVE_PAYOUT]), risk.groupCases);
+router.get('/memberships/:id/cases', readers, risk.memberCases);
+router.get('/cases/:id', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_APPROVE_PAYOUT]), risk.getCase);
+router.post('/memberships/:id/cases', manage, risk.openCase);
+router.post('/cases/:id/notes', manage, risk.note);
+router.post('/cases/:id/member-response', readers, risk.memberResponse);
+router.post('/cases/:id/plan', manage, risk.draftPlan);
+router.post('/plans/:id/agree', readers, risk.agree);
+router.post('/plans/:id/cancel', manage, risk.cancelPlan);
+router.post('/cases/:id/close', admin, risk.close);
+
+router.get('/memberships/:id/trust', readers, risk.memberTrust);
+router.get('/groups/:id/trust', anyOfficer, risk.groupTrust);
 
 export default router;

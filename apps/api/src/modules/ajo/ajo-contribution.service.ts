@@ -15,8 +15,8 @@ import { Prisma } from '@prisma/client';
 import prisma from '../../lib/prisma';
 import { deleteFile, getPresignedUrl, uploadFile } from '../../lib/storage';
 import { RuleError } from '../finance/rule-error';
-import { confirmContributionInTx, openInstallments, reverseContributionInTx } from './ajo-allocation.service';
-import { MAX_PROOF_BYTES, PROOF_TYPES, formatNaira, hashProof, newReference, normaliseBankReference, totalOwed, type ReceiptFacts } from './ajo-collections';
+import { confirmContributionInTx, owedIncludingFees, reverseContributionInTx } from './ajo-allocation.service';
+import { MAX_PROOF_BYTES, PROOF_TYPES, formatNaira, hashProof, newReference, normaliseBankReference, type ReceiptFacts } from './ajo-collections';
 import { assertCanContribute } from './ajo-membership.service';
 import { createReceiptInTx, deliverReceipt } from './ajo-receipt.service';
 import { businessDay } from './ajo-schedule';
@@ -111,7 +111,8 @@ export function toContributionView(c: ContributionRow, options: { officer?: bool
     counts: c.status === 'CONFIRMED' && !reversed,
     awaitingConfirmation: c.status === 'REPORTED' || c.status === 'CASH_RECEIVED',
     missingFromHandover: c.missingFromHandover,
-    installmentsCovered: c.allocations.map((a) => ({ installmentId: a.installmentId, amountKobo: a.amountKobo.toString() })),
+    installmentsCovered: c.allocations.filter((a) => a.installmentId !== null).map((a) => ({ installmentId: a.installmentId, amountKobo: a.amountKobo.toString() })),
+    lateFeesCovered: c.allocations.filter((a) => a.lateFeeId !== null).map((a) => ({ lateFeeId: a.lateFeeId, amountKobo: a.amountKobo.toString() })),
     ...(options.officer ? { hasProof: c.proofKey !== null, bankReference: c.bankReference, paidOn: c.paidOn, possibleDuplicateOf: c.duplicateOfId, collectorUserId: c.collectorId, handoverId: c.handoverId, selfConfirmed: c.selfConfirmed } : {}),
   };
 }
@@ -199,7 +200,7 @@ export async function recordCash(input: RecordCashInput) {
       }
       await assertCanContribute(tx, { associationId: input.associationId, membershipId: membership.id });
 
-      const owed = totalOwed(await openInstallments(tx, membership.id));
+      const owed = await owedIncludingFees(tx, membership.id);
       if (input.amountKobo > owed) throw new RuleError(`That is more than the ${formatNaira(owed)} this person still owes in ${group.name}.`, 409, 'EXCEEDS_OWED');
 
       // Cash taken after the day's handover belongs to the next business day: the handover is closed.
@@ -309,7 +310,7 @@ export async function reportTransfer(input: ReportTransferInput) {
       if (!own && !input.actorCanManage) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
       await assertCanContribute(tx, { associationId: input.associationId, membershipId: membership.id });
 
-      const owed = totalOwed(await openInstallments(tx, membership.id));
+      const owed = await owedIncludingFees(tx, membership.id);
       if (input.amountKobo > owed) throw new RuleError(`That is more than the ${formatNaira(owed)} this person still owes in ${group.name}.`, 409, 'EXCEEDS_OWED');
 
       const duplicates = await findDuplicates(tx, { associationId: input.associationId, proofHash, bankReference });

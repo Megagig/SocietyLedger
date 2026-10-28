@@ -4167,9 +4167,12 @@ enum AjoVerificationStatus {
 }
 
 enum AjoLateFeeStatus {
+  /// Assessed and shown to the member; not owed yet (a notice window must pass, and the member must have been told).
   PENDING
   PAYABLE
   WAIVED
+  /// Paid in full through the normal payment flow.
+  PAID
 }
 
 enum AjoTrustBand {
@@ -4200,6 +4203,8 @@ enum AjoDefaultCaseStatus {
 }
 
 enum AjoRepaymentPlanStatus {
+  /// Drafted and offered; counts as agreed only once an officer records the member's agreement or the member accepts it.
+  PROPOSED
   ACTIVE
   COMPLETED
   CANCELLED
@@ -4565,8 +4570,17 @@ model AjoLateFeeAssessment {
   status         AjoLateFeeStatus @default(PENDING)
   waivedBy       Int?             @map("waived_by")
   waivedReason   String?          @map("waived_reason")
+  waivedAt       DateTime?        @map("waived_at")
+  membershipId   Int?             @map("membership_id")
+  /// When the member was told about this fee (a fee can only become payable after they were told, and the notice window has passed).
+  notifiedAt     DateTime?        @map("notified_at")
+  notifiedNote   String?          @map("notified_note")
+  payableAt      DateTime?        @map("payable_at")
+  /// How much of the fee has been paid, through payments that cleared the member's instalments first.
+  paidKobo       BigInt           @default(0) @map("paid_kobo")
   createdAt      DateTime         @default(now()) @map("created_at")
   installment    AjoInstallment   @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+  allocations    AjoContributionAllocation[]
 
   @@unique([installmentId, ruleVersionId])
   @@index([associationId, status])
@@ -4585,9 +4599,14 @@ model AjoDefaultCase {
   openedBy            Int?                 @map("opened_by")
   openedAt            DateTime             @default(now()) @map("opened_at")
   closedAt            DateTime?            @map("closed_at")
+  closedBy            Int?                 @map("closed_by")
+  /// Which of the group's three procedures opened it, and the evidence frozen at that moment (never edited).
+  procedure           String?
+  snapshot            Json?
   group               AjoGroup             @relation(fields: [groupId], references: [id], onDelete: Cascade)
   membership          AjoMembership        @relation(fields: [membershipId], references: [id])
   plans               AjoRepaymentPlan[]
+  events              AjoCaseEvent[]
 
   @@index([associationId, status])
   @@map("ajo_default_cases")
@@ -4601,6 +4620,15 @@ model AjoRepaymentPlan {
   /// [{ dueDate, amountKobo }]
   schedule      Json
   agreedBy      Int?                   @map("agreed_by")
+  agreedAt      DateTime?              @map("agreed_at")
+  /// "officer" (recorded on the member's behalf, with a note) or "app" (the member accepted it).
+  agreedVia     String?                @map("agreed_via")
+  agreedNote    String?                @map("agreed_note")
+  proposedBy    Int?                   @map("proposed_by")
+  outstandingKobo BigInt               @default(0) @map("outstanding_kobo")
+  /// Instalment ids unpaid when it was agreed: while the plan is kept, no new late fee is assessed on them.
+  covers        Json?
+  cancelReason  String?                @map("cancel_reason")
   createdAt     DateTime               @default(now()) @map("created_at")
   defaultCase   AjoDefaultCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
@@ -4720,13 +4748,18 @@ model AjoContributionAllocation {
   id             Int             @id @default(autoincrement())
   associationId  Int             @map("association_id")
   contributionId Int             @map("contribution_id")
-  installmentId  Int             @map("installment_id")
+  /// Exactly one of installmentId and lateFeeId is set (a database check enforces it).
+  installmentId  Int?            @map("installment_id")
+  lateFeeId      Int?            @map("late_fee_id")
   amountKobo     BigInt          @map("amount_kobo")
   createdAt      DateTime        @default(now()) @map("created_at")
   contribution   AjoContribution @relation(fields: [contributionId], references: [id], onDelete: Cascade)
-  installment    AjoInstallment  @relation(fields: [installmentId], references: [id])
+  installment    AjoInstallment? @relation(fields: [installmentId], references: [id])
+  lateFee        AjoLateFeeAssessment? @relation(fields: [lateFeeId], references: [id])
 
   @@unique([contributionId, installmentId])
+  @@unique([contributionId, lateFeeId])
+  @@index([lateFeeId])
   @@index([installmentId])
   @@index([associationId])
   @@map("ajo_contribution_allocations")
@@ -4791,6 +4824,55 @@ model AjoLevyAssessment {
   @@map("ajo_levy_assessments")
 }
 
+enum AjoReminderKind {
+  UPCOMING
+  OVERDUE
+  GRACE_ENDING
+  DIGEST
+}
+
+enum AjoReminderState {
+  SENT
+  SKIPPED
+  FAILED
+}
+
+/// One row per reminded item. The unique key makes a repeated job run (or a second server) send nothing the second time.
+model AjoReminder {
+  id            Int              @id @default(autoincrement())
+  associationId Int              @map("association_id")
+  membershipId  Int?             @map("membership_id")
+  installmentId Int?             @map("installment_id")
+  kind          AjoReminderKind
+  /// "i:<installmentId>:<kind>", "w:<membershipId>:<year-week>" (daily groups), "digest:<associationId>:<date>" or "skipalert:<associationId>:<date>".
+  dedupeKey     String           @unique @map("dedupe_key")
+  state         AjoReminderState @default(SENT)
+  message       String?
+  channels      Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  @@index([associationId, createdAt])
+  @@map("ajo_reminders")
+}
+
+/// The case file: dated notes added after the case was opened. Append-only; the evidence at opening is the case's own frozen snapshot.
+model AjoCaseEvent {
+  id            Int            @id @default(autoincrement())
+  associationId Int            @map("association_id")
+  caseId        Int            @map("case_id")
+  /// OPENED, NOTE, MEMBER_RESPONSE, PLAN_PROPOSED, PLAN_AGREED, PLAN_CANCELLED, PLAN_MISSED, PLAN_COMPLETED, CLOSED
+  kind          String
+  note          String?
+  actorUserId   Int?           @map("actor_user_id")
+  /// Makes recording the same automatic event twice (a plan date missed, say) a no-op.
+  dedupeKey     String?        @unique @map("dedupe_key")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  defaultCase   AjoDefaultCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@map("ajo_case_events")
+}
+
 enum AjoRequestStatus {
   PENDING
   APPROVED
@@ -4843,6 +4925,10 @@ model AjoDispute {
   associationId  Int              @map("association_id")
   membershipId   Int              @map("membership_id")
   contributionId Int?             @map("contribution_id")
+  /// The instalment the member says they paid. A dispute is about one instalment.
+  installmentId  Int?             @map("installment_id")
+  /// The login that raised it (the member, or an officer on their behalf). The same person cannot resolve it.
+  raisedBy       Int?             @map("raised_by")
   claim          String
   evidenceKey    String?          @map("evidence_key")
   status         AjoDisputeStatus @default(OPEN)

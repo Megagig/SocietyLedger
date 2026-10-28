@@ -41,7 +41,7 @@ export function uploadProof(req: Request, res: Response, next: NextFunction): vo
 }
 
 /** Self, an officer, or the collector this person is currently assigned to. Anyone else is told the membership does not exist. */
-async function assertMembershipViewer(req: Request, membershipId: number): Promise<{ officer: boolean }> {
+export async function assertMembershipViewer(req: Request, membershipId: number): Promise<{ officer: boolean }> {
   const { userId, associationId } = actor(req);
   const m = await prisma.ajoMembership.findFirst({ where: { id: membershipId, associationId }, select: { member: { select: { userId: true } } } });
   if (!m) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
