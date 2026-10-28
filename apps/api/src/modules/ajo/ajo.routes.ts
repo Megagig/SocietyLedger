@@ -10,6 +10,7 @@ import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
 import { contributorCapacity } from './ajo-capacity';
 import { ajoContributionsController as contributions, uploadProof } from './ajo-contributions.controller';
 import { ajoGroupsController as groups } from './ajo-groups.controller';
+import { ajoPayoutsController as payouts } from './ajo-payouts.controller';
 import { ajoMembersController as members } from './ajo-members.controller';
 
 const router: Router = Router();
@@ -120,5 +121,23 @@ router.post('/groups/:id/handovers', collect, contributions.handOver);
 router.get('/groups/:id/handovers', officers, contributions.handovers);
 router.get('/handovers/:id', officers, contributions.handover);
 router.post('/handovers/:id/reconcile', reconcile, contributions.reconcile);
+
+// ---- payouts (T5). SocietyLedger never sends money: these routes prepare, approve and RECORD what the group paid from its own account.
+const anyPayoutRole = requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT]);
+const admin = requirePermission(PERMISSIONS.AJO_APPROVE_PAYOUT);
+
+router.get('/payouts/mine', readers, payouts.mine);
+router.get('/levy', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_APPROVE_PAYOUT]), payouts.levy);
+router.get('/groups/:id/payouts/preview', anyPayoutRole, payouts.preview);
+router.get('/groups/:id/payouts', anyPayoutRole, payouts.list);
+router.post('/groups/:id/payouts', manage, payouts.prepare);
+router.post('/groups/:id/payouts/prepare-all', manage, payouts.prepareAll);
+router.post('/groups/:id/complete', admin, payouts.complete);
+router.get('/payouts/:id', anyPayoutRole, payouts.get);
+router.post('/payouts/:id/approve', admin, payouts.approve);
+router.post('/payouts/:id/void', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_APPROVE_PAYOUT]), payouts.void);
+router.post('/payouts/:id/fail', reconcile, payouts.fail);
+router.post('/payouts/:id/record-paid', reconcile, uploadProof, payouts.recordPaid);
+router.post('/payouts/:id/reverse', admin, payouts.reverse);
 
 export default router;

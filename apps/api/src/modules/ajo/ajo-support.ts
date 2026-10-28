@@ -53,6 +53,16 @@ export async function auditAjo(db: Tx, entry: AjoAuditEntry): Promise<void> {
   });
 }
 
+/** Everyone in the association who holds a permission. Used to tell whether someone is the only person who can do a thing. */
+export async function permissionHolderIds(db: Tx | typeof prisma, associationId: number, permissionKey: string): Promise<number[]> {
+  const rows = await db.userRole.findMany({
+    where: { associationId, isActive: true, user: { isActive: true }, role: { isActive: true, permissions: { some: { permission: { key: permissionKey } } } } },
+    select: { userId: true },
+    distinct: ['userId'],
+  });
+  return rows.map((r) => r.userId);
+}
+
 export interface AjoNotice {
   title: string;
   message: string;

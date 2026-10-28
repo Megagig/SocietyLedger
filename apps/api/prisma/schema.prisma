@@ -4128,6 +4128,23 @@ enum AjoPayoutStatus {
   APPROVED
   PAID
   VOID
+  /// Was recorded as paid, then reversed by an admin with a reason (the money came back, or it was recorded in error).
+  REVERSED
+}
+
+enum AjoLevyKind {
+  CYCLE
+  PARTICIPANT
+  /// A negative amount: the same levy was paid twice, so the extra is kept as a credit against the next levy.
+  CREDIT
+}
+
+enum AjoLevyStatus {
+  ACCRUED
+  BILLED
+  PAID
+  WAIVED
+  VOID
 }
 
 enum AjoLedgerEntryType {
@@ -4495,6 +4512,10 @@ model AjoPayout {
   collectorFeeKobo      BigInt          @default(0) @map("collector_fee_kobo")
   shortfallKobo         BigInt          @default(0) @map("shortfall_kobo")
   netKobo               BigInt          @map("net_kobo")
+  /// Everything confirmed for this round (or this participant's cycle) when the payout was prepared, in all payouts so far.
+  confirmedKobo         BigInt          @default(0) @map("confirmed_kobo")
+  /// 1 for the first payout of a round, 2.. for supplementary payouts made when late money arrived.
+  sequence              Int             @default(1)
   status                AjoPayoutStatus @default(PREPARED)
   preparedBy            Int             @map("prepared_by")
   preparedAt            DateTime        @default(now()) @map("prepared_at")
@@ -4508,6 +4529,17 @@ model AjoPayout {
   paidRecordedBy        Int?            @map("paid_recorded_by")
   paidAt                DateTime?       @map("paid_at")
   voidReason            String?         @map("void_reason")
+  /// A voided payout that was voided because the bank transfer failed (the admins are told).
+  failed                Boolean         @default(false)
+  voidedBy              Int?            @map("voided_by")
+  voidedAt              DateTime?       @map("voided_at")
+  approvalNote          String?         @map("approval_note")
+  /// The bank's reference, as typed, and the same with case, spaces and dashes removed (for the duplicate check).
+  paidReferenceKey      String?         @map("paid_reference_key")
+  proofKey              String?         @map("proof_key")
+  reversedBy            Int?            @map("reversed_by")
+  reversedAt            DateTime?       @map("reversed_at")
+  reverseReason         String?         @map("reverse_reason")
   idempotencyKey        String          @unique @map("idempotency_key")
   createdAt             DateTime        @default(now()) @map("created_at")
   updatedAt             DateTime        @updatedAt @map("updated_at")
@@ -4516,6 +4548,7 @@ model AjoPayout {
 
   @@index([associationId, groupId, status])
   @@index([membershipId])
+  @@index([associationId, paidReferenceKey])
   @@map("ajo_payouts")
 }
 
@@ -4721,6 +4754,41 @@ model AjoReceipt {
   @@unique([contributionId, moment])
   @@index([associationId, state])
   @@map("ajo_receipts")
+}
+
+/// SocietyLedger's own platform levy on a group (never part of contribution money). Immutable except for its status, which staff and the
+/// billing system move. Every record carries the calculation that produced it.
+model AjoLevyAssessment {
+  id              Int            @id @default(autoincrement())
+  associationId   Int            @map("association_id")
+  groupId         Int            @map("group_id")
+  /// Set for a participant levy.
+  membershipId    Int?           @map("membership_id")
+  kind            AjoLevyKind
+  status          AjoLevyStatus  @default(ACCRUED)
+  /// Makes assessing twice a no-op: "cycle:<groupId>", "participant:<membershipId>" or "credit:<paymentId>:<n>".
+  dedupeKey       String         @unique @map("dedupe_key")
+  /// What the levy is worked out from, in kobo (the scheduled contributions), and the settings it was worked out with.
+  baseKobo        BigInt         @map("base_kobo")
+  rateBps         Int            @map("rate_bps")
+  minKobo         BigInt         @map("min_kobo")
+  maxKobo         BigInt         @map("max_kobo")
+  /// Signed: a CREDIT is negative.
+  amountKobo      BigInt         @map("amount_kobo")
+  addonCode       String         @map("addon_code")
+  calculation     String
+  /// The checkout payment it is currently on, and the payment that settled it.
+  billedPaymentId Int?           @map("billed_payment_id")
+  paidPaymentId   Int?           @map("paid_payment_id")
+  statusReason    String?        @map("status_reason")
+  statusBy        Int?           @map("status_by")
+  statusAt        DateTime?      @map("status_at")
+  accruedAt       DateTime       @default(now()) @map("accrued_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  @@index([associationId, status])
+  @@index([groupId])
+  @@map("ajo_levy_assessments")
 }
 
 enum AjoRequestStatus {

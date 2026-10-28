@@ -54,6 +54,7 @@ import meetingsRoutes from './modules/meetings/meetings.routes';
 import welfareRoutes from './modules/welfare/welfare.routes';
 import ajoRoutes from './modules/ajo/ajo.routes';
 import ajoAdminRoutes from './modules/ajo/ajo-admin.routes';
+import ajoLevyAdminRoutes from './modules/ajo/ajo-levy-admin.routes';
 import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
@@ -176,6 +177,8 @@ app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admi
 app.use('/api/admin/support', platformSupportRoutes);
 // Ajo participant verification: compliance and support staff as well as SUPER_ADMIN, so also ahead of the SUPER_ADMIN-only router
 app.use('/api/admin/ajo', ajoAdminRoutes);
+// The Ajo platform levy: finance and support staff as well as SUPER_ADMIN, so also ahead of the SUPER_ADMIN-only router
+app.use('/api/admin/ajo-levy', ajoLevyAdminRoutes);
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);

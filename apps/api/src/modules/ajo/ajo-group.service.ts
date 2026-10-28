@@ -17,6 +17,7 @@ import { createInitialRuleVersion, currentRuleVersion, normaliseRules, type Rule
 import { dayInZone, groupDates, isValidCutoff, isValidTimeZone, type Frequency, type GroupModel } from './ajo-schedule';
 import { generateGroupSchedule } from './ajo-schedule.service';
 import { decryptGroupAccountNumber, encryptGroupAccountNumber, lastFour, maskAccount, normaliseAccountNumber } from './ajo-secrets';
+import { assertNoOverdueLevy, assessGroupLevy, voidUnbilledLevyForGroup } from './ajo-levy.service';
 import { auditAjo, notifyUser } from './ajo-support';
 
 type Tx = Prisma.TransactionClient;
@@ -369,6 +370,8 @@ export async function cancelGroup(input: { associationId: number; groupId: numbe
     if (money > 0) throw new RuleError('This group has contributions on its books. Reverse them, or complete the payouts, before cancelling.', 409, 'GROUP_HAS_MONEY');
     const userIds = await memberUserIds(tx, g.id);
     const cancelled = await tx.ajoGroup.update({ where: { id: g.id }, data: { status: 'CANCELLED', cancelledAt: now, cancelReason: reason } });
+    // No money was confirmed, so SocietyLedger's levy on the group is not owed.
+    await voidUnbilledLevyForGroup(tx, { groupId: g.id, reason: 'The group was cancelled before any money was confirmed.', actorUserId: input.actorUserId, now });
     await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_GROUP_CANCELLED', tableName: 'ajo_groups', recordId: g.id, oldValues: { status: g.status }, newValues: { status: 'CANCELLED', reason } });
     return { group: cancelled, replayed: false, userIds };
   });
@@ -396,6 +399,8 @@ export async function startGroup(input: StartGroupInput) {
     if (g.status === 'ACTIVE') return { group: g, replayed: true, userIds: [] as number[], installments: 0 };
     if (g.status !== 'OPEN') throw new RuleError(`Only an open group can be started. This one is ${g.status.toLowerCase()}.`, 409, 'INVALID_GROUP_STATE');
     if (g.startDate.getTime() < dayInZone(now, g.timezone).getTime()) throw new RuleError('The start date has passed. Change it before starting.', 409, 'START_DATE_PASSED');
+    // Unpaid platform levy more than 60 days old stops a NEW group starting, and nothing else.
+    await assertNoOverdueLevy(tx, input.associationId, now);
 
     const live = await tx.ajoMembership.findMany({ where: { groupId: g.id, status: { in: ['PENDING', 'ACTIVE'] } }, select: { id: true, status: true, shares: true } });
     const active = live.filter((m) => m.status === 'ACTIVE');
@@ -420,7 +425,8 @@ export async function startGroup(input: StartGroupInput) {
     const { endsOn } = groupDates({ model: g.model, frequency: g.frequency, startDate: g.startDate, cycleLength: g.cycleLength, rounds });
     const started = await tx.ajoGroup.update({ where: { id: g.id }, data: { status: 'ACTIVE', startedAt: now, endsOn, rounds, maxParticipants } });
     const made = await generateGroupSchedule(tx, { groupId: g.id, now });
-    await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_GROUP_STARTED', tableName: 'ajo_groups', recordId: g.id, oldValues: { status: 'OPEN' }, newValues: { status: 'ACTIVE', endsOn: endsOn.toISOString().slice(0, 10), rounds, participants: active.length, installments: made.created } });
+    const levy = await assessGroupLevy(tx, { associationId: input.associationId, groupId: g.id, now });
+    await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_GROUP_STARTED', tableName: 'ajo_groups', recordId: g.id, oldValues: { status: 'OPEN' }, newValues: { status: 'ACTIVE', endsOn: endsOn.toISOString().slice(0, 10), rounds, participants: active.length, installments: made.created, levyKobo: levy.totalKobo.toString(), levyExempt: levy.exempt } });
     return { group: started, replayed: false, userIds: await memberUserIds(tx, g.id), installments: made.created };
   });
   if (!result.replayed) await tellMembers(input.associationId, result.userIds, { pushType: 'ajo.group_started', entityId: result.group.id, title: 'Your group has started', message: `${result.group.name} starts on ${result.group.startDate.toISOString().slice(0, 10)}. Your schedule is ready.` });

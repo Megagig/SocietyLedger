@@ -16,6 +16,7 @@ import { normalizePhone } from '../sms/sms-rules';
 import { AjoContributorLimitError, assertContributorCapacity } from './ajo-capacity';
 import { currentRuleVersion } from './ajo-rules.service';
 import { syncMembershipSchedule } from './ajo-schedule.service';
+import { assessParticipantLevy } from './ajo-levy.service';
 import { auditAjo, notifyUser } from './ajo-support';
 import { ensureVerificationRequested } from './ajo-verification.service';
 
@@ -138,7 +139,10 @@ export async function tryActivate(tx: Tx, input: { associationId: number; member
   const updated = await tx.ajoMembership.updateMany({ where: { id: membership.id, status: 'PENDING' }, data: { status: 'ACTIVE', joinedAt: now } });
   if (updated.count === 1) {
     await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_MEMBERSHIP_ACTIVATED', tableName: 'ajo_memberships', recordId: membership.id, oldValues: { status: 'PENDING' }, newValues: { status: 'ACTIVE' } });
-    if (membership.group.status === 'ACTIVE') await syncMembershipSchedule(tx, { groupId: membership.group.id, membershipId: membership.id, now });
+    if (membership.group.status === 'ACTIVE') {
+      await syncMembershipSchedule(tx, { groupId: membership.group.id, membershipId: membership.id, now });
+      await assessParticipantLevy(tx, { associationId: input.associationId, groupId: membership.group.id, membershipId: membership.id, now });
+    }
   }
   return { status: 'ACTIVE', activated: updated.count === 1, unmet: [], blockedByLimit: null };
 }

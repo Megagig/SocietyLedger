@@ -46,6 +46,15 @@ export async function paidPositions(db: Db, groupId: number): Promise<Set<number
   return new Set(rows.map((r) => r.round as number));
 }
 
+/**
+ * Rounds whose slot may no longer move: a payout for it is prepared, approved or paid. Between preparing and paying, a swap would send an
+ * approved payout to the wrong person, so the slot is held still until the payout is paid or stopped.
+ */
+export async function lockedPositions(db: Db, groupId: number): Promise<Set<number>> {
+  const rows = await db.ajoPayout.findMany({ where: { groupId, status: { in: ['PREPARED', 'APPROVED', 'PAID'] }, round: { not: null } }, select: { round: true } });
+  return new Set(rows.map((r) => r.round as number));
+}
+
 export async function anyPayoutPaid(db: Db, groupId: number): Promise<boolean> {
   return (await db.ajoPayout.count({ where: { groupId, status: 'PAID' } })) > 0;
 }
@@ -170,6 +179,8 @@ export async function requestSwap(input: RequestSwapInput) {
     if (slots.length !== 2) throw new RuleError('Those slots are not part of this group.', 404, 'SLOT_NOT_FOUND');
     const [a, b] = [slots.find((s) => s.id === input.slotAId)!, slots.find((s) => s.id === input.slotBId)!];
     if (a.membershipId === b.membershipId) throw new RuleError('Both slots belong to the same person, so swapping them changes nothing for the group.', 400, 'SAME_PERSON');
+    const held = await lockedPositions(tx, group.id);
+    if (held.has(a.position) || held.has(b.position)) throw new RuleError('A payout has been prepared for one of these positions, so it cannot move until that payout is paid or cancelled.', 409, 'SLOT_LOCKED');
     if (!input.actorIsOfficer && a.membership.member.userId !== input.actorUserId && b.membership.member.userId !== input.actorUserId) {
       throw new RuleError('You can only ask to swap your own position.', 403, 'FORBIDDEN');
     }
@@ -219,6 +230,8 @@ export async function decideSwap(input: DecideSwapInput) {
     const conflicted = [a, b].some((s) => s.membership.member.userId === input.actorUserId);
     if (conflicted) throw new RuleError('You hold one of these positions, so another admin has to decide this swap.', 403, 'CONFLICT_OF_INTEREST');
     if (await anyPayoutPaid(tx, group.id)) throw new RuleError('A payout has been paid since this was requested, so positions can no longer be swapped.', 409, 'USE_EXCEPTION');
+    const held = await lockedPositions(tx, group.id);
+    if (held.has(a.position) || held.has(b.position)) throw new RuleError('A payout has been prepared for one of these positions since this was requested, so it cannot move.', 409, 'SLOT_LOCKED');
 
     // The unique (group, position) constraint forbids two slots sharing a position, even for an instant, so park one slot first.
     const [posA, posB] = [a.position, b.position];
@@ -267,7 +280,8 @@ export async function emergencyException(input: ExceptionInput) {
     if (!(await anyPayoutPaid(tx, group.id))) throw new RuleError('No payout has been paid yet, so use an ordinary swap or draw again instead of an exception.', 409, 'EXCEPTION_NOT_NEEDED');
 
     const slots = await tx.ajoPayoutSlot.findMany({ where: { groupId: group.id }, include: { membership: { select: { id: true, member: { select: { userId: true } } } } } });
-    const paid = await paidPositions(tx, group.id);
+    // A position with a payout in progress is held still as well as one already paid.
+    const paid = await lockedPositions(tx, group.id);
     let changes;
     try {
       changes = moveWithinUnpaid(slots.map((s) => ({ id: s.id, position: s.position })), paid, input.slotId, input.newPosition);

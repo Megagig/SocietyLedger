@@ -13,6 +13,7 @@
  */
 import type { BillingCycle } from '@prisma/client';
 import prisma from '../../lib/prisma';
+import { attachLevyToQuote } from '../../modules/ajo/ajo-levy.service';
 import { evaluateAccess, pickDecidingSubscription } from '../subscription-access.service';
 import {
   type CatalogAddon,
@@ -38,7 +39,8 @@ export class BillingError extends Error {
 }
 
 export interface QuoteLine {
-  type: 'PLAN' | 'ADDON' | 'CREDIT';
+  /** LEVY is SocietyLedger's Ajo platform levy: its own line, never part of the plan or add-on price. */
+  type: 'PLAN' | 'ADDON' | 'CREDIT' | 'LEVY';
   label: string;
   amountKobo: number;
   amount: string;
@@ -74,6 +76,8 @@ export interface Quote {
   total: string;
   /** When the paid period will end once this is applied. */
   periodEndsAt: string;
+  /** The Ajo levy on this quote, if any: which assessments it carries, and how much it adds to the total. */
+  levy?: { assessmentIds: number[]; totalKobo: number };
   /** A downgrade does not charge anything now: it is scheduled for the end of the current period. */
   deferred: boolean;
   deferredEffectiveAt: string | null;
@@ -453,11 +457,11 @@ export async function loadQuoteContext(associationId: number, now = new Date()):
 }
 
 export async function quotePlanCheckout(associationId: number, input: { planId: number; billingCycle: BillingCycle; addonIds?: number[] }): Promise<Quote> {
-  return buildPlanQuote(await loadQuoteContext(associationId), input);
+  return attachLevyToQuote(associationId, buildPlanQuote(await loadQuoteContext(associationId), input));
 }
 
 export async function quoteAddonCheckout(associationId: number, input: { addonIds: number[] }): Promise<Quote> {
-  return buildAddonQuote(await loadQuoteContext(associationId), input);
+  return attachLevyToQuote(associationId, buildAddonQuote(await loadQuoteContext(associationId), input));
 }
 
 export { pricesOf };

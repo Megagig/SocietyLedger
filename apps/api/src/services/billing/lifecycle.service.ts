@@ -10,6 +10,7 @@
 import { Prisma, type BillingCycle, type SubscriptionSource, type SubscriptionTermKind } from '@prisma/client';
 import prisma from '../../lib/prisma';
 import { PlatformSettingsService } from '../../modules/admin/platform-settings.service';
+import { settleLevyInTx } from '../../modules/ajo/ajo-levy.service';
 import { invalidateAccessCache } from '../subscription-access.service';
 import { tierForPlanCode } from '../subscription-plan.service';
 import { getLatestPublishedPlan, getOnboardingPlan, getPlanVersionTerms, invalidateCatalogCache } from './catalog.service';
@@ -302,6 +303,8 @@ export async function activateFromPayment(input: {
         actorId: quote.initiatedBy ?? null,
         reason: null,
       });
+      // The Ajo platform levy that rode on this payment is settled in the same transaction, apart from the plan and add-on shares.
+      await settleLevyInTx(tx, { quote, paymentHistoryId: payment.id, now });
 
       await tx.platformActionLog.create({
         data: {
