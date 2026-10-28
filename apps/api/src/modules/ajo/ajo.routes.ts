@@ -8,6 +8,8 @@ import { requireAnyPermission, requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
 import { contributorCapacity } from './ajo-capacity';
+import { ajoContributionsController as contributions, uploadProof } from './ajo-contributions.controller';
+import { ajoGroupsController as groups } from './ajo-groups.controller';
 import { ajoMembersController as members } from './ajo-members.controller';
 
 const router: Router = Router();
@@ -56,5 +58,67 @@ router.put('/members/:memberId/payout-account', requirePermission(PERMISSIONS.AJ
 router.post('/members/:memberId/payout-account/reveal', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.reveal);
 router.get('/members/:memberId/verification', requirePermission(PERMISSIONS.AJO_VIEW_OWN), members.verificationStatus);
 router.post('/members/:memberId/verification/resubmit', requirePermission(PERMISSIONS.AJO_MANAGE), members.resubmit);
+
+// ---- groups, rules, schedules, order and collectors (T3). Reading is open to anyone with an Ajo permission (the service narrows it to
+// groups they belong to); writing needs ajo.manage, and the admin-only decisions need ajo.approve_payout.
+const readers = requireAnyPermission([PERMISSIONS.AJO_VIEW_OWN, PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_COLLECT]);
+const manage = requirePermission(PERMISSIONS.AJO_MANAGE);
+const approve = requirePermission(PERMISSIONS.AJO_APPROVE_PAYOUT);
+
+router.get('/groups', readers, groups.list);
+router.post('/groups', manage, groups.create);
+router.get('/groups/:id', readers, groups.detail);
+router.patch('/groups/:id', manage, groups.update);
+router.post('/groups/:id/open', manage, groups.open);
+router.post('/groups/:id/start', manage, groups.start);
+router.post('/groups/:id/cancel', manage, groups.cancel);
+router.get('/groups/:id/bank-account', readers, groups.bankAccount);
+
+router.get('/groups/:id/members', manage, groups.members);
+router.post('/groups/:id/members', manage, groups.addMember);
+router.patch('/memberships/:id/shares', manage, groups.setShares);
+router.post('/memberships/:id/leave', readers, groups.leave);
+router.get('/memberships/:id/installments', readers, groups.installments);
+
+router.get('/groups/:id/rules', readers, groups.rules);
+router.post('/groups/:id/rules', manage, groups.publishRules);
+router.get('/memberships/:id/rules-to-accept', readers, groups.rulesToAccept);
+router.post('/memberships/:id/accept-rules', readers, groups.acceptRules);
+router.get('/memberships/:id/guarantor-wording', manage, groups.guarantorWording);
+router.post('/memberships/:id/guarantor', manage, groups.recordGuarantor);
+
+router.post('/groups/:id/draw', manage, groups.draw);
+router.get('/groups/:id/order', readers, groups.order);
+router.post('/groups/:id/swaps', readers, groups.requestSwap);
+router.get('/groups/:id/swaps', manage, groups.swaps);
+router.post('/swaps/:id/decision', approve, groups.decideSwap);
+router.post('/groups/:id/exceptions', approve, groups.exception);
+
+router.post('/memberships/:id/collector', manage, groups.assignCollector);
+router.delete('/memberships/:id/collector', manage, groups.unassignCollector);
+router.get('/groups/:id/collectors', manage, groups.groupCollectors);
+router.get('/collector/contributors', requirePermission(PERMISSIONS.AJO_COLLECT), groups.myContributors);
+
+// ---- contributions and collections (T4). Only confirmed money counts; every record needs an Idempotency-Key header.
+const reconcile = requirePermission(PERMISSIONS.AJO_RECONCILE);
+const officers = requireAnyPermission([PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_MANAGE]);
+const collect = requirePermission(PERMISSIONS.AJO_COLLECT);
+
+router.post('/groups/:id/contributions/cash', collect, contributions.cash);
+router.post('/groups/:id/contributions/transfer', requireAnyPermission([PERMISSIONS.AJO_CONTRIBUTE, PERMISSIONS.AJO_MANAGE]), uploadProof, contributions.transfer);
+router.get('/groups/:id/contributions', officers, contributions.groupQueue);
+router.get('/memberships/:id/contributions', readers, contributions.membershipHistory);
+router.post('/contributions/:id/confirm', reconcile, contributions.confirm);
+router.post('/contributions/:id/reject', reconcile, contributions.reject);
+router.post('/contributions/:id/reverse', reconcile, contributions.reverse);
+router.get('/contributions/:id/proof', readers, contributions.proof);
+router.get('/contributions/:id/receipts', readers, contributions.receipts);
+router.post('/receipts/send-queued', manage, contributions.sendQueuedReceipts);
+
+router.get('/groups/:id/collector-day', requireAnyPermission([PERMISSIONS.AJO_COLLECT, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_MANAGE]), contributions.day);
+router.post('/groups/:id/handovers', collect, contributions.handOver);
+router.get('/groups/:id/handovers', officers, contributions.handovers);
+router.get('/handovers/:id', officers, contributions.handover);
+router.post('/handovers/:id/reconcile', reconcile, contributions.reconcile);
 
 export default router;

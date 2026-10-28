@@ -12,7 +12,7 @@ import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } f
 const ALGORITHM = 'aes-256-gcm';
 const SALT = 'societyledger-ajo-v1';
 
-export type AjoKeyPurpose = 'payout-account' | 'phone-code';
+export type AjoKeyPurpose = 'payout-account' | 'phone-code' | 'group-account';
 
 function rootKey(): Buffer {
   const key = process.env.TOTP_ENCRYPTION_KEY;
@@ -75,6 +75,21 @@ export function encryptAccountNumber(memberId: number, accountNumber: string): s
 /** The one place a full account number is produced. Callers must be the person entering it or an officer with `ajo.manage`. */
 export function decryptAccountNumber(memberId: number, ciphertext: string): string {
   return decryptFor('payout-account', accountContext(memberId), ciphertext);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// A group's own bank account (T3.1)
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+const groupContext = (groupId: number) => `group:${groupId}`;
+
+export function encryptGroupAccountNumber(groupId: number, accountNumber: string): string {
+  return encryptFor('group-account', groupContext(groupId), accountNumber);
+}
+
+/** Contributors need the full number to pay into the group's account, so the group's own members and officers may be shown it. Nobody else. */
+export function decryptGroupAccountNumber(groupId: number, ciphertext: string): string {
+  return decryptFor('group-account', groupContext(groupId), ciphertext);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

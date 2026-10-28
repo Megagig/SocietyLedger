@@ -43,6 +43,8 @@ jest.mock('../../src/modules/ajo/ajo-support', () => {
 });
 
 const suite = TEST_DB ? describe : describe.skip;
+// Real transactions against a shared database: under load a test can take longer than Jest's 5 seconds, and a test that times out keeps running into the next.
+if (TEST_DB) jest.setTimeout(30000);
 const run = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -93,7 +95,7 @@ suite('Ajo members, phone code, payout account and verification (database)', () 
   }
   async function mkGroup(associationId: number, over: { requirePhoneConfirm?: boolean; maxParticipants?: number } = {}) {
     return prisma.ajoGroup.create({
-      data: { associationId, name: `Market Circle ${++counter}`, model: 'COLLECTOR_THRIFT', frequency: 'WEEKLY', contributionKobo: BigInt(500_000), startDate: new Date('2027-01-04'), maxParticipants: over.maxParticipants ?? 30, requirePhoneConfirm: over.requirePhoneConfirm ?? false },
+      data: { associationId, name: `Market Circle ${++counter}`, model: 'COLLECTOR_THRIFT', frequency: 'WEEKLY', contributionKobo: BigInt(500_000), startDate: new Date('2027-01-04'), maxParticipants: over.maxParticipants ?? 30, requirePhoneConfirm: over.requirePhoneConfirm ?? false, status: 'OPEN' },
     });
   }
   async function pendingMember(groupId: number, over: Parameters<typeof mkMember>[1] = {}, assoc = A) {

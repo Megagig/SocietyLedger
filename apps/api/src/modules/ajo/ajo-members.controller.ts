@@ -23,17 +23,19 @@ export function fail(res: Response, error: unknown, fallback: string) {
   return res.status(500).json({ success: false, message: fallback });
 }
 
-function actor(req: Request): { userId: number; associationId: number } {
+export function actor(req: Request): { userId: number; associationId: number } {
   const userId = req.user?.id;
   const associationId = req.user?.associationId;
   if (!userId || !associationId) throw new RuleError('Association ID is required.', 400, 'ASSOCIATION_REQUIRED');
   return { userId, associationId };
 }
 
-async function canManage(req: Request): Promise<boolean> {
+export async function hasAjoPermission(req: Request, permission: string): Promise<boolean> {
   const { userId, associationId } = actor(req);
-  return RBACService.hasPermission({ userId, associationId, platformRole: req.user?.platformRole ?? null }, PERMISSIONS.AJO_MANAGE);
+  return RBACService.hasPermission({ userId, associationId, platformRole: req.user?.platformRole ?? null }, permission);
 }
+
+export const canManage = (req: Request): Promise<boolean> => hasAjoPermission(req, PERMISSIONS.AJO_MANAGE);
 
 /** The member row for the signed-in user. */
 async function ownMemberId(req: Request): Promise<number> {
@@ -176,7 +178,7 @@ export const ajoMembersController = {
 };
 
 /** The member themselves, or an officer with ajo.manage, may act on a membership's phone confirmation. */
-async function assertSelfOrManager(req: Request, membershipId: number): Promise<void> {
+export async function assertSelfOrManager(req: Request, membershipId: number): Promise<void> {
   const { userId, associationId } = actor(req);
   const membership = await prisma.ajoMembership.findFirst({ where: { id: membershipId, associationId }, select: { member: { select: { userId: true } } } });
   if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');

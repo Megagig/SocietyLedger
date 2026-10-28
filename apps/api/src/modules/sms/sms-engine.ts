@@ -114,7 +114,7 @@ export async function creditVerifiedPurchase(
   paidAt: string | Date,
   paystackResponse: unknown,
 ): Promise<boolean> {
-  return prisma.$transaction(async (tx) => {
+  const credited = await prisma.$transaction(async (tx) => {
     const { count } = await tx.sMSCreditsPurchase.updateMany({
       where: { id: purchase.id, status: { not: 'success' } },
       data: { status: 'success', paidAt: new Date(paidAt), paystackResponse: paystackResponse as Prisma.InputJsonValue },
@@ -140,6 +140,15 @@ export async function creditVerifiedPurchase(
     });
     return true;
   });
+
+  // Ajo receipts that were queued while the credits ran out can go now. Best effort, after the purchase has committed: whether this works
+  // or not never changes the answer above. (Loaded on demand so the text-message engine does not depend on Ajo at start-up.)
+  if (credited) {
+    void import('../ajo/ajo-receipt.service')
+      .then((m) => m.flushQueuedReceipts({ associationId: purchase.associationId }))
+      .catch((error) => console.error('[sms] could not send queued Ajo receipts after a top-up (non-critical):', error instanceof Error ? error.message : 'unknown error'));
+  }
+  return credited;
 }
 
 // ---------------------------------------------------------------- sending
