@@ -155,3 +155,36 @@ One release: Mode A (the group's own bank account), both models, member approval
 | ID | Question | Resolved in |
 |---|---|---|
 | F2 | Collector tools are online only; weak connectivity in markets is a real risk | revisit after the T12.3 pilot |
+
+## 15. Standalone thrift-group onboarding (T7.6b) — **OWNER-APPROVED 2026-10-29**
+
+> Fills the gap in `build-plan.md` T7.6, `project-overview.md` THO9 and §5 above, which said "onboarding" without defining it. Built 2026-10-29; see "As built" at the end for where it differs from the plan.
+
+**Purpose.** The admin of a standalone thrift group (`Association.kind = THRIFT_GROUP`) goes from "account approved" to "first circle ready to open, with its people in it" in about ten minutes, without seeing anything that belongs to an association (dues, levies, finance setup, association profile, association roles). Applies to that admin only; associations (including ones that bought Ajo) keep their five-step onboarding unchanged. Web only (THO9). Nothing here collects or moves contribution money; the only bank details captured are the group's own account, in the circle wizard.
+
+**Routing.** After sign-in, an admin who still needs onboarding goes to `/onboarding` (association) or `/onboarding/thrift` (`THRIFT_GROUP`), chosen from `onboardingFlow` returned by login and `/auth/me`. Each kind that opens the other's onboarding address is redirected to its own. Skipping, or finishing, always ends in Ajo, never in association screens. Non-admins never see onboarding.
+
+| # | Step | What happens | Required | Skippable |
+|---|---|---|---|---|
+| — | Welcome | What is ahead, trial end date, start or skip | — | skip all |
+| 1 | Group profile | Name, contact phone (required), email, area and state, logo | yes | yes |
+| 2 | Your first circle | The same wizard as Ajo's "New group" (`GroupWizard`), saved as a draft; two plain examples; "use the circle you already have" | yes | yes |
+| 3 | Contributors | Create people one by one or from a CSV (up to 200), add them to the circle, optionally approve them and record rule acceptance on their behalf, optionally email login links | yes | yes |
+| 4 | Team and collectors | Invite a co-admin, Ajo officers, collectors (collector only for a collector-thrift circle) | no | yes |
+| 5 | Review and open | Checklist with Fix links, what happens next, open the circle or keep it as a draft | yes | — |
+
+**Decisions (all taken as recommended).** D1 **A**: the trial includes Growth features (collector thrift, reminders) with Starter's cap of 30 active contributors. D2: step 4 is included, optional. D3: approval and on-behalf rule acceptance are both offered in step 3 with explicit checkboxes; approval ticked by default, on-behalf unticked; both logged. D4: login links by email on, SMS off (SMS costs credits). D5: a new bulk endpoint, answered per row.
+
+**API.** `GET /onboarding/status` returns `flow` and the step list; `PATCH /onboarding/complete-step` and `POST /onboarding/team` validate against the tenant's kind (a thrift group cannot complete association steps, or invite as Treasurer, and the other way round). No migration: `OnboardingProgress` is reused and the association-only flags are left alone for thrift groups. New `POST /ajo/groups/:id/members/bulk` (`ajo.manage`).
+
+**Acceptance (met, with the tests that prove them).** Kind-aware steps, completion and roles: `ajo-thrift-onboarding.test.ts`. Bulk add, idempotency, per-row results, own-approval refused, limit, isolation: `ajo-bulk.integration.test.ts` and the routes test. Trial add-on and standalone checkout: `thrift-checkout.integration.test.ts`. Routing guards: not covered by an automated test (they are web code).
+
+### As built: where it differs from the plan above
+1. **People staged in a draft circle.** The existing rule refused anyone added to a draft, but the plan adds people in step 3 and opens in step 5. Only the bulk add may now stage people in a draft (`addMember(allowDraft)`). They can be approved and have rules recorded, and stay `PENDING` ("0 active yet") until the circle is opened; opening the circle activates everyone who is ready. Everywhere else a draft still takes nobody.
+2. **Repeating a list.** Instead of a stored idempotency key, a person is matched by phone number within the association, so the same list twice adds nobody and records nothing twice. A half-done list is finished by sending it again with approval ticked.
+3. **Trial (D1).** A hidden, non-purchasable add-on `ajo-trial` (Growth features, 30 contributors, never levied) is granted at the start of a standalone group's trial instead of `ajo-starter`. It has to exist in each database (the Ajo seed creates it, and runs on container start). Groups already in a trial keep the Starter add-on.
+4. **Step 1.** Area and state are saved in the group's address line; there are no new profile fields.
+5. **Step 3.** "I'm also a contributor" is a note, not a toggle: add yourself as a row and another officer approves you. Contributor limit is enforced before sending when approval is ticked (an over-limit list is refused with an upgrade link); the server still reports a person it cannot activate for the plan.
+6. **Step 4.** Assigning contributors to a new collector is not offered: an invited collector has no login until they accept. The page says to assign from Collectors afterwards.
+7. **Resume and re-run.** The resume card appears on the Thrift Groups page (dismissed for the visit only), and "Setup guide" on that page re-runs setup. It is not under Settings.
+8. **Not built here.** The mobile "finish on the web" card (T8). The Ajo docs page "Setting up your thrift group": the docs site has no Ajo section yet, so it belongs to T11.1.

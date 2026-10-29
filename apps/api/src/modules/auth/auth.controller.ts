@@ -1,3 +1,4 @@
+import { onboardingFlowFor } from '@societyledger/shared';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { createHash } from 'crypto';
@@ -257,6 +258,8 @@ export class AuthController {
         // Requires onboarding if no progress record exists or onboarding not complete
         requiresOnboarding = !onboardingProgress?.onboardingComplete;
       }
+      // Which setup this account walks through: a standalone thrift group has its own, shorter one.
+      const onboardingFlow = onboardingFlowFor(requiresOnboarding ? (await prisma.association.findUnique({ where: { id: (tenantId ?? user.associationId) as number }, select: { kind: true } }))?.kind : null);
 
       // Generate JWT token
       // For platform logins, use the user's actual associationId (Platform Association)
@@ -345,6 +348,7 @@ export class AuthController {
             } : tenant,
             platformRole: user.platformRole,
             requiresOnboarding,
+            onboardingFlow,
             subscriptionAccess,
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
@@ -766,6 +770,8 @@ export class AuthController {
         });
         requiresOnboarding = !onboardingProgress?.onboardingComplete;
       }
+      // Which setup this account walks through: a standalone thrift group has its own, shorter one.
+      const onboardingFlow = onboardingFlowFor(requiresOnboarding ? (await prisma.association.findUnique({ where: { id: (tenantId ?? user.associationId) as number }, select: { kind: true } }))?.kind : null);
 
       // Resolve user permissions from database
       const rbacContext: RBACContext = {
@@ -797,6 +803,7 @@ export class AuthController {
               isPlatformAssociation: true,
             } : tenant,
             requiresOnboarding,
+            onboardingFlow,
             subscriptionAccess: await loadSubscriptionAccess(user.associationId, user.platformRole),
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,

@@ -1751,3 +1751,20 @@ When a request is refused because of who the person is or what their association
 - **Surface:** web
 - **Path:** `apps/web/src/components/ajo/ThriftHomeRedirect.tsx`
 - **Purpose:** sends a standalone thrift group from the dashboard home into Ajo. Renders nothing; does nothing for an ordinary association. **Used in:** `AuthenticatedLayout`.
+
+### GroupWizard
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/GroupWizard.tsx`
+- **Added / changed:** T7.1 (2026-10-28), extracted from the New group page 2026-10-29
+- **Purpose:** the six-step create-a-circle wizard (kind, money, collector, account, rules, review), saved as a draft. **Props:** `onCreated(group)` · `examples?` (shows the two plain examples)
+- **Used in:** THO2 (`/dashboard/ajo/new`) and thrift onboarding step 2. The caller decides what happens next.
+
+### Thrift onboarding steps (StepProfile, StepCircle, StepContributors, StepTeam, StepReview)
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/onboarding/`
+- **Purpose:** the five steps of THO9, driven by `app/onboarding/thrift/page.tsx`. Each step saves on its own and reports its result in words; `StepContributors` has the editable list, CSV upload and template, the approval and on-behalf checkboxes and the limit line.
+
+### OnboardingResume
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/OnboardingResume.tsx`
+- **Purpose:** "Finish setting up {group} · N of 5 done" for an unfinished standalone-group admin; dismissed for the visit only (sessionStorage in try/catch).

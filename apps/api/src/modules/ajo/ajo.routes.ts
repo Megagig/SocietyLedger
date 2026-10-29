@@ -83,6 +83,7 @@ router.get('/groups/:id/bank-account', readers, groups.bankAccount);
 
 router.get('/groups/:id/members', manage, groups.members);
 router.post('/groups/:id/members', manage, groups.addMember);
+router.post('/groups/:id/members/bulk', manage, groups.bulkAdd);
 router.patch('/memberships/:id/shares', manage, groups.setShares);
 router.post('/memberships/:id/leave', readers, groups.leave);
 router.get('/memberships/:id/installments', readers, groups.installments);

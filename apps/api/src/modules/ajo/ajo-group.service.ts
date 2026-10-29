@@ -12,6 +12,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../../lib/prisma';
 import { RuleError } from '../finance/rule-error';
+import { tryActivate } from './ajo-membership.service';
 import { assertCurrentDraw, expectedSlots } from './ajo-order.service';
 import { createInitialRuleVersion, currentRuleVersion, normaliseRules, type RuleInput } from './ajo-rules.service';
 import { dayInZone, groupDates, isValidCutoff, isValidTimeZone, type Frequency, type GroupModel } from './ajo-schedule';
@@ -350,6 +351,9 @@ export async function openGroup(input: { associationId: number; groupId: number;
     if (g.startDate.getTime() < dayInZone(now, g.timezone).getTime()) throw new RuleError('The start date has passed. Choose a new one.', 409, 'START_DATE_PASSED');
     if (!(await currentRuleVersion(tx, g.id, now))) throw new RuleError('The group has no rules yet.', 409, 'RULES_NOT_FOUND');
     const opened = await tx.ajoGroup.update({ where: { id: g.id }, data: { status: 'OPEN' } });
+    // People staged while the group was a draft, who already met every requirement, become active now.
+    const waiting = await tx.ajoMembership.findMany({ where: { groupId: g.id, status: 'PENDING', approvedAt: { not: null } }, select: { id: true }, orderBy: { id: 'asc' } });
+    for (const m of waiting) await tryActivate(tx, { associationId: input.associationId, membershipId: m.id, actorUserId: input.actorUserId, now });
     await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_GROUP_OPENED', tableName: 'ajo_groups', recordId: g.id, oldValues: { status: 'DRAFT' }, newValues: { status: 'OPEN' } });
     return opened;
   });

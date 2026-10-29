@@ -6,24 +6,31 @@ import { IconPlus } from '@tabler/icons-react';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { Money } from '@/components/ajo/Money';
+import { OnboardingResume } from '@/components/ajo/OnboardingResume';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
 import { FREQUENCY_LABEL, MODEL_LABEL, formatDay } from '@/lib/ajo/format';
 import { useGroups } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
+import { useAuthStore } from '@/store/authStore';
 
 /** THO1: every group in the association with its status, seats and contribution. */
 export default function AjoGroupsPage() {
   const groups = useGroups();
   const { canWrite } = useAjoAccess();
   const { manage } = useAjoCan();
+  const nav = useAjoNav();
+  const isAdmin = useAuthStore((st) => st.user?.role === 'admin' && !st.user?.platformRole);
 
   return (
     <div className="space-y-6">
+      <OnboardingResume />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Thrift groups</h1>
           <p className="mt-1 text-gray-600 dark:text-gray-400">Savings circles run by your association.</p>
         </div>
+        {nav.thriftOnly && isAdmin && <Button component={Link} href="/onboarding/thrift?rerun=true" variant="subtle" size="xs">Setup guide</Button>}
         {manage && canWrite && (
           <Button component={Link} href="/dashboard/ajo/new" leftSection={<IconPlus size={16} />} color="green">
             New group

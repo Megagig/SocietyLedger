@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { AuthRequest } from '../../middleware/auth.middleware';
-import { ONBOARDING_STEP_KEYS, onboardingTeamInviteSchema } from '@societyledger/shared';
+import { ANY_ONBOARDING_STEP_KEYS, onboardingFlowFor, onboardingStepsFor, onboardingTeamInviteSchema, teamRolesAllowedFor } from '@societyledger/shared';
 import { applyStep, readProgress } from './onboarding-rules';
 import { createMemberInvite, sendMemberInviteEmail } from '../member-invites/member-invites.service';
 import { SettingsService } from '../settings/settings.service';
@@ -10,10 +10,15 @@ import { assertMemberCapacity, MemberLimitError } from '../../middleware/subscri
 
 const completeStepSchema = z.object({
   step: z.number().int().min(1).max(5),
-  stepName: z.enum(ONBOARDING_STEP_KEYS),
+  stepName: z.enum(ANY_ONBOARDING_STEP_KEYS),
   // true when the admin chose to skip the step instead of finishing it
   skipped: z.boolean().optional().default(false),
 });
+
+/** The tenant's kind decides which setup flow it walks through. */
+async function kindOf(associationId: number): Promise<string> {
+  return (await prisma.association.findUnique({ where: { id: associationId }, select: { kind: true } }))?.kind ?? 'ASSOCIATION';
+}
 
 export class OnboardingController {
   /**
@@ -37,6 +42,8 @@ export class OnboardingController {
         },
         update: {}, // No update needed, just return existing
       });
+
+      const kind = await kindOf(associationId);
 
       // Get association details for context
       const association = await prisma.association.findUnique({
@@ -66,6 +73,9 @@ export class OnboardingController {
         data: {
           onboarding,
           association,
+          /** Which setup this account walks through, and its steps. */
+          flow: onboardingFlowFor(kind),
+          steps: onboardingStepsFor(kind),
           context: {
             hasLogo: !!association?.logo,
             hasTeamMembers: (association?._count.users || 0) > 1,
@@ -94,6 +104,7 @@ export class OnboardingController {
       }
 
       const { step, stepName, skipped } = completeStepSchema.parse(req.body);
+      const kind = await kindOf(associationId);
 
       // Use upsert to avoid race condition with unique constraint
       const onboarding = await prisma.onboardingProgress.upsert({
@@ -108,7 +119,7 @@ export class OnboardingController {
 
       let move;
       try {
-        move = applyStep(readProgress(onboarding), step, stepName, skipped);
+        move = applyStep(readProgress(onboarding), step, stepName, skipped, kind);
       } catch (mismatch) {
         return res.status(400).json({ success: false, message: mismatch instanceof Error ? mismatch.message : 'Invalid step' });
       }
@@ -174,6 +185,10 @@ export class OnboardingController {
       }
 
       const { invites } = onboardingTeamInviteSchema.parse(req.body);
+      // Each kind of account can only invite with its own roles (a thrift group cannot hand out Treasurer, an association cannot hand out Collector).
+      const allowedRoles = teamRolesAllowedFor(await kindOf(associationId));
+      const notAllowed = invites.find((i) => !allowedRoles.includes(i.role));
+      if (notAllowed) return res.status(400).json({ success: false, message: `That role is not available here: ${notAllowed.role}.` });
       const results: Array<{ email: string; status: 'invited' | 'invited_email_failed' | 'already_member' | 'failed'; message?: string }> = [];
 
       const prefix = (await SettingsService.getSetting(associationId, 'members_access', 'memberIdPrefix')) || 'MEM';

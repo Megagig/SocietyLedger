@@ -179,4 +179,22 @@ suite('standalone thrift group checkout (database, Paystack stubbed)', () => {
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
     expect(paystackInit).not.toHaveBeenCalled();
   });
+
+  it('starts a thrift group\x27s trial on Growth features with the Starter cap, and the trial add-on is never for sale', async () => {
+    const { assoc } = await tenant('THRIFT_GROUP', 'TRIALING');
+    const { grantThriftTrialAddon } = require('../../src/modules/ajo/ajo-standalone');
+    const { computeEntitlements, invalidateEntitlements } = require('../../src/services/billing/entitlements.service');
+    const endsAt = new Date(Date.now() + 13 * DAY);
+    expect(await grantThriftTrialAddon(assoc.id, endsAt)).toBe(true);
+    expect(await grantThriftTrialAddon(assoc.id, endsAt)).toBe(false); // once only
+    invalidateEntitlements(assoc.id);
+    const ent = await computeEntitlements(assoc.id);
+    expect(ent.features.has('ajo.collector_thrift')).toBe(true);
+    expect(ent.features.has('ajo.reminders')).toBe(true);
+    expect(ent.limits.ajoContributors).toBe(30);
+
+    const res = fakeRes();
+    await controller.getPlans(req(assoc.id), res as never);
+    expect(res.body.data.addons.map((a: { code: string }) => a.code)).not.toContain('ajo-trial');
+  });
 });

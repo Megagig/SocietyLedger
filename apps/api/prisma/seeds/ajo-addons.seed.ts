@@ -38,6 +38,20 @@ export interface AjoTier {
 const STARTER_FEATURES = ['ajo.rotating_pot', 'ajo.guarantors'];
 const GROWTH_FEATURES = [...STARTER_FEATURES, 'ajo.collector_thrift', 'ajo.reminders', 'ajo.advanced_reports'];
 
+/** The trial a standalone thrift group starts on. Not for sale: it never appears on a price list and cannot be bought. */
+export const AJO_TRIAL_TIER: AjoTier = {
+  code: 'ajo-trial',
+  name: 'Ajo trial',
+  description: 'Free trial: everything in Growth, up to 30 active contributors.',
+  highlights: ['Up to 30 active contributors', 'Collector thrift and reminders'],
+  sortOrder: 0,
+  monthlyNaira: 0,
+  annualNaira: 0,
+  contributors: 30,
+  isPublic: false,
+  features: GROWTH_FEATURES,
+};
+
 export const AJO_TIERS: AjoTier[] = [
   {
     code: 'ajo-starter',
@@ -96,7 +110,7 @@ export async function seedAjoAddons(prisma: PrismaClient): Promise<{ created: st
   const ajo = await prisma.platformModule.findUnique({ where: { code: 'ajo' } });
   if (!ajo) throw new Error('Cannot seed the Ajo add-ons: the "ajo" module does not exist yet. Run platform-modules.seed.ts first.');
 
-  for (const tier of AJO_TIERS) {
+  for (const tier of [...AJO_TIERS, AJO_TRIAL_TIER]) {
     if (await prisma.addon.findUnique({ where: { code: tier.code } })) {
       kept.push(tier.code);
       continue;

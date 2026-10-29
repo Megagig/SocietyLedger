@@ -9,7 +9,8 @@
 import prisma from '../../lib/prisma';
 
 export const THRIFT_GROUP_PLAN_CODE = 'thrift-group';
-export const TRIAL_ADDON_CODE = 'ajo-starter';
+/** Growth features (collector thrift, reminders) with Starter's 30-contributor cap, so a new group can try the model most groups use. Hidden from the price list. */
+export const TRIAL_ADDON_CODE = 'ajo-trial';
 
 /**
  * Give a standalone group's trial the Ajo Starter add-on, ending when the trial ends. Safe to call twice (it will not add a second row),
@@ -41,7 +42,7 @@ export async function grantThriftTrialAddon(associationId: number, endsAt: Date,
       endsAt,
       source: 'COMPLIMENTARY',
       amountPaidKobo: 0,
-      reason: 'Ajo trial at the Starter limit',
+      reason: 'Ajo trial: Growth features, Starter limit',
     },
   });
   return true;

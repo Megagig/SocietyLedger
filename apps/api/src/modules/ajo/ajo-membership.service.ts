@@ -93,11 +93,14 @@ export interface ActivationOutcome {
   unmet: Requirement[];
   /** Set when everything else is met but the tenant's Ajo plan has no room for another contributor. */
   blockedByLimit: { code: 'AJO_CONTRIBUTOR_LIMIT'; limit: number; count: number; message: string } | null;
+  /** Everything is met, but the group is still a draft: the person becomes active when the group is opened. */
+  waitingForGroupToOpen?: boolean;
 }
 
 /** A group that has started no longer takes everyone: a rotating pot is frozen, and a thrift group may have switched late joining off. */
-export function assertGroupTakesJoiners(group: { status: string; model: string; allowLateJoin: boolean }): void {
-  if (group.status === 'DRAFT') throw new RuleError('This group is not open yet, so no one can be added.', 409, 'GROUP_NOT_OPEN');
+export function assertGroupTakesJoiners(group: { status: string; model: string; allowLateJoin: boolean }, options: { allowDraft?: boolean } = {}): void {
+  // Only setup (the onboarding bulk add) may put people into a draft; everywhere else a group must be opened first.
+  if (group.status === 'DRAFT' && !options.allowDraft) throw new RuleError('This group is not open yet, so no one can be added.', 409, 'GROUP_NOT_OPEN');
   if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This group is closed, so no one can be added.', 409, 'GROUP_CLOSED');
   if (group.status === 'ACTIVE') {
     if (group.model === 'ROTATING_POT') throw new RuleError('This rotating pot has started and its order is fixed, so no one can join it now.', 409, 'ROSTER_FROZEN');
@@ -124,6 +127,8 @@ export async function tryActivate(tx: Tx, input: { associationId: number; member
 
   const unmet = unmetRequirements(await loadRequirementFacts(tx, membership.id, now));
   if (unmet.length) return { status: 'PENDING', activated: false, unmet, blockedByLimit: null };
+  // A draft is only being set up (people can be staged in it). They are ready, and become active the moment the group is opened.
+  if (membership.group.status === 'DRAFT') return { status: 'PENDING', activated: false, unmet: [], blockedByLimit: null, waitingForGroupToOpen: true };
   assertGroupTakesJoiners(membership.group);
 
   try {
@@ -166,12 +171,12 @@ export const seatsTaken = (db: Db, groupId: number) => db.ajoMembership.count({ 
  * rotating pot (default 1, up to the group's limit). A seat is a place in this group; the plan's contributor limit is a separate check
  * that happens at activation.
  */
-export async function addMember(input: { associationId: number; groupId: number; memberId: number; actorUserId: number; shares?: number }) {
+export async function addMember(input: { associationId: number; groupId: number; memberId: number; actorUserId: number; shares?: number; allowDraft?: boolean }) {
   return prisma.$transaction(async (tx) => {
     const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, status: true, model: true, allowLateJoin: true, maxParticipants: true, maxSharesPerMember: true } });
     // Another association's group is reported as missing, never as forbidden.
     if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
-    assertGroupTakesJoiners(group);
+    assertGroupTakesJoiners(group, { allowDraft: input.allowDraft });
 
     const shares = input.shares ?? 1;
     assertShares(group, shares);

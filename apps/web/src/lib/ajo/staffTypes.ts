@@ -179,3 +179,19 @@ export type CaseDTO = {
   plans: Array<{ id: number; status: 'PROPOSED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'; schedule: Array<{ dueDate: string; amountKobo: string }>; agreedAt: string | null; agreedVia: string | null; cancelReason: string | null }>;
   events?: Array<{ id: number; kind: string; note: string | null; createdAt: string }>;
 };
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Thrift onboarding
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+export type BulkRowResult = { row: number; name: string; status: 'added' | 'already_in_group' | 'invalid' | 'failed'; membershipId?: number; memberId?: number; approved?: boolean; rulesRecorded?: boolean; active?: boolean; message?: string };
+export type BulkResultDTO = { results: BulkRowResult[]; summary: { added: number; alreadyIn: number; approved: number; active: number; problems: number } };
+
+export type OnboardingStatusDTO = {
+  onboarding: { currentStep: number; completedSteps: number[]; skippedSteps?: number[]; onboardingComplete: boolean };
+  association: { id: number; name: string; logo: string | null } | null;
+  flow: 'ASSOCIATION' | 'THRIFT';
+  steps: Array<{ id: number; key: string; name: string; description: string }>;
+};
+
+export type TeamInviteResult = { email: string; status: 'invited' | 'invited_email_failed' | 'already_member' | 'failed'; message?: string };

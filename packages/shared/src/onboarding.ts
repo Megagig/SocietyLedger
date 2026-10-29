@@ -10,8 +10,29 @@ export const ONBOARDING_STEPS = [
   { id: 5, key: 'complete', name: 'All done', description: 'Review what you set up' },
 ] as const;
 
+/** The setup a standalone thrift group walks through instead. It has no association profile, dues, levies or finance setup. */
+export const THRIFT_ONBOARDING_STEPS = [
+  { id: 1, key: 'profile', name: 'Group profile', description: 'Your group\x27s name and contact details' },
+  { id: 2, key: 'circle', name: 'Your first circle', description: 'Create the savings circle' },
+  { id: 3, key: 'contributors', name: 'Contributors', description: 'Add the people who pay in' },
+  { id: 4, key: 'team', name: 'Team and collectors', description: 'Invite a co-admin, officers and collectors' },
+  { id: 5, key: 'review', name: 'Review and open', description: 'Check everything and open the circle' },
+] as const;
+
 export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number]['key'];
+export type ThriftOnboardingStepKey = (typeof THRIFT_ONBOARDING_STEPS)[number]['key'];
 export const ONBOARDING_STEP_KEYS = ONBOARDING_STEPS.map((s) => s.key) as [OnboardingStepKey, ...OnboardingStepKey[]];
+/** Every key either flow uses; the API then checks the key against the tenant's own flow. */
+export const ANY_ONBOARDING_STEP_KEYS = [...new Set([...ONBOARDING_STEPS, ...THRIFT_ONBOARDING_STEPS].map((s) => s.key))] as [string, ...string[]];
+
+export type OnboardingFlow = 'ASSOCIATION' | 'THRIFT';
+export type OnboardingStep = { readonly id: number; readonly key: string; readonly name: string; readonly description: string };
+
+/** The steps for a tenant kind ('THRIFT_GROUP' gets the thrift flow, everything else the association one). */
+export function onboardingStepsFor(kind: string | null | undefined): readonly OnboardingStep[] {
+  return kind === 'THRIFT_GROUP' ? THRIFT_ONBOARDING_STEPS : ONBOARDING_STEPS;
+}
+export const onboardingFlowFor = (kind: string | null | undefined): OnboardingFlow => (kind === 'THRIFT_GROUP' ? 'THRIFT' : 'ASSOCIATION');
 
 /** The roles an officer can be invited with while setting up. */
 export const ONBOARDING_TEAM_ROLES = [
@@ -20,8 +41,20 @@ export const ONBOARDING_TEAM_ROLES = [
   { value: 'financial_secretary', label: 'Financial Secretary', description: 'Record transactions and dues' },
 ] as const;
 
-export type OnboardingTeamRole = (typeof ONBOARDING_TEAM_ROLES)[number]['value'];
-const TEAM_ROLE_VALUES = ONBOARDING_TEAM_ROLES.map((r) => r.value) as [OnboardingTeamRole, ...OnboardingTeamRole[]];
+/** The roles a standalone thrift group can invite while setting up. Collector is only useful for a collector-thrift circle. */
+export const THRIFT_ONBOARDING_TEAM_ROLES = [
+  { value: 'admin', label: 'Co-admin', description: 'Approves payouts and manages everything' },
+  { value: 'ajo_officer', label: 'Ajo officer', description: 'Runs circles day to day; cannot approve payouts' },
+  { value: 'ajo_collector', label: 'Collector', description: 'Records collections from the contributors assigned to them' },
+] as const;
+
+export type OnboardingTeamRole = (typeof ONBOARDING_TEAM_ROLES)[number]['value'] | (typeof THRIFT_ONBOARDING_TEAM_ROLES)[number]['value'];
+const TEAM_ROLE_VALUES = [...new Set([...ONBOARDING_TEAM_ROLES, ...THRIFT_ONBOARDING_TEAM_ROLES].map((r) => r.value))] as [OnboardingTeamRole, ...OnboardingTeamRole[]];
+const THRIFT_TEAM_ROLE_VALUES: string[] = THRIFT_ONBOARDING_TEAM_ROLES.map((r) => r.value);
+const ASSOCIATION_TEAM_ROLE_VALUES: string[] = ONBOARDING_TEAM_ROLES.map((r) => r.value);
+
+/** Which of the roles above a tenant of this kind may invite with. */
+export const teamRolesAllowedFor = (kind: string | null | undefined): string[] => (kind === 'THRIFT_GROUP' ? THRIFT_TEAM_ROLE_VALUES : ASSOCIATION_TEAM_ROLE_VALUES);
 
 export const MAX_TEAM_INVITES = 20;
 

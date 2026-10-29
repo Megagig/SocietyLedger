@@ -18,6 +18,7 @@ const svc = {
   getGroupBankAccount: jest.fn(),
   assertGroupVisible: jest.fn(),
   addMember: jest.fn(),
+  bulkAddContributors: jest.fn(),
   setShares: jest.fn(),
   leaveMembership: jest.fn(),
   listGroupMembers: jest.fn(),
@@ -91,6 +92,7 @@ jest.mock('../../src/modules/ajo/ajo-membership.service', () => ({
   setShares: pass('setShares'),
   leaveMembership: pass('leaveMembership'),
 }));
+jest.mock('../../src/modules/ajo/ajo-bulk.service', () => ({ MAX_BULK_ROWS: 200, bulkAddContributors: pass('bulkAddContributors') }));
 jest.mock('../../src/modules/ajo/ajo-views.service', () => ({ listGroupMembers: pass('listGroupMembers'), listMembershipInstallments: pass('listMembershipInstallments') }));
 jest.mock('../../src/modules/ajo/ajo-rules.service', () => ({ publishRuleVersion: pass('publishRuleVersion'), listRuleVersions: pass('listRuleVersions'), acceptanceStats: pass('acceptanceStats') }));
 jest.mock('../../src/modules/ajo/ajo-consent.service', () => ({ acceptRules: pass('acceptRules'), rulesToAccept: pass('rulesToAccept'), recordGuarantorConsent: pass('recordGuarantorConsent'), previewGuarantorWording: pass('previewGuarantorWording') }));
@@ -353,5 +355,36 @@ describe('the bank account', () => {
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('INVALID_BANK_ACCOUNT');
     expect(JSON.stringify(res.body)).not.toContain('12345');
+  });
+});
+
+describe('adding a list of contributors', () => {
+  const items = [{ firstName: 'Ngozi', lastName: 'Eze', phone: '08031234567' }];
+
+  it('is for officers only, and passes the list, the two choices and who is acting, never anything else', async () => {
+    svc.bulkAddContributors.mockResolvedValue({ results: [], summary: {} });
+    expect((await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(MEMBER)).send({ items })).status).toBe(403);
+    expect((await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(COLLECTOR)).send({ items })).status).toBe(403);
+    expect(svc.bulkAddContributors).not.toHaveBeenCalled();
+    const res = await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(OFFICER)).send({ items, approve: true, acceptRulesOnBehalf: true, associationId: 999, actorUserId: 999 });
+    expect(res.status).toBe(201);
+    expect(svc.bulkAddContributors).toHaveBeenCalledWith({ associationId: ASSOC, groupId: 1, actorUserId: OFFICER, items, approve: true, acceptRulesOnBehalf: true });
+  });
+
+  it('defaults both choices to off, and refuses an empty list or more than 200 rows', async () => {
+    svc.bulkAddContributors.mockResolvedValue({ results: [], summary: {} });
+    await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(OFFICER)).send({ items });
+    expect(svc.bulkAddContributors).toHaveBeenCalledWith(expect.objectContaining({ approve: false, acceptRulesOnBehalf: false }));
+    svc.bulkAddContributors.mockClear();
+    expect((await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(OFFICER)).send({ items: [] })).status).toBe(400);
+    expect((await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(OFFICER)).send({ items: Array.from({ length: 201 }, () => items[0]) })).status).toBe(400);
+    expect(svc.bulkAddContributors).not.toHaveBeenCalled();
+  });
+
+  it('is refused with ADDON_EXPIRED once the add-on has lapsed', async () => {
+    mockModuleStatus.mockResolvedValue({ name: 'Ajo / Thrift', isEnabled: false, source: 'default' });
+    const res = await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(OFFICER)).send({ items });
+    expect(res.body.code).toBe('ADDON_EXPIRED');
+    expect(svc.bulkAddContributors).not.toHaveBeenCalled();
   });
 });

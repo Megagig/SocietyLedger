@@ -5,6 +5,9 @@
 import api from '@/lib/axios';
 import type {
   AssignedContributorDTO,
+  BulkResultDTO,
+  OnboardingStatusDTO,
+  TeamInviteResult,
   CaseDTO,
   CollectorAssignmentDTO,
   CollectorCandidateDTO,
@@ -68,6 +71,17 @@ export const ajoStaffApi = {
   cancelGroup: (id: number, reason: string) => post<unknown>(`/ajo/groups/${id}/cancel`, { reason }),
   ruleVersions: (id: number) => unwrap<RuleVersionDTO[]>(api.get(`/ajo/groups/${id}/rules`)),
   publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, rules),
+
+  // thrift onboarding
+  onboardingStatus: () => unwrap<OnboardingStatusDTO>(api.get('/onboarding/status')),
+  completeOnboardingStep: (step: number, stepName: string, skipped = false) => unwrap<unknown>(api.patch('/onboarding/complete-step', { step, stepName, skipped })),
+  skipOnboarding: () => post<unknown>('/onboarding/skip'),
+  inviteTeam: (invites: Array<{ firstName: string; lastName: string; email: string; role: string }>) => post<{ results: TeamInviteResult[] }>('/onboarding/team', { invites }),
+  inviteToLogin: (memberId: number, email: string) => post<unknown>('/member-invites/invite', { memberId, email }),
+  bulkAdd: (groupId: number, body: { items: Array<Record<string, string | number>>; approve: boolean; acceptRulesOnBehalf: boolean }) => post<BulkResultDTO>(`/ajo/groups/${groupId}/members/bulk`, body),
+  profile: () => unwrap<{ address?: string | null; phone?: string | null; email?: string | null }>(api.get('/settings/association/profile')),
+  saveProfile: (body: { name: string; address: string; phone: string; email: string }) => unwrap<unknown>(api.patch('/settings/association/profile', body)),
+  uploadLogo: (file: File) => { const form = new FormData(); form.append('logo', file); return unwrap<unknown>(api.post('/settings/association/logo', form)); },
 
   // members (T7.2)
   roster: (id: number) => unwrap<RosterDTO>(api.get(`/ajo/groups/${id}/members`)),

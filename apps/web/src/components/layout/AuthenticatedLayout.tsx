@@ -58,7 +58,8 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       
       // Redirect admins who haven't completed onboarding (exclude super admins)
       if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
-        router.push('/onboarding');
+        // A standalone thrift group has its own, shorter setup.
+        router.push(user.onboardingFlow === 'THRIFT' ? '/onboarding/thrift' : '/onboarding');
       }
     }
   }, [isChecking, isAuthenticated, user, pathname, router]);

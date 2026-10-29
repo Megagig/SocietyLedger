@@ -48,8 +48,11 @@ export function describeLevy(d: LevyDescription): string {
   return `${line}. Levy: ${formatNaira(d.amountKobo)}.`;
 }
 
+/** The free trial add-on a standalone thrift group starts on. It is complimentary, so it is never levied, whatever the exempt list says. */
+export const TRIAL_ADDON = 'ajo-trial';
+
 /** Is a group on this add-on tier exempt from the levy? */
-export const isLevyExempt = (addonCode: string, exemptCodes: readonly string[]): boolean => exemptCodes.includes(addonCode);
+export const isLevyExempt = (addonCode: string, exemptCodes: readonly string[]): boolean => addonCode === TRIAL_ADDON || exemptCodes.includes(addonCode);
 
 /** Unpaid levy older than this stops the group's admin starting a new group (and nothing else). */
 export const LEVY_OVERDUE_DAYS = 60;

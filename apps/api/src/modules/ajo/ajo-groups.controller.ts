@@ -9,6 +9,7 @@ import prisma from '../../lib/prisma';
 import { ModuleFeatureService } from '../../services/module-feature.service';
 import { RuleError } from '../finance/rule-error';
 import { assignCollector, listAssignedContributors, listGroupAssignments, unassignCollector } from './ajo-collector.service';
+import { bulkAddContributors, MAX_BULK_ROWS } from './ajo-bulk.service';
 import { acceptRules, previewGuarantorWording, recordGuarantorConsent, rulesToAccept } from './ajo-consent.service';
 import { cancelGroup, createGroup, getGroupBankAccount, getGroupDetail, listGroups, openGroup, startGroup, updateGroup, assertGroupVisible } from './ajo-group.service';
 import { actor, assertSelfOrManager, canManage, fail } from './ajo-members.controller';
@@ -186,6 +187,18 @@ export const ajoGroupsController = {
       return res.status(201).json({ success: true, message: 'Added. They need the group to approve them.', data: { membershipId: membership.id, status: membership.status, shares: membership.shares } });
     } catch (error) {
       return fail(res, error, 'Could not add this person.');
+    }
+  },
+
+  /** Add a list of people to a group, creating them if they are new (setup and onboarding). Each row is answered on its own. */
+  async bulkAdd(req: Request, res: Response) {
+    try {
+      const { userId, associationId } = actor(req);
+      const body = z.object({ items: z.array(z.record(z.unknown())).min(1).max(MAX_BULK_ROWS), approve: z.boolean().default(false), acceptRulesOnBehalf: z.boolean().default(false) }).parse(req.body);
+      const result = await bulkAddContributors({ associationId, groupId: id.parse(req.params.id), actorUserId: userId, items: body.items, approve: body.approve, acceptRulesOnBehalf: body.acceptRulesOnBehalf });
+      return res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      return fail(res, error, 'Could not add these people.');
     }
   },
 

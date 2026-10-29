@@ -711,6 +711,7 @@ A member can raise "I paid" with evidence; a dispute pauses late-fee escalation;
 ### T7.4 Payouts queue/approval, defaults and cases
 ### T7.5 Member self-service: my groups, schedule, pay, receipts, rules acceptance, payout account
 ### T7.6 Standalone thrift-group sign-up & onboarding
+- **Onboarding is defined in `thrift-ajo-spec.md` §15** (five steps: profile, first circle, contributors, team and collectors, review and open). Docs page for it is T11.1.
 - **Build last in T7.** A standalone group pays only the Ajo tier (hidden zero-price `thrift-group` base plan); it must never be asked to buy or choose an association plan. **Step 1: verify the Ajo-only checkout works for a `THRIFT_GROUP`; fix billing first if not.** Then the public sign-up page (hidden until `ajoStandaloneSignup` is on) and a trimmed, Ajo-first dashboard. The legal-opinion gate on standalone groups is still open.
 - **DoD (T7):** screens in `project-overview.md §12`; loading/empty/error/forbidden states; money shown in full (₦10,000.00); module-locked state when the add-on is absent; read-only banner when expired.
 
