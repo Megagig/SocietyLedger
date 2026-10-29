@@ -8,6 +8,7 @@ import { IconArrowLeft } from '@tabler/icons-react';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { DisputeDialog } from '@/components/ajo/DisputeDialog';
+import { CycleCard } from '@/components/ajo/member/CycleCard';
 import { LeaveGroup, PhoneConfirmCard, ReceiptsDialog, SwapRequestCard } from '@/components/ajo/member/MemberExtras';
 import { Money } from '@/components/ajo/Money';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
@@ -59,7 +60,7 @@ export default function MembershipDetailPage() {
           <div>
             <h1 className="text-3xl font-bold text-ink">{item.group.name}</h1>
             <p className="mt-1 text-ink-muted">
-              {MODEL_LABEL[item.group.model]} · {frequencyText(item.group)} · {formatKobo(item.group.contributionKobo)}
+              {MODEL_LABEL[item.group.model]} · {frequencyText(item.group)} · {formatKobo(item.amountKobo ?? item.group.contributionKobo)}
               {item.shares > 1 ? ` × ${item.shares} shares` : ''}
             </p>
           </div>
@@ -86,6 +87,7 @@ export default function MembershipDetailPage() {
 
       {needsPhone && canWrite && <PhoneConfirmCard membershipId={membershipId} />}
       {item.group.model === 'ROTATING_POT' && item.status !== 'LEFT' && <SwapRequestCard groupId={item.group.id} />}
+      {item.group.model === 'COLLECTOR_THRIFT' && item.status !== 'LEFT' && <CycleCard membershipId={membershipId} />}
 
       <Section title="Your schedule">
         {schedule.isLoading ? (

@@ -6,6 +6,8 @@
  */
 import { Prisma } from '@prisma/client';
 import { RuleError } from '../finance/rule-error';
+import { ensureCycle } from './ajo-cycle-data';
+import { cycleStartOf } from './ajo-cycle';
 import { businessDay, diffSchedule, groupDates, installmentAmount, wantedInstallments, type ExistingInstallment, type GroupShape } from './ajo-schedule';
 
 type Tx = Prisma.TransactionClient;
@@ -16,8 +18,9 @@ export interface ScheduleSummary {
   repriced: number;
 }
 
-function shapeOf(group: { model: 'COLLECTOR_THRIFT' | 'ROTATING_POT'; frequency: GroupShape['frequency']; intervalCount: number | null; intervalUnit: GroupShape['intervalUnit']; startDate: Date; cycleLength: number | null; rounds: number | null }): GroupShape {
-  return { model: group.model, frequency: group.frequency, intervalCount: group.intervalCount, intervalUnit: group.intervalUnit, startDate: group.startDate, cycleLength: group.cycleLength, rounds: group.rounds };
+/** The group's dates. For collector thrift this is the cycle now running, which starts on the group's start date for cycle 1 and later where the next cycle was started. */
+function shapeOf(group: { model: 'COLLECTOR_THRIFT' | 'ROTATING_POT'; frequency: GroupShape['frequency']; intervalCount: number | null; intervalUnit: GroupShape['intervalUnit']; startDate: Date; cycleStartsOn: Date | null; cycleLength: number | null; rounds: number | null }): GroupShape {
+  return { model: group.model, frequency: group.frequency, intervalCount: group.intervalCount, intervalUnit: group.intervalUnit, startDate: group.model === 'COLLECTOR_THRIFT' ? cycleStartOf(group) : group.startDate, cycleLength: group.cycleLength, rounds: group.rounds };
 }
 
 /**
@@ -36,9 +39,12 @@ export async function syncMembershipSchedule(tx: Tx, input: { groupId: number; m
   const { dates } = groupDates(shapeOf(group));
   const joinedLate = membership.joinedAt !== null && group.startedAt !== null && membership.joinedAt.getTime() > group.startedAt.getTime();
   const from = joinedLate ? businessDay(membership.joinedAt as Date, group.timezone, group.cutoffTime) : null;
-  const wanted = membership.status === 'ACTIVE' ? wantedInstallments({ dates, amountKobo: installmentAmount(group.model, group.contributionKobo, membership.shares), from }) : [];
+  // Collector thrift: each saver pays their own amount for the cycle (spec §16.5). A rotating pot has one fixed amount, times shares.
+  const perTime = group.model === 'COLLECTOR_THRIFT' ? (await ensureCycle(tx, { id: membership.id, associationId: membership.associationId, groupId: group.id }, group.cycleNo, group.contributionKobo)).amountKobo : installmentAmount(group.model, group.contributionKobo, membership.shares);
+  const wanted = membership.status === 'ACTIVE' ? wantedInstallments({ dates, amountKobo: perTime, from }) : [];
 
-  const rows = await tx.ajoInstallment.findMany({ where: { membershipId: membership.id }, include: { _count: { select: { contributions: true } } } });
+  // Only this cycle's installments are compared, so an earlier cycle's rows are never touched.
+  const rows = await tx.ajoInstallment.findMany({ where: { membershipId: membership.id, cycleNo: group.cycleNo }, include: { _count: { select: { contributions: true } } } });
   const existing: ExistingInstallment[] = rows.map((r) => ({ id: r.id, dueDate: r.dueDate, amountKobo: r.amountKobo, paidKobo: r.paidKobo, hasContributions: r._count.contributions > 0 }));
   const diff = diffSchedule(wanted, existing);
 
@@ -47,7 +53,7 @@ export async function syncMembershipSchedule(tx: Tx, input: { groupId: number; m
   const removable = diff.toDelete.filter((id) => (dateOf.get(id) ?? 0) >= today.getTime());
 
   if (diff.toCreate.length) {
-    await tx.ajoInstallment.createMany({ data: diff.toCreate.map((w) => ({ associationId: membership.associationId, membershipId: membership.id, dueDate: w.dueDate, amountKobo: w.amountKobo })), skipDuplicates: true });
+    await tx.ajoInstallment.createMany({ data: diff.toCreate.map((w) => ({ associationId: membership.associationId, membershipId: membership.id, cycleNo: group.cycleNo, dueDate: w.dueDate, amountKobo: w.amountKobo })), skipDuplicates: true });
   }
   if (removable.length) await tx.ajoInstallment.deleteMany({ where: { id: { in: removable }, paidKobo: 0n, contributions: { none: {} } } });
   for (const u of diff.toUpdate) await tx.ajoInstallment.updateMany({ where: { id: u.id, paidKobo: 0n, contributions: { none: {} } }, data: { amountKobo: u.amountKobo } });

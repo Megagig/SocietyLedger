@@ -128,6 +128,9 @@ async function resolveTarget(db: Db, group: Awaited<ReturnType<typeof loadGroup>
 }
 
 interface Gathered {
+  /** Collector thrift: what this saver pays each time in the cycle being paid out, and what they carried in from the cycle before. */
+  cycleAmountKobo: bigint | null;
+  carriedKobo: bigint;
   scheduledKobo: bigint;
   confirmedKobo: bigint;
   short: Array<{ membershipId: number; name: string; shortKobo: bigint }>;
@@ -138,8 +141,10 @@ interface Gathered {
 /** What the round (or cycle) was scheduled to bring in, what is confirmed, who is short, and what has already been planned or paid out of it. */
 async function gather(db: Db, target: Target, today: Date, excludePayoutId?: number): Promise<Gathered> {
   const { group, recipient, round } = target;
+  // Collector thrift pays out one cycle at a time: only the running cycle's installments, plus what the saver carried in.
+  const cycle = round === null ? await db.ajoMembershipCycle.findUnique({ where: { membershipId_cycleNo: { membershipId: recipient.membershipId, cycleNo: group.cycleNo } } }) : null;
   const rows = await db.ajoInstallment.findMany({
-    where: round !== null ? { membership: { groupId: group.id }, dueDate: target.dueDate as Date, status: { not: 'WAIVED' } } : { membershipId: recipient.membershipId, status: { not: 'WAIVED' } },
+    where: round !== null ? { membership: { groupId: group.id }, dueDate: target.dueDate as Date, status: { not: 'WAIVED' } } : { membershipId: recipient.membershipId, cycleNo: group.cycleNo, status: { not: 'WAIVED' } },
     include: { membership: { select: { id: true, member: { select: { firstName: true, lastName: true } } } } },
   });
   const scheduledKobo = rows.reduce((s, r) => s + r.amountKobo, 0n);
@@ -157,11 +162,11 @@ async function gather(db: Db, target: Target, today: Date, excludePayoutId?: num
   const recipientArrearsKobo = own.reduce((s, r) => s + (r.amountKobo > r.paidKobo ? r.amountKobo - r.paidKobo : 0n), 0n);
 
   const earlier = await db.ajoPayout.findMany({
-    where: { groupId: group.id, membershipId: recipient.membershipId, round, status: { in: STANDING }, ...(excludePayoutId ? { id: { not: excludePayoutId } } : {}) },
+    where: { groupId: group.id, membershipId: recipient.membershipId, round, ...(round === null ? { cycleNo: group.cycleNo } : {}), status: { in: STANDING }, ...(excludePayoutId ? { id: { not: excludePayoutId } } : {}) },
     orderBy: { id: 'asc' },
     select: { id: true, status: true, sequence: true, netKobo: true, collectorFeeKobo: true },
   });
-  return { scheduledKobo, confirmedKobo, short: [...shortBy.entries()].map(([membershipId, v]) => ({ membershipId, ...v })), recipientArrearsKobo, earlier: earlier.map((e) => ({ id: e.id, status: e.status, sequence: e.sequence, netKobo: e.netKobo, feeKobo: e.collectorFeeKobo })) };
+  return { cycleAmountKobo: cycle?.amountKobo ?? null, carriedKobo: cycle?.carriedKobo ?? 0n, scheduledKobo, confirmedKobo, short: [...shortBy.entries()].map(([membershipId, v]) => ({ membershipId, ...v })), recipientArrearsKobo, earlier: earlier.map((e) => ({ id: e.id, status: e.status, sequence: e.sequence, netKobo: e.netKobo, feeKobo: e.collectorFeeKobo })) };
 }
 
 function figuresOf(target: Target, g: Gathered): PayoutFigures {
@@ -171,7 +176,9 @@ function figuresOf(target: Target, g: Gathered): PayoutFigures {
     confirmedKobo: g.confirmedKobo,
     feeType: group.collectorFeeType as FeeType,
     feeValue: group.collectorFeeValue,
-    perInstallmentKobo: group.model === 'ROTATING_POT' ? group.contributionKobo * BigInt(recipient.shares) : group.contributionKobo,
+    // Collector thrift: the fee in days is of this saver's own amount, so a ₦500.00 saver pays ₦500.00 and a ₦1,000.00 saver pays ₦1,000.00.
+    perInstallmentKobo: group.model === 'ROTATING_POT' ? group.contributionKobo * BigInt(recipient.shares) : g.cycleAmountKobo ?? group.contributionKobo,
+    carriedKobo: g.carriedKobo,
     earlier: g.earlier.map((e) => ({ netKobo: e.netKobo, feeKobo: e.feeKobo })),
   });
 }
@@ -194,6 +201,19 @@ async function assertReady(db: Db, target: Target, now: Date): Promise<void> {
   }
   const status = target.recipient.status;
   if (status !== 'ACTIVE' && !(round === null && status === 'LEFT')) throw new RuleError('Only a current participant can be paid.', 409, 'RECIPIENT_NOT_ACTIVE');
+}
+
+/**
+ * Collector thrift: is anything still payable to this saver for the running cycle, and is a payout already waiting to be approved or paid?
+ * The next cycle cannot start while a withdrawing saver still has either.
+ */
+export async function payableForSaver(db: Db, input: { associationId: number; groupId: number; membershipId: number; now: Date }) {
+  const group = await loadGroup(db, input.associationId, input.groupId);
+  const target = await resolveTarget(db, group, { membershipId: input.membershipId });
+  const today = businessDay(input.now, group.timezone, group.cutoffTime);
+  const gathered = await gather(db, target, today);
+  const figures = figuresOf(target, gathered);
+  return { name: target.recipient.name, netKobo: figures.netKobo, canPay: figures.canPay, standing: gathered.earlier.some((e) => e.status === 'PREPARED' || e.status === 'APPROVED') };
 }
 
 /** Run a check and report whether it passed, with the reason in words, instead of throwing. For previews. */
@@ -268,7 +288,8 @@ export async function previewPayout(input: TargetInput) {
 // Prepare
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-const payoutKey = (groupId: number, membershipId: number, round: number | null, sequence: number) => `ajo:payout:${groupId}:${membershipId}:${round ?? 'c'}:${sequence}`;
+/** Cycle 1 keeps the key it always had; later cycles of a collector-thrift saver carry the cycle in it so a new cycle's payout is a new payout. */
+const payoutKey = (groupId: number, membershipId: number, round: number | null, sequence: number, cycleNo = 1) => `ajo:payout:${groupId}:${membershipId}:${round ?? (cycleNo > 1 ? `c${cycleNo}` : 'c')}:${sequence}`;
 
 /** Prepare a payout for the figures as they stand. Repeating the request while one is open returns that one. */
 export async function preparePayout(input: TargetInput & { actorUserId: number }) {
@@ -295,7 +316,7 @@ export async function preparePayout(input: TargetInput & { actorUserId: number }
       if (!figures.canPay) throw new RuleError(figures.explanation.join(' '), 409, 'NOTHING_TO_PAY');
 
       const account = await tx.ajoPayoutAccount.findUniqueOrThrow({ where: { memberId: target.recipient.memberId }, select: { bankName: true, accountName: true, last4: true } });
-      const last = await tx.ajoPayout.findFirst({ where: { groupId: group.id, membershipId: target.recipient.membershipId, round: target.round }, orderBy: { sequence: 'desc' }, select: { sequence: true } });
+      const last = await tx.ajoPayout.findFirst({ where: { groupId: group.id, membershipId: target.recipient.membershipId, round: target.round, ...(target.round === null ? { cycleNo: group.cycleNo } : {}) }, orderBy: { sequence: 'desc' }, select: { sequence: true } });
       const sequence = (last?.sequence ?? 0) + 1;
       const created = await tx.ajoPayout.create({
         data: {
@@ -303,6 +324,7 @@ export async function preparePayout(input: TargetInput & { actorUserId: number }
           groupId: group.id,
           membershipId: target.recipient.membershipId,
           round: target.round,
+          cycleNo: target.round === null ? group.cycleNo : 1,
           sequence,
           grossKobo: figures.grossKobo,
           confirmedKobo: figures.confirmedKobo,
@@ -313,7 +335,7 @@ export async function preparePayout(input: TargetInput & { actorUserId: number }
           preparedBy: input.actorUserId,
           preparedAt: now,
           accountSnapshot: { bankName: account.bankName, accountName: account.accountName, last4: account.last4 },
-          idempotencyKey: payoutKey(group.id, target.recipient.membershipId, target.round, sequence),
+          idempotencyKey: payoutKey(group.id, target.recipient.membershipId, target.round, sequence, target.round === null ? group.cycleNo : 1),
         },
         include,
       });
@@ -387,7 +409,7 @@ async function assertStillCovered(db: Db, payout: PayoutRow, now: Date): Promise
   const today = businessDay(now, group.timezone, group.cutoffTime);
   const g = await gather(db, target, today, payout.id);
   const planned = g.earlier.reduce((s, e) => s + e.netKobo + e.feeKobo, 0n);
-  if (g.confirmedKobo - planned < payout.netKobo + payout.collectorFeeKobo) {
+  if (g.confirmedKobo + g.carriedKobo - planned < payout.netKobo + payout.collectorFeeKobo) {
     throw new RuleError('Some of the money behind this payout was reversed after it was prepared, so it would now pay out more than has been confirmed. Void it and prepare it again.', 409, 'PAYOUT_NOT_COVERED');
   }
 }

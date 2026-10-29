@@ -61,6 +61,8 @@ export interface PayoutInput {
   feeValue: bigint;
   /** The recipient's own amount for one instalment (contribution times shares), used by a fee in days. */
   perInstallmentKobo: bigint;
+  /** Collector thrift: savings carried in from the cycle before (already net of that cycle's fee). Paid with this cycle's money, and never charged a fee again. */
+  carriedKobo?: bigint;
   earlier: EarlierPayout[];
 }
 
@@ -81,14 +83,18 @@ export interface PayoutFigures {
 }
 
 export function calculatePayout(input: PayoutInput): PayoutFigures {
-  const { scheduledKobo, confirmedKobo } = input;
-  const confirmed = confirmedKobo > 0n ? confirmedKobo : 0n;
+  const carried = input.carriedKobo !== undefined && input.carriedKobo > 0n ? input.carriedKobo : 0n;
+  // Carried savings are money already in hand: they count as both scheduled and confirmed, so they never show up as a shortfall.
+  const scheduledKobo = input.scheduledKobo + carried;
+  const own = input.confirmedKobo > 0n ? input.confirmedKobo : 0n;
+  const confirmed = own + carried;
   const shortfallKobo = scheduledKobo > confirmed ? scheduledKobo - confirmed : 0n;
 
   const earlierNetKobo = input.earlier.reduce((s, p) => s + p.netKobo, 0n);
   const earlierFeeKobo = input.earlier.reduce((s, p) => s + p.feeKobo, 0n);
 
-  const totalFeeKobo = collectorFeeFor(input.feeType, input.feeValue, confirmed, input.perInstallmentKobo);
+  // The fee is on this cycle's own money; the carried part already paid its fee in the cycle it was saved.
+  const totalFeeKobo = collectorFeeFor(input.feeType, input.feeValue, own, input.perInstallmentKobo);
   const available = confirmed - earlierNetKobo - earlierFeeKobo;
   const wanted = totalFeeKobo - earlierFeeKobo;
   const feeKobo = available <= 0n ? 0n : wanted <= 0n ? 0n : wanted > available ? available : wanted;

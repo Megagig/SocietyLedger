@@ -97,7 +97,8 @@ export const ajoStaffApi = {
   guarantorLink: (membershipId: number, body: { name: string; phone: string; relationship: string }) => post<GuarantorLinkDTO>(`/ajo/memberships/${membershipId}/guarantor-link`, body),
   roster: (id: number) => unwrap<RosterDTO>(api.get(`/ajo/groups/${id}/members`)),
   searchPeople: (search: string) => unwrap<PersonSearchDTO[]>(api.get('/ajo/people', { params: { search } })),
-  addMember: (id: number, memberId: number, shares?: number) => post<{ membershipId: number }>(`/ajo/groups/${id}/members`, { memberId, shares }),
+  /** `amountKobo` is for collector thrift: what the saver chose to pay each time (at least the group's smallest). */
+  addMember: (id: number, memberId: number, shares?: number, amountKobo?: string) => post<{ membershipId: number }>(`/ajo/groups/${id}/members`, { memberId, shares, amountKobo }),
   setShares: (membershipId: number, shares: number) => unwrap<unknown>(api.patch(`/ajo/memberships/${membershipId}/shares`, { shares })),
   approveMember: (membershipId: number) => post<unknown>(`/ajo/memberships/${membershipId}/approve`),
   guarantorWording: (membershipId: number, name: string) => unwrap<{ wording: string }>(api.get(`/ajo/memberships/${membershipId}/guarantor-wording`, { params: { name } })),

@@ -138,7 +138,7 @@ export default function CircleMembersScreen() {
         <EmptyState icon={Users} title="Nobody has been added yet." description="Add association members to this circle, then approve them." />
       )}
 
-      <AddPersonSheet ref={addSheet} groupId={groupId} rotating={!!rotating} maxShares={group?.maxSharesPerMember ?? 1} />
+      <AddPersonSheet ref={addSheet} groupId={groupId} rotating={!!rotating} maxShares={group?.maxSharesPerMember ?? 1} minAmountKobo={group?.contributionKobo} />
       <GuarantorSheet ref={guarantorSheet} />
       <SharesSheet ref={sharesSheet} maxShares={group?.maxSharesPerMember ?? 1} />
     </AjoScreen>

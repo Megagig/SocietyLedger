@@ -21,6 +21,7 @@ import { LeaveCircle } from '@/features/ajo/components/LeaveCircle';
 import { thriftHref } from '@/features/ajo/components/MembershipCard';
 import { PhoneConfirmCard } from '@/features/ajo/components/PhoneConfirmCard';
 import { ReceiptsSheet, type ReceiptsSheetHandle } from '@/features/ajo/components/ReceiptsSheet';
+import { CycleCard } from '@/features/ajo/components/CycleCard';
 import { SwapRequestCard } from '@/features/ajo/components/SwapRequestCard';
 import { formatDay, formatKobo, formatMoment, frequencyText, koboPositive, MODEL_LABEL, ordinal } from '@/features/ajo/format';
 import type { MyMembershipDTO } from '@/types/api/ajo';
@@ -108,7 +109,7 @@ function DetailBody({ loading, error, onRetry, item, membershipId, schedule, pay
     <>
       <View className="gap-1">
         <Text variant="body" tone="secondary">
-          {MODEL_LABEL[item.group.model]} · {frequencyText(item.group)} · {formatKobo(item.group.contributionKobo)}
+          {MODEL_LABEL[item.group.model]} · {frequencyText(item.group)} · {formatKobo(item.amountKobo ?? item.group.contributionKobo)}
           {item.shares > 1 ? ` × ${item.shares} shares` : ''}
         </Text>
         {item.group.model === 'ROTATING_POT' && item.payoutPositions.length > 0 ? (
@@ -137,6 +138,7 @@ function DetailBody({ loading, error, onRetry, item, membershipId, schedule, pay
 
       {needsPhone && canWrite ? <PhoneConfirmCard membershipId={membershipId} /> : null}
       {item.group.model === 'ROTATING_POT' && item.status !== 'LEFT' ? <SwapRequestCard groupId={item.group.id} /> : null}
+      {item.group.model === 'COLLECTOR_THRIFT' && item.status !== 'LEFT' ? <CycleCard membershipId={membershipId} /> : null}
 
       <View className="gap-3">
         <Text variant="h2">Your schedule</Text>

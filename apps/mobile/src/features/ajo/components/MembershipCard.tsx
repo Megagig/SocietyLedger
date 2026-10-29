@@ -27,7 +27,7 @@ export function MembershipCard({ item }: { item: MyMembershipDTO }) {
           <View className="flex-1 gap-1">
             <Text variant="h3">{group.name}</Text>
             <Text variant="caption" tone="secondary">
-              {MODEL_LABEL[group.model]} · {frequencyText(group)} · {formatKobo(group.contributionKobo)}
+              {MODEL_LABEL[group.model]} · {frequencyText(group)} · {formatKobo(item.amountKobo ?? group.contributionKobo)}
               {item.shares > 1 ? ` × ${item.shares} shares` : ''}
             </Text>
           </View>

@@ -27,6 +27,7 @@ export default function GroupWorkspaceLayout({ children }: { children: ReactNode
     { href: `${base}/payments`, label: 'Payments', show: manage || reconcile },
     { href: `${base}/handovers`, label: 'Cash handovers', show: manage || reconcile, collector: true },
     { href: `${base}/collectors`, label: 'Collectors', show: manage, collector: true },
+    { href: `${base}/cycle`, label: 'Savings cycle', show: anyOfficer, collector: true },
     { href: `${base}/payouts`, label: 'Payouts', show: anyOfficer },
     { href: `${base}/arrears`, label: 'Arrears and cases', show: manage || reconcile || approvePayout },
     { href: `${base}/rules`, label: 'Rules', show: manage },

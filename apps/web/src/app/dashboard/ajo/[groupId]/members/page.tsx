@@ -8,24 +8,32 @@ import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
 import { ajoErrorMessage } from '@/lib/ajo/api';
-import { formatDay } from '@/lib/ajo/format';
+import { formatDay, formatKobo, nairaToKobo } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
 import type { RosterPersonDTO } from '@/lib/ajo/staffTypes';
 import { useAjoAction, useGroupDetail, useRoster } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 
-function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares }: { groupId: number; opened: boolean; onClose: () => void; rotating: boolean; maxShares: number }) {
+function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares, minAmountKobo }: { groupId: number; opened: boolean; onClose: () => void; rotating: boolean; maxShares: number; minAmountKobo?: string }) {
   const [search, setSearch] = useState('');
   const [shares, setShares] = useState(1);
+  // Collector thrift: the amount the saver chose to pay each time. Empty means the group's smallest.
+  const [amount, setAmount] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const people = useQuery({ queryKey: ['ajo', 'staff', 'people', search], queryFn: () => ajoStaffApi.searchPeople(search), enabled: opened, keepPreviousData: true });
-  const add = useAjoAction((input: { memberId: number }) => ajoStaffApi.addMember(groupId, input.memberId, rotating ? shares : undefined));
+  const add = useAjoAction((input: { memberId: number; amountKobo?: string }) => ajoStaffApi.addMember(groupId, input.memberId, rotating ? shares : undefined, input.amountKobo));
 
   const choose = async (memberId: number, name: string) => {
     setProblem(null);
+    let amountKobo: string | undefined;
+    if (!rotating && amount.trim()) {
+      const kobo = nairaToKobo(amount);
+      if (kobo === null) return setProblem('Enter the amount in naira, for example 1,000.');
+      amountKobo = kobo.toString();
+    }
     try {
-      await add.mutateAsync({ memberId });
+      await add.mutateAsync({ memberId, amountKobo });
       toast.success(`${name} was added. They need the circle to approve them.`);
     } catch (error) {
       setProblem(ajoErrorMessage(error));
@@ -37,6 +45,7 @@ function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares }: { gr
       <div className="space-y-4">
         <TextInput label="Find an association member" placeholder="Name, member number or phone" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
         {rotating && <NumberInput label="Shares" description="A person with two shares pays twice each round and collects twice." min={1} max={maxShares} value={shares} onChange={(v) => setShares(typeof v === 'number' ? v : 1)} />}
+        {!rotating && <TextInput label="What this person will save each time (₦)" description={`They choose it and keep it for the whole cycle. Leave empty for the smallest (${formatKobo(minAmountKobo)}).`} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.currentTarget.value)} />}
         {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
         {people.isLoading ? <AjoLoading rows={2} /> : people.isError ? <AjoError error={people.error} /> : people.data && people.data.length > 0 ? (
           <ul className="max-h-72 divide-y divide-line-soft overflow-y-auto rounded-lg border border-line">

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeftRight, CircleDollarSign, FileText, Gavel, HandCoins, ListOrdered, Users, Wallet } from 'lucide-react-native';
+import { ArrowLeftRight, CircleDollarSign, FileText, Gavel, HandCoins, ListOrdered, RefreshCw, Users, Wallet } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -191,6 +191,7 @@ export default function CircleOverviewScreen() {
             {anyOfficer && group.model === 'ROTATING_POT' ? <ListItem leading={<IconCircle icon={ListOrdered} tone="primary" />} title="Payout order" meta="Draw, swaps and exceptions" showChevron onPress={() => router.push(sub(groupId, 'order'))} testID="ajo-nav-order" /> : null}
             {manage || reconcile ? <ListItem leading={<IconCircle icon={CircleDollarSign} tone="primary" />} title="Payments" meta="Confirm transfers, reverse with a reason" showChevron onPress={() => router.push(sub(groupId, 'payments'))} testID="ajo-nav-payments" /> : null}
             {(manage || reconcile) && group.model === 'COLLECTOR_THRIFT' ? <ListItem leading={<IconCircle icon={HandCoins} tone="primary" />} title="Cash handovers" meta="Count and reconcile collectors’ cash" showChevron onPress={() => router.push(sub(groupId, 'handovers'))} testID="ajo-nav-handovers" /> : null}
+            {anyOfficer && group.model === 'COLLECTOR_THRIFT' ? <ListItem leading={<IconCircle icon={RefreshCw} tone="primary" />} title="Savings cycle" meta="Who continues, who withdraws, start the next cycle" showChevron onPress={() => router.push(sub(groupId, 'cycle'))} testID="ajo-nav-cycle" /> : null}
             {manage && group.model === 'COLLECTOR_THRIFT' ? <ListItem leading={<IconCircle icon={ArrowLeftRight} tone="primary" />} title="Collectors" meta="Assign contributors and daily targets" showChevron onPress={() => router.push(sub(groupId, 'collectors'))} testID="ajo-nav-collectors" /> : null}
             {anyOfficer ? <ListItem leading={<IconCircle icon={Wallet} tone="primary" />} title="Payouts" meta="Prepare, approve and record payouts" showChevron onPress={() => router.push(sub(groupId, 'payouts'))} testID="ajo-nav-payouts" /> : null}
             {manage || reconcile || approvePayout ? <ListItem leading={<IconCircle icon={Gavel} tone="warning" />} title="Arrears and cases" meta="Late fees, disputes and default cases" showChevron onPress={() => router.push(sub(groupId, 'arrears'))} testID="ajo-nav-arrears" /> : null}

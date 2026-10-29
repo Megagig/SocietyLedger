@@ -9,6 +9,7 @@ import { PERMISSIONS } from '../../lib/permissions';
 import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
 import { contributorCapacity, tenantKind } from './ajo-capacity';
 import { ajoBoardController as board } from './ajo-board.controller';
+import { ajoCycleController as cycles } from './ajo-cycle.controller';
 import { ajoContributionsController as contributions, uploadProof } from './ajo-contributions.controller';
 import { ajoGroupsController as groups } from './ajo-groups.controller';
 import { ajoPayoutsController as payouts } from './ajo-payouts.controller';
@@ -98,6 +99,13 @@ router.post('/memberships/:id/accept-rules', readers, groups.acceptRules);
 router.get('/memberships/:id/guarantor-wording', manage, groups.guarantorWording);
 router.post('/memberships/:id/guarantor', manage, groups.recordGuarantor);
 router.post('/memberships/:id/guarantor-link', manage, groups.guarantorLink);
+
+// ---- collector-thrift cycles (spec §16.5): each saver's own amount, and withdraw or continue at the end
+router.put('/memberships/:id/amount', readers, cycles.setAmount);
+router.get('/memberships/:id/cycle', readers, cycles.view);
+router.post('/memberships/:id/cycle/decision', readers, cycles.decide);
+router.get('/groups/:id/cycle', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT]), cycles.group);
+router.post('/groups/:id/cycles/next', requirePermission(PERMISSIONS.AJO_APPROVE_PAYOUT), cycles.startNext);
 
 router.post('/groups/:id/draw', manage, groups.draw);
 router.get('/groups/:id/order', readers, groups.order);

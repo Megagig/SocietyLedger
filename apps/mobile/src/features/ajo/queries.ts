@@ -90,6 +90,16 @@ export function useGroups() {
   const enabled = useCan(AJO_STAFF_ACCESS);
   return useQuery({ queryKey: ajoKeys.staff(tenant, 'groups'), queryFn: () => ajoApi.groups(), enabled });
 }
+/** A collector-thrift saver's own cycle: their amount, what they brought forward, and whether they can still choose. */
+export function useCycle(membershipId: number) {
+  const tenant = useTenantKey();
+  return useQuery({ queryKey: [...ajoKeys.all(tenant), 'cycle', membershipId] as const, queryFn: () => ajoApi.cycle(membershipId), enabled: valid(membershipId) });
+}
+/** The running cycle of a collector-thrift scheme, for officers. */
+export function useGroupCycle(groupId: number) {
+  const tenant = useTenantKey();
+  return useQuery({ queryKey: ajoKeys.staff(tenant, 'cycle', groupId), queryFn: () => ajoApi.groupCycle(groupId), enabled: valid(groupId) });
+}
 export function useGroupDetail(id: number) {
   const tenant = useTenantKey();
   return useQuery({ queryKey: ajoKeys.staff(tenant, 'group', id), queryFn: () => ajoApi.groupDetail(id), enabled: valid(id) });

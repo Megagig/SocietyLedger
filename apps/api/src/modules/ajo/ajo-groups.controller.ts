@@ -187,8 +187,8 @@ export const ajoGroupsController = {
   async addMember(req: Request, res: Response) {
     try {
       const { userId, associationId } = actor(req);
-      const body = z.object({ memberId: id, shares: z.number().int().optional() }).parse(req.body);
-      const membership = await addMember({ associationId, groupId: id.parse(req.params.id), memberId: body.memberId, actorUserId: userId, shares: body.shares });
+      const body = z.object({ memberId: id, shares: z.number().int().optional(), amountKobo: kobo.optional() }).parse(req.body);
+      const membership = await addMember({ associationId, groupId: id.parse(req.params.id), memberId: body.memberId, actorUserId: userId, shares: body.shares, amountKobo: body.amountKobo });
       return res.status(201).json({ success: true, message: 'Added. They need the group to approve them.', data: { membershipId: membership.id, status: membership.status, shares: membership.shares } });
     } catch (error) {
       return fail(res, error, 'Could not add this person.');

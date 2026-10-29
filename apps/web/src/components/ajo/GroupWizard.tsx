@@ -167,7 +167,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
         )}
         {step === 1 && (
           <>
-            <TextInput label="Each person pays (₦)" description={rotating ? 'Every round, for each share they hold.' : 'Every time (each day, week or month).'} inputMode="decimal" value={form.contribution} onChange={(e) => set('contribution', e.currentTarget.value)} required />
+            <TextInput label={rotating ? 'Each person pays (₦)' : 'Smallest amount a saver can choose (₦)'} description={rotating ? 'Every round, for each share they hold.' : 'Every time (each day, week or month). Each saver chooses their own amount, at least this much, and keeps it for the whole cycle.'} inputMode="decimal" value={form.contribution} onChange={(e) => set('contribution', e.currentTarget.value)} required />
             <Select label="How often" description={rotating ? "Every round, for each share they hold." : "Every time a payment is due."} data={FREQUENCY_OPTIONS.filter((o) => !(rotating && o.value === 'DAILY'))} value={form.frequency} onChange={(v) => set('frequency', (v ?? 'WEEKLY') as Form['frequency'])} allowDeselect={false} />
             {form.frequency === 'CUSTOM' && (
               <div className="space-y-2 rounded-lg border border-line p-3">
@@ -207,7 +207,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
         {step === 5 && 'body' in built && (
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             {[
-              ['Name', form.name], ['Kind', rotating ? 'Rotating pot' : 'Collector thrift'], ['Each pays', formatKobo(built.body.contributionKobo)], ['How often', cadenceWords(form.frequency, Number(form.customCount), form.customUnit)],
+              ['Name', form.name], ['Kind', rotating ? 'Rotating pot' : 'Collector thrift'], [rotating ? 'Each pays' : 'Smallest amount a saver can choose', formatKobo(built.body.contributionKobo)], ['How often', cadenceWords(form.frequency, Number(form.customCount), form.customUnit)],
               ['Starts', form.startDate], [rotating ? 'Shares per person' : 'Payments in the cycle', String(rotating ? form.maxShares : form.cycleLength)], ['Up to', `${form.maxParticipants} people`],
               ['Collector fee', form.collectorFeeType === 'NONE' ? 'None' : form.collectorFeeType === 'DAYS' ? `${form.collectorFeeValue} day(s) of contribution` : form.collectorFeeType === 'FIXED' ? formatKobo(built.body.collectorFeeValue) : `${form.collectorFeeValue}%`],
               ['Account', `${form.bankName} · ${form.accountName}`], ['Late fee', form.rules.lateFeeType === 'NONE' ? 'None' : form.rules.lateFeeType === 'FIXED' ? `₦${form.rules.lateFeeValue}` : `${form.rules.lateFeeValue}%`],

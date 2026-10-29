@@ -14,6 +14,8 @@ import prisma from '../../lib/prisma';
 import { RuleError } from '../finance/rule-error';
 import { normalizePhone } from '../sms/sms-rules';
 import { AjoContributorLimitError, assertContributorCapacity } from './ajo-capacity';
+import { formatNaira } from './ajo-collections';
+import { checkSaverAmount } from './ajo-cycle';
 import { currentRuleVersion } from './ajo-rules.service';
 import { syncMembershipSchedule } from './ajo-schedule.service';
 import { assessParticipantLevy } from './ajo-levy.service';
@@ -171,15 +173,21 @@ export const seatsTaken = (db: Db, groupId: number) => db.ajoMembership.count({ 
  * rotating pot (default 1, up to the group's limit). A seat is a place in this group; the plan's contributor limit is a separate check
  * that happens at activation.
  */
-export async function addMember(input: { associationId: number; groupId: number; memberId: number; actorUserId: number; shares?: number; allowDraft?: boolean }) {
+export async function addMember(input: { associationId: number; groupId: number; memberId: number; actorUserId: number; shares?: number; allowDraft?: boolean; /** Collector thrift: what the saver chose to pay each time (at least the group's smallest). Defaults to the smallest. */ amountKobo?: bigint }) {
   return prisma.$transaction(async (tx) => {
-    const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, status: true, model: true, allowLateJoin: true, maxParticipants: true, maxSharesPerMember: true } });
+    const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, status: true, model: true, allowLateJoin: true, maxParticipants: true, maxSharesPerMember: true, contributionKobo: true, cycleNo: true } });
     // Another association's group is reported as missing, never as forbidden.
     if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
     assertGroupTakesJoiners(group, { allowDraft: input.allowDraft });
 
     const shares = input.shares ?? 1;
     assertShares(group, shares);
+    // Collector thrift: the saver's own amount, checked against the group's smallest, before anything is written.
+    if (input.amountKobo !== undefined) {
+      if (group.model !== 'COLLECTOR_THRIFT') throw new RuleError('Only a collector-thrift saver chooses an amount. A rotating pot has one fixed amount.', 400, 'NOT_COLLECTOR_THRIFT');
+      const problem = checkSaverAmount(input.amountKobo, group.contributionKobo, formatNaira);
+      if (problem) throw new RuleError(problem, 400, 'INVALID_AMOUNT');
+    }
 
     const member = await tx.member.findFirst({ where: { id: input.memberId, associationId: input.associationId }, select: { id: true, status: true } });
     if (!member) throw new RuleError('That member was not found.', 404, 'MEMBER_NOT_FOUND');
@@ -197,6 +205,15 @@ export async function addMember(input: { associationId: number; groupId: number;
       const membership = left
         ? await tx.ajoMembership.update({ where: { id: left.id }, data: { status: 'PENDING', leftAt: null, joinedAt: null, approvedAt: null, approvedBy: null, shares, phoneConfirmedAt: null, phoneConfirmedNumber: null, guarantorAgreementId: null } })
         : await tx.ajoMembership.create({ data: { associationId: input.associationId, groupId: group.id, memberId: member.id, shares } });
+      if (group.model === 'COLLECTOR_THRIFT') {
+        // Their place in the running cycle, at the amount they chose. A person who comes back starts this cycle afresh.
+        const amountKobo = input.amountKobo ?? group.contributionKobo;
+        await tx.ajoMembershipCycle.upsert({
+          where: { membershipId_cycleNo: { membershipId: membership.id, cycleNo: group.cycleNo } },
+          create: { associationId: input.associationId, groupId: group.id, membershipId: membership.id, cycleNo: group.cycleNo, amountKobo },
+          update: { amountKobo, carriedKobo: 0n, choice: 'PENDING', choiceAt: null, choiceBy: null, choiceVia: null, nextAmountKobo: null, promptedAt: null },
+        });
+      }
       await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_MEMBER_ADDED', tableName: 'ajo_memberships', recordId: membership.id, newValues: { groupId: group.id, memberId: member.id, status: 'PENDING', shares, rejoined: left !== null } });
       return membership;
     } catch (error) {

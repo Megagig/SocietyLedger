@@ -126,7 +126,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
 
         {step === 1 ? (
           <>
-            <TextField control={control} name="contribution" label="Each person pays (₦)" helper={rotating ? 'Every round, for each share they hold.' : 'Every time (each day, week or month).'} keyboardType="decimal-pad" testID="ajo-wizard-contribution" />
+            <TextField control={control} name="contribution" label={rotating ? 'Each person pays (₦)' : 'Smallest amount a saver can choose (₦)'} helper={rotating ? 'Every round, for each share they hold.' : 'Every time (each day, week or month). Each saver chooses their own amount, at least this much, and keeps it for the whole cycle.'} keyboardType="decimal-pad" testID="ajo-wizard-contribution" />
             <SelectSheet control={control} name="frequency" label="How often" options={FREQUENCY_OPTIONS.filter((o) => !(rotating && o.value === 'DAILY'))} testID="ajo-wizard-frequency" />
             {values.frequency === 'CUSTOM' ? (
               <View className="gap-3 rounded-lg bg-surface-sunken p-3">
@@ -206,7 +206,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
                 [
                   ['Name', values.name],
                   ['Kind', rotating ? 'Rotating pot' : 'Collector thrift'],
-                  ['Each pays', formatKobo(built.body.contributionKobo)],
+                  [rotating ? 'Each pays' : 'Smallest amount a saver can choose', formatKobo(built.body.contributionKobo)],
                   ['How often', cadenceWords(values.frequency, Number(values.customCount), values.customUnit)],
                   ['Starts', built.body.startDate ?? ''],
                   [rotating ? 'Shares per person' : 'Payments in the cycle', String(rotating ? values.maxShares : values.cycleLength)],

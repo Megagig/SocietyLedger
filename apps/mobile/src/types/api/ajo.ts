@@ -49,6 +49,9 @@ export type MyMembershipDTO = {
   nextDue: { dueDate: string; remainingKobo: string } | null;
   payoutPositions: number[];
   rounds: number | null;
+  /** Collector thrift: what this saver pays each time in the running cycle (their own choice) and which cycle that is. Null for a rotating pot. */
+  amountKobo: string | null;
+  cycleNo: number | null;
 };
 
 export type InstallmentStatus = 'DUE' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'WAIVED';
@@ -58,6 +61,8 @@ export type InstallmentDTO = { id: number; dueDate: string; amountKobo: string; 
 export type ScheduleDTO = {
   membershipId: number;
   shares: number;
+  /** The cycle these installments belong to (always 1 for a rotating pot). */
+  cycleNo?: number;
   totals: { expectedKobo: string; paidKobo: string; remainingKobo: string };
   installments: InstallmentDTO[];
 };

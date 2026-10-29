@@ -4200,6 +4200,13 @@ enum AjoOrderEventType {
   EXCEPTION
 }
 
+/// What a collector-thrift saver does when a cycle ends. PENDING counts as WITHDRAW: nobody's money stays in the group because they did not reply.
+enum AjoCycleChoice {
+  PENDING
+  WITHDRAW
+  CONTINUE
+}
+
 enum AjoDisputeStatus {
   OPEN
   RESOLVED
@@ -4260,6 +4267,10 @@ model AjoGroup {
   startedAt           DateTime?       @map("started_at")
   /// The last due date of the schedule, fixed at start so a late joiner's schedule ends where everyone else's does.
   endsOn              DateTime?       @map("ends_on") @db.Date
+  /// Collector thrift: the cycle now running (1 at the start). A rotating pot has one cycle.
+  cycleNo             Int             @default(1) @map("cycle_no")
+  /// The first due date of the running cycle; null while it is cycle 1 (that starts on startDate).
+  cycleStartsOn       DateTime?       @map("cycle_starts_on") @db.Date
   cancelledAt         DateTime?       @map("cancelled_at")
   cancelReason        String?         @map("cancel_reason")
   createdBy           Int?            @map("created_by")
@@ -4276,6 +4287,7 @@ model AjoGroup {
   orderRequests       AjoOrderChangeRequest[]
   handovers           AjoCashHandover[]
   defaultCases        AjoDefaultCase[]
+  membershipCycles    AjoMembershipCycle[]
 
   @@index([associationId, status])
   @@map("ajo_groups")
@@ -4373,6 +4385,7 @@ model AjoMembership {
   ledgerEntries         AjoLedgerEntry[]
   trustSnapshots        AjoTrustSnapshot[]
   disputes              AjoDispute[]
+  cycles                AjoMembershipCycle[]
   defaultCases          AjoDefaultCase[]
 
   @@unique([groupId, memberId])
@@ -4389,6 +4402,8 @@ model AjoInstallment {
   amountKobo    BigInt               @map("amount_kobo")
   paidKobo      BigInt               @default(0) @map("paid_kobo")
   status        AjoInstallmentStatus @default(DUE)
+  /// Collector thrift: the cycle this belongs to. Always 1 for a rotating pot.
+  cycleNo       Int                  @default(1) @map("cycle_no")
   createdAt     DateTime             @default(now()) @map("created_at")
   updatedAt     DateTime             @updatedAt @map("updated_at")
   membership    AjoMembership        @relation(fields: [membershipId], references: [id], onDelete: Cascade)
@@ -4542,6 +4557,8 @@ model AjoPayout {
   confirmedKobo         BigInt          @default(0) @map("confirmed_kobo")
   /// 1 for the first payout of a round, 2.. for supplementary payouts made when late money arrived.
   sequence              Int             @default(1)
+  /// Collector thrift: the cycle being paid out. Always 1 for a rotating pot.
+  cycleNo               Int             @default(1) @map("cycle_no")
   status                AjoPayoutStatus @default(PREPARED)
   preparedBy            Int             @map("prepared_by")
   preparedAt            DateTime        @default(now()) @map("prepared_at")
@@ -4983,4 +5000,38 @@ model AjoDispute {
 
   @@index([associationId, status])
   @@map("ajo_disputes")
+}
+
+/// Collector thrift, spec §16.5: one saver's place in one cycle. The saver chooses the amount and it never changes inside the cycle. At the
+/// end they withdraw or continue; if they say nothing they withdraw. Created lazily for cycle 1 so older groups keep working.
+model AjoMembershipCycle {
+  id             Int            @id @default(autoincrement())
+  associationId  Int            @map("association_id")
+  groupId        Int            @map("group_id")
+  membershipId   Int            @map("membership_id")
+  cycleNo        Int            @map("cycle_no")
+  /// What this saver pays each time in this cycle, in kobo. At least the group's minimum.
+  amountKobo     BigInt         @map("amount_kobo")
+  /// Savings carried in from the cycle before, already net of that cycle's collector fee. Paid out with this cycle's money.
+  carriedKobo    BigInt         @default(0) @map("carried_kobo")
+  choice         AjoCycleChoice @default(PENDING)
+  choiceAt       DateTime?      @map("choice_at")
+  /// The login that decided, and how: "member", "officer" (for them) or "default" (said nothing).
+  choiceBy       Int?           @map("choice_by")
+  choiceVia      String?        @map("choice_via")
+  /// When continuing: what they will pay each time in the next cycle.
+  nextAmountKobo BigInt?        @map("next_amount_kobo")
+  /// When the saver was asked about the end of this cycle (once).
+  promptedAt     DateTime?      @map("prompted_at")
+  /// The collector's fee for this cycle, taken from a continuing saver's savings when the next cycle starts (a withdrawing saver pays it through the payout).
+  feeSettledKobo BigInt?        @map("fee_settled_kobo")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  group          AjoGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  membership     AjoMembership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, cycleNo])
+  @@index([groupId, cycleNo])
+  @@index([associationId])
+  @@map("ajo_membership_cycles")
 }

@@ -1,6 +1,7 @@
 import { ApiError } from '../errors';
 import { client } from '../client';
 import { unwrap } from '../envelope';
+import type { CycleViewDTO, GroupCycleDTO } from '@/types/api/ajoCycle';
 import type {
   AjoStatusDTO,
   AssignedContributorDTO,
@@ -174,7 +175,20 @@ export const ajoApi = {
   people: (id: number) => get<PersonNameDTO[]>(`/ajo/groups/${id}/people`),
   roster: (id: number) => get<RosterDTO>(`/ajo/groups/${id}/members`),
   searchPeople: (search: string) => get<PersonSearchDTO[]>('/ajo/people', { search }),
-  addMember: (id: number, memberId: number, shares?: number) => post<{ membershipId: number }>(`/ajo/groups/${id}/members`, { memberId, shares }),
+  /** `amountKobo` is for collector thrift: what the saver chose to pay each time (at least the group's smallest). */
+  addMember: (id: number, memberId: number, shares?: number, amountKobo?: string) => post<{ membershipId: number }>(`/ajo/groups/${id}/members`, { memberId, shares, amountKobo }),
+
+  // ── collector-thrift cycles (spec §16.5) ────────────────────────────────
+  /** GET /ajo/memberships/:id/cycle */
+  cycle: (membershipId: number) => get<CycleViewDTO>(`/ajo/memberships/${membershipId}/cycle`),
+  /** PUT /ajo/memberships/:id/amount: what the saver pays each time; allowed until the cycle has begun for them. */
+  setAmount: (membershipId: number, amountKobo: string) => unwrap<{ amountKobo: string; changed: boolean }>(client.put(`/ajo/memberships/${membershipId}/amount`, { amountKobo })),
+  /** POST /ajo/memberships/:id/cycle/decision: withdraw or continue (no answer means withdraw). */
+  decideCycle: (membershipId: number, body: { choice: 'WITHDRAW' | 'CONTINUE'; nextAmountKobo?: string }) => post<CycleViewDTO>(`/ajo/memberships/${membershipId}/cycle/decision`, body),
+  /** GET /ajo/groups/:id/cycle: officers. */
+  groupCycle: (groupId: number) => get<GroupCycleDTO>(`/ajo/groups/${groupId}/cycle`),
+  /** POST /ajo/groups/:id/cycles/next: the admin, once the cycle is over and the savers leaving have been paid. */
+  startNextCycle: (groupId: number) => post<{ cycleNo: number; startsOn: string; endsOn: string; continuing: number; withdrawn: number }>(`/ajo/groups/${groupId}/cycles/next`),
   setShares: (membershipId: number, shares: number) => unwrap<unknown>(client.patch(`/ajo/memberships/${membershipId}/shares`, { shares })),
   approveMember: (membershipId: number) => post<unknown>(`/ajo/memberships/${membershipId}/approve`),
   guarantorLink: (membershipId: number, body: { name: string; phone: string; relationship: string }) => post<GuarantorLinkDTO>(`/ajo/memberships/${membershipId}/guarantor-link`, body),

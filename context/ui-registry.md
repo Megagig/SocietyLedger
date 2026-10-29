@@ -1824,3 +1824,13 @@ Read-only views of a rotating pot for its members (spec §16.4). Same words and 
 - **Closed states:** `BOARD_NOT_AVAILABLE` (collector thrift) and `BOARD_OFF` each get their own empty state with a reason; nothing else leaks.
 - **Charts:** web recharts, mobile gifted-charts, both behind the view, with a text summary; mobile has a "View as list" toggle.
 - **Mobile entry points:** the `Circle` tab for a standalone rotating pot (a list first when there are several circles), and a `Circle board` button on the circle page for association members.
+
+## Savings cycle (T13 phase B, 2026-10-29)
+
+### Cycle card (saver)
+- **Surface:** web `components/ajo/member/CycleCard.tsx`, mobile `features/ajo/components/CycleCard.tsx`
+- **Shows:** the amount the saver chose (and keeps for the cycle), savings brought forward, and "When this cycle ends": withdraw or continue (continue asks for next cycle's amount, empty keeps the same). Always says "If you do not answer, your savings are paid out to you." Placed on the circle page of a collector-thrift saver.
+
+### Savings cycle (officer)
+- **Surface:** web tab `ajo/[groupId]/cycle`, mobile `manage/thrift/[groupId]/cycle`
+- **Shows:** counts (continuing, withdrawing, no answer), each saver with amount, saved so far and their choice, and "Start the next cycle" (admin only, behind a confirmation). Says why it cannot start (cycle not over, nobody continuing).

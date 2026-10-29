@@ -50,15 +50,18 @@ export async function listGroupMembers(input: { associationId: number; groupId: 
 
 /** One person's schedule: what is due, what has been paid against it. */
 export async function listMembershipInstallments(input: { associationId: number; membershipId: number; now?: Date }) {
-  const membership = await prisma.ajoMembership.findFirst({ where: { id: input.membershipId, associationId: input.associationId }, select: { id: true, shares: true, status: true, group: { select: { timezone: true, cutoffTime: true } } } });
+  const membership = await prisma.ajoMembership.findFirst({ where: { id: input.membershipId, associationId: input.associationId }, select: { id: true, shares: true, status: true, group: { select: { timezone: true, cutoffTime: true, model: true, cycleNo: true } } } });
   if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
-  const rows = await prisma.ajoInstallment.findMany({ where: { membershipId: membership.id }, orderBy: { dueDate: 'asc' } });
+  // A collector-thrift saver sees the cycle now running, so earlier cycles' rows do not muddy "to pay" and "paid so far".
+  const cycleNo = membership.group.model === 'COLLECTOR_THRIFT' ? membership.group.cycleNo : 1;
+  const rows = await prisma.ajoInstallment.findMany({ where: { membershipId: membership.id, cycleNo }, orderBy: { dueDate: 'asc' } });
   const today = businessDay(input.now ?? new Date(), membership.group.timezone, membership.group.cutoffTime);
   const total = rows.reduce((sum, r) => sum + r.amountKobo, 0n);
   const paid = rows.reduce((sum, r) => sum + r.paidKobo, 0n);
   return {
     membershipId: membership.id,
     shares: membership.shares,
+    cycleNo,
     totals: { expectedKobo: total.toString(), paidKobo: paid.toString(), remainingKobo: (total - paid).toString() },
     installments: rows.map((r) => ({ id: r.id, dueDate: r.dueDate, amountKobo: r.amountKobo.toString(), paidKobo: r.paidKobo.toString(), status: r.status, /** Past its due day on the group's own calendar (its time zone and cut-off), not the reader's clock. */ pastDue: r.dueDate.getTime() < today.getTime() })),
   };
@@ -78,9 +81,10 @@ export async function listMyMemberships(input: { associationId: number; userId: 
   });
   const out = [];
   for (const m of rows) {
-    const [installments, slots] = await Promise.all([
+    const [installments, slots, cycle] = await Promise.all([
       prisma.ajoInstallment.findMany({ where: { membershipId: m.id, status: { not: 'WAIVED' } }, orderBy: { dueDate: 'asc' }, select: { dueDate: true, amountKobo: true, paidKobo: true } }),
       prisma.ajoPayoutSlot.findMany({ where: { membershipId: m.id }, orderBy: { position: 'asc' }, select: { position: true } }),
+      m.group.model === 'COLLECTOR_THRIFT' ? prisma.ajoMembershipCycle.findUnique({ where: { membershipId_cycleNo: { membershipId: m.id, cycleNo: m.group.cycleNo } } }) : Promise.resolve(null),
     ]);
     const owing = installments.filter((i) => i.amountKobo > i.paidKobo);
     const overdue = owing.filter((i) => i.dueDate.getTime() < now.getTime());
@@ -92,6 +96,9 @@ export async function listMyMemberships(input: { associationId: number; userId: 
       status: m.status,
       shares: m.shares,
       group: toGroupView(m.group),
+      /** Collector thrift: what this saver pays each time in the running cycle (their own choice), and which cycle that is. */
+      amountKobo: m.group.model === 'COLLECTOR_THRIFT' ? (cycle?.amountKobo ?? m.group.contributionKobo).toString() : null,
+      cycleNo: m.group.model === 'COLLECTOR_THRIFT' ? m.group.cycleNo : null,
       waitingFor,
       overdueKobo: sum(overdue).toString(),
       totalOwedKobo: sum(owing).toString(),
