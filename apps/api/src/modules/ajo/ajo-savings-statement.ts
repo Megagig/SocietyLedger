@@ -53,7 +53,7 @@ export async function buildStatement(input: { associationId: number; membershipI
 }
 
 /** A spreadsheet-safe cell: quoted, and a leading = + - @ is neutralised so a name cannot run as a formula. */
-function cell(value: string | number | null | undefined): string {
+export function csvCell(value: string | number | null | undefined): string {
   const text = String(value ?? '');
   const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return `"${safe.replace(/"/g, '""')}"`;
@@ -61,7 +61,7 @@ function cell(value: string | number | null | undefined): string {
 
 export function statementCsv(d: StatementData): string {
   const lines: string[] = [];
-  const row = (...cols: Array<string | number | null | undefined>) => lines.push(cols.map(cell).join(','));
+  const row = (...cols: Array<string | number | null | undefined>) => lines.push(cols.map(csvCell).join(','));
   row('Statement', d.groupName);
   row('Saver', d.saverName);
   row('Cycle', d.cycleNo);

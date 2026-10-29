@@ -188,6 +188,7 @@ export const sections: SectionDef[] = [
     pages: [
       { slug: 'index', title: 'Thrift (Ajo)', type: 'overview', audience: ['admin'], platforms: ['web'], covers: [] },
       { slug: 'setting-up-your-thrift-group', title: 'Setting up your thrift group', type: 'task', audience: ['admin'], platforms: ['web'], covers: ['/onboarding/thrift'] },
+      { slug: 'what-members-can-see-in-a-circle', title: 'What members can see in a circle', type: 'concept', audience: ['member', 'admin'], platforms: ['web', 'mobile'], covers: ['/dashboard/my-thrift', '/dashboard/ajo'] },
     ],
   },
   {

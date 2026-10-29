@@ -2,6 +2,7 @@
   "title": "Thrift (Ajo)",
   "icon": "PiggyBank",
   "pages": [
-    "setting-up-your-thrift-group"
+    "setting-up-your-thrift-group",
+    "what-members-can-see-in-a-circle"
   ]
 }

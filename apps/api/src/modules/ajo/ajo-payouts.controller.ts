@@ -5,6 +5,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { PERMISSIONS } from '../../lib/permissions';
+import { afterPayoutPaid } from './ajo-circle-notices.service';
 import { uploadProof } from './ajo-contributions.controller';
 import { passwordConfirmed } from './ajo-reauth';
 import { actor, fail, hasAjoPermission } from './ajo-members.controller';
@@ -114,6 +115,7 @@ export const ajoPayoutsController = {
       const { associationId, userId } = actor(req);
       const body = z.object({ reference: z.string().max(120), confirmOwn: flag, note: z.string().max(500).optional() }).parse(req.body ?? {});
       const result = await recordPayoutPaid({ associationId, payoutId: id.parse(req.params.id), actorUserId: userId, reference: body.reference, proof: req.file ? { buffer: req.file.buffer, mimeType: req.file.mimetype } : undefined, confirmOwn: body.confirmOwn, note: body.note });
+      void afterPayoutPaid(id.parse(req.params.id));
       return res.json({ success: true, message: result.replayed ? 'Already recorded.' : 'Recorded as paid.', data: result });
     } catch (error) {
       return fail(res, error, 'Could not record the payout.');

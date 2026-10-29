@@ -143,6 +143,14 @@ router.get('/groups/:id/board/members', boardReaders, board.members);
 router.get('/groups/:id/board/arrears', boardReaders, board.arrears);
 router.get('/groups/:id/board/metrics', boardReaders, board.metrics);
 router.get('/groups/:id/board/activity', boardReaders, board.activity);
+router.get('/groups/:id/board/statement.pdf', boardReaders, board.statement);
+// Officers answer to members as well as the other way round (spec §16.7): not for members.
+const accountabilityOfficers = requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT]);
+router.get('/groups/:id/accountability', accountabilityOfficers, board.accountability);
+// A member's choices about circle notifications (spec §16.4.9): each can be switched off; the weekly summary is opt-in.
+router.get('/notification-preferences', boardReaders, board.getPreferences);
+router.put('/notification-preferences', boardReaders, board.setPreferences);
+router.get('/groups/:id/accountability/export.csv', accountabilityOfficers, board.accountabilityExport);
 const collect = requirePermission(PERMISSIONS.AJO_COLLECT);
 
 router.post('/groups/:id/contributions/cash', collect, contributions.cash);

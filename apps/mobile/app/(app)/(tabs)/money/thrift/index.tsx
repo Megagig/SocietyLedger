@@ -69,6 +69,9 @@ export default function MyThriftScreen() {
               My payout account
             </Button>
           ) : null}
+          <Button variant="ghost" onPress={() => router.push('/(app)/(tabs)/money/thrift/notifications' as never)} testID="ajo-notification-prefs-link">
+            Circle notifications
+          </Button>
         </View>
       ) : (
         <EmptyState icon={PiggyBank} title="You are not in any savings circle yet." description="When an officer adds you, it will show here and you will be told what to do next." />

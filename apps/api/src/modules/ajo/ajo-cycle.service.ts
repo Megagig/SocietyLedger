@@ -259,10 +259,10 @@ export async function startNextCycle(input: { associationId: number; groupId: nu
  * Once a day: tell each saver, once, that their cycle is about to end and what happens if they do not answer. Safe to run repeatedly:
  * the question is marked asked before it is sent, so a rerun, or two servers, never ask twice.
  */
-export async function runCycleEndPrompts(now: Date = new Date()): Promise<{ asked: number }> {
+export async function runCycleEndPrompts(now: Date = new Date(), groupIds?: number[]): Promise<{ asked: number }> {
   // Only groups whose cycle ends soon or ended recently: a group whose cycle is long over is waiting on an admin, not on a question.
   const recent = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-  const groups = await prisma.ajoGroup.findMany({ where: { model: 'COLLECTOR_THRIFT', status: 'ACTIVE', endsOn: { gte: recent } } });
+  const groups = await prisma.ajoGroup.findMany({ where: { model: 'COLLECTOR_THRIFT', status: 'ACTIVE', endsOn: { gte: recent }, ...(groupIds ? { id: { in: groupIds } } : {}) } });
   let asked = 0;
   for (const group of groups) {
     const today = businessDay(now, group.timezone, group.cutoffTime);

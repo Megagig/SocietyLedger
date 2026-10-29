@@ -31,6 +31,7 @@ export default function GroupWorkspaceLayout({ children }: { children: ReactNode
     { href: `${base}/payouts`, label: 'Payouts', show: anyOfficer },
     { href: `${base}/arrears`, label: 'Arrears and cases', show: manage || reconcile || approvePayout },
     { href: `${base}/rules`, label: 'Rules', show: manage },
+    { href: `${base}/accountability`, label: 'Accountability', show: anyOfficer },
   ].filter((t) => t.show);
 
   return (

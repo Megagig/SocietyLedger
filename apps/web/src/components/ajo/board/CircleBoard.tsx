@@ -1,8 +1,12 @@
 'use client';
 
-import { Tabs } from '@mantine/core';
+import { useState } from 'react';
+import { Button, Tabs } from '@mantine/core';
+import { IconDownload } from '@tabler/icons-react';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { useBoardOverview } from '@/lib/ajo/boardHooks';
+import { downloadFile } from '@/lib/ajo/savingsHooks';
+import { toast } from '@/lib/toast';
 import { BoardActivityView } from './BoardActivity';
 import { BoardArrearsView } from './BoardArrears';
 import { BoardChartsView } from './BoardCharts';
@@ -18,6 +22,17 @@ const codeOf = (error: unknown): string | undefined => (error as { response?: { 
  */
 export function CircleBoard({ groupId }: { groupId: number }) {
   const overview = useBoardOverview(groupId);
+  const [busy, setBusy] = useState(false);
+  const statement = async () => {
+    setBusy(true);
+    try {
+      await downloadFile(`/ajo/groups/${groupId}/board/statement.pdf`, 'circle-statement.pdf');
+    } catch {
+      toast.error('Could not make the statement. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
   if (overview.isLoading) return <AjoLoading rows={4} />;
 
   if (overview.isError) {
@@ -32,6 +47,11 @@ export function CircleBoard({ groupId }: { groupId: number }) {
   }
 
   return (
+    <>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm text-ink-muted">A one-page statement of the circle, with a code that checks it against the live record. Made for sharing in your group chat.</p>
+      <Button variant="default" size="xs" leftSection={<IconDownload size={14} />} loading={busy} onClick={statement}>Download circle statement</Button>
+    </div>
     <Tabs defaultValue="overview" keepMounted={false}>
       <Tabs.List className="mb-5 flex-wrap">
         <Tabs.Tab value="overview">Overview</Tabs.Tab>
@@ -52,5 +72,6 @@ export function CircleBoard({ groupId }: { groupId: number }) {
       <Tabs.Panel value="charts"><BoardChartsView groupId={groupId} /></Tabs.Panel>
       <Tabs.Panel value="activity"><BoardActivityView groupId={groupId} /></Tabs.Panel>
     </Tabs>
+    </>
   );
 }

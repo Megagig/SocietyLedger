@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeftRight, CircleDollarSign, FileText, Gavel, HandCoins, ListOrdered, RefreshCw, Users, Wallet } from 'lucide-react-native';
+import { ArrowLeftRight, CircleDollarSign, FileText, Gavel, HandCoins, ListOrdered, RefreshCw, ShieldCheck, Users, Wallet } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -195,6 +195,7 @@ export default function CircleOverviewScreen() {
             {manage && group.model === 'COLLECTOR_THRIFT' ? <ListItem leading={<IconCircle icon={ArrowLeftRight} tone="primary" />} title="Collectors" meta="Assign contributors and daily targets" showChevron onPress={() => router.push(sub(groupId, 'collectors'))} testID="ajo-nav-collectors" /> : null}
             {anyOfficer ? <ListItem leading={<IconCircle icon={Wallet} tone="primary" />} title="Payouts" meta="Prepare, approve and record payouts" showChevron onPress={() => router.push(sub(groupId, 'payouts'))} testID="ajo-nav-payouts" /> : null}
             {manage || reconcile || approvePayout ? <ListItem leading={<IconCircle icon={Gavel} tone="warning" />} title="Arrears and cases" meta="Late fees, disputes and default cases" showChevron onPress={() => router.push(sub(groupId, 'arrears'))} testID="ajo-nav-arrears" /> : null}
+            {anyOfficer ? <ListItem leading={<IconCircle icon={ShieldCheck} tone="primary" />} title="Accountability" meta="Who prepared and approved, waiting payments, cash and exceptions" showChevron onPress={() => router.push(sub(groupId, 'accountability'))} testID="ajo-nav-accountability" /> : null}
             {manage ? <ListItem leading={<IconCircle icon={FileText} tone="primary" />} title="Rules" meta="Versions and publishing a new one" showChevron onPress={() => router.push(sub(groupId, 'rules'))} testID="ajo-nav-rules" /> : null}
           </ListGroup>
 

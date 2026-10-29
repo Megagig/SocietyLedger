@@ -43,7 +43,7 @@ export type MyMembershipDTO = {
   status: MembershipStatus;
   shares: number;
   group: GroupDTO;
-  waitingFor: Array<{ requirement: string; text: string }>;
+  waitingFor: { requirement: string; text: string }[];
   overdueKobo: string;
   totalOwedKobo: string;
   nextDue: { dueDate: string; remainingKobo: string } | null;
@@ -83,8 +83,8 @@ export type ContributionDTO = {
   reason: string | null;
   counts: boolean;
   awaitingConfirmation: boolean;
-  installmentsCovered: Array<{ installmentId: number; amountKobo: string }>;
-  lateFeesCovered: Array<{ lateFeeId: number; amountKobo: string }>;
+  installmentsCovered: { installmentId: number; amountKobo: string }[];
+  lateFeesCovered: { lateFeeId: number; amountKobo: string }[];
 };
 
 export type RulesToAcceptDTO = { ruleVersionId: number; version: number; effectiveFrom: string; summary: string[] } | null;
@@ -105,7 +105,7 @@ export type TrustDTO = {
   excludedDisputed: number;
   excludedWaived: number;
   text: string;
-  history: Array<{ band: TrustBand; onTimeCount: number; dueCount: number; computedAt: string }>;
+  history: { band: TrustBand; onTimeCount: number; dueCount: number; computedAt: string }[];
 };
 
 export type DisputeDTO = {
@@ -187,7 +187,7 @@ export type RosterPersonDTO = {
   verification: 'NOT_REQUESTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   shares: number;
   approvedAt: string | null;
-  waitingFor: Array<{ requirement: string; text: string }>;
+  waitingFor: { requirement: string; text: string }[];
   acceptedRuleVersion: number | null;
   acceptedVia: string | null;
   guarantorRecorded: boolean;
@@ -199,7 +199,7 @@ export type CollectorCandidateDTO = { userId: number; name: string; email: strin
 export type CollectorAssignmentDTO = { assignmentId: number; membershipId: number; collectorUserId: number; dailyTargetKobo: string | null; startsOn: string; endsOn: string | null };
 
 export type OrderSlotDTO = { slotId: number; position: number; shareNo: number; membershipId: number; name: string; paid: boolean; mine: boolean };
-export type OrderDTO = { drawn: boolean; seed: string | null; drawnAt: string | null; slots: OrderSlotDTO[]; history: Array<{ id: number; type: string; reason: string | null; createdAt: string }> };
+export type OrderDTO = { drawn: boolean; seed: string | null; drawnAt: string | null; slots: OrderSlotDTO[]; history: { id: number; type: string; reason: string | null; createdAt: string }[] };
 export type SwapDTO = { id: number; slotAId: number; slotBId: number; reason: string | null; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; createdAt: string };
 
 export type QueueContributionDTO = ContributionDTO & {
@@ -229,7 +229,7 @@ export type HandoverDTO = {
   note: string | null;
   reconcileNote: string | null;
 };
-export type HandoverDetailDTO = HandoverDTO & { payments: Array<{ contributionId: number; reference: string | null; name: string; amountKobo: string; status: string }> };
+export type HandoverDetailDTO = HandoverDTO & { payments: { contributionId: number; reference: string | null; name: string; amountKobo: string; status: string }[] };
 
 export type DayPaymentDTO = { contributionId: number; reference: string | null; name: string; amountKobo: string };
 export type CollectorDayDTO = {
@@ -246,7 +246,7 @@ export type CollectorDayDTO = {
   handover: { id: number; reconciled: boolean; reconciledAt: string | null; note: string | null } | null;
   payments: DayPaymentDTO[];
   carriedOver: DayPaymentDTO[];
-  arrears: Array<{ membershipId: number; name: string; overdueKobo: string; overdue: string }>;
+  arrears: { membershipId: number; name: string; overdueKobo: string; overdue: string }[];
 };
 export type AssignedContributorDTO = { assignmentId: number; membershipId: number; status: string; groupId: number; groupName: string; name: string };
 
@@ -292,7 +292,7 @@ export type PayoutPreviewDTO = {
   netKobo: string;
   alreadyPlannedKobo: string;
   explanation: string[] | string;
-  shortfall: Array<{ membershipId: number; name: string; shortKobo: string }>;
+  shortfall: { membershipId: number; name: string; shortKobo: string }[];
   recipientArrearsNote: string | null;
   canPrepare: boolean;
   readiness: { ok: boolean; message?: string };
@@ -316,8 +316,8 @@ export type CaseDTO = {
   memberResponse: string | null;
   outstandingAtOpeningKobo: string;
   outstandingNowKobo: string;
-  plans: Array<{ id: number; status: 'PROPOSED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'; schedule: Array<{ dueDate: string; amountKobo: string }>; agreedAt: string | null; agreedVia: string | null; cancelReason: string | null }>;
-  events?: Array<{ id: number; kind: string; note: string | null; createdAt: string }>;
+  plans: { id: number; status: 'PROPOSED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'; schedule: { dueDate: string; amountKobo: string }[]; agreedAt: string | null; agreedVia: string | null; cancelReason: string | null }[];
+  events?: { id: number; kind: string; note: string | null; createdAt: string }[];
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -331,7 +331,7 @@ export type OnboardingStatusDTO = {
   onboarding: { currentStep: number; completedSteps: number[]; skippedSteps?: number[]; onboardingComplete: boolean; skippedAt?: string | null; completedAt?: string | null };
   association: { id: number; name: string; logo: string | null } | null;
   flow: 'ASSOCIATION' | 'THRIFT';
-  steps: Array<{ id: number; key: string; name: string; description: string }>;
+  steps: { id: number; key: string; name: string; description: string }[];
 };
 
 export type TeamInviteResult = { email: string; status: 'invited' | 'invited_email_failed' | 'already_member' | 'failed'; message?: string };

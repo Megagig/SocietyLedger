@@ -32,8 +32,8 @@ export type StatementPreviewDTO = {
   problems: string[];
   counts: { lines: number; credits: number; debits: number; alreadyImported: number; newLines: number; newCredits: number; newCreditTotal: string | null; unreadable: number };
   period: { startDate: IsoDateString | null; endDate: IsoDateString | null };
-  sample: Array<{ row: number; transactionDate: IsoDateString; reference: string | null; description: string; debitAmount: string | null; creditAmount: string | null; balance: string | null }>;
-  unreadableRows: Array<{ row: number; reason: string }>;
+  sample: { row: number; transactionDate: IsoDateString; reference: string | null; description: string; debitAmount: string | null; creditAmount: string | null; balance: string | null }[];
+  unreadableRows: { row: number; reason: string }[];
   canImport: boolean;
 };
 
@@ -106,7 +106,7 @@ export type SuggestionsDTO = {
 export type MatchRequest = { transactionId: number; statementEntryId?: number; bankTransferId?: number; confidence?: number; matchType: MatchType };
 
 export type ApplyMatchesDTO = {
-  results: Array<{ success: boolean; reconciliationId?: number; error?: string; transactionId: number; statementEntryId?: number; bankTransferId?: number }>;
+  results: { success: boolean; reconciliationId?: number; error?: string; transactionId: number; statementEntryId?: number; bankTransferId?: number }[];
   successful: number;
   failed: number;
 };
@@ -131,7 +131,7 @@ export type ReconciliationDTO = {
     category: { id: number; name: string; type: string };
   };
   statementEntry: { id: number; transactionDate: IsoDateString; reference: string | null; description: string; creditAmount: MoneyValue | null } | null;
-  bankTransfers: Array<{ id: number; reference: string; amount: MoneyValue; senderBankName: string }>;
+  bankTransfers: { id: number; reference: string; amount: MoneyValue; senderBankName: string }[];
 };
 export type ReconciliationListDTO = { reconciliations: ReconciliationDTO[]; pagination: Pagination };
 

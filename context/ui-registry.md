@@ -1842,3 +1842,16 @@ Read-only views of a rotating pot for its members (spec §16.4). Same words and 
 - **Views:** My savings (saved so far, reported shown apart, progress, behind or up to date, what you will receive, calendar), Payments (with a receipt download), Where my cash is, Collector and fees, My record, Statements. Statuses reuse the Circle board's `StatusChip` / `StatusPill`.
 - **Where my cash is:** one card per cash payment with three steps (recorded, handed in, office confirmed), each with who and when; a late step is flagged and offers "Ask about this payment".
 - **Entry:** a "My savings" button on a collector-thrift circle page (web and mobile).
+
+## Statement, notifications and accountability (T13 phase D, 2026-10-29)
+
+### Circle statement
+- **Surface:** web (`Download circle statement` in `CircleBoard`), mobile (`Share circle statement`, opens the share sheet), public page web `/verify/circle/[code]`.
+- **Verify page:** two columns, "On the statement" and "In the record now", with a banner that says the figures match or that the record has changed since (normal, as payments are confirmed). Totals only.
+
+### Circle notifications (member)
+- **Surface:** web `my-thrift/notifications`, mobile `money/thrift/notifications`: four switches (round fully paid, payout recorded, your turn, weekly summary, off by default) with an example of each message. Says that reminders about your own payments are not affected.
+
+### Accountability (officer)
+- **Surface:** web tab `ajo/[groupId]/accountability`, mobile `manage/thrift/[groupId]/accountability` (with a CSV share).
+- **Shows:** payouts with who prepared, approved and recorded them and a warning flag (icon and words) where one person did both; the backlog in four age buckets; cash by collector and day (collector thrift only); and exceptions newest first with reason and who.

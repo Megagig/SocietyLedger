@@ -55,6 +55,18 @@ export function ajoPushHref(type: string, entityId: number | undefined, permissi
     case 'ajo.membership_approved':
       return member && entityId ? `${MEMBER_HOME}/${entityId}` : memberOrNotifications;
 
+    // A circle's board (spec §16.4.9): the id is the circle, so a member lands on its board.
+    case 'ajo.circle_round_funded':
+    case 'ajo.circle_payout_recorded':
+    case 'ajo.circle_your_turn':
+    case 'ajo.circle_weekly':
+      return member && entityId ? `/(app)/(tabs)/circle/${entityId}` : memberOrNotifications;
+
+    // A collector-thrift saver's cycle (spec §16.5): the question about its end, and the start of the next one.
+    case 'ajo.cycle_ending':
+    case 'ajo.cycle_started':
+      return memberOrNotifications;
+
     // Everything else is about the person's own circles, payments or account.
     case 'ajo.receipt':
     case 'ajo.reminder':

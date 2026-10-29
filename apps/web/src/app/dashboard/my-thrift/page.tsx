@@ -16,6 +16,9 @@ export default function MyThriftPage() {
       <div>
         <h1 className="text-3xl font-bold text-ink">My Thrift</h1>
         <p className="mt-1 text-ink-muted">Your savings circles, what you owe and when you collect.</p>
+        <p className="mt-2 text-sm">
+          <Link href="/dashboard/my-thrift/notifications" className="font-medium text-success-link underline">Circle notifications</Link>
+        </p>
       </div>
 
       {verification.data && verification.data.status !== 'VERIFIED' && (

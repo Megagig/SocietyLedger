@@ -4289,6 +4289,7 @@ model AjoGroup {
   defaultCases        AjoDefaultCase[]
   membershipCycles    AjoMembershipCycle[]
   statementCodes      AjoStatementCode[]
+  circleNotices       AjoCircleNotice[]
 
   @@index([associationId, status])
   @@map("ajo_groups")
@@ -5051,4 +5052,34 @@ model AjoStatementCode {
 
   @@index([groupId])
   @@map("ajo_statement_codes")
+}
+
+/// Which circle notifications a member wants (spec §16.4.9). Everything is on except the weekly summary, which they opt in to. Individual
+/// overdue notices are not here: they go only to the member and the officers and cannot be switched off.
+model AjoNotificationPreference {
+  id             Int      @id @default(autoincrement())
+  associationId  Int      @map("association_id")
+  userId         Int      @map("user_id")
+  roundFunded    Boolean  @default(true) @map("round_funded")
+  payoutRecorded Boolean  @default(true) @map("payout_recorded")
+  yourTurn       Boolean  @default(true) @map("your_turn")
+  weeklySummary  Boolean  @default(false) @map("weekly_summary")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([associationId, userId])
+  @@map("ajo_notification_preferences")
+}
+
+/// One row per circle notice already sent, keyed so a notice is sent once however often the job or the event runs.
+model AjoCircleNotice {
+  id            Int      @id @default(autoincrement())
+  associationId Int      @map("association_id")
+  groupId       Int      @map("group_id")
+  kind          String
+  dedupeKey     String   @unique @map("dedupe_key")
+  createdAt     DateTime @default(now()) @map("created_at")
+  group         AjoGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("ajo_circle_notices")
 }

@@ -10,6 +10,7 @@ import prisma from '../../lib/prisma';
 import { ModuleFeatureService } from '../../services/module-feature.service';
 import { detectDefaults, trackPlans } from './ajo-default.service';
 import { assessLateFees, markOverdue, noticeLateFees, promotePayableFees, type RunGroup } from './ajo-latefee.service';
+import { runCircleNotices } from './ajo-circle-notices.service';
 import { runCycleEndPrompts } from './ajo-cycle.service';
 import { runReminders } from './ajo-reminder.service';
 import type { DispatchInput } from '../sms/sms-engine';
@@ -75,11 +76,16 @@ export async function runAjoRiskCycle(now: Date = new Date(), deps: { send?: Dis
 }
 
 /** The daily job: record each participant's trust score when it has changed. */
-export async function runAjoDailyJobs(now: Date = new Date(), deps: { groupIds?: number[] } = {}): Promise<{ snapshots: number; cyclePrompts: number; errors: string[] }> {
+export async function runAjoDailyJobs(now: Date = new Date(), deps: { groupIds?: number[] } = {}): Promise<{ snapshots: number; cyclePrompts: number; circleNotices: number; errors: string[] }> {
   const errors: string[] = [];
   const groups = await step('find groups', errors, () => eligibleGroups(deps.groupIds), [] as CycleGroup[]);
   const snapshots = await step('trust snapshots', errors, () => snapshotTrust(now, groups), 0);
   // Collector thrift: ask savers, once, what they want to do as their cycle ends.
-  const cyclePrompts = await step('cycle-end questions', errors, async () => (await runCycleEndPrompts(now)).asked, 0);
-  return { snapshots, cyclePrompts, errors };
+  const cyclePrompts = await step('cycle-end questions', errors, async () => (await runCycleEndPrompts(now, deps.groupIds)).asked, 0);
+  // Rotating pots: tell members when a round is fully paid or their turn is near, and send the weekly summary to those who asked for it.
+  const circleNotices = await step('circle notices', errors, async () => {
+    const r = await runCircleNotices(now, deps.groupIds);
+    return r.roundsFunded + r.turns + r.weekly;
+  }, 0);
+  return { snapshots, cyclePrompts, circleNotices, errors };
 }

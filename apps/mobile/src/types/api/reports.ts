@@ -63,7 +63,7 @@ export type AgingBucketDTO = {
   maxDays: number | null;
   count: number;
   amount: MoneyValue;
-  members: Array<{ memberId: number; memberName: string; amount: MoneyValue; oldestDueDate: IsoDateString; daysOverdue: number; chargeCount?: number }>;
+  members: { memberId: number; memberName: string; amount: MoneyValue; oldestDueDate: IsoDateString; daysOverdue: number; chargeCount?: number }[];
 };
 export type AgingDTO = {
   asOfDate: IsoDateString;
@@ -74,8 +74,8 @@ export type AgingDTO = {
 export type CollectionRateDTO = {
   period: PeriodDTO;
   overall: { expected: MoneyValue; collected: MoneyValue; outstanding: MoneyValue; collectionRate: number };
-  byMonth: Array<{ key?: string; startDate?: IsoDateString; endDate?: IsoDateString; month: string; year: number; expected: MoneyValue; collected: MoneyValue; collectionRate: number }>;
-  byCategory: Array<{ categoryId: number; categoryName: string; categoryType: string; expected: MoneyValue; collected: MoneyValue; collectionRate: number }>;
+  byMonth: { key?: string; startDate?: IsoDateString; endDate?: IsoDateString; month: string; year: number; expected: MoneyValue; collected: MoneyValue; collectionRate: number }[];
+  byCategory: { categoryId: number; categoryName: string; categoryType: string; expected: MoneyValue; collected: MoneyValue; collectionRate: number }[];
 };
 
 export type CategoryReportDTO = {
@@ -85,7 +85,7 @@ export type CategoryReportDTO = {
   isActive: boolean;
   statistics: { totalExpected: MoneyValue; totalCollected: MoneyValue; totalOutstanding: MoneyValue; collectionRate: number; transactionCount: number; memberCount: number };
   byStatus: Record<string, { count: number; amount: MoneyValue }>;
-  recentTransactions: Array<{ id: number; referenceNumber: string; memberName: string; amount: MoneyValue; paidAmount: MoneyValue; balance: MoneyValue; status: string; dueDate: IsoDateString | null; createdAt: IsoDateString }>;
+  recentTransactions: { id: number; referenceNumber: string; memberName: string; amount: MoneyValue; paidAmount: MoneyValue; balance: MoneyValue; status: string; dueDate: IsoDateString | null; createdAt: IsoDateString }[];
 };
 
 // ---------------------------------------------------------------- the records behind a figure

@@ -14,6 +14,13 @@ describe('ajoPushHref', () => {
   it('opens the membership when someone is approved', () => {
     expect(ajoPushHref('ajo.membership_approved', 9, member)).toBe('/(app)/(tabs)/money/thrift/9');
     expect(ajoPushHref('ajo.membership_approved', undefined, member)).toBe('/(app)/(tabs)/money/thrift');
+    // A circle notice names the circle, so a member lands on its board; without one, or without Ajo access, the safe fallbacks apply.
+    for (const type of ['ajo.circle_round_funded', 'ajo.circle_payout_recorded', 'ajo.circle_your_turn', 'ajo.circle_weekly']) {
+      expect(ajoPushHref(type, 12, member)).toBe('/(app)/(tabs)/circle/12');
+      expect(ajoPushHref(type, undefined, member)).toBe('/(app)/(tabs)/money/thrift');
+      expect(ajoPushHref(type, 12, [])).toBe('/(app)/notifications');
+    }
+    expect(ajoPushHref('ajo.cycle_ending', 12, member)).toBe('/(app)/(tabs)/money/thrift');
   });
   it('sends officers to the circles list and a default case to the case', () => {
     expect(ajoPushHref('ajo.payout_prepared', 3, admin)).toBe('/(app)/(tabs)/manage/thrift');

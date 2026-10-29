@@ -1,11 +1,15 @@
 import { LockKeyhole, Users } from 'lucide-react-native';
+import { toast } from 'sonner-native';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
+import { ajoSavingsApi } from '@/api/endpoints/ajoSavings';
+import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { FilterChip } from '@/components/ui/FilterChip';
 import { boardClosedReason, useBoardOverview } from '../../boardQueries';
+import { PDF_MIME, saveAndShareFile } from '../../shareFile';
 import { AjoLoading } from '../AjoStates';
 import { ActivityView, ArrearsView, ChartsView, MatrixView, MembersView, OverviewView, PayoutsView, RoundView } from './BoardViews';
 
@@ -29,6 +33,17 @@ const VIEWS: { key: ViewKey; label: string }[] = [
 export function CircleBoard({ groupId }: { groupId: number }) {
   const overview = useBoardOverview(groupId);
   const [view, setView] = useState<ViewKey>('overview');
+  const [busy, setBusy] = useState(false);
+  const shareStatement = async () => {
+    setBusy(true);
+    try {
+      await saveAndShareFile('circle-statement.pdf', await ajoSavingsApi.file(`/ajo/groups/${groupId}/board/statement.pdf`), PDF_MIME);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not make the statement.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (overview.isPending) return <AjoLoading rows={4} />;
   if (overview.isError) {
@@ -49,6 +64,9 @@ export function CircleBoard({ groupId }: { groupId: number }) {
           <FilterChip key={v.key} label={v.label} active={v.key === view} onPress={() => setView(v.key)} />
         ))}
       </ScrollView>
+      <Button variant="secondary" loading={busy} onPress={() => void shareStatement()} testID="circle-statement">
+        Share circle statement
+      </Button>
       {view === 'overview' ? <OverviewView groupId={groupId} /> : null}
       {view === 'round' ? <RoundView groupId={groupId} /> : null}
       {view === 'history' ? <MatrixView groupId={groupId} /> : null}

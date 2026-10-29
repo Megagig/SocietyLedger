@@ -10,6 +10,7 @@ import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { PERMISSIONS } from '../../lib/permissions';
 import { RuleError } from '../finance/rule-error';
+import { afterContributionChange, afterHandoverReconciled } from './ajo-circle-notices.service';
 import { MAX_PROOF_BYTES, PROOF_TYPES } from './ajo-collections';
 import { confirmTransfer, getProofLink, listGroupContributions, listMembershipContributions, recordCash, rejectContribution, reportTransfer, reverseContribution } from './ajo-contribution.service';
 import { collectorDaySummary, createHandover, getHandover, listHandovers, reconcileHandover } from './ajo-handover.service';
@@ -102,6 +103,8 @@ export const ajoContributionsController = {
       const { userId, associationId } = actor(req);
       const body = z.object({ acknowledgeDuplicate: flag, note: z.string().max(300).optional(), confirmOwn: flag }).parse(req.body ?? {});
       const result = await confirmTransfer({ associationId, contributionId: id.parse(req.params.id), actorUserId: userId, ...body });
+      // Tell the circle if this completed a round. Best-effort: it never fails the confirmation.
+      void afterContributionChange(id.parse(req.params.id));
       return res.json({ success: true, message: result.replayed ? 'Already confirmed.' : 'Confirmed.', data: jsonSafe(result) });
     } catch (error) {
       return fail(res, error, 'Could not confirm the payment.');
@@ -238,6 +241,7 @@ export const ajoContributionsController = {
       const { userId, associationId } = actor(req);
       const body = z.object({ countedKobo: koboOrZero, receivedContributionIds: z.array(id).optional(), note: z.string().max(300).optional(), confirmOwn: flag }).parse(req.body ?? {});
       const result = await reconcileHandover({ associationId, handoverId: id.parse(req.params.id), actorUserId: userId, ...body });
+      void afterHandoverReconciled(id.parse(req.params.id));
       return res.json({ success: true, message: result.replayed ? 'Already reconciled.' : 'Reconciled.', data: result });
     } catch (error) {
       return fail(res, error, 'Could not reconcile the handover.');
