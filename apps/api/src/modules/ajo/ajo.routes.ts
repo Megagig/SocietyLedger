@@ -10,6 +10,7 @@ import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
 import { contributorCapacity, tenantKind } from './ajo-capacity';
 import { ajoBoardController as board } from './ajo-board.controller';
 import { ajoCycleController as cycles } from './ajo-cycle.controller';
+import { ajoSavingsController as savings } from './ajo-savings.controller';
 import { ajoContributionsController as contributions, uploadProof } from './ajo-contributions.controller';
 import { ajoGroupsController as groups } from './ajo-groups.controller';
 import { ajoPayoutsController as payouts } from './ajo-payouts.controller';
@@ -104,6 +105,15 @@ router.post('/memberships/:id/guarantor-link', manage, groups.guarantorLink);
 router.put('/memberships/:id/amount', readers, cycles.setAmount);
 router.get('/memberships/:id/cycle', readers, cycles.view);
 router.post('/memberships/:id/cycle/decision', readers, cycles.decide);
+// ---- a collector-thrift saver's own view (spec §16.6): the saver or an officer only
+router.get('/memberships/:id/savings', readers, savings.savings);
+router.get('/memberships/:id/payments', readers, savings.payments);
+router.get('/memberships/:id/cash', readers, savings.cash);
+router.get('/memberships/:id/collector', readers, savings.collector);
+router.get('/memberships/:id/record', readers, savings.record);
+router.get('/memberships/:id/statement', readers, savings.statement);
+router.get('/contributions/:id/receipt.pdf', readers, savings.receipt);
+
 router.get('/groups/:id/cycle', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT]), cycles.group);
 router.post('/groups/:id/cycles/next', requirePermission(PERMISSIONS.AJO_APPROVE_PAYOUT), cycles.startNext);
 

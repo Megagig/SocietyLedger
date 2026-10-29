@@ -260,12 +260,18 @@ export async function startNextCycle(input: { associationId: number; groupId: nu
  * the question is marked asked before it is sent, so a rerun, or two servers, never ask twice.
  */
 export async function runCycleEndPrompts(now: Date = new Date()): Promise<{ asked: number }> {
-  const groups = await prisma.ajoGroup.findMany({ where: { model: 'COLLECTOR_THRIFT', status: 'ACTIVE', endsOn: { not: null } } });
+  // Only groups whose cycle ends soon or ended recently: a group whose cycle is long over is waiting on an admin, not on a question.
+  const recent = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  const groups = await prisma.ajoGroup.findMany({ where: { model: 'COLLECTOR_THRIFT', status: 'ACTIVE', endsOn: { gte: recent } } });
   let asked = 0;
   for (const group of groups) {
     const today = businessDay(now, group.timezone, group.cutoffTime);
     if (!group.endsOn || !isPromptOpen(group.endsOn, today)) continue;
-    const people = await prisma.ajoMembership.findMany({ where: { groupId: group.id, status: 'ACTIVE' }, select: { id: true, associationId: true, member: { select: { userId: true } } } });
+    // Savers who have not been asked and have not already answered. Nobody else is touched, so a daily run over many groups stays cheap.
+    const people = await prisma.ajoMembership.findMany({
+      where: { groupId: group.id, status: 'ACTIVE', NOT: { cycles: { some: { cycleNo: group.cycleNo, OR: [{ promptedAt: { not: null } }, { choice: { not: 'PENDING' } }] } } } },
+      select: { id: true, associationId: true, member: { select: { userId: true } } },
+    });
     for (const m of people) {
       const cycle = await ensureCycle(prisma, { id: m.id, associationId: m.associationId, groupId: group.id }, group.cycleNo, group.contributionKobo);
       if (cycle.promptedAt || cycle.choice !== 'PENDING' || !m.member.userId) continue;

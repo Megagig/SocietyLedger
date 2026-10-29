@@ -65,6 +65,11 @@ export default function MembershipDetailPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            {item.group.model === 'COLLECTOR_THRIFT' && item.status !== 'LEFT' && (
+              <Button component={Link} href={`${base}/savings`} variant="default" size="sm">
+                My savings
+              </Button>
+            )}
             {item.group.model === 'ROTATING_POT' && item.status !== 'LEFT' && (
               <Button component={Link} href={`${base}/board`} variant="default" size="sm">
                 Circle board

@@ -4288,6 +4288,7 @@ model AjoGroup {
   handovers           AjoCashHandover[]
   defaultCases        AjoDefaultCase[]
   membershipCycles    AjoMembershipCycle[]
+  statementCodes      AjoStatementCode[]
 
   @@index([associationId, status])
   @@map("ajo_groups")
@@ -5034,4 +5035,20 @@ model AjoMembershipCycle {
   @@index([groupId, cycleNo])
   @@index([associationId])
   @@map("ajo_membership_cycles")
+}
+
+/// A code printed on every circle statement (spec §16.4.10), so anyone holding the statement can check it against the live record. The
+/// snapshot holds circle totals only, never a name.
+model AjoStatementCode {
+  id            Int      @id @default(autoincrement())
+  associationId Int      @map("association_id")
+  groupId       Int      @map("group_id")
+  code          String   @unique
+  generatedBy   Int?     @map("generated_by")
+  generatedAt   DateTime @default(now()) @map("generated_at")
+  snapshot      Json
+  group         AjoGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("ajo_statement_codes")
 }

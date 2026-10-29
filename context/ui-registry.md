@@ -1834,3 +1834,11 @@ Read-only views of a rotating pot for its members (spec §16.4). Same words and 
 ### Savings cycle (officer)
 - **Surface:** web tab `ajo/[groupId]/cycle`, mobile `manage/thrift/[groupId]/cycle`
 - **Shows:** counts (continuing, withdrawing, no answer), each saver with amount, saved so far and their choice, and "Start the next cycle" (admin only, behind a confirmation). Says why it cannot start (cycle not over, nobody continuing).
+
+## My savings (T13 phase C, 2026-10-29)
+
+### Savings view (saver)
+- **Surface:** web `components/ajo/savings/SavingsView.tsx` (tabs), mobile `features/ajo/components/savings/SavingsView.tsx` (a scrolling row of `FilterChip`s)
+- **Views:** My savings (saved so far, reported shown apart, progress, behind or up to date, what you will receive, calendar), Payments (with a receipt download), Where my cash is, Collector and fees, My record, Statements. Statuses reuse the Circle board's `StatusChip` / `StatusPill`.
+- **Where my cash is:** one card per cash payment with three steps (recorded, handed in, office confirmed), each with who and when; a late step is flagged and offers "Ask about this payment".
+- **Entry:** a "My savings" button on a collector-thrift circle page (web and mobile).

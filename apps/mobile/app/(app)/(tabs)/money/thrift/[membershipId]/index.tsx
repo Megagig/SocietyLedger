@@ -121,6 +121,11 @@ function DetailBody({ loading, error, onRetry, item, membershipId, schedule, pay
       </View>
 
       <View className="flex-row gap-3">
+        {item.group.model === 'COLLECTOR_THRIFT' && item.status !== 'LEFT' ? (
+          <Button variant="secondary" fullWidth onPress={() => router.push(thriftHref(membershipId, '/savings'))} testID="ajo-savings-link">
+            My savings
+          </Button>
+        ) : null}
         {item.group.model === 'ROTATING_POT' && item.status !== 'LEFT' ? (
           <Button variant="secondary" fullWidth onPress={() => router.push(thriftHref(membershipId, '/board'))} testID="ajo-board-link">
             Circle board
