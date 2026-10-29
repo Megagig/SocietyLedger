@@ -29,6 +29,7 @@ import { SETTINGS_HUB_ACCESS } from '@/features/settings/labels';
 import { SUPPORT_STAFF_ACCESS } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
 import { useModuleAccess, useModuleDisabled } from '@/hooks/useModuleAccess';
 import { useTenantKey } from '@/hooks/useTenantKey';
 
@@ -92,6 +93,9 @@ export default function ManageScreen() {
   const cashOverview = useCashOverview().data;
   const cashToLodge = cashOverview?.mine?.readyToLodge ?? 0;
   const cashToVerify = attentionCount(attention, 'cashLodgments');
+  // Thrift (Ajo): staff run circles, collectors get today's list. The entry still shows when the add-on is off, marked Locked, so people can find out why.
+  const thrift = useAjoNav();
+  const canThrift = thrift.staff || thrift.collect;
   const statsQuery = useMemberStats();
   const needsReply = attentionCount(attention, 'supportTickets');
 
@@ -105,7 +109,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canAccounting || canAi || canSettings || canSupport ? (
+      {canMembers || canProofs || canCash || canThrift || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canAccounting || canAi || canSettings || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -172,6 +176,34 @@ export default function ManageScreen() {
                   onPress={() => router.push('/(app)/(tabs)/manage/cooperatives' as never)}
                   testID="manage-cooperatives"
                 />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canThrift ? (
+            <Section title="Thrift">
+              <ListGroup>
+                {thrift.collect ? (
+                  <ListItem
+                    leading={<IconCircle icon={CalendarDays} tone="primary" />}
+                    title="Today's collection"
+                    meta="Your contributors, record cash, end-of-day handover"
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/thrift/today' as never)}
+                    testID="manage-thrift-today"
+                  />
+                ) : null}
+                {thrift.staff ? (
+                  <ListItem
+                    leading={<IconCircle icon={PiggyBank} tone="primary" />}
+                    title="Thrift circles"
+                    meta="Members, payments, payouts and cases"
+                    trailing={thrift.locked ? <Badge tone="neutral">Locked</Badge> : undefined}
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/thrift' as never)}
+                    testID="manage-thrift"
+                  />
+                ) : null}
               </ListGroup>
             </Section>
           ) : null}

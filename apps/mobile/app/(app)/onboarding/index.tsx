@@ -28,6 +28,12 @@ export default function SetupOverviewScreen() {
   const query = useOnboardingStatus();
   const leave = useLeaveSetup();
 
+  // A standalone thrift group has its own five-step wizard.
+  const isThrift = (query.data as { flow?: string } | undefined)?.flow === 'THRIFT';
+  useEffect(() => {
+    if (isThrift) router.replace('/(app)/onboarding/thrift' as never);
+  }, [isThrift]);
+
   // Someone finished (or skipped) setup on the web: nothing left to do here.
   const alreadyDone = query.data?.onboarding.onboardingComplete === true;
   useEffect(() => {
@@ -50,7 +56,7 @@ export default function SetupOverviewScreen() {
     );
   }
 
-  if (query.isPending || alreadyDone) {
+  if (query.isPending || alreadyDone || isThrift) {
     return (
       <Screen edges={['top']}>
         <ScreenHeader title="Set up your association" docsKey="O1" />

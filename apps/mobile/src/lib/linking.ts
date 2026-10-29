@@ -9,7 +9,8 @@ export type DeepLink =
   | ({ type: 'invite' } & z.infer<typeof inviteSchema>)
   | ({ type: 'resetPassword' } & z.infer<typeof resetPasswordSchema>)
   | ({ type: 'paymentsReturn' } & z.infer<typeof paymentsReturnSchema>)
-  | { type: 'notifications'; route: string };
+  | { type: 'notifications'; route: string }
+  | { type: 'thrift'; route: string };
 
 // `queryParams` values are `string | string[] | undefined` (repeated query keys) — every deep
 // link here expects a single scalar value, so arrays/undefined are treated as absent rather than
@@ -58,6 +59,9 @@ export function parseDeepLink(url: string): DeepLink | null {
       if (!path) return null;
       return { type: 'notifications', route: path };
     }
+    // societyledger://thrift/… (My thrift, the collector's day, a circle). A guarantor's consent link is a web link and never comes here.
+    case 'thrift':
+      return { type: 'thrift', route: path ?? '' };
     default:
       return null;
   }

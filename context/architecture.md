@@ -1077,3 +1077,13 @@ New `Notification.type` values (mapped in the push routing table, §8): `ajo.con
 - **One source for the step:** `ajo-schedule.ts` — `stepOf(frequency, custom)` turns any frequency into a count of days or months; `addPeriods`, `dueDates` and `groupDates` use it, so a group's whole schedule, a rotating pot's rounds and a repayment plan all follow the same step. `describeCadence` writes it in words ("every 2 weeks"), returned to the web as `cadence` on every group. `periodDays` judges how often a group asks for money.
 - **Rules:** `resolveGroupFields` clears the step for any non-custom frequency and demands it for custom. Frequency and step are in `MONEY_FIELDS`, so they lock when the group starts. Reminders: a group collecting more often than weekly (`periodDays < 7`) gets one overdue message a week; anything slower is reminded per instalment.
 - **Web:** `frequencyText(group)` and `cadenceWords()` in `lib/ajo/format.ts`; the wizard's "How often" control (Daily to Custom, with a live sentence and the twice-a-month hint). A rotating pot cannot be daily.
+
+
+### 18.9 Mobile (T8, 2026-10-29)
+- **Where:** `apps/mobile/src/features/ajo` (queries, mutations, forms, components), `src/api/endpoints/ajo.ts`, `src/types/api/ajo.ts`, routes under `app/(app)/(tabs)/money/thrift` (contributor), `app/(app)/(tabs)/manage/thrift` (collector and staff), `app/(app)/onboarding/thrift.tsx` and `app/(auth)/create-thrift-group.tsx`.
+- **Same API as the web.** Query keys start with the tenant and share an `ajo` root, so any write refreshes every Ajo screen. `ajo` is not in the persisted-cache allow-list, so a bank account number or a proof is never written to the phone's cache.
+- **Offline:** Ajo writes never queue (`networkMode: 'always'`); collector screens say "needs internet".
+- **Sheets:** one confirmation sheet (`AjoActionSheet`) for every reason-and-password action; a sheet never opens on top of another sheet.
+- **Notifications and links:** `src/lib/ajoPush.ts` maps each `ajo.*` push type to a screen by what the person may do; `societyledger://thrift/…` links are mapped by `thriftDeepLinkPath`. The guarantor's consent link is a web link and is never routed in the app.
+- **Standalone thrift groups** (`tenantKind: THRIFT_GROUP`): Home and Community tabs are hidden, Money is labelled Thrift, and Home and Money redirect into Ajo.
+- **Open items from the web pass, now recorded:** the guarantor link and public `/api/public/ajo/guarantor/:token`; the names-only `/groups/:id/people` read; the roster's `verification`; `pastDue` on instalments; paged queue and handovers; semantic colour tokens (web only).

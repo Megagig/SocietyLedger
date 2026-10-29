@@ -21,6 +21,8 @@ export type OnboardingProgressDTO = {
 export type OnboardingStatusDTO = {
   onboarding: OnboardingProgressDTO;
   association: { id: number; name: string; logo: string | null; primaryColor: string | null; _count: { users: number; members: number } } | null;
+  /** THRIFT for a standalone thrift group, which has its own five-step wizard. */
+  flow?: 'ASSOCIATION' | 'THRIFT';
   context: { hasLogo: boolean; hasTeamMembers: boolean; hasMembers: boolean; hasFinancialSetup: boolean; hasBankAccount?: boolean };
 };
 

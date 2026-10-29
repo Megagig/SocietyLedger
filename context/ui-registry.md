@@ -1768,3 +1768,41 @@ When a request is refused because of who the person is or what their association
 - **Surface:** web
 - **Path:** `apps/web/src/components/ajo/OnboardingResume.tsx`
 - **Purpose:** "Finish setting up {group} · N of 5 done" for an unfinished standalone-group admin; dismissed for the visit only (sessionStorage in try/catch).
+
+
+## Ajo mobile components (T8, 2026-10-29)
+
+All under `apps/mobile/src/features/ajo/`. Built only from the existing design system (Screen, ScreenHeader, Card, SectionCard, ListItem, Badge, StatTile, FilterChip, SegmentedControl, BottomSheet and the react-hook-form fields). Colours are tokens only.
+
+### AjoScreen
+- **Surface:** mobile
+- **Path:** `components/AjoScreen.tsx`
+- **Purpose:** the frame every Ajo screen shares: header (back arrow only when there is somewhere to go back to), the permission check, and `AjoGate`. **Props:** `title` · `access?` (permission aliases) · `onRefresh?`/`refreshing?` · `rightActions?` · `keyboard?`
+
+### AjoGate and `useAjoWrite`
+- **Surface:** mobile
+- **Path:** `components/AjoGate.tsx`
+- **Purpose:** loading, locked (no add-on), not allowed, or the screen with a read-only banner. `useAjoWrite()` reads the same status query, so a screen can use it in its own body; write buttons check `canWrite`. No purchase button anywhere (ui-rules rule 16).
+
+### AjoStatusBadge, AjoMoney, AjoLoading, AjoReadOnlyBanner, NeedsInternet
+- **Path:** `components/AjoStatusBadge.tsx`, `AjoMoney.tsx`, `AjoStates.tsx`
+- **Purpose:** one place that turns an Ajo status into words and a tone; money from kobo in full (a short difference keeps its minus sign); skeleton rows; the read-only banner; the collector's offline banner.
+
+### AjoActionSheet
+- **Path:** `components/AjoActionSheet.tsx`
+- **Purpose:** one confirmation for every sensitive action: summary, optional extra choices (`children`), optional written reason (`reasonMin`), optional password typed again (`needPassword`, checked by the server). Stays open on failure, clears a wrong password, refreshes every Ajo query on success.
+- **Used in:** cancel circle, turn down / reverse a payment, void / fail / reverse a payout, waive / undo a fee, decide a claim, agree / cancel a plan, close a case, emergency change of place, leave a circle, remove a collector.
+
+### Sheets with their own form
+- `ConfirmPaymentSheet`, `ReconcileSheet` (tick the payments that were in the cash), `ApprovePayoutSheet` (shows who, how much, which account; password), `RecordPaidSheet`, `RecordCashSheet`, `HandoverSheet`, `DisputeSheet`, `ReceiptsSheet`, `GuarantorSheet` (link or recorded agreement; copy and share), `AddPersonSheet`, `SharesSheet`, `AssignCollectorSheet`, `EditCircleSheet`. Each exposes `open(...)` through a ref.
+
+### Cards and pieces
+- `MembershipCard`, `PhoneConfirmCard`, `SwapRequestCard`, `LeaveCircle`, `TickRow` (tappable row with a tick box, for picking from a list), `ThriftEntry` (the "My thrift" row on Home and Money), `ThriftHomeRedirect`, `OnboardingResume`.
+
+### GroupWizard and RulesFields
+- **Path:** `components/GroupWizard.tsx`, `components/RulesFields.tsx`, logic in `groupForm.ts`
+- **Purpose:** the six-step create-a-circle wizard (kind, money, collector, account, rules, review), saved as a draft; used by Manage → Thrift → New circle and by thrift onboarding. `RulesFields` binds the rules to a form with a field-name prefix.
+
+### Thrift onboarding steps
+- **Path:** `components/onboarding/` (`StepProfile`, `StepCircle`, `StepContributors`, `StepTeam`, `StepReview`), driven by `app/(app)/onboarding/thrift.tsx`.
+- **Notes:** contributors are typed in one at a time (a list builds up); a long list is added on the web.

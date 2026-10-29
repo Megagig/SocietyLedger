@@ -1,0 +1,43 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${COLLECTOR_EMAIL}
+---
+# Thrift (Ajo): a collector records cash from one contributor, then hands the day's cash over.
+# Needs a collector-thrift circle that is running, with at least one contributor assigned to this collector,
+# and a collector who has not already handed over today. Online only: nothing is saved for later.
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Manage
+- tapOn:
+    id: manage-thrift-today
+- extendedWaitUntil:
+    visible: Your contributors
+    timeout: 15000
+# Record cash from the first assigned contributor.
+- tapOn:
+    id: ajo-record-cash-.*
+    index: 0
+- tapOn:
+    id: ajo-cash-amount
+- inputText: '500'
+- hideKeyboard
+- tapOn:
+    id: ajo-cash-record
+- extendedWaitUntil:
+    visible: Recorded today
+    timeout: 15000
+# End-of-day handover of what was just collected.
+- scrollUntilVisible:
+    element:
+      id: ajo-handover-open
+- tapOn:
+    id: ajo-handover-open
+- tapOn:
+    id: ajo-handover-amount
+- inputText: '500'
+- hideKeyboard
+- tapOn:
+    id: ajo-handover-record
+- extendedWaitUntil:
+    visible: An officer still has to count it
+    timeout: 15000

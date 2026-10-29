@@ -1,0 +1,39 @@
+appId: ${APP_ID}
+env:
+  EMAIL: ${OFFICER_EMAIL}
+---
+# Thrift (Ajo): an officer counts a collector's handover and reconciles it, which confirms the cash.
+# Run 08-thrift-record-cash first: it leaves one handover waiting to be counted. The officer needs the
+# "reconcile" Ajo permission and must not be the collector who recorded the cash.
+- runFlow:
+    file: ../subflows/login.yaml
+- tapOn: Manage
+- tapOn:
+    id: manage-thrift
+- extendedWaitUntil:
+    visible: Open
+    timeout: 15000
+- tapOn:
+    id: ajo-open-circle-.*
+    index: 0
+- scrollUntilVisible:
+    element:
+      id: ajo-nav-handovers
+- tapOn:
+    id: ajo-nav-handovers
+- extendedWaitUntil:
+    visible: Waiting to be counted
+    timeout: 15000
+- tapOn:
+    id: ajo-reconcile-.*
+    index: 0
+- tapOn:
+    id: ajo-reconcile-counted
+- inputText: '500'
+- hideKeyboard
+- tapOn:
+    id: ajo-reconcile-submit
+# The handover moves out of "Waiting to be counted".
+- extendedWaitUntil:
+    visible: No handovers here.
+    timeout: 15000

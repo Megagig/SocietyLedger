@@ -65,6 +65,11 @@ describe('parseDeepLink', () => {
     });
   });
 
+  it('parses a thrift link, with or without a path', () => {
+    expect(parseDeepLink('societyledger://thrift/circles/12')).toEqual({ type: 'thrift', route: 'circles/12' });
+    expect(parseDeepLink('societyledger://thrift')).toEqual({ type: 'thrift', route: '' });
+  });
+
   it('returns null for an unrecognised host', () => {
     expect(parseDeepLink('societyledger://unknown?foo=bar')).toBeNull();
   });

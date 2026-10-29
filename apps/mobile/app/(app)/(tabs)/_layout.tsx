@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router/tabs';
 import { MANAGE_TAB_PERMISSIONS } from '@/lib/permissions';
 import { TabBar } from '@/components/layout/TabBar';
 import { useCan } from '@/hooks/useCan';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
 
 /**
  * project-overview.md §5.1 — 5 permission-aware bottom tabs, custom `TabBar` (library-docs.md's
@@ -14,11 +15,13 @@ import { useCan } from '@/hooks/useCan';
  */
 export default function TabsLayout() {
   const canManage = useCan(MANAGE_TAB_PERMISSIONS);
+  // A standalone thrift group is only Ajo: no association home or community, and Money is its thrift.
+  const { thriftOnly } = useAjoNav();
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-      <Tabs.Screen name="money" options={{ title: 'Money', tabBarIcon: ({ color, size }) => <Wallet color={color} size={size} /> }} />
+      <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size} />, href: thriftOnly ? null : undefined }} />
+      <Tabs.Screen name="money" options={{ title: thriftOnly ? 'Thrift' : 'Money', tabBarIcon: ({ color, size }) => <Wallet color={color} size={size} /> }} />
       <Tabs.Screen
         name="community"
         options={{
@@ -26,6 +29,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
           // Community's sub-screens are drill-downs from a hub: coming back to the tab should land on the hub.
           popToTopOnBlur: true,
+          href: thriftOnly ? null : undefined,
         }}
       />
       <Tabs.Screen

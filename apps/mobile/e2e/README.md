@@ -1,6 +1,6 @@
 # Mobile E2E (Maestro)
 
-Seven flows from build-plan F9.3. They run on a real Android phone against a **non-production** API.
+Seven flows from build-plan F9.3, plus two for the thrift (Ajo) add-on (T8). They run on a real Android phone against a **non-production** API.
 
 > **Status: written from the code, not yet run on a device.** Labels and testIDs were taken from the
 > screens, but the first run will probably need a few selector tweaks. Fix them in the YAML, not the app.
@@ -41,8 +41,10 @@ Flows are independent and each starts with a clean app state; they share `subflo
 | 05-verify-proof | officer | open the pending proof and verify it |
 | 06-take-attendance | officer | open today's meeting, mark everyone present |
 | 07-switch-association | member | open Switch association from Profile |
+| 08-thrift-record-cash | collector | record cash from a contributor, then hand the day's cash over (online only) |
+| 09-thrift-reconcile | officer | count the collector's handover and reconcile it |
 
-Run 04 before 05: the seed already contains one pending proof, so 05 also passes on its own.
+Run 08 before 09 (the thrift flows need an association with the Ajo add-on, a running collector-thrift circle, a collector with an assigned contributor, and `-e COLLECTOR_EMAIL=...`). Run 04 before 05: the seed already contains one pending proof, so 05 also passes on its own.
 
 ## Paystack test card (public Paystack test values)
 

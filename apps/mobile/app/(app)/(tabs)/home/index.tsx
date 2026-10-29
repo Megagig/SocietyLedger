@@ -10,6 +10,8 @@ import { Text } from '@/components/ui/Text';
 import { Screen } from '@/components/layout/Screen';
 import { Section } from '@/components/layout/Section';
 import { tokens } from '@/theme/tokens';
+import { ThriftEntry } from '@/features/ajo/components/ThriftEntry';
+import { ThriftHomeRedirect } from '@/features/ajo/components/ThriftHomeRedirect';
 import { ActiveVoteCard } from '@/features/home/components/ActiveVoteCard';
 import { AnnouncementsList } from '@/features/home/components/AnnouncementsList';
 import { AssociationRecentTransactions } from '@/features/home/components/AssociationRecentTransactions';
@@ -113,6 +115,7 @@ export default function HomeScreen() {
 
   return (
     <Screen edges={['top']} refreshing={refreshing} onRefresh={handleRefresh}>
+      <ThriftHomeRedirect />
       {/* Two-line greeting */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 8, paddingBottom: 20 }}>
         <View style={{ flex: 1 }}>
@@ -272,6 +275,8 @@ export default function HomeScreen() {
             <MemberStatRow summaryQuery={summaryQuery} upcomingMeetingsCount={upcomingMeetingsCount} />
 
             <QuickActionsGrid />
+
+            <ThriftEntry />
 
             <Section title="Recent Activity">
               <RecentActivityList summaryQuery={summaryQuery} />

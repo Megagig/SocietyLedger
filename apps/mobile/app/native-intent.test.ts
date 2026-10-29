@@ -39,4 +39,10 @@ describe('redirectSystemPath', () => {
     const path = 'societyledger://payments/return?reference=abc&status=success';
     expect(redirectSystemPath({ path, initial: false })).toBe('/(app)/(tabs)/money/transaction/abc');
   });
+
+  it('routes thrift links to My thrift, the collector day and a circle', () => {
+    expect(redirectSystemPath({ path: 'societyledger://thrift', initial: false })).toBe('/(app)/(tabs)/money/thrift');
+    expect(redirectSystemPath({ path: 'societyledger://thrift/today', initial: false })).toBe('/(app)/(tabs)/manage/thrift/today');
+    expect(redirectSystemPath({ path: 'societyledger://thrift/circles/4', initial: false })).toBe('/(app)/(tabs)/manage/thrift/4');
+  });
 });

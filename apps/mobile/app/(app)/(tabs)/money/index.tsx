@@ -21,6 +21,8 @@ import { useModuleDisabled } from '@/hooks/useModuleAccess';
 import { formatDate } from '@/lib/dates';
 import { COOPERATIVE_GUARANTOR_ACCESS, COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
 import { formatMoney, toDecimal } from '@/lib/money';
+import { ThriftEntry } from '@/features/ajo/components/ThriftEntry';
+import { ThriftHomeRedirect } from '@/features/ajo/components/ThriftHomeRedirect';
 
 /** A charge adds to what the member owes (+), a payment takes it away (–): the same direction the running balance moves. */
 function entrySign(entryType: string): '+' | '–' {
@@ -59,6 +61,7 @@ export default function MoneyScreen() {
 
   return (
     <Screen edges={['top']} refreshing={refreshing} onRefresh={handleRefresh}>
+      <ThriftHomeRedirect />
       <ScreenHeader
         large
         title="Money"
@@ -113,6 +116,8 @@ export default function MoneyScreen() {
             />
           </ListGroup>
         </Section>
+
+        <ThriftEntry />
 
         {/* Cooperative savings — hidden for members without cooperatives access or once the plan's module is off */}
         {canViewSavings && !cooperativesLocked ? (

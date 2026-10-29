@@ -11,6 +11,8 @@ import { router } from 'expo-router';
 import Constants from 'expo-constants';
 
 import { devicesApi } from '@/api/endpoints/devices';
+import { ajoPushHref } from '@/lib/ajoPush';
+import { useSessionStore } from '@/stores/session';
 import { getBoolean, setBoolean, getString, setString, remove } from '@/lib/storage';
 
 const PUSH_TOKEN_KEY = 'push.token';
@@ -212,6 +214,12 @@ export function routePushNotification(data: PushData, currentTenantId?: number):
 
   if (associationId && currentTenantId && associationId !== currentTenantId) {
     router.navigate('/(app)/notifications');
+    return;
+  }
+
+  // Thrift (Ajo) notifications: where they lead depends on what the person can do (src/lib/ajoPush.ts).
+  if (type?.startsWith('ajo.')) {
+    router.push(ajoPushHref(type, entityId, useSessionStore.getState().user?.permissions ?? []) as never);
     return;
   }
 
