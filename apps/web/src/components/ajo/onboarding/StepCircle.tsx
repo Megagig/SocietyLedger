@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@mantine/core';
 import { GroupWizard } from '@/components/ajo/GroupWizard';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
-import { FREQUENCY_LABEL, MODEL_LABEL, formatKobo } from '@/lib/ajo/format';
+import { frequencyText, MODEL_LABEL, formatKobo } from '@/lib/ajo/format';
 import type { GroupListItemDTO } from '@/lib/ajo/staffTypes';
 
 /**
@@ -26,7 +26,7 @@ export function StepCircle({ existing, chosenId, onChoose, onCreated, onSkip }: 
             <p className="text-lg font-semibold">{current.name}</p>
             <StatusBadge status={current.status} />
           </div>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{MODEL_LABEL[current.model]} · {FREQUENCY_LABEL[current.frequency]} · {formatKobo(current.contributionKobo)} each</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{MODEL_LABEL[current.model]} · {frequencyText(current)} · {formatKobo(current.contributionKobo)} each</p>
         </div>
         {usable.length > 1 && (
           <select aria-label="Choose a circle" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-800" value={current.id} onChange={(e) => onChoose(Number(e.target.value))}>

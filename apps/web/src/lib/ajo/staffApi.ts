@@ -35,7 +35,9 @@ const post = <T>(url: string, body: unknown = {}, headers?: Record<string, strin
 export type GroupFieldsInput = {
   name?: string;
   model?: 'COLLECTOR_THRIFT' | 'ROTATING_POT';
-  frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'CUSTOM';
+  intervalCount?: number | null;
+  intervalUnit?: 'DAYS' | 'WEEKS' | 'MONTHS' | null;
   contributionKobo?: string;
   startDate?: string;
   cycleLength?: number | null;

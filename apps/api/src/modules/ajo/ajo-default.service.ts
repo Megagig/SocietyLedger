@@ -127,7 +127,7 @@ export async function proposePlan(input: { associationId: number; caseId: number
     const today = businessDay(now, c.group.timezone, c.group.cutoffTime);
     const owes = await memberOwes(tx, c.membershipId, today);
     if (owes.totalKobo <= 0n) throw new RuleError('This person owes nothing now, so there is nothing to repay.', 409, 'NOTHING_OWED');
-    const lines = draftPlan({ outstandingKobo: owes.totalKobo, frequency: c.group.frequency, from: today, periods: input.periods ?? owes.owing.length });
+    const lines = draftPlan({ outstandingKobo: owes.totalKobo, frequency: c.group.frequency, intervalCount: c.group.intervalCount, intervalUnit: c.group.intervalUnit, from: today, periods: input.periods ?? owes.owing.length });
     await tx.ajoRepaymentPlan.updateMany({ where: { caseId: c.id, status: 'PROPOSED' }, data: { status: 'CANCELLED', cancelReason: 'Replaced by a new proposal.' } });
     const plan = await tx.ajoRepaymentPlan.create({ data: { associationId: input.associationId, caseId: c.id, status: 'PROPOSED', schedule: lines as unknown as Prisma.InputJsonValue, proposedBy: input.actorUserId, outstandingKobo: owes.totalKobo } });
     await tx.ajoCaseEvent.create({ data: { associationId: input.associationId, caseId: c.id, kind: 'PLAN_PROPOSED', note: `A plan of ${lines.length} payment${lines.length === 1 ? '' : 's'} covering ${formatNaira(owes.totalKobo)} was offered.`, actorUserId: input.actorUserId } });

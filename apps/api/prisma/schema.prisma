@@ -4062,6 +4062,16 @@ enum AjoFrequency {
   DAILY
   WEEKLY
   MONTHLY
+  QUARTERLY
+  ANNUALLY
+  /// Every `intervalCount` `intervalUnit`s (bi-weekly, every two months, ...).
+  CUSTOM
+}
+
+enum AjoIntervalUnit {
+  DAYS
+  WEEKS
+  MONTHS
 }
 
 enum AjoGroupStatus {
@@ -4218,6 +4228,9 @@ model AjoGroup {
   name                String
   model               AjoModel
   frequency           AjoFrequency
+  /// Only for CUSTOM: every N days, weeks or months.
+  intervalCount       Int?             @map("interval_count")
+  intervalUnit        AjoIntervalUnit? @map("interval_unit")
   contributionKobo    BigInt          @map("contribution_kobo")
   startDate           DateTime        @map("start_date") @db.Date
   /// Number of periods in a collector-thrift cycle.

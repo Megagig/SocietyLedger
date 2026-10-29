@@ -15,7 +15,7 @@ import { RuleError } from '../finance/rule-error';
 import { tryActivate } from './ajo-membership.service';
 import { assertCurrentDraw, expectedSlots } from './ajo-order.service';
 import { createInitialRuleVersion, currentRuleVersion, normaliseRules, type RuleInput } from './ajo-rules.service';
-import { dayInZone, groupDates, isValidCutoff, isValidTimeZone, type Frequency, type GroupModel } from './ajo-schedule';
+import { FREQUENCIES, MAX_INTERVAL_COUNT, dayInZone, describeCadence, groupDates, isValidCutoff, isValidTimeZone, type Frequency, type GroupModel, type IntervalUnit } from './ajo-schedule';
 import { generateGroupSchedule } from './ajo-schedule.service';
 import { decryptGroupAccountNumber, encryptGroupAccountNumber, lastFour, maskAccount, normaliseAccountNumber } from './ajo-secrets';
 import { assertNoOverdueLevy, assessGroupLevy, voidUnbilledLevyForGroup } from './ajo-levy.service';
@@ -32,6 +32,9 @@ export interface GroupFields {
   name: string;
   model: GroupModel;
   frequency: Frequency;
+  /** Only for CUSTOM (every N days, weeks or months); null for every other frequency. */
+  intervalCount: number | null;
+  intervalUnit: IntervalUnit | null;
   contributionKobo: bigint;
   startDate: Date;
   cycleLength: number | null;
@@ -56,6 +59,8 @@ export interface GroupPatch {
   name?: string;
   model?: GroupModel;
   frequency?: Frequency;
+  intervalCount?: number | null;
+  intervalUnit?: IntervalUnit | null;
   contributionKobo?: number | bigint | string;
   startDate?: string | Date;
   cycleLength?: number | null;
@@ -70,7 +75,7 @@ export interface GroupPatch {
 }
 
 /** Fields that change what people owe or when. Locked once the group has started. */
-export const MONEY_FIELDS = ['model', 'frequency', 'contributionKobo', 'startDate', 'cycleLength', 'collectorFeeType', 'collectorFeeValue', 'cutoffTime', 'timezone', 'requirePhoneConfirm', 'maxSharesPerMember'] as const;
+export const MONEY_FIELDS = ['model', 'frequency', 'intervalCount', 'intervalUnit', 'contributionKobo', 'startDate', 'cycleLength', 'collectorFeeType', 'collectorFeeValue', 'cutoffTime', 'timezone', 'requirePhoneConfirm', 'maxSharesPerMember'] as const;
 
 function toKobo(value: number | bigint | string, label: string): bigint {
   try {
@@ -96,7 +101,16 @@ export function resolveGroupFields(base: GroupFields | null, patch: GroupPatch):
   const model = patch.model ?? base?.model;
   const frequency = patch.frequency ?? base?.frequency;
   if (!model || !['COLLECTOR_THRIFT', 'ROTATING_POT'].includes(model)) throw bad('Choose collector thrift or a rotating pot.');
-  if (!frequency || !['DAILY', 'WEEKLY', 'MONTHLY'].includes(frequency)) throw bad('Choose daily, weekly or monthly.');
+  if (!frequency || !FREQUENCIES.includes(frequency)) throw bad('Choose how often people pay: daily, weekly, monthly, quarterly, annually, or your own.');
+  // A custom schedule is "every N days, weeks or months"; every other frequency carries no step at all.
+  let intervalCount: number | null = null;
+  let intervalUnit: IntervalUnit | null = null;
+  if (frequency === 'CUSTOM') {
+    intervalCount = patch.intervalCount === undefined ? (base?.intervalCount ?? null) : patch.intervalCount;
+    intervalUnit = patch.intervalUnit === undefined ? (base?.intervalUnit ?? null) : patch.intervalUnit;
+    if (intervalCount === null || !Number.isInteger(intervalCount) || intervalCount < 1 || intervalCount > MAX_INTERVAL_COUNT) throw bad(`For your own schedule, say how many days, weeks or months between payments (1 to ${MAX_INTERVAL_COUNT}).`);
+    if (!intervalUnit || !['DAYS', 'WEEKS', 'MONTHS'].includes(intervalUnit)) throw bad('For your own schedule, choose days, weeks or months.');
+  }
 
   const name = (patch.name ?? base?.name ?? '').trim();
   if (name.length < 2 || name.length > 120) throw bad('Give the group a name of 2 to 120 characters.');
@@ -140,7 +154,7 @@ export function resolveGroupFields(base: GroupFields | null, patch: GroupPatch):
   const cutoffTime = patch.cutoffTime ?? base?.cutoffTime ?? '18:00';
   if (!isValidCutoff(cutoffTime)) throw bad('The cutoff time must look like 18:00.');
 
-  return { name, model, frequency, contributionKobo, startDate, cycleLength, maxParticipants, collectorFeeType, collectorFeeValue, timezone, cutoffTime, requirePhoneConfirm: patch.requirePhoneConfirm ?? base?.requirePhoneConfirm ?? false, maxSharesPerMember, allowLateJoin: patch.allowLateJoin ?? base?.allowLateJoin ?? true };
+  return { name, model, frequency, intervalCount, intervalUnit, contributionKobo, startDate, cycleLength, maxParticipants, collectorFeeType, collectorFeeValue, timezone, cutoffTime, requirePhoneConfirm: patch.requirePhoneConfirm ?? base?.requirePhoneConfirm ?? false, maxSharesPerMember, allowLateJoin: patch.allowLateJoin ?? base?.allowLateJoin ?? true };
 }
 
 /** Which of the locked fields would this change? Compares values, so sending the same value again is not a change. */
@@ -172,6 +186,10 @@ export function toGroupView(g: GroupRow) {
     name: g.name,
     model: g.model,
     frequency: g.frequency,
+    intervalCount: g.intervalCount,
+    intervalUnit: g.intervalUnit,
+    /** The cadence in plain words ("every 2 weeks"). */
+    cadence: describeCadence(g.frequency, g),
     status: g.status,
     contributionKobo: g.contributionKobo.toString(),
     startDate: g.startDate,
@@ -197,6 +215,8 @@ const fieldsOf = (g: GroupRow): GroupFields => ({
   name: g.name,
   model: g.model,
   frequency: g.frequency,
+  intervalCount: g.intervalCount,
+  intervalUnit: g.intervalUnit,
   contributionKobo: g.contributionKobo,
   startDate: g.startDate,
   cycleLength: g.cycleLength,
@@ -426,7 +446,7 @@ export async function startGroup(input: StartGroupInput) {
       throw new RuleError('At least one approved, active contributor is needed to start.', 409, 'NOT_ENOUGH_PARTICIPANTS');
     }
 
-    const { endsOn } = groupDates({ model: g.model, frequency: g.frequency, startDate: g.startDate, cycleLength: g.cycleLength, rounds });
+    const { endsOn } = groupDates({ model: g.model, frequency: g.frequency, intervalCount: g.intervalCount, intervalUnit: g.intervalUnit, startDate: g.startDate, cycleLength: g.cycleLength, rounds });
     const started = await tx.ajoGroup.update({ where: { id: g.id }, data: { status: 'ACTIVE', startedAt: now, endsOn, rounds, maxParticipants } });
     const made = await generateGroupSchedule(tx, { groupId: g.id, now });
     const levy = await assessGroupLevy(tx, { associationId: input.associationId, groupId: g.id, now });

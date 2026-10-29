@@ -51,7 +51,7 @@ export async function runReminders(now: Date, groups: RunGroup[], deps: { send?:
     const today = businessDay(now, g.timezone, g.cutoffTime);
     const version = await prisma.ajoGroupRuleVersion.findFirst({ where: { groupId: g.id, effectiveFrom: { lte: now } }, orderBy: { version: 'desc' } });
     if (!version || !version.remindersEnabled) continue;
-    const group = await prisma.ajoGroup.findUniqueOrThrow({ where: { id: g.id }, select: { frequency: true } });
+    const group = await prisma.ajoGroup.findUniqueOrThrow({ where: { id: g.id }, select: { frequency: true, intervalCount: true, intervalUnit: true } });
     const hasLateFee = version.lateFeeType !== 'NONE' && version.lateFeeValue > 0n;
     const oneDay = 24 * 60 * 60 * 1000;
 
@@ -68,7 +68,7 @@ export async function runReminders(now: Date, groups: RunGroup[], deps: { send?:
       const check = await verificationState(prisma, p.id);
       if (overdueKobo > 0n && !check.pending) overdueForDigest.push({ name, overdueKobo });
 
-      let planned = planReminders({ today, frequency: group.frequency, graceDays: version.graceDays, hasLateFee, membershipId: p.id, installments: open });
+      let planned = planReminders({ today, frequency: group.frequency, intervalCount: group.intervalCount, intervalUnit: group.intervalUnit, graceDays: version.graceDays, hasLateFee, membershipId: p.id, installments: open });
       // While a payment of theirs is being verified, or a dispute is open, they are not chased for being late.
       if (check.pending) planned = planned.filter((r) => r.kind === 'UPCOMING');
 

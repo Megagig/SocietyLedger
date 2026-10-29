@@ -6,7 +6,7 @@
  */
 import { formatNaira } from './ajo-collections';
 import { roundHalfUp } from './ajo-payout-calc';
-import { addPeriods, toCalendarDate, type Frequency } from './ajo-schedule';
+import { addPeriods, periodDays, toCalendarDate, type CustomInterval, type Frequency } from './ajo-schedule';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const addDays = (date: Date, n: number): Date => new Date(toCalendarDate(date).getTime() + n * DAY_MS);
@@ -147,12 +147,13 @@ const REMINDER_WINDOW_AFTER_GRACE_DAYS = 7;
  *   daily groups: no "upcoming", and a single overdue message at most once a week, because the collector calls every day.
  * Paid instalments are never reminded about. Whether to remind at all (verification pending, a dispute, reminders off) is decided by the caller.
  */
-export function planReminders(input: { today: Date; frequency: Frequency; graceDays: number; hasLateFee: boolean; membershipId: number; installments: ReminderInstallment[] }): PlannedReminder[] {
+export function planReminders(input: CustomInterval & { today: Date; frequency: Frequency; graceDays: number; hasLateFee: boolean; membershipId: number; installments: ReminderInstallment[] }): PlannedReminder[] {
   const today = toCalendarDate(input.today);
   const owing = input.installments.filter((i) => i.remainingKobo > 0n).sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime() || a.id - b.id);
   const recentlyOverdue = (i: ReminderInstallment) => isOverdue(i.dueDate, today) && today.getTime() <= addDays(graceEndsOn(i.dueDate, input.graceDays), REMINDER_WINDOW_AFTER_GRACE_DAYS).getTime();
 
-  if (input.frequency === 'DAILY') {
+  // A group that asks for money more often than weekly (daily, or every few days) would be nagged every day, so it gets one overdue message a week.
+  if (periodDays(input.frequency, input) < 7) {
     const overdue = owing.filter(recentlyOverdue);
     return overdue.length ? [{ kind: 'OVERDUE', installmentIds: overdue.map((i) => i.id), dedupeKey: `w:${input.membershipId}:${isoWeekKey(today)}` }] : [];
   }
@@ -286,12 +287,12 @@ export interface PlanLine {
 export const MAX_PLAN_PERIODS = 24;
 
 /** Equal instalments on the group's own cycle, starting one period from `from`. The odd kobo go to the first lines, so the total is exact. */
-export function draftPlan(input: { outstandingKobo: bigint; frequency: Frequency; from: Date; periods: number }): PlanLine[] {
+export function draftPlan(input: CustomInterval & { outstandingKobo: bigint; frequency: Frequency; from: Date; periods: number }): PlanLine[] {
   if (input.outstandingKobo <= 0n) throw new RangeError('There is nothing to repay.');
   const n = Math.min(Math.max(Math.floor(input.periods), 1), MAX_PLAN_PERIODS);
   const base = input.outstandingKobo / BigInt(n);
   const extra = Number(input.outstandingKobo % BigInt(n));
-  return Array.from({ length: n }, (_, i) => ({ dueDate: iso(addPeriods(input.from, input.frequency, i + 1)), amountKobo: (base + (i < extra ? 1n : 0n)).toString() }));
+  return Array.from({ length: n }, (_, i) => ({ dueDate: iso(addPeriods(input.from, input.frequency, i + 1, input)), amountKobo: (base + (i < extra ? 1n : 0n)).toString() }));
 }
 
 export interface PlanTracking {

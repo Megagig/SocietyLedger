@@ -16,8 +16,8 @@ export interface ScheduleSummary {
   repriced: number;
 }
 
-function shapeOf(group: { model: 'COLLECTOR_THRIFT' | 'ROTATING_POT'; frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY'; startDate: Date; cycleLength: number | null; rounds: number | null }): GroupShape {
-  return { model: group.model, frequency: group.frequency, startDate: group.startDate, cycleLength: group.cycleLength, rounds: group.rounds };
+function shapeOf(group: { model: 'COLLECTOR_THRIFT' | 'ROTATING_POT'; frequency: GroupShape['frequency']; intervalCount: number | null; intervalUnit: GroupShape['intervalUnit']; startDate: Date; cycleLength: number | null; rounds: number | null }): GroupShape {
+  return { model: group.model, frequency: group.frequency, intervalCount: group.intervalCount, intervalUnit: group.intervalUnit, startDate: group.startDate, cycleLength: group.cycleLength, rounds: group.rounds };
 }
 
 /**

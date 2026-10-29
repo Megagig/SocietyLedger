@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Checkbox, NumberInput, SegmentedControl, Select, Stepper, TextInput } from '@mantine/core';
+import { Button, Checkbox, NativeSelect, NumberInput, SegmentedControl, Select, Stepper, TextInput } from '@mantine/core';
 import { DEFAULT_RULES, RulesFields, rulesFormToInput, type RulesFormValues } from './RulesFields';
 import { ajoErrorMessage } from '@/lib/ajo/api';
-import { formatKobo, nairaToKobo } from '@/lib/ajo/format';
+import { cadenceWords, formatKobo, nairaToKobo } from '@/lib/ajo/format';
 import { ajoStaffApi, type GroupFieldsInput } from '@/lib/ajo/staffApi';
 import { useAjoAction } from '@/lib/ajo/staffHooks';
 import { toast } from '@/lib/toast';
@@ -13,7 +13,10 @@ import type { GroupDetailDTO } from '@/lib/ajo/staffTypes';
 type Form = {
   model: 'COLLECTOR_THRIFT' | 'ROTATING_POT';
   name: string;
-  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'CUSTOM';
+  /** Only used when frequency is CUSTOM: every N days, weeks or months. */
+  customCount: number | string;
+  customUnit: 'DAYS' | 'WEEKS' | 'MONTHS';
   contribution: string;
   startDate: string;
   cycleLength: number;
@@ -30,8 +33,17 @@ type Form = {
   rules: RulesFormValues;
 };
 
+const FREQUENCY_OPTIONS = [
+  { value: 'DAILY', label: 'Daily' },
+  { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'MONTHLY', label: 'Monthly' },
+  { value: 'QUARTERLY', label: 'Quarterly (every 3 months)' },
+  { value: 'ANNUALLY', label: 'Annually (every year)' },
+  { value: 'CUSTOM', label: 'Custom: set your own' },
+];
+
 const INITIAL: Form = {
-  model: 'COLLECTOR_THRIFT', name: '', frequency: 'DAILY', contribution: '', startDate: '', cycleLength: 31, maxParticipants: 30, maxShares: 2, allowLateJoin: false,
+  model: 'COLLECTOR_THRIFT', name: '', frequency: 'DAILY', customCount: 2, customUnit: 'WEEKS', contribution: '', startDate: '', cycleLength: 31, maxParticipants: 30, maxShares: 2, allowLateJoin: false,
   collectorFeeType: 'DAYS', collectorFeeValue: '1', cutoffTime: '18:00', requirePhoneConfirm: false, bankName: '', accountNumber: '', accountName: '', rules: DEFAULT_RULES,
 };
 
@@ -42,6 +54,14 @@ function build(f: Form): { body: Parameters<typeof ajoStaffApi.createGroup>[0] }
   if (contribution === null || contribution <= BigInt(0)) return { error: 'Enter how much each person pays each time, in naira, for example 5,000.', step: 1 };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(f.startDate)) return { error: 'Choose the day the group starts.', step: 1 };
   if (f.startDate < new Date().toISOString().slice(0, 10)) return { error: 'The start date must be today or later.', step: 1 };
+  let intervalCount: number | null = null;
+  let intervalUnit: Form['customUnit'] | null = null;
+  if (f.frequency === 'CUSTOM') {
+    const n = Number(f.customCount);
+    if (!Number.isInteger(n) || n < 1 || n > 60) return { error: 'For your own schedule, enter how many days, weeks or months between payments (1 to 60).', step: 1 };
+    intervalCount = n;
+    intervalUnit = f.customUnit;
+  }
   let collectorFeeValue = '0';
   if (f.collectorFeeType === 'FIXED') {
     const kobo = nairaToKobo(f.collectorFeeValue);
@@ -62,7 +82,7 @@ function build(f: Form): { body: Parameters<typeof ajoStaffApi.createGroup>[0] }
   if ('error' in rules) return { error: rules.error, step: 4 };
 
   const fields: GroupFieldsInput = {
-    name: f.name.trim(), model: f.model, frequency: f.model === 'ROTATING_POT' && f.frequency === 'DAILY' ? 'WEEKLY' : f.frequency, contributionKobo: contribution.toString(), startDate: f.startDate,
+    name: f.name.trim(), model: f.model, frequency: f.model === 'ROTATING_POT' && f.frequency === 'DAILY' ? 'WEEKLY' : f.frequency, intervalCount, intervalUnit, contributionKobo: contribution.toString(), startDate: f.startDate,
     cycleLength: f.model === 'COLLECTOR_THRIFT' ? f.cycleLength : null, maxParticipants: f.maxParticipants, maxSharesPerMember: f.model === 'ROTATING_POT' ? f.maxShares : 1,
     allowLateJoin: f.allowLateJoin, collectorFeeType: f.collectorFeeType, collectorFeeValue, cutoffTime: f.cutoffTime, requirePhoneConfirm: f.requirePhoneConfirm,
   };
@@ -148,7 +168,18 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
         {step === 1 && (
           <>
             <TextInput label="Each person pays (₦)" description={rotating ? 'Every round, for each share they hold.' : 'Every time (each day, week or month).'} inputMode="decimal" value={form.contribution} onChange={(e) => set('contribution', e.currentTarget.value)} required />
-            <Select label="How often" data={rotating ? [{ value: 'WEEKLY', label: 'Weekly' }, { value: 'MONTHLY', label: 'Monthly' }] : [{ value: 'DAILY', label: 'Daily' }, { value: 'WEEKLY', label: 'Weekly' }, { value: 'MONTHLY', label: 'Monthly' }]} value={form.frequency} onChange={(v) => set('frequency', (v ?? 'WEEKLY') as Form['frequency'])} allowDeselect={false} />
+            <Select label="How often" description={rotating ? "Every round, for each share they hold." : "Every time a payment is due."} data={FREQUENCY_OPTIONS.filter((o) => !(rotating && o.value === 'DAILY'))} value={form.frequency} onChange={(v) => set('frequency', (v ?? 'WEEKLY') as Form['frequency'])} allowDeselect={false} />
+            {form.frequency === 'CUSTOM' && (
+              <div className="space-y-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                <div className="flex flex-wrap items-end gap-2">
+                  <span className="pb-2 text-sm">Every</span>
+                  <NumberInput aria-label="How many" className="w-24" min={1} max={60} value={form.customCount} onChange={(v) => set('customCount', v)} />
+                  <NativeSelect aria-label="Days, weeks or months" data={[{ value: 'DAYS', label: 'days' }, { value: 'WEEKS', label: 'weeks' }, { value: 'MONTHS', label: 'months' }]} value={form.customUnit} onChange={(e) => set('customUnit', e.currentTarget.value as Form['customUnit'])} />
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400">For example bi-weekly is every 2 weeks, and every two months is 2 months. For twice a month, choose 15 days or 2 weeks.</p>
+                {Number.isInteger(Number(form.customCount)) && Number(form.customCount) >= 1 && <p className="text-sm font-medium">Everyone pays {cadenceWords('CUSTOM', Number(form.customCount), form.customUnit)}{form.startDate ? `, starting ${form.startDate}` : ''}.</p>}
+              </div>
+            )}
             <TextInput label="First payment date" type="date" min={new Date().toISOString().slice(0, 10)} value={form.startDate} onChange={(e) => set('startDate', e.currentTarget.value)} required />
             {!rotating && <NumberInput label="Number of payments in the cycle" description="For example 31 daily payments." min={1} max={400} value={form.cycleLength} onChange={(v) => set('cycleLength', typeof v === 'number' ? v : 1)} />}
             <NumberInput label="Most people in the group" min={rotating ? 2 : 1} max={2000} value={form.maxParticipants} onChange={(v) => set('maxParticipants', typeof v === 'number' ? v : 1)} />
@@ -176,7 +207,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
         {step === 5 && 'body' in built && (
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             {[
-              ['Name', form.name], ['Kind', rotating ? 'Rotating pot' : 'Collector thrift'], ['Each pays', formatKobo(built.body.contributionKobo)], ['How often', form.frequency.toLowerCase()],
+              ['Name', form.name], ['Kind', rotating ? 'Rotating pot' : 'Collector thrift'], ['Each pays', formatKobo(built.body.contributionKobo)], ['How often', cadenceWords(form.frequency, Number(form.customCount), form.customUnit)],
               ['Starts', form.startDate], [rotating ? 'Shares per person' : 'Payments in the cycle', String(rotating ? form.maxShares : form.cycleLength)], ['Up to', `${form.maxParticipants} people`],
               ['Collector fee', form.collectorFeeType === 'NONE' ? 'None' : form.collectorFeeType === 'DAYS' ? `${form.collectorFeeValue} day(s) of contribution` : form.collectorFeeType === 'FIXED' ? formatKobo(built.body.collectorFeeValue) : `${form.collectorFeeValue}%`],
               ['Account', `${form.bankName} · ${form.accountName}`], ['Late fee', form.rules.lateFeeType === 'NONE' ? 'None' : form.rules.lateFeeType === 'FIXED' ? `₦${form.rules.lateFeeValue}` : `${form.rules.lateFeeValue}%`],

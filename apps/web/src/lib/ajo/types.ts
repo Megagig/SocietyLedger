@@ -12,7 +12,8 @@ export type AjoStatusDTO = {
 };
 
 export type GroupModel = 'COLLECTOR_THRIFT' | 'ROTATING_POT';
-export type GroupFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type GroupFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'CUSTOM';
+export type IntervalUnit = 'DAYS' | 'WEEKS' | 'MONTHS';
 export type GroupStatus = 'DRAFT' | 'OPEN' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type MembershipStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'LEFT';
 
@@ -21,6 +22,11 @@ export type GroupDTO = {
   name: string;
   model: GroupModel;
   frequency: GroupFrequency;
+  /** Only for CUSTOM: every N days, weeks or months. */
+  intervalCount: number | null;
+  intervalUnit: IntervalUnit | null;
+  /** The cadence in plain words from the server, for example "every 2 weeks". */
+  cadence: string;
   status: GroupStatus;
   contributionKobo: string;
   startDate: string;

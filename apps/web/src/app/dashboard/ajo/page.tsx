@@ -8,7 +8,7 @@ import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { Money } from '@/components/ajo/Money';
 import { OnboardingResume } from '@/components/ajo/OnboardingResume';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
-import { FREQUENCY_LABEL, MODEL_LABEL, formatDay } from '@/lib/ajo/format';
+import { frequencyText, MODEL_LABEL, formatDay } from '@/lib/ajo/format';
 import { useGroups } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { useAjoNav } from '@/lib/ajo/useAjoNav';
@@ -63,7 +63,7 @@ export default function AjoGroupsPage() {
                       {g.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{MODEL_LABEL[g.model]} · {FREQUENCY_LABEL[g.frequency]}</td>
+                  <td className="px-4 py-3">{MODEL_LABEL[g.model]} · {frequencyText(g)}</td>
                   <td className="px-4 py-3 text-right"><Money kobo={g.contributionKobo} /></td>
                   <td className="px-4 py-3 tabular-nums">{g.seats.taken} of {g.seats.total}</td>
                   <td className="px-4 py-3">{formatDay(g.startDate)}</td>

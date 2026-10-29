@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@mantine/core';
-import { FREQUENCY_LABEL, MODEL_LABEL, formatDay, formatKobo, koboPositive, ordinal } from '@/lib/ajo/format';
+import { frequencyText, MODEL_LABEL, formatDay, formatKobo, koboPositive, ordinal } from '@/lib/ajo/format';
 import type { MyMembershipDTO } from '@/lib/ajo/types';
 import { useAjoAccess } from './AjoGate';
 import { Money } from './Money';
@@ -24,7 +24,7 @@ export function MembershipCard({ item }: { item: MyMembershipDTO }) {
             {group.name}
           </Link>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {MODEL_LABEL[group.model]} · {FREQUENCY_LABEL[group.frequency]} · {formatKobo(group.contributionKobo)}
+            {MODEL_LABEL[group.model]} · {frequencyText(group)} · {formatKobo(group.contributionKobo)}
             {item.shares > 1 ? ` × ${item.shares} shares` : ''}
           </p>
         </div>

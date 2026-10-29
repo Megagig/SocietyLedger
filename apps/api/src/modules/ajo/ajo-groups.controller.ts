@@ -43,7 +43,9 @@ const fieldsSchema = z
   .object({
     name: z.string(),
     model: z.enum(['COLLECTOR_THRIFT', 'ROTATING_POT']),
-    frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
+    frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'CUSTOM']),
+    intervalCount: z.number().int().nullable(),
+    intervalUnit: z.enum(['DAYS', 'WEEKS', 'MONTHS']).nullable(),
     contributionKobo: kobo,
     startDate: z.string(),
     cycleLength: z.number().int().nullable(),

@@ -55,7 +55,13 @@ export function formatMoment(value: string | Date | null | undefined): string {
 }
 
 export const MODEL_LABEL = { COLLECTOR_THRIFT: 'Collector thrift', ROTATING_POT: 'Rotating pot' } as const;
-export const FREQUENCY_LABEL = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly' } as const;
+export const FREQUENCY_LABEL = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', QUARTERLY: 'Quarterly', ANNUALLY: 'Annually', CUSTOM: 'Custom' } as const;
+
+/** How often a group collects, for a screen: "Weekly", or for a custom step "Every 2 weeks" (the server writes the words). */
+export function frequencyText(g: { frequency: keyof typeof FREQUENCY_LABEL; cadence?: string | null }): string {
+  if (g.frequency === 'CUSTOM' && g.cadence) return g.cadence.charAt(0).toUpperCase() + g.cadence.slice(1);
+  return FREQUENCY_LABEL[g.frequency];
+}
 
 /** "1st", "2nd", "3rd" for a place in the payout order. */
 export function ordinal(n: number): string {
@@ -66,5 +72,17 @@ export function ordinal(n: number): string {
     case 2: return `${n}nd`;
     case 3: return `${n}rd`;
     default: return `${n}th`;
+  }
+}
+
+/** The cadence the wizard is building, in plain words, the same wording the server uses: "every 2 weeks", "every 3 months". */
+export function cadenceWords(frequency: keyof typeof FREQUENCY_LABEL, count: number, unit: 'DAYS' | 'WEEKS' | 'MONTHS'): string {
+  switch (frequency) {
+    case 'DAILY': return 'every day';
+    case 'WEEKLY': return 'every week';
+    case 'MONTHLY': return 'every month';
+    case 'QUARTERLY': return 'every 3 months';
+    case 'ANNUALLY': return 'every year';
+    default: return count === 1 ? `every ${unit.toLowerCase().replace(/s$/, '')}` : `every ${count} ${unit.toLowerCase()}`;
   }
 }

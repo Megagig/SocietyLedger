@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
-import { FREQUENCY_LABEL, MODEL_LABEL } from '@/lib/ajo/format';
+import { frequencyText, MODEL_LABEL } from '@/lib/ajo/format';
 import { useGroupDetail } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 
@@ -45,7 +45,7 @@ export default function GroupWorkspaceLayout({ children }: { children: ReactNode
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{group.data.name}</h1>
             <StatusBadge status={group.data.status} />
-            <span className="text-sm text-gray-600 dark:text-gray-400">{MODEL_LABEL[group.data.model]} · {FREQUENCY_LABEL[group.data.frequency]}</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{MODEL_LABEL[group.data.model]} · {frequencyText(group.data)}</span>
           </div>
         ) : null}
       </div>

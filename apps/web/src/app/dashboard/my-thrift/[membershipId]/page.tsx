@@ -10,7 +10,7 @@ import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { DisputeDialog } from '@/components/ajo/DisputeDialog';
 import { Money } from '@/components/ajo/Money';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
-import { FREQUENCY_LABEL, MODEL_LABEL, formatDay, formatKobo, formatMoment, koboPositive, ordinal } from '@/lib/ajo/format';
+import { frequencyText, MODEL_LABEL, formatDay, formatKobo, formatMoment, koboPositive, ordinal } from '@/lib/ajo/format';
 import { useContributions, useDisputes, useLateFees, useMyMemberships, useSchedule, useTrust } from '@/lib/ajo/hooks';
 import type { InstallmentDTO } from '@/lib/ajo/types';
 
@@ -55,7 +55,7 @@ export default function MembershipDetailPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{item.group.name}</h1>
             <p className="mt-1 text-gray-600 dark:text-gray-400">
-              {MODEL_LABEL[item.group.model]} · {FREQUENCY_LABEL[item.group.frequency]} · {formatKobo(item.group.contributionKobo)}
+              {MODEL_LABEL[item.group.model]} · {frequencyText(item.group)} · {formatKobo(item.group.contributionKobo)}
               {item.shares > 1 ? ` × ${item.shares} shares` : ''}
             </p>
           </div>
