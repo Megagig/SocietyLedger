@@ -3,12 +3,15 @@
  * number or a proof: those are fetched when a person asks and are not kept in the query cache (see `hooks.ts`).
  */
 import api from '@/lib/axios';
+import type { OrderDTO } from './staffTypes';
 import type {
   AjoStatusDTO,
   ContributionDTO,
   DisputeDTO,
   GroupBankDTO,
   GroupDTO,
+  PhoneCodeDTO,
+  ReceiptDTO,
   LateFeeDTO,
   MyMembershipDTO,
   PayoutAccountDTO,
@@ -61,6 +64,12 @@ export const ajoApi = {
 
   schedule: (membershipId: number) => unwrap<ScheduleDTO>(api.get(`/ajo/memberships/${membershipId}/installments`)),
   contributions: (membershipId: number) => unwrap<ContributionDTO[]>(api.get(`/ajo/memberships/${membershipId}/contributions`)),
+  receipts: (contributionId: number) => unwrap<ReceiptDTO[]>(api.get(`/ajo/contributions/${contributionId}/receipts`)),
+  sendPhoneCode: (membershipId: number) => unwrap<PhoneCodeDTO>(api.post(`/ajo/memberships/${membershipId}/phone-code`, {})),
+  confirmPhoneCode: (membershipId: number, code: string) => unwrap<{ confirmed: boolean; activation: { activated: boolean } }>(api.post(`/ajo/memberships/${membershipId}/phone-code/confirm`, { code })),
+  leave: (membershipId: number, reason?: string) => unwrap<{ replayed: boolean }>(api.post(`/ajo/memberships/${membershipId}/leave`, { reason })),
+  order: (groupId: number) => unwrap<OrderDTO>(api.get(`/ajo/groups/${groupId}/order`)),
+  requestSwap: (groupId: number, body: { slotAId: number; slotBId: number; reason?: string }) => unwrap<unknown>(api.post(`/ajo/groups/${groupId}/swaps`, body)),
   lateFees: (membershipId: number) => unwrap<LateFeeDTO[]>(api.get(`/ajo/memberships/${membershipId}/late-fees`)),
   trust: (membershipId: number) => unwrap<TrustDTO>(api.get(`/ajo/memberships/${membershipId}/trust`)),
   disputes: (membershipId: number) => unwrap<DisputeDTO[]>(api.get(`/ajo/memberships/${membershipId}/disputes`)),

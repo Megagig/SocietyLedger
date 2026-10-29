@@ -14,6 +14,8 @@ import type {
   CollectorDayDTO,
   GroupDetailDTO,
   GroupListItemDTO,
+  GuarantorLinkDTO,
+  PersonNameDTO,
   HandoverDTO,
   HandoverDetailDTO,
   OrderDTO,
@@ -62,6 +64,9 @@ export type RulesInput = {
 };
 export type BankInput = { bankName: string; accountNumber: string; accountName: string };
 
+/** How many rows a list asks for at a time. */
+export const QUEUE_PAGE = 50;
+
 export const ajoStaffApi = {
   // groups (T7.1)
   groups: () => unwrap<GroupListItemDTO[]>(api.get('/ajo/groups')),
@@ -86,6 +91,8 @@ export const ajoStaffApi = {
   uploadLogo: (file: File) => { const form = new FormData(); form.append('logo', file); return unwrap<unknown>(api.post('/settings/association/logo', form)); },
 
   // members (T7.2)
+  people: (id: number) => unwrap<PersonNameDTO[]>(api.get(`/ajo/groups/${id}/people`)),
+  guarantorLink: (membershipId: number, body: { name: string; phone: string; relationship: string }) => post<GuarantorLinkDTO>(`/ajo/memberships/${membershipId}/guarantor-link`, body),
   roster: (id: number) => unwrap<RosterDTO>(api.get(`/ajo/groups/${id}/members`)),
   searchPeople: (search: string) => unwrap<PersonSearchDTO[]>(api.get('/ajo/people', { params: { search } })),
   addMember: (id: number, memberId: number, shares?: number) => post<{ membershipId: number }>(`/ajo/groups/${id}/members`, { memberId, shares }),
@@ -101,12 +108,12 @@ export const ajoStaffApi = {
   exception: (id: number, body: { slotId: number; newPosition: number; reason: string }) => post<unknown>(`/ajo/groups/${id}/exceptions`, body),
 
   // collections (T7.3)
-  queue: (id: number, params: { status?: string; method?: string } = {}) => unwrap<QueueDTO>(api.get(`/ajo/groups/${id}/contributions`, { params: { take: 100, ...params } })),
+  queue: (id: number, params: { status?: string; method?: string; take?: number; skip?: number } = {}) => unwrap<QueueDTO>(api.get(`/ajo/groups/${id}/contributions`, { params: { take: QUEUE_PAGE, ...params } })),
   confirm: (contributionId: number, body: { acknowledgeDuplicate?: boolean; note?: string; confirmOwn?: boolean }) => post<unknown>(`/ajo/contributions/${contributionId}/confirm`, body),
   reject: (contributionId: number, reason: string) => post<unknown>(`/ajo/contributions/${contributionId}/reject`, { reason }),
   reverse: (contributionId: number, reason: string) => post<unknown>(`/ajo/contributions/${contributionId}/reverse`, { reason }),
   proofLink: (contributionId: number) => unwrap<{ url: string }>(api.get(`/ajo/contributions/${contributionId}/proof`)),
-  handovers: (id: number, reconciled?: boolean) => unwrap<HandoverDTO[]>(api.get(`/ajo/groups/${id}/handovers`, { params: reconciled === undefined ? {} : { reconciled } })),
+  handovers: (id: number, reconciled?: boolean, skip = 0) => unwrap<HandoverDTO[]>(api.get(`/ajo/groups/${id}/handovers`, { params: { take: QUEUE_PAGE, ...(skip ? { skip } : {}), ...(reconciled === undefined ? {} : { reconciled }) } })),
   handover: (handoverId: number) => unwrap<HandoverDetailDTO>(api.get(`/ajo/handovers/${handoverId}`)),
   reconcileHandover: (handoverId: number, body: { countedKobo: string; receivedContributionIds?: number[]; note?: string; confirmOwn?: boolean }) => post<unknown>(`/ajo/handovers/${handoverId}/reconcile`, body),
   collectors: (id: number) => unwrap<CollectorAssignmentDTO[]>(api.get(`/ajo/groups/${id}/collectors`)),

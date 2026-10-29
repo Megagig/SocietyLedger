@@ -52,7 +52,7 @@ export type MyMembershipDTO = {
 
 export type InstallmentStatus = 'DUE' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'WAIVED';
 
-export type InstallmentDTO = { id: number; dueDate: string; amountKobo: string; paidKobo: string; status: InstallmentStatus };
+export type InstallmentDTO = { id: number; dueDate: string; amountKobo: string; paidKobo: string; status: InstallmentStatus; /** Past its due day on the group's own calendar, decided by the server. */ pastDue: boolean };
 
 export type ScheduleDTO = {
   membershipId: number;
@@ -126,3 +126,6 @@ export type LateFeeDTO = {
   notifiedAt: string | null;
   waivedReason: string | null;
 };
+
+export type ReceiptDTO = { id: number; moment: string; state: 'QUEUED' | 'SENT' | 'FAILED' | string; message: string; channels: unknown; sentAt: string | null; queuedForCredits: boolean };
+export type PhoneCodeDTO = { sentTo: string; expiresAt: string };

@@ -2,29 +2,18 @@
 
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { Button, Modal, NumberInput, TextInput, Textarea } from '@mantine/core';
+import { Button, Modal, NumberInput, SegmentedControl, TextInput, Textarea } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
 import { ajoErrorMessage } from '@/lib/ajo/api';
-import api from '@/lib/axios';
+import { formatDay } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
 import type { RosterPersonDTO } from '@/lib/ajo/staffTypes';
 import { useAjoAction, useGroupDetail, useRoster } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
-
-/** SocietyLedger's own check of a person's payout details, shown beside their name. A person without a member record shows nothing. */
-function VerificationCell({ memberId }: { memberId: number }) {
-  const status = useQuery({ queryKey: ['ajo', 'staff', 'verification', memberId], queryFn: () => ajoStaffVerification(memberId), retry: false, staleTime: 60_000 });
-  if (!status.data) return <span className="text-xs text-gray-400">…</span>;
-  return <StatusBadge status={status.data.status} />;
-}
-async function ajoStaffVerification(memberId: number) {
-  const response = await api.get<{ data: { status: 'NOT_REQUESTED' | 'PENDING' | 'VERIFIED' | 'REJECTED' } }>(`/ajo/members/${memberId}/verification`);
-  return response.data.data;
-}
 
 function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares }: { groupId: number; opened: boolean; onClose: () => void; rotating: boolean; maxShares: number }) {
   const [search, setSearch] = useState('');
@@ -37,7 +26,7 @@ function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares }: { gr
     setProblem(null);
     try {
       await add.mutateAsync({ memberId });
-      toast.success(`${name} was added. They need the group to approve them.`);
+      toast.success(`${name} was added. They need the circle to approve them.`);
     } catch (error) {
       setProblem(ajoErrorMessage(error));
     }
@@ -48,12 +37,12 @@ function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares }: { gr
       <div className="space-y-4">
         <TextInput label="Find an association member" placeholder="Name, member number or phone" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
         {rotating && <NumberInput label="Shares" description="A person with two shares pays twice each round and collects twice." min={1} max={maxShares} value={shares} onChange={(v) => setShares(typeof v === 'number' ? v : 1)} />}
-        {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+        {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
         {people.isLoading ? <AjoLoading rows={2} /> : people.isError ? <AjoError error={people.error} /> : people.data && people.data.length > 0 ? (
-          <ul className="max-h-72 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+          <ul className="max-h-72 divide-y divide-line-soft overflow-y-auto rounded-lg border border-line">
             {people.data.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                <div><p className="text-sm font-medium">{p.name}</p><p className="text-xs text-gray-500">{p.memberNumber}{p.phone ? ` · ${p.phone}` : ' · no phone yet'}{p.hasLogin ? '' : ' · no login'}</p></div>
+                <div><p className="text-sm font-medium">{p.name}</p><p className="text-xs text-ink-faint">{p.memberNumber}{p.phone ? ` · ${p.phone}` : ' · no phone yet'}{p.hasLogin ? '' : ' · no login'}</p></div>
                 <Button size="compact-sm" variant="light" onClick={() => choose(p.id, p.name)} loading={add.isLoading && add.variables?.memberId === p.id}>Add</Button>
               </li>
             ))}
@@ -65,13 +54,20 @@ function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares }: { gr
 }
 
 function GuarantorDialog({ person, onClose }: { person: RosterPersonDTO | null; onClose: () => void }) {
+  const [mode, setMode] = useState<'link' | 'self'>('link');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [relationship, setRelationship] = useState('');
   const [note, setNote] = useState('');
   const [wording, setWording] = useState<string | null>(null);
+  const [made, setMade] = useState<{ link: string; expiresAt: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const save = useAjoAction((body: Parameters<typeof ajoStaffApi.recordGuarantor>[1]) => ajoStaffApi.recordGuarantor(person?.membershipId ?? 0, body));
+  const makeLink = useAjoAction((body: { name: string; phone: string; relationship: string }) => ajoStaffApi.guarantorLink(person?.membershipId ?? 0, body));
+
+  const close = () => { setMode('link'); setName(''); setPhone(''); setRelationship(''); setNote(''); setWording(null); setMade(null); setCopied(false); setProblem(null); onClose(); };
+  const filled = () => (name.trim().length < 2 ? 'Enter the guarantor’s name.' : phone.trim().length < 7 ? 'Enter the guarantor’s phone number.' : relationship.trim().length < 2 ? 'Say how the guarantor knows the member.' : null);
 
   const showWording = async () => {
     if (!person || name.trim().length < 2) return setProblem('Enter the guarantor’s name first.');
@@ -82,30 +78,70 @@ function GuarantorDialog({ person, onClose }: { person: RosterPersonDTO | null; 
       setProblem(ajoErrorMessage(error));
     }
   };
+  const createLink = async () => {
+    const bad = filled();
+    if (bad) return setProblem(bad);
+    setProblem(null);
+    try {
+      const r = await makeLink.mutateAsync({ name: name.trim(), phone: phone.trim(), relationship: relationship.trim() });
+      setMade({ link: r.link, expiresAt: r.expiresAt });
+      setWording(r.wording);
+    } catch (error) {
+      setProblem(ajoErrorMessage(error));
+    }
+  };
+  const copy = async () => {
+    if (!made) return;
+    try { await navigator.clipboard.writeText(made.link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { toast.error('Could not copy. Select the link and copy it yourself.'); }
+  };
   const submit = async () => {
+    const bad = filled();
+    if (bad) return setProblem(bad);
     if (!wording) return setProblem('Read the wording to the guarantor first, using “Show the wording”.');
     if (note.trim().length < 5) return setProblem('Say how the guarantor agreed (for example “agreed by phone on 5 March”).');
     try {
       await save.mutateAsync({ name: name.trim(), phone: phone.trim(), relationship: relationship.trim(), note: note.trim() });
       toast.success('The guarantor’s agreement was recorded.');
-      onClose();
+      close();
     } catch (error) {
       setProblem(ajoErrorMessage(error));
     }
   };
 
   return (
-    <Modal opened={person !== null} onClose={onClose} title={`Guarantor for ${person?.name ?? ''}`} centered size="lg">
+    <Modal opened={person !== null} onClose={close} title={`Guarantor for ${person?.name ?? ''}`} centered size="lg">
       <div className="space-y-3">
-        <p className="text-sm text-gray-600 dark:text-gray-400">A guarantor is a recorded agreement only. Nothing is ever taken from them automatically. Record that they heard and agreed to the wording below.</p>
-        <TextInput label="Guarantor’s name" value={name} onChange={(e) => { setName(e.currentTarget.value); setWording(null); }} />
-        <TextInput label="Phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
-        <TextInput label="Relationship to the member" value={relationship} onChange={(e) => setRelationship(e.currentTarget.value)} />
-        <Button variant="light" size="xs" onClick={showWording}>Show the wording</Button>
-        {wording && <p className="rounded-md bg-gray-50 p-3 text-sm dark:bg-gray-800">{wording}</p>}
-        <Textarea label="How they agreed" autosize minRows={2} value={note} onChange={(e) => setNote(e.currentTarget.value)} />
-        {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
-        <div className="flex justify-end gap-2"><Button variant="default" onClick={onClose}>Cancel</Button><Button color="green" onClick={submit} loading={save.isLoading}>Record agreement</Button></div>
+        <p className="text-sm text-ink-muted">A guarantor is a recorded agreement only. Nothing is ever taken from them automatically.</p>
+        {!made && (
+          <SegmentedControl fullWidth value={mode} onChange={(v) => { setMode(v as typeof mode); setProblem(null); }} data={[{ value: 'link', label: 'Send them a link' }, { value: 'self', label: 'I will record it myself' }]} />
+        )}
+        {made ? (
+          <div className="space-y-3">
+            <p className="text-sm">Send this link to <strong>{name}</strong>, for example by WhatsApp or text. It works once and expires on {formatDay(made.expiresAt)}. It is shown only now.</p>
+            <div className="flex gap-2"><input readOnly aria-label="Link for the guarantor" value={made.link} onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-3 py-2 text-sm" /><Button variant="light" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button></div>
+            {wording && <p className="rounded-md bg-surface-muted p-3 text-sm"><span className="font-medium">They will be asked to agree to: </span>{wording}</p>}
+            <p className="text-xs text-ink-faint">You are told when they accept, and the member is activated if nothing else is missing. Creating another link replaces this one.</p>
+            <div className="flex justify-end"><Button onClick={close}>Done</Button></div>
+          </div>
+        ) : (
+          <>
+            <TextInput label="Guarantor’s name" value={name} onChange={(e) => { setName(e.currentTarget.value); setWording(null); }} />
+            <TextInput label="Phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
+            <TextInput label="Relationship to the member" value={relationship} onChange={(e) => setRelationship(e.currentTarget.value)} />
+            {mode === 'self' && (
+              <>
+                <Button variant="light" size="xs" onClick={showWording}>Show the wording</Button>
+                {wording && <p className="rounded-md bg-surface-muted p-3 text-sm">{wording}</p>}
+                <Textarea label="How they agreed" autosize minRows={2} value={note} onChange={(e) => setNote(e.currentTarget.value)} />
+              </>
+            )}
+            {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="default" onClick={close}>Cancel</Button>
+              {mode === 'link' ? <Button color="green" onClick={createLink} loading={makeLink.isLoading}>Create the link</Button> : <Button color="green" onClick={submit} loading={save.isLoading}>Record agreement</Button>}
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );
@@ -153,25 +189,25 @@ export default function MembersPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-gray-600 dark:text-gray-400">A person joins once the group has approved them, they have a phone number, they accepted the rules, and any guarantor is recorded.</p>
+        <p className="text-sm text-ink-muted">A person joins once the circle has approved them, they have a phone number, they accepted the rules, and any guarantor is recorded.</p>
         {can && group && (group.status === 'OPEN' || group.status === 'ACTIVE' || group.status === 'DRAFT') && <Button onClick={() => setAdding(true)}>Add a person</Button>}
       </div>
-      {problem && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{problem}</p>}
+      {problem && <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">{problem}</p>}
 
       {roster.isLoading ? <AjoLoading /> : roster.isError ? <AjoError error={roster.error} onRetry={() => roster.refetch()} /> : roster.data && roster.data.people.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+            <thead className="bg-surface-muted text-left text-ink-muted">
               <tr><th className="px-4 py-2 font-medium">Person</th><th className="px-4 py-2 font-medium">Status</th><th className="px-4 py-2 font-medium">SocietyLedger check</th><th className="px-4 py-2 font-medium">Rules</th><th className="px-4 py-2 font-medium">Waiting for</th><th className="px-4 py-2" /></tr>
             </thead>
             <tbody>
               {roster.data.people.map((p) => (
-                <tr key={p.membershipId} className="border-t border-gray-100 align-top dark:border-gray-700">
-                  <td className="px-4 py-3"><p className="font-medium">{p.name}{rotating && p.shares > 1 ? ` (${p.shares} shares)` : ''}</p><p className="text-xs text-gray-500">{p.phone ?? 'No phone'}{p.hasLogin ? '' : ' · no login'}</p></td>
+                <tr key={p.membershipId} className="border-t border-line-soft align-top">
+                  <td className="px-4 py-3"><p className="font-medium">{p.name}{rotating && p.shares > 1 ? ` (${p.shares} shares)` : ''}</p><p className="text-xs text-ink-faint">{p.phone ?? 'No phone'}{p.hasLogin ? '' : ' · no login'}</p></td>
                   <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                  <td className="px-4 py-3"><VerificationCell memberId={p.memberId} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={p.verification} /></td>
                   <td className="px-4 py-3 text-xs">{p.acceptedRuleVersion ? `Version ${p.acceptedRuleVersion}${p.acceptedVia ? ` (${p.acceptedVia})` : ''}` : 'Not accepted'}{p.guarantorRecorded ? ' · guarantor on file' : ''}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{p.waitingFor.length ? <ul className="list-disc pl-4">{p.waitingFor.map((w) => <li key={w.requirement}>{w.text}</li>)}</ul> : '—'}</td>
+                  <td className="px-4 py-3 text-xs text-ink-muted">{p.waitingFor.length ? <ul className="list-disc pl-4">{p.waitingFor.map((w) => <li key={w.requirement}>{w.text}</li>)}</ul> : '—'}</td>
                   <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">
                     {can && p.status === 'PENDING' && !p.approvedAt && <Button size="compact-xs" color="green" onClick={() => doApprove(p)} loading={approve.isLoading && approve.variables === p.membershipId}>Approve</Button>}
                     {can && p.status !== 'LEFT' && <Button size="compact-xs" variant="subtle" onClick={() => setGuarantorFor(p)}>Guarantor</Button>}
@@ -182,7 +218,7 @@ export default function MembersPage() {
             </tbody>
           </table>
         </div>
-      ) : <AjoEmpty title="Nobody has been added yet." hint="Add association members to this group, then approve them." />}
+      ) : <AjoEmpty title="Nobody has been added yet." hint="Add association members to this circle, then approve them." />}
 
       <AddMemberDialog groupId={groupId} opened={adding} onClose={() => setAdding(false)} rotating={!!rotating} maxShares={group?.maxSharesPerMember ?? 1} />
       <GuarantorDialog person={guarantorFor} onClose={() => setGuarantorFor(null)} />

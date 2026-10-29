@@ -12,7 +12,7 @@ import { ajoErrorCode, ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay, formatMoment } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
 import type { QueueContributionDTO } from '@/lib/ajo/staffTypes';
-import { useQueue, useRoster } from '@/lib/ajo/staffHooks';
+import { useQueue, usePeople } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -62,21 +62,21 @@ function ConfirmDialog({ item, name, onClose }: { item: QueueContributionDTO | n
     <Modal opened={item !== null} onClose={close} title="Confirm this payment" centered>
       {item && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-700 dark:text-gray-300">Confirm only after you have seen <strong><Money kobo={item.amountKobo} /></strong> from <strong>{name}</strong> in the group&apos;s bank statement. Once confirmed it counts towards what they owe.</p>
+          <p className="text-sm text-ink-soft">Confirm only after you have seen <strong><Money kobo={item.amountKobo} /></strong> from <strong>{name}</strong> in the circle&apos;s bank statement. Once confirmed it counts towards what they owe.</p>
           {needs?.duplicate && (
-            <div className="space-y-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">
+            <div className="space-y-2 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
               <p>{needs.message}</p>
               <Checkbox label="I checked, and this is a different payment." checked={ack} onChange={(e) => setAck(e.currentTarget.checked)} />
             </div>
           )}
           {needs?.self && (
-            <div className="space-y-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">
+            <div className="space-y-2 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
               <p>{needs.message}</p>
               <Checkbox label="I am the only person who can confirm here, and I checked it against the statement." checked={own} onChange={(e) => setOwn(e.currentTarget.checked)} />
               <Textarea label="How you checked" autosize minRows={2} value={note} onChange={(e) => setNote(e.currentTarget.value)} />
             </div>
           )}
-          {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+          {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex justify-end gap-2"><Button variant="default" onClick={close}>Cancel</Button><Button color="green" onClick={submit} loading={busy} disabled={(needs?.duplicate && !ack) || (needs?.self && (!own || note.trim().length < 5))}>Confirm payment</Button></div>
         </div>
       )}
@@ -84,7 +84,7 @@ function ConfirmDialog({ item, name, onClose }: { item: QueueContributionDTO | n
   );
 }
 
-/** THO4 (transfers and cash): the group's payments, to confirm against the bank statement, turn down, or reverse with a reason. */
+/** THO4 (transfers and cash): the circle's payments, to confirm against the bank statement, turn down, or reverse with a reason. */
 export default function PaymentsPage() {
   const params = useParams<{ groupId: string }>();
   const groupId = Number(params.groupId) || 0;
@@ -92,8 +92,8 @@ export default function PaymentsPage() {
   const { reconcile } = useAjoCan();
   const [status, setStatus] = useState('REPORTED');
   const queue = useQueue(groupId, status || undefined);
-  const roster = useRoster(groupId);
-  const names = new Map((roster.data?.people ?? []).map((p) => [p.membershipId, p.name]));
+  const people = usePeople(groupId);
+  const names = new Map((people.data ?? []).map((p) => [p.membershipId, p.name]));
   const [confirming, setConfirming] = useState<QueueContributionDTO | null>(null);
   const [rejecting, setRejecting] = useState<QueueContributionDTO | null>(null);
   const [reversing, setReversing] = useState<QueueContributionDTO | null>(null);
@@ -114,23 +114,23 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="max-w-2xl text-sm text-gray-600 dark:text-gray-400">Only confirmed money counts. Check each transfer against the bank statement before you confirm it. Cash recorded by a collector is confirmed when the collector&apos;s handover is reconciled.</p>
+        <p className="max-w-2xl text-sm text-ink-muted">Only confirmed money counts. Check each transfer against the bank statement before you confirm it. Cash recorded by a collector is confirmed when the collector&apos;s handover is reconciled.</p>
         <NativeSelect aria-label="Show" data={FILTERS} value={status} onChange={(e) => setStatus(e.currentTarget.value)} />
       </div>
-      {proofProblem && <p role="alert" className="text-sm text-red-600">{proofProblem}</p>}
+      {proofProblem && <p role="alert" className="text-sm text-danger">{proofProblem}</p>}
 
-      {queue.isLoading ? <AjoLoading /> : queue.isError ? <AjoError error={queue.error} onRetry={() => queue.refetch()} /> : queue.data && queue.data.items.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      {queue.isLoading ? <AjoLoading /> : queue.isError ? <AjoError error={queue.error} onRetry={() => queue.refetch()} /> : queue.items.length > 0 ? (
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+            <thead className="bg-surface-muted text-left text-ink-muted">
               <tr><th className="px-4 py-2 font-medium">Member</th><th className="px-4 py-2 text-right font-medium">Amount</th><th className="px-4 py-2 font-medium">How and when</th><th className="px-4 py-2 font-medium">Status</th><th className="px-4 py-2" /></tr>
             </thead>
             <tbody>
-              {queue.data.items.map((c) => (
-                <tr key={c.id} className="border-t border-gray-100 align-top dark:border-gray-700">
-                  <td className="px-4 py-3 font-medium">{nameOf(c.membershipId)}{c.reference ? <span className="block text-xs font-normal text-gray-500">{c.reference}</span> : null}</td>
+              {queue.items.map((c) => (
+                <tr key={c.id} className="border-t border-line-soft align-top">
+                  <td className="px-4 py-3 font-medium">{nameOf(c.membershipId)}{c.reference ? <span className="block text-xs font-normal text-ink-faint">{c.reference}</span> : null}</td>
                   <td className="px-4 py-3 text-right"><Money kobo={c.amountKobo} /></td>
-                  <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{c.method === 'CASH' ? 'Cash' : 'Bank transfer'} · {formatMoment(c.receivedAt)}{c.paidOn ? ` · paid ${formatDay(c.paidOn)}` : ''}{c.bankReference ? ` · ref ${c.bankReference}` : ''}{c.possibleDuplicateOf ? ' · may be a repeat' : ''}{c.missingFromHandover ? ' · missing from handover' : ''}{c.reversalReason ? ` · reversed: ${c.reversalReason}` : ''}</td>
+                  <td className="px-4 py-3 text-xs text-ink-muted">{c.method === 'CASH' ? 'Cash' : 'Bank transfer'} · {formatMoment(c.receivedAt)}{c.paidOn ? ` · paid ${formatDay(c.paidOn)}` : ''}{c.bankReference ? ` · ref ${c.bankReference}` : ''}{c.possibleDuplicateOf ? ' · may be a repeat' : ''}{c.missingFromHandover ? ' · missing from handover' : ''}{c.reversalReason ? ` · reversed: ${c.reversalReason}` : ''}</td>
                   <td className="px-4 py-3"><StatusBadge status={c.reversed ? 'REVERSED' : c.status} /></td>
                   <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">
                     {c.hasProof && <Button size="compact-xs" variant="subtle" onClick={() => openProof(c.id)}>See slip</Button>}
@@ -143,6 +143,13 @@ export default function PaymentsPage() {
           </table>
         </div>
       ) : <AjoEmpty title={status === 'REPORTED' ? 'No transfers are waiting to be confirmed.' : 'Nothing here.'} />}
+
+      {queue.items.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
+          <span>Showing {queue.items.length} of {queue.total}</span>
+          {queue.hasMore && <Button variant="default" size="xs" onClick={() => queue.fetchNextPage()} loading={queue.isFetchingNextPage}>Show more</Button>}
+        </div>
+      )}
 
       <ConfirmDialog item={confirming} name={confirming ? nameOf(confirming.membershipId) : ''} onClose={() => setConfirming(null)} />
       <ActionDialog opened={rejecting !== null} onClose={() => setRejecting(null)} title="Turn down this payment" color="red" confirmLabel="Turn it down" reasonMin={5} reasonLabel="Why (the member is told)" successMessage="The payment was turned down."

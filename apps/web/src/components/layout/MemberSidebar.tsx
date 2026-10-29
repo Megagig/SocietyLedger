@@ -214,13 +214,13 @@ export function MemberSidebar() {
             icon: <IconPigMoney size={20} />,
             badge: ajoBadge,
             children: [
-              { label: 'My Groups', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
+              { label: 'My Circles', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
               { label: 'Payout Account', icon: <IconBuildingBank size={18} />, href: '/dashboard/my-thrift/payout-account' },
             ],
           },
         ]
       : []),
-    ...(ajoNav.staff ? [{ label: 'Thrift Groups', icon: <IconPigMoney size={20} />, href: '/dashboard/ajo', badge: ajoBadge }] : []),
+    ...(ajoNav.staff ? [{ label: 'Thrift Circles', icon: <IconPigMoney size={20} />, href: '/dashboard/ajo', badge: ajoBadge }] : []),
     ...(ajoNav.collect ? [{ label: 'Collect', icon: <IconCurrencyNaira size={20} />, href: '/dashboard/ajo/collect', badge: ajoBadge }] : []),
     {
       label: 'Cooperatives',
@@ -505,7 +505,7 @@ export function MemberSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {navItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label) || ['Thrift Groups', 'Collect', 'Notifications', 'Help & Support', 'Settings'].includes(item.label)).map(renderNavItem)}
+          {navItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label) || ['Thrift Circles', 'Collect', 'Notifications', 'Help & Support', 'Settings'].includes(item.label)).map(renderNavItem)}
         </nav>
 
         {/* Footer Actions */}

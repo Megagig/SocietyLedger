@@ -51,8 +51,8 @@ export function StepTeam({ collectorCircle, hasCollector, onDone, onSkip }: { co
   if (results) {
     return (
       <div className="space-y-4">
-        <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm dark:divide-gray-700 dark:border-gray-700">{results.map((r) => <li key={r.email} className="flex justify-between gap-2 px-3 py-2"><span>{r.email}</span><span className="text-gray-600 dark:text-gray-400">{r.message ?? SAYS[r.status]}</span></li>)}</ul>
-        {collectorCircle && <p className="text-sm text-gray-600 dark:text-gray-400">Once a collector accepts the invite, assign contributors to them from the group&apos;s Collectors page.</p>}
+        <ul className="divide-y divide-line-soft rounded-lg border border-line text-sm">{results.map((r) => <li key={r.email} className="flex justify-between gap-2 px-3 py-2"><span>{r.email}</span><span className="text-ink-muted">{r.message ?? SAYS[r.status]}</span></li>)}</ul>
+        {collectorCircle && <p className="text-sm text-ink-muted">Once a collector accepts the invite, assign contributors to them from the circle&apos;s Collectors page.</p>}
         <div className="flex justify-end"><Button color="green" onClick={next} loading={busy}>Continue</Button></div>
       </div>
     );
@@ -60,9 +60,9 @@ export function StepTeam({ collectorCircle, hasCollector, onDone, onSkip }: { co
 
   return (
     <div className="space-y-4">
-      {collectorCircle && !hasCollector && <p className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">Your circle needs a collector. Invite one now, or add one later from Collectors.</p>}
-      <p className="text-sm text-gray-600 dark:text-gray-400">One person prepares a payout and another approves it. With only one admin, every approval needs an extra confirmation, so a co-admin helps.</p>
-      <ul className="text-sm text-gray-600 dark:text-gray-400">{roles.map((r) => <li key={r.value}><strong>{r.label}:</strong> {r.description}</li>)}</ul>
+      {collectorCircle && !hasCollector && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning-strong">Your circle needs a collector. Invite one now, or add one later from Collectors.</p>}
+      <p className="text-sm text-ink-muted">One person prepares a payout and another approves it. With only one admin, every approval needs an extra confirmation, so a co-admin helps.</p>
+      <ul className="text-sm text-ink-muted">{roles.map((r) => <li key={r.value}><strong>{r.label}:</strong> {r.description}</li>)}</ul>
       {invites.map((inv, i) => (
         <div key={i} className="grid gap-2 sm:grid-cols-5">
           <TextInput placeholder="First name" aria-label="First name" value={inv.firstName} onChange={(e) => set(i, 'firstName', e.currentTarget.value)} />
@@ -72,7 +72,7 @@ export function StepTeam({ collectorCircle, hasCollector, onDone, onSkip }: { co
         </div>
       ))}
       <Button variant="subtle" size="xs" onClick={() => setInvites((p) => [...p, blank(collectorCircle ? 'ajo_collector' : 'ajo_officer')].slice(0, 20))}>Add another person</Button>
-      {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+      {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
       <div className="flex justify-between">
         <Button variant="subtle" onClick={() => { setBusy(true); onSkip().finally(() => setBusy(false)); }} disabled={busy}>Skip this step</Button>
         <Button color="green" onClick={send} loading={busy}>Send invites</Button>

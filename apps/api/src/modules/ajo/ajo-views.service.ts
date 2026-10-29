@@ -7,6 +7,7 @@ import { RuleError } from '../finance/rule-error';
 import { REQUIREMENT_TEXT, loadRequirementFacts, unmetRequirements } from './ajo-membership.service';
 import { toGroupView } from './ajo-group.service';
 import { permissionHolderIds } from './ajo-support';
+import { businessDay } from './ajo-schedule';
 import { acceptanceStats } from './ajo-rules.service';
 
 /** Everyone in a group, with what each person is still waiting for. For the officer's roster. */
@@ -19,6 +20,10 @@ export async function listGroupMembers(input: { associationId: number; groupId: 
     include: { member: { select: { id: true, firstName: true, lastName: true, phone: true, userId: true } }, acceptances: { select: { evidence: true, ruleVersion: { select: { version: true } } } }, guarantorAgreement: { select: { evidence: true, acceptedAt: true } } },
   });
   const now = input.now ?? new Date();
+  // SocietyLedger's check of each person, in one query for the whole roster (the newest review per person).
+  const reviews = await prisma.ajoVerification.findMany({ where: { associationId: input.associationId, memberId: { in: rows.map((r) => r.memberId) } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { memberId: true, status: true } });
+  const verification = new Map<number, string>();
+  for (const r of reviews) if (!verification.has(r.memberId)) verification.set(r.memberId, r.status);
   const people = [];
   for (const m of rows) {
     const unmet = m.status === 'PENDING' ? unmetRequirements(await loadRequirementFacts(prisma, m.id, now)) : [];
@@ -30,6 +35,7 @@ export async function listGroupMembers(input: { associationId: number; groupId: 
       phone: m.member.phone,
       hasLogin: m.member.userId !== null,
       status: m.status,
+      verification: (verification.get(m.memberId) ?? 'NOT_REQUESTED') as 'NOT_REQUESTED' | 'PENDING' | 'VERIFIED' | 'REJECTED',
       shares: m.shares,
       approvedAt: m.approvedAt,
       joinedAt: m.joinedAt,
@@ -43,17 +49,18 @@ export async function listGroupMembers(input: { associationId: number; groupId: 
 }
 
 /** One person's schedule: what is due, what has been paid against it. */
-export async function listMembershipInstallments(input: { associationId: number; membershipId: number }) {
-  const membership = await prisma.ajoMembership.findFirst({ where: { id: input.membershipId, associationId: input.associationId }, select: { id: true, shares: true, status: true } });
+export async function listMembershipInstallments(input: { associationId: number; membershipId: number; now?: Date }) {
+  const membership = await prisma.ajoMembership.findFirst({ where: { id: input.membershipId, associationId: input.associationId }, select: { id: true, shares: true, status: true, group: { select: { timezone: true, cutoffTime: true } } } });
   if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
   const rows = await prisma.ajoInstallment.findMany({ where: { membershipId: membership.id }, orderBy: { dueDate: 'asc' } });
+  const today = businessDay(input.now ?? new Date(), membership.group.timezone, membership.group.cutoffTime);
   const total = rows.reduce((sum, r) => sum + r.amountKobo, 0n);
   const paid = rows.reduce((sum, r) => sum + r.paidKobo, 0n);
   return {
     membershipId: membership.id,
     shares: membership.shares,
     totals: { expectedKobo: total.toString(), paidKobo: paid.toString(), remainingKobo: (total - paid).toString() },
-    installments: rows.map((r) => ({ id: r.id, dueDate: r.dueDate, amountKobo: r.amountKobo.toString(), paidKobo: r.paidKobo.toString(), status: r.status })),
+    installments: rows.map((r) => ({ id: r.id, dueDate: r.dueDate, amountKobo: r.amountKobo.toString(), paidKobo: r.paidKobo.toString(), status: r.status, /** Past its due day on the group's own calendar (its time zone and cut-off), not the reader's clock. */ pastDue: r.dueDate.getTime() < today.getTime() })),
   };
 }
 
@@ -121,4 +128,15 @@ export async function listCollectorCandidates(associationId: number) {
   if (!ids.length) return [];
   const users = await prisma.user.findMany({ where: { id: { in: ids }, associationId }, select: { id: true, email: true, member: { select: { firstName: true, lastName: true } } }, orderBy: { id: 'asc' } });
   return users.map((u) => ({ userId: u.id, name: u.member ? `${u.member.firstName} ${u.member.lastName}`.trim() : u.email, email: u.email }));
+}
+
+/**
+ * Everyone in a group by name only, for the screens an officer without the right to manage members still needs (a reconciler confirming
+ * a payment, an approver reading a payout): who a row belongs to. No phone numbers, no approval detail.
+ */
+export async function listGroupPeople(input: { associationId: number; groupId: number }) {
+  const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true } });
+  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  const rows = await prisma.ajoMembership.findMany({ where: { groupId: group.id }, orderBy: { id: 'asc' }, select: { id: true, status: true, shares: true, member: { select: { firstName: true, lastName: true } } } });
+  return rows.map((m) => ({ membershipId: m.id, name: `${m.member.firstName} ${m.member.lastName}`.trim(), status: m.status, shares: m.shares }));
 }

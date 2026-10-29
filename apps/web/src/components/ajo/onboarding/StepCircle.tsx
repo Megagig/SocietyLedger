@@ -20,16 +20,16 @@ export function StepCircle({ existing, chosenId, onChoose, onCreated, onSkip }: 
   if (current && !makingAnother) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">You already have</p>
+        <div className="rounded-lg border border-line p-4">
+          <p className="text-sm text-ink-muted">You already have</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-lg font-semibold">{current.name}</p>
             <StatusBadge status={current.status} />
           </div>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{MODEL_LABEL[current.model]} · {frequencyText(current)} · {formatKobo(current.contributionKobo)} each</p>
+          <p className="mt-1 text-sm text-ink-muted">{MODEL_LABEL[current.model]} · {frequencyText(current)} · {formatKobo(current.contributionKobo)} each</p>
         </div>
         {usable.length > 1 && (
-          <select aria-label="Choose a circle" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-600 dark:bg-gray-800" value={current.id} onChange={(e) => onChoose(Number(e.target.value))}>
+          <select aria-label="Choose a circle" className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2" value={current.id} onChange={(e) => onChoose(Number(e.target.value))}>
             {usable.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
         )}

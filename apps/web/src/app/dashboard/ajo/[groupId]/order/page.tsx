@@ -57,19 +57,19 @@ export default function PayoutOrderPage() {
 
   return (
     <div className="space-y-6">
-      {problem && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{problem}</p>}
+      {problem && <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">{problem}</p>}
 
       {!data.drawn ? (
-        <section className="rounded-lg border border-gray-200 p-5 dark:border-gray-700">
+        <section className="rounded-lg border border-line p-5">
           <h2 className="font-semibold">The order has not been drawn yet.</h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">The draw is random, recorded with its seed so anyone can check it later, and it happens once. Do it after everyone has joined and before the group starts.</p>
+          <p className="mt-1 text-sm text-ink-muted">The draw is random, recorded with its seed so anyone can check it later, and it happens once. Do it after everyone has joined and before the circle starts.</p>
           {can && group?.status === 'OPEN' && <Button className="mt-3" color="green" onClick={() => run(() => draw.mutateAsync(), 'The order was drawn.')} loading={draw.isLoading}>Draw the order</Button>}
-          {can && group?.status !== 'OPEN' && <p className="mt-2 text-sm text-gray-500">The draw is made while the group is open for joining.</p>}
+          {can && group?.status !== 'OPEN' && <p className="mt-2 text-sm text-ink-faint">The draw is made while the circle is open for joining.</p>}
         </section>
       ) : (
         <section className="space-y-3">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Drawn {formatMoment(data.drawnAt)}. Seed <span className="font-mono">{data.seed}</span>.</p>
-          <ol className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+          <p className="text-sm text-ink-muted">Drawn {formatMoment(data.drawnAt)}. Seed <span className="font-mono">{data.seed}</span>.</p>
+          <ol className="divide-y divide-line-soft rounded-lg border border-line">
             {data.slots.map((s) => (
               <li key={s.slotId} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3"><span className="w-12 font-semibold tabular-nums">{ordinal(s.position)}</span><span>{s.name}{s.shareNo > 1 ? ` (share ${s.shareNo})` : ''}</span></div>
@@ -84,9 +84,9 @@ export default function PayoutOrderPage() {
       )}
 
       {data.drawn && can && nobodyPaidYet && (
-        <section className="space-y-3 rounded-lg border border-gray-200 p-5 dark:border-gray-700">
+        <section className="space-y-3 rounded-lg border border-line p-5">
           <h2 className="font-semibold">Swap two places</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Allowed until the first payout is prepared. An admin approves each swap.</p>
+          <p className="text-sm text-ink-muted">Allowed until the first payout is prepared. An admin approves each swap.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <NativeSelect label="First place" data={[{ value: '', label: 'Choose…' }, ...data.slots.map((s) => ({ value: String(s.slotId), label: `${ordinal(s.position)} · ${s.name}` }))]} value={a} onChange={(e) => setA(e.currentTarget.value)} />
             <NativeSelect label="Second place" data={[{ value: '', label: 'Choose…' }, ...data.slots.map((s) => ({ value: String(s.slotId), label: `${ordinal(s.position)} · ${s.name}` }))]} value={b} onChange={(e) => setB(e.currentTarget.value)} />
@@ -99,10 +99,10 @@ export default function PayoutOrderPage() {
       {swaps.data && swaps.data.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-semibold">Swap requests</h2>
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+          <ul className="divide-y divide-line-soft rounded-lg border border-line">
             {swaps.data.map((s: SwapDTO) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-                <div><p>{slotName(s.slotAId)} ↔ {slotName(s.slotBId)}</p>{s.reason && <p className="text-xs text-gray-500">{s.reason}</p>}</div>
+                <div><p>{slotName(s.slotAId)} ↔ {slotName(s.slotBId)}</p>{s.reason && <p className="text-xs text-ink-faint">{s.reason}</p>}</div>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={s.status === 'PENDING' ? 'PENDING' : s.status === 'APPROVED' ? 'CONFIRMED' : 'REJECTED'} label={s.status === 'PENDING' ? 'Waiting for an admin' : s.status === 'APPROVED' ? 'Approved' : s.status === 'REJECTED' ? 'Turned down' : 'Withdrawn'} />
                   {s.status === 'PENDING' && approvePayout && canWrite && (
@@ -119,9 +119,9 @@ export default function PayoutOrderPage() {
       )}
 
       {data.history.length > 0 && (
-        <details className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+        <details className="rounded-lg border border-line p-4">
           <summary className="cursor-pointer font-medium">History of changes</summary>
-          <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">{data.history.map((h) => <li key={h.id}>{formatMoment(h.createdAt)} · {h.type.toLowerCase()}{h.reason ? ` · ${h.reason}` : ''}</li>)}</ul>
+          <ul className="mt-2 space-y-1 text-sm text-ink-soft">{data.history.map((h) => <li key={h.id}>{formatMoment(h.createdAt)} · {h.type.toLowerCase()}{h.reason ? ` · ${h.reason}` : ''}</li>)}</ul>
         </details>
       )}
 

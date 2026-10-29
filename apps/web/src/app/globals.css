@@ -13,6 +13,45 @@
   --color-text-primary: 17 24 39; /* gray-900 */
   --color-text-secondary: 107 114 128; /* gray-500 */
   --color-border: 229 231 235; /* gray-200 */
+
+  /* Semantic colours for meaning (text, surfaces, lines, success, danger, warning, info). Use these, never raw Tailwind colours. */
+  --c-ink: rgb(17 24 39);
+  --c-ink-soft: rgb(55 65 81);
+  --c-ink-muted: rgb(75 85 99);
+  --c-ink-faint: rgb(107 114 128);
+  --c-ink-subtle: rgb(156 163 175);
+  --c-on-solid: rgb(255 255 255);
+  --c-surface: rgb(255 255 255);
+  --c-surface-muted: rgb(249 250 251);
+  --c-surface-sunken: rgb(243 244 246);
+  --c-page: rgb(249 250 251);
+  --c-line: rgb(229 231 235);
+  --c-line-soft: rgb(243 244 246);
+  --c-line-strong: rgb(209 213 219);
+  --c-success-soft: rgb(240 253 244);
+  --c-success-line: rgb(187 247 208);
+  --c-success-strong: rgb(20 83 45);
+  --c-success-text: rgb(22 101 52);
+  --c-success-link: rgb(21 128 61);
+  --c-success: rgb(22 163 74);
+  --c-success-solid: rgb(22 163 74);
+  --c-success-hover: rgb(21 128 61);
+  --c-success-focus: rgb(34 197 94);
+  --c-danger-soft: rgb(254 242 242);
+  --c-danger-line: rgb(254 202 202);
+  --c-danger-strong: rgb(153 27 27);
+  --c-danger-text: rgb(185 28 28);
+  --c-danger: rgb(220 38 38);
+  --c-warning-soft: rgb(254 252 232);
+  --c-warning-line: rgb(253 224 71);
+  --c-warning-strong: rgb(113 63 18);
+  --c-warning-text: rgb(133 77 14);
+  --c-info-soft: rgb(239 246 255);
+  --c-info-line: rgb(191 219 254);
+  --c-info-strong: rgb(30 58 138);
+  --c-info-text: rgb(30 64 175);
+  --c-grad-from: rgb(240 253 244);
+  --c-grad-to: rgb(209 250 229);
 }
 
 .dark {
@@ -26,6 +65,45 @@
   --color-text-primary: 243 244 246; /* gray-100 */
   --color-text-secondary: 156 163 175; /* gray-400 */
   --color-border: 55 65 81; /* gray-700 */
+
+  /* Semantic colours, dark values */
+  --c-ink: rgb(243 244 246);
+  --c-ink-soft: rgb(209 213 219);
+  --c-ink-muted: rgb(156 163 175);
+  --c-ink-faint: rgb(156 163 175);
+  --c-ink-subtle: rgb(156 163 175);
+  --c-on-solid: rgb(255 255 255);
+  --c-surface: rgb(31 41 55);
+  --c-surface-muted: rgb(31 41 55);
+  --c-surface-sunken: rgb(55 65 81);
+  --c-page: rgb(17 24 39);
+  --c-line: rgb(55 65 81);
+  --c-line-soft: rgb(55 65 81);
+  --c-line-strong: rgb(75 85 99);
+  --c-success-soft: rgb(5 46 22 / 0.3);
+  --c-success-line: rgb(20 83 45);
+  --c-success-strong: rgb(220 252 231);
+  --c-success-text: rgb(187 247 208);
+  --c-success-link: rgb(74 222 128);
+  --c-success: rgb(74 222 128);
+  --c-success-solid: rgb(22 163 74);
+  --c-success-hover: rgb(21 128 61);
+  --c-success-focus: rgb(34 197 94);
+  --c-danger-soft: rgb(69 10 10 / 0.3);
+  --c-danger-line: rgb(127 29 29);
+  --c-danger-strong: rgb(254 202 202);
+  --c-danger-text: rgb(252 165 165);
+  --c-danger: rgb(248 113 113);
+  --c-warning-soft: rgb(66 32 6 / 0.3);
+  --c-warning-line: rgb(133 77 14);
+  --c-warning-strong: rgb(254 240 138);
+  --c-warning-text: rgb(254 240 138);
+  --c-info-soft: rgb(23 37 84 / 0.3);
+  --c-info-line: rgb(30 58 138);
+  --c-info-strong: rgb(219 234 254);
+  --c-info-text: rgb(191 219 254);
+  --c-grad-from: rgb(17 24 39);
+  --c-grad-to: rgb(31 41 55);
 }
 
 body {

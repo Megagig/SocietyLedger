@@ -12,7 +12,7 @@ import { formatDay } from '@/lib/ajo/format';
 import { useAcceptRules, useRulesToAccept } from '@/lib/ajo/hooks';
 import { toast } from '@/lib/toast';
 
-/** THM4: read the group's current rules in plain words and accept them. A rule change only binds you once you accept it. */
+/** THM4: read the circle's current rules in plain words and accept them. A rule change only binds you once you accept it. */
 export default function RulesPage() {
   const params = useParams<{ membershipId: string }>();
   const membershipId = Number(params.membershipId) || 0;
@@ -27,7 +27,7 @@ export default function RulesPage() {
 
   if (rules.isLoading) return <AjoLoading rows={2} />;
   if (rules.isError) return <AjoError error={rules.error} onRetry={() => rules.refetch()} />;
-  if (!rules.data) return <AjoEmpty title="This group has no rules to accept yet." action={<Link href={back} className="text-green-700 underline">Back</Link>} />;
+  if (!rules.data) return <AjoEmpty title="This circle has no rules to accept yet." action={<Link href={back} className="text-success-link underline">Back</Link>} />;
   const current = rules.data;
 
   const submit = async () => {
@@ -45,36 +45,36 @@ export default function RulesPage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
-        <Link href={back} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:underline dark:text-gray-400">
-          <IconArrowLeft size={14} /> Back to my group
+        <Link href={back} className="inline-flex items-center gap-1 text-sm text-ink-muted hover:underline">
+          <IconArrowLeft size={14} /> Back to my circle
         </Link>
-        <h1 className="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">Group rules</h1>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <h1 className="mt-2 text-3xl font-bold text-ink">Circle rules</h1>
+        <p className="mt-1 text-sm text-ink-muted">
           Version {current.version}, in force from {formatDay(current.effectiveFrom)}.
         </p>
       </div>
 
-      <ul className="space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <ul className="space-y-2 rounded-lg border border-line p-4">
         {current.summary.map((line) => (
-          <li key={line} className="text-gray-800 dark:text-gray-200">{line}</li>
+          <li key={line} className="text-ink-soft">{line}</li>
         ))}
       </ul>
 
       {accepted ? (
-        <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-100">
+        <p role="status" className="rounded-lg border border-success-line bg-success-soft p-4 text-success-strong">
           You accepted version {current.version}. It is on your record.
         </p>
       ) : canWrite ? (
         <div className="space-y-4">
           <Checkbox label="I have read these rules and I agree to them." checked={read} onChange={(e) => setRead(e.currentTarget.checked)} />
           <Textarea label="Note (optional)" value={note} onChange={(e) => setNote(e.currentTarget.value)} maxLength={300} autosize minRows={2} />
-          {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+          {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <Button color="green" onClick={submit} loading={accept.isLoading}>
             Accept the rules
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-gray-600 dark:text-gray-400">Accepting is switched off while the add-on is expired.</p>
+        <p className="text-sm text-ink-muted">Accepting is switched off while the add-on is expired.</p>
       )}
     </div>
   );

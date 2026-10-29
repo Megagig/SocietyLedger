@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAjoNav } from '@/lib/ajo/useAjoNav';
 
 /**
- * A standalone thrift group has no association home to show, so its dashboard home sends the person straight into Ajo: the group list for
+ * A standalone thrift group has no association home to show, so its dashboard home sends the person straight into Ajo: the circle list for
  * an officer, "My thrift" for everyone else. Renders nothing, and does nothing for an ordinary association.
  */
 export function ThriftHomeRedirect() {

@@ -82,6 +82,8 @@ router.post('/groups/:id/cancel', manage, groups.cancel);
 router.get('/groups/:id/bank-account', readers, groups.bankAccount);
 
 router.get('/groups/:id/members', manage, groups.members);
+// Names only, for the reconciler and the payout approver, who do not manage members (see groupPeople)
+router.get('/groups/:id/people', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT]), groups.groupPeople);
 router.post('/groups/:id/members', manage, groups.addMember);
 router.post('/groups/:id/members/bulk', manage, groups.bulkAdd);
 router.patch('/memberships/:id/shares', manage, groups.setShares);
@@ -94,11 +96,12 @@ router.get('/memberships/:id/rules-to-accept', readers, groups.rulesToAccept);
 router.post('/memberships/:id/accept-rules', readers, groups.acceptRules);
 router.get('/memberships/:id/guarantor-wording', manage, groups.guarantorWording);
 router.post('/memberships/:id/guarantor', manage, groups.recordGuarantor);
+router.post('/memberships/:id/guarantor-link', manage, groups.guarantorLink);
 
 router.post('/groups/:id/draw', manage, groups.draw);
 router.get('/groups/:id/order', readers, groups.order);
 router.post('/groups/:id/swaps', readers, groups.requestSwap);
-router.get('/groups/:id/swaps', manage, groups.swaps);
+router.get('/groups/:id/swaps', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_APPROVE_PAYOUT]), groups.swaps);
 router.post('/swaps/:id/decision', approve, groups.decideSwap);
 router.post('/groups/:id/exceptions', approve, groups.exception);
 

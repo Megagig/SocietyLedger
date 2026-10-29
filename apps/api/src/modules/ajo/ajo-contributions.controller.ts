@@ -217,8 +217,8 @@ export const ajoContributionsController = {
   async handovers(req: Request, res: Response) {
     try {
       const { associationId } = actor(req);
-      const { reconciled } = z.object({ reconciled: flag }).parse(req.query);
-      return res.json({ success: true, data: await listHandovers({ associationId, groupId: id.parse(req.params.id), reconciled }) });
+      const q = z.object({ reconciled: flag, take: z.coerce.number().int().min(1).max(200).optional(), skip: z.coerce.number().int().min(0).optional() }).parse(req.query);
+      return res.json({ success: true, data: await listHandovers({ associationId, groupId: id.parse(req.params.id), ...q }) });
     } catch (error) {
       return fail(res, error, 'Could not load the handovers.');
     }

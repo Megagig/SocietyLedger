@@ -231,7 +231,7 @@ export function AdminSidebar() {
       hideForSuperAdmin: true,
       badge: ajoBadge,
       children: [
-        { label: 'My Groups', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
+        { label: 'My Circles', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
         { label: 'Payout Account', icon: <IconBuildingBank size={18} />, href: '/dashboard/my-thrift/payout-account' },
       ],
     },
@@ -251,7 +251,7 @@ export function AdminSidebar() {
       permission: PERMISSIONS.MEMBER_VIEW,
     },
     {
-      label: 'Thrift Groups',
+      label: 'Thrift Circles',
       icon: <IconPigMoney size={20} />,
       href: '/dashboard/ajo',
       permission: [PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT],

@@ -15,7 +15,7 @@ import { toast } from '@/lib/toast';
 
 const FEE_TEXT = { NONE: 'No collector fee', FIXED: 'A fixed amount', PERCENT: 'A percentage of the pot', DAYS: 'Days of contribution' } as const;
 
-/** THO2 (edit and settings) with the group's lifecycle: draft, open for joining, running, completed or cancelled. */
+/** THO2 (edit and settings) with the circle's lifecycle: draft, open for joining, running, completed or cancelled. */
 export default function GroupOverviewPage() {
   const params = useParams<{ groupId: string }>();
   const groupId = Number(params.groupId) || 0;
@@ -36,7 +36,7 @@ export default function GroupOverviewPage() {
     setProblem(null);
     try {
       await open.mutateAsync();
-      toast.success('The group is open. Members can now be added and approved.');
+      toast.success('The circle is open. Members can now be added and approved.');
     } catch (error) {
       setProblem(ajoErrorMessage(error));
     }
@@ -46,7 +46,7 @@ export default function GroupOverviewPage() {
     try {
       await start.mutateAsync(confirmSmaller);
       setSmaller(null);
-      toast.success('The group has started. The schedule is ready.');
+      toast.success('The circle has started. The schedule is ready.');
     } catch (error) {
       if (ajoErrorCode(error) === 'CONFIRM_SMALLER_GROUP') setSmaller(ajoErrorMessage(error));
       else setProblem(ajoErrorMessage(error));
@@ -55,30 +55,30 @@ export default function GroupOverviewPage() {
 
   return (
     <div className="space-y-6">
-      {problem && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{problem}</p>}
+      {problem && <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">{problem}</p>}
 
       {can && group.status === 'DRAFT' && (
-        <section className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
-          <p className="font-medium text-blue-900 dark:text-blue-100">This group is a draft.</p>
-          <p className="mt-1 text-sm text-blue-800 dark:text-blue-200">Check the details below, then open it so you can add and approve people.</p>
+        <section className="rounded-lg border border-info-line bg-info-soft p-4">
+          <p className="font-medium text-info-strong">This circle is a draft.</p>
+          <p className="mt-1 text-sm text-info-text">Check the details below, then open it so you can add and approve people.</p>
           <Button className="mt-3" onClick={doOpen} loading={open.isLoading}>Open for joining</Button>
         </section>
       )}
       {can && group.status === 'OPEN' && (
-        <section className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
-          <p className="font-medium text-green-900 dark:text-green-100">{group.activeParticipants} of {group.maxParticipants} people are approved.</p>
-          <p className="mt-1 text-sm text-green-800 dark:text-green-200">Starting fixes the group, draws the payout order (for a rotating pot) and creates everyone&apos;s payment schedule.</p>
+        <section className="rounded-lg border border-success-line bg-success-soft p-4">
+          <p className="font-medium text-success-strong">{group.activeParticipants} of {group.maxParticipants} people are approved.</p>
+          <p className="mt-1 text-sm text-success-text">Starting fixes the circle, draws the payout order (for a rotating pot) and creates everyone&apos;s payment schedule.</p>
           {smaller ? (
             <div className="mt-3 space-y-2">
-              <p className="text-sm text-green-900 dark:text-green-100">{smaller}</p>
+              <p className="text-sm text-success-strong">{smaller}</p>
               <div className="flex gap-2"><Button color="green" onClick={() => doStart(true)} loading={start.isLoading}>Start with {group.activeParticipants} people</Button><Button variant="default" onClick={() => setSmaller(null)}>Wait for more</Button></div>
             </div>
           ) : (
-            <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isLoading}>Start the group</Button>
+            <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isLoading}>Start the circle</Button>
           )}
         </section>
       )}
-      {group.status === 'CANCELLED' && <p className="rounded-md bg-gray-100 p-3 text-sm dark:bg-gray-800">This group was cancelled{group.cancelReason ? `: ${group.cancelReason}` : '.'}</p>}
+      {group.status === 'CANCELLED' && <p className="rounded-md bg-surface-sunken p-3 text-sm">This circle was cancelled{group.cancelReason ? `: ${group.cancelReason}` : '.'}</p>}
 
       <section className="grid gap-4 sm:grid-cols-3">
         {[
@@ -89,28 +89,28 @@ export default function GroupOverviewPage() {
           ['Collector fee', group.collectorFee.type === 'NONE' ? 'None' : `${FEE_TEXT[group.collectorFee.type]}: ${group.collectorFee.type === 'FIXED' ? formatKobo(group.collectorFee.value) : group.collectorFee.type === 'PERCENT' ? `${Number(group.collectorFee.value) / 100}%` : `${group.collectorFee.value} day(s)`}`],
           ['Current rules', group.currentRuleVersion ? `Version ${group.currentRuleVersion}` : 'None yet'],
         ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+          <div key={String(label)} className="rounded-lg border border-line p-4">
+            <p className="text-xs text-ink-faint">{label}</p>
             <p className="mt-1 text-lg font-semibold">{value}</p>
           </div>
         ))}
       </section>
 
-      <section className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <section className="rounded-lg border border-line p-4">
         <h2 className="font-semibold">Where members pay</h2>
-        {group.bankAccount ? <p className="mt-1 text-sm">{group.bankAccount.bankName} · {group.bankAccount.accountName} · <span className="font-mono tabular-nums">{group.bankAccount.masked}</span></p> : <p className="mt-1 text-sm text-red-600">No bank account has been added yet. Members cannot pay until one is.</p>}
-        <p className="mt-1 text-xs text-gray-500">Timezone {group.timezone}, cut-off {group.cutoffTime}. Members {group.requirePhoneConfirm ? 'must' : 'do not need to'} confirm their phone number.</p>
+        {group.bankAccount ? <p className="mt-1 text-sm">{group.bankAccount.bankName} · {group.bankAccount.accountName} · <span className="font-mono tabular-nums">{group.bankAccount.masked}</span></p> : <p className="mt-1 text-sm text-danger">No bank account has been added yet. Members cannot pay until one is.</p>}
+        <p className="mt-1 text-xs text-ink-faint">Timezone {group.timezone}, cut-off {group.cutoffTime}. Members {group.requirePhoneConfirm ? 'must' : 'do not need to'} confirm their phone number.</p>
       </section>
 
       {can && (group.status === 'DRAFT' || group.status === 'OPEN' || group.status === 'ACTIVE') && (
         <div className="flex flex-wrap gap-2">
           {(group.status === 'DRAFT' || group.status === 'OPEN') && <Button variant="default" onClick={() => setEditing(true)}>Edit settings</Button>}
-          <Button variant="subtle" color="red" onClick={() => setCancelling(true)}>Cancel this group</Button>
+          <Button variant="subtle" color="red" onClick={() => setCancelling(true)}>Cancel this circle</Button>
         </div>
       )}
 
-      <ActionDialog opened={cancelling} onClose={() => setCancelling(false)} title="Cancel this group" color="red" confirmLabel="Cancel the group" reasonMin={10} reasonLabel="Why is it being cancelled" successMessage="The group was cancelled."
-        summary="Cancelling stops the group for everyone. Money already recorded stays on the record; nothing is deleted." onConfirm={({ reason }) => ajoStaffApi.cancelGroup(groupId, reason)} />
+      <ActionDialog opened={cancelling} onClose={() => setCancelling(false)} title="Cancel this circle" color="red" confirmLabel="Cancel the circle" reasonMin={10} reasonLabel="Why is it being cancelled" successMessage="The circle was cancelled."
+        summary="Cancelling stops the circle for everyone. Money already recorded stays on the record; nothing is deleted." onConfirm={({ reason }) => ajoStaffApi.cancelGroup(groupId, reason)} />
       <EditSettings open={editing} onClose={() => setEditing(false)} groupId={groupId} />
     </div>
   );
@@ -126,7 +126,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
   const [phone, setPhone] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  // Start from the group's current values each time the editor is opened.
+  // Start from the circle's current values each time the editor is opened.
   useEffect(() => {
     if (!open || !group) return;
     setName(group.name);
@@ -152,12 +152,12 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
   return (
     <Modal opened={open} onClose={onClose} title="Edit settings" centered>
       <div className="space-y-4">
-        <TextInput label="Group name" value={name} onChange={(e) => setName(e.currentTarget.value)} />
+        <TextInput label="Circle name" value={name} onChange={(e) => setName(e.currentTarget.value)} />
         <TextInput label="Each person pays (₦)" inputMode="decimal" value={contribution} onChange={(e) => setContribution(e.currentTarget.value)} />
-        <NumberInput label="Most people in the group" min={1} max={2000} value={max} onChange={(v) => setMax(typeof v === 'number' ? v : 1)} />
+        <NumberInput label="Most people in the circle" min={1} max={2000} value={max} onChange={(v) => setMax(typeof v === 'number' ? v : 1)} />
         <TextInput label="Cut-off time each day" value={cutoff} onChange={(e) => setCutoff(e.currentTarget.value)} />
         <Checkbox label="Members must confirm their phone number" checked={phone} onChange={(e) => setPhone(e.currentTarget.checked)} />
-        {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+        {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
         <div className="flex justify-end gap-2"><Button variant="default" onClick={onClose}>Cancel</Button><Button color="green" onClick={submit} loading={save.isLoading}>Save</Button></div>
       </div>
     </Modal>

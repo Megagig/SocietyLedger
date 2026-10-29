@@ -45,6 +45,8 @@ export type RosterPersonDTO = {
   phone: string | null;
   hasLogin: boolean;
   status: MembershipStatus;
+  /** SocietyLedger's check of this person, from the one roster read. */
+  verification: 'NOT_REQUESTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   shares: number;
   approvedAt: string | null;
   waitingFor: Array<{ requirement: string; text: string }>;
@@ -188,10 +190,15 @@ export type BulkRowResult = { row: number; name: string; status: 'added' | 'alre
 export type BulkResultDTO = { results: BulkRowResult[]; summary: { added: number; alreadyIn: number; approved: number; active: number; problems: number } };
 
 export type OnboardingStatusDTO = {
-  onboarding: { currentStep: number; completedSteps: number[]; skippedSteps?: number[]; onboardingComplete: boolean };
+  onboarding: { currentStep: number; completedSteps: number[]; skippedSteps?: number[]; onboardingComplete: boolean; skippedAt?: string | null; completedAt?: string | null };
   association: { id: number; name: string; logo: string | null } | null;
   flow: 'ASSOCIATION' | 'THRIFT';
   steps: Array<{ id: number; key: string; name: string; description: string }>;
 };
 
 export type TeamInviteResult = { email: string; status: 'invited' | 'invited_email_failed' | 'already_member' | 'failed'; message?: string };
+
+/** A person by name only, for the screens a reconciler or an approver uses. */
+export type PersonNameDTO = { membershipId: number; name: string; status: MembershipStatus; shares: number };
+export type GuarantorLinkDTO = { link: string; expiresAt: string; wording: string };
+export type GuarantorPublicDTO = { guarantorName: string; relationship: string; memberName: string; groupName: string; expiresAt: string; wording: string };

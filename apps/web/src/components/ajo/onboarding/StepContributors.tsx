@@ -110,14 +110,14 @@ export function StepContributors({ circles, circleId, onChooseCircle, group, gua
     const draft = group?.status === 'DRAFT';
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
-          <p className="text-lg font-semibold text-green-900 dark:text-green-100">{outcome.summary.added} added · {outcome.summary.approved} approved · {outcome.summary.active} active{draft && outcome.summary.approved > 0 ? ' (they become active when you open the circle)' : ''}</p>
-          {outcome.summary.alreadyIn > 0 && <p className="text-sm text-green-800 dark:text-green-200">{outcome.summary.alreadyIn} {outcome.summary.alreadyIn === 1 ? 'was' : 'were'} already in the circle and nothing was repeated.</p>}
-          {outcome.invited > 0 && <p className="text-sm text-green-800 dark:text-green-200">{outcome.invited} login link{outcome.invited === 1 ? '' : 's'} sent by email.</p>}
+        <div className="rounded-lg border border-success-line bg-success-soft p-4">
+          <p className="text-lg font-semibold text-success-strong">{outcome.summary.added} added · {outcome.summary.approved} approved · {outcome.summary.active} active{draft && outcome.summary.approved > 0 ? ' (they become active when you open the circle)' : ''}</p>
+          {outcome.summary.alreadyIn > 0 && <p className="text-sm text-success-text">{outcome.summary.alreadyIn} {outcome.summary.alreadyIn === 1 ? 'was' : 'were'} already in the circle and nothing was repeated.</p>}
+          {outcome.invited > 0 && <p className="text-sm text-success-text">{outcome.invited} login link{outcome.invited === 1 ? '' : 's'} sent by email.</p>}
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400">&quot;0 active&quot; is not an error. A person becomes active once the group has approved them, they have accepted the rules{guarantorRequired ? ', their guarantor is recorded' : ''}{group?.requirePhoneConfirm ? ', they have confirmed their phone' : ''}, and the circle is open. Before anyone can be paid out, SocietyLedger also checks their name, phone, address and payout account.</p>
+        <p className="text-sm text-ink-muted">&quot;0 active&quot; is not an error. A person becomes active once the circle has approved them, they have accepted the rules{guarantorRequired ? ', their guarantor is recorded' : ''}{group?.requirePhoneConfirm ? ', they have confirmed their phone' : ''}, and the circle is open. Before anyone can be paid out, SocietyLedger also checks their name, phone, address and payout account.</p>
         {bad.length > 0 && (
-          <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm dark:border-yellow-800 dark:bg-yellow-950/30">
+          <div className="rounded-lg border border-warning-line bg-warning-soft p-3 text-sm">
             <p className="font-medium">{bad.length} need attention</p>
             <ul className="mt-1 list-disc pl-5">{bad.map((r) => <li key={r.row}>{r.name}: {r.message}</li>)}</ul>
           </div>
@@ -133,18 +133,18 @@ export function StepContributors({ circles, circleId, onChooseCircle, group, gua
   return (
     <div className="space-y-4">
       {circles.length > 1 && <NativeSelect label="Add them to" data={circles.map((g) => ({ value: String(g.id), label: g.name }))} value={String(circleId ?? '')} onChange={(e) => onChooseCircle(Number(e.currentTarget.value))} />}
-      {!circleId && <p className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">You have no circle yet. Go back to step 2, or skip this step and add people later.</p>}
+      {!circleId && <p className="rounded-md bg-warning-soft p-3 text-sm text-warning-strong">You have no circle yet. Go back to step 2, or skip this step and add people later.</p>}
 
       <div className="flex flex-wrap items-center gap-2">
         <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => void pickFile(e.target.files?.[0])} aria-label="Upload a CSV list" />
         <Button variant="light" onClick={() => fileRef.current?.click()}>Upload a list (CSV)</Button>
         <Button variant="subtle" onClick={downloadTemplate}>Download the template</Button>
-        <span className="text-xs text-gray-500">Up to {MAX_CSV_ROWS} people at a time.</span>
+        <span className="text-xs text-ink-faint">Up to {MAX_CSV_ROWS} people at a time.</span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full min-w-[640px] text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+          <thead className="bg-surface-muted text-left text-ink-muted">
             <tr><th className="px-2 py-2 font-medium">First name</th><th className="px-2 py-2 font-medium">Last name</th><th className="px-2 py-2 font-medium">Phone</th><th className="px-2 py-2 font-medium">Home address</th><th className="px-2 py-2 font-medium">Email</th>{rotating && <th className="px-2 py-2 font-medium">Shares</th>}<th className="px-2 py-2" /></tr>
           </thead>
           <tbody>
@@ -152,12 +152,12 @@ export function StepContributors({ circles, circleId, onChooseCircle, group, gua
               const at = filled.indexOf(r);
               const why = at >= 0 ? problems[at] ?? (dupes[at] ? `${dupes[at]} already uses this number.` : null) : null;
               return (
-                <tr key={i} className="border-t border-gray-100 align-top dark:border-gray-700">
+                <tr key={i} className="border-t border-line-soft align-top">
                   {(['firstName', 'lastName', 'phone', 'address', 'email'] as const).map((k) => (
                     <td key={k} className="px-1 py-1"><TextInput aria-label={k} size="xs" value={r[k]} onChange={(e) => setCell(i, k, e.currentTarget.value)} error={k === 'phone' && why ? true : undefined} /></td>
                   ))}
                   {rotating && <td className="px-1 py-1 w-20"><TextInput aria-label="shares" size="xs" value={r.shares} onChange={(e) => setCell(i, 'shares', e.currentTarget.value)} placeholder="1" /></td>}
-                  <td className="px-1 py-1 whitespace-nowrap"><Button size="compact-xs" variant="subtle" color="red" onClick={() => removeRow(i)} aria-label="Remove this row">×</Button>{why && <span className="ml-1 text-xs text-red-600">{why}</span>}</td>
+                  <td className="px-1 py-1 whitespace-nowrap"><Button size="compact-xs" variant="subtle" color="red" onClick={() => removeRow(i)} aria-label="Remove this row">×</Button>{why && <span className="ml-1 text-xs text-danger">{why}</span>}</td>
                 </tr>
               );
             })}
@@ -166,22 +166,22 @@ export function StepContributors({ circles, circleId, onChooseCircle, group, gua
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="subtle" size="xs" onClick={() => setRows((p) => [...p, blank()].slice(0, MAX_CSV_ROWS))}>Add a row</Button>
-        <p className="text-xs text-gray-500">Home address is optional now, but it is needed before a person can be paid out.</p>
+        <p className="text-xs text-ink-faint">Home address is optional now, but it is needed before a person can be paid out.</p>
       </div>
 
-      <div className="space-y-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-        <Checkbox checked={approve} onChange={(e) => setApprove(e.currentTarget.checked)} label={`I know these people and approve them for ${group?.name ?? 'the circle'}`} description="This is the group's approval. It also asks SocietyLedger to check them." />
-        <Checkbox checked={onBehalf} onChange={(e) => setOnBehalf(e.currentTarget.checked)} label="I have explained the group rules to them and they agreed" description="Recorded on their behalf, with your name. If you leave this off, each person accepts the rules themselves after signing in, or you record it later from Members." />
+      <div className="space-y-2 rounded-lg border border-line p-3">
+        <Checkbox checked={approve} onChange={(e) => setApprove(e.currentTarget.checked)} label={`I know these people and approve them for ${group?.name ?? 'the circle'}`} description="This is the circle's approval. It also asks SocietyLedger to check them." />
+        <Checkbox checked={onBehalf} onChange={(e) => setOnBehalf(e.currentTarget.checked)} label="I have explained the circle rules to them and they agreed" description="Recorded on their behalf, with your name. If you leave this off, each person accepts the rules themselves after signing in, or you record it later from Members." />
         <Checkbox checked={sendEmail} onChange={(e) => setSendEmail(e.currentTarget.checked)} label="Email a login link to everyone who has an email address" description="So they can see their schedule and receipts. Text messages cost SMS credits, so they are not sent from here." />
       </div>
 
-      {guarantorRequired && <p className="text-sm text-gray-600 dark:text-gray-400">Each person needs a guarantor before they become active. Add guarantors from Members.</p>}
-      {group?.requirePhoneConfirm && <p className="text-sm text-gray-600 dark:text-gray-400">Each person will confirm their phone with a code when they join.</p>}
-      <p className="text-xs text-gray-500">Want to be a contributor yourself? Add yourself as a row. Another officer has to approve you, because nobody can approve their own membership.</p>
+      {guarantorRequired && <p className="text-sm text-ink-muted">Each person needs a guarantor before they become active. Add guarantors from Members.</p>}
+      {group?.requirePhoneConfirm && <p className="text-sm text-ink-muted">Each person will confirm their phone with a code when they join.</p>}
+      <p className="text-xs text-ink-faint">Want to be a contributor yourself? Add yourself as a row. Another officer has to approve you, because nobody can approve their own membership.</p>
 
-      {limit && <p className="text-sm text-gray-700 dark:text-gray-300">{limit.count} of {limit.limit ?? 'unlimited'} contributors on your plan{room !== null ? ` · room for ${room} more` : ''}. {overLimit && <Link href="/dashboard/subscription" className="font-medium text-green-700 underline">See bigger tiers</Link>}</p>}
-      {overLimit && <p role="alert" className="text-sm text-red-600">That is more people than your plan has room for. Remove some, untick approval, or move to a bigger tier.</p>}
-      {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+      {limit && <p className="text-sm text-ink-soft">{limit.count} of {limit.limit ?? 'unlimited'} contributors on your plan{room !== null ? ` · room for ${room} more` : ''}. {overLimit && <Link href="/dashboard/subscription" className="font-medium text-success-link underline">See bigger tiers</Link>}</p>}
+      {overLimit && <p role="alert" className="text-sm text-danger">That is more people than your plan has room for. Remove some, untick approval, or move to a bigger tier.</p>}
+      {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
 
       <div className="flex flex-wrap justify-between gap-2">
         <Button variant="subtle" onClick={() => { setBusy(true); onSkip().finally(() => setBusy(false)); }} disabled={busy}>Add people later</Button>

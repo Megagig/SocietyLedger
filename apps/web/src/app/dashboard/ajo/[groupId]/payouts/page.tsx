@@ -14,7 +14,7 @@ import { ajoErrorCode, ajoErrorMessage } from '@/lib/ajo/api';
 import { formatKobo, formatMoment, koboPositive, ordinal } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
 import type { PayoutDTO } from '@/lib/ajo/staffTypes';
-import { useAjoAction, useGroupDetail, usePayouts, useRoster } from '@/lib/ajo/staffHooks';
+import { useAjoAction, useGroupDetail, usePayouts, usePeople } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 
@@ -56,22 +56,22 @@ function ApproveDialog({ payout, onClose }: { payout: PayoutDTO | null; onClose:
     <Modal opened={payout !== null} onClose={close} title="Approve this payout" centered closeOnClickOutside={!busy}>
       {payout && (
         <div className="space-y-4">
-          <dl className="space-y-1 rounded-md bg-gray-50 p-3 text-sm dark:bg-gray-800">
-            <div className="flex justify-between"><dt className="text-gray-500">Pay</dt><dd className="font-medium">{payout.recipient}{payout.round ? ` · round ${payout.round}` : ''}</dd></div>
-            <div className="flex justify-between"><dt className="text-gray-500">Amount</dt><dd className="text-lg font-semibold"><Money kobo={payout.netKobo} /></dd></div>
-            <div className="flex justify-between"><dt className="text-gray-500">To account</dt><dd className="font-medium">{payout.account.bankName} · {payout.account.accountName} · <span className="font-mono">{payout.account.masked}</span></dd></div>
-            {koboPositive(payout.shortfallKobo) && <div className="flex justify-between text-red-600"><dt>Short by</dt><dd><Money kobo={payout.shortfallKobo} /></dd></div>}
+          <dl className="space-y-1 rounded-md bg-surface-muted p-3 text-sm">
+            <div className="flex justify-between"><dt className="text-ink-faint">Pay</dt><dd className="font-medium">{payout.recipient}{payout.round ? ` · round ${payout.round}` : ''}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-faint">Amount</dt><dd className="text-lg font-semibold"><Money kobo={payout.netKobo} /></dd></div>
+            <div className="flex justify-between"><dt className="text-ink-faint">To account</dt><dd className="font-medium">{payout.account.bankName} · {payout.account.accountName} · <span className="font-mono">{payout.account.masked}</span></dd></div>
+            {koboPositive(payout.shortfallKobo) && <div className="flex justify-between text-danger"><dt>Short by</dt><dd><Money kobo={payout.shortfallKobo} /></dd></div>}
           </dl>
-          <p className="text-xs text-gray-500">Approving does not send any money. After approval an officer pays it from the group&apos;s own bank account and records the bank reference.</p>
+          <p className="text-xs text-ink-faint">Approving does not send any money. After approval an officer pays it from the circle&apos;s own bank account and records the bank reference.</p>
           {needsSelf && (
-            <div className="space-y-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">
+            <div className="space-y-2 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
               <p>{needsSelf}</p>
               <Checkbox label="I am the only admin, and I checked this myself." checked={self} onChange={(e) => setSelf(e.currentTarget.checked)} />
               <Textarea label="Note" autosize minRows={2} value={note} onChange={(e) => setNote(e.currentTarget.value)} />
             </div>
           )}
           <PasswordInput label="Your password" description="Typed again to be sure it is you." autoComplete="current-password" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
-          {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+          {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex justify-end gap-2"><Button variant="default" onClick={close} disabled={busy}>Cancel</Button><Button color="green" onClick={submit} loading={busy} disabled={needsSelf !== null && (!self || note.trim().length < 5)}>Approve payout</Button></div>
         </div>
       )}
@@ -79,7 +79,7 @@ function ApproveDialog({ payout, onClose }: { payout: PayoutDTO | null; onClose:
   );
 }
 
-/** Recording that the group has paid: the bank reference, and the slip if there is one. SocietyLedger sends no money. */
+/** Recording that the circle has paid: the bank reference, and the slip if there is one. SocietyLedger sends no money. */
 function RecordPaidDialog({ payout, onClose }: { payout: PayoutDTO | null; onClose: () => void }) {
   const client = useQueryClient();
   const [reference, setReference] = useState('');
@@ -115,17 +115,17 @@ function RecordPaidDialog({ payout, onClose }: { payout: PayoutDTO | null; onClo
     <Modal opened={payout !== null} onClose={close} title="Record that this was paid" centered>
       {payout && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-700 dark:text-gray-300">Record this only after you have sent <strong><Money kobo={payout.netKobo} /></strong> to <strong>{payout.recipient}</strong> ({payout.account.bankName} {payout.account.masked}) from the group&apos;s account.</p>
+          <p className="text-sm text-ink-soft">Record this only after you have sent <strong><Money kobo={payout.netKobo} /></strong> to <strong>{payout.recipient}</strong> ({payout.account.bankName} {payout.account.masked}) from the circle&apos;s account.</p>
           <TextInput label="Bank reference" value={reference} onChange={(e) => setReference(e.currentTarget.value)} maxLength={120} />
           <FileInput label="Slip (optional)" accept="image/jpeg,image/png,image/webp,application/pdf" value={proof} onChange={setProof} clearable />
           {needsOwn && (
-            <div className="space-y-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">
+            <div className="space-y-2 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
               <p>{needsOwn}</p>
               <Checkbox label="I am the only person who can record this, and I paid it myself." checked={own} onChange={(e) => setOwn(e.currentTarget.checked)} />
               <Textarea label="Note" autosize minRows={2} value={note} onChange={(e) => setNote(e.currentTarget.value)} />
             </div>
           )}
-          {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+          {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex justify-end gap-2"><Button variant="default" onClick={close} disabled={busy}>Cancel</Button><Button color="green" onClick={submit} loading={busy} disabled={needsOwn !== null && (!own || note.trim().length < 5)}>Record as paid</Button></div>
         </div>
       )}
@@ -141,7 +141,7 @@ export default function PayoutsPage() {
   const { manage, reconcile, approvePayout } = useAjoCan();
   const group = useGroupDetail(groupId).data;
   const payouts = usePayouts(groupId);
-  const roster = useRoster(groupId);
+  const people = usePeople(groupId);
   const rotating = group?.model === 'ROTATING_POT';
   const [round, setRound] = useState('');
   const [person, setPerson] = useState('');
@@ -155,7 +155,7 @@ export default function PayoutsPage() {
   const [failing, setFailing] = useState<PayoutDTO | null>(null);
   const [reversing, setReversing] = useState<PayoutDTO | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const active = (roster.data?.people ?? []).filter((p) => p.status === 'ACTIVE');
+  const active = (people.data ?? []).filter((p) => p.status === 'ACTIVE');
 
   const doPrepare = async () => {
     if (!target) return;
@@ -170,11 +170,11 @@ export default function PayoutsPage() {
 
   return (
     <div className="space-y-6">
-      <p className="max-w-3xl text-sm text-gray-600 dark:text-gray-400">SocietyLedger never sends money. A payout is worked out from the confirmed contributions, approved by an admin, paid by your group from its own account, and then recorded here with the bank reference.</p>
-      {problem && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{problem}</p>}
+      <p className="max-w-3xl text-sm text-ink-muted">SocietyLedger never sends money. A payout is worked out from the confirmed contributions, approved by an admin, paid by your circle from its own account, and then recorded here with the bank reference.</p>
+      {problem && <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">{problem}</p>}
 
       {manage && canWrite && group?.status === 'ACTIVE' && (
-        <section className="space-y-4 rounded-lg border border-gray-200 p-5 dark:border-gray-700">
+        <section className="space-y-4 rounded-lg border border-line p-5">
           <h2 className="font-semibold">Prepare a payout</h2>
           {rotating ? (
             <NativeSelect label="Round" data={[{ value: '', label: 'Choose a round…' }, ...Array.from({ length: group.rounds ?? 0 }, (_, i) => ({ value: String(i + 1), label: `Round ${i + 1}` }))]} value={round} onChange={(e) => setRound(e.currentTarget.value)} />
@@ -184,25 +184,25 @@ export default function PayoutsPage() {
           {target && preview.isLoading && <AjoLoading rows={1} />}
           {target && preview.isError && <AjoError error={preview.error} />}
           {preview.data && target && (
-            <div className="space-y-3 rounded-md bg-gray-50 p-4 text-sm dark:bg-gray-800">
+            <div className="space-y-3 rounded-md bg-surface-muted p-4 text-sm">
               <p className="font-medium">{preview.data.recipient}{preview.data.round ? ` collects round ${preview.data.round}` : ''}</p>
               <dl className="grid gap-2 sm:grid-cols-2">
-                <div className="flex justify-between"><dt className="text-gray-500">Scheduled</dt><dd><Money kobo={preview.data.grossKobo} /></dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500">Confirmed so far</dt><dd><Money kobo={preview.data.confirmedKobo} /></dd></div>
-                <div className="flex justify-between"><dt className="text-gray-500">Collector fee</dt><dd><Money kobo={preview.data.totalFeeKobo} /></dd></div>
+                <div className="flex justify-between"><dt className="text-ink-faint">Scheduled</dt><dd><Money kobo={preview.data.grossKobo} /></dd></div>
+                <div className="flex justify-between"><dt className="text-ink-faint">Confirmed so far</dt><dd><Money kobo={preview.data.confirmedKobo} /></dd></div>
+                <div className="flex justify-between"><dt className="text-ink-faint">Collector fee</dt><dd><Money kobo={preview.data.totalFeeKobo} /></dd></div>
                 <div className="flex justify-between font-semibold"><dt>To pay out</dt><dd><Money kobo={preview.data.netKobo} /></dd></div>
               </dl>
               {koboPositive(preview.data.shortfallKobo) && (
-                <div className="rounded-md bg-yellow-50 p-3 text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">
+                <div className="rounded-md bg-warning-soft p-3 text-warning-strong">
                   <p className="font-medium">Short by <Money kobo={preview.data.shortfallKobo} /></p>
                   <ul className="mt-1 list-disc pl-5">{preview.data.shortfall.map((s) => <li key={s.membershipId}>{s.name}: {formatKobo(s.shortKobo)}</li>)}</ul>
                   <p className="mt-1 text-xs">You can still pay out what has been confirmed. Money that arrives later is paid as a second payout.</p>
                 </div>
               )}
-              {preview.data.recipientArrearsNote && <p className="text-xs text-gray-600 dark:text-gray-400">{preview.data.recipientArrearsNote}</p>}
-              {!preview.data.readiness.ok && <p className="text-red-600">{preview.data.readiness.message ?? 'This round is not ready yet.'}</p>}
-              {!preview.data.eligibility.ok && <p className="text-red-600">{preview.data.eligibility.message ?? 'This person cannot be paid out yet.'}</p>}
-              {preview.data.openPayoutId && <p className="text-gray-600">There is already an open payout for this.</p>}
+              {preview.data.recipientArrearsNote && <p className="text-xs text-ink-muted">{preview.data.recipientArrearsNote}</p>}
+              {!preview.data.readiness.ok && <p className="text-danger">{preview.data.readiness.message ?? 'This round is not ready yet.'}</p>}
+              {!preview.data.eligibility.ok && <p className="text-danger">{preview.data.eligibility.message ?? 'This person cannot be paid out yet.'}</p>}
+              {preview.data.openPayoutId && <p className="text-ink-muted">There is already an open payout for this.</p>}
               <Button color="green" onClick={doPrepare} loading={prepare.isLoading} disabled={!preview.data.canPrepare}>Prepare this payout</Button>
             </div>
           )}
@@ -212,12 +212,12 @@ export default function PayoutsPage() {
       <section className="space-y-2">
         <h2 className="font-semibold">Payouts</h2>
         {payouts.isLoading ? <AjoLoading /> : payouts.isError ? <AjoError error={payouts.error} onRetry={() => payouts.refetch()} /> : payouts.data && payouts.data.length > 0 ? (
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+          <ul className="divide-y divide-line-soft rounded-lg border border-line">
             {payouts.data.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div>
                   <p className="font-medium">{p.recipient}{p.round ? ` · ${ordinal(p.round)} round` : ''}{p.sequence > 1 ? ` (extra payout ${p.sequence})` : ''} · <Money kobo={p.netKobo} /></p>
-                  <p className="text-xs text-gray-500">{p.account.bankName} · {p.account.masked} · prepared {formatMoment(p.preparedAt)}{p.paidReference ? ` · ref ${p.paidReference}` : ''}{p.voidReason ? ` · ${p.failed ? 'failed' : 'cancelled'}: ${p.voidReason}` : ''}{p.reverseReason ? ` · reversed: ${p.reverseReason}` : ''}{p.selfApprovalConfirmed ? ' · approved by the only admin' : ''}</p>
+                  <p className="text-xs text-ink-faint">{p.account.bankName} · {p.account.masked} · prepared {formatMoment(p.preparedAt)}{p.paidReference ? ` · ref ${p.paidReference}` : ''}{p.voidReason ? ` · ${p.failed ? 'failed' : 'cancelled'}: ${p.voidReason}` : ''}{p.reverseReason ? ` · reversed: ${p.reverseReason}` : ''}{p.selfApprovalConfirmed ? ' · approved by the only admin' : ''}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={p.status === 'PREPARED' ? 'PENDING' : p.status === 'APPROVED' ? 'DUE' : p.status} label={STATUS_LABEL[p.status]} />
@@ -233,10 +233,10 @@ export default function PayoutsPage() {
       </section>
 
       {approvePayout && canWrite && group?.status === 'ACTIVE' && (
-        <section className="rounded-lg border border-gray-200 p-5 dark:border-gray-700">
-          <h2 className="font-semibold">Finish the group</h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">When every payout has been made and nothing is open, close the group. It stays readable and can still be reported on.</p>
-          <Button className="mt-3" variant="default" onClick={async () => { setProblem(null); try { await complete.mutateAsync(); toast.success('The group is completed.'); } catch (e) { setProblem(ajoErrorMessage(e)); } }} loading={complete.isLoading}>Complete the group</Button>
+        <section className="rounded-lg border border-line p-5">
+          <h2 className="font-semibold">Finish the circle</h2>
+          <p className="mt-1 text-sm text-ink-muted">When every payout has been made and nothing is open, close the circle. It stays readable and can still be reported on.</p>
+          <Button className="mt-3" variant="default" onClick={async () => { setProblem(null); try { await complete.mutateAsync(); toast.success('The circle is completed.'); } catch (e) { setProblem(ajoErrorMessage(e)); } }} loading={complete.isLoading}>Complete the circle</Button>
         </section>
       )}
 
@@ -247,7 +247,7 @@ export default function PayoutsPage() {
       <ActionDialog opened={failing !== null} onClose={() => setFailing(null)} title="The transfer failed" color="red" confirmLabel="Record the failure" reasonMin={5} reasonLabel="What happened" successMessage="Recorded. The admins have been told."
         summary={failing ? `The transfer of ${formatKobo(failing.netKobo)} to ${failing.recipient} did not go through. This cancels the payout and tells the admins.` : null} onConfirm={({ reason }) => ajoStaffApi.failPayout(failing?.id ?? 0, reason)} />
       <ActionDialog opened={reversing !== null} onClose={() => setReversing(null)} title="Reverse a paid payout" color="red" confirmLabel="Reverse it" reasonMin={10} reasonLabel="Why is it being reversed" needPassword successMessage="The payout was reversed and the reason recorded."
-        summary={reversing ? `${reversing.recipient}'s payout of ${formatKobo(reversing.netKobo)} (reference ${reversing.paidReference ?? 'none'}) will be marked reversed and the round goes back to waiting. Do this only if the money came back to the group.` : null}
+        summary={reversing ? `${reversing.recipient}'s payout of ${formatKobo(reversing.netKobo)} (reference ${reversing.paidReference ?? 'none'}) will be marked reversed and the round goes back to waiting. Do this only if the money came back to the circle.` : null}
         onConfirm={({ reason, password }) => ajoStaffApi.reversePayout(reversing?.id ?? 0, { reason, password })} />
     </div>
   );

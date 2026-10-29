@@ -27,13 +27,13 @@ export default function AjoGroupsPage() {
       <OnboardingResume />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Thrift groups</h1>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">Savings circles run by your association.</p>
+          <h1 className="text-3xl font-bold text-ink">Thrift circles</h1>
+          <p className="mt-1 text-ink-muted">Savings circles run by your association.</p>
         </div>
         {nav.thriftOnly && isAdmin && <Button component={Link} href="/onboarding/thrift?rerun=true" variant="subtle" size="xs">Setup guide</Button>}
         {manage && canWrite && (
           <Button component={Link} href="/dashboard/ajo/new" leftSection={<IconPlus size={16} />} color="green">
-            New group
+            New circle
           </Button>
         )}
       </div>
@@ -43,11 +43,11 @@ export default function AjoGroupsPage() {
       ) : groups.isError ? (
         <AjoError error={groups.error} onRetry={() => groups.refetch()} />
       ) : groups.data && groups.data.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+            <thead className="bg-surface-muted text-left text-ink-muted">
               <tr>
-                <th className="px-4 py-2 font-medium">Group</th>
+                <th className="px-4 py-2 font-medium">Circle</th>
                 <th className="px-4 py-2 font-medium">Kind</th>
                 <th className="px-4 py-2 text-right font-medium">Each pays</th>
                 <th className="px-4 py-2 font-medium">Seats</th>
@@ -57,9 +57,9 @@ export default function AjoGroupsPage() {
             </thead>
             <tbody>
               {groups.data.map((g) => (
-                <tr key={g.id} className="border-t border-gray-100 dark:border-gray-700">
+                <tr key={g.id} className="border-t border-line-soft">
                   <td className="px-4 py-3">
-                    <Link href={`/dashboard/ajo/${g.id}`} className="font-medium text-green-700 hover:underline dark:text-green-400">
+                    <Link href={`/dashboard/ajo/${g.id}`} className="font-medium text-success-link hover:underline">
                       {g.name}
                     </Link>
                   </td>
@@ -74,7 +74,7 @@ export default function AjoGroupsPage() {
           </table>
         </div>
       ) : (
-        <AjoEmpty title="No groups yet." hint={manage ? 'Create the first group to start recording contributions.' : 'An officer with permission to manage Ajo creates the groups.'} action={manage && canWrite ? <Button component={Link} href="/dashboard/ajo/new" color="green">New group</Button> : undefined} />
+        <AjoEmpty title="No circles yet." hint={manage ? 'Create the first circle to start recording contributions.' : 'An officer with permission to manage Ajo creates the circles.'} action={manage && canWrite ? <Button component={Link} href="/dashboard/ajo/new" color="green">New circle</Button> : undefined} />
       )}
     </div>
   );

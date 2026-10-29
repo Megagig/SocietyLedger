@@ -28,6 +28,7 @@ import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import billingAdminRoutes from './modules/admin/billing-admin.routes';
 import publicPricingRoutes from './modules/public/pricing.routes';
+import ajoPublicRoutes from './modules/ajo/ajo-public.routes';
 import { publicRouter as appDownloadPublicRoutes, adminRouter as appDownloadAdminRoutes } from './modules/app-downloads/app-download.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
 import webhookHandlerRoutes from './modules/webhooks/webhooks.routes';
@@ -168,6 +169,8 @@ app.use('/api/blog', blogPublicRoutes);
 app.use('/api/public', publicPricingRoutes);
 // Website APK download: the form posts here and gets the link back
 app.use('/api/public/app-download', appDownloadPublicRoutes);
+// Ajo: a guarantor accepts through a one-time link, with no account and no tenant
+app.use('/api/public/ajo', ajoPublicRoutes);
 app.use('/api/docs', documentationPublicRoutes);
 // Admin routes - Super Admin only
 app.use('/api/admin/blog', blogAdminRoutes);

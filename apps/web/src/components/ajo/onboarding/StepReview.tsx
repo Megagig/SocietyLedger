@@ -15,7 +15,7 @@ function Row({ label, state, children, onFix }: { label: string; state: 'done' |
     <li className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
         <p className="font-medium">{label}</p>
-        <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">{children}</div>
+        <div className="mt-1 text-sm text-ink-muted">{children}</div>
       </div>
       <div className="flex items-center gap-2">
         <StatusBadge status={state === 'done' ? 'CONFIRMED' : state === 'skipped' ? 'WAIVED' : 'OVERDUE'} label={state === 'done' ? 'Done' : state === 'skipped' ? 'Skipped' : 'Needs attention'} />
@@ -59,7 +59,7 @@ export function StepReview({ group, roster, rules, progress, groupName, onFix, o
 
   return (
     <div className="space-y-5">
-      <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+      <ul className="divide-y divide-line-soft rounded-lg border border-line">
         <Row label="Group profile" state={state(1, true)} onFix={() => onFix(1)}>{groupName}</Row>
         <Row label="Circle" state={state(2, !!group)} onFix={() => onFix(2)}>
           {group ? (
@@ -77,16 +77,16 @@ export function StepReview({ group, roster, rules, progress, groupName, onFix, o
 
       <div>
         <h3 className="font-semibold">What happens next</h3>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-ink-soft">
           <li>Open the circle so your contributors can see it and accept the rules.</li>
           <li>SocietyLedger checks each person&apos;s name, phone, address and payout account. Nobody can be paid out until they are verified.</li>
           <li>Start the circle on {group ? formatDay(group.startDate) : 'its start date'}.</li>
           <li>Record contributions as they come in. Every contributor gets a receipt.</li>
         </ol>
-        <p className="mt-2 text-xs text-gray-500">Your group&apos;s money stays in your own bank account. SocietyLedger keeps the records.</p>
+        <p className="mt-2 text-xs text-ink-faint">Your circle&apos;s money stays in your own bank account. SocietyLedger keeps the records.</p>
       </div>
 
-      {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+      {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
       <div className="flex flex-wrap justify-between gap-2">
         <Button variant="default" onClick={() => void finish(false)} loading={busy && !confirming}>{group ? 'Keep as draft and go to Ajo' : 'Go to Ajo'}</Button>
         {draft && group && <Button color="green" onClick={() => setConfirming(true)}>Open {group.name}</Button>}
@@ -94,7 +94,7 @@ export function StepReview({ group, roster, rules, progress, groupName, onFix, o
 
       <Modal opened={confirming} onClose={() => !busy && setConfirming(false)} title={`Open ${group?.name ?? 'the circle'}?`} centered>
         <div className="space-y-4">
-          <p className="text-sm text-gray-700 dark:text-gray-300">Contributors will see the circle and its rules. If you change the rules later, a new version is saved and applies from then on. People you have already approved become active now.</p>
+          <p className="text-sm text-ink-soft">Contributors will see the circle and its rules. If you change the rules later, a new version is saved and applies from then on. People you have already approved become active now.</p>
           <div className="flex justify-end gap-2"><Button variant="default" onClick={() => setConfirming(false)} disabled={busy}>Not yet</Button><Button color="green" onClick={() => void finish(true)} loading={busy}>Open the circle</Button></div>
         </div>
       </Modal>

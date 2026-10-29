@@ -7,6 +7,7 @@ import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { RBACService } from '../../services/rbac.service';
 import { PERMISSIONS } from '../../lib/permissions';
+import { ConfigurationError } from './ajo-secrets';
 import { RuleError } from '../finance/rule-error';
 import { approveMembership } from './ajo-membership.service';
 import { getPayoutAccount, revealAccountNumber, setPayoutAccount } from './ajo-payout-account.service';
@@ -19,7 +20,8 @@ export function fail(res: Response, error: unknown, fallback: string) {
   if (error instanceof RuleError) return res.status(error.status).json({ success: false, code: error.code, message: error.message });
   if (error instanceof z.ZodError) return res.status(400).json({ success: false, code: 'INVALID_INPUT', message: error.issues[0]?.message ?? 'Please check what you entered.', errors: error.issues });
   // The message of an unexpected error is not shown to the caller and never logged with a body: a request can carry an account number.
-  console.error(`[ajo] ${fallback}:`, error instanceof Error ? error.name : 'unknown error');
+  // A configuration problem (a missing key) is the one kind of message that names no secret and is the fix for the person running the server.
+  console.error(`[ajo] ${fallback}:`, error instanceof ConfigurationError ? `${error.name}: ${error.message}` : error instanceof Error ? error.name : 'unknown error');
   return res.status(500).json({ success: false, message: fallback });
 }
 

@@ -181,6 +181,16 @@ export const sections: SectionDef[] = [
     ],
   },
   {
+    slug: 'ajo-thrift',
+    title: 'Thrift (Ajo)',
+    icon: 'PiggyBank',
+    navGroup: 'Running your association',
+    pages: [
+      { slug: 'index', title: 'Thrift (Ajo)', type: 'overview', audience: ['admin'], platforms: ['web'], covers: [] },
+      { slug: 'setting-up-your-thrift-group', title: 'Setting up your thrift group', type: 'task', audience: ['admin'], platforms: ['web'], covers: ['/onboarding/thrift'] },
+    ],
+  },
+  {
     slug: 'accounting',
     title: 'Accounting',
     icon: 'Calculator',
@@ -447,6 +457,7 @@ export const rootNavOrder = [
   'members',
   'finance',
   'payments',
+  'ajo-thrift',
   'accounting',
   'accounting-guide',
   'reports',

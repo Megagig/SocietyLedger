@@ -302,12 +302,13 @@ export async function reconcileHandover(input: ReconcileInput) {
 // Reading
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-export async function listHandovers(input: { associationId: number; groupId: number; reconciled?: boolean }) {
+export async function listHandovers(input: { associationId: number; groupId: number; reconciled?: boolean; take?: number; skip?: number }) {
   await activeGroup(prisma, input.associationId, input.groupId);
   const rows = await prisma.ajoCashHandover.findMany({
     where: { associationId: input.associationId, groupId: input.groupId, ...(input.reconciled === undefined ? {} : { reconciledAt: input.reconciled ? { not: null } : null }) },
     orderBy: [{ forDate: 'desc' }, { id: 'desc' }],
-    take: 100,
+    take: Math.min(Math.max(input.take ?? 100, 1), 200),
+    skip: Math.max(input.skip ?? 0, 0),
   });
   return rows.map(handoverView);
 }

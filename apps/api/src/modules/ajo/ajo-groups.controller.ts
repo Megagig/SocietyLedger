@@ -9,6 +9,7 @@ import prisma from '../../lib/prisma';
 import { ModuleFeatureService } from '../../services/module-feature.service';
 import { RuleError } from '../finance/rule-error';
 import { assignCollector, listAssignedContributors, listGroupAssignments, unassignCollector } from './ajo-collector.service';
+import { createGuarantorLink } from './ajo-guarantor-link.service';
 import { bulkAddContributors, MAX_BULK_ROWS } from './ajo-bulk.service';
 import { acceptRules, previewGuarantorWording, recordGuarantorConsent, rulesToAccept } from './ajo-consent.service';
 import { cancelGroup, createGroup, getGroupBankAccount, getGroupDetail, listGroups, openGroup, startGroup, updateGroup, assertGroupVisible } from './ajo-group.service';
@@ -16,7 +17,7 @@ import { actor, assertSelfOrManager, canManage, fail } from './ajo-members.contr
 import { addMember, leaveMembership, setShares } from './ajo-membership.service';
 import { decideSwap, emergencyException, getOrder, listSwapRequests, requestSwap, runDraw } from './ajo-order.service';
 import { acceptanceStats, listRuleVersions, publishRuleVersion } from './ajo-rules.service';
-import { listGroupMembers, listMembershipInstallments, listCollectorCandidates, listMyMemberships, searchPeople } from './ajo-views.service';
+import { listGroupMembers, listMembershipInstallments, listCollectorCandidates, listGroupPeople, listMyMemberships, searchPeople } from './ajo-views.service';
 
 const id = z.coerce.number().int().positive();
 
@@ -257,6 +258,16 @@ export const ajoGroupsController = {
     }
   },
 
+  /** Names only, for officers who cannot manage members but still need to know whose row they are looking at. */
+  async groupPeople(req: Request, res: Response) {
+    try {
+      const { associationId } = actor(req);
+      return res.json({ success: true, data: await listGroupPeople({ associationId, groupId: id.parse(req.params.id) }) });
+    } catch (error) {
+      return fail(res, error, 'Could not load the people.');
+    }
+  },
+
   async installments(req: Request, res: Response) {
     try {
       const { userId, associationId } = actor(req);
@@ -344,6 +355,20 @@ export const ajoGroupsController = {
   },
 
   // ---- payout order (rotating pot)
+  /** An officer creates a one-time link for a guarantor. The link is shown once. */
+  async guarantorLink(req: Request, res: Response) {
+    try {
+      const { userId, associationId } = actor(req);
+      const body = z.object({ name: z.string(), phone: z.string(), relationship: z.string() }).parse(req.body);
+      const made = await createGuarantorLink({ associationId, membershipId: id.parse(req.params.id), actorUserId: userId, ...body });
+      const base = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(201).json({ success: true, message: 'The link is ready. Send it to the guarantor; it works once and expires in 7 days.', data: { link: `${base}/guarantor/${made.token}`, expiresAt: made.expiresAt, wording: made.wording } });
+    } catch (error) {
+      return fail(res, error, 'Could not create the link.');
+    }
+  },
+
   async draw(req: Request, res: Response) {
     try {
       const { userId, associationId } = actor(req);

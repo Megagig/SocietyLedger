@@ -83,6 +83,9 @@ export const DOCS_LINKS: Record<string, string> = {
   PY3: '/docs/payments/verifying-payment-proofs',
 
   // Cash collected from members at meetings, lodged into the bank, and checked by a second officer.
+  // Thrift (Ajo): only pages that have a docs page are mapped; the rest get a help icon when their docs are written.
+  '/onboarding/thrift': '/docs/ajo-thrift/setting-up-your-thrift-group',
+
   '/dashboard/cash': '/docs/cash/how-cash-collections-work',
   CA1: '/docs/cash/how-cash-collections-work',
   '/dashboard/cash/collections': '/docs/cash/collecting-cash-from-members',

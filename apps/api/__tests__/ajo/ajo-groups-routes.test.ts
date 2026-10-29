@@ -19,6 +19,8 @@ const svc = {
   assertGroupVisible: jest.fn(),
   addMember: jest.fn(),
   bulkAddContributors: jest.fn(),
+  createGuarantorLink: jest.fn(),
+  listGroupPeople: jest.fn(),
   setShares: jest.fn(),
   leaveMembership: jest.fn(),
   listGroupMembers: jest.fn(),
@@ -93,7 +95,8 @@ jest.mock('../../src/modules/ajo/ajo-membership.service', () => ({
   leaveMembership: pass('leaveMembership'),
 }));
 jest.mock('../../src/modules/ajo/ajo-bulk.service', () => ({ MAX_BULK_ROWS: 200, bulkAddContributors: pass('bulkAddContributors') }));
-jest.mock('../../src/modules/ajo/ajo-views.service', () => ({ listGroupMembers: pass('listGroupMembers'), listMembershipInstallments: pass('listMembershipInstallments') }));
+jest.mock('../../src/modules/ajo/ajo-guarantor-link.service', () => ({ createGuarantorLink: pass('createGuarantorLink') }));
+jest.mock('../../src/modules/ajo/ajo-views.service', () => ({ listGroupPeople: pass('listGroupPeople'), listGroupMembers: pass('listGroupMembers'), listMembershipInstallments: pass('listMembershipInstallments') }));
 jest.mock('../../src/modules/ajo/ajo-rules.service', () => ({ publishRuleVersion: pass('publishRuleVersion'), listRuleVersions: pass('listRuleVersions'), acceptanceStats: pass('acceptanceStats') }));
 jest.mock('../../src/modules/ajo/ajo-consent.service', () => ({ acceptRules: pass('acceptRules'), rulesToAccept: pass('rulesToAccept'), recordGuarantorConsent: pass('recordGuarantorConsent'), previewGuarantorWording: pass('previewGuarantorWording') }));
 jest.mock('../../src/modules/ajo/ajo-order.service', () => ({ runDraw: pass('runDraw'), getOrder: pass('getOrder'), requestSwap: pass('requestSwap'), decideSwap: pass('decideSwap'), emergencyException: pass('emergencyException'), listSwapRequests: pass('listSwapRequests') }));
@@ -386,5 +389,42 @@ describe('adding a list of contributors', () => {
     const res = await request(app).post('/api/ajo/groups/1/members/bulk').set('x-test-user', as(OFFICER)).send({ items });
     expect(res.body.code).toBe('ADDON_EXPIRED');
     expect(svc.bulkAddContributors).not.toHaveBeenCalled();
+  });
+});
+
+describe('who may see names, swaps and create guarantor links', () => {
+  const RECONCILER = 11;
+  const APPROVER = 12;
+  beforeEach(() => {
+    mockPerms.set(RECONCILER, ['ajo.reconcile']);
+    mockPerms.set(APPROVER, ['ajo.approve_payout']);
+  });
+
+  it("gives the reconciler and the approver the names of a group's people, but not the members roster", async () => {
+    svc.listGroupPeople.mockResolvedValue([{ membershipId: 1, name: 'Ada Obi', status: 'ACTIVE', shares: 1 }]);
+    svc.listGroupMembers.mockResolvedValue({ people: [], rules: {} });
+    for (const user of [OFFICER, RECONCILER, APPROVER, ADMIN]) expect((await request(app).get('/api/ajo/groups/1/people').set('x-test-user', as(user))).status).toBe(200);
+    for (const user of [MEMBER, COLLECTOR]) expect((await request(app).get('/api/ajo/groups/1/people').set('x-test-user', as(user))).status).toBe(403);
+    for (const user of [RECONCILER, APPROVER]) expect((await request(app).get('/api/ajo/groups/1/members').set('x-test-user', as(user))).status).toBe(403);
+  });
+
+  it('lets the approver, who decides swaps, see the swap requests, and still not a reconciler or a member', async () => {
+    svc.listSwapRequests.mockResolvedValue([]);
+    for (const user of [OFFICER, APPROVER]) expect((await request(app).get('/api/ajo/groups/1/swaps').set('x-test-user', as(user))).status).toBe(200);
+    for (const user of [RECONCILER, MEMBER]) expect((await request(app).get('/api/ajo/groups/1/swaps').set('x-test-user', as(user))).status).toBe(403);
+  });
+
+  it('lets only an officer create a guarantor link, passes who is asking, and never caches the answer', async () => {
+    svc.createGuarantorLink.mockResolvedValue({ token: 'tok', expiresAt: new Date('2027-03-01T00:00:00Z'), wording: 'I agree' });
+    const body = { name: 'Mama Chidi', phone: '08031234567', relationship: 'aunt' };
+    expect((await request(app).post('/api/ajo/memberships/9/guarantor-link').set('x-test-user', as(MEMBER)).send(body)).status).toBe(403);
+    expect((await request(app).post('/api/ajo/memberships/9/guarantor-link').set('x-test-user', as(RECONCILER)).send(body)).status).toBe(403);
+    expect(svc.createGuarantorLink).not.toHaveBeenCalled();
+    const res = await request(app).post('/api/ajo/memberships/9/guarantor-link').set('x-test-user', as(OFFICER)).send({ ...body, actorUserId: 999 });
+    expect(res.status).toBe(201);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.body.data.link).toMatch(/\/guarantor\/tok$/);
+    expect(svc.createGuarantorLink).toHaveBeenCalledWith({ associationId: ASSOC, membershipId: 9, actorUserId: OFFICER, ...body });
+    expect((await request(app).post('/api/ajo/memberships/9/guarantor-link').set('x-test-user', as(OFFICER)).send({ name: 'x' })).status).toBe(400);
   });
 });

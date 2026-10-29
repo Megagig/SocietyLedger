@@ -47,8 +47,8 @@ function RecordCashDialog({ person, groupId, onClose }: { person: AssignedContri
     <Modal opened={person !== null} onClose={close} title={`Cash from ${person?.name ?? ''}`} centered size="sm">
       <div className="space-y-4">
         <TextInput label="Amount received (₦)" inputMode="decimal" autoFocus value={amount} onChange={(e) => setAmount(e.currentTarget.value)} />
-        <p className="text-xs text-gray-500">It stays &quot;cash received, awaiting reconciliation&quot; until you hand the cash over and an officer counts it.</p>
-        {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+        <p className="text-xs text-ink-faint">It stays &quot;cash received, awaiting reconciliation&quot; until you hand the cash over and an officer counts it.</p>
+        {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
         <div className="flex justify-end gap-2"><Button variant="default" onClick={close}>Cancel</Button><Button color="green" onClick={submit} loading={busy}>Record cash</Button></div>
       </div>
     </Modal>
@@ -75,7 +75,7 @@ export default function CollectPage() {
   if (mine.isError) return <AjoError error={mine.error} onRetry={() => mine.refetch()} />;
   if (!mine.data || mine.data.length === 0) return <AjoEmpty title="You have no contributors assigned yet." hint="An officer assigns the people you collect from." />;
 
-  const groupName = (id: number) => mine.data?.find((c) => c.groupId === id)?.groupName ?? 'Group';
+  const groupName = (id: number) => mine.data?.find((c) => c.groupId === id)?.groupName ?? 'Circle';
   const people = mine.data.filter((c) => c.groupId === groupId);
   const paidToday = new Set((day.data?.payments ?? []).map((p) => p.name));
   const alreadyHanded = !!day.data?.handover;
@@ -102,28 +102,28 @@ export default function CollectPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Today&apos;s collection</h1>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">{day.data ? formatDay(day.data.forDate) : ''} · needs an internet connection</p>
+          <h1 className="text-3xl font-bold text-ink">Today&apos;s collection</h1>
+          <p className="mt-1 text-ink-muted">{day.data ? formatDay(day.data.forDate) : ''} · needs an internet connection</p>
         </div>
-        {groupIds.length > 1 && <NativeSelect aria-label="Group" data={groupIds.map((id) => ({ value: String(id), label: groupName(id) }))} value={String(groupId)} onChange={(e) => setChosen(Number(e.currentTarget.value))} />}
+        {groupIds.length > 1 && <NativeSelect aria-label="Circle" data={groupIds.map((id) => ({ value: String(id), label: groupName(id) }))} value={String(groupId)} onChange={(e) => setChosen(Number(e.currentTarget.value))} />}
       </div>
 
       {day.isLoading ? <AjoLoading rows={2} /> : day.isError ? <AjoError error={day.error} onRetry={() => day.refetch()} /> : day.data && (
         <section className="grid gap-4 sm:grid-cols-4">
           {[['Expected today', day.data.expectedKobo], ['Collected today', day.data.collectedKobo], ['Carried over', day.data.carriedOverKobo], ['Cash in your hand', day.data.inHandKobo]].map(([label, kobo]) => (
-            <div key={label} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700"><p className="text-xs text-gray-500 dark:text-gray-400">{label}</p><p className="text-xl font-semibold"><Money kobo={kobo} /></p></div>
+            <div key={label} className="rounded-lg border border-line p-4"><p className="text-xs text-ink-faint">{label}</p><p className="text-xl font-semibold"><Money kobo={kobo} /></p></div>
           ))}
         </section>
       )}
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Your contributors</h2>
-        <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+        <ul className="divide-y divide-line-soft rounded-lg border border-line">
           {people.map((c) => {
             const arrears = day.data?.arrears.find((a) => a.membershipId === c.membershipId);
             return (
               <li key={c.assignmentId} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                <div><p className="font-medium">{c.name}</p>{arrears && koboPositive(arrears.overdueKobo) && <p className="text-xs text-red-600">Behind by {arrears.overdue}</p>}</div>
+                <div><p className="font-medium">{c.name}</p>{arrears && koboPositive(arrears.overdueKobo) && <p className="text-xs text-danger">Behind by {arrears.overdue}</p>}</div>
                 <div className="flex items-center gap-2">{paidToday.has(c.name) && <StatusBadge status="CASH_RECEIVED" label="Paid today" />}{canWrite && !alreadyHanded && <Button size="compact-sm" onClick={() => setCashFor(c)}>Record cash</Button>}</div>
               </li>
             );
@@ -134,26 +134,26 @@ export default function CollectPage() {
       {day.data && day.data.payments.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Recorded today</h2>
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm dark:divide-gray-700 dark:border-gray-700">{day.data.payments.map((p) => <li key={p.contributionId} className="flex justify-between px-4 py-2"><span>{p.name}{p.reference ? ` · ${p.reference}` : ''}</span><Money kobo={p.amountKobo} /></li>)}</ul>
+          <ul className="divide-y divide-line-soft rounded-lg border border-line text-sm">{day.data.payments.map((p) => <li key={p.contributionId} className="flex justify-between px-4 py-2"><span>{p.name}{p.reference ? ` · ${p.reference}` : ''}</span><Money kobo={p.amountKobo} /></li>)}</ul>
         </section>
       )}
 
-      <section className="rounded-lg border border-gray-200 p-5 dark:border-gray-700">
+      <section className="rounded-lg border border-line p-5">
         <h2 className="text-lg font-semibold">End of day handover</h2>
         {alreadyHanded ? (
-          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">You handed over <strong><Money kobo={day.data?.handedOverKobo} /></strong>{day.data?.handover?.reconciled ? '. An officer has counted and reconciled it.' : '. An officer still has to count it.'}{day.data && day.data.differenceKobo !== '0' ? <> The difference is <strong className="text-red-600"><Money kobo={day.data.differenceKobo} /></strong>.</> : null}</p>
+          <p className="mt-2 text-sm text-ink-soft">You handed over <strong><Money kobo={day.data?.handedOverKobo} /></strong>{day.data?.handover?.reconciled ? '. An officer has counted and reconciled it.' : '. An officer still has to count it.'}{day.data && day.data.differenceKobo !== '0' ? <> The difference is <strong className="text-danger"><Money kobo={day.data.differenceKobo} /></strong>.</> : null}</p>
         ) : canWrite ? (
-          <><p className="mt-1 text-sm text-gray-600 dark:text-gray-400">When you give the cash to the group, record how much you handed over. If it does not match what you collected, the difference is shown to the officer.</p><Button className="mt-3" color="green" onClick={() => setHanding(true)} disabled={!day.data}>Hand over cash</Button></>
-        ) : <p className="mt-2 text-sm text-gray-600">Handovers are switched off while the add-on is expired.</p>}
+          <><p className="mt-1 text-sm text-ink-muted">When you give the cash to the circle, record how much you handed over. If it does not match what you collected, the difference is shown to the officer.</p><Button className="mt-3" color="green" onClick={() => setHanding(true)} disabled={!day.data}>Hand over cash</Button></>
+        ) : <p className="mt-2 text-sm text-ink-muted">Handovers are switched off while the add-on is expired.</p>}
       </section>
 
       <RecordCashDialog person={cashFor} groupId={groupId} onClose={() => setCashFor(null)} />
       <Modal opened={handing} onClose={() => setHanding(false)} title="Hand over cash" centered size="sm">
         <div className="space-y-4">
-          {day.data && <p className="text-sm text-gray-700 dark:text-gray-300">You collected <strong><Money kobo={day.data.collectedKobo} /></strong>{koboPositive(day.data.carriedOverKobo) ? <> and carried over <strong><Money kobo={day.data.carriedOverKobo} /></strong></> : null}.</p>}
+          {day.data && <p className="text-sm text-ink-soft">You collected <strong><Money kobo={day.data.collectedKobo} /></strong>{koboPositive(day.data.carriedOverKobo) ? <> and carried over <strong><Money kobo={day.data.carriedOverKobo} /></strong></> : null}.</p>}
           <TextInput label="Cash you are handing over (₦)" inputMode="decimal" autoFocus value={handed} onChange={(e) => setHanded(e.currentTarget.value)} />
           <TextInput label="Note (optional)" value={note} onChange={(e) => setNote(e.currentTarget.value)} />
-          {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+          {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex justify-end gap-2"><Button variant="default" onClick={() => setHanding(false)}>Cancel</Button><Button color="green" onClick={handOver} loading={busy}>Record handover</Button></div>
         </div>
       </Modal>

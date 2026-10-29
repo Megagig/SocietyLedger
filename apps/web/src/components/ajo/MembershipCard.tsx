@@ -17,13 +17,13 @@ export function MembershipCard({ item }: { item: MyMembershipDTO }) {
   const base = `/dashboard/my-thrift/${item.membershipId}`;
 
   return (
-    <article className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <article className="rounded-lg border border-line bg-surface p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href={base} className="text-lg font-semibold text-gray-900 hover:underline dark:text-gray-100">
+          <Link href={base} className="text-lg font-semibold text-ink hover:underline">
             {group.name}
           </Link>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-1 text-sm text-ink-muted">
             {MODEL_LABEL[group.model]} · {frequencyText(group)} · {formatKobo(group.contributionKobo)}
             {item.shares > 1 ? ` × ${item.shares} shares` : ''}
           </p>
@@ -32,8 +32,8 @@ export function MembershipCard({ item }: { item: MyMembershipDTO }) {
       </div>
 
       {item.waitingFor.length > 0 && (
-        <div className="mt-4 rounded-md bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">
-          <p className="font-medium">Before you can start, the group is waiting for:</p>
+        <div className="mt-4 rounded-md bg-warning-soft p-3 text-sm text-warning-strong">
+          <p className="font-medium">Before you can start, the circle is waiting for:</p>
           <ul className="mt-1 list-disc pl-5">
             {item.waitingFor.map((w) => (
               <li key={w.requirement}>{w.text}</li>
@@ -45,30 +45,30 @@ export function MembershipCard({ item }: { item: MyMembershipDTO }) {
       {item.status === 'ACTIVE' && (
         <dl className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
-            <dt className="text-xs text-gray-500 dark:text-gray-400">Overdue</dt>
-            <dd className={`text-lg font-semibold ${overdue ? 'text-red-600 dark:text-red-400' : ''}`}>
+            <dt className="text-xs text-ink-faint">Overdue</dt>
+            <dd className={`text-lg font-semibold ${overdue ? 'text-danger' : ''}`}>
               <Money kobo={item.overdueKobo} />
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-gray-500 dark:text-gray-400">Next payment</dt>
+            <dt className="text-xs text-ink-faint">Next payment</dt>
             <dd className="text-lg font-semibold">
               {item.nextDue ? (
                 <>
                   <Money kobo={item.nextDue.remainingKobo} />
-                  <span className="block text-xs font-normal text-gray-500 dark:text-gray-400">due {formatDay(item.nextDue.dueDate)}</span>
+                  <span className="block text-xs font-normal text-ink-faint">due {formatDay(item.nextDue.dueDate)}</span>
                 </>
               ) : (
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">Nothing coming up</span>
+                <span className="text-sm font-normal text-ink-faint">Nothing coming up</span>
               )}
             </dd>
           </div>
           {group.model === 'ROTATING_POT' && (
             <div>
-              <dt className="text-xs text-gray-500 dark:text-gray-400">Your turn to collect</dt>
+              <dt className="text-xs text-ink-faint">Your turn to collect</dt>
               <dd className="text-lg font-semibold">
-                {item.payoutPositions.length ? item.payoutPositions.map(ordinal).join(', ') : <span className="text-sm font-normal text-gray-500 dark:text-gray-400">Not drawn yet</span>}
-                {item.rounds ? <span className="block text-xs font-normal text-gray-500 dark:text-gray-400">of {item.rounds} rounds</span> : null}
+                {item.payoutPositions.length ? item.payoutPositions.map(ordinal).join(', ') : <span className="text-sm font-normal text-ink-faint">Not drawn yet</span>}
+                {item.rounds ? <span className="block text-xs font-normal text-ink-faint">of {item.rounds} rounds</span> : null}
               </dd>
             </div>
           )}

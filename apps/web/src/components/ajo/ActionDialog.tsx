@@ -74,12 +74,12 @@ export function ActionDialog({ opened, onClose, title, summary, confirmLabel, co
   return (
     <Modal opened={opened} onClose={close} title={title} centered closeOnClickOutside={!busy}>
       <div className="space-y-4">
-        {summary && <div className="text-sm text-gray-700 dark:text-gray-300">{summary}</div>}
+        {summary && <div className="text-sm text-ink-soft">{summary}</div>}
         {extra}
         {reasonMin ? <Textarea label={reasonLabel} minRows={2} autosize value={reason} onChange={(e) => setReason(e.currentTarget.value)} /> : null}
         {needPassword && <PasswordInput label="Your password" description="Typed again to be sure it is you." autoComplete="current-password" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />}
         {problem && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="text-sm text-danger">
             {problem}
           </p>
         )}

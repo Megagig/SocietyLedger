@@ -46,14 +46,14 @@ export default function GroupRulesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-sm text-gray-600 dark:text-gray-400">Changing the rules makes a new version. It takes effect after a notice period, and each member is only bound by the version they accepted.</p>
+        <p className="max-w-2xl text-sm text-ink-muted">Changing the rules makes a new version. It takes effect after a notice period, and each member is only bound by the version they accepted.</p>
         {manage && canWrite && !editing && <Button onClick={() => { const v = list[0]; if (v) setForm({ lateFeeType: v.rules.lateFeeType, lateFeeValue: v.rules.lateFeeType === 'FIXED' ? (Number(v.rules.lateFeeValue) / 100).toFixed(2) : v.rules.lateFeeType === 'PERCENT' ? String(Number(v.rules.lateFeeValue) / 100) : '', lateFeeCap: v.rules.lateFeeCapKobo ? (Number(v.rules.lateFeeCapKobo) / 100).toFixed(2) : '', graceDays: v.rules.graceDays, guarantorPolicy: v.rules.guarantorPolicy, defaultProcedure: v.rules.defaultProcedure, remindersEnabled: v.rules.remindersEnabled, blockAtRiskEarly: v.rules.blockAtRiskEarly }); setEditing(true); }}>Publish a new version</Button>}
       </div>
 
       {editing && (
-        <section className="space-y-4 rounded-lg border border-gray-200 p-5 dark:border-gray-700">
+        <section className="space-y-4 rounded-lg border border-line p-5">
           <RulesFields value={form} onChange={setForm} />
-          {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+          {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex gap-2"><Button color="green" onClick={submit} loading={publish.isLoading}>Publish</Button><Button variant="default" onClick={() => setEditing(false)}>Cancel</Button></div>
         </section>
       )}
@@ -63,9 +63,9 @@ export default function GroupRulesPage() {
       ) : (
         <ul className="space-y-3">
           {list.map((v) => (
-            <li key={v.id} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-              <p className="font-semibold">Version {v.version} <span className="text-sm font-normal text-gray-500">· from {formatDay(v.effectiveFrom)}</span></p>
-              <ul className="mt-1 list-disc pl-5 text-sm text-gray-700 dark:text-gray-300">{v.summary.map((line) => <li key={line}>{line}</li>)}</ul>
+            <li key={v.id} className="rounded-lg border border-line p-4">
+              <p className="font-semibold">Version {v.version} <span className="text-sm font-normal text-ink-faint">· from {formatDay(v.effectiveFrom)}</span></p>
+              <ul className="mt-1 list-disc pl-5 text-sm text-ink-soft">{v.summary.map((line) => <li key={line}>{line}</li>)}</ul>
             </li>
           ))}
         </ul>

@@ -9,7 +9,7 @@ import { Money } from '@/components/ajo/Money';
 import { ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay, nairaToKobo } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
-import { useAjoAction, useCollectorCandidates, useCollectors, useRoster } from '@/lib/ajo/staffHooks';
+import { useAjoAction, useCollectorCandidates, useCollectors, usePeople } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 
@@ -20,7 +20,7 @@ export default function CollectorsPage() {
   const { canWrite } = useAjoAccess();
   const { manage } = useAjoCan();
   const assignments = useCollectors(groupId);
-  const roster = useRoster(groupId);
+  const everyone = usePeople(groupId);
   const candidates = useCollectorCandidates();
   const assign = useAjoAction((input: { membershipId: number; collectorUserId: number; dailyTargetKobo: string | null }) => ajoStaffApi.assignCollector(input.membershipId, { collectorUserId: input.collectorUserId, dailyTargetKobo: input.dailyTargetKobo }));
   const unassign = useAjoAction((membershipId: number) => ajoStaffApi.unassignCollector(membershipId));
@@ -31,11 +31,11 @@ export default function CollectorsPage() {
   const [problem, setProblem] = useState<string | null>(null);
   const can = manage && canWrite;
 
-  const names = new Map((roster.data?.people ?? []).map((p) => [p.membershipId, p.name]));
+  const names = new Map((everyone.data ?? []).map((p) => [p.membershipId, p.name]));
   const collectorName = (userId: number) => candidates.data?.find((c) => c.userId === userId)?.name ?? `User ${userId}`;
   const current = (assignments.data ?? []).filter((a) => !a.endsOn || new Date(a.endsOn).getTime() >= Date.now());
   const byPerson = new Map(current.map((a) => [a.membershipId, a]));
-  const eligible = (roster.data?.people ?? []).filter((p) => p.status === 'ACTIVE' || p.status === 'PENDING');
+  const eligible = (everyone.data ?? []).filter((p) => p.status === 'ACTIVE' || p.status === 'PENDING');
 
   const submit = async () => {
     if (!collector) return setProblem('Choose the collector.');
@@ -63,21 +63,21 @@ export default function CollectorsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-sm text-gray-600 dark:text-gray-400">Collectors go round and receive cash. They need the collector permission to be listed here. A collector only ever sees the contributors assigned to them.</p>
+        <p className="max-w-2xl text-sm text-ink-muted">Collectors go round and receive cash. They need the collector permission to be listed here. A collector only ever sees the contributors assigned to them.</p>
         {can && <Button onClick={() => setOpen(true)}>Assign contributors</Button>}
       </div>
 
-      {eligible.length === 0 ? <AjoEmpty title="Nobody is in this group yet." /> : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      {eligible.length === 0 ? <AjoEmpty title="Nobody is in this circle yet." /> : (
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-600 dark:bg-gray-800 dark:text-gray-400"><tr><th className="px-4 py-2 font-medium">Contributor</th><th className="px-4 py-2 font-medium">Collector</th><th className="px-4 py-2 text-right font-medium">Daily target</th><th className="px-4 py-2 font-medium">Since</th><th className="px-4 py-2" /></tr></thead>
+            <thead className="bg-surface-muted text-left text-ink-muted"><tr><th className="px-4 py-2 font-medium">Contributor</th><th className="px-4 py-2 font-medium">Collector</th><th className="px-4 py-2 text-right font-medium">Daily target</th><th className="px-4 py-2 font-medium">Since</th><th className="px-4 py-2" /></tr></thead>
             <tbody>
               {eligible.map((p) => {
                 const a = byPerson.get(p.membershipId);
                 return (
-                  <tr key={p.membershipId} className="border-t border-gray-100 dark:border-gray-700">
+                  <tr key={p.membershipId} className="border-t border-line-soft">
                     <td className="px-4 py-3 font-medium">{p.name}</td>
-                    <td className="px-4 py-3">{a ? collectorName(a.collectorUserId) : <span className="text-gray-400">None (pays by transfer)</span>}</td>
+                    <td className="px-4 py-3">{a ? collectorName(a.collectorUserId) : <span className="text-ink-subtle">None (pays by transfer)</span>}</td>
                     <td className="px-4 py-3 text-right">{a?.dailyTargetKobo ? <Money kobo={a.dailyTargetKobo} /> : '—'}</td>
                     <td className="px-4 py-3">{a ? formatDay(a.startsOn) : ''}</td>
                     <td className="px-4 py-3 text-right">{can && a && <Button size="compact-xs" variant="subtle" color="red" onClick={() => unassign.mutate(p.membershipId, { onError: (e) => setProblem(ajoErrorMessage(e)) })}>Remove</Button>}</td>
@@ -88,14 +88,14 @@ export default function CollectorsPage() {
           </table>
         </div>
       )}
-      {problem && !open && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+      {problem && !open && <p role="alert" className="text-sm text-danger">{problem}</p>}
 
       <Modal opened={open} onClose={() => setOpen(false)} title="Assign contributors to a collector" centered size="lg">
         <div className="space-y-4">
           <NativeSelect label="Collector" data={[{ value: '', label: candidates.data?.length ? 'Choose…' : 'No one has the collector permission yet' }, ...(candidates.data ?? []).map((c) => ({ value: String(c.userId), label: `${c.name} (${c.email})` }))]} value={collector} onChange={(e) => setCollector(e.currentTarget.value)} />
           <MultiSelect label="Contributors" searchable data={eligible.map((p) => ({ value: String(p.membershipId), label: p.name }))} value={people} onChange={setPeople} placeholder="Choose people" />
           <TextInput label="Daily target (₦, optional)" description="What you expect this collector to bring in each day from these people." inputMode="decimal" value={target} onChange={(e) => setTarget(e.currentTarget.value)} />
-          {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+          {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex justify-end gap-2"><Button variant="default" onClick={() => setOpen(false)}>Cancel</Button><Button color="green" onClick={submit} loading={assign.isLoading}>Assign</Button></div>
         </div>
       </Modal>

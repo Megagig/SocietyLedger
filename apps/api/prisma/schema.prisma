@@ -4357,6 +4357,7 @@ model AjoMembership {
   group                 AjoGroup            @relation(fields: [groupId], references: [id], onDelete: Cascade)
   member                Member              @relation(fields: [memberId], references: [id])
   guarantorAgreement    AjoGuarantorAgreement? @relation(fields: [guarantorAgreementId], references: [id])
+  guarantorInvites      AjoGuarantorInvite[]
   acceptances           AjoRuleAcceptance[]
   installments          AjoInstallment[]
   contributions         AjoContribution[]
@@ -4651,6 +4652,27 @@ model AjoRepaymentPlan {
 }
 
 /// A recorded consent only. SocietyLedger does not create or enforce a legal guarantee.
+/// A one-time link an officer sends a guarantor so they can read the wording and accept it themselves. Only a hash of the token is kept.
+model AjoGuarantorInvite {
+  id            Int           @id @default(autoincrement())
+  associationId Int           @map("association_id")
+  membershipId  Int           @map("membership_id")
+  name          String
+  phone         String
+  relationship  String
+  tokenHash     String        @unique @map("token_hash")
+  expiresAt     DateTime      @map("expires_at")
+  usedAt        DateTime?     @map("used_at")
+  revokedAt     DateTime?     @map("revoked_at")
+  createdBy     Int           @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  membership    AjoMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId])
+  @@index([associationId])
+  @@map("ajo_guarantor_invites")
+}
+
 model AjoGuarantorAgreement {
   id             Int            @id @default(autoincrement())
   associationId  Int            @map("association_id")

@@ -7,7 +7,7 @@ import { ajoApi } from './api';
 import { ajoKeys } from './hooks';
 
 /** The menu entries a standalone thrift group keeps. It runs only Ajo, so everything else is left out, apart from what it needs to run and pay. */
-export const THRIFT_ONLY_ADMIN_LABELS = ['Thrift Groups', 'Collect', 'Members', 'Notifications', 'Subscription', 'Settings', 'Help & Support'];
+export const THRIFT_ONLY_ADMIN_LABELS = ['Thrift Circles', 'Collect', 'Members', 'Notifications', 'Subscription', 'Settings', 'Help & Support'];
 export const THRIFT_ONLY_MEMBER_LABELS = ['My Thrift', 'My Profile'];
 
 /**

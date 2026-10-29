@@ -44,13 +44,13 @@ export function DisputeDialog({ membershipId, installment, onClose }: { membersh
     <Modal opened={installment !== null} onClose={close} title="I already paid this" centered>
       {installment && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-ink-muted">
             The payment due on <strong>{formatDay(installment.dueDate)}</strong> ({formatKobo(installment.amountKobo)}) is showing as not paid. Tell the officers what happened. While they look, you will not be charged a late fee for it.
           </p>
           <Textarea label="What happened" placeholder="I gave ₦5,000.00 to the collector on Monday morning at the market." minRows={3} autosize value={claim} onChange={(e) => setClaim(e.currentTarget.value)} error={problem && problem.startsWith('Say what') ? problem : undefined} />
           <FileInput label="Evidence (optional)" description="A photo of the slip or a screenshot. JPG, PNG, WebP or PDF, up to 5 MB." accept="image/jpeg,image/png,image/webp,application/pdf" value={evidence} onChange={setEvidence} clearable />
           {problem && !problem.startsWith('Say what') && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-danger">
               {problem}
             </p>
           )}

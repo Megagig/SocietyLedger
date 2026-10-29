@@ -24,9 +24,9 @@ export function AjoGate({ children }: { children: ReactNode }) {
   if (!result || result.kind === 'locked') return <AjoLocked />;
   if (result.kind === 'forbidden') {
     return (
-      <div role="alert" className="mx-auto max-w-md rounded-lg border border-gray-200 p-8 text-center dark:border-gray-700">
-        <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">You do not have access to Ajo.</p>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Ask an officer of your association to give you access.</p>
+      <div role="alert" className="mx-auto max-w-md rounded-lg border border-line p-8 text-center">
+        <p className="text-lg font-semibold text-ink">You do not have access to Ajo.</p>
+        <p className="mt-2 text-sm text-ink-muted">Ask an officer of your association to give you access.</p>
       </div>
     );
   }

@@ -12,11 +12,19 @@ import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } f
 const ALGORITHM = 'aes-256-gcm';
 const SALT = 'societyledger-ajo-v1';
 
+/** The server is set up wrongly (for example a missing key). Its message names a setting, never a secret, so it is safe to log. */
+export class ConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConfigurationError';
+  }
+}
+
 export type AjoKeyPurpose = 'payout-account' | 'phone-code' | 'group-account';
 
 function rootKey(): Buffer {
   const key = process.env.TOTP_ENCRYPTION_KEY;
-  if (!key || key.length < 32) throw new Error('TOTP_ENCRYPTION_KEY must be set and at least 32 characters');
+  if (!key || key.length < 32) throw new ConfigurationError('TOTP_ENCRYPTION_KEY must be set and at least 32 characters');
   return Buffer.from(key, 'utf8');
 }
 

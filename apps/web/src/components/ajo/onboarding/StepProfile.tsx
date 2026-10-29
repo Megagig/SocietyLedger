@@ -62,7 +62,7 @@ export function StepProfile({ groupName, subdomain, onDone, onSkip }: { groupNam
         <Select label="State (optional)" data={STATES} value={state} onChange={setState} searchable clearable />
       </div>
       <FileInput label="Logo (optional)" description="PNG or JPG, up to 2 MB." accept="image/png,image/jpeg" value={logo} onChange={setLogo} clearable />
-      {problem && <p role="alert" className="text-sm text-red-600">{problem}</p>}
+      {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
       <div className="flex justify-between">
         <Button variant="subtle" onClick={() => { setBusy(true); onSkip().finally(() => setBusy(false)); }} disabled={busy}>Skip this step</Button>
         <Button color="green" onClick={save} loading={busy}>Save and continue</Button>
