@@ -24,5 +24,7 @@ export function useAjoNav() {
     locked: result?.kind === 'locked',
     /** An account that exists only to run Ajo (a standalone thrift group). */
     thriftOnly: result?.kind === 'ok' && result.status.tenantKind === 'THRIFT_GROUP',
+    /** True until we know what kind of account this is, so a screen can wait instead of flashing association content. */
+    resolving: any && status.isPending,
   };
 }

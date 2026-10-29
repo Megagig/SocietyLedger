@@ -21,15 +21,45 @@ import { useModuleDisabled } from '@/hooks/useModuleAccess';
 import { formatDate } from '@/lib/dates';
 import { COOPERATIVE_GUARANTOR_ACCESS, COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
 import { formatMoney, toDecimal } from '@/lib/money';
+import { AjoLoading } from '@/features/ajo/components/AjoStates';
 import { ThriftEntry } from '@/features/ajo/components/ThriftEntry';
 import { ThriftHomeRedirect } from '@/features/ajo/components/ThriftHomeRedirect';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
+import MyThriftScreen from './thrift';
 
 /** A charge adds to what the member owes (+), a payment takes it away (–): the same direction the running balance moves. */
 function entrySign(entryType: string): '+' | '–' {
   return entryType === 'CREDIT' ? '–' : '+';
 }
 
+/**
+ * The Money tab. A standalone thrift group (an account that is only Ajo) has no ledger, dues or cooperative to show, so it gets "My
+ * thrift" here (the same as the web's trimmed menu), or goes to the circles when the person is an officer or collector and not a
+ * contributor. Nothing from the association app renders or loads for it, not even for a moment.
+ */
 export default function MoneyScreen() {
+  const nav = useAjoNav();
+  if (nav.thriftOnly) {
+    return nav.member ? (
+      <MyThriftScreen />
+    ) : (
+      <Screen edges={['top']}>
+        <ThriftHomeRedirect />
+        <AjoLoading />
+      </Screen>
+    );
+  }
+  if (nav.resolving) {
+    return (
+      <Screen edges={['top']}>
+        <AjoLoading />
+      </Screen>
+    );
+  }
+  return <AssociationMoneyScreen />;
+}
+
+function AssociationMoneyScreen() {
   const router = useRouter();
   const { color } = useThemeTokens();
 
@@ -61,7 +91,6 @@ export default function MoneyScreen() {
 
   return (
     <Screen edges={['top']} refreshing={refreshing} onRefresh={handleRefresh}>
-      <ThriftHomeRedirect />
       <ScreenHeader
         large
         title="Money"

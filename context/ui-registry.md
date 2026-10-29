@@ -1772,6 +1772,8 @@ When a request is refused because of who the person is or what their association
 
 ## Ajo mobile components (T8, 2026-10-29)
 
+> **Standalone thrift groups (fixed 2026-10-29):** the Money tab renders `MyThriftScreen` (not the association Money screen) and Manage shows only Members, Thrift and Settings. Any new association-only section on Money, Manage or Home must be hidden when `useAjoNav().thriftOnly`.
+
 All under `apps/mobile/src/features/ajo/`. Built only from the existing design system (Screen, ScreenHeader, Card, SectionCard, ListItem, Badge, StatTile, FilterChip, SegmentedControl, BottomSheet and the react-hook-form fields). Colours are tokens only.
 
 ### AjoScreen
