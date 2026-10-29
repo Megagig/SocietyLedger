@@ -616,13 +616,14 @@ model RefreshToken {
 
 model Settings {
   id            Int         @id @default(autoincrement())
-  associationId Int         @map("association_id")
+  /// Null for platform-wide settings (the admin console), which belong to no association.
+  associationId Int?        @map("association_id")
   key           String
   value         String?
   description   String?
   updatedBy     Int         @map("updated_by")
   updatedAt     DateTime    @updatedAt @map("updated_at")
-  association   Association @relation(fields: [associationId], references: [id])
+  association   Association? @relation(fields: [associationId], references: [id])
   updater       User        @relation("SettingsUpdatedBy", fields: [updatedBy], references: [id])
 
   @@unique([associationId, key])

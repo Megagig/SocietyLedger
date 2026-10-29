@@ -556,7 +556,7 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
 - [ ] T8.5 Push routing & deep links
 
 ## Phase T9 — Admin console
-- [ ] T9.1 Ajo platform settings
+- [~] T9.1 Ajo platform settings — **the "Allow standalone thrift groups to sign up" switch was added to the admin Settings page early (2026-10-28)** because without it `/signup/thrift` answered `THRIFT_SIGNUP_CLOSED` and nobody could turn it on. It needs "Allow new sign-ups" on too. The levy parameters have no admin controls yet. Original item:
 - [ ] T9.2 Groups & payouts oversight
 - [ ] T9.3 Add-on analytics
 - [ ] T9.4 SocietyLedger verification review queue

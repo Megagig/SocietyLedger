@@ -230,10 +230,8 @@ export class PlatformSettingsService {
       } else {
         // For platform settings, we need to handle the null associationId case
         await prisma.$executeRaw`
-          INSERT INTO settings (key, value, description, updated_by, created_at, updated_at)
-          VALUES (${fullKey}, ${stringValue}, ${'Platform setting: ' + key}, ${userId}, NOW(), NOW())
-          ON CONFLICT (association_id, key) WHERE association_id IS NULL
-          DO UPDATE SET value = ${stringValue}, updated_by = ${userId}, updated_at = NOW()
+          INSERT INTO settings (key, value, description, updated_by, updated_at)
+          VALUES (${fullKey}, ${stringValue}, ${'Platform setting: ' + key}, ${userId}, NOW())
         `;
       }
     }

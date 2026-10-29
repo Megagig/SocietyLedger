@@ -19,6 +19,8 @@ import { AiSettingsSection } from './ai-section';
 interface PlatformSettings {
   maintenanceMode: boolean;
   allowNewSignups: boolean;
+  /** Standalone thrift groups (Ajo only, no association) may sign up. Off until the owner opens it. */
+  ajoStandaloneSignup?: boolean;
   requireEmailVerification: boolean;
   requireAdminApproval: boolean;
   enforceSubscriptionAccess: boolean;
@@ -95,7 +97,8 @@ export default function PlatformSettingsPage() {
 
   const q = useQuery({
     queryKey: ['platform-settings'],
-    queryFn: () => bff<PlatformSettings>('admin/settings/platform'),
+    // The API answers { settings, stats }; this page only edits the settings. Keeping the wrapper made Save send `{ settings, stats }`.
+    queryFn: async () => (await bff<{ settings: PlatformSettings }>('admin/settings/platform')).settings,
   });
 
   const plansQ = useQuery({ queryKey: billingKeys.plans, queryFn: () => bff<BuilderPlan[]>('admin/billing/plans') });
@@ -193,6 +196,13 @@ export default function PlatformSettingsPage() {
                 description="When disabled, the public registration flow is closed. Existing tenants are unaffected."
                 checked={local.allowNewSignups}
                 onChange={(v) => update('allowNewSignups', v)}
+              />
+              <Divider />
+              <ToggleRow
+                label="Allow standalone thrift groups to sign up"
+                description="Lets a savings circle sign up on its own, with no association, and pay only for an Ajo tier. The page is at /signup/thrift. Needs “Allow new sign-ups” on as well."
+                checked={local.ajoStandaloneSignup === true}
+                onChange={(v) => update('ajoStandaloneSignup', v)}
               />
               <Divider />
               <ToggleRow
