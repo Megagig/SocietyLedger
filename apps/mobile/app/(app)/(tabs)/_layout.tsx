@@ -16,7 +16,7 @@ import { useAjoNav } from '@/features/ajo/useAjoNav';
 export default function TabsLayout() {
   const canManage = useCan(MANAGE_TAB_PERMISSIONS);
   // A standalone thrift group is only Ajo: no association home or community, and Money is its thrift.
-  const { thriftOnly } = useAjoNav();
+  const { thriftOnly, circles } = useAjoNav();
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
@@ -32,6 +32,8 @@ export default function TabsLayout() {
           href: thriftOnly ? null : undefined,
         }}
       />
+      {/* The Circle board is this group's community: a standalone group in a rotating pot gets it where an association has Community. */}
+      <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: ({ color, size }) => <Users color={color} size={size} />, popToTopOnBlur: true, href: thriftOnly && circles.length > 0 ? undefined : null }} />
       <Tabs.Screen
         name="manage"
         options={{

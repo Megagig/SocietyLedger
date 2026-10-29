@@ -81,6 +81,8 @@ export type RulesInput = {
   defaultProcedure?: 'NOTIFY_ADMIN' | 'REPAYMENT_PLAN' | 'CASE_AND_PLAN';
   remindersEnabled?: boolean;
   blockAtRiskEarly?: boolean;
+  memberVisibility?: 'FULL' | 'OFF';
+  nameDisplay?: 'FIRST_INITIAL' | 'FULL';
 };
 export type BankInput = { bankName: string; accountNumber: string; accountName: string };
 

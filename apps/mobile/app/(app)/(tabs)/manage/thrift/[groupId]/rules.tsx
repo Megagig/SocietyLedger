@@ -19,7 +19,7 @@ import { RulesFields } from '@/features/ajo/components/RulesFields';
 import { formatDay } from '@/features/ajo/format';
 import { DEFAULT_RULES, rulesFormToInput, rulesToForm, type RulesFormValues } from '@/features/ajo/groupForm';
 import { useAjoAction } from '@/features/ajo/mutations';
-import { useRuleVersions } from '@/features/ajo/queries';
+import { useGroup, useRuleVersions } from '@/features/ajo/queries';
 import { useAjoCan } from '@/features/ajo/useAjoCan';
 
 /** Rules are never edited: a change is a new version that takes effect after a notice period, and a member is bound only once they accept it. */
@@ -29,6 +29,8 @@ export default function CircleRulesScreen() {
   const { canWrite } = useAjoWrite();
   const { manage } = useAjoCan();
   const versions = useRuleVersions(groupId);
+  // Only a rotating pot has a Circle board, so only a rotating pot is asked whether its members may see each other.
+  const rotating = useGroup(groupId).data?.model !== 'COLLECTOR_THRIFT';
   const publish = useAjoAction((rules: Parameters<typeof ajoApi.publishRules>[1]) => ajoApi.publishRules(groupId, rules));
   const { control, getValues, reset } = useForm<RulesFormValues>({ defaultValues: DEFAULT_RULES });
   const [editing, setEditing] = useState(false);
@@ -36,7 +38,7 @@ export default function CircleRulesScreen() {
   const list = [...(versions.data ?? [])].sort((x, y) => y.version - x.version);
 
   const submit = async () => {
-    const built = rulesFormToInput(getValues());
+    const built = rulesFormToInput(getValues(), rotating);
     if ('error' in built) {
       setProblem(built.error);
       return;
@@ -74,7 +76,7 @@ export default function CircleRulesScreen() {
       {editing ? (
         <Card testID="ajo-rules-editor">
           <View className="gap-4">
-            <RulesFields control={control} />
+            <RulesFields control={control} rotating={rotating} />
             {problem ? (
               <Text variant="body" tone="danger">
                 {problem}

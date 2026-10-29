@@ -19,7 +19,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const GUARANTOR_POLICIES = ['NOT_REQUIRED', 'OPTIONAL', 'REQUIRED'] as const;
 export const DEFAULT_PROCEDURES = ['NOTIFY_ADMIN', 'REPAYMENT_PLAN', 'CASE_AND_PLAN'] as const;
+export const MEMBER_VISIBILITIES = ['FULL', 'OFF'] as const;
+export const NAME_DISPLAYS = ['FIRST_INITIAL', 'FULL'] as const;
 export type GuarantorPolicy = (typeof GUARANTOR_POLICIES)[number];
+export type MemberVisibility = (typeof MEMBER_VISIBILITIES)[number];
+export type NameDisplay = (typeof NAME_DISPLAYS)[number];
 export type DefaultProcedure = (typeof DEFAULT_PROCEDURES)[number];
 
 /** The rules as a person types them. Money is kobo; a percentage is in basis points (100 = 1%). */
@@ -32,6 +36,8 @@ export interface RuleInput {
   defaultProcedure?: DefaultProcedure;
   remindersEnabled?: boolean;
   blockAtRiskEarly?: boolean;
+  memberVisibility?: MemberVisibility;
+  nameDisplay?: NameDisplay;
 }
 
 export interface Rules {
@@ -43,6 +49,8 @@ export interface Rules {
   defaultProcedure: DefaultProcedure;
   remindersEnabled: boolean;
   blockAtRiskEarly: boolean;
+  memberVisibility: MemberVisibility;
+  nameDisplay: NameDisplay;
 }
 
 /** The safe defaults from the spec: late fees off, three grace days, reminders on, guarantor optional, case and plan on default. */
@@ -55,6 +63,8 @@ export const DEFAULT_RULES: Rules = {
   defaultProcedure: 'CASE_AND_PLAN',
   remindersEnabled: true,
   blockAtRiskEarly: false,
+  memberVisibility: 'OFF',
+  nameDisplay: 'FIRST_INITIAL',
 };
 
 const bad = (message: string, code = 'INVALID_RULES') => new RuleError(message, 400, code);
@@ -66,7 +76,7 @@ function wholeNonNegative(value: number | bigint, label: string): bigint {
 }
 
 /** Fill in defaults and check every rule. Throws a RuleError a person can read; returns the normalised rules. */
-export function normaliseRules(input: RuleInput = {}, base: Rules = DEFAULT_RULES): Rules {
+export function normaliseRules(input: RuleInput = {}, base: Rules = DEFAULT_RULES, model?: 'COLLECTOR_THRIFT' | 'ROTATING_POT'): Rules {
   const lateFeeType = input.lateFeeType ?? base.lateFeeType;
   if (!['NONE', 'FIXED', 'PERCENT'].includes(lateFeeType)) throw bad('A late fee is none, a fixed amount or a percentage.');
 
@@ -90,15 +100,22 @@ export function normaliseRules(input: RuleInput = {}, base: Rules = DEFAULT_RULE
   const defaultProcedure = input.defaultProcedure ?? base.defaultProcedure;
   if (!DEFAULT_PROCEDURES.includes(defaultProcedure)) throw bad('Choose how a default is handled.');
 
-  return { lateFeeType, lateFeeValue, lateFeeCapKobo, graceDays, guarantorPolicy, defaultProcedure, remindersEnabled: input.remindersEnabled ?? base.remindersEnabled, blockAtRiskEarly: input.blockAtRiskEarly ?? base.blockAtRiskEarly };
+  const memberVisibility = input.memberVisibility ?? base.memberVisibility;
+  if (!MEMBER_VISIBILITIES.includes(memberVisibility)) throw bad('Members can see each other fully or not at all.');
+  // Other savers' money never affects a collector-thrift saver's payout, so their savings stay private (spec §16.1).
+  if (model === 'COLLECTOR_THRIFT' && memberVisibility !== 'OFF') throw bad('Savers in a collector-thrift scheme cannot see each other. Only a rotating pot has a Circle board.', 'VISIBILITY_NOT_ALLOWED');
+  const nameDisplay = input.nameDisplay ?? base.nameDisplay;
+  if (!NAME_DISPLAYS.includes(nameDisplay)) throw bad('Names are shown as a first name and initial, or in full.');
+
+  return { lateFeeType, lateFeeValue, lateFeeCapKobo, graceDays, guarantorPolicy, defaultProcedure, remindersEnabled: input.remindersEnabled ?? base.remindersEnabled, blockAtRiskEarly: input.blockAtRiskEarly ?? base.blockAtRiskEarly, memberVisibility, nameDisplay };
 }
 
 export function sameRules(a: Rules, b: Rules): boolean {
-  return a.lateFeeType === b.lateFeeType && a.lateFeeValue === b.lateFeeValue && a.lateFeeCapKobo === b.lateFeeCapKobo && a.graceDays === b.graceDays && a.guarantorPolicy === b.guarantorPolicy && a.defaultProcedure === b.defaultProcedure && a.remindersEnabled === b.remindersEnabled && a.blockAtRiskEarly === b.blockAtRiskEarly;
+  return a.lateFeeType === b.lateFeeType && a.lateFeeValue === b.lateFeeValue && a.lateFeeCapKobo === b.lateFeeCapKobo && a.graceDays === b.graceDays && a.guarantorPolicy === b.guarantorPolicy && a.defaultProcedure === b.defaultProcedure && a.remindersEnabled === b.remindersEnabled && a.blockAtRiskEarly === b.blockAtRiskEarly && a.memberVisibility === b.memberVisibility && a.nameDisplay === b.nameDisplay;
 }
 
-function rulesOf(row: { lateFeeType: string; lateFeeValue: bigint; lateFeeCapKobo: bigint | null; graceDays: number; guarantorPolicy: string; defaultProcedure: string; remindersEnabled: boolean; blockAtRiskEarly: boolean }): Rules {
-  return { lateFeeType: row.lateFeeType as Rules['lateFeeType'], lateFeeValue: row.lateFeeValue, lateFeeCapKobo: row.lateFeeCapKobo, graceDays: row.graceDays, guarantorPolicy: row.guarantorPolicy as GuarantorPolicy, defaultProcedure: row.defaultProcedure as DefaultProcedure, remindersEnabled: row.remindersEnabled, blockAtRiskEarly: row.blockAtRiskEarly };
+function rulesOf(row: { lateFeeType: string; lateFeeValue: bigint; lateFeeCapKobo: bigint | null; graceDays: number; guarantorPolicy: string; defaultProcedure: string; remindersEnabled: boolean; blockAtRiskEarly: boolean; memberVisibility: string; nameDisplay: string }): Rules {
+  return { lateFeeType: row.lateFeeType as Rules['lateFeeType'], lateFeeValue: row.lateFeeValue, lateFeeCapKobo: row.lateFeeCapKobo, graceDays: row.graceDays, guarantorPolicy: row.guarantorPolicy as GuarantorPolicy, defaultProcedure: row.defaultProcedure as DefaultProcedure, remindersEnabled: row.remindersEnabled, blockAtRiskEarly: row.blockAtRiskEarly, memberVisibility: row.memberVisibility as MemberVisibility, nameDisplay: row.nameDisplay as NameDisplay };
 }
 
 /** Plain-language lines for the screens and for the acceptance text. Money in full. */
@@ -114,6 +131,10 @@ export function describeRules(rules: Rules): string[] {
   lines.push({ NOT_REQUIRED: 'No guarantor is needed.', OPTIONAL: 'A guarantor is optional.', REQUIRED: 'A guarantor is required before you can join.' }[rules.guarantorPolicy]);
   lines.push({ NOTIFY_ADMIN: 'If someone stops paying after being paid, the admin is told.', REPAYMENT_PLAN: 'If someone stops paying after being paid, a repayment plan is offered.', CASE_AND_PLAN: 'If someone stops paying after being paid, the admin opens a case and a repayment plan is offered.' }[rules.defaultProcedure]);
   lines.push(rules.remindersEnabled ? 'Reminders are sent before and after each due date.' : 'No reminders are sent.');
+  if (rules.memberVisibility === 'FULL') {
+    const name = rules.nameDisplay === 'FULL' ? 'in full' : 'as your first name and the first letter of your last name';
+    lines.push(`Other members of this circle can see your name (${name}), your payment status and dates, and your payout position. They cannot see your phone number, email, address, bank account or trust score.`);
+  }
   return lines;
 }
 
@@ -174,12 +195,12 @@ export async function publishRuleVersion(input: PublishInput) {
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, name: true, status: true } });
+    const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, name: true, status: true, model: true } });
     if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
     if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This group is closed, so its rules cannot change.', 409, 'GROUP_CLOSED');
 
     const latest = await tx.ajoGroupRuleVersion.findFirst({ where: { groupId: group.id }, orderBy: { version: 'desc' } });
-    const rules = normaliseRules(input.rules, latest ? rulesOf(latest) : DEFAULT_RULES);
+    const rules = normaliseRules(input.rules, latest ? rulesOf(latest) : DEFAULT_RULES, group.model);
     if (latest && sameRules(rules, rulesOf(latest))) throw new RuleError('Nothing in these rules is different from the current version.', 409, 'RULES_UNCHANGED');
     if (latest && latest.effectiveFrom.getTime() > now.getTime()) {
       throw new RuleError('A rule change is already waiting to take effect. Wait for it, so members are never asked to follow two new versions at once.', 409, 'CHANGE_PENDING');

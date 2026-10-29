@@ -4299,6 +4299,12 @@ model AjoGroupRuleVersion {
   remindersEnabled    Boolean      @default(true) @map("reminders_enabled")
   /// Optional rotating-pot rule: AT_RISK participants cannot take the first positions.
   blockAtRiskEarly    Boolean      @default(false) @map("block_at_risk_early")
+  /// Rotating pot only (spec §16): FULL lets the circle's members see each other's name, payment status and payout position on the Circle
+  /// board; OFF shows nothing. Text, not an enum, so a middle level can be added later without a migration. Old versions and every
+  /// collector-thrift version are OFF; each member accepts it with the rules.
+  memberVisibility    String       @default("OFF") @map("member_visibility")
+  /// FIRST_INITIAL ("Adaeze O.") or FULL.
+  nameDisplay         String       @default("FIRST_INITIAL") @map("name_display")
   effectiveFrom       DateTime     @map("effective_from")
   createdBy           Int?         @map("created_by")
   createdAt           DateTime     @default(now()) @map("created_at")

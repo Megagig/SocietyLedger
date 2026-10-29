@@ -10,9 +10,10 @@ import { TextField } from '@/components/forms/TextField';
  * The circle's rules, bound to a react-hook-form form. `prefix` is where the rules sit in the form ('rules' inside the create-circle
  * wizard, empty when the form is only the rules). Used by the wizard, the onboarding circle step and "publish a new version".
  */
-export function RulesFields<T extends FieldValues>({ control, prefix = '' }: { control: Control<T>; prefix?: string }) {
+export function RulesFields<T extends FieldValues>({ control, prefix = '', rotating = true }: { control: Control<T>; prefix?: string; rotating?: boolean }) {
   const name = (field: string) => (prefix ? `${prefix}.${field}` : field) as Path<T>;
   const lateFeeType = useWatch({ control, name: name('lateFeeType') }) as string;
+  const visibility = useWatch({ control, name: name('memberVisibility') }) as string;
 
   return (
     <View className="gap-4">
@@ -60,6 +61,24 @@ export function RulesFields<T extends FieldValues>({ control, prefix = '' }: { c
       />
       <Checkbox control={control} name={name('remindersEnabled')} label="Send payment reminders" testID="ajo-rules-reminders" />
       <Checkbox control={control} name={name('blockAtRiskEarly')} label="Keep people with a poor record out of the first payout positions" testID="ajo-rules-block-risk" />
+      {rotating ? (
+        <>
+          <SelectSheet
+            control={control}
+            name={name('memberVisibility')}
+            label="Circle board"
+            helper="Each member sees who has paid, when, who is next and who is behind. Others see a member's name, payment status and dates, and payout position, never their phone, email, address, bank account or trust score. Every member accepts this with the rules."
+            options={[
+              { value: 'FULL', label: "Members can see each other's progress" },
+              { value: 'OFF', label: 'Keep members private' },
+            ]}
+            testID="ajo-rules-visibility"
+          />
+          {visibility === 'FULL' ? (
+            <SelectSheet control={control} name={name('nameDisplay')} label="How names are shown" options={[{ value: 'FIRST_INITIAL', label: 'First name and last initial (Adaeze O.)' }, { value: 'FULL', label: 'Full names' }]} testID="ajo-rules-name-display" />
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 }

@@ -17,6 +17,9 @@ export type RulesFormValues = {
   defaultProcedure: 'NOTIFY_ADMIN' | 'REPAYMENT_PLAN' | 'CASE_AND_PLAN';
   remindersEnabled: boolean;
   blockAtRiskEarly: boolean;
+  /** Rotating pot only: may the circle's members see each other on the Circle board? */
+  memberVisibility: 'FULL' | 'OFF';
+  nameDisplay: 'FIRST_INITIAL' | 'FULL';
 };
 
 export const DEFAULT_RULES: RulesFormValues = {
@@ -28,12 +31,14 @@ export const DEFAULT_RULES: RulesFormValues = {
   defaultProcedure: 'CASE_AND_PLAN',
   remindersEnabled: true,
   blockAtRiskEarly: false,
+  memberVisibility: 'FULL',
+  nameDisplay: 'FIRST_INITIAL',
 };
 
-/** Turns the rules form into what the API takes, or says in words what is wrong. */
-export function rulesFormToInput(v: RulesFormValues): { input: RulesInput } | { error: string } {
+/** Turns the rules form into what the API takes, or says in words what is wrong. `rotating` is false for a collector-thrift scheme, whose savers can never see each other, so visibility is always OFF. */
+export function rulesFormToInput(v: RulesFormValues, rotating = true): { input: RulesInput } | { error: string } {
   const graceDays = Number(v.graceDays);
-  const input: RulesInput = { lateFeeType: v.lateFeeType, graceDays, guarantorPolicy: v.guarantorPolicy, defaultProcedure: v.defaultProcedure, remindersEnabled: v.remindersEnabled, blockAtRiskEarly: v.blockAtRiskEarly };
+  const input: RulesInput = { lateFeeType: v.lateFeeType, graceDays, guarantorPolicy: v.guarantorPolicy, defaultProcedure: v.defaultProcedure, remindersEnabled: v.remindersEnabled, blockAtRiskEarly: v.blockAtRiskEarly, memberVisibility: rotating ? v.memberVisibility : 'OFF', nameDisplay: v.nameDisplay };
   if (v.lateFeeType === 'FIXED') {
     const kobo = nairaToKobo(v.lateFeeValue);
     if (kobo === null || kobo <= BigInt(0)) return { error: 'Enter the late fee in naira, for example 500.' };
@@ -68,6 +73,8 @@ export function rulesToForm(v: RuleVersionDTO): RulesFormValues {
     defaultProcedure: r.defaultProcedure,
     remindersEnabled: r.remindersEnabled,
     blockAtRiskEarly: r.blockAtRiskEarly,
+    memberVisibility: r.memberVisibility,
+    nameDisplay: r.nameDisplay,
   };
 }
 
@@ -172,7 +179,7 @@ export function buildGroup(f: GroupFormValues): BuiltGroup {
   if (!/^\d{2}:\d{2}$/.test(f.cutoffTime.trim())) return { error: 'Write the cut-off time like 18:00.', step: 2 };
   if (!/^\d{10}$/.test(f.accountNumber.replace(/\s/g, ''))) return { error: 'A bank account number has 10 digits.', step: 3 };
   if (f.bankName.trim().length < 2 || f.accountName.trim().length < 2) return { error: 'Enter the bank and the account name.', step: 3 };
-  const rules = rulesFormToInput(f.rules);
+  const rules = rulesFormToInput(f.rules, rotating);
   if ('error' in rules) return { error: rules.error, step: 4 };
 
   const fields: GroupFieldsInput = {

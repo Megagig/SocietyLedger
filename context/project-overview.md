@@ -991,6 +991,23 @@ A paid add-on that runs contribution circles (collector thrift and rotating pot)
 | THC2 | Record collection — member, amount, date, reference; marked "cash received — awaiting reconciliation" | M, W |
 | THC3 | End-of-day handover — expected, collected, in hand, handed over, difference | M, W |
 
+**Transparency (spec §16, T13)**
+| ID | Screen | Platforms |
+|---|---|---|
+| THB1 | Circle board: overview, this round, up next, you, health strip (rotating pot only) | M, W |
+| THB2 | This round: every member's status for a round, with a round selector | M, W |
+| THB3 | Payment history: members by rounds matrix | M, W |
+| THB4 | Payouts: order, status, who approved and recorded, draw record, swaps and exceptions | M, W |
+| THB5 | Members: roster with shares, position and verified badge | M, W |
+| THB6 | Arrears and accountability: behind on payments, after-payout arrears, confirmation backlog | M, W |
+| THB7 | Charts and metrics | M, W |
+| THB8 | Circle activity: public log | M, W |
+| THS1 | My savings (collector thrift): saved, progress, what I will receive, payout status | M, W |
+| THS2 | Contribution calendar and payment history | M, W |
+| THS3 | Where my cash is: three-step cash tracker | M, W |
+| THS4 | My collector, fees, my record, past cycles, statements | M, W |
+| THS5 | End of cycle: withdraw or continue, and next cycle's amount | M, W |
+
 **Officer / admin**
 | ID | Screen | Platforms |
 |---|---|---|

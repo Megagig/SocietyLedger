@@ -37,6 +37,8 @@ const rulesSchema = z
     defaultProcedure: z.enum(['NOTIFY_ADMIN', 'REPAYMENT_PLAN', 'CASE_AND_PLAN']),
     remindersEnabled: z.boolean(),
     blockAtRiskEarly: z.boolean(),
+    memberVisibility: z.enum(['FULL', 'OFF']),
+    nameDisplay: z.enum(['FIRST_INITIAL', 'FULL']),
   })
   .partial();
 

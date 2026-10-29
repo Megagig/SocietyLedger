@@ -81,9 +81,9 @@ describe('rulesFormToInput', () => {
       effectiveFrom: '2027-01-01T00:00:00.000Z',
       createdAt: '2027-01-01T00:00:00.000Z',
       summary: [],
-      rules: { lateFeeType: 'FIXED', lateFeeValue: '50000', lateFeeCapKobo: '200000', graceDays: 5, guarantorPolicy: 'OPTIONAL', defaultProcedure: 'REPAYMENT_PLAN', remindersEnabled: false, blockAtRiskEarly: true },
+      rules: { lateFeeType: 'FIXED', lateFeeValue: '50000', lateFeeCapKobo: '200000', graceDays: 5, guarantorPolicy: 'OPTIONAL', defaultProcedure: 'REPAYMENT_PLAN', remindersEnabled: false, blockAtRiskEarly: true, memberVisibility: 'OFF', nameDisplay: 'FULL' },
     } as RuleVersionDTO;
-    expect(rulesToForm(version)).toEqual({ lateFeeType: 'FIXED', lateFeeValue: '500.00', lateFeeCap: '2000.00', graceDays: '5', guarantorPolicy: 'OPTIONAL', defaultProcedure: 'REPAYMENT_PLAN', remindersEnabled: false, blockAtRiskEarly: true });
+    expect(rulesToForm(version)).toEqual({ lateFeeType: 'FIXED', lateFeeValue: '500.00', lateFeeCap: '2000.00', graceDays: '5', guarantorPolicy: 'OPTIONAL', defaultProcedure: 'REPAYMENT_PLAN', remindersEnabled: false, blockAtRiskEarly: true, memberVisibility: 'OFF', nameDisplay: 'FULL' });
   });
 });
 
@@ -91,5 +91,22 @@ describe('defaultsForModel', () => {
   it('changes the cadence and the collector fee with the kind of circle', () => {
     expect(defaultsForModel('ROTATING_POT')).toEqual({ frequency: 'MONTHLY', collectorFeeType: 'NONE', collectorFeeValue: '' });
     expect(defaultsForModel('COLLECTOR_THRIFT')).toEqual({ frequency: 'DAILY', collectorFeeType: 'DAYS', collectorFeeValue: '1' });
+  });
+});
+
+describe('circle board visibility (spec §16)', () => {
+  it('is on by default for a rotating pot and goes to the API', () => {
+    const built = rulesFormToInput(DEFAULT_RULES, true);
+    expect('input' in built && built.input).toMatchObject({ memberVisibility: 'FULL', nameDisplay: 'FIRST_INITIAL' });
+  });
+
+  it('is always sent as OFF for a collector-thrift scheme, whatever the form says', () => {
+    const built = rulesFormToInput({ ...DEFAULT_RULES, memberVisibility: 'FULL' }, false);
+    expect('input' in built && built.input.memberVisibility).toBe('OFF');
+  });
+
+  it('builds a collector-thrift circle with visibility off even when the rules form still says FULL', () => {
+    const built = buildGroup({ ...INITIAL_GROUP, model: 'COLLECTOR_THRIFT', name: 'Market daily', contribution: '500', startDate: '2999-01-01T00:00:00.000Z', bankName: 'GTBank', accountNumber: '0123456789', accountName: 'Market', rules: { ...DEFAULT_RULES, memberVisibility: 'FULL' } });
+    expect('body' in built && built.body.rules?.memberVisibility).toBe('OFF');
   });
 });

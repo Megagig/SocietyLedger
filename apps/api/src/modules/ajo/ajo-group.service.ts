@@ -14,7 +14,7 @@ import prisma from '../../lib/prisma';
 import { RuleError } from '../finance/rule-error';
 import { tryActivate } from './ajo-membership.service';
 import { assertCurrentDraw, expectedSlots } from './ajo-order.service';
-import { createInitialRuleVersion, currentRuleVersion, normaliseRules, type RuleInput } from './ajo-rules.service';
+import { createInitialRuleVersion, currentRuleVersion, DEFAULT_RULES, normaliseRules, type RuleInput } from './ajo-rules.service';
 import { FREQUENCIES, MAX_INTERVAL_COUNT, dayInZone, describeCadence, groupDates, isValidCutoff, isValidTimeZone, type Frequency, type GroupModel, type IntervalUnit } from './ajo-schedule';
 import { generateGroupSchedule } from './ajo-schedule.service';
 import { decryptGroupAccountNumber, encryptGroupAccountNumber, lastFour, maskAccount, normaliseAccountNumber } from './ajo-secrets';
@@ -265,7 +265,8 @@ export async function createGroup(input: CreateGroupInput) {
   const now = input.now ?? new Date();
   const fields = resolveGroupFields(null, input.fields);
   if (fields.startDate.getTime() < dayInZone(now, fields.timezone).getTime()) throw bad('The start date cannot be in the past.', 'START_DATE_PASSED');
-  const rules = normaliseRules(input.rules);
+  // A rotating pot starts with its Circle board on (spec §16, D1); the admin can switch it off here. A collector-thrift scheme is always off.
+  const rules = normaliseRules({ ...input.rules, memberVisibility: input.rules?.memberVisibility ?? (fields.model === 'ROTATING_POT' ? 'FULL' : 'OFF') }, DEFAULT_RULES, fields.model);
   const bank = input.bank ? validateBank(input.bank) : null;
 
   const group = await prisma.$transaction(async (tx) => {

@@ -78,7 +78,7 @@ function build(f: Form): { body: Parameters<typeof ajoStaffApi.createGroup>[0] }
   }
   if (!/^\d{10}$/.test(f.accountNumber.replace(/\s/g, ''))) return { error: 'A bank account number has 10 digits.', step: 3 };
   if (f.bankName.trim().length < 2 || f.accountName.trim().length < 2) return { error: 'Enter the bank and the account name.', step: 3 };
-  const rules = rulesFormToInput(f.rules);
+  const rules = rulesFormToInput(f.rules, f.model === 'ROTATING_POT');
   if ('error' in rules) return { error: rules.error, step: 4 };
 
   const fields: GroupFieldsInput = {
@@ -203,7 +203,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
             <TextInput label="Account name" value={form.accountName} onChange={(e) => set('accountName', e.currentTarget.value)} required />
           </>
         )}
-        {step === 4 && <RulesFields value={form.rules} onChange={(rules) => set('rules', rules)} />}
+        {step === 4 && <RulesFields value={form.rules} onChange={(rules) => set('rules', rules)} rotating={form.model === 'ROTATING_POT'} />}
         {step === 5 && 'body' in built && (
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             {[

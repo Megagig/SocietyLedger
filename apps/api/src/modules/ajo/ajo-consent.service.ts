@@ -178,6 +178,6 @@ export async function rulesToAccept(db: typeof prisma, input: { associationId: n
   if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
   const latest = await db.ajoGroupRuleVersion.findFirst({ where: { groupId: membership.groupId }, orderBy: { version: 'desc' } });
   if (!latest) return null;
-  const rules = { lateFeeType: latest.lateFeeType as 'NONE' | 'FIXED' | 'PERCENT', lateFeeValue: latest.lateFeeValue, lateFeeCapKobo: latest.lateFeeCapKobo, graceDays: latest.graceDays, guarantorPolicy: latest.guarantorPolicy as 'NOT_REQUIRED' | 'OPTIONAL' | 'REQUIRED', defaultProcedure: latest.defaultProcedure as 'NOTIFY_ADMIN' | 'REPAYMENT_PLAN' | 'CASE_AND_PLAN', remindersEnabled: latest.remindersEnabled, blockAtRiskEarly: latest.blockAtRiskEarly };
+  const rules = { lateFeeType: latest.lateFeeType as 'NONE' | 'FIXED' | 'PERCENT', lateFeeValue: latest.lateFeeValue, lateFeeCapKobo: latest.lateFeeCapKobo, graceDays: latest.graceDays, guarantorPolicy: latest.guarantorPolicy as 'NOT_REQUIRED' | 'OPTIONAL' | 'REQUIRED', defaultProcedure: latest.defaultProcedure as 'NOTIFY_ADMIN' | 'REPAYMENT_PLAN' | 'CASE_AND_PLAN', remindersEnabled: latest.remindersEnabled, blockAtRiskEarly: latest.blockAtRiskEarly, memberVisibility: latest.memberVisibility as 'FULL' | 'OFF', nameDisplay: latest.nameDisplay as 'FIRST_INITIAL' | 'FULL' };
   return { ruleVersionId: latest.id, version: latest.version, effectiveFrom: latest.effectiveFrom, summary: describeRules(rules) };
 }

@@ -14,6 +14,9 @@ export type RulesFormValues = {
   defaultProcedure: 'NOTIFY_ADMIN' | 'REPAYMENT_PLAN' | 'CASE_AND_PLAN';
   remindersEnabled: boolean;
   blockAtRiskEarly: boolean;
+  /** Rotating pot only: may the circle's members see each other on the Circle board? */
+  memberVisibility: 'FULL' | 'OFF';
+  nameDisplay: 'FIRST_INITIAL' | 'FULL';
 };
 
 export const DEFAULT_RULES: RulesFormValues = {
@@ -25,11 +28,14 @@ export const DEFAULT_RULES: RulesFormValues = {
   defaultProcedure: 'CASE_AND_PLAN',
   remindersEnabled: true,
   blockAtRiskEarly: false,
+  memberVisibility: 'FULL',
+  nameDisplay: 'FIRST_INITIAL',
 };
 
 /** Turns the form into what the API takes, or says in words what is wrong. */
-export function rulesFormToInput(v: RulesFormValues): { input: RulesInput } | { error: string } {
-  const input: RulesInput = { lateFeeType: v.lateFeeType, graceDays: v.graceDays, guarantorPolicy: v.guarantorPolicy, defaultProcedure: v.defaultProcedure, remindersEnabled: v.remindersEnabled, blockAtRiskEarly: v.blockAtRiskEarly };
+/** `rotating` is false for a collector-thrift scheme, whose savers can never see each other, so visibility is always sent as OFF. */
+export function rulesFormToInput(v: RulesFormValues, rotating = true): { input: RulesInput } | { error: string } {
+  const input: RulesInput = { lateFeeType: v.lateFeeType, graceDays: v.graceDays, guarantorPolicy: v.guarantorPolicy, defaultProcedure: v.defaultProcedure, remindersEnabled: v.remindersEnabled, blockAtRiskEarly: v.blockAtRiskEarly, memberVisibility: rotating ? v.memberVisibility : 'OFF', nameDisplay: v.nameDisplay };
   if (v.lateFeeType === 'FIXED') {
     const kobo = nairaToKobo(v.lateFeeValue);
     if (kobo === null || kobo <= BigInt(0)) return { error: 'Enter the late fee in naira, for example 500.' };
@@ -52,7 +58,7 @@ export function rulesFormToInput(v: RulesFormValues): { input: RulesInput } | { 
   return { input };
 }
 
-export function RulesFields({ value, onChange }: { value: RulesFormValues; onChange: (next: RulesFormValues) => void }) {
+export function RulesFields({ value, onChange, rotating = true }: { value: RulesFormValues; onChange: (next: RulesFormValues) => void; rotating?: boolean }) {
   const set = <K extends keyof RulesFormValues>(key: K, v: RulesFormValues[K]) => onChange({ ...value, [key]: v });
   return (
     <div className="space-y-4">
@@ -100,6 +106,28 @@ export function RulesFields({ value, onChange }: { value: RulesFormValues; onCha
       />
       <Checkbox label="Send payment reminders" checked={value.remindersEnabled} onChange={(e) => set('remindersEnabled', e.currentTarget.checked)} />
       <Checkbox label="Keep people with a poor record out of the first payout positions" checked={value.blockAtRiskEarly} onChange={(e) => set('blockAtRiskEarly', e.currentTarget.checked)} />
+      {rotating && (
+        <div className="space-y-3 rounded-lg border border-line p-4">
+          <Checkbox
+            label="Let members of this circle see each other's progress"
+            description="Each member sees the circle board: who has paid, when, who is next and who is behind. Others see a member's name, payment status and dates, and payout position, never their phone, email, address, bank account or trust score. Every member accepts this with the rules."
+            checked={value.memberVisibility === 'FULL'}
+            onChange={(e) => set('memberVisibility', e.currentTarget.checked ? 'FULL' : 'OFF')}
+          />
+          {value.memberVisibility === 'FULL' && (
+            <Select
+              label="How names are shown"
+              data={[
+                { value: 'FIRST_INITIAL', label: 'First name and last initial (Adaeze O.)' },
+                { value: 'FULL', label: 'Full names' },
+              ]}
+              value={value.nameDisplay}
+              onChange={(v) => set('nameDisplay', (v ?? 'FIRST_INITIAL') as RulesFormValues['nameDisplay'])}
+              allowDeselect={false}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

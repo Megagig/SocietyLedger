@@ -164,6 +164,8 @@ export type RuleVersionDTO = {
     defaultProcedure: DefaultProcedure;
     remindersEnabled: boolean;
     blockAtRiskEarly: boolean;
+    memberVisibility: 'FULL' | 'OFF';
+    nameDisplay: 'FIRST_INITIAL' | 'FULL';
   };
   /** The rules in plain words, written by the server. */
   summary: string[];

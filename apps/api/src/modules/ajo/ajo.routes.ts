@@ -8,6 +8,7 @@ import { requireAnyPermission, requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
 import { contributorCapacity, tenantKind } from './ajo-capacity';
+import { ajoBoardController as board } from './ajo-board.controller';
 import { ajoContributionsController as contributions, uploadProof } from './ajo-contributions.controller';
 import { ajoGroupsController as groups } from './ajo-groups.controller';
 import { ajoPayoutsController as payouts } from './ajo-payouts.controller';
@@ -113,6 +114,17 @@ router.get('/collector/contributors', requirePermission(PERMISSIONS.AJO_COLLECT)
 // ---- contributions and collections (T4). Only confirmed money counts; every record needs an Idempotency-Key header.
 const reconcile = requirePermission(PERMISSIONS.AJO_RECONCILE);
 const officers = requireAnyPermission([PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_MANAGE]);
+
+// ---- Circle board (spec §16): what a rotating pot's members see about their own circle. Member-safe DTOs; a collector-thrift scheme answers BOARD_NOT_AVAILABLE.
+const boardReaders = requireAnyPermission([PERMISSIONS.AJO_VIEW_OWN, PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT]);
+router.get('/groups/:id/board', boardReaders, board.overview);
+router.get('/groups/:id/board/rounds/:round', boardReaders, board.round);
+router.get('/groups/:id/board/matrix', boardReaders, board.matrix);
+router.get('/groups/:id/board/payouts', boardReaders, board.payouts);
+router.get('/groups/:id/board/members', boardReaders, board.members);
+router.get('/groups/:id/board/arrears', boardReaders, board.arrears);
+router.get('/groups/:id/board/metrics', boardReaders, board.metrics);
+router.get('/groups/:id/board/activity', boardReaders, board.activity);
 const collect = requirePermission(PERMISSIONS.AJO_COLLECT);
 
 router.post('/groups/:id/contributions/cash', collect, contributions.cash);

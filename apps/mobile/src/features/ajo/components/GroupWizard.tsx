@@ -197,7 +197,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
           </>
         ) : null}
 
-        {step === 4 ? <RulesFields control={control} prefix="rules" /> : null}
+        {step === 4 ? <RulesFields control={control} prefix="rules" rotating={rotating} /> : null}
 
         {step === 5 && 'body' in built ? (
           <Card testID="ajo-wizard-review">

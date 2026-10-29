@@ -9,7 +9,7 @@ import { DEFAULT_RULES, RulesFields, rulesFormToInput, type RulesFormValues } fr
 import { ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
-import { useAjoAction, useRuleVersions } from '@/lib/ajo/staffHooks';
+import { useGroupDetail, useAjoAction, useRuleVersions } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 
@@ -21,13 +21,15 @@ export default function GroupRulesPage() {
   const { canWrite } = useAjoAccess();
   const { manage } = useAjoCan();
   const versions = useRuleVersions(groupId);
+  // Only a rotating pot has a Circle board, so only a rotating pot is asked whether its members may see each other.
+  const rotating = useGroupDetail(groupId).data?.model !== 'COLLECTOR_THRIFT';
   const publish = useAjoAction((rules: Parameters<typeof ajoStaffApi.publishRules>[1]) => ajoStaffApi.publishRules(groupId, rules));
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<RulesFormValues>(DEFAULT_RULES);
   const [problem, setProblem] = useState<string | null>(null);
 
   const submit = async () => {
-    const built = rulesFormToInput(form);
+    const built = rulesFormToInput(form, rotating);
     if ('error' in built) return setProblem(built.error);
     setProblem(null);
     try {
@@ -47,12 +49,12 @@ export default function GroupRulesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-ink-muted">Changing the rules makes a new version. It takes effect after a notice period, and each member is only bound by the version they accepted.</p>
-        {manage && canWrite && !editing && <Button onClick={() => { const v = list[0]; if (v) setForm({ lateFeeType: v.rules.lateFeeType, lateFeeValue: v.rules.lateFeeType === 'FIXED' ? (Number(v.rules.lateFeeValue) / 100).toFixed(2) : v.rules.lateFeeType === 'PERCENT' ? String(Number(v.rules.lateFeeValue) / 100) : '', lateFeeCap: v.rules.lateFeeCapKobo ? (Number(v.rules.lateFeeCapKobo) / 100).toFixed(2) : '', graceDays: v.rules.graceDays, guarantorPolicy: v.rules.guarantorPolicy, defaultProcedure: v.rules.defaultProcedure, remindersEnabled: v.rules.remindersEnabled, blockAtRiskEarly: v.rules.blockAtRiskEarly }); setEditing(true); }}>Publish a new version</Button>}
+        {manage && canWrite && !editing && <Button onClick={() => { const v = list[0]; if (v) setForm({ lateFeeType: v.rules.lateFeeType, lateFeeValue: v.rules.lateFeeType === 'FIXED' ? (Number(v.rules.lateFeeValue) / 100).toFixed(2) : v.rules.lateFeeType === 'PERCENT' ? String(Number(v.rules.lateFeeValue) / 100) : '', lateFeeCap: v.rules.lateFeeCapKobo ? (Number(v.rules.lateFeeCapKobo) / 100).toFixed(2) : '', graceDays: v.rules.graceDays, guarantorPolicy: v.rules.guarantorPolicy, defaultProcedure: v.rules.defaultProcedure, remindersEnabled: v.rules.remindersEnabled, blockAtRiskEarly: v.rules.blockAtRiskEarly, memberVisibility: v.rules.memberVisibility, nameDisplay: v.rules.nameDisplay }); setEditing(true); }}>Publish a new version</Button>}
       </div>
 
       {editing && (
         <section className="space-y-4 rounded-lg border border-line p-5">
-          <RulesFields value={form} onChange={setForm} />
+          <RulesFields value={form} onChange={setForm} rotating={rotating} />
           {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex gap-2"><Button color="green" onClick={submit} loading={publish.isLoading}>Publish</Button><Button variant="default" onClick={() => setEditing(false)}>Cancel</Button></div>
         </section>

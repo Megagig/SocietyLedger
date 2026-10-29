@@ -22,6 +22,7 @@ export default function GroupWorkspaceLayout({ children }: { children: ReactNode
   const tabs = [
     { href: base, label: 'Overview', show: true },
     { href: `${base}/members`, label: 'Members', show: manage },
+    { href: `${base}/board`, label: 'Circle board', show: anyOfficer, rotating: true },
     { href: `${base}/order`, label: 'Payout order', show: anyOfficer, rotating: true },
     { href: `${base}/payments`, label: 'Payments', show: manage || reconcile },
     { href: `${base}/handovers`, label: 'Cash handovers', show: manage || reconcile, collector: true },

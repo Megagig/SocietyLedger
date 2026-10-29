@@ -1808,3 +1808,19 @@ All under `apps/mobile/src/features/ajo/`. Built only from the existing design s
 ### Thrift onboarding steps
 - **Path:** `components/onboarding/` (`StepProfile`, `StepCircle`, `StepContributors`, `StepTeam`, `StepReview`), driven by `app/(app)/onboarding/thrift.tsx`.
 - **Notes:** contributors are typed in one at a time (a list builds up); a long list is added on the web.
+
+## Circle board (T13 phase A, 2026-10-29)
+
+Read-only views of a rotating pot for its members (spec §16.4). Same words and statuses on web and mobile. Colours are theme tokens only.
+
+### Board status
+- **Surface:** web, mobile
+- **Path:** web `components/ajo/board/BoardParts.tsx` (`StatusChip`, `StatusGlyph`, `PayoutChip`), mobile `features/ajo/components/board/BoardParts.tsx` (`StatusPill`, `StatusSquare`)
+- **Rule:** a status is always text plus an icon, never colour alone. Paid on time (success, check), Paid late (accent, check), Reported (info, clock), Due (neutral, circle), Overdue (warning, triangle; says "grace until d/m"), Missed (danger, x), Under review (primary, magnifier), Waived (neutral, minus), Upcoming (neutral, calendar). Words: Overdue, Missed, "Behind by ₦20,000.00", never "defaulter".
+
+### Circle board shell
+- **Path:** web `components/ajo/board/CircleBoard.tsx` (tabs), mobile `features/ajo/components/board/CircleBoard.tsx` (a horizontally scrolling row of `FilterChip`s, one view at a time)
+- **Views:** Overview, This round, Payment history (matrix: a grid on web, a wrapping row of squares per member on mobile), Payouts, Members, Arrears, Charts, Activity.
+- **Closed states:** `BOARD_NOT_AVAILABLE` (collector thrift) and `BOARD_OFF` each get their own empty state with a reason; nothing else leaks.
+- **Charts:** web recharts, mobile gifted-charts, both behind the view, with a text summary; mobile has a "View as list" toggle.
+- **Mobile entry points:** the `Circle` tab for a standalone rotating pot (a list first when there are several circles), and a `Circle board` button on the circle page for association members.

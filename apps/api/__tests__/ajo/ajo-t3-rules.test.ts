@@ -218,3 +218,33 @@ describe('Ajo guarantor wording', () => {
     expect(guarantorWording({ guarantorName: 'Mrs Ngozi Eze', memberName: 'Adaeze Okafor', groupName: 'Market Circle' })).toBe(text);
   });
 });
+
+describe('Circle board visibility rule (spec §16)', () => {
+  it('is off unless a rotating pot asks for it', () => {
+    expect(normaliseRules().memberVisibility).toBe('OFF');
+    expect(normaliseRules({ memberVisibility: 'FULL' }, DEFAULT_RULES, 'ROTATING_POT')).toMatchObject({ memberVisibility: 'FULL', nameDisplay: 'FIRST_INITIAL' });
+  });
+
+  it('can never be on for a collector-thrift scheme, because other savers never affect a saver\'s payout', () => {
+    expect(() => normaliseRules({ memberVisibility: 'FULL' }, DEFAULT_RULES, 'COLLECTOR_THRIFT')).toThrow(/cannot see each other/);
+    expect(normaliseRules({ memberVisibility: 'OFF' }, DEFAULT_RULES, 'COLLECTOR_THRIFT').memberVisibility).toBe('OFF');
+  });
+
+  it('refuses a level that does not exist, including the dropped "status only"', () => {
+    expect(() => normaliseRules({ memberVisibility: 'STATUS_ONLY' as never }, DEFAULT_RULES, 'ROTATING_POT')).toThrow();
+    expect(() => normaliseRules({ nameDisplay: 'NICKNAME' as never })).toThrow();
+  });
+
+  it('counts as a change, so it needs notice and every member accepts it', () => {
+    const on = normaliseRules({ memberVisibility: 'FULL' }, DEFAULT_RULES, 'ROTATING_POT');
+    expect(sameRules(DEFAULT_RULES, on)).toBe(false);
+    expect(sameRules(on, normaliseRules({ nameDisplay: 'FULL' }, on, 'ROTATING_POT'))).toBe(false);
+  });
+
+  it('puts the consent wording in the rules a member accepts, and says what stays private', () => {
+    const lines = describeRules(normaliseRules({ memberVisibility: 'FULL' }, DEFAULT_RULES, 'ROTATING_POT'));
+    expect(lines.join(' ')).toMatch(/Other members of this circle can see your name \(as your first name and the first letter of your last name\), your payment status and dates, and your payout position/);
+    expect(lines.join(' ')).toMatch(/cannot see your phone number, email, address, bank account or trust score/);
+    expect(describeRules(DEFAULT_RULES).join(' ')).not.toMatch(/Other members/);
+  });
+});
