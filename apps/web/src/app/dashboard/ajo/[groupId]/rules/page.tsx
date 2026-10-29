@@ -43,7 +43,8 @@ export default function GroupRulesPage() {
 
   if (versions.isLoading) return <AjoLoading />;
   if (versions.isError) return <AjoError error={versions.error} onRetry={() => versions.refetch()} />;
-  const list = [...(versions.data ?? [])].sort((x, y) => y.version - x.version);
+  const list = [...(versions.data?.versions ?? [])].sort((x, y) => y.version - x.version);
+  const acceptance = versions.data?.acceptance;
 
   return (
     <div className="space-y-6">
@@ -51,6 +52,13 @@ export default function GroupRulesPage() {
         <p className="max-w-2xl text-sm text-ink-muted">Changing the rules makes a new version. It takes effect after a notice period, and each member is only bound by the version they accepted.</p>
         {manage && canWrite && !editing && <Button onClick={() => { const v = list[0]; if (v) setForm({ lateFeeType: v.rules.lateFeeType, lateFeeValue: v.rules.lateFeeType === 'FIXED' ? (Number(v.rules.lateFeeValue) / 100).toFixed(2) : v.rules.lateFeeType === 'PERCENT' ? String(Number(v.rules.lateFeeValue) / 100) : '', lateFeeCap: v.rules.lateFeeCapKobo ? (Number(v.rules.lateFeeCapKobo) / 100).toFixed(2) : '', graceDays: v.rules.graceDays, guarantorPolicy: v.rules.guarantorPolicy, defaultProcedure: v.rules.defaultProcedure, remindersEnabled: v.rules.remindersEnabled, blockAtRiskEarly: v.rules.blockAtRiskEarly, memberVisibility: v.rules.memberVisibility, nameDisplay: v.rules.nameDisplay }); setEditing(true); }}>Publish a new version</Button>}
       </div>
+
+      {acceptance && acceptance.latestVersion !== null && acceptance.total > 0 && (
+        <p className="rounded-lg border border-line p-3 text-sm text-ink" data-testid="ajo-acceptance">
+          {acceptance.accepted} of {acceptance.total} {acceptance.total === 1 ? 'person has' : 'people have'} accepted version {acceptance.latestVersion}.
+          {acceptance.accepted < acceptance.total ? ' The rest keep their old terms until they accept.' : ''}
+        </p>
+      )}
 
       {editing && (
         <section className="space-y-4 rounded-lg border border-line p-5">

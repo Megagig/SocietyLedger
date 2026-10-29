@@ -2,7 +2,7 @@ import { ApiError } from '../errors';
 import { client } from '../client';
 import { unwrap } from '../envelope';
 import type { CycleViewDTO, GroupCycleDTO } from '@/types/api/ajoCycle';
-import type {
+import type { RuleVersionsReplyDTO ,
   AjoStatusDTO,
   AssignedContributorDTO,
   BulkResultDTO,
@@ -168,7 +168,8 @@ export const ajoApi = {
   startGroup: (id: number, confirmSmallerGroup?: boolean) => post<unknown>(`/ajo/groups/${id}/start`, { confirmSmallerGroup }),
   cancelGroup: (id: number, reason: string) => post<unknown>(`/ajo/groups/${id}/cancel`, { reason }),
   completeGroup: (id: number) => post<unknown>(`/ajo/groups/${id}/complete`),
-  ruleVersions: (id: number) => get<RuleVersionDTO[]>(`/ajo/groups/${id}/rules`),
+  /** The API sends `{ versions, acceptance? }`, not a bare list. */
+  ruleVersions: (id: number) => get<RuleVersionsReplyDTO>(`/ajo/groups/${id}/rules`),
   publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, rules),
 
   // ── members ────────────────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ import type {
   QueueDTO,
   RosterDTO,
   RuleVersionDTO,
+  RuleVersionsReplyDTO,
   StaffDisputeDTO,
   StaffLateFeeDTO,
   SwapDTO,
@@ -78,7 +79,8 @@ export const ajoStaffApi = {
   openGroup: (id: number) => post<unknown>(`/ajo/groups/${id}/open`),
   startGroup: (id: number, confirmSmallerGroup?: boolean) => post<unknown>(`/ajo/groups/${id}/start`, { confirmSmallerGroup }),
   cancelGroup: (id: number, reason: string) => post<unknown>(`/ajo/groups/${id}/cancel`, { reason }),
-  ruleVersions: (id: number) => unwrap<RuleVersionDTO[]>(api.get(`/ajo/groups/${id}/rules`)),
+  /** The API sends `{ versions, acceptance? }`, not a bare list. */
+  ruleVersions: (id: number) => unwrap<RuleVersionsReplyDTO>(api.get(`/ajo/groups/${id}/rules`)),
   publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, rules),
 
   // thrift onboarding

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeftRight, CircleDollarSign, FileText, Gavel, HandCoins, ListOrdered, RefreshCw, ShieldCheck, Users, Wallet } from 'lucide-react-native';
+import { ArrowLeftRight, CircleDollarSign, FileText, Gavel, HandCoins, ListOrdered, RefreshCw, ShieldCheck, TriangleAlert, Users, Wallet } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -14,6 +14,8 @@ import { Card } from '@/components/ui/Card';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Text } from '@/components/ui/Text';
 import { AjoActionSheet } from '@/features/ajo/components/AjoActionSheet';
+import { startReadiness } from '@/features/ajo/startReadiness';
+import { useThemeTokens } from '@/providers/ThemeProvider';
 import { useAjoWrite } from '@/features/ajo/components/AjoGate';
 import { AjoMoney } from '@/features/ajo/components/AjoMoney';
 import { AjoLoading } from '@/features/ajo/components/AjoStates';
@@ -27,6 +29,20 @@ import { useAjoCan } from '@/features/ajo/useAjoCan';
 
 const FEE_TEXT = { NONE: 'No collector fee', FIXED: 'A fixed amount', PERCENT: 'A percentage of the pot', DAYS: 'Days of contribution' } as const;
 const sub = (groupId: number, path: string) => `/(app)/(tabs)/manage/thrift/${groupId}/${path}` as never;
+
+/** A refusal shown right under the button that caused it: words and an icon, never colour alone. */
+function Refusal({ text, testID }: { text: string | null; testID: string }) {
+  const { color } = useThemeTokens();
+  if (!text) return null;
+  return (
+    <View className="flex-row items-start gap-2 rounded-md bg-danger-soft p-3" accessibilityRole="alert" testID={testID}>
+      <TriangleAlert size={16} color={color.danger} strokeWidth={2} />
+      <Text variant="body" tone="danger" className="flex-1">
+        {text}
+      </Text>
+    </View>
+  );
+}
 
 /** THO2 (edit and settings) with the circle's lifecycle: draft, open for joining, running, completed or cancelled — and the way into each part of the circle. */
 export default function CircleOverviewScreen() {
@@ -42,27 +58,30 @@ export default function CircleOverviewScreen() {
   const cancelSheet = useRef<BottomSheetModal>(null);
   const editSheet = useRef<EditCircleSheetHandle>(null);
   const [smaller, setSmaller] = useState<string | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  // Each action's refusal is shown in the panel the action lives in, right under its button, not at the top of the screen.
+  const [openProblem, setOpenProblem] = useState<string | null>(null);
+  const [startProblem, setStartProblem] = useState<string | null>(null);
   const can = manage && canWrite;
+  const readiness = startReadiness(group?.activeParticipants ?? 0);
 
   const doOpen = async () => {
-    setProblem(null);
+    setOpenProblem(null);
     try {
       await open.mutateAsync();
       toast.success('The circle is open. Members can now be added and approved.');
     } catch (error) {
-      setProblem(error instanceof ApiError ? error.message : 'Could not open the circle.');
+      setOpenProblem(error instanceof ApiError ? error.message : 'Could not open the circle.');
     }
   };
   const doStart = async (confirmSmaller: boolean) => {
-    setProblem(null);
+    setStartProblem(null);
     try {
       await start.mutateAsync(confirmSmaller);
       setSmaller(null);
       toast.success('The circle has started. The schedule is ready.');
     } catch (error) {
       if (error instanceof ApiError && error.code === 'CONFIRM_SMALLER_GROUP') setSmaller(error.message);
-      else setProblem(error instanceof ApiError ? error.message : 'Could not start the circle.');
+      else setStartProblem(error instanceof ApiError ? error.message : 'Could not start the circle.');
     }
   };
 
@@ -81,14 +100,6 @@ export default function CircleOverviewScreen() {
             </Text>
           </View>
 
-          {problem ? (
-            <View className="rounded-md bg-danger-soft p-3" accessibilityRole="alert">
-              <Text variant="body" tone="danger">
-                {problem}
-              </Text>
-            </View>
-          ) : null}
-
           {can && group.status === 'DRAFT' ? (
             <View className="gap-2 rounded-lg bg-info-soft p-4" testID="ajo-draft-banner">
               <Text variant="body-strong" tone="info">
@@ -100,6 +111,7 @@ export default function CircleOverviewScreen() {
               <Button loading={open.isPending} onPress={() => void doOpen()} testID="ajo-open-for-joining">
                 Open for joining
               </Button>
+              <Refusal text={openProblem} testID="ajo-open-problem" />
             </View>
           ) : null}
 
@@ -125,11 +137,24 @@ export default function CircleOverviewScreen() {
                     </Button>
                   </View>
                 </View>
+              ) : !readiness.canStart ? (
+                <View className="gap-2">
+                  <Text variant="body-strong" tone="success" testID="ajo-start-blocked">
+                    {readiness.reason}
+                  </Text>
+                  <Button variant="secondary" onPress={() => router.push(sub(groupId, 'members'))} testID="ajo-start-go-members">
+                    Go to Members
+                  </Button>
+                  <Button disabled onPress={() => undefined} testID="ajo-start">
+                    Start the circle
+                  </Button>
+                </View>
               ) : (
                 <Button loading={start.isPending} onPress={() => void doStart(false)} testID="ajo-start">
                   Start the circle
                 </Button>
               )}
+              <Refusal text={startProblem} testID="ajo-start-problem" />
             </View>
           ) : null}
 

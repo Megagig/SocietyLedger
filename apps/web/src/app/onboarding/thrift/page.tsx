@@ -46,7 +46,7 @@ function ThriftOnboarding() {
   const activeId = circleId ?? usable[0]?.id ?? null;
   const group = useGroupDetail(activeId ?? 0).data;
   const roster = useRoster(activeId ?? 0).data?.people ?? [];
-  const versions = useRuleVersions(activeId ?? 0).data;
+  const versions = useRuleVersions(activeId ?? 0).data?.versions;
   const collectors = useCollectors(activeId ?? 0).data ?? [];
   const latestRules = versions && versions.length ? [...versions].sort((a, b) => b.version - a.version)[0] : undefined;
 

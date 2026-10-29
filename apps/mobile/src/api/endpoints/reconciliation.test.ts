@@ -1,8 +1,8 @@
+import { reconciliationApi } from './reconciliation';
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 jest.mock('../client', () => ({ client: { get: (...a: unknown[]) => mockGet(...a), post: (...a: unknown[]) => mockPost(...a) } }));
-
-import { reconciliationApi } from './reconciliation';
 
 const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } });
 const file = { uri: 'file:///cache/stmt.csv', name: 'stmt.csv', type: 'text/csv' };

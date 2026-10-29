@@ -40,6 +40,13 @@ export type RuleVersionDTO = {
   summary: string[];
 };
 
+
+/** How many of the circle's people have accepted the newest rule version. Sent to officers only. */
+export type AcceptanceStatsDTO = { latestVersion: number | null; accepted: number; total: number; pendingMembershipIds: number[] };
+
+/** What `GET /ajo/groups/:id/rules` sends: the versions, and (to officers) how many have accepted the newest. */
+export type RuleVersionsReplyDTO = { versions: RuleVersionDTO[]; acceptance?: AcceptanceStatsDTO };
+
 export type RosterPersonDTO = {
   membershipId: number;
   memberId: number;

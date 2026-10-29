@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button, Checkbox, Modal, NumberInput, TextInput } from '@mantine/core';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { ActionDialog } from '@/components/ajo/ActionDialog';
 import { Money } from '@/components/ajo/Money';
@@ -27,41 +29,51 @@ export default function GroupOverviewPage() {
   const [cancelling, setCancelling] = useState(false);
   const [editing, setEditing] = useState(false);
   const [smaller, setSmaller] = useState<string | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  // Each action's refusal is shown in the panel the action lives in, right under its button, not at the top of the page.
+  const [openProblem, setOpenProblem] = useState<string | null>(null);
+  const [startProblem, setStartProblem] = useState<string | null>(null);
 
   if (!group) return null;
   const can = manage && canWrite;
 
   const doOpen = async () => {
-    setProblem(null);
+    setOpenProblem(null);
     try {
       await open.mutateAsync();
       toast.success('The circle is open. Members can now be added and approved.');
     } catch (error) {
-      setProblem(ajoErrorMessage(error));
+      setOpenProblem(ajoErrorMessage(error));
     }
   };
   const doStart = async (confirmSmaller: boolean) => {
-    setProblem(null);
+    setStartProblem(null);
     try {
       await start.mutateAsync(confirmSmaller);
       setSmaller(null);
       toast.success('The circle has started. The schedule is ready.');
     } catch (error) {
       if (ajoErrorCode(error) === 'CONFIRM_SMALLER_GROUP') setSmaller(ajoErrorMessage(error));
-      else setProblem(ajoErrorMessage(error));
+      else setStartProblem(ajoErrorMessage(error));
     }
   };
+  const noOneApproved = group.activeParticipants <= 0;
+  const refusal = (text: string | null) =>
+    text ? (
+      <p role="alert" className="mt-3 flex items-start gap-2 rounded-md bg-danger-soft p-3 text-sm text-danger-text">
+        <IconAlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
+        <span>{text}</span>
+      </p>
+    ) : null;
 
   return (
     <div className="space-y-6">
-      {problem && <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">{problem}</p>}
 
       {can && group.status === 'DRAFT' && (
         <section className="rounded-lg border border-info-line bg-info-soft p-4">
           <p className="font-medium text-info-strong">This circle is a draft.</p>
           <p className="mt-1 text-sm text-info-text">Check the details below, then open it so you can add and approve people.</p>
           <Button className="mt-3" onClick={doOpen} loading={open.isLoading}>Open for joining</Button>
+          {refusal(openProblem)}
         </section>
       )}
       {can && group.status === 'OPEN' && (
@@ -73,9 +85,18 @@ export default function GroupOverviewPage() {
               <p className="text-sm text-success-strong">{smaller}</p>
               <div className="flex gap-2"><Button color="green" onClick={() => doStart(true)} loading={start.isLoading}>Start with {group.activeParticipants} people</Button><Button variant="default" onClick={() => setSmaller(null)}>Wait for more</Button></div>
             </div>
+          ) : noOneApproved ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm font-medium text-success-strong" data-testid="ajo-start-blocked">Nobody is approved yet. Approve at least one person on Members, then start the circle.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button component={Link} href={`/dashboard/ajo/${groupId}/members`} color="green" variant="light">Go to Members</Button>
+                <Button color="green" disabled>Start the circle</Button>
+              </div>
+            </div>
           ) : (
             <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isLoading}>Start the circle</Button>
           )}
+          {refusal(startProblem)}
         </section>
       )}
       {group.status === 'CANCELLED' && <p className="rounded-md bg-surface-sunken p-3 text-sm">This circle was cancelled{group.cancelReason ? `: ${group.cancelReason}` : '.'}</p>}

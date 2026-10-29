@@ -35,7 +35,8 @@ export default function CircleRulesScreen() {
   const { control, getValues, reset } = useForm<RulesFormValues>({ defaultValues: DEFAULT_RULES });
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const list = [...(versions.data ?? [])].sort((x, y) => y.version - x.version);
+  const list = [...(versions.data?.versions ?? [])].sort((x, y) => y.version - x.version);
+  const acceptance = versions.data?.acceptance;
 
   const submit = async () => {
     const built = rulesFormToInput(getValues(), rotating);
@@ -58,6 +59,13 @@ export default function CircleRulesScreen() {
       <Text variant="body" tone="secondary">
         Changing the rules makes a new version. It takes effect after a notice period, and each member is only bound by the version they accepted.
       </Text>
+
+      {acceptance && acceptance.latestVersion !== null && acceptance.total > 0 ? (
+        <Text variant="body" testID="ajo-acceptance">
+          {`${acceptance.accepted} of ${acceptance.total} ${acceptance.total === 1 ? 'person has' : 'people have'} accepted version ${acceptance.latestVersion}.`}
+          {acceptance.accepted < acceptance.total ? ' The rest keep their old terms until they accept.' : ''}
+        </Text>
+      ) : null}
 
       {manage && canWrite && !editing ? (
         <Button
