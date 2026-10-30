@@ -103,7 +103,7 @@ export default function VerificationDetailPage() {
               label={c.label}
               checked={checks[c.key]}
               disabled={!pending || !canDecide}
-              onChange={(e) => setChecks((prev) => ({ ...prev, [c.key]: e.currentTarget.checked }))}
+              onChange={(e) => { const next = e.currentTarget.checked; setChecks((prev) => ({ ...prev, [c.key]: next })); }}
             />
           ))}
           {!pending && d.status === 'REJECTED' && d.rejectionReason && (

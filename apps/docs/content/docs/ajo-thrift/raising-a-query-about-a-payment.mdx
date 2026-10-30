@@ -17,7 +17,8 @@ Sometimes a payment you made does not show: your transfer was never matched, or 
 
 ## Before you start
 
-- It must be for **one payment that is unpaid** on your schedule. You cannot raise a query about a payment that is already paid or waived.
+- It must be for **one payment that is unpaid and past its due date** on your schedule. You cannot raise a query about a payment that is already paid or waived, and the button does not appear for a day that is not yet due.
+- You need to be allowed to make changes in the circle. If your circle has been switched to read-only, you will not see the button.
 - Have your **evidence** if you have it: a screenshot of the transfer, or the bank's receipt. A photo or PDF, up to 5 MB. It is optional, but it makes a decision much quicker.
 - Your circle must be **running**.
 
@@ -27,23 +28,36 @@ Sometimes a payment you made does not show: your transfer was never matched, or 
 <PlatformTab>
 <Steps>
 <Step>Go to <MenuPath items={["My Thrift"]} /> and open your circle. Find the day or round that shows as unpaid.</Step>
-<Step>Next to it, select <UiLabel>I already paid this</UiLabel>. If you save through a collector, you can also use <UiLabel>Ask about this payment</UiLabel> on the **Payments** tab of **My savings**.</Step>
+<Step>Next to it, select <UiLabel>I already paid this</UiLabel>. If you save through a collector, open **My savings**, then **Where my cash is**, and select <UiLabel>Ask about this payment</UiLabel> under a payment that is taking too long.</Step>
 <Step>Under **What happened**, say when and how you paid, and to whom. For example: "I gave ₦5,000.00 to the collector on Monday morning at the market." Write at least **10 characters**.</Step>
 <Step>Attach **Evidence (optional)**, and send it.</Step>
 </Steps>
 </PlatformTab>
 <PlatformTab>
 <Steps>
-<Step>Go to <MenuPath items={["Money", "Thrift"]} /> and open your circle.</Step>
-<Step>Tap <UiLabel>I already paid this</UiLabel> beside the unpaid day, describe what happened, add your slip if you have one, and send it.</Step>
+<Step>Go to <MenuPath items={["Money", "My thrift"]} /> and open your circle.</Step>
+<Step>Tap <UiLabel>I already paid this</UiLabel> beside the unpaid day. Savers tap <UiLabel>Ask about this payment</UiLabel> on **Where my cash is**.</Step>
+<Step>Describe what happened, add your slip if you have one, and send it.</Step>
 </Steps>
 </PlatformTab>
 </PlatformTabs>
 
+<Screenshot
+  src="/images/ajo-thrift/saver-cash-trail-1.webp"
+  alt="The Where my cash is tab for a saver: each payment shows three steps, your collector recorded it, your collector handed it in, and the office confirmed it, with who and when."
+  caption="Where my cash is shows how far each payment has got. When a step is taking too long, the page offers Ask about this payment."
+/>
+
 ## What happens next
 
-1. **That payment shows as Under review.** It is **never** shown as Missed while your query is open. No late fee, reminder or default case is raised for you over it, and it is left out of your [trust score](/docs/ajo-thrift/your-trust-score) until it is decided.
-2. **The circle's officers are told**, and can see what you said and your evidence.
+1. **That payment shows as Under review.** It is **never** shown as Missed while your query is open. You are **not charged a late fee or chased** about it, and it is left out of your [trust score](/docs/ajo-thrift/your-trust-score) until it is decided.
+2. **The circle's officers are told**, and can see what you said and your evidence. They find it under **Arrears and cases**, on the **Claims of "I paid"** tab, and select **Decide**.
+
+<Screenshot
+  src="/images/ajo-thrift/pot-arrears-claims-1.webp"
+  alt="The Claims of 'I paid' tab on an officer's Arrears and cases page: the member's name, what they said, Waiting for a decision, and a Decide button."
+  caption="What the officer sees: your claim, your words and your evidence, waiting for someone other than you to decide."
+/>
 3. **A different person decides.** The officer who raised a query for someone cannot decide it, and you cannot decide your own. They check the bank statement or the collector's record, then either **accept** your claim or **do not accept** it, and they must write a reason. **You are told the decision and the reason.**
 4. **If it is accepted**, the officer then finds and confirms the payment as normal, and you get a receipt. A query does not add money by itself.
 5. **A decision is not changed.** If you think something was missed, you can raise it again with more evidence.
@@ -53,6 +67,7 @@ You can see your queries and their decisions on your circle page.
 ## Good to know
 
 - **One query at a time** can be open for each payment.
+- **A query does not stop everything.** It covers that one payment only.
 - **Do not raise a query to delay a late fee.** An officer can see what you paid and when, and a claim that does not match the record is simply not accepted.
 - **If you have not yet reported the payment at all**, report it first. See [Paying and sending proof](/docs/ajo-thrift/paying-and-sending-proof). A query is for when you have paid and it still does not appear.
 

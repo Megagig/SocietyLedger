@@ -101,3 +101,19 @@ Two bugs found and fixed:
   before this fix, patch the existing rows directly rather than
   reseeding (the bulk data isn't idempotent):
   `UPDATE users SET email_verified = true WHERE email IN ('admin@demo.com','treasurer@demo.com','member@demo.com');`
+
+## The Ajo / Thrift demo (T11)
+
+A second seed adds the Ajo data on top of the demo association. Run it **after** the main seed, from `apps/api`:
+
+```bash
+npx tsx prisma/seeds/demo-ajo.seed.ts           # adds the Ajo data (skips if already there)
+npx tsx prisma/seeds/demo-ajo.seed.ts --reset   # rebuilds it from scratch (about 4 minutes)
+```
+
+- It creates a rotating pot, "Umuoji Market Women Ajo", and a collector-thrift group, "Umuoji Daily Savers", with members, payments, handovers, payouts, a claim, a default case and the demo add-on.
+- Extra logins (password `password123`): `officer@demo.com` (Funke), `collector@demo.com` (Ibrahim) and `saver@demo.com` (Chukwuemeka). `member@demo.com` (Ngozi) is in the pot.
+- `_demo-stubs.ts` is imported first so no email, SMS or push is sent while it runs. **Never run it against production.**
+- Statuses are worked out against the real clock, so capture on the day you seed (`--reset` first if it is a later day), then run `pnpm -F @societyledger/docs screenshots --section=ajo-thrift`.
+- If your dev API is running, set `AJO_JOBS_DISABLED=true` for it. Otherwise its hourly job acts on the demo data (it created two officer digests the first time).
+- Not shot on purpose: a member's "I already paid this" dialog, because every member in the demo is paid up; the officer's Claims tab is shown instead.

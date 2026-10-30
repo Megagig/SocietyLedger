@@ -8,12 +8,13 @@ import { toast } from 'sonner-native';
 import { ajoApi } from '@/api/endpoints/ajo';
 import { ApiError } from '@/api/errors';
 import { Checkbox } from '@/components/forms/Checkbox';
+import { DateField } from '@/components/forms/DateField';
 import { TextField } from '@/components/forms/TextField';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import type { GroupDetailDTO } from '@/types/api/ajo';
-import { koboToNaira, nairaToKoboString } from '../format';
+import { isoToLocalDay, koboToNaira, nairaToKoboString } from '../format';
 import { useAjoAction } from '../mutations';
 import { editCircleSchema, type EditCircleValues } from '../schemas';
 
@@ -22,10 +23,12 @@ export type EditCircleSheetHandle = { open: (group: GroupDetailDTO) => void };
 /** Edit a draft or open circle's settings. A running circle's money fields are locked by the server. */
 export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: number }>(function EditCircleSheet({ groupId }, ref) {
   const sheet = useRef<BottomSheetModal>(null);
+  // The day the circle is set to start now, to send a new one only when it was changed.
+  const originalDay = useRef('');
   const [problem, setProblem] = useState<string | null>(null);
   const { control, handleSubmit, reset } = useForm<EditCircleValues>({
     resolver: zodResolver(editCircleSchema),
-    defaultValues: { name: '', contribution: '', maxParticipants: '1', cutoffTime: '', requirePhoneConfirm: false },
+    defaultValues: { name: '', contribution: '', maxParticipants: '1', cutoffTime: '', startDate: '', requirePhoneConfirm: false },
     mode: 'onTouched',
   });
   const save = useAjoAction((body: Parameters<typeof ajoApi.updateGroup>[1]) => ajoApi.updateGroup(groupId, body));
@@ -34,7 +37,11 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
     ref,
     () => ({
       open: (group) => {
-        reset({ name: group.name, contribution: koboToNaira(group.contributionKobo), maxParticipants: String(group.maxParticipants), cutoffTime: group.cutoffTime, requirePhoneConfirm: group.requirePhoneConfirm });
+        originalDay.current = String(group.startDate).slice(0, 10);
+        const [y, m, d] = originalDay.current.split('-').map(Number);
+        // Noon, so the picked day cannot slip back a day through UTC.
+        const startDate = y && m && d ? new Date(y, m - 1, d, 12).toISOString() : '';
+        reset({ name: group.name, contribution: koboToNaira(group.contributionKobo), maxParticipants: String(group.maxParticipants), cutoffTime: group.cutoffTime, startDate, requirePhoneConfirm: group.requirePhoneConfirm });
         setProblem(null);
         sheet.current?.present();
       },
@@ -44,6 +51,9 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
 
   const submit = handleSubmit(async (values) => {
     setProblem(null);
+    const day = isoToLocalDay(values.startDate);
+    const dayChanged = day !== '' && day !== originalDay.current;
+    if (dayChanged && day < isoToLocalDay(new Date().toISOString())) return setProblem('The start date must be today or later.');
     try {
       await save.mutateAsync({
         name: values.name.trim(),
@@ -51,6 +61,7 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
         maxParticipants: Number(values.maxParticipants),
         cutoffTime: values.cutoffTime.trim(),
         requirePhoneConfirm: values.requirePhoneConfirm,
+        ...(dayChanged ? { startDate: day } : {}),
       });
       toast.success('Settings saved.');
       sheet.current?.dismiss();
@@ -65,6 +76,7 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
         <TextField control={control} name="name" label="Circle name" maxLength={80} testID="ajo-edit-name" />
         <TextField control={control} name="contribution" label="Each person pays (₦)" keyboardType="decimal-pad" testID="ajo-edit-contribution" />
         <TextField control={control} name="maxParticipants" label="Most people in the circle" keyboardType="number-pad" maxLength={4} testID="ajo-edit-max" />
+        <DateField control={control} name="startDate" label="First payment date" minimumDate={new Date(new Date().setHours(0, 0, 0, 0))} testID="ajo-edit-start" />
         <TextField control={control} name="cutoffTime" label="Cut-off time each day" placeholder="18:00" testID="ajo-edit-cutoff" />
         <Checkbox control={control} name="requirePhoneConfirm" label="Members must confirm their phone number" />
         {problem ? (

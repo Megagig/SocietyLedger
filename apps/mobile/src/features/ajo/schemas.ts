@@ -94,6 +94,8 @@ export const editCircleSchema = z.object({
   contribution: nairaAmount('Enter how much each person pays, in naira.'),
   maxParticipants: z.string().trim().refine((v) => /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 2000, 'Enter how many people can join (1 to 2,000).'),
   cutoffTime: z.string().trim().regex(/^\d{2}:\d{2}$/, 'Write the cut-off time like 18:00.'),
+  /** The first payment date, as the date field holds it (an ISO moment). */
+  startDate: z.string().min(1, 'Choose the day the circle starts.'),
   requirePhoneConfirm: z.boolean(),
 });
 export type EditCircleValues = z.input<typeof editCircleSchema>;

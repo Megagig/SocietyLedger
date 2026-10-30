@@ -175,22 +175,9 @@ export const flow: Flow = {
       name: 'saver-cash-trail',
       role: 'saver',
       url: '/dashboard/my-thrift',
-      fullPage: true,
       prepare: async (p) => {
         await openMyCircle(p, '/savings');
         await p.getByRole('tab', { name: 'Where my cash is' }).click();
-        await settle(p);
-      },
-    }),
-    ajo({
-      name: 'saver-query',
-      role: 'saver',
-      url: '/dashboard/my-thrift',
-      prepare: async (p) => {
-        await openMyCircle(p, '/savings');
-        await p.getByRole('tab', { name: 'Where my cash is' }).click();
-        await settle(p);
-        await p.getByRole('button', { name: 'Ask about this payment' }).first().click();
         await settle(p);
       },
     }),
@@ -216,6 +203,5 @@ export const flow: Flow = {
       },
     }),
     ajo({ name: 'subscription-addons', role: 'admin', url: '/dashboard/subscription/addons', fullPage: true }),
-    ajo({ name: 'onboarding-thrift', role: 'admin', url: '/onboarding/thrift', fullPage: true }),
   ],
 };

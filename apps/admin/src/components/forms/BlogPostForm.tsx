@@ -168,8 +168,9 @@ export function BlogPostForm({ postId }: { postId?: number }) {
           placeholder="5-ways-to-speed-up-dues-collection"
           value={values.slug}
           onChange={(e) => {
+            const slug = e.currentTarget.value;
             setSlugTouched(true);
-            setValues((v) => ({ ...v, slug: e.currentTarget.value }));
+            setValues((v) => ({ ...v, slug }));
           }}
           error={values.slug.length > 0 && !slugValid ? 'Only lowercase letters, numbers, and hyphens' : undefined}
           required
@@ -179,7 +180,7 @@ export function BlogPostForm({ postId }: { postId?: number }) {
           description="Short summary shown in post listings"
           placeholder="A brief teaser for this post…"
           value={values.excerpt}
-          onChange={(e) => setValues((v) => ({ ...v, excerpt: e.currentTarget.value }))}
+          onChange={(e) => { const next = e.currentTarget.value; setValues((v) => ({ ...v, excerpt: next })); }}
           autosize
           minRows={2}
           maxRows={4}
@@ -188,7 +189,7 @@ export function BlogPostForm({ postId }: { postId?: number }) {
           label="Content"
           placeholder="Write the post…"
           value={values.content}
-          onChange={(e) => setValues((v) => ({ ...v, content: e.currentTarget.value }))}
+          onChange={(e) => { const next = e.currentTarget.value; setValues((v) => ({ ...v, content: next })); }}
           autosize
           minRows={10}
           required
@@ -197,7 +198,7 @@ export function BlogPostForm({ postId }: { postId?: number }) {
           label="Cover image URL"
           placeholder="https://…"
           value={values.coverImage}
-          onChange={(e) => setValues((v) => ({ ...v, coverImage: e.currentTarget.value }))}
+          onChange={(e) => { const next = e.currentTarget.value; setValues((v) => ({ ...v, coverImage: next })); }}
         />
         <Group grow>
           <Select

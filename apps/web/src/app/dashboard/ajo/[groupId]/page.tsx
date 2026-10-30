@@ -97,6 +97,9 @@ export default function GroupOverviewPage() {
             <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isLoading}>Start the circle</Button>
           )}
           {refusal(startProblem)}
+          {startProblem && /start date/i.test(startProblem) && (
+            <Button className="mt-2" variant="default" onClick={() => setEditing(true)}>Change the start date</Button>
+          )}
         </section>
       )}
       {group.status === 'CANCELLED' && <p className="rounded-md bg-surface-sunken p-3 text-sm">This circle was cancelled{group.cancelReason ? `: ${group.cancelReason}` : '.'}</p>}
@@ -144,6 +147,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
   const [contribution, setContribution] = useState('');
   const [max, setMax] = useState<number>(1);
   const [cutoff, setCutoff] = useState('');
+  const [startDay, setStartDay] = useState('');
   const [phone, setPhone] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -154,6 +158,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
     setContribution((Number(group.contributionKobo) / 100).toFixed(2));
     setMax(group.maxParticipants);
     setCutoff(group.cutoffTime);
+    setStartDay(String(group.startDate).slice(0, 10));
     setPhone(group.requirePhoneConfirm);
     setProblem(null);
   }, [open, group]);
@@ -162,8 +167,12 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
   const submit = async () => {
     const kobo = nairaToKobo(contribution);
     if (kobo === null || kobo <= BigInt(0)) return setProblem('Enter how much each person pays, in naira.');
+    const today = new Date().toISOString().slice(0, 10);
+    const dayChanged = startDay !== String(group.startDate).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDay)) return setProblem('Choose the day the circle starts.');
+    if (dayChanged && startDay < today) return setProblem('The start date must be today or later.');
     try {
-      await save.mutateAsync({ name: name.trim(), contributionKobo: kobo.toString(), maxParticipants: max, cutoffTime: cutoff, requirePhoneConfirm: phone });
+      await save.mutateAsync({ name: name.trim(), contributionKobo: kobo.toString(), maxParticipants: max, cutoffTime: cutoff, requirePhoneConfirm: phone, ...(dayChanged ? { startDate: startDay } : {}) });
       toast.success('Settings saved.');
       onClose();
     } catch (error) {
@@ -176,6 +185,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
         <TextInput label="Circle name" value={name} onChange={(e) => setName(e.currentTarget.value)} />
         <TextInput label="Each person pays (₦)" inputMode="decimal" value={contribution} onChange={(e) => setContribution(e.currentTarget.value)} />
         <NumberInput label="Most people in the circle" min={1} max={2000} value={max} onChange={(v) => setMax(typeof v === 'number' ? v : 1)} />
+        <TextInput label="First payment date" type="date" value={startDay} onChange={(e) => setStartDay(e.currentTarget.value)} description="The day the circle starts. It cannot be in the past." />
         <TextInput label="Cut-off time each day" value={cutoff} onChange={(e) => setCutoff(e.currentTarget.value)} />
         <Checkbox label="Members must confirm their phone number" checked={phone} onChange={(e) => setPhone(e.currentTarget.checked)} />
         {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
