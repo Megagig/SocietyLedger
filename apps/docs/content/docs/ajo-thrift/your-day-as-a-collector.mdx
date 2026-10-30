@@ -1,0 +1,72 @@
+---
+title: "Your day as a collector"
+description: "What a collector does each day in SocietyLedger: see who you collect from, record cash as you take it, and hand over at the end of the day."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/collect"]
+permission: "ajo.collect"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/recording-cash", "/docs/ajo-thrift/handing-over-at-the-end-of-the-day", "/docs/ajo-thrift/cash-reconciliation", "/docs/ajo-thrift/staying-safe"]
+keywords: ["collector", "today", "collect", "cash", "contributors", "market", "daily", "target", "online"]
+---
+
+A collector goes to the savers, takes their daily amount, and brings it to the circle. SocietyLedger replaces the notebook: each payment is recorded the moment you take it, the saver is told, and at the end of the day you hand the cash over and an officer counts it.
+
+This page is the whole day in one place. The two pages after it cover the details of [recording cash](/docs/ajo-thrift/recording-cash) and [handing over](/docs/ajo-thrift/handing-over-at-the-end-of-the-day).
+
+## Before you start
+
+- You need the **collector** role, and the circle's officers must have **assigned** savers to you. You can only record cash from people assigned to you.
+- **You need internet.** Cash is recorded straight away and nothing is saved on your phone for later, so a payment is never in the app twice or missing. When your phone is offline, the screen says so and the buttons wait.
+- Your Ajo tier must include collector thrift (**Growth** and above).
+
+## Your day, step by step
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Open <MenuPath items={["Collect"]} />. The page is **Today's collection**.</Step>
+<Step>Read the top: **Expected today**, **Collected today**, **Carried over** and **Cash in your hand**.</Step>
+<Step>Under **Your contributors**, find each saver. When you take their cash, select <UiLabel>Record cash</UiLabel> and enter the amount. See [Recording cash](/docs/ajo-thrift/recording-cash).</Step>
+<Step>At the end of the day, under **End of day handover**, select <UiLabel>Hand over cash</UiLabel> and enter what you are giving to the office. See [Handing over](/docs/ajo-thrift/handing-over-at-the-end-of-the-day).</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} /> and tap <UiLabel>Today's collection</UiLabel>.</Step>
+<Step>Under **Your contributors**, tap a saver's name when you take their cash and record the amount.</Step>
+<Step>At the end of the day, tap to hand over and enter what you are giving to the office.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/collect-today-1.webp"
+  alt="The Today's collection page showing Expected today, Collected today, Carried over and Cash in your hand, and a list of savers each with a Record cash button."
+  caption="Today's collection: your four figures at the top, and your savers underneath."
+/>
+
+## What the four figures mean
+
+- **Expected today:** what your savers' daily targets add up to.
+- **Collected today:** what you have recorded so far today.
+- **Carried over:** cash from an earlier day that you have not yet handed in. For example, a saver's ₦1,000.00 you were short on yesterday.
+- **Cash in your hand:** what you have recorded and not yet handed over. At the end of the day, this is what you should have to give the office.
+
+## What savers see
+
+As soon as you record a payment, the saver sees it in their own savings as **Cash received, awaiting confirmation**, and is told. It becomes **Confirmed**, and counts towards their savings, only after an officer counts your handover. Savers can always see where their cash is: with you, handed to the office, or confirmed.
+
+## Good habits
+
+- **Record cash straight away**, in front of the saver, not at the end of the day from memory.
+- **Never let a saver's payment go unrecorded.** If it is not in the app, the saver cannot prove they paid.
+- **Hand over every day.** A handover covers one day, and you cannot record cash for a day after you have handed it over.
+- **Keep carried-over cash separate.** It shows up in your handover so the count can match it.
+
+<Callout type="note" title="You cannot confirm your own cash">
+Someone else counts your handover. That is not a sign of distrust. It protects you: when the count matches, the record shows you handed in everything.
+</Callout>

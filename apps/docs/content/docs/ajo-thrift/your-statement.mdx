@@ -1,0 +1,75 @@
+---
+title: "Your statement"
+description: "Download your savings statement as a PDF or CSV, or a circle statement you can share in the group chat, and how anyone can check it is genuine."
+type: task
+audience: ["member"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/my-thrift/[membershipId]/savings", "/dashboard/ajo/[groupId]/board", "/verify/circle/[code]"]
+permission: "ajo.view_own"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/your-savings-as-a-saver", "/docs/ajo-thrift/what-members-can-see-in-a-circle", "/docs/ajo-thrift/payment-statuses", "/docs/ajo-thrift/staying-safe"]
+keywords: ["statement", "pdf", "csv", "download", "circle statement", "verification code", "share", "whatsapp", "receipt"]
+---
+
+A statement is a record you can keep, print or send. SocietyLedger makes two kinds, depending on how your circle works: your own **savings statement** if you save through a collector, and a **circle statement** if you are in a rotating pot.
+
+## Before you start
+
+You must be in the circle. A statement shows only what you are allowed to see: your own payments if you save through a collector, or what the Circle board shows if you are in a rotating pot.
+
+## Your savings statement (collector thrift)
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["My Thrift"]} />, open your circle, and select <UiLabel>My savings</UiLabel>.</Step>
+<Step>Open the <UiLabel>Statements</UiLabel> tab.</Step>
+<Step>Select <UiLabel>Download PDF</UiLabel> or <UiLabel>Download CSV</UiLabel>.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Money", "Thrift"]} />, open your circle, and tap **My savings**, then **Statements**.</Step>
+<Step>Tap the PDF or CSV. When it is ready, your phone's share sheet opens, so you can send it on WhatsApp or save it to Files.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+It covers **the cycle you are in**: what fell due, every payment, your savings and what you will receive. It says that it is from SocietyLedger's records and that **your group's bank statement is the final word**. Earlier cycles appear under **My record** with their totals.
+
+A **receipt** for one confirmed payment is separate. Open the **Payments** tab and select **Receipt** next to a confirmed payment.
+
+## The circle statement (rotating pot)
+
+<Steps>
+<Step>Open your circle and choose <UiLabel>Circle board</UiLabel>.</Step>
+<Step>Select <UiLabel>Download circle statement</UiLabel>.</Step>
+</Steps>
+
+It is a PDF built from the same board you see on screen, so it matches the circle on the day it is made, and shows **nothing the board does not show**. Names follow the circle's name rule, and there is never a phone number, email, address, bank account, guarantor detail, note or proof.
+
+## How anyone can check a statement is genuine
+
+Every circle statement carries a short **code** (for example `K7M2P-9XQ4R`). Anyone who holds the statement, including a person who does not use SocietyLedger, can check it.
+
+<Steps>
+<Step>Open the verification page that is printed on the statement.</Step>
+<Step>Type the code. Letters can be any case, and the dash is optional.</Step>
+<Step>The page says **when the statement was made** and **whether the circle's figures still match it**.</Step>
+</Steps>
+
+The page shows circle totals only, never a name. It is how a circle can send a statement to a bank, a landlord or the group chat, and the person who gets it can tell it was not edited.
+
+## A note on the naira sign in a PDF
+
+PDFs write money as **NGN 5,000.00**, because the fonts built into PDFs have no naira sign. A CSV and every screen use **₦5,000.00**. They are the same figures.
+
+## What happens next
+
+A statement is a snapshot. If a payment is confirmed after you make it, make a new one. A statement made today does not change what your circle's figures are.
+
+<Callout type="note" title="Share a statement, not your login">
+Send the PDF or its code, never your password or a phone confirmation code. Nobody who needs to check a statement needs to sign in.
+</Callout>

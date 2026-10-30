@@ -1,0 +1,96 @@
+---
+title: "Reports and exports"
+description: "The eight Ajo reports: what each one counts, which tier includes it, and how to filter, read and download them as CSV or PDF."
+type: task
+audience: ["officer", "admin"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/reports", "/dashboard/ajo/reports/[name]"]
+permission: "ajo.reports"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/payment-statuses", "/docs/ajo-thrift/cash-reconciliation", "/docs/ajo-thrift/plans-billing-and-limits", "/docs/reports/exporting-reports"]
+keywords: ["report", "export", "csv", "pdf", "excel", "ledger", "contributions", "collector performance", "arrears", "audit", "fees"]
+---
+
+Ajo has eight reports. Each one is worked out from the circle's ledger and schedule, the same way on the web, on the phone and in every file, so a figure never differs between them. This page covers what each report counts and how to read and download it.
+
+## Before you start
+
+- You need the **Ajo reports** permission. Officers have it. A collector who has it sees only their own people and their own cash.
+- Which reports you can open depends on your Ajo tier. Basic reports come with every tier. A report your tier does not include is still listed, with the reason, so you know what an upgrade would add. See [Plans, billing and limits](/docs/ajo-thrift/plans-billing-and-limits).
+
+## The eight reports
+
+| Report | What it shows | Tier |
+|---|---|---|
+| **Contributions** | What was expected, paid, outstanding, overdue or missed, one row for each instalment. | Basic |
+| **Member ledger** | Every payment, fee, payout, reversal and adjustment for each person, with a running balance. | Basic |
+| **Payouts** | Scheduled, waiting, paid and reversed payouts, with their beneficiaries. | Basic |
+| **Group financial summary** | Money in, money out, what is owed and the cash counted, by circle and month. | Basic |
+| **Collector performance** | Cash each collector recorded, handed in and had counted, against their targets. | Advanced |
+| **Defaults and arrears** | Who is behind, their unpaid late fees, default cases, repayment plans and disputes. | Advanced |
+| **Fees and revenue** | Late fees assessed, paid and waived, the collector fee, and the platform levy. | Advanced |
+| **Audit and activity** | Approvals, reversals, waivers and rule and order changes, with who, when and why. | Audit |
+
+## Open and read a report
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Thrift Reports"]} />. Choose a report.</Step>
+<Step>Choose the **Circle** (or leave it on all circles), and the **From** and **To** dates. If you choose no dates, the report shows the running month. You can ask for up to 12 months.</Step>
+<Step>For some reports you can also choose a **Person**, once you have chosen a circle, or a **Collector**.</Step>
+<Step>Read the figures at the top (one block for each circle), then the rows underneath, 25 at a time. Use **Next** and **Previous** to move through them.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles", "Reports"]} />. Tap a report.</Step>
+<Step>Choose the **Circle** and the **Dates** (This month, Last month, Last 3 months or This year). Where the report allows it, choose a **Person** or **Collector**.</Step>
+<Step>Read the figures for each circle, then the details. Every row is a card with the same columns the web table has. Tap **Show more** for the next 25.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/report-contributions-1.webp"
+  alt="The Contributions report with the counting rule at the top, filters for circle and dates, figure tiles for each circle, and a table of instalments with their status."
+  caption="The Contributions report. The rule it counts by is printed under the title."
+/>
+
+Under every report's title is **How this is counted**. It says what the figures include, which date each is counted on, and what is left out. Read it the first time you open a report.
+
+## What the figures mean
+
+- **Only confirmed money is received.** A payment that is only reported is shown separately as **Reported, awaiting confirmation**. It is never added to what was received.
+- **Money is counted on the day it was recorded**, in the circle's own timezone. A payment recorded at 23:30 Lagos time on 31 March is a March payment, even if it is April somewhere else.
+- **Expected, outstanding and overdue are counted on the due date.**
+- **Circles are never blended.** With more than one circle, you get a block of figures for each. Circles of the same kind (two rotating pots, say) also get a total. A rotating pot and a collector-thrift group are never added together, because their money works differently.
+- **A dash is not a zero.** A figure that does not apply shows "—".
+- **The totals match the ledger.** Contributions, payouts and the balance in a report equal the group ledger's totals for the same dates, to the kobo.
+
+## Download a report
+
+<PlatformTabs>
+<PlatformTab>
+Choose **CSV** or **PDF** at the top right of the report. The file uses the same filters you chose. CSV opens in Excel and in Google Sheets: money is a plain number under a "(₦)" heading, so a column adds up, and phone numbers keep their leading zero. The PDF writes money as "NGN 5,000.00".
+</PlatformTab>
+<PlatformTab>
+Tap **Share PDF** or **Share CSV**. The phone's share sheet opens, so you can send the file on WhatsApp or email, or save it to Files.
+</PlatformTab>
+</PlatformTabs>
+
+A report can have up to **100,000 rows** to view or as a CSV, and up to **5,000 rows** as a PDF. If it has more, SocietyLedger says so and tells you what to do: choose fewer dates or one circle, or download the CSV instead of the PDF.
+
+## What happens next
+
+Each file you download is recorded in the audit log: who made it, which report, which dates and which filters. The [Audit and activity report](/docs/ajo-thrift/officer-accountability) lists these, so the circle can see who took a copy of what.
+
+## What is left out, on purpose
+
+Reports show names, and phone numbers for people who are behind, so you can chase them. They never show a bank account number, an email address, a home address, a proof file, a guarantor's details, or a private note.
+
+<Callout type="note" title="If your tier changes">
+If your Ajo add-on expires, the circle becomes read-only and you can still open and download the reports your tier included. Reports from a higher tier stay locked until you renew with a tier that includes them.
+</Callout>

@@ -1,0 +1,61 @@
+---
+title: "Handing over at the end of the day"
+description: "Record how much cash you handed to the office, what the difference means, and what happens if you are short."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/collect"]
+permission: "ajo.collect"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/your-day-as-a-collector", "/docs/ajo-thrift/recording-cash", "/docs/ajo-thrift/cash-reconciliation", "/docs/ajo-thrift/handovers-and-counting-cash"]
+keywords: ["handover", "hand over", "end of day", "difference", "short", "carried over", "collector", "cash in your hand"]
+---
+
+At the end of the day you give the cash you took to the circle's office. In the app, you record how much you handed over. An officer then counts it, and that count is what turns your day's records into confirmed savings.
+
+## Before you start
+
+- Record every payment first. Anything not recorded will not be in your handover.
+- Have the cash you are handing in, and an officer ready to count it.
+- You can hand over **once a day** for each circle. After that, you cannot record cash for that day.
+
+## Hand over
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Open <MenuPath items={["Collect"]} /> and look at **Cash in your hand**. This is what you recorded and have not yet handed in.</Step>
+<Step>Under **End of day handover**, select <UiLabel>Hand over cash</UiLabel>.</Step>
+<Step>Choose the **Circle**, enter **Cash you are handing over (₦)**, and add a **Note (optional)** if anything is different from what the app expects.</Step>
+<Step>Select <UiLabel>Record handover</UiLabel>.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles", "Today's collection"]} />.</Step>
+<Step>Under **End of day handover**, enter the amount you are handing over, add a note if needed, and save.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+When you record a handover, the screen tells you what you **collected**, what you **handed over**, and the **difference**. If they match, the difference is zero.
+
+## If you are short
+
+If you hand over less than you collected, the difference is shown to the officer who counts, and you should write a **Note** saying why. For example, you collected **₦7,000.00** but one saver's **₦1,000.00** is still with you, so you hand over **₦6,000.00** and write "Chukwuemeka's ₦1,000.00 is still with me. I will bring it in the morning."
+
+- The officer counts what you handed over and leaves that payment unticked.
+- That payment stays **Cash received, awaiting confirmation**.
+- Tomorrow it is **carried over**: it appears under **Carried over** and is added to what you collect, so tomorrow's handover is ₦1,000.00 higher than tomorrow's own cash.
+
+Be honest in the note. The record shows exactly what was said and counted, and an honest short handover with a reason is far safer for you than a missing amount nobody can explain.
+
+## What happens next
+
+An officer counts your handover, usually the next morning. The payments they tick become **Confirmed**, your savers get receipts, and the day's figures are final. You can see it on **Recorded today** and in your handover history. If a handover is not counted for several days, it will show in the circle's [accountability report](/docs/ajo-thrift/officer-accountability) as waiting.
+
+<Callout type="note" title="While the add-on is expired">
+Handovers are switched off. The circle is read-only until its Ajo add-on is renewed, so record nothing and hand over nothing until it is.
+</Callout>

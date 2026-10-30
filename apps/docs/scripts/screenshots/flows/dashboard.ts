@@ -7,6 +7,10 @@ export interface Shot {
   url: string;
   prepare?: (page: Page) => Promise<void>;
   clip?: { x: number; y: number; width: number; height: number };
+  /** The whole scrollable page, not just the first screen. */
+  fullPage?: boolean;
+  /** Freeze the browser clock at this instant instead of the default. */
+  instant?: number;
 }
 
 export interface Flow {

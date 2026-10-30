@@ -7,7 +7,8 @@
  *
  * Supports only the literal shapes the reference generator actually needs:
  * strings, numbers, booleans, arrays and object literals (optionally behind
- * `as const` / parentheses). Anything else throws, by design — a source
+ * `as const` / parentheses), plus a plain reference to another top-level `const` in the same file, which
+ * is also how a spread (`[...BASE, 'extra']`) is read. Anything else throws, by design — a source
  * file changing shape should fail generation loudly, not produce silently
  * wrong docs.
  */
@@ -18,32 +19,47 @@ export function parseTsConst(filePath: string, constName: string): unknown {
   const source = readFileSync(filePath, 'utf8');
   const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true);
 
-  let initializer: ts.Expression | undefined;
+  // Every top-level const of the file, by name, so a reference or a spread can be followed.
+  const scope = new Map<string, ts.Expression>();
   sourceFile.forEachChild((node) => {
-    if (initializer || !ts.isVariableStatement(node)) return;
+    if (!ts.isVariableStatement(node)) return;
     for (const decl of node.declarationList.declarations) {
-      if (ts.isIdentifier(decl.name) && decl.name.text === constName && decl.initializer) {
-        initializer = decl.initializer;
-      }
+      if (ts.isIdentifier(decl.name) && decl.initializer) scope.set(decl.name.text, decl.initializer);
     }
   });
 
+  const initializer = scope.get(constName);
   if (!initializer) {
     throw new Error(`parseTsConst: no top-level const "${constName}" found in ${filePath}`);
   }
-  return evaluate(initializer, filePath, constName);
+  return evaluate(initializer, filePath, constName, scope, [constName]);
 }
 
-function evaluate(node: ts.Expression, filePath: string, constName: string): unknown {
+function evaluate(node: ts.Expression, filePath: string, constName: string, scope: Map<string, ts.Expression>, trail: string[]): unknown {
   if (ts.isAsExpression(node) || ts.isParenthesizedExpression(node) || ts.isSatisfiesExpression(node)) {
-    return evaluate(node.expression, filePath, constName);
+    return evaluate(node.expression, filePath, constName, scope, trail);
+  }
+  if (ts.isIdentifier(node)) {
+    // A name is followed to its own const in the same file. A name that loops back on itself would never end, so it fails instead.
+    const target = scope.get(node.text);
+    if (!target || trail.includes(node.text)) {
+      throw new Error(`parseTsConst: cannot resolve "${node.text}" in "${constName}" (${filePath}); it must be a top-level const in the same file`);
+    }
+    return evaluate(target, filePath, constName, scope, [...trail, node.text]);
   }
   if (ts.isStringLiteralLike(node)) return node.text;
   if (ts.isNumericLiteral(node)) return Number(node.text);
   if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
   if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
   if (ts.isArrayLiteralExpression(node)) {
-    return node.elements.map((element) => evaluate(element, filePath, constName));
+    return node.elements.flatMap((element) => {
+      if (ts.isSpreadElement(element)) {
+        const spread = evaluate(element.expression, filePath, constName, scope, trail);
+        if (!Array.isArray(spread)) throw new Error(`parseTsConst: a spread in "${constName}" (${filePath}) is not an array`);
+        return spread;
+      }
+      return [evaluate(element, filePath, constName, scope, trail)];
+    });
   }
   if (ts.isObjectLiteralExpression(node)) {
     const result: Record<string, unknown> = {};
@@ -53,7 +69,7 @@ function evaluate(node: ts.Expression, filePath: string, constName: string): unk
           `parseTsConst: unsupported property kind (${ts.SyntaxKind[prop.kind]}) in "${constName}" (${filePath})`,
         );
       }
-      result[propertyName(prop.name)] = evaluate(prop.initializer, filePath, constName);
+      result[propertyName(prop.name)] = evaluate(prop.initializer, filePath, constName, scope, trail);
     }
     return result;
   }

@@ -1,0 +1,61 @@
+---
+title: "Raising a query about a payment"
+description: "If you paid but it does not show, tell your circle with I already paid this, attach your evidence, and see how an officer decides it."
+type: task
+audience: ["member"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/my-thrift/[membershipId]", "/dashboard/my-thrift/[membershipId]/savings"]
+permission: "ajo.view_own"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/payment-statuses", "/docs/ajo-thrift/late-fees-defaults-and-disputes", "/docs/ajo-thrift/paying-and-sending-proof", "/docs/ajo-thrift/your-trust-score"]
+keywords: ["query", "dispute", "claim", "i paid", "evidence", "under review", "not showing", "missing payment", "ask about this payment"]
+---
+
+Sometimes a payment you made does not show: your transfer was never matched, or a collector forgot to record your cash. When that happens, raise a **query** (the app also calls it a claim). It puts your case in front of an officer, protects you from being marked as behind while it is looked at, and leaves a written record.
+
+## Before you start
+
+- It must be for **one payment that is unpaid** on your schedule. You cannot raise a query about a payment that is already paid or waived.
+- Have your **evidence** if you have it: a screenshot of the transfer, or the bank's receipt. A photo or PDF, up to 5 MB. It is optional, but it makes a decision much quicker.
+- Your circle must be **running**.
+
+## Raise a query
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["My Thrift"]} /> and open your circle. Find the day or round that shows as unpaid.</Step>
+<Step>Next to it, select <UiLabel>I already paid this</UiLabel>. If you save through a collector, you can also use <UiLabel>Ask about this payment</UiLabel> on the **Payments** tab of **My savings**.</Step>
+<Step>Under **What happened**, say when and how you paid, and to whom. For example: "I gave ₦5,000.00 to the collector on Monday morning at the market." Write at least **10 characters**.</Step>
+<Step>Attach **Evidence (optional)**, and send it.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Money", "Thrift"]} /> and open your circle.</Step>
+<Step>Tap <UiLabel>I already paid this</UiLabel> beside the unpaid day, describe what happened, add your slip if you have one, and send it.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## What happens next
+
+1. **That payment shows as Under review.** It is **never** shown as Missed while your query is open. No late fee, reminder or default case is raised for you over it, and it is left out of your [trust score](/docs/ajo-thrift/your-trust-score) until it is decided.
+2. **The circle's officers are told**, and can see what you said and your evidence.
+3. **A different person decides.** The officer who raised a query for someone cannot decide it, and you cannot decide your own. They check the bank statement or the collector's record, then either **accept** your claim or **do not accept** it, and they must write a reason. **You are told the decision and the reason.**
+4. **If it is accepted**, the officer then finds and confirms the payment as normal, and you get a receipt. A query does not add money by itself.
+5. **A decision is not changed.** If you think something was missed, you can raise it again with more evidence.
+
+You can see your queries and their decisions on your circle page.
+
+## Good to know
+
+- **One query at a time** can be open for each payment.
+- **Do not raise a query to delay a late fee.** An officer can see what you paid and when, and a claim that does not match the record is simply not accepted.
+- **If you have not yet reported the payment at all**, report it first. See [Paying and sending proof](/docs/ajo-thrift/paying-and-sending-proof). A query is for when you have paid and it still does not appear.
+
+<Callout type="tip" title="Evidence helps both sides">
+A clear screenshot with the date, amount and the circle's account name lets an officer decide in minutes. A decision with no evidence has to rest on memory.
+</Callout>

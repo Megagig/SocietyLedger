@@ -1,0 +1,70 @@
+---
+title: "Officer accountability"
+description: "See who prepared, approved and recorded every payout, how long payments wait to be confirmed, cash by collector and day, and every exception with its reason."
+type: task
+audience: ["officer", "admin"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/accountability"]
+permission: "ajo.manage"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/payouts", "/docs/ajo-thrift/confirming-payments", "/docs/ajo-thrift/ajo-reports-and-exports", "/docs/ajo-thrift/staying-safe"]
+keywords: ["accountability", "separation of duties", "backlog", "exceptions", "audit", "who approved", "reversal", "waiver", "officers"]
+---
+
+Officers hold other people's money records, so they answer to the circle. The accountability page puts the evidence in one place, for your own meetings and for anyone who audits you. Members of a rotating pot see how many payments are waiting and how long the oldest has waited. This page shows **who** each one is.
+
+## Before you start
+
+You need to be an officer of the circle: **manage**, **reconcile** or **approve payouts**. Members cannot open this page.
+
+## Open it
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Thrift Circles"]} /> and open a circle.</Step>
+<Step>Choose the <UiLabel>Accountability</UiLabel> tab.</Step>
+<Step>To keep a copy for a meeting or an auditor, choose <UiLabel>Download report (CSV)</UiLabel>.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} /> and open a circle.</Step>
+<Step>Tap **Accountability**.</Step>
+<Step>To share a copy, tap **Share report (CSV)**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-accountability-1.webp"
+  alt="The Accountability page: who prepared, approved and recorded each payout, payments waiting for confirmation by age, and a list of exceptions with reasons."
+  caption="Accountability for a rotating pot: every payout with the three people who handled it, the confirmation backlog, and the exceptions."
+/>
+
+## What the page shows
+
+**Who prepared, approved and recorded each payout.** For every payout, three names: the person who prepared it, the person who approved it and the person who recorded it as paid. Two things are flagged:
+
+- **One person prepared and approved.** This is allowed in a circle with a single admin, but only with an extra confirmation and a note, and it is always shown here.
+- **The recorder also prepared or approved it.** Allowed, but shown, because the more people a payout passes through, the safer it is.
+
+**Payments waiting for confirmation.** How many are waiting, how many have waited past the **48-hour target**, and the oldest, in four age groups: under 24 hours, 24 to 48 hours, past the target, and over 7 days. Each waiting payment is listed with the member's full name, so you know who to chase.
+
+**Cash by collector and day** (collector thrift only). For each collector and each day: what was expected, what they recorded, what they handed in, what the office counted, and any difference. See [Cash reconciliation](/docs/ajo-thrift/cash-reconciliation).
+
+**Exceptions.** Everything that changed the record after the fact, newest first, each with who did it and the reason they gave: a payment reversed, a late fee waived, payout positions swapped or moved in an emergency, rules changed, and a payout cancelled or reversed after being recorded as paid.
+
+## Why a reason is always there
+
+Reversing a payment, waiving a fee and moving someone in the payout order each need a written reason, and SocietyLedger will not save the change without one. Nothing is deleted. A mistake is corrected by a new entry that points at the one it cancels, so the original stays in the history.
+
+## The audit and activity report
+
+Circles on the **Business** tier also have the **Audit and activity** report, which widens this into a record of everything: confirmations, reversals, payout steps, waivers, rule and order changes, default case steps, cash counts, and every time someone downloaded a report. It can be filtered by circle, dates and person, and downloaded as CSV or PDF. See [Reports and exports](/docs/ajo-thrift/ajo-reports-and-exports).
+
+## What happens next
+
+Use this page at your regular meeting. If the backlog is growing, add another person who can confirm payments. If one person keeps appearing as preparer, approver and recorder, bring in a second officer, so no payout depends on one person's honesty.

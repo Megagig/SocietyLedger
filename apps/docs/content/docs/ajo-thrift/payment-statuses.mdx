@@ -1,0 +1,71 @@
+---
+title: "Payment statuses"
+description: "What Paid on time, Reported, Overdue, Missed and the other words mean in a circle, who decides them, and what counts as paid."
+type: concept
+audience: ["all"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/board", "/dashboard/my-thrift/[membershipId]", "/dashboard/my-thrift/[membershipId]/savings"]
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/cash-reconciliation", "/docs/ajo-thrift/rules-grace-and-late-fees", "/docs/ajo-thrift/what-members-can-see-in-a-circle"]
+keywords: ["status", "paid", "late", "overdue", "missed", "behind by", "reported", "under review", "waived", "upcoming", "confirmed"]
+---
+
+Every payment in a circle has one status, and the same word means the same thing for everyone: the member, the officer, the collector and the Circle board. One piece of SocietyLedger works the status out, so a screen, a report and a file can never disagree.
+
+The most important rule is this: **only a confirmed payment counts as paid.** If someone says they paid, or a collector records cash, that is **reported**. It becomes **paid** when an officer confirms it against the group's bank statement, or counts the cash. Until then it is never counted as money in the circle.
+
+## The nine statuses
+
+Each status is a word and an icon, never colour alone, so it reads the same on a printout or for someone who cannot tell the colours apart.
+
+| Status | What it means |
+|---|---|
+| <StatusChip status="paid" label="Paid on time" /> | The full amount was confirmed on or before the due date. |
+| <StatusChip status="late" label="Paid late" /> | The full amount was confirmed, but after the due date. |
+| <StatusChip status="pending" label="Reported, awaiting confirmation" /> | A payment was reported, or a collector recorded cash, and an officer has not confirmed it yet. It is not counted as paid. |
+| <StatusChip status="scheduled" label="Due" /> | This is the round being collected now, and it is not paid yet. |
+| <StatusChip status="overdue" label="Overdue" /> | The due date has passed but the grace period has not. It shows the last day: "grace until 29 Oct". |
+| <StatusChip status="failed" label="Missed" /> | The grace period is over and nothing has been confirmed. |
+| <StatusChip status="under_review" label="Under review" /> | The member has raised a query about this payment and it has not been decided. It is never shown as Missed while the query is open. |
+| <StatusChip status="waived" label="Waived" /> | An officer excused this round. It is left out of what was expected. |
+| <StatusChip status="upcoming" label="Upcoming" /> | A later round that is not due yet. |
+
+## Behind by
+
+When a round is overdue or missed, screens say how much is still unpaid: **Behind by ₦10,000.00**. SocietyLedger never uses the word "defaulter". The words are Overdue, Missed and Behind by.
+
+## A worked example
+
+A rotating pot where ten people each pay **₦5,000.00** a week has a pot of **₦50,000.00**. Round 8 is due on **Friday 23 October**, and the circle's rules give **3 grace days**, so grace ends on **Monday 26 October**.
+
+| What happens | Status on 24 October | Status on 28 October |
+|---|---|---|
+| Ngozi pays on 22 October and an officer confirms it the same day. | Paid on time | Paid on time |
+| Emeka transfers ₦5,000.00 on 25 October, an officer confirms it on the 26th. | Overdue, grace until 26 Oct | Paid late |
+| Amina transfers on 24 October but nobody has confirmed it. | Reported, awaiting confirmation | Reported, awaiting confirmation (until confirmed) |
+| Chidinma does not pay. | Overdue, grace until 26 Oct. Behind by ₦5,000.00 | Missed. Behind by ₦5,000.00 |
+| Oluwaseun says he paid and the officer has not found it. He raises a query. | Under review | Under review (until decided) |
+
+Chidinma's missed round is what can lead to a [late fee](/docs/ajo-thrift/late-fees-defaults-and-disputes), if the circle's rules have one. Emeka paid inside the grace period, so he pays no fee even though his round shows as Paid late.
+
+<Screenshot
+  src="/images/ajo-thrift/saver-savings-1.webp"
+  alt="A saver's calendar: days from 19 to 28 October marked Paid on time, 29 and 30 October marked Reported, awaiting confirmation, and later days marked Upcoming."
+  caption="A saver's calendar. The days the collector has recorded cash but an officer has not counted yet show as Reported, awaiting confirmation."
+/>
+
+## Other statuses you will see
+
+- **A payment** is Waiting to be confirmed (a transfer someone reported), Cash received, awaiting confirmation (cash a collector recorded), Confirmed, Turned down (an officer refused it, with a reason) or Reversed (it was entered by mistake and an officer undid it, with a reason).
+- **A payout** is Waiting for approval, Approved, waiting to be paid, Paid, Cancelled (it did not go ahead, and nothing was written to the records) or Reversed (it had been recorded as paid and an admin undid it).
+- **A late fee** is Waiting (the member has to be told first), To pay, Paid or Waived.
+- **A circle** is Draft, Open for joining, Running, Completed or Cancelled.
+- **A person in a circle** is Waiting for approval, Running, Suspended or Left.
+
+The full list, with the exact words, is on the [Statuses reference page](/docs/reference/statuses).
+
+<Callout type="note" title="Why a reported payment is not paid">
+Someone can report a payment that never arrives, or record cash that never reaches the office. Counting it before it is checked would put money into the circle's figures that is not there. When an officer confirms it, the person gets a receipt.
+</Callout>

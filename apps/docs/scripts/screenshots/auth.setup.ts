@@ -16,6 +16,9 @@ import { authDir, demoPassword, roles } from './constants';
 for (const { role, email } of roles) {
   setup(`authenticate as ${role}`, async ({ page }) => {
     await page.goto('/auth/login');
+    // The form only works once the page has finished loading; typing before then submits nothing.
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
     await page.locator('#email').fill(email);
     await page.locator('#password').fill(demoPassword);
     await page.locator('button[type="submit"]').click();

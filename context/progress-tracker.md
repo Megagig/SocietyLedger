@@ -202,6 +202,7 @@ Format for a completed item:
 | Members | 10 | 10 | 7 | 0 |
 | Finance | 14 | 14 | 13 | 0 |
 | Payments & reconciliation | 9 | 9 | 8 | 0 |
+| Thrift (Ajo) | 31 | 31 | 36 | 0 |
 | Accounting + guide | 15 | 15 | 8 | 0 |
 | Reports & exports | 11 | 11 | 9 | 0 |
 | Meetings | 8 | 8 | 6 | 0 |
@@ -601,9 +602,13 @@ R0 (2026-10-15) *decided* these three but none was ever actually built through R
   - **Still not verified:** the real API with a real sign-in, light theme, the PDF through the browser's own download, and the phone screens on a device.
 
 ## Phase T11 — Documentation
-- [ ] T11.1 Ajo/Thrift docs section (admin, collector, member guides)
-- [ ] T11.2 Joining and approval, staying safe, troubleshooting & FAQ
-- [ ] T11.3 Reference updates & screenshots
+- [x] T11.1 Ajo/Thrift docs section (admin, collector, member guides) — built 2026-10-30. 31 pages under "Thrift (Ajo)" in six sidebar groups (Start here, Concepts, For group admins, For collectors, For members, Help), registered in `scripts/sitemap-data.ts`. Every page follows the task/concept template: plain-language intro, Before you start, numbered steps with the exact UI labels, a naira worked example where money moves (always in full, e.g. ₦5,000.00), What happens next, Related.
+- [x] T11.2 Joining and approval, staying safe, troubleshooting & FAQ — joining-and-accepting-the-rules, adding-and-approving-people, staying-safe, raising-a-query-about-a-payment, leaving-a-circle, and an Ajo FAQ (15 Q&As). Billing FAQ, Add-ons page and the Member guide now point at Ajo.
+- [x] T11.3 Reference updates & screenshots — reference pages (permissions, statuses, modules-by-plan, payment-methods) regenerated with Ajo (the generator now follows spreads and top-level const references). A repeatable demo seed (`apps/api/prisma/seeds/demo-ajo.seed.ts`, with `_demo-stubs.ts` to silence email/SMS/push) and an Ajo capture flow (`scripts/screenshots/flows/ajo-thrift.ts`, 6 roles) produced 36 web screenshots.
+  - **Checks:** `check:frontmatter` 249 pages, 0 failed; `check:links` 619 links, 0 broken; `coverage` Thrift (Ajo) 31/31 published, 167/167 web routes; docs `build` passes; every image the pages reference exists.
+  - **Not verified:** the phone steps are written from the code and were **not run on a device**; the pages were not reviewed at 390px or in the dark theme; screenshots were taken from the demo tenant on the seed day (statuses are computed against the real clock, so re-seed with `--reset` before recapturing).
+  - **Incident to know about:** while the demo seed ran, your own API (port 4001, real email key, Ajo hourly job on) touched the demo data and created 2 officer digests (in-app, possibly email to the demo officers). Set `AJO_JOBS_DISABLED=true` in dev to avoid this.
+  - **Never run the demo seed on production.**
 
 ## Phase T12 — Hardening & launch
 - [ ] T12.1 Security review

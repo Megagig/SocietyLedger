@@ -1,0 +1,79 @@
+---
+title: "Rules, grace and late fees"
+description: "Set a circle's rules: grace days, late fee, guarantors, what happens if someone stops paying, and what members can see. And how to change them fairly."
+type: task
+audience: ["admin", "officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/rules", "/dashboard/ajo/new"]
+permission: "ajo.manage"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/late-fees-defaults-and-disputes", "/docs/ajo-thrift/joining-and-accepting-the-rules", "/docs/ajo-thrift/guarantors", "/docs/ajo-thrift/payment-statuses"]
+keywords: ["rules", "grace days", "late fee", "version", "guarantor", "default procedure", "reminders", "circle board", "names", "cap", "notice"]
+---
+
+A circle's **rules** are the agreement every member accepts. They say how long after the due date someone can still pay without being late, whether there is a late fee, whether a guarantor is needed, and what happens if someone stops paying after they have been paid. Because people agree to them, they cannot be changed quietly: a change is a new **version**, with notice.
+
+## Before you start
+
+You need the **manage** permission. Set the rules when you create the circle, before anyone is added, because each person accepts the version in force when they join. The safe defaults are already filled in: late fees off, three grace days, reminders on, guarantor optional, and a case and plan if someone stops paying.
+
+## The rules you choose
+
+<PlatformTabs>
+<PlatformTab>
+You choose the rules in the last steps when you create a circle (**New circle**), and see them afterwards on the circle's <UiLabel>Rules</UiLabel> tab.
+</PlatformTab>
+<PlatformTab>
+You choose the rules when you create a circle (**New circle**), and see them afterwards by opening the circle and tapping **Rules**.
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-rules-1.webp"
+  alt="The Rules tab of a circle showing Version 1 with its start date and each rule written in words: the late fee, the grace days, the guarantor setting, and what happens if someone stops paying."
+  caption="A circle's rules, written in words, with the version and the date it applies from."
+/>
+
+| Rule | What it does |
+|---|---|
+| **Late fee** | **No late fee**, **A fixed amount**, or **A percentage of the contribution**. Charged once for each missed payment, after the grace days. Members are told first, and it only becomes payable 48 hours later. |
+| **Most a fee can reach (₦, optional)** | A cap. A percentage fee on a large contribution can never go above this. |
+| **Grace days** | Days after the due date before a payment counts as late. They are counted in the circle's own days. |
+| **Guarantor** | **Not needed**, **Optional**, or **Required before joining**. |
+| **If someone stops paying after they were paid** | **Tell the admins**, **Offer the member a repayment plan**, or **Open a case and offer a plan**. Only for a rotating pot. Nothing is ever taken from other members or guarantors. |
+| **Send payment reminders** | Reminders before and after a payment is due. Needs the Growth tier or above. |
+| **Keep people with a poor record out of the first payout positions** | Applies the [trust score](/docs/ajo-thrift/your-trust-score) when the draw is made. |
+| **Let members of this circle see each other's progress** | Turns on the **Circle board** for a rotating pot. Members see names, payment status and payout position, never phone numbers, emails, addresses, bank accounts or notes. |
+| **How names are shown** | **First name and last initial** (Adaeze O.) or **Full names**. |
+
+## A worked example
+
+A weekly pot where each person pays **₦5,000.00**, with a **fixed late fee of ₦500.00**, a **cap of ₦1,000.00** and **3 grace days**. Round 7 is due on Friday 16 October.
+
+- Ngozi pays on Sunday 18 October, inside the grace period. Her round shows **Paid late**, and she pays **no fee**.
+- Chidinma has still not paid by Tuesday 20 October. Grace ended on Monday, so on Tuesday a **₦500.00** fee is worked out for that round, and she is told.
+- If she misses round 8 as well, she gets a second ₦500.00 fee, one for each missed payment.
+
+With a **percentage** fee of 5% and a cap of ₦1,000.00, a ₦5,000.00 contribution gives a fee of ₦250.00. A ₦50,000.00 contribution would give ₦2,500.00, but the cap holds it at ₦1,000.00.
+
+## Change the rules
+
+Rules are never edited. Changing them creates a new version.
+
+<Steps>
+<Step>Open the circle and go to the <UiLabel>Rules</UiLabel> tab.</Step>
+<Step>Select <UiLabel>Publish a new version</UiLabel>, change what you need, and choose the date it applies from. It must be **at least 7 days away**, so members have time to read it.</Step>
+<Step>Publish. Every active member is told, and has to accept the new version.</Step>
+</Steps>
+
+**Each member is only bound by the version they accepted.** A late fee uses the version the member accepted that was in force on the day the payment was due. If a member never accepted a version, no fee is charged to them at all. So a change cannot be used to charge someone a fee they never agreed to.
+
+## What happens next
+
+Add your people. Each is shown the rules and must accept them (or an officer records that they agreed in person, with a note). See [Adding and approving people](/docs/ajo-thrift/adding-and-approving-people).
+
+<Callout type="note" title="Why a fee needs so much care">
+A late fee belongs to the circle, not to SocietyLedger, and it is never taken from a payout. It is only ever charged after the member has been told and had 48 hours. This is to keep a fee from being a surprise.
+</Callout>

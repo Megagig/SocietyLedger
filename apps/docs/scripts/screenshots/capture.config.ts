@@ -12,6 +12,8 @@ import { baseURL } from './constants';
 export default defineConfig({
   testDir: __dirname,
   testMatch: /capture\.spec\.ts/,
+  // Some Ajo pages (the circle board, accountability) are heavy and the first visit in a dev server compiles them.
+  timeout: 120_000,
   fullyParallel: false, // one capture at a time — deterministic output order
   reporter: [['list']],
   use: {

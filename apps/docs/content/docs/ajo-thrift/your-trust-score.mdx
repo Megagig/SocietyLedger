@@ -1,0 +1,84 @@
+---
+title: "Your trust score"
+description: "How your on-time record in your circles becomes a score, what the bands mean, and what the score can and cannot affect."
+type: concept
+audience: ["member", "officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/my-thrift/[membershipId]"]
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/payment-statuses", "/docs/ajo-thrift/raising-a-query-about-a-payment", "/docs/ajo-thrift/rules-grace-and-late-fees"]
+keywords: ["trust score", "on time", "excellent", "good", "fair", "at risk", "record", "percentage"]
+---
+
+Your **trust score** is a simple number: out of your payments in the last 12 months, how many were on time. It exists so you can see your own record, and so an officer can see whether someone has a pattern. It is not a credit score and it is not shared outside your association.
+
+## How it is worked out
+
+The score looks at your payments over the **last 12 months**, across all your Ajo circles in your association. A new circle does not start from zero, because your record travels with you.
+
+It counts the payments that have been **decided**:
+
+- **Paid on time** counts for you.
+- **Paid late** counts against you.
+- **Missed** counts against you.
+
+It leaves out anything not decided yet, so you are never marked down for something that is still open:
+
+- A payment inside its grace period.
+- A payment that is reported but not yet confirmed.
+- A round under a query you have raised.
+- A round an officer waived.
+
+Your score is the share that were on time. **8 on time out of 8 decided is 100%.** **7 on time out of 8 is 88%.**
+
+## The bands
+
+| Band | On-time share |
+|---|---|
+| **Excellent** | 95% or more |
+| **Good** | 85% to 94% |
+| **Fair** | 70% to 84% |
+| **At risk** | under 70% |
+| **No history yet** | You have no decided payments in the last 12 months. |
+
+## A worked example
+
+Ngozi has been in a rotating pot for nine weeks, paying **₦5,000.00** each Friday. Eight rounds are decided. She paid seven on time and one two days after the due date, inside the grace period, so it counts as **paid late**. Her score is 7 of 8, which is **88%**, and her band is **Good**. The ninth round is due today and is not decided yet, so it does not change her score.
+
+<Screenshot
+  src="/images/ajo-thrift/my-circle-1.webp"
+  alt="A member's circle page showing their schedule and payments, with a Your trust score section showing Excellent, 100%, and 8 of your last 8 payments were on time."
+  caption="Your trust score is at the bottom of your circle page, with the sum behind it."
+/>
+
+## See your score
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["My Thrift"]} /> and open your circle.</Step>
+<Step>Scroll to **Your trust score**. It shows your band, your percentage, and the count behind it, for example "8 of your last 8 payments were on time".</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Money", "Thrift"]} /> and open your circle.</Step>
+<Step>Scroll to **Your trust score**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## What the score does and does not do
+
+- **It never stops you joining or being paid.** No score blocks a payout or a place in a circle.
+- **It can affect one optional rule.** An admin can choose to keep people whose band is **At risk** out of the first payout positions in a rotating pot. The score is used only when the draw is made.
+- **Officers can see it** next to your name, so a pattern can be spoken about early and kindly.
+- **It is updated daily**, and only changes when your record changes.
+
+If you think a payment is counted wrongly, [raise a query](/docs/ajo-thrift/raising-a-query-about-a-payment). A round with an open query is left out of your score until it is decided.
+
+<Callout type="note" title="Why SocietyLedger uses these words">
+The words are Excellent, Good, Fair and At risk, and "Behind by" for what is unpaid. SocietyLedger does not label anyone a defaulter. A late payment is a fact about a payment, not a verdict on a person.
+</Callout>
