@@ -3205,6 +3205,8 @@ model TenantAddon {
   /// Equals the subscription's current period end, so the add-on renews with the plan.
   endsAt            DateTime           @map("ends_at")
   cancelAtPeriodEnd Boolean            @default(false) @map("cancel_at_period_end")
+  /// A staff downgrade waiting for the end of the period: the add-on (tier) this one becomes at renewal. Null = no change waiting.
+  pendingAddonId    Int?               @map("pending_addon_id")
   source            SubscriptionSource @default(PURCHASE)
   amountPaidKobo    Int                @default(0) @map("amount_paid_kobo")
   paymentHistoryId  Int?               @map("payment_history_id")

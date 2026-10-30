@@ -97,6 +97,8 @@ export interface HeldAddon {
   /** What the tenant actually paid for the running add-on term (0 if it was granted). */
   amountPaidKobo: number;
   cancelAtPeriodEnd: boolean;
+  /** A staff downgrade waiting for renewal: the tier this add-on becomes. The renewal quote prices that tier and ends this one. */
+  pendingAddonId?: number | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -184,7 +186,9 @@ export function buildPlanQuote(
 
   // ---- add-ons that come along with this checkout
   const held = new Map(ctx.heldAddons.map((a) => [a.addonId, a]));
-  const wanted = input.addonIds ?? ctx.heldAddons.filter((a) => !a.cancelAtPeriodEnd).map((a) => a.addonId);
+  // A tier with a scheduled downgrade renews as the lower tier. It is charged in full (it is not a late add-on) and it replaces the tier it was.
+  const pendingTargets = new Set(input.addonIds ? [] : ctx.heldAddons.flatMap((a) => (a.pendingAddonId && !a.cancelAtPeriodEnd ? [a.pendingAddonId] : [])));
+  const wanted = input.addonIds ?? ctx.heldAddons.filter((a) => !a.cancelAtPeriodEnd).map((a) => a.pendingAddonId ?? a.addonId);
   assertOnePerFamily(wanted, ctx);
   const addons: QuoteAddon[] = [];
   const lines: QuoteLine[] = [line('PLAN', `${priced.name} (${cycleLabel(cycle)})`, planPrice)];
@@ -213,7 +217,7 @@ export function buildPlanQuote(
     const fullPrice = priceForCycle(prices, cycle);
 
     // A brand-new add-on added while the plan is simply being extended only runs from today, so it is prorated to the new end.
-    const prorated = kind === 'RENEW' && !heldAddon;
+    const prorated = kind === 'RENEW' && !heldAddon && !pendingTargets.has(addonId);
     const amount = prorated ? addonProrationKobo(fullPrice, newEnd, cycle, now) : fullPrice;
     // Buying another tier of a product the tenant already holds replaces that tier.
     const family = catalog?.family ?? heldAddon?.family ?? null;
@@ -441,6 +445,7 @@ export async function loadQuoteContext(associationId: number, now = new Date()):
     endsAt: r.endsAt,
     amountPaidKobo: r.amountPaidKobo,
     cancelAtPeriodEnd: r.cancelAtPeriodEnd,
+    pendingAddonId: r.pendingAddonId,
   }));
 
   return {

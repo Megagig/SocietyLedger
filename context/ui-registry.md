@@ -1855,3 +1855,23 @@ Read-only views of a rotating pot for its members (spec §16.4). Same words and 
 ### Accountability (officer)
 - **Surface:** web tab `ajo/[groupId]/accountability`, mobile `manage/thrift/[groupId]/accountability` (with a CSV share).
 - **Shows:** payouts with who prepared, approved and recorded them and a warning flag (icon and words) where one person did both; the backlog in four age buckets; cash by collector and day (collector thrift only); and exceptions newest first with reason and who.
+
+## Admin console: Ajo (T9, 2026-10-30)
+
+All in `apps/admin` (Mantine, `--admin-surface` cards). No new design primitives: they reuse `PageHeader`, `StatCard`, `StatusBadge`, `ConfirmDestructive`, `ReasonField`, `ErrorState`, `EmptyState`. Shared types and role lists live in `lib/ajo-admin.ts`. Sidebar: Ajo groups, Ajo analytics, Ajo pricing, Ajo verification.
+
+### Verification queue and review
+- **Surface:** `/ajo/verifications` (tabs Waiting, Verified, Rejected, 25 a page) and `/ajo/verifications/[id]`.
+- **Review:** "What the person submitted" card, a Checklist card with three checkboxes, then Reject… (opens `ConfirmDestructive`; the reason is shown to the group admin) and Verify (disabled until all three pass). Buttons are hidden for roles that cannot decide, with a sentence saying why.
+
+### Groups and group detail
+- **Surface:** `/ajo/groups` (search, owner kind, type and status filters; "Needs a look" badges for open payouts and default cases) and `/ajo/groups/[id]`.
+- **Detail cards:** summary, **Ajo tier** (limit, in use, paid or not, a "Moves to X at renewal" badge, "Change tier…"), Payouts (with "Cancel payout…" on prepared and approved ones), Default cases, Platform levy.
+- **Change tier dialog:** a Select showing price and size, then a live preview in an `Alert`: blocked (red, says how many to remove), upgrade starts now, downgrade at the period end with the date, or "cancels the waiting downgrade". Confirm needs a reason of at least 10 characters.
+
+### Settings: Ajo platform levy
+- **Surface:** a card on `/settings` between Onboarding and AI. Percent inputs with a % suffix, money inputs with ₦ and two decimals, a MultiSelect of the Ajo tiers that pay no levy. Saved with the page's existing Save changes bar.
+
+### Ajo pricing and analytics
+- **Pricing:** `/ajo/pricing` is a table of tiers with no editor; "Edit price" opens the Plan Builder add-on page.
+- **Analytics:** four `StatCard`s, an adoption table by tier, and the 6-month levy as labelled progress bars (the amount is written beside each bar, so colour carries nothing).

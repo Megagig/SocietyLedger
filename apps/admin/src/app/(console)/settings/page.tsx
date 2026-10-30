@@ -13,10 +13,11 @@ import { billingKeys, type BuilderPlan } from '@/lib/billing';
 import { PageHeader } from '@/components/PageHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { AiSettingsSection } from './ai-section';
+import { AjoLevySection, type AjoLevyValues } from './ajo-levy-section';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface PlatformSettings {
+interface PlatformSettings extends AjoLevyValues {
   maintenanceMode: boolean;
   allowNewSignups: boolean;
   /** Standalone thrift groups (Ajo only, no association) may sign up. Off until the owner opens it. */
@@ -360,6 +361,8 @@ export default function PlatformSettingsPage() {
               </Group>
             </Stack>
           </SectionCard>
+
+          <AjoLevySection values={local} onChange={(key, value) => update(key, value as PlatformSettings[typeof key])} />
 
           <AiSettingsSection />
 

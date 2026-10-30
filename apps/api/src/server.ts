@@ -57,6 +57,7 @@ import welfareRoutes from './modules/welfare/welfare.routes';
 import ajoRoutes from './modules/ajo/ajo.routes';
 import ajoAdminRoutes from './modules/ajo/ajo-admin.routes';
 import ajoLevyAdminRoutes from './modules/ajo/ajo-levy-admin.routes';
+import ajoOversightRoutes from './modules/ajo/ajo-oversight.routes';
 import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
@@ -183,6 +184,7 @@ app.use('/api/admin/support', platformSupportRoutes);
 app.use('/api/admin/ajo', ajoAdminRoutes);
 // The Ajo platform levy: finance and support staff as well as SUPER_ADMIN, so also ahead of the SUPER_ADMIN-only router
 app.use('/api/admin/ajo-levy', ajoLevyAdminRoutes);
+app.use('/api/admin/ajo-oversight', ajoOversightRoutes);
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);
