@@ -119,7 +119,12 @@ async function loadBoard(input: { associationId: number; groupId: number; viewer
   const versions = await prisma.ajoGroupRuleVersion.findMany({ where: { groupId: group.id }, orderBy: { version: 'asc' } });
   const inEffect = versions.filter((v) => v.effectiveFrom.getTime() <= now.getTime());
   const current = inEffect[inEffect.length - 1] ?? versions[versions.length - 1] ?? null;
-  if (!input.viewer.isOfficer && current?.memberVisibility !== 'FULL') throw new RuleError('The admin has not turned on the circle board for this circle.', 403, BOARD_OFF);
+  if (!input.viewer.isOfficer && current?.memberVisibility !== 'FULL') {
+    // A rule change waits out its notice period. If the admin has already published one that turns the board on, say when, so it does not look broken.
+    const upcoming = versions.find((v) => v.effectiveFrom.getTime() > now.getTime() && v.memberVisibility === 'FULL');
+    const when = upcoming ? upcoming.effectiveFrom.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: group.timezone }) : null;
+    throw new RuleError(when ? `The circle board turns on on ${when}, when the admin's new rules take effect.` : 'The admin has not turned on the circle board for this circle.', 403, BOARD_OFF);
+  }
   const nameDisplay = (current?.nameDisplay as 'FIRST_INITIAL' | 'FULL' | undefined) ?? 'FIRST_INITIAL';
   const visibleVersionIds = new Set(versions.filter((v) => v.memberVisibility === 'FULL').map((v) => v.id));
 

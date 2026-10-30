@@ -1,5 +1,6 @@
 'use client';
 
+import { ajoErrorMessage } from '@/lib/ajo/api';
 import { useState } from 'react';
 import { Button, Tabs } from '@mantine/core';
 import { IconDownload } from '@tabler/icons-react';
@@ -41,7 +42,7 @@ export function CircleBoard({ groupId }: { groupId: number }) {
       return <AjoEmpty title="There is no circle board for this circle." hint="A collector-thrift scheme keeps each saver's records private. You can see your own savings on your circle page." />;
     }
     if (code === 'BOARD_OFF') {
-      return <AjoEmpty title="The circle board is switched off." hint="The admin has not turned on the circle board for this circle. Ask them if you would like members to see each other's progress." />;
+      return <AjoEmpty title="The circle board is switched off." hint={`${ajoErrorMessage(overview.error)} Ask the admin if you would like members to see each other's progress.`} />;
     }
     return <AjoError error={overview.error} onRetry={() => overview.refetch()} />;
   }
