@@ -642,7 +642,7 @@ Decisions (owner-approved): the automatic recorded draw stays the default and is
 - **Not verified:** nothing run in a browser or on a phone; no docs screenshots yet. Members see names on the order as the order endpoint already returned them (full names), not the board's first-name-and-initial rule.
 
 ## Phase T12 — Hardening & launch
-- [ ] T12.1 Security review
+- [x] T12.1 Security review (2026-10-30): code review of the money paths, payout accounts, tenant and object-level access, separation of duties and the public routes; write-up in `docs/thrift/security-review.md`. One fix: an officer can no longer waive their own late fee while another officer exists (test added). Open for the owner: F-1 confirm production is not in shadow mode (`FEATURE_FLAG_MODE`); F-3 password re-check on payout-account change/reveal (low, mitigated); F-4 idempotency replay does not check who asks (low). **Not** a penetration test; nothing run in a browser or on a phone.
 - [ ] T12.2 Failure-mode drills
 - [ ] T12.3 Pilot with 2–3 real groups
 

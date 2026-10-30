@@ -18,7 +18,7 @@ import { planShield } from './ajo-default.service';
 import { memberOfMembership, messageMember } from './ajo-messenger';
 import { FEE_NOTICE_HOURS, feeEligibleOn, lateFeeFor, versionInForceOn, type LateFeeRule } from './ajo-risk';
 import { businessDay, dayInZone } from './ajo-schedule';
-import { auditAjo } from './ajo-support';
+import { auditAjo, permissionHolderIds } from './ajo-support';
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -143,6 +143,12 @@ export async function waiveLateFee(input: { associationId: number; feeId: number
     if (!f) throw new RuleError('That late fee was not found.', 404, 'LATE_FEE_NOT_FOUND');
     if (f.status === 'WAIVED') return { fee: toLateFeeView(f), replayed: true };
     if (f.status === 'PAID') throw new RuleError('This fee has been paid. If it was a mistake, reverse the payment.', 409, 'INVALID_FEE_STATE');
+    // An officer is also a member. Waiving their own fee is a conflict of interest, so another officer decides, unless they are the only one.
+    const owner = await tx.ajoInstallment.findUnique({ where: { id: f.installmentId }, select: { membership: { select: { member: { select: { userId: true } } } } } });
+    if (owner?.membership.member.userId === input.actorUserId) {
+      const managers = await permissionHolderIds(tx, input.associationId, 'ajo.manage');
+      if (managers.some((userId) => userId !== input.actorUserId)) throw new RuleError('This is your own late fee, so another officer has to waive it.', 403, 'SELF_WAIVER_NOT_ALLOWED');
+    }
     await tx.ajoLateFeeAssessment.update({ where: { id: f.id }, data: { status: 'WAIVED', waivedBy: input.actorUserId, waivedReason: reason, waivedAt: now } });
     await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_LATE_FEE_WAIVED', tableName: 'ajo_late_fee_assessments', recordId: f.id, oldValues: { status: f.status }, newValues: { status: 'WAIVED', reason, feeKobo: f.feeKobo.toString(), paidKobo: f.paidKobo.toString() } });
     return { fee: toLateFeeView(await tx.ajoLateFeeAssessment.findUniqueOrThrow({ where: { id: f.id } })), replayed: false };

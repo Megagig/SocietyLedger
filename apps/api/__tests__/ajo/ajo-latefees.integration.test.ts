@@ -476,6 +476,25 @@ suite('Ajo late fees, disputes and reminders (database)', () => {
       expect(await codeOf(fees.markFeeNotified({ associationId: other.A, feeId: f.id, actorUserId: other.officer.id, note: 'Trying across associations' }))).toBe('LATE_FEE_NOT_FOUND');
       expect((await fees.listLateFees({ associationId: other.A })).length).toBe(0);
     });
+
+    it('does not let an officer waive their own late fee unless they are the only officer', async () => {
+      const w = await world();
+      const { joined, groupsToRun } = await thrift(w, { people: 1, rules: FEE, cycleLength: 2 });
+      const ownerUserId = joined[0].member.userId as number;
+      await fees.assessLateFees(at('2027-03-05T10:00:00Z'), groupsToRun);
+      await fees.noticeLateFees(at('2027-03-05T10:05:00Z'), groupsToRun);
+      const [f] = await feesOf(w);
+      const reason = 'Goodwill: the collector was away that week';
+
+      await setHolders(w, 'ajo.manage', [ownerUserId, w.officer.id]); // the saver is an officer, and so is someone else
+      expect(await codeOf(fees.waiveLateFee({ associationId: w.A, feeId: f.id, actorUserId: ownerUserId, reason }))).toBe('SELF_WAIVER_NOT_ALLOWED');
+      expect((await feesOf(w))[0].status).not.toBe('WAIVED');
+      expect((await fees.waiveLateFee({ associationId: w.A, feeId: f.id, actorUserId: w.officer.id, reason })).fee.status).toBe('WAIVED'); // another officer still can
+
+      await fees.reverseWaiver({ associationId: w.A, feeId: f.id, actorUserId: w.officer.id, reason: 'Waived by mistake: wrong member' });
+      await setHolders(w, 'ajo.manage', [ownerUserId]); // now they are the only officer, so there is nobody else to ask
+      expect((await fees.waiveLateFee({ associationId: w.A, feeId: f.id, actorUserId: ownerUserId, reason })).fee.status).toBe('WAIVED');
+    });
   });
 
   // ----------------------------------------------------------------------------------------------------------------------------
