@@ -84,7 +84,7 @@ export const ajoStaffApi = {
   cancelGroup: (id: number, reason: string) => post<unknown>(`/ajo/groups/${id}/cancel`, { reason }),
   /** The API sends `{ versions, acceptance? }`, not a bare list. */
   ruleVersions: (id: number) => unwrap<RuleVersionsReplyDTO>(api.get(`/ajo/groups/${id}/rules`)),
-  publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, rules),
+  publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, { rules }),
 
   // thrift onboarding
   onboardingStatus: () => unwrap<OnboardingStatusDTO>(api.get('/onboarding/status')),

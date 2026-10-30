@@ -52,7 +52,7 @@ export function CircleBoard({ groupId }: { groupId: number }) {
       return <EmptyState icon={LockKeyhole} title="There is no circle board for this circle." description="A collector-thrift scheme keeps each saver's records private. You can see your own savings on your circle page." />;
     }
     if (closed === 'OFF') {
-      return <EmptyState icon={Users} title="The circle board is switched off." description="The admin has not turned on the circle board for this circle. Ask them if you would like members to see each other's progress." />;
+      return <EmptyState icon={Users} title="The circle board is switched off." description="The admin has not turned on the circle board for this circle, or it is waiting for its notice period. Ask them if you would like members to see each other's progress." />;
     }
     return <ErrorState error={overview.error} onRetry={() => overview.refetch()} />;
   }

@@ -7,6 +7,7 @@ import { Button, Checkbox, Modal, NumberInput, TextInput } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { ActionDialog } from '@/components/ajo/ActionDialog';
+import { BoardSettingCard } from '@/components/ajo/BoardSettingCard';
 import { Money } from '@/components/ajo/Money';
 import { ajoErrorCode, ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay, formatKobo, nairaToKobo } from '@/lib/ajo/format';
@@ -125,6 +126,8 @@ export default function GroupOverviewPage() {
         {group.bankAccount ? <p className="mt-1 text-sm">{group.bankAccount.bankName} · {group.bankAccount.accountName} · <span className="font-mono tabular-nums">{group.bankAccount.masked}</span></p> : <p className="mt-1 text-sm text-danger">No bank account has been added yet. Members cannot pay until one is.</p>}
         <p className="mt-1 text-xs text-ink-faint">Timezone {group.timezone}, cut-off {group.cutoffTime}. Members {group.requirePhoneConfirm ? 'must' : 'do not need to'} confirm their phone number.</p>
       </section>
+
+      {group.model === 'ROTATING_POT' && <BoardSettingCard groupId={groupId} canChange={can} />}
 
       {can && (group.status === 'DRAFT' || group.status === 'OPEN' || group.status === 'ACTIVE') && (
         <div className="flex flex-wrap gap-2">

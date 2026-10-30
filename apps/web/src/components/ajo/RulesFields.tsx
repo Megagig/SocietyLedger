@@ -110,8 +110,9 @@ export function RulesFields({ value, onChange, rotating = true }: { value: Rules
         <div className="space-y-3 rounded-lg border border-line p-4">
           <Checkbox
             label="Let members of this circle see each other's progress"
-            description="Each member sees the circle board: who has paid, when, who is next and who is behind. Others see a member's name, payment status and dates, and payout position, never their phone, email, address, bank account or trust score. Every member accepts this with the rules."
+            description="Takes effect 7 days after you publish, like any rule change. Each member sees the circle board: who has paid, when, who is next and who is behind. Others see a member's name, payment status and dates, and payout position, never their phone, email, address, bank account or trust score. Every member accepts this with the rules."
             checked={value.memberVisibility === 'FULL'}
+            // The board follows the rules in effect, so turning it on waits out the 7 days' notice.
             onChange={(e) => set('memberVisibility', e.currentTarget.checked ? 'FULL' : 'OFF')}
           />
           {value.memberVisibility === 'FULL' && (

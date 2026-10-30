@@ -67,7 +67,7 @@ export function RulesFields<T extends FieldValues>({ control, prefix = '', rotat
             control={control}
             name={name('memberVisibility')}
             label="Circle board"
-            helper="Each member sees who has paid, when, who is next and who is behind. Others see a member's name, payment status and dates, and payout position, never their phone, email, address, bank account or trust score. Every member accepts this with the rules."
+            helper="Takes effect 7 days after you publish, like any rule change. Each member sees who has paid, when, who is next and who is behind. Others see a member's name, payment status and dates, and payout position, never their phone, email, address, bank account or trust score. Every member accepts this with the rules."
             options={[
               { value: 'FULL', label: "Members can see each other's progress" },
               { value: 'OFF', label: 'Keep members private' },

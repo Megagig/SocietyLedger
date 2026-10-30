@@ -11,6 +11,7 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { ListGroup, ListItem } from '@/components/layout/ListItem';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { BoardSettingCard } from '@/features/ajo/components/BoardSettingCard';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Text } from '@/components/ui/Text';
 import { AjoActionSheet } from '@/features/ajo/components/AjoActionSheet';
@@ -210,6 +211,8 @@ export default function CircleOverviewScreen() {
               </Text>
             </View>
           </Card>
+
+          {group.model === 'ROTATING_POT' ? <BoardSettingCard groupId={groupId} canChange={manage && canWrite} /> : null}
 
           <ListGroup>
             {manage ? <ListItem leading={<IconCircle icon={Users} tone="primary" />} title="Members" meta="Approve people, verification, guarantors" showChevron onPress={() => router.push(sub(groupId, 'members'))} testID="ajo-nav-members" /> : null}
