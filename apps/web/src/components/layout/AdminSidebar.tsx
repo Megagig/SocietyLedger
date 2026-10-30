@@ -267,6 +267,14 @@ export function AdminSidebar() {
       badge: ajoBadge,
     },
     {
+      label: 'Thrift Reports',
+      icon: <IconFileAnalytics size={20} />,
+      href: '/dashboard/ajo/reports',
+      permission: PERMISSIONS.AJO_REPORTS,
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
+    },
+    {
       label: 'Finance',
       icon: <IconCurrencyNaira size={20} />,
       permission: PERMISSIONS.FINANCE_VIEW,

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { CalendarCheck, PiggyBank, Plus } from 'lucide-react-native';
+import { CalendarCheck, FileText, PiggyBank, Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -28,7 +28,7 @@ export const circleHref = (groupId: number, sub = '') => `/(app)/(tabs)/manage/t
 export default function CirclesScreen() {
   const router = useRouter();
   const { canWrite } = useAjoWrite();
-  const { manage } = useAjoCan();
+  const { manage, reports } = useAjoCan();
   const collector = useCan(AJO_COLLECT_ACCESS);
   const staff = useCan(AJO_STAFF_ACCESS);
   const groups = useGroups();
@@ -58,6 +58,19 @@ export default function CirclesScreen() {
             showChevron
             onPress={() => router.push('/(app)/(tabs)/manage/thrift/today' as never)}
             testID="ajo-today-link"
+          />
+        </ListGroup>
+      ) : null}
+
+      {reports ? (
+        <ListGroup>
+          <ListItem
+            leading={<IconCircle icon={FileText} tone="primary" />}
+            title="Reports"
+            meta="Contributions, ledger, payouts, arrears and more, with PDF and CSV"
+            showChevron
+            onPress={() => router.push('/(app)/(tabs)/manage/thrift/reports' as never)}
+            testID="ajo-reports-link"
           />
         </ListGroup>
       ) : null}

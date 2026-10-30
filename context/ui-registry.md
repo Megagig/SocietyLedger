@@ -1877,3 +1877,23 @@ All in `apps/admin` (Mantine, `--admin-surface` cards). No new design primitives
 ### Ajo pricing and analytics
 - **Pricing:** `/ajo/pricing` is a table of tiers with no editor; "Edit price" opens the Plan Builder add-on page.
 - **Analytics:** four `StatCard`s, an adoption table by tier, then two 6-month series (paid for tiers, and platform levy) as labelled progress bars (the amount is written beside each bar, so colour carries nothing). Roles that cannot see revenue get the `Forbidden` state, not a request that fails.
+
+## Ajo reports and exports (T10, 2026-10-30)
+
+Web (`apps/web`, Tailwind tokens) and phone (`apps/mobile`, NativeWind) show the same eight reports from one API (`/api/ajo/reports`). No new design primitives.
+
+### Web
+- **Hub:** `/dashboard/ajo/reports`, a two-column grid of entries: title, a tier badge (Basic gray, Advanced blue, Audit violet), one line of description. A locked report is shown, not hidden: warning-coloured text with a lock icon says why ("Audit reports are not part of your Ajo tier. Upgrade the tier to use this report."), it is not a link, and its card sits on `bg-surface-muted`. Linked cards use `no-underline` (the app's global link style would underline the whole card).
+- **Report:** `/dashboard/ajo/reports/[name]`. Back link "All reports", the title, then **"How this is counted."** and the report's rule in words. Filters in one row that wraps: Circle (Mantine `Select`, clearable), From and To (`TextInput type="date"`), Person (only once a circle is chosen and the report understands it), Collector (only when the person may list collectors). CSV and PDF buttons at the right. With no dates the page says it shows the running month and that up to 12 months can be chosen.
+- **Figures:** one block per circle (`dl` grid, four across on a wide screen), each figure a bordered tile: label, figure, optional hint. Then, only when two or more circles of the same kind are shown, an "All rotating pots" or "All collector-thrift groups" block labelled "n circles added together". A figure that does not apply is "—", never 0. Money is always in full (₦300,000.00); a percentage is one decimal.
+- **Details:** `ReportTable` (a bordered scroll container, so the table scrolls inside itself and never widens the page; money, counts and percentages right-aligned and tabular), then `ReportPager` ("Rows 1 to 25 of 60", Previous, "Page 1 of 3", Next). Changing any filter returns to page 1; the previous page stays on screen while the next loads.
+- **States:** skeleton rows while loading, `AjoError` with a retry on failure (the API's own message, for example "Pick a range of 12 months or less."), "Nothing to show for these dates." when the figures stand but there are no rows, "No circles to report on yet." when there is no opened circle.
+- **Layout fixes found in the browser:** the dashboard `<main>` now has `min-w-0` (a wide table used to stretch the whole page: the thrift circles list was 504px wide on a 390px screen), and the breadcrumb trail wraps.
+- **Downloads:** the file is the API's, named by the API (`ajo-contributions-2027-03-01-to-2027-03-31.csv`); the API now exposes `Content-Disposition` to browsers, which every web download needed.
+
+### Phone
+- **Entry:** a "Reports" row on the Thrift circles screen for anyone with the reports permission; the hub is `manage/thrift/reports` (a `ListGroup`: `IconCircle` with a file icon, or a lock icon in the warning tone for a locked report, with the reason as the row's meta line).
+- **Report:** the rule first ("How this is counted."), two `OptionDropdown`s side by side (Circle, Dates: This month, Last month, Last 3 months, This year; "This month" sends no dates so the API's default applies), a second row for Person and Collector when they apply, then Share PDF and Share CSV (`Button` secondary, the existing share sheet helper `saveAndShareFile`).
+- **Figures:** `BoardCard` per circle with ledger rows (label left, figure right, hint under), not tiles, so a full-length amount always fits. Totals as above.
+- **Details (full parity with the web table):** every row is a block in one `BoardCard` "Details (60 rows)" separated by hairlines: the first text column as the title, the circle under it when more than one is shown, then every other column as "label … value" (long free text stacked under its label). An empty cell is not drawn; a zero is. "Show more (n left)" loads the next 25.
+- **Not on a device:** none of these phone screens has been run on a device or emulator; the formatting and the row cards are tested.

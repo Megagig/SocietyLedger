@@ -222,6 +222,7 @@ export function MemberSidebar() {
       : []),
     ...(ajoNav.staff ? [{ label: 'Thrift Circles', icon: <IconPigMoney size={20} />, href: '/dashboard/ajo', badge: ajoBadge }] : []),
     ...(ajoNav.collect ? [{ label: 'Collect', icon: <IconCurrencyNaira size={20} />, href: '/dashboard/ajo/collect', badge: ajoBadge }] : []),
+    ...(ajoNav.reports ? [{ label: 'Thrift Reports', icon: <IconFileAnalytics size={20} />, href: '/dashboard/ajo/reports', badge: ajoBadge }] : []),
     {
       label: 'Cooperatives',
       icon: <IconBuildingCommunity size={20} />,
@@ -505,7 +506,7 @@ export function MemberSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {navItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label) || ['Thrift Circles', 'Collect', 'Notifications', 'Help & Support', 'Settings'].includes(item.label)).map(renderNavItem)}
+          {navItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label) || ['Thrift Circles', 'Collect', 'Thrift Reports', 'Notifications', 'Help & Support', 'Settings'].includes(item.label)).map(renderNavItem)}
         </nav>
 
         {/* Footer Actions */}

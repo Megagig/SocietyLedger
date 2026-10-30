@@ -37,6 +37,9 @@ export interface AjoTier {
 
 const STARTER_FEATURES = ['ajo.rotating_pot', 'ajo.guarantors'];
 const GROWTH_FEATURES = [...STARTER_FEATURES, 'ajo.collector_thrift', 'ajo.reminders', 'ajo.advanced_reports'];
+const AUDIT_FEATURE = 'ajo.audit_reports';
+/** Business and above add the audit report (spec §9). Which tier carries it can be changed in the Plan Builder. */
+const BUSINESS_FEATURES = [...GROWTH_FEATURES, AUDIT_FEATURE];
 
 /** The trial a standalone thrift group starts on. Not for sale: it never appears on a price list and cannot be bought. */
 export const AJO_TRIAL_TIER: AjoTier = {
@@ -87,7 +90,7 @@ export const AJO_TIERS: AjoTier[] = [
     annualNaira: 200_000,
     contributors: 500,
     isPublic: true,
-    features: GROWTH_FEATURES,
+    features: BUSINESS_FEATURES,
   },
   {
     code: 'ajo-enterprise',
@@ -99,7 +102,7 @@ export const AJO_TIERS: AjoTier[] = [
     annualNaira: 400_000,
     contributors: null,
     isPublic: false,
-    features: GROWTH_FEATURES,
+    features: BUSINESS_FEATURES,
   },
 ];
 
@@ -148,6 +151,25 @@ export async function seedAjoAddons(prisma: PrismaClient): Promise<{ created: st
   return { created, kept };
 }
 
+/**
+ * Give the audit-reports feature to the Business and Enterprise add-ons that already exist. The seed above never touches an add-on that
+ * is already there, so without this a database seeded before T10 would sell Business without the audit report it promises. Only
+ * PUBLISHED versions are changed (drafts are the Plan Builder's); running it again changes nothing.
+ */
+export async function ensureAjoAuditFeature(prisma: PrismaClient): Promise<number> {
+  const feature = await prisma.platformFeature.findUnique({ where: { code: AUDIT_FEATURE } });
+  if (!feature) throw new Error('Cannot grant audit reports: the feature does not exist yet. Run platform-modules.seed.ts first.');
+  const versions = await prisma.addonVersion.findMany({ where: { status: 'PUBLISHED', addon: { code: { in: ['ajo-business', 'ajo-enterprise'] } } }, select: { id: true } });
+  let added = 0;
+  for (const v of versions) {
+    const have = await prisma.addonVersionFeature.findUnique({ where: { addonVersionId_featureId: { addonVersionId: v.id, featureId: feature.id } } });
+    if (have) continue;
+    await prisma.addonVersionFeature.create({ data: { addonVersionId: v.id, featureId: feature.id } });
+    added += 1;
+  }
+  return added;
+}
+
 /** The base plan for standalone thrift groups. Created once, never changed afterwards (the Plan Builder owns it from then on). */
 export async function seedThriftGroupPlan(prisma: PrismaClient): Promise<'created' | 'kept'> {
   if (await prisma.plan.findUnique({ where: { code: THRIFT_GROUP_PLAN_CODE } })) return 'kept';
@@ -187,6 +209,7 @@ async function main() {
     console.log(`Thrift group base plan: ${await seedThriftGroupPlan(prisma)}`);
     const { created, kept } = await seedAjoAddons(prisma);
     console.log(`Ajo add-ons: created ${created.length ? created.join(', ') : 'none'}; left alone ${kept.length ? kept.join(', ') : 'none'}`);
+    console.log(`Audit reports given to ${await ensureAjoAuditFeature(prisma)} existing Business or Enterprise version(s)`);
   } finally {
     await prisma.$disconnect();
   }

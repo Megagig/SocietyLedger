@@ -7,7 +7,7 @@ import { ajoApi } from './api';
 import { ajoKeys } from './hooks';
 
 /** The menu entries a standalone thrift group keeps. It runs only Ajo, so everything else is left out, apart from what it needs to run and pay. */
-export const THRIFT_ONLY_ADMIN_LABELS = ['Thrift Circles', 'Collect', 'Members', 'Notifications', 'Subscription', 'Settings', 'Help & Support'];
+export const THRIFT_ONLY_ADMIN_LABELS = ['Thrift Circles', 'Collect', 'Thrift Reports', 'Members', 'Notifications', 'Subscription', 'Settings', 'Help & Support'];
 export const THRIFT_ONLY_MEMBER_LABELS = ['My Thrift', 'My Profile'];
 
 /**
@@ -21,6 +21,7 @@ export function useAjoNav() {
   const member = hasAnyPermission(permissions, [PERMISSIONS.AJO_VIEW_OWN]);
   const collect = hasAnyPermission(permissions, [PERMISSIONS.AJO_COLLECT]);
   const staff = hasAnyPermission(permissions, [PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT]);
+  const reports = hasAnyPermission(permissions, [PERMISSIONS.AJO_REPORTS]);
   // The same query the Ajo pages use, so asking costs nothing extra once they are open.
   const status = useQuery({ queryKey: ajoKeys.status(), queryFn: ajoApi.status, staleTime: 30_000, retry: false, enabled: member || collect || staff });
   const result = status.data;
@@ -28,6 +29,8 @@ export function useAjoNav() {
     member,
     collect,
     staff,
+    /** Holds the reports permission (officers and, when given it, collectors). */
+    reports,
     /** True only when the account is known not to have Ajo switched on. */
     locked: result?.kind === 'locked',
     /** An account that exists only to run Ajo (a standalone thrift group). */

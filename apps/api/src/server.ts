@@ -131,7 +131,8 @@ const corsOptions = {
   credentials: true, // CRITICAL: Enable credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id', 'X-Association-Id'],
-  exposedHeaders: ['Set-Cookie'],
+  // Content-Disposition lets the web app use the file name the API chose for a download (a report names its dates); without it a browser hides it.
+  exposedHeaders: ['Set-Cookie', 'Content-Disposition'],
   maxAge: 86400, // 24 hours
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
 };

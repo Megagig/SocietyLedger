@@ -143,7 +143,8 @@ const PLATFORM_FEATURES = [
   { moduleCode: 'ajo', code: 'ajo.rotating_pot', name: 'Rotating pots', description: 'Rotating pot groups with a recorded draw, swaps and payout order' },
   { moduleCode: 'ajo', code: 'ajo.guarantors', name: 'Guarantors', description: 'Record a guarantor\'s consent before a member joins a group' },
   { moduleCode: 'ajo', code: 'ajo.reminders', name: 'Automated reminders', description: 'Reminders before and after a contribution is due' },
-  { moduleCode: 'ajo', code: 'ajo.advanced_reports', name: 'Advanced reports', description: 'Collector performance, defaults, audit and fees reports with exports' },
+  { moduleCode: 'ajo', code: 'ajo.advanced_reports', name: 'Advanced reports', description: 'Collector performance, defaults and arrears, and fees and revenue reports with CSV and PDF exports' },
+  { moduleCode: 'ajo', code: 'ajo.audit_reports', name: 'Audit reports', description: 'The audit and activity report: approvals, reversals, waivers and changes, with who, when and why' },
 ];
 
 /**

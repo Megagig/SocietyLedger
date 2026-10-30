@@ -16,6 +16,7 @@ import { ajoGroupsController as groups } from './ajo-groups.controller';
 import { ajoPayoutsController as payouts } from './ajo-payouts.controller';
 import { ajoRiskController as risk } from './ajo-risk.controller';
 import { ajoMembersController as members } from './ajo-members.controller';
+import { ajoReportsController as reports } from './reports/report.controller';
 
 const router: Router = Router();
 
@@ -151,6 +152,13 @@ router.get('/groups/:id/accountability', accountabilityOfficers, board.accountab
 router.get('/notification-preferences', boardReaders, board.getPreferences);
 router.put('/notification-preferences', boardReaders, board.setPreferences);
 router.get('/groups/:id/accountability/export.csv', accountabilityOfficers, board.accountabilityExport);
+
+// ---- reports and exports (T10). Reading and exporting are GETs, so they still work while the add-on is expired. Which reports a person
+// may open (their role, and the Ajo tier) is decided in the service, which answers with a clear 403 for the rest.
+const reportReaders = requirePermission(PERMISSIONS.AJO_REPORTS);
+router.get('/reports', reportReaders, reports.list);
+router.get('/reports/:name', reportReaders, reports.run);
+router.get('/reports/:name/export', reportReaders, reports.export);
 const collect = requirePermission(PERMISSIONS.AJO_COLLECT);
 
 router.post('/groups/:id/contributions/cash', collect, contributions.cash);
