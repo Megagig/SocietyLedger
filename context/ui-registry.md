@@ -1867,11 +1867,13 @@ All in `apps/admin` (Mantine, `--admin-surface` cards). No new design primitives
 ### Groups and group detail
 - **Surface:** `/ajo/groups` (search, owner kind, type and status filters; "Needs a look" badges for open payouts and default cases) and `/ajo/groups/[id]`.
 - **Detail cards:** summary, **Ajo tier** (limit, in use, paid or not, a "Moves to X at renewal" badge, "Change tier…"), Payouts (with "Cancel payout…" on prepared and approved ones), Default cases, Platform levy.
-- **Change tier dialog:** a Select showing price and size, then a live preview in an `Alert`: blocked (red, says how many to remove), upgrade starts now, downgrade at the period end with the date, or "cancels the waiting downgrade". Confirm needs a reason of at least 10 characters.
+- **Change tier dialog:** a Select showing price and size, then a live preview in an `Alert`: blocked (red, says how many to remove), upgrade starts now, downgrade at the period end with the date, a never-paid downgrade that applies at once, or "cancels the waiting downgrade". Confirm needs a reason of at least 10 characters.
+- **Over the limit:** an "Over tier limit" red badge in the list and an orange "Over the tier limit" alert in the tier card (nobody in loses anything, nobody new can join).
+- **Suspend / Reactivate owner:** a light red "Suspend X…" button (light blue "Reactivate X…" when suspended) under the summary, with the line "Suspension applies to the whole owner, not only this circle", super admins only; opens `ConfirmDestructive`.
 
 ### Settings: Ajo platform levy
 - **Surface:** a card on `/settings` between Onboarding and AI. Percent inputs with a % suffix, money inputs with ₦ and two decimals, a MultiSelect of the Ajo tiers that pay no levy. Saved with the page's existing Save changes bar.
 
 ### Ajo pricing and analytics
 - **Pricing:** `/ajo/pricing` is a table of tiers with no editor; "Edit price" opens the Plan Builder add-on page.
-- **Analytics:** four `StatCard`s, an adoption table by tier, and the 6-month levy as labelled progress bars (the amount is written beside each bar, so colour carries nothing).
+- **Analytics:** four `StatCard`s, an adoption table by tier, then two 6-month series (paid for tiers, and platform levy) as labelled progress bars (the amount is written beside each bar, so colour carries nothing). Roles that cannot see revenue get the `Forbidden` state, not a request that fails.

@@ -9,7 +9,8 @@ import { ErrorState } from '@/components/ErrorState';
 import { StatCard } from '@/components/StatCard';
 import { formatDate } from '@/lib/format';
 import { formatKobo } from '@/lib/billing';
-import { MODEL_LABEL, ajoKeys, type AjoAnalytics } from '@/lib/ajo-admin';
+import { Forbidden } from '@/components/Forbidden';
+import { MODEL_LABEL, REVENUE_ROLES, ajoKeys, hasRole, useAdminRole, type AjoAnalytics } from '@/lib/ajo-admin';
 
 const card = { backgroundColor: 'var(--admin-surface)', border: '1px solid var(--admin-border)' } as const;
 
@@ -19,13 +20,19 @@ function monthLabel(key: string): string {
 }
 
 export default function AjoAnalyticsPage() {
-  const q = useQuery({ queryKey: ajoKeys.analytics, queryFn: () => bff<AjoAnalytics>('admin/ajo-oversight/analytics') });
+  const { role, isLoading: roleLoading } = useAdminRole();
+  const allowed = hasRole(role, REVENUE_ROLES);
+  // Revenue is for super and finance admins. Everyone else is told so, instead of a raw error from a request that was always going to be refused.
+  const q = useQuery({ queryKey: ajoKeys.analytics, queryFn: () => bff<AjoAnalytics>('admin/ajo-oversight/analytics'), enabled: allowed });
 
+  if (roleLoading) return <Skeleton h={420} radius="lg" />;
+  if (!allowed) return <Forbidden message="Ajo analytics show revenue, so they are for super admins and finance admins." />;
   if (q.isLoading) return <Skeleton h={420} radius="lg" />;
   if (q.isError || !q.data) return <ErrorState message={q.error instanceof Error ? q.error.message : 'Failed to load the analytics'} onRetry={() => q.refetch()} />;
   const a = q.data;
   const change = a.contributors.active - a.contributors.previousWindow;
   const maxLevy = Math.max(1, ...a.revenue.levySeries.map((m) => m.kobo));
+  const maxPaid = Math.max(1, ...a.revenue.tierPaymentsSeries.map((m) => m.kobo));
   const levyEarned = a.revenue.levy.accruedKobo + a.revenue.levy.billedKobo + a.revenue.levy.paidKobo;
   const statusEntries = Object.entries(a.adoption.groups.byStatus);
 
@@ -42,7 +49,7 @@ export default function AjoAnalyticsPage() {
           trend={`${change >= 0 ? '+' : ''}${change} against the 30 days before`}
           trendPositive={change >= 0}
         />
-        <StatCard label="Tier subscriptions each month" value={formatKobo(a.revenue.subscriptionMonthlyKobo)} icon={<IconCoin size={16} />} trend="Paying groups only" />
+        <StatCard label="Tier subscriptions each month" value={formatKobo(a.revenue.subscriptionMonthlyKobo)} icon={<IconCoin size={16} />} trend={`${formatKobo(a.revenue.averagePerPayingGroupKobo)} for the average paying group`} />
         <StatCard label="Platform levy earned" value={formatKobo(levyEarned)} icon={<IconCoin size={16} />} trend={`${formatKobo(a.revenue.levy.paidKobo)} paid`} />
       </SimpleGrid>
 
@@ -67,6 +74,19 @@ export default function AjoAnalyticsPage() {
           {statusEntries.length > 0 && ` Circles: ${statusEntries.map(([s, n]) => `${n} ${s.toLowerCase()}`).join(', ')}.`}
           {Object.keys(a.adoption.groups.byModel).length > 0 && ` ${Object.entries(a.adoption.groups.byModel).map(([m, n]) => `${n} ${MODEL_LABEL[m as keyof typeof MODEL_LABEL] ?? m}`.toLowerCase()).join(', ')}.`}
         </Text>
+      </Card>
+
+      <Card style={card} p="lg" radius="lg">
+        <Text fw={600} mb={4}>Paid for Ajo tiers, last 6 months</Text>
+        <Text size="xs" c="dimmed" mb="md">What groups actually paid in each month, taken from the verified payments (net of the credit for a tier they replaced).</Text>
+        <Stack gap="sm">
+          {a.revenue.tierPaymentsSeries.map((m) => (
+            <div key={m.month}>
+              <Text size="sm" fw={500}>{monthLabel(m.month)}: {formatKobo(m.kobo)}</Text>
+              <Progress value={(m.kobo / maxPaid) * 100} size="sm" radius="xl" mt={4} aria-label={`${monthLabel(m.month)} paid for tiers`} />
+            </div>
+          ))}
+        </Stack>
       </Card>
 
       <Card style={card} p="lg" radius="lg">

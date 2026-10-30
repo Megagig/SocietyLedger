@@ -10,6 +10,7 @@ import prisma from '../../lib/prisma';
 import { changeTier, getHeldTier, listTierOptions, previewTierChange } from '../../services/billing/tier-change.service';
 import type { Actor } from '../../services/billing/lifecycle.service';
 import { countActiveContributors } from './ajo-capacity';
+import { TenantManagementService } from '../../services/tenant-management.service';
 import { levyReport } from './ajo-levy.service';
 import { voidPayout } from './ajo-payout.service';
 import { RuleError } from '../finance/rule-error';
@@ -29,6 +30,11 @@ export interface GroupFilters {
 }
 
 const num = (v: bigint | number | null | undefined) => Number(v ?? 0);
+
+/** More active contributors than the tier allows (null = unlimited). New people cannot join until the count is back under the limit; nobody already in loses anything. */
+export function isOverLimit(limit: number | null | undefined, count: number): boolean {
+  return limit !== null && limit !== undefined && count > limit;
+}
 
 export async function listGroups(filters: GroupFilters) {
   const where: Prisma.AjoGroupWhereInput = {
@@ -52,17 +58,19 @@ export async function listGroups(filters: GroupFilters) {
   ]);
   const ids = rows.map((r) => r.id);
   const assocIds = [...new Set(rows.map((r) => r.associationId))];
-  const [members, payouts, cases, tiers] = await Promise.all([
+  const [members, payouts, cases, tiers, counts] = await Promise.all([
     prisma.ajoMembership.groupBy({ by: ['groupId'], where: { groupId: { in: ids }, status: 'ACTIVE' }, _count: { _all: true } }),
     prisma.ajoPayout.groupBy({ by: ['groupId'], where: { groupId: { in: ids }, status: { in: ['PREPARED', 'APPROVED'] } }, _count: { _all: true } }),
     prisma.ajoDefaultCase.groupBy({ by: ['groupId'], where: { groupId: { in: ids }, status: { in: ['OPEN', 'PLAN_AGREED'] } }, _count: { _all: true } }),
     Promise.all(assocIds.map(async (id) => [id, await getHeldTier(id, AJO_FAMILY)] as const)),
+    Promise.all(assocIds.map(async (id) => [id, await countActiveContributors(id)] as const)),
   ]);
   const count = (list: { groupId: number; _count: { _all: number } }[]) => new Map(list.map((x) => [x.groupId, x._count._all]));
   const m = count(members);
   const p = count(payouts);
   const c = count(cases);
   const tierOf = new Map(tiers);
+  const countOf = new Map(counts);
   return {
     total,
     items: rows.map((g) => ({
@@ -78,6 +86,7 @@ export async function listGroups(filters: GroupFilters) {
       openPayouts: p.get(g.id) ?? 0,
       openCases: c.get(g.id) ?? 0,
       tier: tierOf.get(g.associationId) ? { code: tierOf.get(g.associationId)!.code, name: tierOf.get(g.associationId)!.name } : null,
+      overLimit: isOverLimit(tierOf.get(g.associationId)?.contributorLimit, countOf.get(g.associationId) ?? 0),
       createdAt: g.createdAt,
     })),
   };
@@ -139,6 +148,7 @@ export async function getGroup(groupId: number) {
         ? { addonId: held.addonId, code: held.code, name: held.name, endsAt: held.endsAt, paid: held.amountPaidKobo > 0, pendingAddonId: held.pendingAddonId, contributorLimit: held.contributorLimit }
         : null,
       activeContributors,
+      overLimit: isOverLimit(held?.contributorLimit, activeContributors),
       options: options
         .filter((o) => !NOT_A_TARGET.has(o.code))
         .map((o) => ({ addonId: o.addonId, code: o.code, name: o.name, priceMonthlyKobo: o.priceMonthlyKobo, priceAnnualKobo: o.priceAnnualKobo, contributorLimit: o.contributorLimit })),
@@ -158,8 +168,7 @@ export async function previewGroupTier(input: { groupId: number; targetAddonId: 
   if ((await listTierOptions(AJO_FAMILY)).some((o) => o.addonId === input.targetAddonId && NOT_A_TARGET.has(o.code))) {
     throw new RuleError('Groups are not moved to the trial tier.', 400, 'TIER_NOT_ALLOWED');
   }
-  const activeContributors = await countActiveContributors(associationId);
-  const r = await previewTierChange({ associationId, family: AJO_FAMILY, targetAddonId: input.targetAddonId, activeContributors });
+  const r = await previewTierChange({ associationId, family: AJO_FAMILY, targetAddonId: input.targetAddonId, activeContributors: (db) => countActiveContributors(associationId, db) });
   return { direction: r.decision.direction, timing: r.decision.timing, blockers: r.decision.blockers, effectiveAt: r.effectiveAt, from: r.current?.name ?? null, to: r.target.name };
 }
 
@@ -171,8 +180,7 @@ export async function changeGroupTier(input: { groupId: number; targetAddonId: n
   if (options.some((o) => o.addonId === input.targetAddonId && NOT_A_TARGET.has(o.code))) {
     throw new RuleError('Groups are not moved to the trial tier.', 400, 'TIER_NOT_ALLOWED');
   }
-  const activeContributors = await countActiveContributors(associationId);
-  return changeTier({ associationId, family: AJO_FAMILY, targetAddonId: input.targetAddonId, activeContributors, reason, actor: input.actor });
+  return changeTier({ associationId, family: AJO_FAMILY, targetAddonId: input.targetAddonId, activeContributors: (db) => countActiveContributors(associationId, db), reason, actor: input.actor });
 }
 
 /**
@@ -203,4 +211,22 @@ export async function voidPayoutAsStaff(input: { payoutId: number; reason: strin
     });
   }
   return { replayed: result.replayed };
+}
+
+/**
+ * Suspend or reactivate the owner of a group (an association or a standalone thrift group). Suspension belongs to the owner, so this
+ * applies to all of its circles; it uses the platform's one suspend path, which blocks access, keeps the data and writes the Action log.
+ */
+export async function setOwnerSuspended(input: { groupId: number; suspend: boolean; reason: string; actor: Actor }) {
+  const reason = (input.reason ?? '').trim();
+  if (reason.length < MIN_OVERRIDE_REASON) throw new RuleError(`Give a reason of at least ${MIN_OVERRIDE_REASON} characters.`, 400, 'REASON_REQUIRED');
+  const associationId = await associationOfGroup(input.groupId);
+  try {
+    if (input.suspend) await TenantManagementService.suspend(associationId, input.actor.id, { reason, notifyUsers: false });
+    else await TenantManagementService.reactivate(associationId, input.actor.id, reason);
+  } catch (error) {
+    // The service speaks in plain sentences ("Association is already suspended"); pass them on as a refusal, not a server error.
+    throw new RuleError(error instanceof Error ? error.message : 'Could not change the status.', 409, 'OWNER_STATUS_UNCHANGED');
+  }
+  return { suspended: input.suspend };
 }

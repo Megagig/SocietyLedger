@@ -122,6 +122,10 @@ suite('tier change (database)', () => {
     const log = await prisma.platformActionLog.findFirst({ where: { associationId: id, actionType: 'AJO_TIER_CHANGED' } });
     expect(log).toMatchObject({ reason: 'Customer asked to move to a different tier', actorId: actor.id });
     expect(log?.afterState).toMatchObject({ tier: code('big') });
+    expect(log?.beforeState).toMatchObject({ tier: code('small'), activeContributors: 12 });
+    // One row for the move, not two: the set-up grant is the only ADDON_GRANTED row.
+    expect(await prisma.platformActionLog.count({ where: { associationId: id, actionType: 'AJO_TIER_CHANGED' } })).toBe(1);
+    expect(await prisma.platformActionLog.count({ where: { associationId: id, actionType: 'ADDON_GRANTED' } })).toBe(1);
   });
 
   it('holds a paid downgrade until renewal, keeps the tier meanwhile, and the renewal quote charges the lower tier in full', async () => {
@@ -175,5 +179,51 @@ suite('tier change (database)', () => {
     await prisma.subscription.updateMany({ where: { associationId: id }, data: { currentPeriodEnd: new Date(Date.now() - DAY) } });
     await prisma.tenantAddon.updateMany({ where: { associationId: id }, data: { endsAt: new Date(Date.now() - DAY) } });
     await expect(tiers.changeTier(input(id, big, 5))).rejects.toMatchObject({ code: 'NO_ACTIVE_SUBSCRIPTION' });
+    expect(await prisma.platformActionLog.count({ where: { associationId: id, actionType: { startsWith: 'AJO_TIER' } } })).toBe(0);
+  });
+
+  it('takes turns when two staff act at once: one change lands, the other sees it and is told the group is already there, one audit row', async () => {
+    const id = await groupOn('race', small, true);
+    const results = await Promise.allSettled([tiers.changeTier(input(id, big, 5)), tiers.changeTier(input(id, big, 5))]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const lost = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+    expect(lost.reason).toMatchObject({ code: 'TIER_UNCHANGED' });
+    expect(await prisma.platformActionLog.count({ where: { associationId: id, actionType: 'AJO_TIER_CHANGED' } })).toBe(1);
+    expect((await tiers.getHeldTier(id, family))!.code).toBe(code('big'));
+  });
+
+  it('reads the head count inside the change when given a function, so a downgrade is judged on the count at that moment', async () => {
+    const id = await groupOn('count', big, true);
+    let asked = 0;
+    await expect(tiers.changeTier({ ...input(id, small, 0), activeContributors: async () => { asked += 1; return 31; } })).rejects.toMatchObject({ code: 'TIER_BLOCKED' });
+    expect(asked).toBe(1);
+    await expect(tiers.changeTier({ ...input(id, small, 0), activeContributors: async () => 30 })).resolves.toMatchObject({ applied: 'PERIOD_END' });
+  });
+
+  it('answers a waiting downgrade with an upgrade: the pending change goes away with the old tier', async () => {
+    const id = await groupOn('flip', big, true);
+    await tiers.changeTier(input(id, small, 5));
+    expect((await tiers.getHeldTier(id, family))!.pendingAddonId).toBe(small);
+    // Moving to the other tier now (granted), not waiting: the held row is replaced, so nothing is left pending.
+    await prisma.tenantAddon.updateMany({ where: { associationId: id }, data: { amountPaidKobo: 0 } });
+    await tiers.changeTier(input(id, small, 5));
+    const held = await tiers.getHeldTier(id, family);
+    expect(held).toMatchObject({ code: code('small'), pendingAddonId: null });
+  });
+
+  it('reports what groups paid for the family each month, net of the credit for a replaced tier, from the stored quotes', async () => {
+    const id = await groupOn('money', small, true);
+    const sub = await prisma.subscription.findFirstOrThrow({ where: { associationId: id } });
+    const paidAt = new Date();
+    const key = `${paidAt.getUTCFullYear()}-${String(paidAt.getUTCMonth() + 1).padStart(2, '0')}`;
+    const before = (await tiers.tierRevenueByMonth(family, new Date(paidAt.getTime() - 40 * DAY))).get(key) ?? 0;
+    await prisma.paymentHistory.create({
+      data: {
+        subscriptionId: sub.id, amount: 6000, status: 'SUCCESS', provider: 'paystack', reference: `TIER-REV-${run}`, purpose: 'ADDON', paidAt, expectedAmountKobo: 600_000,
+        quote: { lines: [{ type: 'ADDON', amountKobo: 800_000, addonId: big }, { type: 'CREDIT', amountKobo: -200_000, addonId: small }, { type: 'PLAN', amountKobo: 999_999 }] } as never,
+      },
+    });
+    const after = (await tiers.tierRevenueByMonth(family, new Date(paidAt.getTime() - 40 * DAY))).get(key) ?? 0;
+    expect(after - before).toBe(600_000);
   });
 });

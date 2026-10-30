@@ -90,6 +90,7 @@ export default function AjoGroupsPage() {
                   <Table.Td>
                     <Group gap={6}>
                       {g.openPayouts > 0 && <Badge size="sm" variant="light" color="blue">{g.openPayouts} open payout{g.openPayouts === 1 ? '' : 's'}</Badge>}
+                      {g.overLimit && <Badge size="sm" variant="light" color="red">Over tier limit</Badge>}
                       {g.openCases > 0 && <Badge size="sm" variant="light" color="orange">{g.openCases} default case{g.openCases === 1 ? '' : 's'}</Badge>}
                     </Group>
                   </Table.Td>

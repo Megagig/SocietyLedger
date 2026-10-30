@@ -14,7 +14,7 @@ import { ConfirmDestructive } from '@/components/ConfirmDestructive';
 import { ReasonField } from '@/components/ReasonField';
 import { formatDate, formatShortDate } from '@/lib/format';
 import { formatKobo } from '@/lib/billing';
-import { KIND_LABEL, MODEL_LABEL, OVERRIDE_ROLES, ajoKeys, errMessage, jsonPost, useAdminRole, type GroupDetail, type TierPreview } from '@/lib/ajo-admin';
+import { KIND_LABEL, MODEL_LABEL, OVERRIDE_ROLES, SUSPEND_ROLES, ajoKeys, errMessage, hasRole, jsonPost, useAdminRole, type GroupDetail, type TierPreview } from '@/lib/ajo-admin';
 
 const card = { backgroundColor: 'var(--admin-surface)', border: '1px solid var(--admin-border)' } as const;
 const MIN_REASON = 10;
@@ -89,7 +89,7 @@ function ChangeTierModal({ group, opened, onClose }: { group: GroupDetail; opene
           <Alert color="blue">
             {p.timing === 'PERIOD_END' && p.effectiveAt
               ? `The group keeps ${p.from} until ${formatShortDate(p.effectiveAt)}, then renews as ${p.to}.`
-              : `This tier was not paid for, so the group moves to ${p.to} now.`}
+              : `This tier was not paid for, so the group moves to ${p.to} now. There is no paid period to keep, so it takes effect at once and cannot be scheduled for later. To go back, change the tier again.`}
           </Alert>
         )}
         <ReasonField value={reason} onChange={setReason} label={`Reason (at least ${MIN_REASON} characters)`} />
@@ -107,8 +107,10 @@ export default function AjoGroupDetailPage() {
   const id = Number(params.id);
   const qc = useQueryClient();
   const { role } = useAdminRole();
-  const canOverride = role !== null && (OVERRIDE_ROLES as readonly string[]).includes(role);
+  const canOverride = hasRole(role, OVERRIDE_ROLES);
+  const canSuspend = hasRole(role, SUSPEND_ROLES);
   const [tierOpen, setTierOpen] = useState(false);
+  const [ownerAction, setOwnerAction] = useState<'suspend' | 'reactivate' | null>(null);
   const [voiding, setVoiding] = useState<number | null>(null);
 
   const q = useQuery({ queryKey: ajoKeys.group(id), queryFn: () => bff<GroupDetail>(`admin/ajo-oversight/groups/${id}`), enabled: Number.isFinite(id) });
@@ -119,6 +121,17 @@ export default function AjoGroupDetailPage() {
       notifications.show({ color: 'green', message: 'The payout has been cancelled.' });
       setVoiding(null);
       void qc.invalidateQueries({ queryKey: ajoKeys.group(id) });
+    },
+    onError: (e) => notifications.show({ color: 'red', message: errMessage(e) }),
+  });
+
+  const ownerStatus = useMutation({
+    mutationFn: (v: { action: 'suspend' | 'reactivate'; reason: string }) => bff(`admin/ajo-oversight/groups/${id}/owner/${v.action}`, jsonPost({ reason: v.reason })),
+    onSuccess: (_r, v) => {
+      notifications.show({ color: 'green', message: v.action === 'suspend' ? 'Suspended.' : 'Reactivated.' });
+      setOwnerAction(null);
+      void qc.invalidateQueries({ queryKey: ajoKeys.group(id) });
+      void qc.invalidateQueries({ queryKey: ['ajo', 'groups'] });
     },
     onError: (e) => notifications.show({ color: 'red', message: errMessage(e) }),
   });
@@ -147,6 +160,16 @@ export default function AjoGroupDetailPage() {
           <Stat label="Owner status" value={<StatusBadge status={g.association.status} />} />
         </SimpleGrid>
         {g.cancelReason && <Alert color="orange" mt="md" title="Cancelled">{g.cancelReason}</Alert>}
+        {canSuspend && (
+          <Group mt="md" gap="xs">
+            {g.association.status === 'SUSPENDED' ? (
+              <Button size="xs" variant="light" onClick={() => setOwnerAction('reactivate')}>Reactivate {g.association.name}…</Button>
+            ) : (
+              <Button size="xs" variant="light" color="red" onClick={() => setOwnerAction('suspend')}>Suspend {g.association.name}…</Button>
+            )}
+            <Text size="xs" c="dimmed">Suspension applies to the whole owner, not only this circle.</Text>
+          </Group>
+        )}
       </Card>
 
       <Card style={card} p="lg" radius="lg">
@@ -165,10 +188,15 @@ export default function AjoGroupDetailPage() {
               <Text size="sm" c="dimmed">This owner holds no Ajo tier right now.</Text>
             )}
             {pending && <Badge variant="light" color="orange">Moves to {pending.name} at renewal</Badge>}
+            {g.tier.overLimit && (
+              <Alert color="orange" mt="xs" title="Over the tier limit">
+                This owner has more active contributors than its tier allows. Nobody already in loses anything, but nobody new can join until the count is back under the limit or the tier is raised.
+              </Alert>
+            )}
           </Stack>
           {canOverride && <Button variant="light" onClick={() => setTierOpen(true)}>Change tier…</Button>}
         </Group>
-        <Text size="xs" c="dimmed" mt="sm">The tier belongs to the whole owner ({g.association.name}), so this applies to all of its groups. To suspend the owner, use <Link href={`/associations/${g.association.id}`}>its page</Link>.</Text>
+        <Text size="xs" c="dimmed" mt="sm">The tier belongs to the whole owner ({g.association.name}), so this applies to all of its groups.</Text>
       </Card>
 
       <Card style={card} p="lg" radius="lg">
@@ -223,13 +251,23 @@ export default function AjoGroupDetailPage() {
 
       <ChangeTierModal group={g} opened={tierOpen} onClose={() => setTierOpen(false)} />
       <ConfirmDestructive
+        opened={ownerAction !== null}
+        onClose={() => setOwnerAction(null)}
+        title={ownerAction === 'reactivate' ? `Reactivate ${g.association.name}` : `Suspend ${g.association.name}`}
+        description={ownerAction === 'reactivate' ? 'Access comes back for everyone in this owner. Write at least 10 characters.' : 'This blocks access for everyone in this owner and all of its circles, but keeps all data. Write at least 10 characters.'}
+        loading={ownerStatus.isPending}
+        onConfirm={async (reason) => {
+          if (ownerAction !== null) await ownerStatus.mutateAsync({ action: ownerAction, reason });
+        }}
+      />
+      <ConfirmDestructive
         opened={voiding !== null}
         onClose={() => setVoiding(null)}
         title="Cancel this payout"
         description="The round goes back to pending and the group's admins are told. A payout already recorded as paid cannot be cancelled here. Write at least 10 characters."
         loading={voidPayout.isPending}
         onConfirm={async (reason) => {
-          if (voiding !== null) await voidPayout.mutateAsync({ payoutId: voiding, reason }).catch(() => undefined);
+          if (voiding !== null) await voidPayout.mutateAsync({ payoutId: voiding, reason });
         }}
       />
     </Stack>

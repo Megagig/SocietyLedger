@@ -146,7 +146,7 @@ export default function VerificationDetailPage() {
         confirmLabel="Reject"
         loading={decide.isPending}
         onConfirm={async (reason) => {
-          await decide.mutateAsync({ decision: 'REJECTED', reason }).catch(() => undefined);
+          await decide.mutateAsync({ decision: 'REJECTED', reason });
         }}
       />
     </Stack>

@@ -14,6 +14,8 @@ const mockVoidPayout = jest.fn();
 const mockChangeTier = jest.fn();
 const mockPreviewTier = jest.fn();
 const mockListTiers = jest.fn();
+const mockSuspend = jest.fn();
+const mockReactivate = jest.fn();
 
 jest.mock('../../src/lib/prisma', () => ({ __esModule: true, default: mockDb, prisma: mockDb }));
 jest.mock('../../src/middleware/auth.middleware', () => ({
@@ -37,6 +39,9 @@ jest.mock('../../src/services/billing/tier-change.service', () => ({
   listTierOptions: (...a: unknown[]) => mockListTiers(...a),
   getHeldTier: jest.fn(async () => null),
   tierAdoption: jest.fn(async () => []),
+}));
+jest.mock('../../src/services/tenant-management.service', () => ({
+  TenantManagementService: { suspend: (...a: unknown[]) => mockSuspend(...a), reactivate: (...a: unknown[]) => mockReactivate(...a) },
 }));
 jest.mock('../../src/modules/ajo/ajo-analytics.service', () => ({ ajoAnalytics: jest.fn(async () => ({ contributors: { active: 3 } })) }));
 
@@ -83,6 +88,45 @@ describe('who can reach the oversight routes', () => {
     for (const role of ['FINANCE_ADMIN', 'SUPER_ADMIN']) {
       expect((await request(app).get('/api/admin/ajo-oversight/analytics').set('x-test-user', STAFF(role))).status).toBe(200);
     }
+  });
+});
+
+describe('knowing your own role', () => {
+  it('answers every staff role the Ajo screens serve, so compliance and finance staff see their buttons (the general admin/me is super-admin-only)', async () => {
+    for (const role of ['SUPER_ADMIN', 'FINANCE_ADMIN', 'COMPLIANCE_ADMIN', 'SUPPORT_AGENT']) {
+      const res = await request(app).get('/api/admin/ajo-oversight/whoami').set('x-test-user', STAFF(role));
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual({ platformRole: role });
+    }
+    expect((await request(app).get('/api/admin/ajo-oversight/whoami')).status).toBe(401);
+  });
+});
+
+describe('suspending the owner of a group', () => {
+  it('is for super admins only', async () => {
+    for (const role of ['FINANCE_ADMIN', 'COMPLIANCE_ADMIN', 'SUPPORT_AGENT']) {
+      const res = await request(app).post('/api/admin/ajo-oversight/groups/3/owner/suspend').set('x-test-user', STAFF(role)).send({ reason: GOOD_REASON });
+      expect(res.status).toBe(403);
+    }
+    expect(mockSuspend).not.toHaveBeenCalled();
+  });
+
+  it('needs a written reason, then suspends and reactivates through the platform path with that reason', async () => {
+    const short = await request(app).post('/api/admin/ajo-oversight/groups/3/owner/suspend').set('x-test-user', STAFF('SUPER_ADMIN')).send({ reason: 'no' });
+    expect(short.status).toBe(400);
+    expect(mockSuspend).not.toHaveBeenCalled();
+
+    expect((await request(app).post('/api/admin/ajo-oversight/groups/3/owner/suspend').set('x-test-user', STAFF('SUPER_ADMIN')).send({ reason: GOOD_REASON })).status).toBe(200);
+    expect(mockSuspend).toHaveBeenCalledWith(7, 900, { reason: GOOD_REASON, notifyUsers: false });
+    expect((await request(app).post('/api/admin/ajo-oversight/groups/3/owner/reactivate').set('x-test-user', STAFF('SUPER_ADMIN')).send({ reason: GOOD_REASON })).status).toBe(200);
+    expect(mockReactivate).toHaveBeenCalledWith(7, 900, GOOD_REASON);
+  });
+
+  it('turns a plain refusal (already suspended) into a clear 409, not a server error', async () => {
+    mockSuspend.mockRejectedValue(new Error('Association is already suspended'));
+    const res = await request(app).post('/api/admin/ajo-oversight/groups/3/owner/suspend').set('x-test-user', STAFF('SUPER_ADMIN')).send({ reason: GOOD_REASON });
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/already suspended/);
   });
 });
 
@@ -136,7 +180,10 @@ describe('changing a group tier as staff', () => {
     const res = await request(app).post('/api/admin/ajo-oversight/groups/3/tier').set('x-test-user', STAFF('FINANCE_ADMIN')).send({ targetAddonId: 2, reason: GOOD_REASON });
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/end of the paid period/);
-    expect(mockChangeTier).toHaveBeenCalledWith(expect.objectContaining({ associationId: 7, family: 'ajo', targetAddonId: 2, activeContributors: 12, reason: GOOD_REASON, actor: expect.objectContaining({ id: 900, role: 'FINANCE_ADMIN' }) }));
+    expect(mockChangeTier).toHaveBeenCalledWith(expect.objectContaining({ associationId: 7, family: 'ajo', targetAddonId: 2, activeContributors: expect.any(Function), reason: GOOD_REASON, actor: expect.objectContaining({ id: 900, role: 'FINANCE_ADMIN' }) }));
+    // The head count is read by billing inside its own transaction, from the real counter.
+    const asked = mockChangeTier.mock.calls[0][0].activeContributors as (db: unknown) => Promise<number>;
+    expect(await asked({})).toBe(12);
   });
 
   it('shows a blocked downgrade as a clear 409 with its code, not a server error', async () => {

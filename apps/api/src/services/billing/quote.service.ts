@@ -187,8 +187,11 @@ export function buildPlanQuote(
   // ---- add-ons that come along with this checkout
   const held = new Map(ctx.heldAddons.map((a) => [a.addonId, a]));
   // A tier with a scheduled downgrade renews as the lower tier. It is charged in full (it is not a late add-on) and it replaces the tier it was.
-  const pendingTargets = new Set(input.addonIds ? [] : ctx.heldAddons.flatMap((a) => (a.pendingAddonId && !a.cancelAtPeriodEnd ? [a.pendingAddonId] : [])));
-  const wanted = input.addonIds ?? ctx.heldAddons.filter((a) => !a.cancelAtPeriodEnd).map((a) => a.pendingAddonId ?? a.addonId);
+  // If that lower tier can no longer be sold (archived, unpublished), the group keeps the tier it has: renewing must never drop a tier silently.
+  const sellable = (addonId: number | null | undefined): addonId is number => !!addonId && ctx.purchasableAddons.some((p) => p.id === addonId);
+  const nextTier = (h: HeldAddon) => (sellable(h.pendingAddonId) ? h.pendingAddonId : h.addonId);
+  const pendingTargets = new Set(input.addonIds ? [] : ctx.heldAddons.filter((h) => !h.cancelAtPeriodEnd && sellable(h.pendingAddonId)).map((h) => h.pendingAddonId as number));
+  const wanted = input.addonIds ?? ctx.heldAddons.filter((h) => !h.cancelAtPeriodEnd).map(nextTier);
   assertOnePerFamily(wanted, ctx);
   const addons: QuoteAddon[] = [];
   const lines: QuoteLine[] = [line('PLAN', `${priced.name} (${cycleLabel(cycle)})`, planPrice)];

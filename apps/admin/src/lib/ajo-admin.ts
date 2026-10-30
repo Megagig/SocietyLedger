@@ -15,9 +15,12 @@ export const ajoKeys = {
 
 export const REVIEW_ROLES = ['SUPER_ADMIN', 'COMPLIANCE_ADMIN'] as const;
 
-/** The signed-in staff member's platform role. The API enforces permissions; this only decides which buttons to show. */
+/**
+ * The signed-in staff member's platform role. The API enforces permissions; this only decides which buttons to show. It asks the Ajo
+ * oversight route, not admin/me, because admin/me is super-admin-only and compliance and finance staff would read as having no role.
+ */
 export function useAdminRole() {
-  const q = useQuery({ queryKey: ajoKeys.me, queryFn: () => bff<{ platformRole: string }>('admin/me'), staleTime: 5 * 60_000 });
+  const q = useQuery({ queryKey: ajoKeys.me, queryFn: () => bff<{ platformRole: string }>('admin/ajo-oversight/whoami'), staleTime: 5 * 60_000 });
   return { role: q.data?.platformRole ?? null, isLoading: q.isLoading };
 }
 
@@ -63,6 +66,10 @@ export interface VerificationDetail {
 }
 
 export const OVERRIDE_ROLES = ['SUPER_ADMIN', 'FINANCE_ADMIN'] as const;
+export const REVENUE_ROLES = OVERRIDE_ROLES;
+export const SUSPEND_ROLES = ['SUPER_ADMIN'] as const;
+
+export const hasRole = (role: string | null, allowed: readonly string[]) => role !== null && allowed.includes(role);
 
 export interface GroupRow {
   id: number;
@@ -77,6 +84,8 @@ export interface GroupRow {
   openPayouts: number;
   openCases: number;
   tier: { code: string; name: string } | null;
+  /** More active contributors than the tier allows: nobody new can join until it is back under. */
+  overLimit: boolean;
   createdAt: string;
 }
 
@@ -112,6 +121,7 @@ export interface GroupDetail {
   tier: {
     current: { addonId: number; code: string; name: string; endsAt: string; paid: boolean; pendingAddonId: number | null; contributorLimit: number | null } | null;
     activeContributors: number;
+    overLimit: boolean;
     options: TierOption[];
   };
   levy: { associations: { totals: Record<string, { count: number; kobo: string }> }[]; totals: Record<string, { kobo: string; amount: string }> };
@@ -143,5 +153,7 @@ export interface AjoAnalytics {
     subscriptionMonthlyKobo: number;
     levy: { accruedKobo: number; billedKobo: number; paidKobo: number; waivedKobo: number };
     levySeries: { month: string; kobo: number }[];
+    tierPaymentsSeries: { month: string; kobo: number }[];
+    averagePerPayingGroupKobo: number;
   };
 }

@@ -363,4 +363,28 @@ describe('add-on tiers (one family)', () => {
     const q = buildAddonQuote(payingPro({ purchasableAddons: [SMS, PRO_ONLY], heldAddons: [] }), { addonIds: [SMS.id] });
     expect(q.addons[0]?.replacesTenantAddonIds).toBeUndefined();
   });
+
+  describe('a downgrade staff scheduled for renewal', () => {
+    const heldGrowth = (over: Partial<HeldAddon> = {}): HeldAddon =>
+      heldStarter({ id: 41, addonId: GROWTH_TIER.id, code: GROWTH_TIER.code, name: GROWTH_TIER.name, prices: { priceMonthlyKobo: 800_000, priceAnnualKobo: 8_000_000 }, amountPaidKobo: 800_000, pendingAddonId: STARTER_TIER.id, ...over });
+
+    it('renews as the lower tier, charged in full (not prorated), replacing the higher one', () => {
+      const q = buildPlanQuote(withTiers({ heldAddons: [heldGrowth()] }), { planId: PRO.id, billingCycle: 'MONTHLY' });
+      expect(q.addons).toEqual([expect.objectContaining({ addonId: STARTER_TIER.id, amountKobo: 300_000, prorated: false, replacesTenantAddonIds: [41] })]);
+      expect(q.totalKobo).toBe(1_000_000 + 300_000);
+    });
+
+    it('keeps the tier the group has when the lower tier can no longer be sold, never dropping it silently', () => {
+      const q = buildPlanQuote(withTiers({ purchasableAddons: [SMS, GROWTH_TIER], heldAddons: [heldGrowth()] }), { planId: PRO.id, billingCycle: 'MONTHLY' });
+      expect(q.addons).toEqual([expect.objectContaining({ addonId: GROWTH_TIER.id, tenantAddonId: 41, prorated: false })]);
+      expect(q.totalKobo).toBe(1_000_000 + 800_000);
+    });
+
+    it('does nothing to a tier whose downgrade was cancelled, or one the group set to end', () => {
+      const q = buildPlanQuote(withTiers({ heldAddons: [heldGrowth({ pendingAddonId: null })] }), { planId: PRO.id, billingCycle: 'MONTHLY' });
+      expect(q.addons).toEqual([expect.objectContaining({ addonId: GROWTH_TIER.id })]);
+      const ending = buildPlanQuote(withTiers({ heldAddons: [heldGrowth({ cancelAtPeriodEnd: true })] }), { planId: PRO.id, billingCycle: 'MONTHLY' });
+      expect(ending.addons).toHaveLength(0);
+    });
+  });
 });

@@ -17,6 +17,25 @@ if (TEST_DB) {
   process.env.TOTP_ENCRYPTION_KEY = 'integration-test-encryption-key-0123456789';
 }
 
+jest.mock('../../src/modules/ajo/ajo-support', () => {
+  const actual = jest.requireActual('../../src/modules/ajo/ajo-support');
+  return { ...actual, notifyUser: jest.fn(async () => undefined), notifyPermissionHolders: jest.fn(async () => undefined) };
+});
+jest.mock('../../src/services/notification-preferences.service', () => ({
+  dispatchNotification: jest.fn(async () => ({ inAppCreated: true, emailSent: false, smsSent: false })),
+}));
+
+import { isOverLimit } from '../../src/modules/ajo/ajo-oversight.service';
+
+describe('the over-limit flag (pure)', () => {
+  it('flags only a count above a real limit; unlimited and unknown never flag, and sitting exactly at the limit is fine', () => {
+    expect(isOverLimit(30, 31)).toBe(true);
+    expect(isOverLimit(30, 30)).toBe(false);
+    expect(isOverLimit(null, 5000)).toBe(false);
+    expect(isOverLimit(undefined, 5000)).toBe(false);
+  });
+});
+
 const suite = TEST_DB ? describe : describe.skip;
 if (TEST_DB) jest.setTimeout(60000);
 const run = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
@@ -90,6 +109,48 @@ suite('Ajo oversight reads (database)', () => {
     expect(detail.tier.activeContributors).toBe(1);
     expect(detail.tier.options.map((o) => o.code)).not.toContain('ajo-trial');
     expect(detail.association.kind).toBe('THRIFT_GROUP');
+  });
+
+  it('shows no over-limit warning for a group that holds no tier', async () => {
+    expect((await oversight.getGroup(standaloneGroup)).tier.overLimit).toBe(false);
+    expect((await oversight.listGroups({ search: name, kind: 'THRIFT_GROUP' })).items[0]!.overLimit).toBe(false);
+  });
+
+  it('cancels an approved payout as staff for real: the payout is void, the group audit trail and the staff Action log both carry the reason', async () => {
+    const staff = await prisma.user.create({ data: { email: `staff-${run}@test.local`, passwordHash: 'x', isActive: true, platformRole: 'FINANCE_ADMIN' } });
+    const payout = await prisma.ajoPayout.findFirstOrThrow({ where: { groupId: standaloneGroup } });
+    const reason = 'The bank account was entered wrongly';
+
+    await oversight.voidPayoutAsStaff({ payoutId: payout.id, reason, actor: { id: staff.id, role: 'FINANCE_ADMIN' } });
+
+    const after = await prisma.ajoPayout.findUniqueOrThrow({ where: { id: payout.id } });
+    expect(after).toMatchObject({ status: 'VOID', voidedBy: staff.id });
+    expect(after.voidReason).toContain(reason);
+    expect(await prisma.auditLog.count({ where: { tableName: 'ajo_payouts', recordId: payout.id, action: 'AJO_PAYOUT_VOIDED', userId: staff.id } })).toBe(1);
+    const log = await prisma.platformActionLog.findFirstOrThrow({ where: { actionType: 'AJO_PAYOUT_VOIDED_BY_STAFF', targetId: payout.id } });
+    expect(log).toMatchObject({ reason, actorId: staff.id, actorRole: 'FINANCE_ADMIN' });
+
+    // Doing it again is a no-op with no second log row, and a payout that is paid is never touched.
+    await oversight.voidPayoutAsStaff({ payoutId: payout.id, reason, actor: { id: staff.id, role: 'FINANCE_ADMIN' } });
+    expect(await prisma.platformActionLog.count({ where: { actionType: 'AJO_PAYOUT_VOIDED_BY_STAFF', targetId: payout.id } })).toBe(1);
+    await prisma.ajoPayout.update({ where: { id: payout.id }, data: { status: 'PAID' } });
+    await expect(oversight.voidPayoutAsStaff({ payoutId: payout.id, reason, actor: { id: staff.id, role: 'FINANCE_ADMIN' } })).rejects.toMatchObject({ code: 'PAYOUT_ALREADY_PAID' });
+  });
+
+  it('suspends and reactivates the owner through the platform path, with the reason in the Action log', async () => {
+    const staff = await prisma.user.create({ data: { email: `super-${run}@test.local`, passwordHash: 'x', isActive: true, platformRole: 'SUPER_ADMIN' } });
+    const owner = (await prisma.ajoGroup.findUniqueOrThrow({ where: { id: associationGroup } })).associationId;
+    const reason = 'Chargeback dispute under review';
+
+    await oversight.setOwnerSuspended({ groupId: associationGroup, suspend: true, reason, actor: { id: staff.id, role: 'SUPER_ADMIN' } });
+    expect((await prisma.association.findUniqueOrThrow({ where: { id: owner } })).status).toBe('SUSPENDED');
+    expect((await oversight.getGroup(associationGroup)).association.status).toBe('SUSPENDED');
+    await expect(oversight.setOwnerSuspended({ groupId: associationGroup, suspend: true, reason, actor: { id: staff.id, role: 'SUPER_ADMIN' } })).rejects.toMatchObject({ status: 409, code: 'OWNER_STATUS_UNCHANGED' });
+    await expect(oversight.setOwnerSuspended({ groupId: associationGroup, suspend: false, reason: 'short', actor: { id: staff.id, role: 'SUPER_ADMIN' } })).rejects.toMatchObject({ code: 'REASON_REQUIRED' });
+
+    await oversight.setOwnerSuspended({ groupId: associationGroup, suspend: false, reason, actor: { id: staff.id, role: 'SUPER_ADMIN' } });
+    expect((await prisma.association.findUniqueOrThrow({ where: { id: owner } })).status).toBe('ACTIVE');
+    expect(await prisma.platformActionLog.count({ where: { associationId: owner, reason, actorId: staff.id } })).toBe(2);
   });
 
   it('answers a missing group with a clear 404', async () => {

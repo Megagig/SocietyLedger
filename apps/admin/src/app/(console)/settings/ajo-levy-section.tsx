@@ -46,6 +46,8 @@ const toBps = (v: string | number) => Math.round((typeof v === 'number' ? v : Nu
 export function AjoLevySection({ values, onChange }: { values: AjoLevyValues; onChange: <K extends LevyKey>(key: K, value: AjoLevyValues[K]) => void }) {
   const addons = useQuery({ queryKey: billingKeys.addons, queryFn: () => bff<BuilderAddon[]>('admin/billing/addons') });
   const tiers = (addons.data ?? []).filter((a) => a.family === 'ajo' && !a.isArchived);
+  // A saved exempt code whose tier is archived or not loaded yet must still show (and survive a save), not vanish from the list.
+  const options = [...tiers.map((a) => ({ value: a.code, label: a.name })), ...(values.ajoLevyExemptAddonCodes ?? []).filter((c) => !tiers.some((a) => a.code === c)).map((c) => ({ value: c, label: `${c} (not on sale)` }))];
 
   const money = (key: LevyKey, max: number) => (
     <NumberInput
@@ -97,7 +99,7 @@ export function AjoLevySection({ values, onChange }: { values: AjoLevyValues; on
         <Divider />
         <Row title="Tiers that pay no levy" hint="Groups on these Ajo tiers pay the subscription only. Starter is exempt by default.">
           <MultiSelect
-            data={tiers.map((a) => ({ value: a.code, label: a.name }))}
+            data={options}
             value={values.ajoLevyExemptAddonCodes ?? []}
             onChange={(v) => onChange('ajoLevyExemptAddonCodes', v)}
             placeholder={addons.isLoading ? 'Loading…' : 'No tier is exempt'}

@@ -7,7 +7,7 @@
  *  - Revenue: the recurring subscription of paying groups (annual spread over 12 months) plus the platform levy. Money is whole kobo.
  */
 import prisma from '../../lib/prisma';
-import { tierAdoption } from '../../services/billing/tier-change.service';
+import { tierAdoption, tierRevenueByMonth } from '../../services/billing/tier-change.service';
 import { levyReport } from './ajo-levy.service';
 import { AJO_FAMILY } from './ajo-oversight.service';
 
@@ -29,7 +29,7 @@ export async function ajoAnalytics(now: Date = new Date()) {
   const since = new Date(now.getTime() - ACTIVE_WINDOW_DAYS * DAY);
   const seriesFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (SERIES_MONTHS - 1), 1));
 
-  const [tiers, groupsByStatus, groupsByModel, owners, active, activeBefore, levy, levyRows] = await Promise.all([
+  const [tiers, groupsByStatus, groupsByModel, owners, active, activeBefore, levy, levyRows, paidByMonth] = await Promise.all([
     tierAdoption(AJO_FAMILY, now),
     prisma.ajoGroup.groupBy({ by: ['status'], _count: { _all: true } }),
     prisma.ajoGroup.groupBy({ by: ['model'], _count: { _all: true } }),
@@ -46,6 +46,7 @@ export async function ajoAnalytics(now: Date = new Date()) {
         AND NOT EXISTS (SELECT 1 FROM ajo_contributions r WHERE r.reversal_of_id = c.id)`,
     levyReport(),
     prisma.ajoLevyAssessment.findMany({ where: { accruedAt: { gte: seriesFrom }, status: { in: ['ACCRUED', 'BILLED', 'PAID'] } }, select: { accruedAt: true, amountKobo: true } }),
+    tierRevenueByMonth(AJO_FAMILY, seriesFrom),
   ]);
 
   const months = lastMonths(now, SERIES_MONTHS);
@@ -74,6 +75,10 @@ export async function ajoAnalytics(now: Date = new Date()) {
       subscriptionMonthlyKobo,
       levy: { accruedKobo: kobo('ACCRUED'), billedKobo: kobo('BILLED'), paidKobo: kobo('PAID'), waivedKobo: kobo('WAIVED') },
       levySeries: months.map((m) => ({ month: m, kobo: byMonth.get(m) ?? 0 })),
+      /** What groups paid for their tiers each month, from the payments themselves (net of credit for a replaced tier). */
+      tierPaymentsSeries: months.map((m) => ({ month: m, kobo: paidByMonth.get(m) ?? 0 })),
+      /** The monthly subscription of the average paying group. */
+      averagePerPayingGroupKobo: tiers.reduce((s, t) => s + t.paying, 0) > 0 ? Math.round(subscriptionMonthlyKobo / tiers.reduce((s, t) => s + t.paying, 0)) : 0,
     },
   };
 }

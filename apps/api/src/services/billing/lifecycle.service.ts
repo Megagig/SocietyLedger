@@ -635,46 +635,58 @@ export async function reactivateSubscription(input: { associationId: number; rea
   return sub;
 }
 
-/** Grant an add-on to an association without a payment (staff action). It ends with the subscription's current period. */
-export async function grantAddonManually(input: { associationId: number; addonId: number; reason: unknown; actor: Actor }) {
+/** An audit row to write instead of the default ADDON_GRANTED one, so a caller that gives the grant a purpose (a tier change) leaves one row, not two. */
+export interface GrantAudit {
+  actionType: string;
+  targetType: string;
+  targetId: number;
+  beforeState?: Prisma.InputJsonValue;
+  afterState?: Prisma.InputJsonValue;
+}
+
+/** The grant itself, inside the caller's transaction. Staff grant of one tier replaces the tier of the same product the tenant already holds. */
+export async function grantAddonInTx(tx: Tx, input: { associationId: number; addonId: number; reason: unknown; actor: Actor; audit?: GrantAudit }) {
   const reason = requireReason(input.reason);
   const now = new Date();
-  const result = await prisma.$transaction(async (tx) => {
-    const sub = await decidingSubscription(tx, input.associationId);
-    if (!sub || sub.currentPeriodEnd.getTime() <= now.getTime()) {
-      throw new BillingError('NO_ACTIVE_SUBSCRIPTION', 'The association needs a running subscription before an add-on can be granted.');
-    }
-    const version = await tx.addonVersion.findFirst({ where: { addonId: input.addonId, status: 'PUBLISHED' }, orderBy: { version: 'desc' } });
-    if (!version) throw new BillingError('ADDON_UNAVAILABLE', 'That add-on has no published version.', 404);
-    const existing = await tx.tenantAddon.findFirst({ where: { subscriptionId: sub.id, addonVersion: { addonId: input.addonId }, status: 'ACTIVE' } });
-    // A staff grant of one tier replaces the tier of the same product the tenant already holds.
-    const family = (await tx.addon.findUnique({ where: { id: input.addonId }, select: { family: true } }))?.family;
-    if (family) {
-      await tx.tenantAddon.updateMany({
-        where: { subscriptionId: sub.id, status: 'ACTIVE', addonVersion: { addon: { family, id: { not: input.addonId } } } },
-        data: { status: 'ENDED', endsAt: now },
-      });
-    }
-    const data = { addonVersionId: version.id, status: 'ACTIVE' as const, billingCycle: sub.billingCycle, endsAt: sub.currentPeriodEnd, cancelAtPeriodEnd: false, source: 'MANUAL' as const, amountPaidKobo: 0, actorId: input.actor.id, reason };
-    const row = existing
-      ? await tx.tenantAddon.update({ where: { id: existing.id }, data })
-      : await tx.tenantAddon.create({ data: { ...data, associationId: input.associationId, subscriptionId: sub.id, startsAt: now } });
-    await tx.platformActionLog.create({
-      data: {
-        actorId: input.actor.id,
-        actorRole: input.actor.role,
-        actionType: 'ADDON_GRANTED',
-        targetType: 'addon',
-        targetId: input.addonId,
-        associationId: input.associationId,
-        afterState: { tenantAddonId: row.id, addonVersionId: version.id, endsAt: sub.currentPeriodEnd.toISOString() },
-        reason,
-        ipAddress: input.actor.ipAddress,
-        userAgent: input.actor.userAgent,
-      },
+  const sub = await decidingSubscription(tx, input.associationId);
+  if (!sub || sub.currentPeriodEnd.getTime() <= now.getTime()) {
+    throw new BillingError('NO_ACTIVE_SUBSCRIPTION', 'The association needs a running subscription before an add-on can be granted.');
+  }
+  const version = await tx.addonVersion.findFirst({ where: { addonId: input.addonId, status: 'PUBLISHED' }, orderBy: { version: 'desc' } });
+  if (!version) throw new BillingError('ADDON_UNAVAILABLE', 'That add-on has no published version.', 404);
+  const existing = await tx.tenantAddon.findFirst({ where: { subscriptionId: sub.id, addonVersion: { addonId: input.addonId }, status: 'ACTIVE' } });
+  const family = (await tx.addon.findUnique({ where: { id: input.addonId }, select: { family: true } }))?.family;
+  if (family) {
+    await tx.tenantAddon.updateMany({
+      where: { subscriptionId: sub.id, status: 'ACTIVE', addonVersion: { addon: { family, id: { not: input.addonId } } } },
+      data: { status: 'ENDED', endsAt: now },
     });
-    return row;
+  }
+  const data = { addonVersionId: version.id, status: 'ACTIVE' as const, billingCycle: sub.billingCycle, endsAt: sub.currentPeriodEnd, cancelAtPeriodEnd: false, pendingAddonId: null, source: 'MANUAL' as const, amountPaidKobo: 0, actorId: input.actor.id, reason };
+  const row = existing
+    ? await tx.tenantAddon.update({ where: { id: existing.id }, data })
+    : await tx.tenantAddon.create({ data: { ...data, associationId: input.associationId, subscriptionId: sub.id, startsAt: now } });
+  await tx.platformActionLog.create({
+    data: {
+      actorId: input.actor.id,
+      actorRole: input.actor.role,
+      actionType: input.audit?.actionType ?? 'ADDON_GRANTED',
+      targetType: input.audit?.targetType ?? 'addon',
+      targetId: input.audit?.targetId ?? input.addonId,
+      associationId: input.associationId,
+      ...(input.audit?.beforeState ? { beforeState: input.audit.beforeState } : {}),
+      afterState: input.audit?.afterState ?? { tenantAddonId: row.id, addonVersionId: version.id, endsAt: sub.currentPeriodEnd.toISOString() },
+      reason,
+      ipAddress: input.actor.ipAddress,
+      userAgent: input.actor.userAgent,
+    },
   });
+  return row;
+}
+
+/** Grant an add-on to an association without a payment (staff action). It ends with the subscription's current period. */
+export async function grantAddonManually(input: { associationId: number; addonId: number; reason: unknown; actor: Actor }) {
+  const result = await prisma.$transaction((tx) => grantAddonInTx(tx, input));
   afterBillingChange(input.associationId);
   return result;
 }
