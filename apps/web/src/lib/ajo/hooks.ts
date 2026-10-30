@@ -25,7 +25,7 @@ export const ajoKeys = {
 };
 
 export const useAjoStatus = () => useQuery({ queryKey: ajoKeys.status(), queryFn: ajoApi.status, staleTime: 30_000, retry: false });
-export const useMyMemberships = () => useQuery({ queryKey: ajoKeys.mine(), queryFn: ajoApi.mine });
+export const useMyMemberships = (enabled = true) => useQuery({ queryKey: ajoKeys.mine(), queryFn: ajoApi.mine, enabled });
 export const useGroup = (groupId: number) => useQuery({ queryKey: ajoKeys.group(groupId), queryFn: () => ajoApi.group(groupId), enabled: groupId > 0 });
 export const useSchedule = (membershipId: number) => useQuery({ queryKey: ajoKeys.schedule(membershipId), queryFn: () => ajoApi.schedule(membershipId), enabled: membershipId > 0 });
 export const useContributions = (membershipId: number) => useQuery({ queryKey: ajoKeys.contributions(membershipId), queryFn: () => ajoApi.contributions(membershipId), enabled: membershipId > 0 });

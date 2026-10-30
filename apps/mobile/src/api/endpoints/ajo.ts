@@ -7,6 +7,7 @@ import type { RuleVersionsReplyDTO ,
   AssignedContributorDTO,
   BulkResultDTO,
   CaseDTO,
+  WaitingPaymentsDTO,
   GroupTrustRowDTO,
   PrepareAllResultDTO,
   CollectorAssignmentDTO,
@@ -153,6 +154,20 @@ export const ajoApi = {
     if (input.paidOn) form.append('paidOn', input.paidOn);
     attach(form, 'proof', input.proof);
     return multipart<{ replayed: boolean }>(`/ajo/groups/${groupId}/contributions/transfer`, form, { 'Idempotency-Key': input.idempotencyKey });
+  },
+  /** Every circle's payments waiting for an officer (transfers to confirm by default), with the circle and person named. */
+  waitingPayments: (params: { status?: string; groupId?: number; skip?: number } = {}) => get<WaitingPaymentsDTO>('/ajo/payments/waiting', params),
+  waitingCount: () => get<{ transfersToConfirm: number; cashToCount: number }>('/ajo/payments/waiting/count'),
+  /** An officer who can confirm records a payment already seen at the bank; it is confirmed in the same step. */
+  recordReceived: (groupId: number, input: { membershipId: number; amountKobo: string; bankReference: string; note: string; paidOn?: string; proof?: AjoUpload | null; idempotencyKey: string }) => {
+    const form = new FormData();
+    form.append('membershipId', String(input.membershipId));
+    form.append('amountKobo', input.amountKobo);
+    form.append('bankReference', input.bankReference);
+    form.append('note', input.note);
+    if (input.paidOn) form.append('paidOn', input.paidOn);
+    attach(form, 'proof', input.proof);
+    return multipart<{ id: number }>(`/ajo/groups/${groupId}/contributions/record-received`, form, { 'Idempotency-Key': input.idempotencyKey });
   },
   raiseDispute: (membershipId: number, input: { installmentId: number; claim: string; evidence?: AjoUpload | null }) => {
     const form = new FormData();

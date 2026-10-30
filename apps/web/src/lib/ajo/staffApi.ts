@@ -10,6 +10,7 @@ import type {
   OnboardingStatusDTO,
   TeamInviteResult,
   CaseDTO,
+  WaitingPaymentsDTO,
   GroupTrustRowDTO,
   PrepareAllResult,
   CollectorAssignmentDTO,
@@ -117,6 +118,20 @@ export const ajoStaffApi = {
 
   // collections (T7.3)
   queue: (id: number, params: { status?: string; method?: string; take?: number; skip?: number } = {}) => unwrap<QueueDTO>(api.get(`/ajo/groups/${id}/contributions`, { params: { take: QUEUE_PAGE, ...params } })),
+  /** Every circle's payments waiting for an officer (transfers to confirm by default), with the circle and person named. */
+  waitingPayments: (params: { status?: string; groupId?: number } = {}) => unwrap<WaitingPaymentsDTO>(api.get('/ajo/payments/waiting', { params })),
+  waitingCount: () => unwrap<{ transfersToConfirm: number; cashToCount: number }>(api.get('/ajo/payments/waiting/count')),
+  /** An officer who can confirm records a payment already seen at the bank; it is confirmed in the same step. */
+  recordReceived: (groupId: number, input: { membershipId: number; amountKobo: bigint; bankReference: string; note: string; paidOn?: string; proof?: File | null; idempotencyKey: string }) => {
+    const form = new FormData();
+    form.append('membershipId', String(input.membershipId));
+    form.append('amountKobo', input.amountKobo.toString());
+    form.append('bankReference', input.bankReference);
+    form.append('note', input.note);
+    if (input.paidOn) form.append('paidOn', input.paidOn);
+    if (input.proof) form.append('proof', input.proof);
+    return unwrap<{ id: number }>(api.post(`/ajo/groups/${groupId}/contributions/record-received`, form, { headers: { 'Idempotency-Key': input.idempotencyKey } }));
+  },
   confirm: (contributionId: number, body: { acknowledgeDuplicate?: boolean; note?: string; confirmOwn?: boolean }) => post<unknown>(`/ajo/contributions/${contributionId}/confirm`, body),
   reject: (contributionId: number, reason: string) => post<unknown>(`/ajo/contributions/${contributionId}/reject`, { reason }),
   reverse: (contributionId: number, reason: string) => post<unknown>(`/ajo/contributions/${contributionId}/reverse`, { reason }),

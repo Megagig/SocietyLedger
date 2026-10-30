@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
-import { CalendarCheck, FileText, PiggyBank, Plus } from 'lucide-react-native';
+import { CalendarCheck, CircleDollarSign, FileText, PiggyBank, Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ListGroup, ListItem } from '@/components/layout/ListItem';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
@@ -16,7 +17,7 @@ import { AjoScreen } from '@/features/ajo/components/AjoScreen';
 import { OnboardingResume } from '@/features/ajo/components/OnboardingResume';
 import { AjoStatusBadge } from '@/features/ajo/components/AjoStatusBadge';
 import { formatDay, formatKobo, frequencyText, MODEL_LABEL } from '@/features/ajo/format';
-import { AJO_COLLECT_ACCESS, AJO_STAFF_ACCESS, useGroups } from '@/features/ajo/queries';
+import { AJO_COLLECT_ACCESS, AJO_STAFF_ACCESS, useGroups, useWaitingCount } from '@/features/ajo/queries';
 import { useAjoCan } from '@/features/ajo/useAjoCan';
 import { useAjoNav } from '@/features/ajo/useAjoNav';
 import { useSessionStore } from '@/stores/session';
@@ -33,6 +34,7 @@ export default function CirclesScreen() {
   const staff = useCan(AJO_STAFF_ACCESS);
   const groups = useGroups();
   const nav = useAjoNav();
+  const waiting = useWaitingCount().data?.transfersToConfirm ?? 0;
   const isAdmin = useSessionStore((st) => st.user?.role === 'admin' && !st.user?.platformRole);
 
   return (
@@ -58,6 +60,20 @@ export default function CirclesScreen() {
             showChevron
             onPress={() => router.push('/(app)/(tabs)/manage/thrift/today' as never)}
             testID="ajo-today-link"
+          />
+        </ListGroup>
+      ) : null}
+
+      {staff ? (
+        <ListGroup>
+          <ListItem
+            leading={<IconCircle icon={CircleDollarSign} tone={waiting > 0 ? 'warning' : 'primary'} />}
+            title="Payments"
+            meta="Confirm transfers, record a payment, see slips"
+            trailing={waiting > 0 ? <Badge tone="warning">{`${waiting} waiting`}</Badge> : undefined}
+            showChevron
+            onPress={() => router.push('/(app)/(tabs)/manage/thrift/payments' as never)}
+            testID="ajo-payments-link"
           />
         </ListGroup>
       ) : null}

@@ -304,6 +304,89 @@ suite('Ajo contributions, collections and receipts (database)', () => {
   });
 
   // ----------------------------------------------------------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------------------------------------------------------
+  describe('an officer records a payment already seen at the bank (one step)', () => {
+    const record = (groupId: number, membershipId: number, over: { actor?: number; ref?: string; note?: string; amount?: bigint; key?: string } = {}) =>
+      contrib.recordReceivedTransfer({
+        associationId: A,
+        groupId,
+        membershipId,
+        amountKobo: over.amount ?? AMOUNT,
+        bankReference: over.ref ?? `NIP-${run}-${++counter}`,
+        note: over.note ?? 'seen in the 14 Nov statement',
+        idempotencyKey: over.key ?? key(),
+        actorUserId: over.actor ?? recon1.id,
+        now: PAY,
+      });
+
+    it('records and confirms in one step: it counts at once, is marked as recorded by an officer, and tells the member', async () => {
+      const { g, joined } = await startedGroup(1, { withUser: true });
+      const m = joined[0];
+      const done = await record(g.id, m.membership.id);
+      expect(done.contribution).toMatchObject({ status: 'CONFIRMED', counts: true, recordedByOfficer: true, selfConfirmed: true });
+      expect(await balance(m.membership.id)).toBe(AMOUNT);
+      const row = await prisma.ajoContribution.findUniqueOrThrow({ where: { id: done.contribution.id } });
+      expect(row).toMatchObject({ status: 'CONFIRMED', recordedBy: recon1.id, confirmedBy: recon1.id, selfConfirmed: true, confirmNote: 'seen in the 14 Nov statement' });
+      expect(await audits('AJO_CONTRIBUTION_RECORDED', row.id)).toHaveLength(1);
+      expect(await audits('AJO_CONTRIBUTION_CONFIRMED', row.id)).toHaveLength(1);
+    });
+
+    it('works even in a circle with several officers who can confirm (no second officer is needed)', async () => {
+      const { g, joined } = await startedGroup(1);
+      expect((await record(g.id, joined[0].membership.id, { actor: recon2.id })).contribution.status).toBe('CONFIRMED');
+    });
+
+    it('never for the officer’s own payment', async () => {
+      const { g, joined } = await startedGroup(1, { withUser: true });
+      const own = joined[0].member.userId as number;
+      expect(await codeOf(record(g.id, joined[0].membership.id, { actor: own }))).toBe('SELF_CONFIRM_NOT_ALLOWED');
+      expect(await balance(joined[0].membership.id)).toBe(0n);
+    });
+
+    it('needs the bank reference and a note saying how it was checked', async () => {
+      const { g, joined } = await startedGroup(1);
+      expect(await codeOf(record(g.id, joined[0].membership.id, { ref: '' }))).toBe('PROOF_REQUIRED');
+      expect(await codeOf(record(g.id, joined[0].membership.id, { note: 'ok' }))).toBe('NOTE_REQUIRED');
+      expect(await balance(joined[0].membership.id)).toBe(0n);
+    });
+
+    it('still catches one bank payment being used twice, and a repeated request records once', async () => {
+      const { g, joined } = await startedGroup(2);
+      const ref = `NIP-DUP-${run}`;
+      await record(g.id, joined[0].membership.id, { ref });
+      expect(await codeOf(record(g.id, joined[1].membership.id, { ref }))).toBeDefined();
+      expect(await balance(joined[1].membership.id)).toBe(0n);
+      const k = key();
+      const first = await record(g.id, joined[1].membership.id, { key: k });
+      const again = await record(g.id, joined[1].membership.id, { key: k });
+      expect(again.contribution.id).toBe(first.contribution.id);
+      expect(await balance(joined[1].membership.id)).toBe(AMOUNT);
+    });
+  });
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+  describe('the officers’ queue across every circle', () => {
+    it('lists reported transfers from all circles with the circle and person named, and counts what is waiting', async () => {
+      const one = await startedGroup(1, { withUser: true });
+      const two = await startedGroup(1, { withUser: true });
+      const before = await contrib.countWaitingContributions({ associationId: A });
+      const a = await transfer(one.g.id, one.joined[0].membership.id, AMOUNT, { actor: one.joined[0].member.userId as number, manage: false });
+      const b = await transfer(two.g.id, two.joined[0].membership.id, AMOUNT, { actor: two.joined[0].member.userId as number, manage: false });
+      const waiting = await contrib.listWaitingContributions({ associationId: A });
+      const ids = waiting.items.map((i: { id: number }) => i.id);
+      expect(ids).toEqual(expect.arrayContaining([a.contribution.id, b.contribution.id]));
+      expect(waiting.items.find((i: { id: number }) => i.id === a.contribution.id)).toMatchObject({ groupName: expect.any(String), memberName: expect.stringContaining('Adaeze') });
+      expect((await contrib.countWaitingContributions({ associationId: A })).transfersToConfirm).toBe(before.transfersToConfirm + 2);
+      await confirm(a.contribution.id);
+      expect((await contrib.countWaitingContributions({ associationId: A })).transfersToConfirm).toBe(before.transfersToConfirm + 1);
+    });
+
+    it('never shows another association’s payments', async () => {
+      const waiting = await contrib.listWaitingContributions({ associationId: B });
+      expect(waiting.items).toEqual([]);
+    });
+  });
+
   describe('recording is idempotent', () => {
     it('returns the original for a repeated request: one row, one receipt, one notification', async () => {
       const { g, joined } = await startedGroup(1, { withUser: true });

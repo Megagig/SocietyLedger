@@ -37,10 +37,11 @@ const Stat = ({ label, value }: { label: string; value: ReactNode }) => (
 export function ThriftHome() {
   const nav = useAjoNav();
   const name = useAuthStore((s) => s.user?.email?.split('@')[0] ?? '');
-  const groups = useGroups();
-  const mine = useMyMemberships();
   const staff = nav.staff;
   const contributor = nav.member;
+  // Each list is asked for only by the people who may see it, so a member never triggers an officer call.
+  const groups = useGroups(staff);
+  const mine = useMyMemberships(contributor);
 
   if ((staff && groups.isLoading) || (contributor && mine.isLoading)) return <AjoLoading />;
   if (staff && groups.isError) return <AjoError error={groups.error} onRetry={() => groups.refetch()} />;
@@ -107,6 +108,8 @@ export function ThriftHome() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {staff && <Card href="/dashboard/ajo" icon={<IconPigMoney size={22} />} title="Thrift circles" text="Run your circles, payments and payouts." />}
           {nav.collect && <Card href="/dashboard/ajo/collect" icon={<IconCash size={22} />} title="Collect" text="Today's list, cash you record and hand over." />}
+          {contributor && <Card href="/dashboard/my-thrift/payments" icon={<IconCash size={22} />} title="My payments" text="Pay, report a payment with your slip, and see where each one stands." />}
+          {staff && <Card href="/dashboard/ajo/payments" icon={<IconCash size={22} />} title="Payments" text="Confirm what members have reported, or record a payment for a member." />}
           {contributor && <Card href="/dashboard/my-thrift" icon={<IconWallet size={22} />} title="My thrift" text="What you pay, what you are owed and your receipts." />}
           {contributor && <Card href="/dashboard/my-thrift/payout-account" icon={<IconWallet size={22} />} title="Payout account" text="Where your money is sent, and its checks." />}
           {nav.reports && <Card href="/dashboard/ajo/reports" icon={<IconChartBar size={22} />} title="Thrift reports" text="Contributions, collectors, defaults and the audit trail." />}

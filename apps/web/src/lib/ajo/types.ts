@@ -82,6 +82,8 @@ export type ContributionDTO = {
   reason: string | null;
   counts: boolean;
   awaitingConfirmation: boolean;
+  /** An officer recorded this after seeing it at the bank and confirmed it in the same step. */
+  recordedByOfficer?: boolean;
   installmentsCovered: Array<{ installmentId: number; amountKobo: string }>;
   lateFeesCovered: Array<{ lateFeeId: number; amountKobo: string }>;
 };

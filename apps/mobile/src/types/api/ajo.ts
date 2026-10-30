@@ -83,6 +83,8 @@ export type ContributionDTO = {
   reason: string | null;
   counts: boolean;
   awaitingConfirmation: boolean;
+  /** An officer recorded this after seeing it at the bank and confirmed it in the same step. */
+  recordedByOfficer?: boolean;
   installmentsCovered: { installmentId: number; amountKobo: string }[];
   lateFeesCovered: { lateFeeId: number; amountKobo: string }[];
 };
@@ -353,3 +355,7 @@ export type PrepareAllResultDTO = { prepared: PayoutDTO[]; notReady: { membershi
 
 /** One person's on-time record in a circle, as the officers see it (`GET /ajo/groups/:id/trust`). */
 export type GroupTrustRowDTO = { membershipId: number; name: string } & TrustDTO;
+
+/** `GET /ajo/payments/waiting`: payments across every circle, with the circle and the person named. */
+export type WaitingPaymentDTO = QueueContributionDTO & { groupId: number; groupName: string; groupModel: 'ROTATING_POT' | 'COLLECTOR_THRIFT'; memberName: string };
+export type WaitingPaymentsDTO = { total: number; items: WaitingPaymentDTO[] };

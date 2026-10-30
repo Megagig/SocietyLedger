@@ -12,7 +12,7 @@ import { PERMISSIONS } from '../../lib/permissions';
 import { RuleError } from '../finance/rule-error';
 import { afterContributionChange, afterHandoverReconciled } from './ajo-circle-notices.service';
 import { MAX_PROOF_BYTES, PROOF_TYPES } from './ajo-collections';
-import { confirmTransfer, getProofLink, listGroupContributions, listMembershipContributions, recordCash, rejectContribution, reportTransfer, reverseContribution } from './ajo-contribution.service';
+import { confirmTransfer, countWaitingContributions, getProofLink, listGroupContributions, listMembershipContributions, listWaitingContributions, recordCash, recordReceivedTransfer, rejectContribution, reportTransfer, reverseContribution } from './ajo-contribution.service';
 import { collectorDaySummary, createHandover, getHandover, listHandovers, reconcileHandover } from './ajo-handover.service';
 import { actor, canManage, fail, hasAjoPermission } from './ajo-members.controller';
 import { flushQueuedReceipts, listReceipts, queuedReceiptCount } from './ajo-receipt.service';
@@ -142,6 +142,58 @@ export const ajoContributionsController = {
       return res.json({ success: true, data: await listMembershipContributions({ associationId, membershipId, officer }) });
     } catch (error) {
       return fail(res, error, 'Could not load the payments.');
+    }
+  },
+
+  /** An officer who can confirm records a payment they have already seen at the bank, and it is confirmed in the same step. */
+  async recordReceived(req: Request, res: Response) {
+    try {
+      const { userId, associationId } = actor(req);
+      const body = z
+        .object({
+          membershipId: id,
+          amountKobo: kobo,
+          bankReference: z.string().trim().min(3, 'Give the bank reference.').max(80),
+          note: z.string().trim().min(5, 'Say how you checked it.').max(500),
+          paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        })
+        .parse(req.body ?? {});
+      const result = await recordReceivedTransfer({
+        associationId,
+        groupId: id.parse(req.params.id),
+        membershipId: body.membershipId,
+        amountKobo: body.amountKobo,
+        bankReference: body.bankReference,
+        note: body.note,
+        paidOn: toDate(body.paidOn),
+        idempotencyKey: key(req),
+        actorUserId: userId,
+        proof: req.file ? { buffer: req.file.buffer, mimeType: req.file.mimetype } : undefined,
+      });
+      return res.status(result.replayed ? 200 : 201).json({ success: true, message: result.replayed ? 'Already recorded.' : 'Recorded and confirmed. It now counts, and the member has been told.', data: result.contribution });
+    } catch (error) {
+      return fail(res, error, 'Could not record the payment.');
+    }
+  },
+
+  /** Every circle's payments waiting for an officer (transfers to confirm by default), with the circle and person named. */
+  async waiting(req: Request, res: Response) {
+    try {
+      const { associationId } = actor(req);
+      const q = z.object({ status: z.enum(['REPORTED', 'CASH_RECEIVED', 'CONFIRMED', 'REVERSED', 'REJECTED']).optional(), groupId: z.coerce.number().int().positive().optional(), take: z.coerce.number().int().optional(), skip: z.coerce.number().int().optional() }).parse(req.query);
+      return res.json({ success: true, data: await listWaitingContributions({ associationId, ...q } as never) });
+    } catch (error) {
+      return fail(res, error, 'Could not load the payments.');
+    }
+  },
+
+  /** The badge: how many transfers are waiting to be confirmed, and how much cash is waiting to be counted. */
+  async waitingCount(req: Request, res: Response) {
+    try {
+      const { associationId } = actor(req);
+      return res.json({ success: true, data: await countWaitingContributions({ associationId }) });
+    } catch (error) {
+      return fail(res, error, 'Could not count the payments.');
     }
   },
 

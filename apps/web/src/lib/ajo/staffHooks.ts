@@ -9,11 +9,14 @@ import { ajoStaffApi, QUEUE_PAGE } from './staffApi';
 
 const k = (...parts: Array<string | number | undefined>) => ['ajo', 'staff', ...parts.filter((p) => p !== undefined)] as const;
 
-export const useGroups = () => useQuery({ queryKey: k('groups'), queryFn: ajoStaffApi.groups });
+export const useGroups = (enabled = true) => useQuery({ queryKey: k('groups'), queryFn: ajoStaffApi.groups, enabled });
 export const useGroupDetail = (id: number) => useQuery({ queryKey: k('group', id), queryFn: () => ajoStaffApi.groupDetail(id), enabled: id > 0 });
 export const useRuleVersions = (id: number) => useQuery({ queryKey: k('rules', id), queryFn: () => ajoStaffApi.ruleVersions(id), enabled: id > 0 });
 export const usePeople = (id: number) => useQuery({ queryKey: k('people', id), queryFn: () => ajoStaffApi.people(id), enabled: id > 0 });
 export const useGroupTrust = (id: number) => useQuery({ queryKey: k('trust', id), queryFn: () => ajoStaffApi.groupTrust(id), enabled: id > 0 });
+export const useWaitingPayments = (status: string, groupId?: number) => useQuery({ queryKey: k('waiting-payments', status, groupId), queryFn: () => ajoStaffApi.waitingPayments({ status: status || undefined, groupId }) });
+/** The badge: transfers waiting to be confirmed. Asked only by people who can confirm. */
+export const useWaitingCount = (enabled: boolean) => useQuery({ queryKey: k('waiting-count'), queryFn: ajoStaffApi.waitingCount, enabled, refetchInterval: 60_000, retry: false });
 export const useRoster = (id: number) => useQuery({ queryKey: k('roster', id), queryFn: () => ajoStaffApi.roster(id), enabled: id > 0 });
 export const useOrder = (id: number) => useQuery({ queryKey: k('order', id), queryFn: () => ajoStaffApi.order(id), enabled: id > 0 });
 export const useSwaps = (id: number) => useQuery({ queryKey: k('swaps', id), queryFn: () => ajoStaffApi.swaps(id), enabled: id > 0 });

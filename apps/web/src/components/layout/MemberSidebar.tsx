@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation';
 import { Text } from '@mantine/core';
 import {
   IconLayoutDashboard,
+  IconHome,
   IconCurrencyNaira,
   IconUser,
   IconCalendarEvent,
@@ -41,6 +42,8 @@ import { useAuthStore } from '@/store/authStore';
 import { PERMISSIONS, hasAnyPermission } from '@/lib/permissions';
 import { THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
 import { thriftWord } from '@/lib/ajo/thriftScope';
+import { useMyMemberships } from '@/lib/ajo/hooks';
+import { useWaitingCount } from '@/lib/ajo/staffHooks';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { docsUrl } from '@/lib/docs';
 import { toast } from '@/lib/toast';
@@ -99,6 +102,11 @@ export function MemberSidebar() {
   // Ajo / Thrift: shown by permission, marked "Locked" when the add-on is not on the account.
   const ajoNav = useAjoNav();
   const ajoBadge = ajoNav.locked ? 'Locked' : undefined;
+  // A standalone group's own circles, so each has its page and its board in the menu.
+  const mine = useMyMemberships(ajoNav.thriftOnly && ajoNav.member);
+  // Transfers waiting to be confirmed, for people who can confirm them.
+  const waiting = useWaitingCount(ajoNav.reconcile);
+  const payBadge = ajoNav.locked ? 'Locked' : waiting.data && waiting.data.transfersToConfirm > 0 ? String(waiting.data.transfersToConfirm) : undefined;
 
   const navItems: NavItem[] = [
     {
@@ -216,12 +224,14 @@ export function MemberSidebar() {
             badge: ajoBadge,
             children: [
               { label: 'My Circles', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
+              { label: 'My Payments', icon: <IconCurrencyNaira size={18} />, href: '/dashboard/my-thrift/payments' },
               { label: 'Payout Account', icon: <IconBuildingBank size={18} />, href: '/dashboard/my-thrift/payout-account' },
             ],
           },
         ]
       : []),
     ...(ajoNav.staff ? [{ label: 'Thrift Circles', icon: <IconPigMoney size={20} />, href: '/dashboard/ajo', badge: ajoBadge }] : []),
+    ...(ajoNav.staff ? [{ label: 'Payments', icon: <IconCurrencyNaira size={20} />, href: '/dashboard/ajo/payments', badge: payBadge }] : []),
     ...(ajoNav.collect ? [{ label: 'Collect', icon: <IconCurrencyNaira size={20} />, href: '/dashboard/ajo/collect', badge: ajoBadge }] : []),
     ...(ajoNav.reports ? [{ label: 'Thrift Reports', icon: <IconFileAnalytics size={20} />, href: '/dashboard/ajo/reports', badge: ajoBadge }] : []),
     {
@@ -321,8 +331,36 @@ export function MemberSidebar() {
     },
   ];
 
+  // A standalone thrift group is only Thrift: its own menu, never an association's with entries left out.
+  const circles = (mine.data ?? []).filter((m) => m.status !== 'LEFT');
+  const pick = (...labels: string[]) => labels.map((l) => navItems.find((i) => i.label === l)).filter((i): i is NavItem => !!i);
+  const thriftItems: NavItem[] = [
+    { label: 'Thrift Home', icon: <IconHome size={20} />, href: '/dashboard' },
+    ...(ajoNav.member
+      ? [
+          {
+            label: 'My Thrift',
+            icon: <IconPigMoney size={20} />,
+            badge: ajoBadge,
+            children: [
+              { label: 'My Circles', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
+              { label: 'My Payments', icon: <IconCurrencyNaira size={18} />, href: '/dashboard/my-thrift/payments' },
+              ...circles.map((m) => ({ label: m.group.name, icon: <IconPigMoney size={18} />, href: `/dashboard/my-thrift/${m.membershipId}` })),
+              ...circles.filter((m) => m.group.model === 'ROTATING_POT').map((m) => ({ label: `Circle board: ${m.group.name}`, icon: <IconUsers size={18} />, href: `/dashboard/my-thrift/${m.membershipId}/board` })),
+              { label: 'Payout Account', icon: <IconBuildingBank size={18} />, href: '/dashboard/my-thrift/payout-account' },
+              { label: 'Circle notifications', icon: <IconBell size={18} />, href: '/dashboard/my-thrift/notifications' },
+            ],
+          },
+        ]
+      : []),
+    ...pick('Thrift Circles', 'Payments', 'Collect', 'Thrift Reports'),
+    ...(ajoNav.staff ? [{ label: 'People', icon: <IconUsers size={20} />, href: '/dashboard/members' }] : []),
+    ...pick('My Profile', 'Notifications', 'Help & Support', 'Settings'),
+  ];
+
   const isActive = (href?: string) => {
     if (!href) return false;
+    if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/dashboard/member';
     return pathname === href || pathname.startsWith(href + '/');
   };
 
@@ -507,7 +545,7 @@ export function MemberSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {navItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label) || ['Thrift Circles', 'Collect', 'Thrift Reports', 'Notifications', 'Help & Support', 'Settings'].includes(item.label)).map(renderNavItem)}
+          {(ajoNav.thriftOnly ? thriftItems : navItems).map(renderNavItem)}
         </nav>
 
         {/* Footer Actions */}

@@ -218,3 +218,7 @@ export type PrepareAllResult = { prepared: PayoutDTO[]; notReady: Array<{ member
 
 /** One person's on-time record in a circle, as the officers see it (`GET /ajo/groups/:id/trust`). */
 export type GroupTrustRowDTO = { membershipId: number; name: string } & TrustDTO;
+
+/** `GET /ajo/payments/waiting`: payments across every circle, with the circle and the person named. */
+export type WaitingPaymentDTO = QueueContributionDTO & { groupId: number; groupName: string; groupModel: 'ROTATING_POT' | 'COLLECTOR_THRIFT'; memberName: string; recordedByOfficer?: boolean };
+export type WaitingPaymentsDTO = { total: number; items: WaitingPaymentDTO[] };

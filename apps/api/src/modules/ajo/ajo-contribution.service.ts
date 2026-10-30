@@ -65,8 +65,14 @@ export async function reconcilerUserIds(db: Tx | typeof prisma, associationId: n
  * Anyone who recorded a payment, or is the person who paid, cannot also confirm it. The one exception is a group where they are the only
  * person who can reconcile: then they may confirm their own entry, but only by saying so and giving a note, and it is marked on the record.
  */
-export async function assertMayConfirm(tx: Tx | typeof prisma, input: { associationId: number; actorUserId: number; conflicted: boolean; confirmOwn?: boolean; note?: string; what: string }): Promise<{ self: boolean; note: string | null }> {
+export async function assertMayConfirm(tx: Tx | typeof prisma, input: { associationId: number; actorUserId: number; conflicted: boolean; confirmOwn?: boolean; note?: string; what: string; /** The officer recorded a payment they had already seen at the bank. Allowed for the officer who recorded it, with a note, but never for their own payment. */ bankRecorded?: { ownPayment: boolean } }): Promise<{ self: boolean; note: string | null }> {
   if (!input.conflicted) return { self: false, note: input.note?.trim() || null };
+  if (input.bankRecorded) {
+    if (input.bankRecorded.ownPayment) throw new RuleError(`This is your own ${input.what}, so another officer has to confirm it.`, 403, 'SELF_CONFIRM_NOT_ALLOWED');
+    const note = (input.note ?? '').trim();
+    if (note.length < MIN_NOTE_LENGTH) throw new RuleError(`Say how you checked it (for example “seen in the 14 Nov statement”), in at least ${MIN_NOTE_LENGTH} characters.`, 400, 'NOTE_REQUIRED');
+    return { self: true, note };
+  }
   const reconcilers = await reconcilerUserIds(tx, input.associationId);
   const sole = reconcilers.length <= 1 && reconcilers.includes(input.actorUserId);
   if (!sole) throw new RuleError(`You recorded or made this ${input.what}, so another officer has to confirm it.`, 403, 'SELF_CONFIRM_NOT_ALLOWED');
@@ -110,6 +116,8 @@ export function toContributionView(c: ContributionRow, options: { officer?: bool
     /** Only confirmed money counts; everything else is still being checked, or was turned down. */
     counts: c.status === 'CONFIRMED' && !reversed,
     awaitingConfirmation: c.status === 'REPORTED' || c.status === 'CASH_RECEIVED',
+    /** An officer recorded this after seeing it at the bank, and confirmed it in the same step. The member sees it labelled that way. */
+    recordedByOfficer: c.selfConfirmed,
     missingFromHandover: c.missingFromHandover,
     installmentsCovered: c.allocations.filter((a) => a.installmentId !== null).map((a) => ({ installmentId: a.installmentId, amountKobo: a.amountKobo.toString() })),
     lateFeesCovered: c.allocations.filter((a) => a.lateFeeId !== null).map((a) => ({ lateFeeId: a.lateFeeId, amountKobo: a.amountKobo.toString() })),
@@ -368,6 +376,8 @@ export interface ConfirmTransferInput {
   acknowledgeDuplicate?: boolean;
   note?: string;
   confirmOwn?: boolean;
+  /** One-step recording by an officer who has already seen the payment at the bank (see `recordReceivedTransfer`). */
+  bankRecorded?: boolean;
   now?: Date;
 }
 
@@ -387,7 +397,8 @@ export async function confirmTransfer(input: ConfirmTransferInput) {
       if (c.status !== 'REPORTED') throw new RuleError(`A ${c.status.toLowerCase()} payment cannot be confirmed.`, 409, 'CONTRIBUTION_NOT_CONFIRMABLE');
 
       const conflicted = c.recordedBy === input.actorUserId || c.membership.member.userId === input.actorUserId;
-      const self = await assertMayConfirm(tx, { associationId: input.associationId, actorUserId: input.actorUserId, conflicted, confirmOwn: input.confirmOwn, note: input.note, what: 'payment' });
+      const ownPayment = c.membership.member.userId !== null && c.membership.member.userId === input.actorUserId;
+      const self = await assertMayConfirm(tx, { associationId: input.associationId, actorUserId: input.actorUserId, conflicted, confirmOwn: input.confirmOwn, note: input.note, what: 'payment', ...(input.bankRecorded ? { bankRecorded: { ownPayment } } : {}) });
 
       // Checked again now, not just when it was reported: the other payment may have been confirmed in the meantime.
       const others = await findDuplicates(tx, { associationId: input.associationId, excludeId: c.id, proofHash: c.proofHash, bankReference: c.bankReference });
@@ -474,4 +485,79 @@ export async function reverseContribution(input: { associationId: number; contri
   );
   if (receiptId) await deliverReceipt(receiptId);
   return result;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// An officer records a payment already seen at the bank (one step), and the cross-circle queue
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+export interface RecordReceivedInput {
+  associationId: number;
+  groupId: number;
+  membershipId: number;
+  amountKobo: bigint;
+  /** Required: it is how the payment is found on the statement, and how a second payment with the same reference is caught. */
+  bankReference: string;
+  paidOn?: Date;
+  /** How the officer checked it, for example “seen in the 14 Nov statement”. */
+  note: string;
+  idempotencyKey: string;
+  actorUserId: number;
+  proof?: { buffer: Buffer; mimeType: string };
+  now?: Date;
+}
+
+/**
+ * A member paid but never reported it, and the officer has seen it at the bank. They record it for the member and it is confirmed in the
+ * same step. The officer needs the confirm permission (the route checks it); they cannot do it for their own payment; the bank reference
+ * and a note are required; the duplicate checks still run; and it is marked as confirmed by the person who recorded it, so it shows in the
+ * officer-accountability report and to the member as “recorded by an officer”. It can be reversed like any payment.
+ */
+export async function recordReceivedTransfer(input: RecordReceivedInput) {
+  const reported = await reportTransfer({
+    associationId: input.associationId,
+    groupId: input.groupId,
+    membershipId: input.membershipId,
+    amountKobo: input.amountKobo,
+    idempotencyKey: input.idempotencyKey,
+    actorUserId: input.actorUserId,
+    actorCanManage: true,
+    proof: input.proof,
+    bankReference: input.bankReference,
+    paidOn: input.paidOn,
+    now: input.now,
+  });
+  if (!normaliseBankReference(input.bankReference)) throw new RuleError('Give the bank reference, so the payment can be found on the statement.', 400, 'BANK_REFERENCE_REQUIRED');
+  if (reported.contribution.status === 'CONFIRMED') return { contribution: reported.contribution, replayed: true };
+  const confirmed = await confirmTransfer({ associationId: input.associationId, contributionId: reported.contribution.id, actorUserId: input.actorUserId, note: input.note, bankRecorded: true, now: input.now });
+  const row = await prisma.ajoContribution.findUniqueOrThrow({ where: { id: reported.contribution.id }, include: viewInclude });
+  return { contribution: toContributionView(row, { officer: true }), replayed: false, confirmed };
+}
+
+/** Payments across every circle of the association that officers have yet to confirm, oldest first, with the circle and the person named. */
+export async function listWaitingContributions(input: { associationId: number; status?: 'REPORTED' | 'CASH_RECEIVED' | 'CONFIRMED' | 'REJECTED' | 'REVERSED'; groupId?: number; take?: number; skip?: number }) {
+  const where: Prisma.AjoContributionWhereInput = { associationId: input.associationId, ...(input.status ? { status: input.status } : { status: 'REPORTED' }), ...(input.groupId ? { groupId: input.groupId } : {}) };
+  const [rows, total] = await Promise.all([
+    prisma.ajoContribution.findMany({
+      where,
+      orderBy: [{ receivedAt: 'asc' }, { id: 'asc' }],
+      take: Math.min(Math.max(input.take ?? 50, 1), 200),
+      skip: Math.max(input.skip ?? 0, 0),
+      include: { ...viewInclude, group: { select: { id: true, name: true, model: true } }, membership: { select: { member: { select: { firstName: true, lastName: true } } } } },
+    }),
+    prisma.ajoContribution.count({ where }),
+  ]);
+  return {
+    total,
+    items: rows.map((r) => ({ ...toContributionView(r, { officer: true }), groupName: r.group.name, groupModel: r.group.model, memberName: `${r.membership.member.firstName} ${r.membership.member.lastName}`.trim() })),
+  };
+}
+
+/** What is waiting for the officers, for the badge: transfers to confirm, and cash recorded but not yet counted into a handover. */
+export async function countWaitingContributions(input: { associationId: number }) {
+  const [transfers, cash] = await Promise.all([
+    prisma.ajoContribution.count({ where: { associationId: input.associationId, status: 'REPORTED' } }),
+    prisma.ajoContribution.count({ where: { associationId: input.associationId, status: 'CASH_RECEIVED' } }),
+  ]);
+  return { transfersToConfirm: transfers, cashToCount: cash };
 }

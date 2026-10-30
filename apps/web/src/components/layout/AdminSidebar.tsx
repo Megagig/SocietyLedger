@@ -55,6 +55,7 @@ import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { THRIFT_ONLY_ADMIN_LABELS, THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
 import { THRIFT_SETTINGS_HREFS, thriftWord } from '@/lib/ajo/thriftScope';
+import { useWaitingCount } from '@/lib/ajo/staffHooks';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
@@ -152,6 +153,9 @@ export function AdminSidebar() {
   // Ajo / Thrift entries follow permissions and are marked "Locked" when the add-on is not on the account.
   const ajoNav = useAjoNav();
   const ajoBadge = ajoNav.locked ? 'Locked' : undefined;
+  // Transfers waiting to be confirmed, for people who can confirm them.
+  const waiting = useWaitingCount(ajoNav.reconcile);
+  const payBadge = ajoNav.locked ? 'Locked' : waiting.data && waiting.data.transfersToConfirm > 0 ? String(waiting.data.transfersToConfirm) : undefined;
 
   // MEMBER SECTION - Admin's personal member features
   const memberNavItems: NavItem[] = [
@@ -233,6 +237,7 @@ export function AdminSidebar() {
       badge: ajoBadge,
       children: [
         { label: 'My Circles', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
+        { label: 'My Payments', icon: <IconCurrencyNaira size={18} />, href: '/dashboard/my-thrift/payments' },
         { label: 'Payout Account', icon: <IconBuildingBank size={18} />, href: '/dashboard/my-thrift/payout-account' },
       ],
     },
@@ -258,6 +263,14 @@ export function AdminSidebar() {
       permission: [PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT],
       hideForSuperAdmin: true,
       badge: ajoBadge,
+    },
+    {
+      label: 'Payments',
+      icon: <IconCurrencyNaira size={20} />,
+      href: '/dashboard/ajo/payments',
+      permission: [PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE],
+      hideForSuperAdmin: true,
+      badge: payBadge,
     },
     {
       label: 'Collect',
@@ -860,6 +873,7 @@ export function AdminSidebar() {
 
   const isActive = (href?: string) => {
     if (!href) return false;
+    if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/dashboard/member' || pathname === '/dashboard/admin';
     return pathname === href || pathname.startsWith(href + '/');
   };
 
@@ -1066,7 +1080,7 @@ export function AdminSidebar() {
             title={thriftWord('My Member Area', ajoNav.thriftOnly)} 
             color="blue"
           />
-          {memberNavItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label)).map(renderNavItem)}
+          {(ajoNav.thriftOnly ? [{ label: 'Thrift Home', icon: <IconLayoutDashboard size={20} />, href: '/dashboard' } as NavItem, ...memberNavItems.filter((item) => THRIFT_ONLY_MEMBER_LABELS.includes(item.label))] : memberNavItems).map(renderNavItem)}
 
           {/* ADMINISTRATION SECTION */}
           <SectionDivider 

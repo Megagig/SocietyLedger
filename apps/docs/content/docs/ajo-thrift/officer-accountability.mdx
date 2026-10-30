@@ -57,6 +57,10 @@ You need to be an officer of the circle: **manage**, **reconcile** or **approve 
 
 **Exceptions.** Everything that changed the record after the fact, newest first, each with who did it and the reason they gave: a payment reversed, a late fee waived, payout positions swapped or moved in an emergency, rules changed, and a payout cancelled or reversed after being recorded as paid.
 
+## Payments recorded by an officer
+
+When an officer records a payment they have seen at the bank, it is confirmed in one step by the same person. These appear in the activity list as a **self confirmation**, with the officer's note, so an admin can review how many were done this way and check them against the bank statement.
+
 ## Why a reason is always there
 
 Reversing a payment, waiving a fee and moving someone in the payout order each need a written reason, and SocietyLedger will not save the change without one. Nothing is deleted. A mistake is corrected by a new entry that points at the one it cancels, so the original stays in the history.

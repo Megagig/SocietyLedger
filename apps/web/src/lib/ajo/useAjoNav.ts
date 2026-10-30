@@ -7,7 +7,7 @@ import { ajoApi } from './api';
 import { ajoKeys } from './hooks';
 
 /** The menu entries a standalone thrift group keeps. It runs only Ajo, so everything else is left out, apart from what it needs to run and pay. */
-export const THRIFT_ONLY_ADMIN_LABELS = ['Thrift Circles', 'Collect', 'Thrift Reports', 'Members', 'Notifications', 'Subscription', 'Settings', 'Help & Support'];
+export const THRIFT_ONLY_ADMIN_LABELS = ['Thrift Circles', 'Payments', 'Collect', 'Thrift Reports', 'Members', 'Notifications', 'Subscription', 'Settings', 'Help & Support'];
 export const THRIFT_ONLY_MEMBER_LABELS = ['My Thrift', 'My Profile'];
 
 /**
@@ -31,6 +31,8 @@ export function useAjoNav() {
     member,
     collect,
     staff,
+    /** Can confirm a payment against the bank statement (officers and admins). */
+    reconcile: hasAnyPermission(permissions, [PERMISSIONS.AJO_RECONCILE]),
     /** Holds the reports permission (officers and, when given it, collectors). */
     reports,
     /** True only when the account is known not to have Ajo switched on. */

@@ -25,6 +25,8 @@ describe('thriftRedirectFor', () => {
       expect(thriftRedirectFor(at('manage', area), true)).toBe('/(app)/(tabs)/manage');
     }
     for (const area of ['thrift', 'members', 'settings']) expect(thriftRedirectFor(at('manage', area), true)).toBeNull();
+    expect(thriftRedirectFor(at('manage', 'thrift', 'payments'), true)).toBeNull();
+    expect(thriftRedirectFor(at('money', 'thrift', 'payments'), true)).toBeNull();
     expect(thriftRedirectFor(at('manage'), true)).toBeNull();
   });
 

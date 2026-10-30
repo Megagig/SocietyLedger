@@ -15,6 +15,9 @@ const svc = {
   reverseContribution: jest.fn(),
   listMembershipContributions: jest.fn(),
   listGroupContributions: jest.fn(),
+  recordReceivedTransfer: jest.fn(),
+  listWaitingContributions: jest.fn(),
+  countWaitingContributions: jest.fn(),
   getProofLink: jest.fn(),
   collectorDaySummary: jest.fn(),
   createHandover: jest.fn(),
@@ -67,6 +70,9 @@ jest.mock('../../src/modules/ajo/ajo-contribution.service', () => ({
   reverseContribution: pass('reverseContribution'),
   listMembershipContributions: pass('listMembershipContributions'),
   listGroupContributions: pass('listGroupContributions'),
+  recordReceivedTransfer: pass('recordReceivedTransfer'),
+  listWaitingContributions: pass('listWaitingContributions'),
+  countWaitingContributions: pass('countWaitingContributions'),
   getProofLink: pass('getProofLink'),
 }));
 jest.mock('../../src/modules/ajo/ajo-handover.service', () => ({
@@ -153,6 +159,31 @@ describe('who can reach what', () => {
     expect((await send(COLLECTOR)).status).toBe(403);
     expect((await send(RECONCILER)).status).toBe(403);
     expect(svc.reportTransfer).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets only someone who can confirm record a payment already seen at the bank, and needs the bank reference and a note', async () => {
+    svc.recordReceivedTransfer.mockResolvedValue({ contribution: { id: 9 }, replayed: false });
+    const body = { membershipId: 3, amountKobo: '500000', bankReference: 'NIP-123456', note: 'seen in the 14 Nov statement' };
+    const post = (user: number, b: object) => request(app).post('/api/ajo/groups/1/contributions/record-received').set('x-test-user', as(user)).set('Idempotency-Key', 'key-123456789').send(b);
+    expect((await post(MEMBER, body)).status).toBe(403);
+    expect((await post(COLLECTOR, body)).status).toBe(403);
+    expect((await post(OFFICER, body)).status).toBe(403);
+    expect((await post(RECONCILER, { ...body, bankReference: '' })).status).toBe(400);
+    expect((await post(RECONCILER, { ...body, note: '' })).status).toBe(400);
+    const ok = await post(RECONCILER, body);
+    expect(ok.status).toBe(201);
+    expect(svc.recordReceivedTransfer).toHaveBeenCalledWith(expect.objectContaining({ associationId: ASSOC, groupId: 1, membershipId: 3, bankReference: 'NIP-123456', actorUserId: RECONCILER }));
+  });
+
+  it('shows the all-circles queue and its count to reconcilers and officers only', async () => {
+    svc.listWaitingContributions.mockResolvedValue({ total: 0, items: [] });
+    svc.countWaitingContributions.mockResolvedValue({ transfersToConfirm: 2, cashToCount: 0 });
+    for (const path of ['/api/ajo/payments/waiting', '/api/ajo/payments/waiting/count']) {
+      expect((await request(app).get(path).set('x-test-user', as(MEMBER))).status).toBe(403);
+      expect((await request(app).get(path).set('x-test-user', as(COLLECTOR))).status).toBe(403);
+      expect((await request(app).get(path).set('x-test-user', as(RECONCILER))).status).toBe(200);
+      expect((await request(app).get(path).set('x-test-user', as(OFFICER))).status).toBe(200);
+    }
   });
 
   it('lets reconcilers and officers see the queue, and a collector see only their own day', async () => {

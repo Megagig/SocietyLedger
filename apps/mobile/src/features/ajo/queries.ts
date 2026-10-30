@@ -241,3 +241,16 @@ export function useRotatingCircles(enabled = true) {
     refetch: () => Promise.all(queries.map((q) => q.refetch())),
   };
 }
+
+/** Payments across every circle that officers have yet to confirm (transfers by default). */
+export function useWaitingPayments(status: string, groupId?: number) {
+  const tenant = useTenantKey();
+  const enabled = useCan(AJO_STAFF_ACCESS);
+  return useQuery({ queryKey: ajoKeys.staff(tenant, 'waiting-payments', status, groupId), queryFn: () => ajoApi.waitingPayments({ ...(status ? { status } : {}), ...(groupId ? { groupId } : {}) }), enabled });
+}
+/** The badge: transfers waiting to be confirmed. Asked only by people who can confirm. */
+export function useWaitingCount() {
+  const tenant = useTenantKey();
+  const enabled = useCan(['AJO_RECONCILE']);
+  return useQuery({ queryKey: ajoKeys.staff(tenant, 'waiting-count'), queryFn: () => ajoApi.waitingCount(), enabled, refetchInterval: 60_000, retry: false });
+}

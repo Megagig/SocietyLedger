@@ -65,6 +65,9 @@ export default function MyThriftScreen() {
           {mine.data.map((item) => (
             <MembershipCard key={item.membershipId} item={item} />
           ))}
+          <Button onPress={() => router.push('/(app)/(tabs)/money/thrift/payments' as never)} testID="ajo-my-payments-link">
+            Pay and report a payment
+          </Button>
           <MyPayoutsCard />
           {!check || check.status === 'VERIFIED' ? (
             <Button variant="ghost" onPress={() => router.push('/(app)/(tabs)/money/thrift/payout-account' as never)} testID="ajo-payout-account-link">
