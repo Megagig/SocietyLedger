@@ -9,6 +9,7 @@ import { ajoApi } from '@/api/endpoints/ajo';
 import { ApiError } from '@/api/errors';
 import { Checkbox } from '@/components/forms/Checkbox';
 import { DateField } from '@/components/forms/DateField';
+import { SelectSheet } from '@/components/forms/SelectSheet';
 import { TextField } from '@/components/forms/TextField';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -25,10 +26,12 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
   const sheet = useRef<BottomSheetModal>(null);
   // The day the circle is set to start now, to send a new one only when it was changed.
   const originalDay = useRef('');
+  const original = useRef<GroupDetailDTO | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [rotatingPot, setRotatingPot] = useState(false);
   const { control, handleSubmit, reset } = useForm<EditCircleValues>({
     resolver: zodResolver(editCircleSchema),
-    defaultValues: { name: '', contribution: '', maxParticipants: '1', cutoffTime: '', startDate: '', requirePhoneConfirm: false },
+    defaultValues: { name: '', contribution: '', maxParticipants: '1', cutoffTime: '', startDate: '', orderMethod: 'RANDOM_DRAW', requirePhoneConfirm: false },
     mode: 'onTouched',
   });
   const save = useAjoAction((body: Parameters<typeof ajoApi.updateGroup>[1]) => ajoApi.updateGroup(groupId, body));
@@ -38,10 +41,12 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
     () => ({
       open: (group) => {
         originalDay.current = String(group.startDate).slice(0, 10);
+        original.current = group;
+        setRotatingPot(group.model === 'ROTATING_POT');
         const [y, m, d] = originalDay.current.split('-').map(Number);
         // Noon, so the picked day cannot slip back a day through UTC.
         const startDate = y && m && d ? new Date(y, m - 1, d, 12).toISOString() : '';
-        reset({ name: group.name, contribution: koboToNaira(group.contributionKobo), maxParticipants: String(group.maxParticipants), cutoffTime: group.cutoffTime, startDate, requirePhoneConfirm: group.requirePhoneConfirm });
+        reset({ name: group.name, contribution: koboToNaira(group.contributionKobo), maxParticipants: String(group.maxParticipants), cutoffTime: group.cutoffTime, startDate, orderMethod: group.orderMethod ?? 'RANDOM_DRAW', requirePhoneConfirm: group.requirePhoneConfirm });
         setProblem(null);
         sheet.current?.present();
       },
@@ -62,6 +67,7 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
         cutoffTime: values.cutoffTime.trim(),
         requirePhoneConfirm: values.requirePhoneConfirm,
         ...(dayChanged ? { startDate: day } : {}),
+        ...(original.current?.model === 'ROTATING_POT' && values.orderMethod !== original.current.orderMethod ? { orderMethod: values.orderMethod } : {}),
       });
       toast.success('Settings saved.');
       sheet.current?.dismiss();
@@ -77,6 +83,19 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
         <TextField control={control} name="contribution" label="Each person pays (₦)" keyboardType="decimal-pad" testID="ajo-edit-contribution" />
         <TextField control={control} name="maxParticipants" label="Most people in the circle" keyboardType="number-pad" maxLength={4} testID="ajo-edit-max" />
         <DateField control={control} name="startDate" label="First payment date" minimumDate={new Date(new Date().setHours(0, 0, 0, 0))} testID="ajo-edit-start" />
+        {rotatingPot ? (
+          <SelectSheet
+            control={control}
+            name="orderMethod"
+            label="How the payout order is decided"
+            helper="Changing this clears any order already made, and it is fixed once the circle starts."
+            options={[
+              { value: 'RANDOM_DRAW', label: 'Automatic draw (recorded, anyone can check it)' },
+              { value: 'ADMIN_SET', label: 'Admin sets the order (with a written reason)' },
+            ]}
+            testID="ajo-edit-order-method"
+          />
+        ) : null}
         <TextField control={control} name="cutoffTime" label="Cut-off time each day" placeholder="18:00" testID="ajo-edit-cutoff" />
         <Checkbox control={control} name="requirePhoneConfirm" label="Members must confirm their phone number" />
         {problem ? (

@@ -10,6 +10,7 @@ import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { DisputeDialog } from '@/components/ajo/DisputeDialog';
 import { CycleCard } from '@/components/ajo/member/CycleCard';
 import { MemberCases } from '@/components/ajo/member/MemberCases';
+import { PayoutOrderCard } from '@/components/ajo/member/PayoutOrderCard';
 import { LeaveGroup, PhoneConfirmCard, ReceiptsDialog, SwapRequestCard } from '@/components/ajo/member/MemberExtras';
 import { Money } from '@/components/ajo/Money';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
@@ -233,6 +234,12 @@ export default function MembershipDetailPage() {
               </li>
             ))}
           </ul>
+        </Section>
+      )}
+
+      {item.group.model === 'ROTATING_POT' && (
+        <Section title="Payout order">
+          <PayoutOrderCard groupId={item.group.id} />
         </Section>
       )}
 

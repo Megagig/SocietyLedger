@@ -4,6 +4,8 @@ import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Modal, NativeSelect, Textarea } from '@mantine/core';
 import { ActionDialog } from '@/components/ajo/ActionDialog';
+import { AdminOrderEditor } from '@/components/ajo/AdminOrderEditor';
+import { OrderTransparency } from '@/components/ajo/OrderTransparency';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
@@ -60,7 +62,12 @@ export default function PayoutOrderPage() {
     <div className="space-y-6">
       {problem && <p role="alert" className="rounded-md bg-danger-soft p-3 text-sm text-danger-text">{problem}</p>}
 
-      {!data.drawn ? (
+      <OrderTransparency groupId={groupId} order={data} />
+
+      {data.method === 'ADMIN_SET' && data.canSet && approvePayout && canWrite && <AdminOrderEditor groupId={groupId} order={data} rerun={data.drawn} />}
+      {data.method === 'ADMIN_SET' && data.canSet && !(approvePayout && canWrite) && <p className="rounded-md bg-info-soft p-3 text-sm text-info-text">Only an admin can set the order for this circle.</p>}
+
+      {!data.drawn && data.method === 'RANDOM_DRAW' ? (
         <section className="rounded-lg border border-line p-5">
           <h2 className="font-semibold">The order has not been drawn yet.</h2>
           <p className="mt-1 text-sm text-ink-muted">The draw is random, recorded with its seed so anyone can check it later, and it happens once. Do it after everyone has joined and before the circle starts.</p>
@@ -68,9 +75,9 @@ export default function PayoutOrderPage() {
           {can && data.canDraw && <Button className="mt-3" color="green" onClick={() => (data.pendingPeople > 0 ? setWarnUnapproved(true) : run(() => draw.mutateAsync(), 'The order was drawn.'))} loading={draw.isLoading}>Draw the order</Button>}
           {can && !data.canDraw && group?.status !== 'OPEN' && <p className="mt-2 text-sm text-ink-faint">The draw is made while the circle is open for joining.</p>}
         </section>
-      ) : (
+      ) : !data.drawn ? null : (
         <section className="space-y-3">
-          {data.stale && (
+          {data.stale && data.method === 'RANDOM_DRAW' && (
             <div className="space-y-2 rounded-lg border border-warning-line bg-warning-soft p-4" role="status">
               <p className="font-semibold text-warning-strong">This draw is out of date.</p>
               <p className="text-sm text-warning-strong">{data.staleBecause}. An order drawn for a different circle cannot be used, so the circle cannot start until it is drawn again. The old draw stays on the record.</p>
@@ -78,7 +85,12 @@ export default function PayoutOrderPage() {
               {can && data.canDraw && <Button color="green" onClick={() => (data.pendingPeople > 0 ? setWarnUnapproved(true) : run(() => draw.mutateAsync(), 'The order was drawn again.'))} loading={draw.isLoading}>Draw again</Button>}
             </div>
           )}
-          <p className="text-sm text-ink-muted">{data.stale ? 'Out of date: drawn' : 'Drawn'} {formatMoment(data.drawnAt)}. Seed <span className="font-mono">{data.seed}</span>.</p>
+          {data.stale && data.method === 'ADMIN_SET' && (
+            <div className="rounded-lg border border-warning-line bg-warning-soft p-4" role="status">
+              <p className="font-semibold text-warning-strong">This order is out of date.</p>
+              <p className="text-sm text-warning-strong">{data.staleBecause}. Set the order again above before the circle can start. The old one stays on the record.</p>
+            </div>
+          )}
           <ol className="divide-y divide-line-soft rounded-lg border border-line">
             {data.slots.map((s) => (
               <li key={s.slotId} className="flex items-center justify-between gap-3 px-4 py-3">

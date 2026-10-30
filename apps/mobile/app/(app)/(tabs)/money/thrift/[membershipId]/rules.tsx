@@ -20,7 +20,7 @@ import { AjoLoading } from '@/features/ajo/components/AjoStates';
 import { AjoScreen } from '@/features/ajo/components/AjoScreen';
 import { formatDay } from '@/features/ajo/format';
 import { useAjoAction } from '@/features/ajo/mutations';
-import { AJO_MEMBER_ACCESS, useRulesToAccept } from '@/features/ajo/queries';
+import { AJO_MEMBER_ACCESS, useGroup, useMyMemberships, useRulesToAccept } from '@/features/ajo/queries';
 import { rulesAcceptSchema } from '@/features/ajo/schemas';
 
 type Values = { read: boolean; note?: string };
@@ -32,6 +32,9 @@ export default function RulesScreen() {
   const router = useRouter();
   const { canWrite } = useAjoWrite();
   const rules = useRulesToAccept(membershipId);
+  const mine = useMyMemberships();
+  const circle = mine.data?.find((m) => m.membershipId === membershipId)?.group;
+  const orderGroup = useGroup(circle?.id ?? 0).data;
   const accept = useAjoAction((body: { ruleVersionId: number; note?: string }) => ajoApi.acceptRules(membershipId, body));
   const { control, handleSubmit } = useForm<Values>({ resolver: zodResolver(rulesAcceptSchema), defaultValues: { read: false, note: '' }, mode: 'onTouched' });
   const [problem, setProblem] = useState<string | null>(null);
@@ -64,6 +67,11 @@ export default function RulesScreen() {
           <Text variant="caption" tone="secondary">
             Version {current.version}, in force from {formatDay(current.effectiveFrom)}.
           </Text>
+          {orderGroup?.model === 'ROTATING_POT' ? (
+            <Text variant="body" tone="secondary" testID="ajo-rules-order-method">
+              Payout order: {orderGroup.orderMethod === 'ADMIN_SET' ? 'the admin sets the order by hand and gives the reason, which every member can read.' : 'an automatic draw. It is random, recorded with its seed, and anyone can check it.'}
+            </Text>
+          ) : null}
           <Card testID="ajo-rules-summary">
             <View className="gap-2">
               {current.summary.map((line) => (

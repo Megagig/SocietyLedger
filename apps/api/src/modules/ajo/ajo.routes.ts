@@ -121,6 +121,8 @@ router.post('/groups/:id/cycles/next', requirePermission(PERMISSIONS.AJO_APPROVE
 
 router.post('/groups/:id/draw', manage, groups.draw);
 router.get('/groups/:id/order', readers, groups.order);
+router.get('/groups/:id/order/verify', readers, groups.verifyOrder);
+router.post('/groups/:id/order/set', approve, groups.setOrder);
 router.post('/groups/:id/swaps', readers, groups.requestSwap);
 router.get('/groups/:id/swaps', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_APPROVE_PAYOUT]), groups.swaps);
 router.post('/swaps/:id/decision', approve, groups.decideSwap);

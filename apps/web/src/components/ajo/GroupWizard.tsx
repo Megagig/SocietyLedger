@@ -22,6 +22,8 @@ type Form = {
   cycleLength: number;
   maxParticipants: number;
   maxShares: number;
+  /** Rotating pot: how the payout order is decided. */
+  orderMethod: 'RANDOM_DRAW' | 'ADMIN_SET';
   allowLateJoin: boolean;
   collectorFeeType: 'NONE' | 'FIXED' | 'PERCENT' | 'DAYS';
   collectorFeeValue: string;
@@ -43,7 +45,7 @@ const FREQUENCY_OPTIONS = [
 ];
 
 const INITIAL: Form = {
-  model: 'COLLECTOR_THRIFT', name: '', frequency: 'DAILY', customCount: 2, customUnit: 'WEEKS', contribution: '', startDate: '', cycleLength: 31, maxParticipants: 30, maxShares: 2, allowLateJoin: false,
+  model: 'COLLECTOR_THRIFT', name: '', frequency: 'DAILY', customCount: 2, customUnit: 'WEEKS', contribution: '', startDate: '', cycleLength: 31, maxParticipants: 30, maxShares: 2, orderMethod: 'RANDOM_DRAW', allowLateJoin: false,
   collectorFeeType: 'DAYS', collectorFeeValue: '1', cutoffTime: '18:00', requirePhoneConfirm: false, bankName: '', accountNumber: '', accountName: '', rules: DEFAULT_RULES,
 };
 
@@ -84,6 +86,7 @@ function build(f: Form): { body: Parameters<typeof ajoStaffApi.createGroup>[0] }
   const fields: GroupFieldsInput = {
     name: f.name.trim(), model: f.model, frequency: f.model === 'ROTATING_POT' && f.frequency === 'DAILY' ? 'WEEKLY' : f.frequency, intervalCount, intervalUnit, contributionKobo: contribution.toString(), startDate: f.startDate,
     cycleLength: f.model === 'COLLECTOR_THRIFT' ? f.cycleLength : null, maxParticipants: f.maxParticipants, maxSharesPerMember: f.model === 'ROTATING_POT' ? f.maxShares : 1,
+    ...(f.model === 'ROTATING_POT' ? { orderMethod: f.orderMethod } : {}),
     allowLateJoin: f.allowLateJoin, collectorFeeType: f.collectorFeeType, collectorFeeValue, cutoffTime: f.cutoffTime, requirePhoneConfirm: f.requirePhoneConfirm,
   };
   return { body: { ...fields, bank: { bankName: f.bankName.trim(), accountNumber: f.accountNumber.replace(/\s/g, ''), accountName: f.accountName.trim() }, rules: rules.input } };
@@ -184,6 +187,15 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
             {!rotating && <NumberInput label="Number of payments in the cycle" description="For example 31 daily payments." min={1} max={400} value={form.cycleLength} onChange={(v) => set('cycleLength', typeof v === 'number' ? v : 1)} />}
             <NumberInput label="Most people in the circle" min={rotating ? 2 : 1} max={2000} value={form.maxParticipants} onChange={(v) => set('maxParticipants', typeof v === 'number' ? v : 1)} />
             {rotating && <NumberInput label="Most shares one person can hold" description="A person with two shares pays twice and collects twice." min={1} max={5} value={form.maxShares} onChange={(v) => set('maxShares', typeof v === 'number' ? v : 1)} />}
+            {rotating && (
+              <NativeSelect
+                label="How the payout order is decided"
+                description={form.orderMethod === 'ADMIN_SET' ? 'The admin places everyone in order and writes the reason, which every member can read. You do this on Payout order before the circle starts.' : 'A recorded random draw. The seed is saved, every member can see it, and anyone can check the result.'}
+                data={[{ value: 'RANDOM_DRAW', label: 'Automatic draw (recorded, anyone can check it)' }, { value: 'ADMIN_SET', label: 'Admin sets the order (with a written reason)' }]}
+                value={form.orderMethod}
+                onChange={(e) => set('orderMethod', e.currentTarget.value as 'RANDOM_DRAW' | 'ADMIN_SET')}
+              />
+            )}
             <Checkbox label="People may join after the circle has started" checked={form.allowLateJoin} onChange={(e) => set('allowLateJoin', e.currentTarget.checked)} />
           </>
         )}

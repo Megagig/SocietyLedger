@@ -96,6 +96,8 @@ export const editCircleSchema = z.object({
   cutoffTime: z.string().trim().regex(/^\d{2}:\d{2}$/, 'Write the cut-off time like 18:00.'),
   /** The first payment date, as the date field holds it (an ISO moment). */
   startDate: z.string().min(1, 'Choose the day the circle starts.'),
+  /** Rotating pot: how the payout order is decided. Ignored for collector thrift. */
+  orderMethod: z.enum(['RANDOM_DRAW', 'ADMIN_SET']).default('RANDOM_DRAW'),
   requirePhoneConfirm: z.boolean(),
 });
 export type EditCircleValues = z.input<typeof editCircleSchema>;

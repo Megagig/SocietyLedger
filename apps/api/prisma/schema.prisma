@@ -4200,6 +4200,16 @@ enum AjoOrderEventType {
   DRAW
   SWAP
   EXCEPTION
+  /// The admin placed every share by hand, with a written reason. No seed: nothing random backs it.
+  ADMIN_SET
+}
+
+/// How a rotating pot decides who is paid when. Chosen before the circle starts and then fixed.
+enum AjoOrderMethod {
+  /// A recorded random draw whose seed anyone can check (the default).
+  RANDOM_DRAW
+  /// The admin sets the order by hand, with a written reason the group can read.
+  ADMIN_SET
 }
 
 /// What a collector-thrift saver does when a cycle ends. PENDING counts as WITHDRAW: nobody's money stays in the group because they did not reply.
@@ -4265,6 +4275,8 @@ model AjoGroup {
   maxSharesPerMember  Int             @default(2) @map("max_shares_per_member")
   /// Collector thrift: may people join after the group has started?
   allowLateJoin       Boolean         @default(true) @map("allow_late_join")
+  /// Rotating pot: how the payout order is decided. Fixed once the circle starts.
+  orderMethod         AjoOrderMethod  @default(RANDOM_DRAW) @map("order_method")
   status              AjoGroupStatus  @default(DRAFT)
   startedAt           DateTime?       @map("started_at")
   /// The last due date of the schedule, fixed at start so a late joiner's schedule ends where everyone else's does.

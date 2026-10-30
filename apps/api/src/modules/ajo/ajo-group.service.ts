@@ -46,6 +46,8 @@ export interface GroupFields {
   requirePhoneConfirm: boolean;
   maxSharesPerMember: number;
   allowLateJoin: boolean;
+  /** Rotating pot: how the payout order is decided. A collector-thrift scheme has no order, so it is always RANDOM_DRAW (unused). */
+  orderMethod: 'RANDOM_DRAW' | 'ADMIN_SET';
 }
 
 export interface BankInput {
@@ -72,10 +74,11 @@ export interface GroupPatch {
   requirePhoneConfirm?: boolean;
   maxSharesPerMember?: number;
   allowLateJoin?: boolean;
+  orderMethod?: GroupFields['orderMethod'];
 }
 
 /** Fields that change what people owe or when. Locked once the group has started. */
-export const MONEY_FIELDS = ['model', 'frequency', 'intervalCount', 'intervalUnit', 'contributionKobo', 'startDate', 'cycleLength', 'collectorFeeType', 'collectorFeeValue', 'cutoffTime', 'timezone', 'requirePhoneConfirm', 'maxSharesPerMember'] as const;
+export const MONEY_FIELDS = ['model', 'frequency', 'intervalCount', 'intervalUnit', 'contributionKobo', 'startDate', 'cycleLength', 'collectorFeeType', 'collectorFeeValue', 'cutoffTime', 'timezone', 'requirePhoneConfirm', 'maxSharesPerMember', 'orderMethod'] as const;
 
 function toKobo(value: number | bigint | string, label: string): bigint {
   try {
@@ -141,6 +144,9 @@ export function resolveGroupFields(base: GroupFields | null, patch: GroupPatch):
     if (!Number.isInteger(maxSharesPerMember) || maxSharesPerMember < 1 || maxSharesPerMember > 5) throw bad('One person can hold between 1 and 5 shares.');
   }
 
+  const orderMethod = model === 'ROTATING_POT' ? (patch.orderMethod ?? base?.orderMethod ?? 'RANDOM_DRAW') : 'RANDOM_DRAW';
+  if (!['RANDOM_DRAW', 'ADMIN_SET'].includes(orderMethod)) throw bad('Choose how the payout order is decided: a recorded random draw, or set by the admin.');
+
   const collectorFeeType = patch.collectorFeeType ?? base?.collectorFeeType ?? 'NONE';
   if (!['NONE', 'FIXED', 'PERCENT', 'DAYS'].includes(collectorFeeType)) throw bad('Choose how the collector is paid.');
   let collectorFeeValue = patch.collectorFeeValue === undefined ? (base?.collectorFeeValue ?? 0n) : toKobo(patch.collectorFeeValue, 'The collector fee');
@@ -154,7 +160,7 @@ export function resolveGroupFields(base: GroupFields | null, patch: GroupPatch):
   const cutoffTime = patch.cutoffTime ?? base?.cutoffTime ?? '18:00';
   if (!isValidCutoff(cutoffTime)) throw bad('The cutoff time must look like 18:00.');
 
-  return { name, model, frequency, intervalCount, intervalUnit, contributionKobo, startDate, cycleLength, maxParticipants, collectorFeeType, collectorFeeValue, timezone, cutoffTime, requirePhoneConfirm: patch.requirePhoneConfirm ?? base?.requirePhoneConfirm ?? false, maxSharesPerMember, allowLateJoin: patch.allowLateJoin ?? base?.allowLateJoin ?? true };
+  return { name, model, frequency, intervalCount, intervalUnit, contributionKobo, startDate, cycleLength, maxParticipants, collectorFeeType, collectorFeeValue, timezone, cutoffTime, requirePhoneConfirm: patch.requirePhoneConfirm ?? base?.requirePhoneConfirm ?? false, maxSharesPerMember, allowLateJoin: patch.allowLateJoin ?? base?.allowLateJoin ?? true, orderMethod };
 }
 
 /** Which of the locked fields would this change? Compares values, so sending the same value again is not a change. */
@@ -199,6 +205,8 @@ export function toGroupView(g: GroupRow) {
     maxParticipants: g.maxParticipants,
     maxSharesPerMember: g.maxSharesPerMember,
     allowLateJoin: g.allowLateJoin,
+    /** Rotating pot: RANDOM_DRAW (a recorded draw anyone can check) or ADMIN_SET (the admin places everyone, with a reason). */
+    orderMethod: g.orderMethod,
     collectorFee: { type: g.collectorFeeType, value: g.collectorFeeValue.toString() },
     timezone: g.timezone,
     cutoffTime: g.cutoffTime,
@@ -228,6 +236,7 @@ const fieldsOf = (g: GroupRow): GroupFields => ({
   requirePhoneConfirm: g.requirePhoneConfirm,
   maxSharesPerMember: g.maxSharesPerMember,
   allowLateJoin: g.allowLateJoin,
+  orderMethod: g.orderMethod,
 });
 
 async function lockGroup(tx: Tx, associationId: number, groupId: number): Promise<GroupRow> {
@@ -321,6 +330,9 @@ export async function updateGroup(input: UpdateGroupInput) {
       const over = await tx.ajoMembership.count({ where: { groupId: group.id, status: { not: 'LEFT' }, shares: { gt: after.maxSharesPerMember } } });
       if (over) throw new RuleError('Some people already hold more shares than that.', 409, 'SHARES_ABOVE_LIMIT');
     }
+
+    // A different way of ordering means the order made the old way no longer stands. Its record is kept; the places are cleared.
+    if (changed.includes('orderMethod')) await tx.ajoPayoutSlot.deleteMany({ where: { groupId: group.id } });
 
     let bankChanged = false;
     const data: Prisma.AjoGroupUpdateInput = {};

@@ -21,6 +21,27 @@ In a rotating pot, the order in which people are paid is the most sensitive deci
 - You need the **manage** permission to draw and to request swaps. An **admin** (the **approve payouts** permission) approves swaps and makes emergency changes.
 - Everyone in the circle must be added and approved first. See [Adding and approving people](/docs/ajo-thrift/adding-and-approving-people).
 
+## Two ways to decide the order
+
+A rotating pot decides its payout order one of two ways. You choose when you create the circle, or in **Edit settings** while the circle is still being set up (it is fixed once the circle starts):
+
+- **Automatic draw** (the default): a random draw, recorded with its seed. It is described below.
+- **Admin sets the order:** the admin places every person (every share) in order by hand and writes the reason. Some groups prefer this, for example when the order was agreed at a meeting by need.
+
+Members see which one the circle uses on the rules screen where they accept the rules, so nobody is surprised.
+
+## Set the order yourself (admin)
+
+If the circle's order is **set by the admin**, open **Payout order** (on the phone: **Manage**, **Thrift**, the circle, **Payout order**). Only someone who can approve payouts can do this.
+
+1. Move each person up or down until the list is in the order they will be paid. First is paid first. A person with two shares appears twice.
+2. Under **Reason or basis for this order**, write why, for example "agreed at the 12 Nov meeting: by need, then date joined". Every member can read it.
+3. Select **Save the order**.
+
+Every member is told. The order is recorded as **set by you**, with the reason, and every version is kept. You can set it again while the circle is still open. If people join, leave or are approved afterwards, the order is **out of date** and has to be set again before the circle can start. After the circle starts, swaps and emergency changes work as they do for a draw.
+
+Because nothing random backs an order set by hand, there is no seed. The reason is what the group reads. Approve everyone first, then set the order once.
+
 ## Make the draw
 
 The draw is made while the circle is **open for joining**, before it starts.
@@ -78,6 +99,15 @@ Sometimes the person due next cannot be paid: they are ill, or away, or in need 
 </Steps>
 
 Only places that have not been paid, and have no payout in progress, can move. Before the first payout is recorded, use an ordinary swap or draw again instead.
+
+## What members see, and how to check a draw
+
+Every member of the pot sees a **Payout order** section on their own circle page (web: **My Thrift**, the circle; phone: **Thrift**, the circle), **whether or not the Circle board is on**. It shows who collects when, with the member's own place marked, and **how the order was decided**:
+
+- For an **automatic draw**: when it was drawn, by whom, and the **seed**. Select **Verify this draw** and SocietyLedger runs the draw again from the seed and tells you whether it gives exactly the same order. If it does not match, it says so.
+- For an order **set by the admin**: who set it, when, and the **reason**, with a note that there is no seed because it was set by hand.
+
+This is how a group can see for itself that the order was not quietly changed.
 
 ## If the people change after the draw
 

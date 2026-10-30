@@ -9,7 +9,7 @@ import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay } from '@/lib/ajo/format';
-import { useAcceptRules, useRulesToAccept } from '@/lib/ajo/hooks';
+import { useAcceptRules, useRulesToAccept, useGroup, useMyMemberships } from '@/lib/ajo/hooks';
 import { toast } from '@/lib/toast';
 
 /** THM4: read the circle's current rules in plain words and accept them. A rule change only binds you once you accept it. */
@@ -18,6 +18,9 @@ export default function RulesPage() {
   const membershipId = Number(params.membershipId) || 0;
   const { canWrite } = useAjoAccess();
   const rules = useRulesToAccept(membershipId);
+  const mine = useMyMemberships();
+  const circle = mine.data?.find((m) => m.membershipId === membershipId)?.group;
+  const orderGroup = useGroup(circle?.id ?? 0).data;
   const accept = useAcceptRules(membershipId);
   const [read, setRead] = useState(false);
   const [note, setNote] = useState('');
@@ -52,6 +55,12 @@ export default function RulesPage() {
         <p className="mt-1 text-sm text-ink-muted">
           Version {current.version}, in force from {formatDay(current.effectiveFrom)}.
         </p>
+        {orderGroup?.model === 'ROTATING_POT' && (
+          <p className="mt-2 rounded-md bg-surface-muted p-3 text-sm text-ink-soft">
+            <span className="font-medium text-ink">Payout order: </span>
+            {orderGroup.orderMethod === 'ADMIN_SET' ? 'the admin sets the order by hand and gives the reason, which every member can read.' : 'an automatic draw. It is random, recorded with its seed, and anyone can check it.'}
+          </p>
+        )}
       </div>
 
       <ul className="space-y-2 rounded-lg border border-line p-4">

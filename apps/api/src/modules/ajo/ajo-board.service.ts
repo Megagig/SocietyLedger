@@ -338,7 +338,7 @@ export async function boardPayouts(input: { associationId: number; groupId: numb
   const states = await payoutStates(b);
   const slots = await prisma.ajoPayoutSlot.findMany({ where: { groupId: b.group.id }, orderBy: { position: 'asc' }, select: { id: true, position: true, shareNo: true, membershipId: true } });
   const events = await prisma.ajoPayoutOrderEvent.findMany({ where: { groupId: b.group.id }, orderBy: { id: 'asc' }, select: { id: true, type: true, detail: true, reason: true, approvedBy: true, createdAt: true } });
-  const draw = [...events].reverse().find((e) => e.type === 'DRAW');
+  const draw = [...events].reverse().find((e) => e.type === (b.group.orderMethod === 'ADMIN_SET' ? 'ADMIN_SET' : 'DRAW'));
   const drawDetail = (draw?.detail ?? {}) as { seed?: string };
 
   const rows = slots.map((s) => {
@@ -364,7 +364,7 @@ export async function boardPayouts(input: { associationId: number; groupId: numb
       return { id: e.id, type: 'EXCEPTION' as const, at: e.createdAt.toISOString(), approvedBy: officerName(b, e.approvedBy), reason: e.reason, summary: `Emergency exception: ${nameOfMembership(d.membershipId)} moved from position ${d.from} to ${d.to}`, people: [nameOfMembership(d.membershipId)].filter((n): n is string => !!n) };
     });
 
-  return { timezone: b.group.timezone, drawn: !!draw, draw: draw ? { drawnAt: draw.createdAt.toISOString(), seed: drawDetail.seed ?? null, howToCheck: 'The order is worked out from this seed and the list of members. Anyone can repeat the draw with the same seed and get the same order.' } : null, rows, changes };
+  return { timezone: b.group.timezone, drawn: !!draw, draw: draw ? { drawnAt: draw.createdAt.toISOString(), method: b.group.orderMethod, reason: draw.reason, seed: b.group.orderMethod === 'ADMIN_SET' ? null : (drawDetail.seed ?? null), howToCheck: 'The order is worked out from this seed and the list of members. Anyone can repeat the draw with the same seed and get the same order.' } : null, rows, changes };
 }
 
 /** 4.5 Members: the roster, with counts. */

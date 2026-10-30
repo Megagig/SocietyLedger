@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Button, Checkbox, Modal, NumberInput, TextInput } from '@mantine/core';
+import { Button, Checkbox, Modal, NativeSelect, NumberInput, TextInput } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { ActionDialog } from '@/components/ajo/ActionDialog';
@@ -130,6 +130,13 @@ export default function GroupOverviewPage() {
         <p className="mt-1 text-xs text-ink-faint">Timezone {group.timezone}, cut-off {group.cutoffTime}. Members {group.requirePhoneConfirm ? 'must' : 'do not need to'} confirm their phone number.</p>
       </section>
 
+      {group.model === 'ROTATING_POT' && (
+        <section className="rounded-lg border border-line p-4" aria-label="Payout order">
+          <h2 className="font-semibold">Payout order</h2>
+          <p className="mt-1 text-sm">{group.orderMethod === 'ADMIN_SET' ? 'Set by the admin, with a written reason every member can read.' : 'An automatic draw, recorded with its seed. Anyone can check it.'}</p>
+          <Button component={Link} href={`/dashboard/ajo/${groupId}/order`} variant="default" size="xs" className="mt-2">{group.orderMethod === 'ADMIN_SET' ? 'Set the order' : 'Go to Payout order'}</Button>
+        </section>
+      )}
       {group.model === 'ROTATING_POT' && <BoardSettingCard groupId={groupId} canChange={can} />}
 
       {can && (group.status === 'DRAFT' || group.status === 'OPEN' || group.status === 'ACTIVE') && (
@@ -154,6 +161,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
   const [max, setMax] = useState<number>(1);
   const [cutoff, setCutoff] = useState('');
   const [startDay, setStartDay] = useState('');
+  const [orderMethod, setOrderMethod] = useState<'RANDOM_DRAW' | 'ADMIN_SET'>('RANDOM_DRAW');
   const [phone, setPhone] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -165,6 +173,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
     setMax(group.maxParticipants);
     setCutoff(group.cutoffTime);
     setStartDay(String(group.startDate).slice(0, 10));
+    setOrderMethod(group.orderMethod);
     setPhone(group.requirePhoneConfirm);
     setProblem(null);
   }, [open, group]);
@@ -178,7 +187,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDay)) return setProblem('Choose the day the circle starts.');
     if (dayChanged && startDay < today) return setProblem('The start date must be today or later.');
     try {
-      await save.mutateAsync({ name: name.trim(), contributionKobo: kobo.toString(), maxParticipants: max, cutoffTime: cutoff, requirePhoneConfirm: phone, ...(dayChanged ? { startDate: startDay } : {}) });
+      await save.mutateAsync({ name: name.trim(), contributionKobo: kobo.toString(), maxParticipants: max, cutoffTime: cutoff, requirePhoneConfirm: phone, ...(dayChanged ? { startDate: startDay } : {}), ...(group.model === 'ROTATING_POT' && orderMethod !== group.orderMethod ? { orderMethod } : {}) });
       toast.success('Settings saved.');
       onClose();
     } catch (error) {
@@ -193,6 +202,15 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
         <NumberInput label="Most people in the circle" min={1} max={2000} value={max} onChange={(v) => setMax(typeof v === 'number' ? v : 1)} />
         <TextInput label="First payment date" type="date" value={startDay} onChange={(e) => setStartDay(e.currentTarget.value)} description="The day the circle starts. It cannot be in the past." />
         <TextInput label="Cut-off time each day" value={cutoff} onChange={(e) => setCutoff(e.currentTarget.value)} />
+        {group.model === 'ROTATING_POT' && (
+          <NativeSelect
+            label="How the payout order is decided"
+            description="Changing this clears any order already made, and it is fixed once the circle starts."
+            data={[{ value: 'RANDOM_DRAW', label: 'Automatic draw (recorded, anyone can check it)' }, { value: 'ADMIN_SET', label: 'Admin sets the order (with a written reason)' }]}
+            value={orderMethod}
+            onChange={(e) => setOrderMethod(e.currentTarget.value as 'RANDOM_DRAW' | 'ADMIN_SET')}
+          />
+        )}
         <Checkbox label="Members must confirm their phone number" checked={phone} onChange={(e) => setPhone(e.currentTarget.checked)} />
         {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
         <div className="flex justify-end gap-2"><Button variant="default" onClick={onClose}>Cancel</Button><Button color="green" onClick={submit} loading={save.isLoading}>Save</Button></div>

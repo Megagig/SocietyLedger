@@ -142,3 +142,33 @@ export function drawOrder(input: DrawInput): DrawResult {
 
   return { positions: shuffled.map((s, i) => ({ ...s, position: i + 1 })), atRiskRuleFullyApplied: fullyApplied };
 }
+
+/** What a draw saved, which is everything needed to run it again. */
+export interface SavedDraw {
+  seed: string;
+  positions: PlacedSlot[];
+  blockAtRiskEarly?: boolean;
+  /** Saved from the time the draw was made. Missing on older draws made with the At-risk rule on, which therefore cannot be re-checked. */
+  atRiskMembershipIds?: number[];
+}
+
+export interface DrawCheck {
+  /** True when running the draw again from its seed gives the same order; false when it does not; null when it cannot be checked. */
+  matches: boolean | null;
+  reason: string | null;
+}
+
+/** Runs a saved draw again from its seed and compares. Nothing here reads a clock or the database. */
+export function verifyDraw(saved: SavedDraw): DrawCheck {
+  if (!saved.seed || !Array.isArray(saved.positions) || saved.positions.length === 0) return { matches: null, reason: 'This draw did not save what is needed to check it.' };
+  if (saved.blockAtRiskEarly && saved.atRiskMembershipIds === undefined) return { matches: null, reason: 'This draw used the At-risk rule and was made before the people it applied to were saved, so it cannot be re-checked.' };
+  const again = drawOrder({
+    slots: saved.positions.map((p) => ({ membershipId: p.membershipId, shareNo: p.shareNo })),
+    seed: saved.seed,
+    blockAtRiskEarly: saved.blockAtRiskEarly ?? false,
+    atRisk: new Set(saved.atRiskMembershipIds ?? []),
+  });
+  const before = new Map(saved.positions.map((p) => [slotId(p), p.position]));
+  const same = again.positions.length === saved.positions.length && again.positions.every((p) => before.get(slotId(p)) === p.position);
+  return { matches: same, reason: same ? null : 'Running the draw again from the saved seed gives a different order.' };
+}

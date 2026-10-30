@@ -36,6 +36,16 @@ describe('buildGroup', () => {
     expect('body' in built && built.body).toMatchObject({ frequency: 'WEEKLY', cycleLength: null, maxSharesPerMember: 2, maxParticipants: 10 });
   });
 
+  it('carries how a rotating pot decides its payout order, and sends nothing for collector thrift', () => {
+    const pot = { ...good, model: 'ROTATING_POT' as const, frequency: 'MONTHLY' as const, collectorFeeType: 'NONE' as const, maxParticipants: '10', maxShares: '1' };
+    const automatic = buildGroup(pot);
+    expect('body' in automatic && automatic.body).toMatchObject({ orderMethod: 'RANDOM_DRAW' });
+    const byAdmin = buildGroup({ ...pot, orderMethod: 'ADMIN_SET' });
+    expect('body' in byAdmin && byAdmin.body).toMatchObject({ orderMethod: 'ADMIN_SET' });
+    const thrift = buildGroup({ ...good, orderMethod: 'ADMIN_SET' });
+    expect('body' in thrift && thrift.body).not.toHaveProperty('orderMethod');
+  });
+
   it('carries a custom cadence', () => {
     const built = buildGroup({ ...good, frequency: 'CUSTOM', customCount: '2', customUnit: 'WEEKS' });
     expect('body' in built && built.body).toMatchObject({ frequency: 'CUSTOM', intervalCount: 2, intervalUnit: 'WEEKS' });

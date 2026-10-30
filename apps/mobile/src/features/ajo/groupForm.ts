@@ -91,6 +91,8 @@ export type GroupFormValues = {
   cycleLength: string;
   maxParticipants: string;
   maxShares: string;
+  /** Rotating pot: how the payout order is decided. */
+  orderMethod: 'RANDOM_DRAW' | 'ADMIN_SET';
   allowLateJoin: boolean;
   collectorFeeType: 'NONE' | 'FIXED' | 'PERCENT' | 'DAYS';
   collectorFeeValue: string;
@@ -113,6 +115,7 @@ export const INITIAL_GROUP: GroupFormValues = {
   cycleLength: '31',
   maxParticipants: '30',
   maxShares: '2',
+  orderMethod: 'RANDOM_DRAW',
   allowLateJoin: false,
   collectorFeeType: 'DAYS',
   collectorFeeValue: '1',
@@ -193,6 +196,7 @@ export function buildGroup(f: GroupFormValues): BuiltGroup {
     cycleLength: rotating ? null : cycleLength,
     maxParticipants,
     maxSharesPerMember: rotating ? maxShares : 1,
+    ...(rotating ? { orderMethod: f.orderMethod } : {}),
     allowLateJoin: f.allowLateJoin,
     collectorFeeType: f.collectorFeeType,
     collectorFeeValue,

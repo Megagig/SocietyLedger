@@ -56,6 +56,7 @@ export type GroupFieldsInput = {
   requirePhoneConfirm?: boolean;
   maxSharesPerMember?: number;
   allowLateJoin?: boolean;
+  orderMethod?: 'RANDOM_DRAW' | 'ADMIN_SET';
 };
 export type RulesInput = {
   lateFeeType?: 'NONE' | 'FIXED' | 'PERCENT';
@@ -111,6 +112,8 @@ export const ajoStaffApi = {
   recordGuarantor: (membershipId: number, body: { name: string; phone: string; relationship: string; note: string }) => post<unknown>(`/ajo/memberships/${membershipId}/guarantor`, body),
   order: (id: number) => unwrap<OrderDTO>(api.get(`/ajo/groups/${id}/order`)),
   runDraw: (id: number) => post<unknown>(`/ajo/groups/${id}/draw`),
+  /** The admin places every share, first in the list is paid first, with the reason the group can read. */
+  setOrder: (id: number, body: { order: Array<{ membershipId: number; shareNo: number }>; reason: string }) => post<unknown>(`/ajo/groups/${id}/order/set`, body),
   swaps: (id: number) => unwrap<SwapDTO[]>(api.get(`/ajo/groups/${id}/swaps`)),
   requestSwap: (id: number, body: { slotAId: number; slotBId: number; reason?: string }) => post<unknown>(`/ajo/groups/${id}/swaps`, body),
   decideSwap: (swapId: number, body: { decision: 'APPROVED' | 'REJECTED'; note?: string }) => post<unknown>(`/ajo/swaps/${swapId}/decision`, body),

@@ -7,6 +7,7 @@ import type { RuleVersionsReplyDTO ,
   AssignedContributorDTO,
   BulkResultDTO,
   CaseDTO,
+  OrderCheckDTO,
   WaitingPaymentsDTO,
   GroupTrustRowDTO,
   PrepareAllResultDTO,
@@ -75,6 +76,7 @@ export type GroupFieldsInput = {
   requirePhoneConfirm?: boolean;
   maxSharesPerMember?: number;
   allowLateJoin?: boolean;
+  orderMethod?: 'RANDOM_DRAW' | 'ADMIN_SET';
 };
 export type RulesInput = {
   lateFeeType?: 'NONE' | 'FIXED' | 'PERCENT';
@@ -222,6 +224,10 @@ export const ajoApi = {
 
   // ── payout order ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   runDraw: (id: number) => post<unknown>(`/ajo/groups/${id}/draw`),
+  /** The admin places every share, first in the list is paid first, with the reason the group can read. */
+  setOrder: (id: number, body: { order: { membershipId: number; shareNo: number }[]; reason: string }) => post<unknown>(`/ajo/groups/${id}/order/set`, body),
+  /** Run the newest random draw again from its saved seed and say whether it matches. */
+  verifyOrder: (id: number) => get<OrderCheckDTO>(`/ajo/groups/${id}/order/verify`),
   swaps: (id: number) => get<SwapDTO[]>(`/ajo/groups/${id}/swaps`),
   decideSwap: (swapId: number, body: { decision: 'APPROVED' | 'REJECTED'; note?: string }) => post<unknown>(`/ajo/swaps/${swapId}/decision`, body),
   exception: (id: number, body: { slotId: number; newPosition: number; reason: string }) => post<unknown>(`/ajo/groups/${id}/exceptions`, body),

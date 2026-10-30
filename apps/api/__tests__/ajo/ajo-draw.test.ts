@@ -1,4 +1,4 @@
-import { canonicalSlots, drawOrder, earlyPositionCount, newSeed, rosterFingerprint, seededShuffle, type SlotKey } from '../../src/modules/ajo/ajo-draw';
+import { canonicalSlots, drawOrder, earlyPositionCount, newSeed, rosterFingerprint, seededShuffle, type SlotKey, verifyDraw } from '../../src/modules/ajo/ajo-draw';
 
 const slots = (shares: Record<number, number>): SlotKey[] => Object.entries(shares).flatMap(([m, n]) => Array.from({ length: n }, (_, i) => ({ membershipId: Number(m), shareNo: i + 1 })));
 const key = (p: { membershipId: number; shareNo: number }) => `${p.membershipId}:${p.shareNo}`;
@@ -83,5 +83,45 @@ describe('Ajo draw', () => {
       expect(result.atRiskRuleFullyApplied).toBe(false);
       expect(result.positions).toHaveLength(3);
     });
+  });
+});
+
+describe('verifyDraw', () => {
+  const roster = [
+    { membershipId: 11, shareNo: 1 },
+    { membershipId: 12, shareNo: 1 },
+    { membershipId: 12, shareNo: 2 },
+    { membershipId: 13, shareNo: 1 },
+    { membershipId: 14, shareNo: 1 },
+    { membershipId: 15, shareNo: 1 },
+  ];
+  const saved = () => {
+    const placed = drawOrder({ slots: roster, seed: 'a-saved-seed' });
+    return { seed: 'a-saved-seed', positions: placed.positions };
+  };
+
+  it('says a draw matches when running it again from its seed gives the same order', () => {
+    expect(verifyDraw(saved())).toEqual({ matches: true, reason: null });
+  });
+
+  it('says it does not match when the result was changed after the draw', () => {
+    const s = saved();
+    const [first, second] = s.positions;
+    const tampered = s.positions.map((p) => (p === first ? { ...p, position: second.position } : p === second ? { ...p, position: first.position } : p));
+    expect(verifyDraw({ ...s, positions: tampered }).matches).toBe(false);
+  });
+
+  it('says it does not match when the seed is not the one that made the order', () => {
+    expect(verifyDraw({ ...saved(), seed: 'another-seed' }).matches).toBe(false);
+  });
+
+  it('re-checks a draw that used the At-risk rule when the people it applied to were saved, and says so when they were not', () => {
+    const placed = drawOrder({ slots: roster, seed: 'risk-seed', blockAtRiskEarly: true, atRisk: new Set([11]) });
+    expect(verifyDraw({ seed: 'risk-seed', positions: placed.positions, blockAtRiskEarly: true, atRiskMembershipIds: [11] }).matches).toBe(true);
+    expect(verifyDraw({ seed: 'risk-seed', positions: placed.positions, blockAtRiskEarly: true }).matches).toBeNull();
+  });
+
+  it('cannot check something that saved nothing', () => {
+    expect(verifyDraw({ seed: '', positions: [] }).matches).toBeNull();
   });
 });

@@ -8,7 +8,11 @@ export type GuarantorPolicy = 'NOT_REQUIRED' | 'OPTIONAL' | 'REQUIRED';
 export type DefaultProcedure = 'NOTIFY_ADMIN' | 'REPAYMENT_PLAN' | 'CASE_AND_PLAN';
 
 export type GroupListItemDTO = GroupDTO & { seats: { taken: number; total: number } };
+export type OrderMethod = 'RANDOM_DRAW' | 'ADMIN_SET';
+
 export type GroupDetailDTO = GroupListItemDTO & {
+  /** Rotating pot: a recorded random draw anyone can check, or the admin placing everyone with a reason. */
+  orderMethod: OrderMethod;
   maxSharesPerMember: number;
   allowLateJoin: boolean;
   collectorFee: { type: CollectorFeeType; value: string };
@@ -79,6 +83,14 @@ export type OrderDTO = {
   staleBecause: string | null;
   /** A new draw is allowed: the circle is open and there is none yet, or the roster changed since the last one. */
   canDraw: boolean;
+  /** The admin may place the shares now (circles whose order is set by the admin). */
+  canSet: boolean;
+  method: OrderMethod;
+  /** Who made the order, and the reason they gave (an admin-set order always has one). */
+  madeBy: string | null;
+  reason: string | null;
+  /** A random draw can be run again from its seed to check it. */
+  verifiable: boolean;
   /** People who have joined but are not approved yet. They are not in a draw made now. */
   pendingPeople: number;
   drawn: boolean; seed: string | null; drawnAt: string | null; slots: OrderSlotDTO[]; history: Array<{ id: number; type: string; reason: string | null; createdAt: string }> };
@@ -232,3 +244,6 @@ export type GroupTrustRowDTO = { membershipId: number; name: string } & TrustDTO
 /** `GET /ajo/payments/waiting`: payments across every circle, with the circle and the person named. */
 export type WaitingPaymentDTO = QueueContributionDTO & { groupId: number; groupName: string; groupModel: 'ROTATING_POT' | 'COLLECTOR_THRIFT'; memberName: string; recordedByOfficer?: boolean };
 export type WaitingPaymentsDTO = { total: number; items: WaitingPaymentDTO[] };
+
+/** \`GET /ajo/groups/:id/order/verify\`: the newest random draw run again from its saved seed. */
+export type OrderCheckDTO = { method: OrderMethod; checkable: boolean; matches: boolean | null; reason: string | null; seed: string | null; drawnAt: string | null };

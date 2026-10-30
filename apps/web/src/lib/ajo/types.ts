@@ -30,6 +30,8 @@ export type GroupDTO = {
   status: GroupStatus;
   contributionKobo: string;
   startDate: string;
+  /** Rotating pot: how the payout order is decided. */
+  orderMethod?: 'RANDOM_DRAW' | 'ADMIN_SET';
   endsOn: string | null;
   cycleLength: number | null;
   rounds: number | null;

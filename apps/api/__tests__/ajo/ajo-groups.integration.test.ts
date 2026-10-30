@@ -726,6 +726,107 @@ suite('Ajo groups, rules, schedules, order and collectors (database)', () => {
       expect(await prisma.ajoPayoutOrderEvent.count({ where: { groupId: pot.id, type: 'DRAW' } })).toBe(2);
     });
 
+    describe('the admin sets the order (second way to decide it)', () => {
+      it('is chosen per circle, defaults to the recorded draw, and a draw is refused in a circle the admin sets', async () => {
+        const normal = await openPot();
+        expect(normal.orderMethod).toBe('RANDOM_DRAW');
+        const adminPot = await openPot({ orderMethod: 'ADMIN_SET' });
+        expect(adminPot.orderMethod).toBe('ADMIN_SET');
+        await join(adminPot.id);
+        await join(adminPot.id);
+        expect(await codeOf(order.runDraw({ associationId: A, groupId: adminPot.id, actorUserId: officer.id }))).toBe('ORDER_IS_ADMIN_SET');
+      });
+
+      it('places every share by hand with a reason, records who and why, shows no seed, and cannot be verified as a draw', async () => {
+        const pot = await openPot({ orderMethod: 'ADMIN_SET' });
+        const a = await join(pot.id);
+        const b = await join(pot.id, { shares: 2 });
+        const before = await order.getOrder(prisma, pot.id, null);
+        expect(before).toMatchObject({ method: 'ADMIN_SET', drawn: false, canSet: true, canDraw: false });
+
+        const placed = [
+          { membershipId: b.membership.id, shareNo: 1 },
+          { membershipId: a.membership.id, shareNo: 1 },
+          { membershipId: b.membership.id, shareNo: 2 },
+        ];
+        const done = await order.setOrderByAdmin({ associationId: A, groupId: pot.id, actorUserId: officer.id, order: placed, reason: 'agreed at the 12 Nov meeting: by need, then date joined', now: NOW });
+        expect(done).toMatchObject({ redo: false, slots: 3 });
+        const view = await order.getOrder(prisma, pot.id, null);
+        expect(view).toMatchObject({ drawn: true, current: true, stale: false, method: 'ADMIN_SET', seed: null, verifiable: false, canSet: false, reason: 'agreed at the 12 Nov meeting: by need, then date joined' });
+        expect(view.madeBy).toEqual(expect.any(String));
+        expect(view.slots.map((x: { membershipId: number; shareNo: number }) => [x.membershipId, x.shareNo])).toEqual(placed.map((p) => [p.membershipId, p.shareNo]));
+        expect((await audits('AJO_ORDER_SET_BY_ADMIN')).length).toBeGreaterThan(0);
+        expect(await order.verifyOrder(prisma, pot.id)).toMatchObject({ method: 'ADMIN_SET', checkable: false, matches: null });
+      });
+
+      it('refuses an order that leaves a share out, repeats one, or has no real reason, and one for a circle that is a random draw', async () => {
+        const pot = await openPot({ orderMethod: 'ADMIN_SET' });
+        const a = await join(pot.id);
+        const b = await join(pot.id);
+        const all = [
+          { membershipId: a.membership.id, shareNo: 1 },
+          { membershipId: b.membership.id, shareNo: 1 },
+        ];
+        const set = (o: typeof all, reason = 'a long enough reason') => order.setOrderByAdmin({ associationId: A, groupId: pot.id, actorUserId: officer.id, order: o, reason, now: NOW });
+        expect(await codeOf(set([all[0]]))).toBe('INVALID_ORDER');
+        expect(await codeOf(set([all[0], all[0]]))).toBe('INVALID_ORDER');
+        expect(await codeOf(set(all, 'short'))).toBe('REASON_REQUIRED');
+        const random = await openPot();
+        const r1 = await join(random.id);
+        const r2 = await join(random.id);
+        expect(
+          await codeOf(
+            order.setOrderByAdmin({ associationId: A, groupId: random.id, actorUserId: officer.id, order: [{ membershipId: r1.membership.id, shareNo: 1 }, { membershipId: r2.membership.id, shareNo: 1 }], reason: 'a long enough reason', now: NOW }),
+          ),
+        ).toBe('ORDER_IS_RANDOM_DRAW');
+      });
+
+      it('goes out of date when someone is approved afterwards, can be set again, and then the circle can start', async () => {
+        const pot = await openPot({ orderMethod: 'ADMIN_SET' });
+        const a = await join(pot.id);
+        const b = await join(pot.id);
+        const waiting = await join(pot.id, { approve: false });
+        await order.setOrderByAdmin({ associationId: A, groupId: pot.id, actorUserId: officer.id, order: [{ membershipId: a.membership.id, shareNo: 1 }, { membershipId: b.membership.id, shareNo: 1 }], reason: 'agreed at the 12 Nov meeting', now: NOW });
+        await members.approveMembership({ associationId: A, membershipId: waiting.membership.id, actorUserId: officer.id, now: NOW });
+        expect(await order.getOrder(prisma, pot.id, null)).toMatchObject({ stale: true, canSet: true, staleBecause: '1 person was approved since the draw' });
+        expect(await codeOf(groups.startGroup({ associationId: A, groupId: pot.id, actorUserId: officer.id, confirmSmallerGroup: true, now: BEFORE_START }))).toBe('DRAW_REQUIRED');
+        const again = await order.setOrderByAdmin({
+          associationId: A,
+          groupId: pot.id,
+          actorUserId: officer.id,
+          order: [{ membershipId: waiting.membership.id, shareNo: 1 }, { membershipId: a.membership.id, shareNo: 1 }, { membershipId: b.membership.id, shareNo: 1 }],
+          reason: 'agreed again at the 14 Nov meeting',
+          now: NOW,
+        });
+        expect(again.redo).toBe(true);
+        expect(await prisma.ajoPayoutOrderEvent.count({ where: { groupId: pot.id, type: 'ADMIN_SET' } })).toBe(2);
+        expect(await order.getOrder(prisma, pot.id, null)).toMatchObject({ current: true, stale: false });
+      });
+
+      it('lets a member check a random draw: it matches, and the check says what it ran', async () => {
+        const pot = await openPot();
+        await join(pot.id);
+        await join(pot.id);
+        expect(await order.verifyOrder(prisma, pot.id)).toMatchObject({ method: 'RANDOM_DRAW', checkable: false, matches: null });
+        await order.runDraw({ associationId: A, groupId: pot.id, actorUserId: officer.id });
+        const check = await order.verifyOrder(prisma, pot.id);
+        expect(check).toMatchObject({ method: 'RANDOM_DRAW', checkable: true, matches: true });
+        expect(check.seed).toEqual(expect.any(String));
+        expect(await order.getOrder(prisma, pot.id, null)).toMatchObject({ method: 'RANDOM_DRAW', verifiable: true });
+      });
+
+      it('clears the places made the old way when the method is changed while the circle is still open', async () => {
+        const pot = await openPot();
+        await join(pot.id);
+        await join(pot.id);
+        await order.runDraw({ associationId: A, groupId: pot.id, actorUserId: officer.id });
+        expect(await prisma.ajoPayoutSlot.count({ where: { groupId: pot.id } })).toBe(2);
+        await groups.updateGroup({ associationId: A, groupId: pot.id, actorUserId: officer.id, fields: { orderMethod: 'ADMIN_SET' }, now: NOW });
+        expect(await prisma.ajoPayoutSlot.count({ where: { groupId: pot.id } })).toBe(0);
+        expect(await order.getOrder(prisma, pot.id, null)).toMatchObject({ method: 'ADMIN_SET', drawn: false, canSet: true });
+      });
+    });
+
     it('needs the draw, an empty waiting list and an admin’s confirmation before it starts, then fixes the rounds and prices every share', async () => {
       const pot = await openPot();
       const p1 = await join(pot.id);

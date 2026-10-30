@@ -15,7 +15,7 @@ import { acceptRules, previewGuarantorWording, recordGuarantorConsent, rulesToAc
 import { cancelGroup, createGroup, getGroupBankAccount, getGroupDetail, listGroups, openGroup, startGroup, updateGroup, assertGroupVisible } from './ajo-group.service';
 import { actor, assertSelfOrManager, canManage, fail } from './ajo-members.controller';
 import { addMember, leaveMembership, setShares } from './ajo-membership.service';
-import { decideSwap, emergencyException, getOrder, listSwapRequests, requestSwap, runDraw } from './ajo-order.service';
+import { decideSwap, emergencyException, getOrder, listSwapRequests, requestSwap, runDraw, setOrderByAdmin, verifyOrder } from './ajo-order.service';
 import { acceptanceStats, listRuleVersions, publishRuleVersion } from './ajo-rules.service';
 import { listGroupMembers, listMembershipInstallments, listCollectorCandidates, listGroupPeople, listMyMemberships, searchPeople } from './ajo-views.service';
 
@@ -60,6 +60,7 @@ const fieldsSchema = z
     requirePhoneConfirm: z.boolean(),
     maxSharesPerMember: z.number().int(),
     allowLateJoin: z.boolean(),
+    orderMethod: z.enum(['RANDOM_DRAW', 'ADMIN_SET']),
   })
   .partial();
 
@@ -398,6 +399,34 @@ export const ajoGroupsController = {
       return res.json({ success: true, data: jsonSafe(await getOrder(prisma, group.id, v.userId)) });
     } catch (error) {
       return fail(res, error, 'Could not load the payout order.');
+    }
+  },
+
+  /** The admin places every share, by hand, with the reason the group can read (circles whose order method is "admin sets the order"). */
+  async setOrder(req: Request, res: Response) {
+    try {
+      const { userId, associationId } = actor(req);
+      const body = z
+        .object({
+          order: z.array(z.object({ membershipId: id, shareNo: z.number().int().min(1).max(5) })).min(2),
+          reason: z.string().trim().min(10, 'Write the reason or basis for this order, at least 10 characters.').max(1000),
+        })
+        .parse(req.body ?? {});
+      const result = await setOrderByAdmin({ associationId, groupId: id.parse(req.params.id), actorUserId: userId, order: body.order, reason: body.reason });
+      return res.status(201).json({ success: true, message: 'The order has been set. Everyone can see it, who set it and why.', data: result });
+    } catch (error) {
+      return fail(res, error, 'Could not set the order.');
+    }
+  },
+
+  /** Run a recorded random draw again from its seed and say whether it matches. Open to every member of the circle. */
+  async verifyOrder(req: Request, res: Response) {
+    try {
+      const v = await viewer(req);
+      const group = await assertGroupVisible({ ...v, groupId: id.parse(req.params.id) });
+      return res.json({ success: true, data: jsonSafe(await verifyOrder(prisma, group.id)) });
+    } catch (error) {
+      return fail(res, error, 'Could not check the draw.');
     }
   },
 

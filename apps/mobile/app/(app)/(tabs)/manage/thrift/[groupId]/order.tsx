@@ -17,6 +17,8 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
+import { AdminOrderEditor } from '@/features/ajo/components/AdminOrderEditor';
+import { OrderTransparencyCard } from '@/features/ajo/components/OrderTransparencyCard';
 import { AjoActionSheet } from '@/features/ajo/components/AjoActionSheet';
 import { useAjoWrite } from '@/features/ajo/components/AjoGate';
 import { AjoLoading } from '@/features/ajo/components/AjoStates';
@@ -101,11 +103,19 @@ export default function PayoutOrderScreen() {
         </View>
       ) : null}
 
+      {data ? <OrderTransparencyCard groupId={groupId} order={data} /> : null}
+      {data && data.method === 'ADMIN_SET' && data.canSet && approvePayout && canWrite ? <AdminOrderEditor groupId={groupId} order={data} rerun={data.drawn} /> : null}
+      {data && data.method === 'ADMIN_SET' && data.canSet && !(approvePayout && canWrite) ? (
+        <Text variant="body" tone="secondary">
+          Only an admin can set the order for this circle.
+        </Text>
+      ) : null}
+
       {order.isPending ? (
         <AjoLoading />
       ) : order.isError ? (
         <ErrorState error={order.error} onRetry={() => order.refetch()} />
-      ) : !data ? null : !data.drawn ? (
+      ) : !data ? null : data.method === 'ADMIN_SET' && !data.drawn ? null : !data.drawn ? (
         <Card testID="ajo-order-undrawn">
           <View className="gap-2">
             <Text variant="h3">The order has not been drawn yet.</Text>
@@ -131,7 +141,17 @@ export default function PayoutOrderScreen() {
         </Card>
       ) : (
         <View className="gap-3">
-          {data.stale ? (
+          {data.stale && data.method === 'ADMIN_SET' ? (
+            <Card testID="ajo-order-stale-admin">
+              <View className="gap-2">
+                <Text variant="h3">This order is out of date.</Text>
+                <Text variant="body" tone="secondary">
+                  {data.staleBecause}. Set the order again above before the circle can start. The old one stays on the record.
+                </Text>
+              </View>
+            </Card>
+          ) : null}
+          {data.stale && data.method === 'RANDOM_DRAW' ? (
             <Card testID="ajo-order-stale">
               <View className="gap-2">
                 <Text variant="h3">This draw is out of date.</Text>
@@ -151,9 +171,7 @@ export default function PayoutOrderScreen() {
               </View>
             </Card>
           ) : null}
-          <Text variant="caption" tone="secondary">
-            {data.stale ? 'Out of date: drawn' : 'Drawn'} {formatMoment(data.drawnAt)}. Seed {data.seed}.
-          </Text>
+
           {data.slots.map((s) => (
             <Card key={s.slotId} testID={`ajo-slot-${s.slotId}`}>
               <View className="flex-row items-center justify-between gap-3">

@@ -217,6 +217,19 @@ export default function CircleOverviewScreen() {
             </View>
           </Card>
 
+          {group.model === 'ROTATING_POT' ? (
+            <Card testID="ajo-order-method">
+              <View className="gap-1">
+                <Text variant="h3">Payout order</Text>
+                <Text variant="body">{group.orderMethod === 'ADMIN_SET' ? 'Set by the admin, with a written reason every member can read.' : 'An automatic draw, recorded with its seed. Anyone can check it.'}</Text>
+                <View className="flex-row pt-2">
+                  <Button size="sm" variant="secondary" onPress={() => router.push(`/(app)/(tabs)/manage/thrift/${groupId}/order` as never)} testID="ajo-go-order">
+                    {group.orderMethod === 'ADMIN_SET' ? 'Set the order' : 'Go to Payout order'}
+                  </Button>
+                </View>
+              </View>
+            </Card>
+          ) : null}
           {group.model === 'ROTATING_POT' ? <BoardSettingCard groupId={groupId} canChange={manage && canWrite} /> : null}
 
           <ListGroup>

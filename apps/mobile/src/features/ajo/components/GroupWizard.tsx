@@ -156,6 +156,19 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
             {!rotating ? <TextField control={control} name="cycleLength" label="Number of payments in the cycle" helper="For example 31 daily payments." keyboardType="number-pad" maxLength={3} /> : null}
             <TextField control={control} name="maxParticipants" label="Most people in the circle" keyboardType="number-pad" maxLength={4} testID="ajo-wizard-max" />
             {rotating ? <TextField control={control} name="maxShares" label="Most shares one person can hold" helper="A person with two shares pays twice and collects twice." keyboardType="number-pad" maxLength={1} /> : null}
+            {rotating ? (
+              <SelectSheet
+                control={control}
+                name="orderMethod"
+                label="How the payout order is decided"
+                helper="An automatic draw is random, recorded with its seed, and anyone can check it. If the admin sets the order, they place everyone and write the reason, which every member can read."
+                options={[
+                  { value: 'RANDOM_DRAW', label: 'Automatic draw (recorded, anyone can check it)' },
+                  { value: 'ADMIN_SET', label: 'Admin sets the order (with a written reason)' },
+                ]}
+                testID="ajo-wizard-order-method"
+              />
+            ) : null}
             <Checkbox control={control} name="allowLateJoin" label="People may join after the circle has started" />
           </>
         ) : null}

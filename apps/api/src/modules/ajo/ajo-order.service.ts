@@ -11,7 +11,7 @@
 import { Prisma } from '@prisma/client';
 import prisma from '../../lib/prisma';
 import { RuleError } from '../finance/rule-error';
-import { drawOrder, moveWithinUnpaid, newSeed, rosterFingerprint, type SlotKey } from './ajo-draw';
+import { drawOrder, moveWithinUnpaid, newSeed, rosterFingerprint, verifyDraw, type SavedDraw, type SlotKey } from './ajo-draw';
 import { auditAjo, notifyPermissionHolders, notifyUser } from './ajo-support';
 import { atRiskMembershipIds } from './ajo-trust.service';
 
@@ -62,7 +62,10 @@ export async function anyPayoutPaid(db: Db, groupId: number): Promise<boolean> {
 
 /** The newest draw, and whether it still matches the roster it was made for. */
 export async function drawState(db: Db, groupId: number, slots: SlotKey[]) {
-  const event = await db.ajoPayoutOrderEvent.findFirst({ where: { groupId, type: 'DRAW' }, orderBy: { id: 'desc' } });
+  // The order that counts is the newest one made the way this circle decides it: a draw, or the admin's.
+  const group = await db.ajoGroup.findUnique({ where: { id: groupId }, select: { orderMethod: true } });
+  const type = group?.orderMethod === 'ADMIN_SET' ? 'ADMIN_SET' : 'DRAW';
+  const event = await db.ajoPayoutOrderEvent.findFirst({ where: { groupId, type }, orderBy: { id: 'desc' } });
   if (!event) return { drawn: false as const, current: false, event: null };
   const detail = event.detail as { rosterFingerprint?: string };
   return { drawn: true as const, current: detail.rosterFingerprint === rosterFingerprint(slots), event };
@@ -95,6 +98,7 @@ export interface DrawInput {
 export async function runDraw(input: DrawInput) {
   const result = await prisma.$transaction(async (tx) => {
     const group = await lockGroup(tx, input.associationId, input.groupId);
+    if (group.orderMethod === 'ADMIN_SET') throw new RuleError('This circle’s payout order is set by the admin, not drawn. Use Set the order.', 409, 'ORDER_IS_ADMIN_SET');
     if (group.status !== 'OPEN') throw new RuleError(group.status === 'DRAFT' ? 'Open the group first.' : 'The order is drawn before the group starts, and it has now started.', 409, 'INVALID_GROUP_STATE');
 
     const active = await tx.ajoMembership.findMany({ where: { groupId: group.id, status: 'ACTIVE' }, select: { id: true, shares: true } });
@@ -115,7 +119,7 @@ export async function runDraw(input: DrawInput) {
         associationId: input.associationId,
         groupId: group.id,
         type: 'DRAW',
-        detail: { seed, rosterFingerprint: rosterFingerprint(slots), blockAtRiskEarly: rules?.blockAtRiskEarly ?? false, atRiskRuleFullyApplied: placed.atRiskRuleFullyApplied, positions: placed.positions.map((p) => ({ membershipId: p.membershipId, shareNo: p.shareNo, position: p.position })) },
+        detail: { seed, rosterFingerprint: rosterFingerprint(slots), blockAtRiskEarly: rules?.blockAtRiskEarly ?? false, atRiskMembershipIds: [...(await atRiskMemberships(tx, group.id, input.now ?? new Date()))], atRiskRuleFullyApplied: placed.atRiskRuleFullyApplied, positions: placed.positions.map((p) => ({ membershipId: p.membershipId, shareNo: p.shareNo, position: p.position })) },
         requestedBy: input.actorUserId,
         approvedBy: input.actorUserId,
       },
@@ -139,7 +143,7 @@ export async function runDraw(input: DrawInput) {
 /** The order as every participant sees it, with the draw's seed so anyone can check it, and the history of changes. */
 export async function getOrder(db: Db, groupId: number, viewerUserId: number | null) {
   const [group, active, pendingPeople] = await Promise.all([
-    db.ajoGroup.findUnique({ where: { id: groupId }, select: { status: true } }),
+    db.ajoGroup.findUnique({ where: { id: groupId }, select: { status: true, orderMethod: true } }),
     db.ajoMembership.findMany({ where: { groupId, status: 'ACTIVE' }, select: { id: true, shares: true } }),
     db.ajoMembership.count({ where: { groupId, status: 'PENDING' } }),
   ]);
@@ -148,8 +152,10 @@ export async function getOrder(db: Db, groupId: number, viewerUserId: number | n
     db.ajoPayoutOrderEvent.findMany({ where: { groupId }, orderBy: { id: 'asc' } }),
     paidPositions(db, groupId),
   ]);
-  const draw = [...events].reverse().find((e) => e.type === 'DRAW');
+  const method = group?.orderMethod ?? 'RANDOM_DRAW';
+  const draw = [...events].reverse().find((e) => e.type === (method === 'ADMIN_SET' ? 'ADMIN_SET' : 'DRAW'));
   const drawDetail = draw?.detail as { seed?: string; rosterFingerprint?: string } | undefined;
+  const madeByName = draw?.requestedBy ? await nameOfUser(db, draw.requestedBy) : null;
   // Whether the newest draw still matches who is in the circle now. If not, the circle cannot start until it is drawn again.
   const current = !!draw && drawDetail?.rosterFingerprint === rosterFingerprint(expectedSlots(active));
   const drawnFor = new Set(slots.map((x) => x.membershipId));
@@ -165,13 +171,22 @@ export async function getOrder(db: Db, groupId: number, viewerUserId: number | n
     stale,
     staleBecause,
     /** A new draw is allowed: the circle is open and there is none yet, or the roster changed since the last one. */
-    canDraw: group?.status === 'OPEN' && (!draw || stale),
+    canDraw: method === 'RANDOM_DRAW' && group?.status === 'OPEN' && (!draw || stale),
+    /** The admin may place the shares now: the circle is open, it is set by the admin, and there is no current order. */
+    canSet: method === 'ADMIN_SET' && group?.status === 'OPEN' && (!draw || stale),
+    /** How the order is decided for this circle, so members see it before anything is made. */
+    method,
+    /** Who made the order and the reason they gave (an admin-set order always has one). */
+    madeBy: madeByName,
+    reason: draw?.reason ?? null,
+    /** A random draw can be run again from its seed to check it. An admin-set order has nothing random to check. */
+    verifiable: !!draw && method === 'RANDOM_DRAW',
     /** People who have joined but are not approved yet. They are not in a draw made now. */
     pendingPeople,
-    seed: drawDetail?.seed ?? null,
+    seed: method === 'RANDOM_DRAW' ? (drawDetail?.seed ?? null) : null,
     drawnAt: draw?.createdAt ?? null,
     slots: slots.map((s) => ({ slotId: s.id, position: s.position, shareNo: s.shareNo, membershipId: s.membershipId, name: `${s.membership.member.firstName} ${s.membership.member.lastName}`.trim(), paid: paid.has(s.position), mine: viewerUserId !== null && s.membership.member.userId === viewerUserId })),
-    history: events.map((e) => ({ id: e.id, type: e.type, reason: e.reason, createdAt: e.createdAt, ...(e.type === 'DRAW' ? {} : { detail: e.detail }) })),
+    history: events.map((e) => ({ id: e.id, type: e.type, reason: e.reason, createdAt: e.createdAt, ...(e.type === 'DRAW' || e.type === 'ADMIN_SET' ? {} : { detail: e.detail }) })),
   };
 }
 
@@ -331,4 +346,86 @@ export async function emergencyException(input: ExceptionInput) {
 
 export async function listSwapRequests(db: Db, groupId: number, status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED') {
   return db.ajoOrderChangeRequest.findMany({ where: { groupId, ...(status ? { status } : {}) }, orderBy: { id: 'desc' } });
+}
+
+async function nameOfUser(db: Db, userId: number): Promise<string | null> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, member: { select: { firstName: true, lastName: true } } } });
+  if (!user) return null;
+  const full = user.member ? `${user.member.firstName} ${user.member.lastName}`.trim() : '';
+  return full || user.email.split('@')[0];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// The admin sets the order (circles whose order method is "admin sets the order")
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+export interface SetOrderInput {
+  associationId: number;
+  groupId: number;
+  actorUserId: number;
+  /** Every share of every active person, exactly once, in the order they will be paid: first in the list is paid first. */
+  order: SlotKey[];
+  /** Why this order: the basis the group agreed. Shown to every member. */
+  reason: string;
+  now?: Date;
+}
+
+/**
+ * The admin places every share by hand. It is recorded as its own event with the admin's name and the reason, and every version is kept.
+ * It can be set again while the circle is open; if people join or leave afterwards it is out of date, like a draw, and has to be set again
+ * before the circle can start. No seed: nothing random backs it, so the reason is what the group can read.
+ */
+export async function setOrderByAdmin(input: SetOrderInput) {
+  const reason = (input.reason ?? '').trim();
+  if (reason.length < 10) throw new RuleError('Write the reason or basis for this order, at least 10 characters.', 400, 'REASON_REQUIRED');
+
+  const result = await prisma.$transaction(async (tx) => {
+    const group = await lockGroup(tx, input.associationId, input.groupId);
+    if (group.orderMethod !== 'ADMIN_SET') throw new RuleError('This circle’s payout order is a recorded random draw. Change how the order is decided in the circle’s settings first.', 409, 'ORDER_IS_RANDOM_DRAW');
+    if (group.status !== 'OPEN') throw new RuleError(group.status === 'DRAFT' ? 'Open the circle first.' : 'The order is set before the circle starts, and it has now started.', 409, 'INVALID_GROUP_STATE');
+
+    const active = await tx.ajoMembership.findMany({ where: { groupId: group.id, status: 'ACTIVE' }, select: { id: true, shares: true } });
+    const slots = expectedSlots(active);
+    if (slots.length < 2) throw new RuleError('A rotating pot needs at least 2 shares before the order can be set.', 409, 'NOT_ENOUGH_PARTICIPANTS');
+
+    const key = (s: SlotKey) => `${s.membershipId}:${s.shareNo}`;
+    const wanted = new Set(slots.map(key));
+    const given = input.order.map(key);
+    if (new Set(given).size !== given.length) throw new RuleError('Each share can be placed only once.', 400, 'INVALID_ORDER');
+    if (given.length !== wanted.size || !given.every((k) => wanted.has(k))) {
+      throw new RuleError(`The order must place every share of everyone who is in the circle now (${slots.length}), once each.`, 400, 'INVALID_ORDER');
+    }
+
+    const positions = input.order.map((s, i) => ({ membershipId: s.membershipId, shareNo: s.shareNo, position: i + 1 }));
+    await tx.ajoPayoutSlot.deleteMany({ where: { groupId: group.id } });
+    await tx.ajoPayoutSlot.createMany({ data: positions.map((p) => ({ associationId: input.associationId, groupId: group.id, membershipId: p.membershipId, shareNo: p.shareNo, position: p.position })) });
+    const previous = await tx.ajoPayoutOrderEvent.count({ where: { groupId: group.id, type: 'ADMIN_SET' } });
+    const event = await tx.ajoPayoutOrderEvent.create({
+      data: { associationId: input.associationId, groupId: group.id, type: 'ADMIN_SET', detail: { rosterFingerprint: rosterFingerprint(slots), positions }, reason, requestedBy: input.actorUserId, approvedBy: input.actorUserId },
+    });
+    await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_ORDER_SET_BY_ADMIN', tableName: 'ajo_payout_order_events', recordId: event.id, newValues: { groupId: group.id, slots: slots.length, redo: previous > 0, reason } });
+
+    const members = await tx.ajoMembership.findMany({ where: { groupId: group.id, status: 'ACTIVE' }, select: { member: { select: { userId: true } } } });
+    return { eventId: event.id, groupName: group.name, positions, redo: previous > 0, userIds: members.map((m) => m.member.userId).filter((u): u is number => u !== null) };
+  });
+
+  for (const userId of result.userIds) {
+    await notifyUser(input.associationId, userId, { pushType: 'ajo.order_drawn', entityId: input.groupId, title: 'Payout order set', message: `The payout order for ${result.groupName} has been set by the admin. You can see where you are and the reason given.` });
+  }
+  return { eventId: result.eventId, redo: result.redo, slots: result.positions.length };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Checking a draw
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** Runs the newest random draw again from its saved seed and says whether it matches. An admin-set order has nothing random to check. */
+export async function verifyOrder(db: Db, groupId: number) {
+  const group = await db.ajoGroup.findUnique({ where: { id: groupId }, select: { orderMethod: true } });
+  if (group?.orderMethod === 'ADMIN_SET') return { method: 'ADMIN_SET' as const, checkable: false, matches: null, reason: 'This order was set by the admin, so there is no random draw to check. Its reason is shown with it.', seed: null, drawnAt: null };
+  const event = await db.ajoPayoutOrderEvent.findFirst({ where: { groupId, type: 'DRAW' }, orderBy: { id: 'desc' } });
+  if (!event) return { method: 'RANDOM_DRAW' as const, checkable: false, matches: null, reason: 'The order has not been drawn yet.', seed: null, drawnAt: null };
+  const detail = event.detail as unknown as SavedDraw;
+  const check = verifyDraw({ seed: detail.seed, positions: detail.positions, blockAtRiskEarly: detail.blockAtRiskEarly, atRiskMembershipIds: detail.atRiskMembershipIds });
+  return { method: 'RANDOM_DRAW' as const, checkable: check.matches !== null, matches: check.matches, reason: check.reason, seed: detail.seed, drawnAt: event.createdAt };
 }

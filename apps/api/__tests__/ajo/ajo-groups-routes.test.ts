@@ -43,6 +43,8 @@ const svc = {
   listGroupAssignments: jest.fn(),
   listAssignedContributors: jest.fn(),
   listMyMemberships: jest.fn(),
+  setOrderByAdmin: jest.fn(),
+  verifyOrder: jest.fn(),
 };
 const mockDb = {
   member: { findFirst: jest.fn() },
@@ -100,7 +102,7 @@ jest.mock('../../src/modules/ajo/ajo-guarantor-link.service', () => ({ createGua
 jest.mock('../../src/modules/ajo/ajo-views.service', () => ({ listGroupPeople: pass('listGroupPeople'), listGroupMembers: pass('listGroupMembers'), listMembershipInstallments: pass('listMembershipInstallments'), listMyMemberships: pass('listMyMemberships') }));
 jest.mock('../../src/modules/ajo/ajo-rules.service', () => ({ publishRuleVersion: pass('publishRuleVersion'), listRuleVersions: pass('listRuleVersions'), acceptanceStats: pass('acceptanceStats') }));
 jest.mock('../../src/modules/ajo/ajo-consent.service', () => ({ acceptRules: pass('acceptRules'), rulesToAccept: pass('rulesToAccept'), recordGuarantorConsent: pass('recordGuarantorConsent'), previewGuarantorWording: pass('previewGuarantorWording') }));
-jest.mock('../../src/modules/ajo/ajo-order.service', () => ({ runDraw: pass('runDraw'), getOrder: pass('getOrder'), requestSwap: pass('requestSwap'), decideSwap: pass('decideSwap'), emergencyException: pass('emergencyException'), listSwapRequests: pass('listSwapRequests') }));
+jest.mock('../../src/modules/ajo/ajo-order.service', () => ({ setOrderByAdmin: pass('setOrderByAdmin'), verifyOrder: pass('verifyOrder'), runDraw: pass('runDraw'), getOrder: pass('getOrder'), requestSwap: pass('requestSwap'), decideSwap: pass('decideSwap'), emergencyException: pass('emergencyException'), listSwapRequests: pass('listSwapRequests') }));
 jest.mock('../../src/modules/ajo/ajo-collector.service', () => ({ assignCollector: pass('assignCollector'), unassignCollector: pass('unassignCollector'), listGroupAssignments: pass('listGroupAssignments'), listAssignedContributors: pass('listAssignedContributors') }));
 jest.mock('../../src/modules/ajo/ajo-phone-code.service', () => ({ requestPhoneCode: jest.fn(), confirmPhoneCode: jest.fn() }));
 jest.mock('../../src/modules/ajo/ajo-payout-account.service', () => ({ getPayoutAccount: jest.fn(), setPayoutAccount: jest.fn(), revealAccountNumber: jest.fn() }));
@@ -179,6 +181,20 @@ describe('who can reach what', () => {
     const exc = await request(app).post('/api/ajo/groups/1/exceptions').set('x-test-user', as(ADMIN)).send({ slotId: 5, newPosition: 3, reason: 'A long enough reason' });
     expect(exc.status).toBe(201);
     expect(svc.emergencyException).toHaveBeenCalledWith({ associationId: ASSOC, groupId: 1, actorUserId: ADMIN, slotId: 5, newPosition: 3, reason: 'A long enough reason' });
+  });
+
+  it('lets only someone who can approve payouts set the order by hand, and any member of the circle check a draw', async () => {
+    svc.setOrderByAdmin.mockResolvedValue({ eventId: 1, redo: false, slots: 2 });
+    svc.verifyOrder.mockResolvedValue({ method: 'RANDOM_DRAW', checkable: true, matches: true });
+    const body = { order: [{ membershipId: 3, shareNo: 1 }, { membershipId: 4, shareNo: 1 }], reason: 'agreed at the 12 Nov meeting' };
+    const post = (user: number, b: object) => request(app).post('/api/ajo/groups/1/order/set').set('x-test-user', as(user)).send(b);
+    expect((await post(MEMBER, body)).status).toBe(403);
+    expect((await post(OFFICER, body)).status).toBe(403);
+    expect((await post(ADMIN, { ...body, reason: 'short' })).status).toBe(400);
+    expect((await post(ADMIN, { ...body, order: [{ membershipId: 3, shareNo: 1 }] })).status).toBe(400);
+    expect((await post(ADMIN, body)).status).toBe(201);
+    expect(svc.setOrderByAdmin).toHaveBeenCalledWith(expect.objectContaining({ associationId: ASSOC, groupId: 1, actorUserId: ADMIN, reason: 'agreed at the 12 Nov meeting' }));
+    expect((await request(app).get('/api/ajo/groups/1/order/verify').set('x-test-user', as(MEMBER))).status).toBe(200);
   });
 
   it("shows one person's circles to an officer only, and never to a plain member", async () => {
