@@ -19,6 +19,11 @@ if (TEST_DB) {
 }
 
 const mockDisabled = new Set<string>();
+const mockLapsed = jest.fn(async (): Promise<Set<string> | null> => null);
+jest.mock('../../src/services/billing/tier-change.service', () => ({
+  ...jest.requireActual('../../src/services/billing/tier-change.service'),
+  getLapsedFeatureCodes: (...a: unknown[]) => (mockLapsed as unknown as (...x: unknown[]) => unknown)(...a),
+}));
 jest.mock('../../src/services/billing/entitlements.service', () => ({
   computeEntitlements: jest.fn(async () => ({ limits: { ajoContributors: 1000 } })),
 }));
@@ -46,7 +51,10 @@ jest.mock('../../src/services/module-feature.service', () => ({
 
 import { assertUnderCap, MAX_ROWS, startOfDayIn } from '../../src/modules/ajo/reports/report-context';
 import { nairaPlain, pdfSafe, reportCsv } from '../../src/modules/ajo/reports/report-export';
-import { totalsOf } from '../../src/modules/ajo/reports/report.service';
+import { REPORTS } from '../../src/modules/ajo/reports/report-registry';
+import { PDF_MAX_ROWS, totalsOf } from '../../src/modules/ajo/reports/report.service';
+
+const reportDefOf = (name: string) => REPORTS.find((x) => x.name === name)!;
 
 const suite = TEST_DB ? describe : describe.skip;
 if (TEST_DB) jest.setTimeout(120000);
@@ -179,7 +187,12 @@ suite('Ajo reports (database)', () => {
     ledger = require('../../src/modules/ajo/ajo-ledger.service');
     svc = require('../../src/modules/ajo/reports/report.service');
   });
-  beforeEach(() => mockDisabled.clear());
+  beforeEach(() => {
+    mockDisabled.clear();
+    mockLapsed.mockReset();
+    mockLapsed.mockResolvedValue(null);
+    delete process.env.FEATURE_FLAG_MODE;
+  });
   afterAll(async () => {
     await prisma?.$disconnect();
   });
@@ -453,5 +466,194 @@ suite('Ajo reports (database)', () => {
     expect(r.totals.map((t) => t.label)).toEqual(['All rotating pots']);
     const sum = r.blocks.reduce((a, b) => a + BigInt(b.metrics.find((m) => m.key === 'expectedKobo')?.value as string), 0n);
     expect(r.totals[0].metrics.find((m) => m.key === 'expectedKobo')?.value).toBe(sum.toString());
+  });
+
+  // ---- review fixes (T10 review, 2026-10-30)
+
+  it('pages from one computation: "next page" reuses the report for a moment, and page 1, a file or a change of filter works it out again', async () => {
+    const w = await world();
+    await pot(w);
+    const run = jest.spyOn(reportDefOf('contributions'), 'run');
+    const ask = (page: number, query: Record<string, unknown> = {}) => svc.runReport({ associationId: w.A, name: 'contributions', query: { ...RANGE, ...query }, scope: officer(w), access: 'FULL', now: LATER, page, pageSize: 4 });
+    await ask(1);
+    await ask(2);
+    await ask(3);
+    expect(run).toHaveBeenCalledTimes(1); // pages 2 and 3 came from page 1's work
+    await ask(1); // a refresh is always fresh
+    expect(run).toHaveBeenCalledTimes(2);
+    await ask(2, { to: '2027-03-20' }); // a different filter is a different report: not served from the other's work
+    expect(run).toHaveBeenCalledTimes(3);
+    await svc.exportReport({ associationId: w.A, name: 'contributions', query: RANGE, scope: officer(w), access: 'FULL', format: 'csv', actorUserId: w.admin.id, now: LATER });
+    expect(run).toHaveBeenCalledTimes(4); // a file is never made from a cached report
+    run.mockRestore();
+  });
+
+  it('never serves one person\'s cached report to another: an officer asking for page 2 gets the officer\'s own figures, not a collector\'s', async () => {
+    const w = await world();
+    const { people } = await pot(w);
+    await prisma.ajoCollectorAssignment.create({ data: { associationId: w.A, collectorUserId: w.collector.id, membershipId: people[0].membership.id, startsOn: at('2027-02-01T00:00:00Z') } });
+    const as = (scope: { userId: number; collectorOnly: boolean }, page: number) => svc.runReport({ associationId: w.A, name: 'contributions', query: RANGE, scope, access: 'FULL', now: LATER, page, pageSize: 2 });
+    await as({ userId: w.collector.id, collectorOnly: true }, 1);
+    const officerPage2 = await as(officer(w), 2);
+    expect(officerPage2.page.total).toBe(9);
+    expect(new Set(officerPage2.rows.map((x) => x.member)).size).toBeGreaterThan(1);
+  });
+
+  it('keeps a lapsed add-on to the reports its own tier included', async () => {
+    const w = await world();
+    await pot(w);
+    const read = (name: string) => svc.runReport({ associationId: w.A, name, query: RANGE, scope: officer(w), access: 'READ_ONLY', now: LATER });
+    mockLapsed.mockResolvedValue(new Set(['ajo.rotating_pot', 'ajo.advanced_reports'])); // a Growth that lapsed
+    await expect(read('audit')).rejects.toMatchObject({ code: 'REPORT_NOT_IN_TIER' });
+    await expect(read('collectors')).resolves.toBeDefined();
+    await expect(read('contributions')).resolves.toBeDefined();
+    const list = await svc.listReports({ associationId: w.A, access: 'READ_ONLY', scope: officer(w) });
+    expect(list.filter((x) => x.lock).map((x) => x.name)).toEqual(['audit']);
+    expect(list.find((x) => x.name === 'audit')?.lock?.message).toMatch(/were not part of the Ajo tier that expired/);
+    mockLapsed.mockResolvedValue(new Set(['ajo.advanced_reports', 'ajo.audit_reports'])); // a Business that lapsed keeps the audit report
+    await expect(read('audit')).resolves.toBeDefined();
+    mockLapsed.mockResolvedValue(null); // no record of a tier: nothing is taken away
+    await expect(read('audit')).resolves.toBeDefined();
+  });
+
+  it('follows the emergency switch the other gates follow: in shadow mode a missing feature is not enforced, but a role rule still is', async () => {
+    const w = await world();
+    await pot(w);
+    mockDisabled.add('ajo.advanced_reports');
+    await expect(full(w, 'collectors')).rejects.toMatchObject({ code: 'REPORT_NOT_IN_TIER' });
+    process.env.FEATURE_FLAG_MODE = 'shadow';
+    await expect(full(w, 'collectors')).resolves.toBeDefined();
+    expect((await svc.listReports({ associationId: w.A, access: 'FULL', scope: officer(w) })).every((x) => x.lock === null)).toBe(true);
+    await expect(svc.runReport({ associationId: w.A, name: 'payouts', query: RANGE, scope: { userId: w.collector.id, collectorOnly: true }, access: 'FULL', now: LATER })).rejects.toMatchObject({ code: 'REPORT_NOT_FOR_YOU' });
+  });
+
+  it('refuses a PDF with more rows than a PDF holds, says to use the CSV, and still makes the CSV', async () => {
+    const w = await world();
+    await pot(w);
+    const columns = [{ key: 'member', label: 'Member', kind: 'text' as const }];
+    const rows = Array.from({ length: PDF_MAX_ROWS + 1 }, (_, i) => ({ member: `Person ${i}` }));
+    const spy = jest.spyOn(reportDefOf('contributions'), 'run').mockResolvedValue({ blocks: [], columns, rows });
+    try {
+      await expect(svc.exportReport({ associationId: w.A, name: 'contributions', query: RANGE, scope: officer(w), access: 'FULL', format: 'pdf', actorUserId: w.admin.id, now: LATER })).rejects.toMatchObject({ code: 'REPORT_TOO_LARGE_FOR_PDF', message: expect.stringMatching(/Download the CSV instead/) });
+      const csv = await svc.exportReport({ associationId: w.A, name: 'contributions', query: RANGE, scope: officer(w), access: 'FULL', format: 'csv', actorUserId: w.admin.id, now: LATER });
+      expect(String(csv.body)).toContain('Person 5000');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('makes a PDF of every one of the eight reports', async () => {
+    const w = await world();
+    const { g, people } = await pot(w);
+    await confirmed(w, g.id, people[0].membership.id, D1);
+    for (const name of ['contributions', 'member-ledger', 'collectors', 'payouts', 'defaults', 'financial-summary', 'fees-revenue', 'audit']) {
+      const file = await svc.exportReport({ associationId: w.A, name, query: RANGE, scope: officer(w), access: 'FULL', format: 'pdf', actorUserId: w.admin.id, now: LATER });
+      expect((file.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
+    }
+  });
+
+  it('records the person and collector filter of an export in the audit log, so a one-person export does not look like a whole-circle one', async () => {
+    const w = await world();
+    const { g, people } = await pot(w);
+    await svc.exportReport({ associationId: w.A, name: 'member-ledger', query: { ...RANGE, groupId: g.id, membershipId: people[1].membership.id }, scope: officer(w), access: 'FULL', format: 'csv', actorUserId: w.admin.id, now: LATER });
+    const row = await prisma.auditLog.findFirst({ where: { associationId: w.A, action: 'AJO_REPORT_EXPORTED' }, orderBy: { id: 'desc' } });
+    expect(row?.newValues).toMatchObject({ report: 'member-ledger', groupId: g.id, membershipId: people[1].membership.id, collectorUserId: null });
+  });
+
+  it('shows a collector, or a person filter, only the circles those people are in', async () => {
+    const w = await world();
+    const first = await pot(w);
+    const second = await pot(w);
+    await prisma.ajoCollectorAssignment.create({ data: { associationId: w.A, collectorUserId: w.collector.id, membershipId: first.people[0].membership.id, startsOn: at('2027-02-01T00:00:00Z') } });
+    const mine = await svc.runReport({ associationId: w.A, name: 'contributions', query: RANGE, scope: { userId: w.collector.id, collectorOnly: true }, access: 'FULL', now: LATER, all: true });
+    expect(mine.blocks.map((b) => b.groupId)).toEqual([first.g.id]);
+    expect(JSON.stringify(mine)).not.toContain(second.g.name);
+    const nobody = await svc.runReport({ associationId: w.A, name: 'contributions', query: RANGE, scope: { userId: w.admin.id, collectorOnly: true }, access: 'FULL', now: LATER, all: true });
+    expect(nobody.blocks).toEqual([]);
+    const oneMember = await full(w, 'contributions', { membershipId: second.people[2].membership.id });
+    expect(oneMember.blocks.map((b) => b.groupId)).toEqual([second.g.id]);
+    expect(metricOf(oneMember, 'expectedKobo')).toBe('1500000');
+  });
+
+  it('names the right round for a scheduled payout even when a whole round was waived', async () => {
+    const w = await world();
+    const { g } = await pot(w);
+    // Round 1 (1 March) is waived for everyone: it keeps its date and brings in nothing, and rounds 2 and 3 keep theirs.
+    await prisma.ajoInstallment.updateMany({ where: { membership: { groupId: g.id }, dueDate: at('2027-03-01T00:00:00Z') }, data: { status: 'WAIVED' } });
+    const r = await full(w, 'payouts');
+    const scheduled = r.rows.filter((x) => x.status === 'Scheduled');
+    expect(scheduled.map((x) => [x.turn, x.date]).sort()).toEqual([['Round 1', '2027-03-01'], ['Round 2', '2027-03-08'], ['Round 3', '2027-03-15']]);
+    expect(scheduled.find((x) => x.turn === 'Round 1')?.netKobo).toBe('0');
+    expect(scheduled.find((x) => x.turn === 'Round 2')?.netKobo).toBe('1500000');
+  });
+
+  it('works out collector performance from real cash: recorded, confirmed, awaiting, handed in, counted and what is missing', async () => {
+    const w = await world();
+    const g = await newGroup(w, { model: 'COLLECTOR_THRIFT', cycleLength: 3 });
+    const a = await join(w, g.id);
+    const b = await join(w, g.id);
+    const c = w.collector.id;
+    for (const p of [a, b]) await prisma.ajoCollectorAssignment.create({ data: { associationId: w.A, collectorUserId: c, membershipId: p.membership.id, startsOn: at('2027-02-01T00:00:00Z') } });
+    const cash = (membershipId: number, kobo: bigint, status: 'CONFIRMED' | 'CASH_RECEIVED' | 'REJECTED', day: string, extra: Record<string, unknown> = {}) =>
+      prisma.ajoContribution.create({ data: { associationId: w.A, groupId: g.id, membershipId, amountKobo: kobo, method: 'CASH', status, collectorId: c, reference: `cash-${run}-${++counter}`, idempotencyKey: `cash-${run}-${counter}`, receivedAt: at(`${day}T10:00:00Z`), businessDate: at(`${day}T00:00:00Z`), ...extra } as never });
+    await cash(a.membership.id, 300_000n, 'CONFIRMED', '2027-03-02');
+    await cash(b.membership.id, 200_000n, 'CASH_RECEIVED', '2027-03-02');
+    await cash(a.membership.id, 100_000n, 'CASH_RECEIVED', '2027-03-03', { missingFromHandover: true });
+    await cash(b.membership.id, 50_000n, 'REJECTED', '2027-03-03'); // turned down: never counted
+    await cash(a.membership.id, 999_000n, 'CONFIRMED', '2027-04-02'); // outside the dates
+    const handover = (day: string, over: Record<string, unknown>) => prisma.ajoCashHandover.create({ data: { associationId: w.A, groupId: g.id, collectorUserId: c, forDate: at(`${day}T00:00:00Z`), idempotencyKey: `h-${run}-${++counter}`, ...over } as never });
+    await handover('2027-03-02', { expectedKobo: 500_000n, targetKobo: 500_000n, collectedKobo: 500_000n, handedOverKobo: 450_000n, differenceKobo: -50_000n, countedKobo: 450_000n, reconciledBy: w.recon.id, reconciledAt: at('2027-03-03T09:00:00Z') });
+    await handover('2027-03-03', { expectedKobo: 100_000n, targetKobo: 100_000n, collectedKobo: 100_000n, handedOverKobo: 100_000n, differenceKobo: 0n });
+
+    const r = await full(w, 'collectors');
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0]).toMatchObject({ collector: 'Musa Ibrahim', savers: 2, recordedKobo: '600000', confirmedKobo: '300000', awaitingKobo: '300000', targetKobo: '600000', handedOverKobo: '550000', countedKobo: '450000', differenceKobo: '-50000', daysHandedOver: 2, unreconciledDays: 1, missingPayments: 1 });
+    expect(metricOf(r, 'recordedKobo')).toBe('600000');
+    expect(metricOf(r, 'unreconciledDays')).toBe(1);
+    // The collector sees the same figures for their own work.
+    const own = await svc.runReport({ associationId: w.A, name: 'collectors', query: RANGE, scope: { userId: c, collectorOnly: true }, access: 'FULL', now: LATER, all: true });
+    expect(own.rows[0]).toMatchObject({ recordedKobo: '600000', handedOverKobo: '550000' });
+    // Another collector's filter finds nothing.
+    const other = await full(w, 'collectors', { collectorUserId: w.recon.id });
+    expect(other.rows).toEqual([]);
+  });
+
+  it('adds up what is owed in the financial summary: unpaid instalments, payouts waiting, late fees, cash counted and money awaiting confirmation', async () => {
+    const w = await world();
+    const { g, people } = await pot(w);
+    const version = await prisma.ajoGroupRuleVersion.findFirstOrThrow({ where: { groupId: g.id } });
+    const payout = (membershipId: number, status: 'PREPARED' | 'APPROVED', net: bigint, round: number) =>
+      prisma.ajoPayout.create({ data: { associationId: w.A, groupId: g.id, membershipId, round, grossKobo: net, netKobo: net, confirmedKobo: net, status, preparedBy: w.admin.id, accountSnapshot: { last4: '1111' }, idempotencyKey: `payout-${run}-${++counter}` } });
+    await payout(people[0].membership.id, 'PREPARED', 700_000n, 1);
+    await payout(people[1].membership.id, 'APPROVED', 300_000n, 2);
+    const inst = await prisma.ajoInstallment.findFirstOrThrow({ where: { membershipId: people[2].membership.id }, orderBy: { dueDate: 'asc' } });
+    await prisma.ajoLateFeeAssessment.create({ data: { associationId: w.A, installmentId: inst.id, ruleVersionId: version.id, basisKobo: MIN, feeKobo: 50_000n, paidKobo: 20_000n, calculation: {}, status: 'PAYABLE' } });
+    const hand = (day: string, over: Record<string, unknown>) => prisma.ajoCashHandover.create({ data: { associationId: w.A, groupId: g.id, collectorUserId: w.collector.id, forDate: at(`${day}T00:00:00Z`), expectedKobo: 0n, differenceKobo: 0n, idempotencyKey: `h-${run}-${++counter}`, ...over } as never });
+    await hand('2027-03-02', { collectedKobo: 400_000n, handedOverKobo: 400_000n, countedKobo: 350_000n, reconciledAt: at('2027-03-03T09:00:00Z') });
+    await hand('2027-03-03', { collectedKobo: 100_000n, handedOverKobo: 100_000n });
+    await report(w, g.id, people[0].membership.id, D1); // reported, not confirmed
+
+    const r = await full(w, 'financial-summary');
+    expect(metricOf(r, 'outstandingKobo')).toBe('3000000'); // rounds 1 and 2 are due by 10 March: 6 x 500,000
+    expect(metricOf(r, 'pendingPayoutsKobo')).toBe('1000000');
+    expect(metricOf(r, 'lateFeesOwedKobo')).toBe('30000');
+    expect(metricOf(r, 'cashCollectedKobo')).toBe('500000');
+    expect(metricOf(r, 'cashCountedKobo')).toBe('350000');
+    expect(metricOf(r, 'daysNotCounted')).toBe(1);
+    expect(metricOf(r, 'awaitingKobo')).toBe('500000');
+    expect(metricOf(r, 'balanceKobo')).toBe('0'); // nothing confirmed or paid yet: the awaiting money is not in it
+  });
+
+  it('opens a phone number as text in Excel (="0803..."), and nothing else is ever written that way', async () => {
+    const w = await world();
+    await pot(w);
+    const r = await full(w, 'defaults');
+    const csv = reportCsv(r);
+    expect(csv).toMatch(/"=""0803\d{7}"""/);
+    expect(csv).not.toMatch(/,"0803\d{7}",/);
+    // A name or a note that begins with = is still neutralised, not made a formula.
+    const evil = reportCsv({ ...r, columns: [{ key: 'member', label: 'Member', kind: 'text' }, { key: 'phone', label: 'Phone', kind: 'text' }], rows: [{ member: '=1+1', phone: '=cmd|x' }] });
+    expect(evil).toContain(`"'=1+1"`);
+    expect(evil).toContain(`"'=cmd|x"`);
   });
 });

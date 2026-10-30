@@ -25,6 +25,19 @@ type ApiErrorBody = {
 };
 
 /** code-standards.md §10 — every thrown API error is one of these. */
+/**
+ * A request that asked for raw bytes (a report's PDF or CSV) gets its error back as bytes too. Read them as JSON, so the API's own
+ * explanation ("A PDF holds up to 5,000 rows...") reaches the person; anything that is not JSON is left as it was.
+ */
+export function decodedBody(raw: unknown): unknown {
+  if (typeof ArrayBuffer === 'undefined' || !(raw instanceof ArrayBuffer) || typeof TextDecoder === 'undefined') return raw;
+  try {
+    return JSON.parse(new TextDecoder().decode(raw));
+  } catch {
+    return raw;
+  }
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -63,8 +76,8 @@ export class ApiError extends Error {
       });
     }
 
-    const { status, data: rawData } = error.response;
-    const data = rawData as ApiErrorBody | undefined;
+    const { status } = error.response;
+    const data = decodedBody(error.response.data) as ApiErrorBody | undefined;
     const fieldErrors = Array.isArray(data?.errors) ? data.errors.map((issue) => ({ path: issue.path, message: issue.message })) : undefined;
 
     // Module and feature refusals tag themselves in `error` rather than `code`.

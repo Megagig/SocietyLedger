@@ -9,9 +9,11 @@ import { AJO_TIERS, ensureAjoAuditFeature } from '../../prisma/seeds/ajo-addons.
 
 type Version = { id: number; status: 'PUBLISHED' | 'DRAFT'; addonCode: string };
 
-function fakeDb(versions: Version[], featureExists = true) {
+function fakeDb(versions: Version[], featureExists = true, actor: { id: number } | null = { id: 1 }) {
   const links = new Set<string>();
   const db = {
+    user: { findFirst: jest.fn(async () => actor) },
+    platformActionLog: { create: jest.fn(async (_args: { data: Record<string, unknown> }) => ({ id: 1 })) },
     platformFeature: { findUnique: jest.fn(async () => (featureExists ? { id: 77, code: 'ajo.audit_reports' } : null)) },
     addonVersion: {
       findMany: jest.fn(async ({ where }: { where: { status: string; addon: { code: { in: string[] } } } }) =>
@@ -57,6 +59,23 @@ describe('ensureAjoAuditFeature', () => {
     const { db, links } = fakeDb(versions);
     expect(await ensureAjoAuditFeature(db)).toBe(2);
     expect([...links].sort()).toEqual(['1:77', '2:77']);
+  });
+
+  it('writes each change to the staff Action log with its reason, because it edits a published version outside the Plan Builder', async () => {
+    const { db, mocks } = fakeDb(versions);
+    await ensureAjoAuditFeature(db);
+    const rows = mocks.platformActionLog.create.mock.calls.map((c) => c[0].data);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.targetId).sort()).toEqual([1, 2]);
+    expect(rows[0]).toMatchObject({ actorId: 1, actionType: 'ADDON_VERSION_FEATURE_ADDED', targetType: 'addon_version' });
+    expect(String(rows[0].reason)).toMatch(/audit report belongs to Business and Enterprise/);
+  });
+
+  it('still adds the feature, and says nothing false, when the platform has no super admin to name in the log', async () => {
+    const { db, mocks, links } = fakeDb(versions, true, null);
+    expect(await ensureAjoAuditFeature(db)).toBe(2);
+    expect(links.size).toBe(2);
+    expect(mocks.platformActionLog.create).not.toHaveBeenCalled();
   });
 
   it('changes nothing the second time', async () => {

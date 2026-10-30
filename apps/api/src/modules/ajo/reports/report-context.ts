@@ -16,7 +16,8 @@ import { businessDay, dayInZone, toCalendarDate } from '../ajo-schedule';
 import { paymentStatus, spreadReported, type PaymentState } from '../ajo-status';
 import type { AppliedFilters } from './report-types';
 
-export const MAX_ROWS = 20_000;
+/** The most rows one report may have, to view or as a CSV. A PDF holds fewer (see report.service.ts). */
+export const MAX_ROWS = 100_000;
 export const MAX_RANGE_DAYS = 366;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -166,7 +167,8 @@ export async function buildContext(input: { associationId: number; query: unknow
     filters: { groupId: f.groupId ?? null, from, to, membershipId: f.membershipId ?? null, collectorUserId },
     fromDate: date(from),
     toDate: date(to),
-    groups,
+    // A collector, or a person filter, only ever sees the circles those people are in: no other circle's name or empty figures.
+    groups: allowed ? groups.filter((g) => memberships.some((m) => m.groupId === g.id)) : groups,
     membershipIds: allowed ? memberships.map((m) => m.id) : null,
     people,
   };

@@ -15,7 +15,8 @@ import { levyReport } from './ajo-levy.service';
 import { voidPayout } from './ajo-payout.service';
 import { RuleError } from '../finance/rule-error';
 
-export const AJO_FAMILY = 'ajo';
+export { AJO_FAMILY } from './ajo-access';
+import { AJO_FAMILY } from './ajo-access';
 /** The free trial tier is never something staff move a group to. */
 const NOT_A_TARGET = new Set(['ajo-trial']);
 export const MIN_OVERRIDE_REASON = 10;

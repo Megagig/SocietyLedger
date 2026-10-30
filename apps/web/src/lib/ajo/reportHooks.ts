@@ -42,6 +42,37 @@ export const useReport = (name: ReportName, filters: ReportFilters, page: number
   });
 
 /** Download the report as a file. The API writes it from the same figures as the screen and records the export in the audit log. */
-export function downloadReport(name: ReportName, filters: ReportFilters, format: 'csv' | 'pdf'): Promise<void> {
-  return downloadFile(`/ajo/reports/${name}/export?${reportQuery(filters, { format })}`, `ajo-${name}.${format}`);
+export async function downloadReport(name: ReportName, filters: ReportFilters, format: 'csv' | 'pdf'): Promise<void> {
+  try {
+    await downloadFile(`/ajo/reports/${name}/export?${reportQuery(filters, { format })}`, `ajo-${name}.${format}`);
+  } catch (error) {
+    throw await readBlobError(error);
+  }
+}
+
+/** A blob's text. `Blob.text()` is missing from older browsers, so a FileReader is the fallback. */
+function blobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+/**
+ * A download asks for a blob, so when the API refuses (a range that is too long, a PDF with too many rows) its explanation arrives as a
+ * blob too. Read it back into the error so the screen can show the API's own words instead of a generic message.
+ */
+export async function readBlobError(error: unknown): Promise<unknown> {
+  const response = (error as { response?: { data?: unknown } } | null)?.response;
+  if (response && typeof Blob !== 'undefined' && response.data instanceof Blob) {
+    try {
+      response.data = JSON.parse(await blobText(response.data));
+    } catch {
+      /* not JSON: leave it as it was */
+    }
+  }
+  return error;
 }

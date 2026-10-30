@@ -38,7 +38,8 @@ export function useHandovers(id: number, reconciled?: boolean) {
   return { ...q, items: q.data?.pages.flat() ?? [], hasMore: !!q.hasNextPage };
 }
 export const useCollectors = (id: number) => useQuery({ queryKey: k('collectors', id), queryFn: () => ajoStaffApi.collectors(id), enabled: id > 0 });
-export const useCollectorCandidates = () => useQuery({ queryKey: k('collector-candidates'), queryFn: ajoStaffApi.collectorCandidates });
+/** Listing collectors needs ajo.manage, so a screen that may be opened by someone without it passes `enabled` instead of making a request that is refused. */
+export const useCollectorCandidates = (enabled = true) => useQuery({ queryKey: k('collector-candidates'), queryFn: ajoStaffApi.collectorCandidates, enabled });
 export const useMyContributors = () => useQuery({ queryKey: k('my-contributors'), queryFn: ajoStaffApi.myContributors });
 export const useCollectorDay = (id: number) => useQuery({ queryKey: k('collector-day', id), queryFn: () => ajoStaffApi.collectorDay(id), enabled: id > 0 });
 export const usePayouts = (id: number) => useQuery({ queryKey: k('payouts', id), queryFn: () => ajoStaffApi.payouts(id), enabled: id > 0 });

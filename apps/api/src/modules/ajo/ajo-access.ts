@@ -13,6 +13,8 @@ import { requireFeature, tenantOf } from '../../middleware/module-feature.middle
 import { ModuleFeatureService } from '../../services/module-feature.service';
 
 export const AJO_MODULE = 'ajo';
+/** The add-on family the Ajo tiers belong to (a tenant holds at most one of them). */
+export const AJO_FAMILY = 'ajo';
 
 export type AjoAccess = 'FULL' | 'READ_ONLY' | 'DISABLED';
 

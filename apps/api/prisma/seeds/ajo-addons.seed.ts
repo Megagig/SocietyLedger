@@ -160,11 +160,27 @@ export async function ensureAjoAuditFeature(prisma: PrismaClient): Promise<numbe
   const feature = await prisma.platformFeature.findUnique({ where: { code: AUDIT_FEATURE } });
   if (!feature) throw new Error('Cannot grant audit reports: the feature does not exist yet. Run platform-modules.seed.ts first.');
   const versions = await prisma.addonVersion.findMany({ where: { status: 'PUBLISHED', addon: { code: { in: ['ajo-business', 'ajo-enterprise'] } } }, select: { id: true } });
+  // Editing a published version is outside the Plan Builder's draft, preview and publish path, so each change is written to the staff
+  // Action log with its reason. The log needs a person: the platform's first super admin stands in, and the row says it was a seed.
+  const actor = await prisma.user.findFirst({ where: { platformRole: 'SUPER_ADMIN' }, orderBy: { id: 'asc' }, select: { id: true } });
   let added = 0;
   for (const v of versions) {
     const have = await prisma.addonVersionFeature.findUnique({ where: { addonVersionId_featureId: { addonVersionId: v.id, featureId: feature.id } } });
     if (have) continue;
     await prisma.addonVersionFeature.create({ data: { addonVersionId: v.id, featureId: feature.id } });
+    if (actor) {
+      await prisma.platformActionLog.create({
+        data: {
+          actorId: actor.id,
+          actorRole: 'SUPER_ADMIN',
+          actionType: 'ADDON_VERSION_FEATURE_ADDED',
+          targetType: 'addon_version',
+          targetId: v.id,
+          afterState: { feature: AUDIT_FEATURE, source: 'ajo-addons.seed.ts (ensureAjoAuditFeature)' },
+          reason: 'T10: the audit report belongs to Business and Enterprise (spec section 9); added to versions published before the feature existed.',
+        },
+      });
+    }
     added += 1;
   }
   return added;

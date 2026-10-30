@@ -15,6 +15,7 @@ import { AjoScreen } from '@/features/ajo/components/AjoScreen';
 import { BoardCard } from '@/features/ajo/components/board/BoardParts';
 import { ReportFigures, ReportRowCard } from '@/features/ajo/components/reports/ReportParts';
 import { useCollectorCandidates, useGroups, usePeople } from '@/features/ajo/queries';
+import { useAjoCan } from '@/features/ajo/useAjoCan';
 import { RANGE_OPTIONS, rangeFor, reportFileName, type RangeChoice } from '@/features/ajo/reportFormat';
 import { useReportList, useReportPages } from '@/features/ajo/reportQueries';
 import { CSV_MIME, PDF_MIME, saveAndShareFile } from '@/features/ajo/shareFile';
@@ -41,8 +42,10 @@ export default function ReportScreen() {
   const [busy, setBusy] = useState<'csv' | 'pdf' | null>(null);
 
   const groupId = circle === ALL ? 0 : Number(circle);
-  const people = usePeople(def?.filters.member ? groupId : 0);
-  const collectors = useCollectorCandidates();
+  // The people and collector lists are for officers; a collector is not sent a request that is refused.
+  const { manage, anyOfficer } = useAjoCan();
+  const people = usePeople(anyOfficer && def?.filters.member ? groupId : 0);
+  const collectors = useCollectorCandidates(manage);
 
   const filters = useMemo<ReportFilters>(
     () => ({ groupId: groupId || null, ...rangeFor(range, new Date()), membershipId: person === ALL ? null : Number(person), collectorUserId: collector === ALL ? null : Number(collector) }),

@@ -31,7 +31,7 @@ function FigureGrid({ metrics }: { metrics: ReportMetric[] }) {
   return (
     <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {metrics.map((m) => (
-        <div key={m.key} className="rounded-lg border border-line p-3">
+        <div key={m.key} className="rounded-lg border border-line-strong bg-surface-muted p-3">
           <dt className="text-xs text-ink-faint">{m.label}</dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums text-ink">{formatMetric(m)}</dd>
           {m.hint ? <p className="mt-1 text-xs text-ink-muted">{m.hint}</p> : null}

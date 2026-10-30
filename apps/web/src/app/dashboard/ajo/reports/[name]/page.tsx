@@ -12,6 +12,7 @@ import type { ReportFilters, ReportName } from '@/lib/ajo/reportTypes';
 import { useCollectorCandidates, useGroups, usePeople } from '@/lib/ajo/staffHooks';
 import { formatMoment } from '@/lib/ajo/format';
 import { ajoErrorMessage } from '@/lib/ajo/api';
+import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 
 const asNumber = (v: string | null) => (v ? Number(v) : null);
@@ -36,8 +37,10 @@ export default function AjoReportPage() {
 
   const report = useReport(name, filters, page, !!def && !def.lock);
   const groups = useGroups();
-  const people = usePeople(def?.filters.member ? filters.groupId ?? 0 : 0);
-  const collectors = useCollectorCandidates();
+  // The people and collector lists are for officers (they need ajo.manage, reconcile or approve); a collector is not sent a request that is refused.
+  const can = useAjoCan();
+  const people = usePeople(can.anyOfficer && def?.filters.member ? filters.groupId ?? 0 : 0);
+  const collectors = useCollectorCandidates(can.manage);
 
   const download = async (format: 'csv' | 'pdf') => {
     setBusy(format);
@@ -116,7 +119,8 @@ export default function AjoReportPage() {
       ) : report.isError || !data ? (
         <AjoError error={report.error} onRetry={() => report.refetch()} />
       ) : (
-        <div className="space-y-5" aria-busy={report.isFetching}>
+        <div className={`space-y-5 transition-opacity ${report.isPreviousData ? 'opacity-50' : ''}`} aria-busy={report.isFetching}>
+          {report.isPreviousData ? <p role="status" className="text-sm font-medium text-ink">Updating for your new choice…</p> : null}
           <p className="text-sm text-ink-muted">
             {data.filters.from} to {data.filters.to} · made {formatMoment(data.generatedAt)}
           </p>

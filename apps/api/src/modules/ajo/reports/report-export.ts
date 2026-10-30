@@ -48,6 +48,9 @@ function dataCell(col: Column, cell: Cell, timeZone: string): string {
   if (col.kind === 'money') return nairaPlain(String(cell));
   if (col.kind === 'int') return String(cell);
   if (col.kind === 'datetime') return csvCell(stamp(String(cell), timeZone));
+  // Excel turns a quoted 0803... into 803... on opening. A phone number (digits, spaces and a leading + only) is written as ="0803..." so it
+  // opens as text; nothing else is ever written this way, so a name or a note still cannot run as a formula.
+  if (col.key === 'phone' && /^\+?[0-9 ]{6,20}$/.test(String(cell))) return `"=""${String(cell).trim()}"""`;
   return csvCell(String(cell));
 }
 
@@ -163,7 +166,9 @@ export function reportPdf(r: ReportResult): Promise<Buffer> {
     for (const data of r.rows) {
       const cells = r.columns.map((c) => pdfCell(c, data[c.key] ?? null, tz));
       doc.font('Helvetica').fontSize(8);
-      const height = Math.min(34, Math.max(11, ...cells.map((t, i) => doc.heightOfString(t, { width: widths[i] - 4 }))));
+      // A row is as tall as its tallest cell, so no text is cut off; only a row taller than a page is held to the page.
+      const tallest = Math.max(11, ...cells.map((t, i) => doc.heightOfString(t, { width: widths[i] - 4 })));
+      const height = Math.min(doc.page.height - doc.page.margins.top - doc.page.margins.bottom - 40, tallest);
       if (doc.y + height > bottom()) {
         doc.addPage();
         header();

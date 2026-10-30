@@ -160,9 +160,10 @@ export function useCollectors(id: number) {
   const tenant = useTenantKey();
   return useQuery({ queryKey: ajoKeys.staff(tenant, 'collectors', id), queryFn: () => ajoApi.collectors(id), enabled: valid(id) });
 }
-export function useCollectorCandidates() {
+/** Listing collectors needs ajo.manage, so a screen anyone with reports access can open passes `enabled` rather than make a refused request. */
+export function useCollectorCandidates(enabled = true) {
   const tenant = useTenantKey();
-  return useQuery({ queryKey: ajoKeys.staff(tenant, 'collector-candidates'), queryFn: () => ajoApi.collectorCandidates() });
+  return useQuery({ queryKey: ajoKeys.staff(tenant, 'collector-candidates'), queryFn: () => ajoApi.collectorCandidates(), enabled });
 }
 export function useMyContributors() {
   const tenant = useTenantKey();

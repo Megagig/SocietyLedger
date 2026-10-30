@@ -60,6 +60,20 @@ export async function listTierOptions(family: string, db: Db = prisma): Promise<
   });
 }
 
+/**
+ * The feature codes of the tier a tenant held most recently in a family, even if it has ended, or null if it never held one. An expired
+ * add-on is read-only, not switched off, and keeps only what its own tier included.
+ */
+export async function getLapsedFeatureCodes(associationId: number, family: string, db: Db = prisma): Promise<Set<string> | null> {
+  const row = await db.tenantAddon.findFirst({
+    where: { associationId, addonVersion: { addon: { family } } },
+    orderBy: { endsAt: 'desc' },
+    include: { addonVersion: { include: { features: { include: { feature: { select: { code: true } } } } } } },
+  });
+  if (!row) return null;
+  return new Set(row.addonVersion.features.map((f) => f.feature.code));
+}
+
 /** The tier the tenant holds right now in a family, or null. */
 export async function getHeldTier(associationId: number, family: string, now: Date = new Date(), db: Db = prisma): Promise<HeldTier | null> {
   const row = await db.tenantAddon.findFirst({

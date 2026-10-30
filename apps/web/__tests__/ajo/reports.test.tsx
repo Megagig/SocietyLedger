@@ -13,14 +13,18 @@ import type { ReportListItem, ReportResult } from '@/lib/ajo/reportTypes';
 const mockList = jest.fn();
 const mockReport = jest.fn();
 const mockDownload = jest.fn();
+const mockPeople = jest.fn((_id: number) => ({ data: [] }));
+const mockCollectors = jest.fn((_enabled?: boolean) => ({ data: [] }));
+const mockCan = jest.fn(() => ({ manage: true, anyOfficer: true }));
 jest.mock('next/navigation', () => ({ useParams: () => ({ name: 'contributions' }) }));
 jest.mock('next/link', () => ({ __esModule: true, default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 jest.mock('@/lib/toast', () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 jest.mock('@/lib/ajo/staffHooks', () => ({
   useGroups: () => ({ data: [{ id: 4, name: 'Market circle' }] }),
-  usePeople: () => ({ data: [] }),
-  useCollectorCandidates: () => ({ data: [] }),
+  usePeople: (id: number) => mockPeople(id),
+  useCollectorCandidates: (enabled?: boolean) => mockCollectors(enabled),
 }));
+jest.mock('@/lib/ajo/useAjoCan', () => ({ useAjoCan: () => mockCan() }));
 jest.mock('@/lib/ajo/reportHooks', () => ({
   ...jest.requireActual('@/lib/ajo/reportHooks'),
   useReportList: () => mockList(),
@@ -29,7 +33,7 @@ jest.mock('@/lib/ajo/reportHooks', () => ({
 }));
 
 import { formatCell, formatMetric } from '@/components/ajo/reports/ReportParts';
-import { reportQuery } from '@/lib/ajo/reportHooks';
+import { readBlobError, reportQuery } from '@/lib/ajo/reportHooks';
 import AjoReportPage from '@/app/dashboard/ajo/reports/[name]/page';
 import AjoReportsPage from '@/app/dashboard/ajo/reports/page';
 
@@ -81,6 +85,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockList.mockReturnValue(ok([item()]));
   mockReport.mockReturnValue(ok(result()));
+  mockCan.mockReturnValue({ manage: true, anyOfficer: true });
 });
 
 describe('how a figure is written', () => {
@@ -185,5 +190,47 @@ describe('the report page', () => {
     mockReport.mockReturnValue({ isLoading: false, isError: true, isFetching: false, data: undefined, error: { response: { status: 400, data: { message: 'Pick a range of 12 months or less.' } } }, refetch: jest.fn() });
     const el = render(<AjoReportPage />);
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('Pick a range of 12 months or less.');
+  });
+});
+
+describe('what the page asks for', () => {
+  it('asks for the people and collector lists only when the person may see them, so a collector is not sent a refused request', () => {
+    mockCan.mockReturnValue({ manage: false, anyOfficer: false });
+    render(<AjoReportPage />);
+    expect(mockCollectors).toHaveBeenCalledWith(false);
+    expect(mockPeople.mock.calls.every((c) => c[0] === 0)).toBe(true);
+  });
+  it('asks for the collector list for someone who manages', () => {
+    render(<AjoReportPage />);
+    expect(mockCollectors).toHaveBeenCalledWith(true);
+  });
+  it('says so, and dims the figures, while the new choice is loading, so old numbers are not read as the new ones', () => {
+    mockReport.mockReturnValue({ ...ok(result()), isPreviousData: true, isFetching: true });
+    const el = render(<AjoReportPage />);
+    expect(el.textContent).toContain('Updating for your new choice');
+    expect(el.querySelector('.opacity-50')).not.toBeNull();
+  });
+  it('shows no such notice once the figures are the ones asked for', () => {
+    const el = render(<AjoReportPage />);
+    expect(el.textContent).not.toContain('Updating for your new choice');
+    expect(el.querySelector('.opacity-50')).toBeNull();
+  });
+});
+
+describe('a refused download', () => {
+  it('puts the explanation from the API, which arrived as a blob, back into the error so the screen can show it', async () => {
+    const body = JSON.stringify({ success: false, code: 'REPORT_TOO_LARGE_FOR_PDF', message: 'A PDF holds up to 5,000 rows. Download the CSV instead.' });
+    const error = { response: { status: 400, data: new Blob([body], { type: 'application/json' }) } };
+    await readBlobError(error);
+    expect((error.response.data as unknown as { message: string }).message).toBe('A PDF holds up to 5,000 rows. Download the CSV instead.');
+  });
+  it('leaves an error alone when its body is not a blob or not JSON', async () => {
+    const plain = { response: { data: { message: 'x' } } };
+    await readBlobError(plain);
+    expect(plain.response.data).toEqual({ message: 'x' });
+    const html = { response: { data: new Blob(['<html>'], { type: 'text/html' }) } };
+    await readBlobError(html);
+    expect(html.response.data).toBeInstanceOf(Blob);
+    await expect(readBlobError(null)).resolves.toBeNull();
   });
 });

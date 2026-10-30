@@ -92,7 +92,11 @@ export async function payoutsReport(ctx: ReportContext): Promise<ReportBody> {
     let scheduledPot = 0n;
     if (group.model === 'ROTATING_POT') {
       const slots = await prisma.ajoPayoutSlot.findMany({ where: { groupId: group.id }, select: { membershipId: true, position: true, shareNo: true } });
-      const dueDates = await prisma.ajoInstallment.groupBy({ by: ['dueDate'], where: { membership: { groupId: group.id }, status: { not: 'WAIVED' } }, _sum: { amountKobo: true }, orderBy: { dueDate: 'asc' } });
+      // Round N is the Nth due date. A round whose instalments were all waived still has its date (it only brings in nothing), so the
+      // dates are counted with the waived ones in and the pot is added up without them.
+      const dueDates = await prisma.ajoInstallment.groupBy({ by: ['dueDate'], where: { membership: { groupId: group.id } }, orderBy: { dueDate: 'asc' } });
+      const potRows = await prisma.ajoInstallment.groupBy({ by: ['dueDate'], where: { membership: { groupId: group.id }, status: { not: 'WAIVED' } }, _sum: { amountKobo: true } });
+      const potOn = new Map(potRows.map((p) => [iso(p.dueDate), p._sum.amountKobo ?? 0n]));
       const taken = await prisma.ajoPayout.findMany({ where: { groupId: group.id, status: { in: ['PREPARED', 'APPROVED', 'PAID'] } }, select: { membershipId: true, round: true } });
       const done = new Set(taken.map((t) => `${t.membershipId}:${t.round}`));
       for (const s of slots) {
@@ -101,7 +105,7 @@ export async function payoutsReport(ctx: ReportContext): Promise<ReportBody> {
         if (ids.length && !ids.includes(s.membershipId)) continue;
         if (ctx.membershipIds && !ids.includes(s.membershipId)) continue;
         if (done.has(`${s.membershipId}:${s.position}`)) continue;
-        const pot = round._sum.amountKobo ?? 0n;
+        const pot = potOn.get(iso(round.dueDate)) ?? 0n;
         scheduledCount += 1;
         scheduledPot += pot;
         mine.push({

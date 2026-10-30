@@ -7,7 +7,7 @@ import prisma from '../../../lib/prisma';
 import { getHeldTier } from '../../../services/billing/tier-change.service';
 import { formatNaira } from '../ajo-collections';
 import { dayInZone } from '../ajo-schedule';
-import { AJO_FAMILY } from '../ajo-oversight.service';
+import { AJO_FAMILY } from '../ajo-access';
 import { assertUnderCap, iso, ledgerFigures, membersOf, type ReportContext } from './report-context';
 import { money, type CircleBlock, type Column, type ReportBody, type Row } from './report-types';
 
