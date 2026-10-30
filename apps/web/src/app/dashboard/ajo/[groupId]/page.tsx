@@ -98,6 +98,9 @@ export default function GroupOverviewPage() {
             <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isLoading}>Start the circle</Button>
           )}
           {refusal(startProblem)}
+          {startProblem && /draw/i.test(startProblem) && (
+            <Button component={Link} href={`/dashboard/ajo/${groupId}/order`} className="mt-2" variant="default">Go to Payout order to draw again</Button>
+          )}
           {startProblem && /start date/i.test(startProblem) && (
             <Button className="mt-2" variant="default" onClick={() => setEditing(true)}>Change the start date</Button>
           )}

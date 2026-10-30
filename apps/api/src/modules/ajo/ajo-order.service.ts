@@ -138,6 +138,11 @@ export async function runDraw(input: DrawInput) {
 
 /** The order as every participant sees it, with the draw's seed so anyone can check it, and the history of changes. */
 export async function getOrder(db: Db, groupId: number, viewerUserId: number | null) {
+  const [group, active, pendingPeople] = await Promise.all([
+    db.ajoGroup.findUnique({ where: { id: groupId }, select: { status: true } }),
+    db.ajoMembership.findMany({ where: { groupId, status: 'ACTIVE' }, select: { id: true, shares: true } }),
+    db.ajoMembership.count({ where: { groupId, status: 'PENDING' } }),
+  ]);
   const [slots, events, paid] = await Promise.all([
     db.ajoPayoutSlot.findMany({ where: { groupId }, orderBy: { position: 'asc' }, include: { membership: { select: { id: true, member: { select: { firstName: true, lastName: true, userId: true } } } } } }),
     db.ajoPayoutOrderEvent.findMany({ where: { groupId }, orderBy: { id: 'asc' } }),
@@ -145,8 +150,24 @@ export async function getOrder(db: Db, groupId: number, viewerUserId: number | n
   ]);
   const draw = [...events].reverse().find((e) => e.type === 'DRAW');
   const drawDetail = draw?.detail as { seed?: string; rosterFingerprint?: string } | undefined;
+  // Whether the newest draw still matches who is in the circle now. If not, the circle cannot start until it is drawn again.
+  const current = !!draw && drawDetail?.rosterFingerprint === rosterFingerprint(expectedSlots(active));
+  const drawnFor = new Set(slots.map((x) => x.membershipId));
+  const nowIn = new Set(active.map((a) => a.id));
+  const joined = active.filter((a) => !drawnFor.has(a.id)).length;
+  const left = [...drawnFor].filter((id) => !nowIn.has(id)).length;
+  const stale = !!draw && !current;
+  const staleBecause = !stale ? null : [joined > 0 ? `${joined} ${joined === 1 ? 'person was' : 'people were'} approved since the draw` : null, left > 0 ? `${left} ${left === 1 ? 'person is' : 'people are'} no longer in the circle` : null].filter(Boolean).join(' and ') || 'The shares changed since the draw';
   return {
     drawn: !!draw,
+    /** The newest draw matches the roster now. False means: draw again before starting. */
+    current,
+    stale,
+    staleBecause,
+    /** A new draw is allowed: the circle is open and there is none yet, or the roster changed since the last one. */
+    canDraw: group?.status === 'OPEN' && (!draw || stale),
+    /** People who have joined but are not approved yet. They are not in a draw made now. */
+    pendingPeople,
     seed: drawDetail?.seed ?? null,
     drawnAt: draw?.createdAt ?? null,
     slots: slots.map((s) => ({ slotId: s.id, position: s.position, shareNo: s.shareNo, membershipId: s.membershipId, name: `${s.membership.member.firstName} ${s.membership.member.lastName}`.trim(), paid: paid.has(s.position), mine: viewerUserId !== null && s.membership.member.userId === viewerUserId })),

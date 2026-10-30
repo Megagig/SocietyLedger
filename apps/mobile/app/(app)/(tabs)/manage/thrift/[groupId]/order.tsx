@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { ListOrdered } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { toast } from 'sonner-native';
 import { z } from 'zod';
@@ -61,6 +61,21 @@ export default function PayoutOrderScreen() {
   };
   const slotOptions = (data?.slots ?? []).map((s) => ({ value: String(s.slotId), label: `${ordinal(s.position)} · ${s.name}` }));
 
+  // People still waiting for approval are not in a draw made now: say so first, and let the officer decide.
+  const drawNow = (again: boolean) => {
+    const go = () => void run(() => draw.mutateAsync(), again ? 'The order was drawn again.' : 'The order was drawn.');
+    const waiting = data?.pendingPeople ?? 0;
+    if (waiting === 0) return go();
+    Alert.alert(
+      'Draw before everyone is approved?',
+      `${waiting} ${waiting === 1 ? 'person has' : 'people have'} joined but ${waiting === 1 ? 'is' : 'are'} not approved yet, so they will not be in this draw. If you approve them afterwards, the draw will be out of date and you will have to draw again before the circle can start. It is usually better to approve everyone first, then draw once.`,
+      [
+        { text: 'Not yet', style: 'cancel' },
+        { text: 'Draw anyway', onPress: go },
+      ],
+    );
+  };
+
   const run = async (fn: () => Promise<unknown>, success: string) => {
     setProblem(null);
     try {
@@ -97,12 +112,17 @@ export default function PayoutOrderScreen() {
             <Text variant="body" tone="secondary">
               The draw is random, recorded with its seed so anyone can check it later, and it happens once. Do it after everyone has joined and before the circle starts.
             </Text>
-            {can && group?.status === 'OPEN' ? (
-              <Button loading={draw.isPending} onPress={() => void run(() => draw.mutateAsync(), 'The order was drawn.')} testID="ajo-draw">
+            {data.pendingPeople > 0 ? (
+              <Text variant="caption" tone="warning">
+                {data.pendingPeople} {data.pendingPeople === 1 ? 'person has' : 'people have'} joined but {data.pendingPeople === 1 ? 'is' : 'are'} not approved yet. They are not in a draw made now.
+              </Text>
+            ) : null}
+            {can && data.canDraw ? (
+              <Button loading={draw.isPending} onPress={() => drawNow(false)} testID="ajo-draw">
                 Draw the order
               </Button>
             ) : null}
-            {can && group?.status !== 'OPEN' ? (
+            {can && !data.canDraw && group?.status !== 'OPEN' ? (
               <Text variant="caption" tone="tertiary">
                 The draw is made while the circle is open for joining.
               </Text>
@@ -111,8 +131,28 @@ export default function PayoutOrderScreen() {
         </Card>
       ) : (
         <View className="gap-3">
+          {data.stale ? (
+            <Card testID="ajo-order-stale">
+              <View className="gap-2">
+                <Text variant="h3">This draw is out of date.</Text>
+                <Text variant="body" tone="secondary">
+                  {data.staleBecause}. An order drawn for a different circle cannot be used, so the circle cannot start until it is drawn again. The old draw stays on the record.
+                </Text>
+                {data.pendingPeople > 0 ? (
+                  <Text variant="caption" tone="warning">
+                    {data.pendingPeople} {data.pendingPeople === 1 ? 'person is' : 'people are'} still waiting for approval and would not be in the new draw.
+                  </Text>
+                ) : null}
+                {can && data.canDraw ? (
+                  <Button loading={draw.isPending} onPress={() => drawNow(true)} testID="ajo-draw-again">
+                    Draw again
+                  </Button>
+                ) : null}
+              </View>
+            </Card>
+          ) : null}
           <Text variant="caption" tone="secondary">
-            Drawn {formatMoment(data.drawnAt)}. Seed {data.seed}.
+            {data.stale ? 'Out of date: drawn' : 'Drawn'} {formatMoment(data.drawnAt)}. Seed {data.seed}.
           </Text>
           {data.slots.map((s) => (
             <Card key={s.slotId} testID={`ajo-slot-${s.slotId}`}>

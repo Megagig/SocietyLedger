@@ -208,7 +208,17 @@ export type CollectorCandidateDTO = { userId: number; name: string; email: strin
 export type CollectorAssignmentDTO = { assignmentId: number; membershipId: number; collectorUserId: number; dailyTargetKobo: string | null; startsOn: string; endsOn: string | null };
 
 export type OrderSlotDTO = { slotId: number; position: number; shareNo: number; membershipId: number; name: string; paid: boolean; mine: boolean };
-export type OrderDTO = { drawn: boolean; seed: string | null; drawnAt: string | null; slots: OrderSlotDTO[]; history: { id: number; type: string; reason: string | null; createdAt: string }[] };
+export type OrderDTO = {
+  /** The newest draw matches who is in the circle now. False after a draw means: draw again before starting. */
+  current: boolean;
+  stale: boolean;
+  /** In words, why the draw is out of date, for example "1 person was approved since the draw". */
+  staleBecause: string | null;
+  /** A new draw is allowed: the circle is open and there is none yet, or the roster changed since the last one. */
+  canDraw: boolean;
+  /** People who have joined but are not approved yet. They are not in a draw made now. */
+  pendingPeople: number;
+  drawn: boolean; seed: string | null; drawnAt: string | null; slots: OrderSlotDTO[]; history: { id: number; type: string; reason: string | null; createdAt: string }[] };
 export type SwapDTO = { id: number; slotAId: number; slotBId: number; reason: string | null; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; createdAt: string };
 
 export type QueueContributionDTO = ContributionDTO & {

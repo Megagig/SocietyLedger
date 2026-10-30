@@ -701,6 +701,31 @@ suite('Ajo groups, rules, schedules, order and collectors (database)', () => {
       expect(await prisma.ajoPayoutSlot.count({ where: { groupId: pot.id } })).toBe(3);
     });
 
+    it('says when a draw is out of date and why, and allows (and only then) a new draw, so a circle drawn too early can still start', async () => {
+      const pot = await openPot();
+      await join(pot.id);
+      await join(pot.id);
+      const waiting = await join(pot.id, { approve: false });
+      const before = await order.getOrder(prisma, pot.id, null);
+      expect(before).toMatchObject({ drawn: false, canDraw: true, pendingPeople: 1 });
+
+      await order.runDraw({ associationId: A, groupId: pot.id, actorUserId: officer.id });
+      const fresh = await order.getOrder(prisma, pot.id, null);
+      expect(fresh).toMatchObject({ drawn: true, current: true, stale: false, canDraw: false, staleBecause: null });
+
+      // The person waiting is approved after the draw: the draw no longer matches the circle.
+      await members.approveMembership({ associationId: A, membershipId: waiting.membership.id, actorUserId: officer.id, now: NOW });
+      const stale = await order.getOrder(prisma, pot.id, null);
+      expect(stale).toMatchObject({ drawn: true, current: false, stale: true, canDraw: true, pendingPeople: 0 });
+      expect(stale.staleBecause).toBe('1 person was approved since the draw');
+      expect(await codeOf(groups.startGroup({ associationId: A, groupId: pot.id, actorUserId: officer.id, confirmSmallerGroup: true, now: BEFORE_START }))).toBe('DRAW_REQUIRED');
+
+      const again = await order.runDraw({ associationId: A, groupId: pot.id, actorUserId: officer.id });
+      expect(again).toMatchObject({ redraw: true, slots: 3 });
+      expect(await order.getOrder(prisma, pot.id, null)).toMatchObject({ current: true, stale: false, canDraw: false });
+      expect(await prisma.ajoPayoutOrderEvent.count({ where: { groupId: pot.id, type: 'DRAW' } })).toBe(2);
+    });
+
     it('needs the draw, an empty waiting list and an admin’s confirmation before it starts, then fixes the rounds and prices every share', async () => {
       const pot = await openPot();
       const p1 = await join(pot.id);

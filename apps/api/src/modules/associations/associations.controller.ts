@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../../lib/prisma';
 import { AssociationKind, AssociationStatus, AssociationTier } from '@prisma/client';
 import { ROLE_PERMISSION_MAPPING } from '../../lib/role-permission-mapping';
+import { isThriftExcludedPermission } from '../../lib/thrift-roles';
 import { RESERVED_SUBDOMAINS, ASSOCIATION_TYPE_OTHER, associationSignupSchema } from '@societyledger/shared';
 import { PlatformSettingsService } from '../admin/platform-settings.service';
 import { startTrialIfPending } from '../../services/subscription-access.service';
@@ -300,6 +301,8 @@ export class AssociationsController {
         for (const role of createdRoles) {
           const permissionKeys = rolePermissionMap[role.name] || [];
           for (const key of permissionKeys) {
+            // A standalone thrift group has no cooperatives or welfare, so its roles do not carry their permissions.
+            if (isThrift && isThriftExcludedPermission(key)) continue;
             const permissionId = permissionMap.get(key);
             if (permissionId) {
               rolePermissionsToCreate.push({ roleId: role.id, permissionId });

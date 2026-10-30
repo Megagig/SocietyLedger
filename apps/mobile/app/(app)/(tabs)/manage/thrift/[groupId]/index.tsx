@@ -156,6 +156,11 @@ export default function CircleOverviewScreen() {
                 </Button>
               )}
               <Refusal text={startProblem} testID="ajo-start-problem" />
+              {startProblem && /draw/i.test(startProblem) ? (
+                <Button variant="secondary" onPress={() => router.push(`/(app)/(tabs)/manage/thrift/${groupId}/order` as never)} testID="ajo-go-draw">
+                  Go to Payout order to draw again
+                </Button>
+              ) : null}
             </View>
           ) : null}
 

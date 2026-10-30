@@ -630,6 +630,9 @@ Decisions (owner-approved): a **Payments** entry per role in the sidebar and the
 - [x] TB.4 **Docs:** where to find payments, recording a payment for a member, finding My payments, and the accountability note.
 - **Not verified:** nothing has been run in a browser or on a phone; no docs screenshots for these screens yet (a standalone demo tenant is still missing).
 
+## Fix — a draw made too early (2026-10-30)
+A rotating pot drawn before everyone was approved could not start ("The roster or the shares changed after the last draw") and the Payout order screen had no button to draw again: the server allowed a new draw when the roster changed, but the screen only offered one when no draw existed. **Fixed on API, web and mobile:** the order now reports `current`, `stale`, `staleBecause` ("1 person was approved since the draw"), `canDraw` and `pendingPeople`; the Payout order screen shows an "out of date" notice and **Draw again** (the old draw stays on the record); a draw made while people are still waiting for approval asks first; the overview's start refusal links to Payout order. Integration test for the exact scenario (draw, approve one more, stale, draw again). Docs: "If the people change after the draw".
+
 ## Phase T12 — Hardening & launch
 - [ ] T12.1 Security review
 - [ ] T12.2 Failure-mode drills

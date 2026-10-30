@@ -3,6 +3,7 @@ import { RBACService as RBACServiceCore } from '../../services/rbac.service';
 import { PrismaClient, PlatformRole } from '@prisma/client';
 import { RuleError } from '../finance/rule-error';
 import * as rbacRoles from './rbac-roles.service';
+import { THRIFT_GROUP_HIDDEN_ROLES, THRIFT_GROUP_ROLE_NAMES } from '../../lib/thrift-roles';
 
 const prisma = new PrismaClient();
 
@@ -88,12 +89,17 @@ export class RBACController {
         orderBy: [{ isSystemRole: 'desc' }, { name: 'asc' }]
       });
 
+      // A standalone thrift group is offered only the roles that mean something there, under its own names.
+      const owner = associationId ? await prisma.association.findUnique({ where: { id: associationId }, select: { kind: true } }) : null;
+      const thrift = owner?.kind === 'THRIFT_GROUP';
+      const visible = thrift ? roles.filter((r) => !THRIFT_GROUP_HIDDEN_ROLES.includes(r.name)) : roles;
+
       // Transform to include permission keys
-      const transformedRoles = roles.map(role => ({
+      const transformedRoles = visible.map(role => ({
         id: role.id,
         name: role.name,
-        displayName: role.displayName,
-        description: role.description,
+        displayName: (thrift && THRIFT_GROUP_ROLE_NAMES[role.name]?.displayName) || role.displayName,
+        description: (thrift && THRIFT_GROUP_ROLE_NAMES[role.name]?.description) || role.description,
         isSystemRole: role.isSystemRole,
         isActive: role.isActive,
         associationId: role.associationId,
@@ -107,7 +113,7 @@ export class RBACController {
         success: true,
         data: {
           roles: transformedRoles,
-          total: roles.length
+          total: transformedRoles.length
         }
       });
     } catch (error) {
