@@ -26,6 +26,7 @@ import { ApprovePayoutSheet, type ApprovePayoutSheetHandle } from '@/features/aj
 import { RecordPaidSheet, type RecordPaidSheetHandle } from '@/features/ajo/components/RecordPaidSheet';
 import { formatKobo, formatMoment, koboPositive, ordinal } from '@/features/ajo/format';
 import { useAjoAction } from '@/features/ajo/mutations';
+import type { PrepareAllResultDTO } from '@/types/api/ajo';
 import { useGroupDetail, usePayoutPreview, usePayouts, usePeople } from '@/features/ajo/queries';
 import { useAjoCan } from '@/features/ajo/useAjoCan';
 import type { PayoutDTO } from '@/types/api/ajo';
@@ -52,6 +53,8 @@ export default function CirclePayoutsScreen() {
   const preview = usePayoutPreview(groupId, target ?? {}, !!target && manage);
   const prepare = useAjoAction((body: { round?: number; membershipId?: number }) => ajoApi.preparePayout(groupId, body));
   const complete = useAjoAction<void>(() => ajoApi.completeGroup(groupId));
+  const prepareAll = useAjoAction<void, PrepareAllResultDTO>(() => ajoApi.prepareAllPayouts(groupId));
+  const [allResult, setAllResult] = useState<PrepareAllResultDTO | null>(null);
   const approveSheet = useRef<ApprovePayoutSheetHandle>(null);
   const paidSheet = useRef<RecordPaidSheetHandle>(null);
   const voidSheet = useRef<BottomSheetModal>(null);
@@ -266,6 +269,44 @@ export default function CirclePayoutsScreen() {
           <EmptyState icon={Wallet} title="No payouts yet." />
         )}
       </View>
+
+      {manage && canWrite && !rotating && group && (group.status === 'ACTIVE' || group.status === 'COMPLETED') ? (
+        <Card>
+          <View className="gap-2">
+            <Text variant="h3">Prepare everyone&apos;s payout</Text>
+            <Text variant="body" tone="secondary">
+              At the end of a cycle, prepare a payout for every saver who is ready in one go. Anyone who is not ready (for example no verified payout account) is listed with the reason, and nothing is prepared for them.
+            </Text>
+            <Button
+              loading={prepareAll.isPending}
+              onPress={async () => {
+                setProblem(null);
+                try {
+                  setAllResult(await prepareAll.mutateAsync());
+                  toast.success('Done. See the list below.');
+                } catch (error) {
+                  setProblem(error instanceof ApiError ? error.message : 'Could not prepare the payouts.');
+                }
+              }}
+              testID="ajo-prepare-all"
+            >
+              Prepare all ready payouts
+            </Button>
+            {allResult ? (
+              <View className="gap-1" testID="ajo-prepare-all-result">
+                <Text variant="body-strong">
+                  {allResult.prepared.length} prepared, {allResult.notReady.length} not ready.
+                </Text>
+                {allResult.notReady.map((n) => (
+                  <Text key={n.membershipId} variant="caption" tone="secondary">
+                    • {n.name}: {n.message}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        </Card>
+      ) : null}
 
       {approvePayout && canWrite && group?.status === 'ACTIVE' ? (
         <Card>

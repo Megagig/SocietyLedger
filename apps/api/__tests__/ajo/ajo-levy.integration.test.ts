@@ -247,7 +247,7 @@ suite('Ajo platform levy (database)', () => {
         expect((error as { code?: string }).code).toBe('LEVY_OVERDUE');
       }
       expect(message).toContain('₦3,750.00');
-      expect(message).toContain('Your existing groups are not affected');
+      expect(message).toContain('Your existing circles are not affected');
       expect((await prisma.ajoGroup.findUniqueOrThrow({ where: { id: g.id } })).status).toBe('OPEN');
     });
 

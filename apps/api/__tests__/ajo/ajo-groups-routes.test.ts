@@ -42,6 +42,7 @@ const svc = {
   unassignCollector: jest.fn(),
   listGroupAssignments: jest.fn(),
   listAssignedContributors: jest.fn(),
+  listMyMemberships: jest.fn(),
 };
 const mockDb = {
   member: { findFirst: jest.fn() },
@@ -96,7 +97,7 @@ jest.mock('../../src/modules/ajo/ajo-membership.service', () => ({
 }));
 jest.mock('../../src/modules/ajo/ajo-bulk.service', () => ({ MAX_BULK_ROWS: 200, bulkAddContributors: pass('bulkAddContributors') }));
 jest.mock('../../src/modules/ajo/ajo-guarantor-link.service', () => ({ createGuarantorLink: pass('createGuarantorLink') }));
-jest.mock('../../src/modules/ajo/ajo-views.service', () => ({ listGroupPeople: pass('listGroupPeople'), listGroupMembers: pass('listGroupMembers'), listMembershipInstallments: pass('listMembershipInstallments') }));
+jest.mock('../../src/modules/ajo/ajo-views.service', () => ({ listGroupPeople: pass('listGroupPeople'), listGroupMembers: pass('listGroupMembers'), listMembershipInstallments: pass('listMembershipInstallments'), listMyMemberships: pass('listMyMemberships') }));
 jest.mock('../../src/modules/ajo/ajo-rules.service', () => ({ publishRuleVersion: pass('publishRuleVersion'), listRuleVersions: pass('listRuleVersions'), acceptanceStats: pass('acceptanceStats') }));
 jest.mock('../../src/modules/ajo/ajo-consent.service', () => ({ acceptRules: pass('acceptRules'), rulesToAccept: pass('rulesToAccept'), recordGuarantorConsent: pass('recordGuarantorConsent'), previewGuarantorWording: pass('previewGuarantorWording') }));
 jest.mock('../../src/modules/ajo/ajo-order.service', () => ({ runDraw: pass('runDraw'), getOrder: pass('getOrder'), requestSwap: pass('requestSwap'), decideSwap: pass('decideSwap'), emergencyException: pass('emergencyException'), listSwapRequests: pass('listSwapRequests') }));
@@ -178,6 +179,14 @@ describe('who can reach what', () => {
     const exc = await request(app).post('/api/ajo/groups/1/exceptions').set('x-test-user', as(ADMIN)).send({ slotId: 5, newPosition: 3, reason: 'A long enough reason' });
     expect(exc.status).toBe(201);
     expect(svc.emergencyException).toHaveBeenCalledWith({ associationId: ASSOC, groupId: 1, actorUserId: ADMIN, slotId: 5, newPosition: 3, reason: 'A long enough reason' });
+  });
+
+  it("shows one person's circles to an officer only, and never to a plain member", async () => {
+    svc.listMyMemberships.mockResolvedValue([{ membershipId: 9 }]);
+    expect((await request(app).get('/api/ajo/members/5/circles').set('x-test-user', as(MEMBER))).status).toBe(403);
+    const res = await request(app).get('/api/ajo/members/5/circles').set('x-test-user', as(OFFICER));
+    expect(res.status).toBe(200);
+    expect(svc.listMyMemberships).toHaveBeenCalledWith({ associationId: ASSOC, memberId: 5 });
   });
 
   it('shows a collector only their own contributors, and only to someone who holds ajo.collect', async () => {

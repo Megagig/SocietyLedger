@@ -124,7 +124,7 @@ export async function assertNoOverdueLevy(db: Db, associationId: number, now: Da
   const agg = await db.ajoLevyAssessment.aggregate({ where: { associationId, status: { in: PAYABLE }, kind: { not: 'CREDIT' }, accruedAt: { lt: cutoff } }, _sum: { amountKobo: true } });
   const owed = agg._sum.amountKobo ?? 0n;
   if (owed > 0n) {
-    throw new RuleError(`SocietyLedger’s platform levy of ${formatNairaNumber(Number(owed))} has been unpaid for more than ${LEVY_OVERDUE_DAYS} days, so a new group cannot be started. Your existing groups are not affected. It is added to your next subscription or add-on payment; pay that, or ask SocietyLedger support.`, 403, 'LEVY_OVERDUE');
+    throw new RuleError(`SocietyLedger’s platform levy of ${formatNairaNumber(Number(owed))} has been unpaid for more than ${LEVY_OVERDUE_DAYS} days, so a new circle cannot be started. Your existing circles are not affected. It is added to your next subscription or add-on payment; pay that, or ask SocietyLedger support.`, 403, 'LEVY_OVERDUE');
   }
 }
 

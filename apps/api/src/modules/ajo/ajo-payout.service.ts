@@ -103,7 +103,7 @@ interface Target {
 
 async function loadGroup(db: Db, associationId: number, groupId: number) {
   const group = await db.ajoGroup.findFirst({ where: { id: groupId, associationId } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   return group;
 }
 
@@ -123,7 +123,7 @@ async function resolveTarget(db: Db, group: Awaited<ReturnType<typeof loadGroup>
   }
   if (!input.membershipId) throw new RuleError('Choose the participant to pay.', 400, 'INVALID_RECIPIENT');
   const m = await db.ajoMembership.findFirst({ where: { id: input.membershipId, groupId: group.id, associationId: group.associationId }, select: pick });
-  if (!m) throw new RuleError('That participant was not found in this group.', 404, 'MEMBERSHIP_NOT_FOUND');
+  if (!m) throw new RuleError('That participant was not found in this circle.', 404, 'MEMBERSHIP_NOT_FOUND');
   return { group, round: null, dueDate: null, recipient: { membershipId: m.id, memberId: m.memberId, userId: m.member.userId, name: `${m.member.firstName} ${m.member.lastName}`.trim(), shares: m.shares, status: m.status } };
 }
 
@@ -386,7 +386,7 @@ async function assertMayApprove(tx: Tx, input: { associationId: number; actorUse
   if (!sole) throw new RuleError('You prepared this payout, or it is yours, so another admin has to approve it.', 403, 'SELF_APPROVAL_NOT_ALLOWED');
   const note = (input.note ?? '').trim();
   if (!input.confirmSelfApproval || note.length < MIN_REASON) {
-    throw new RuleError('You are the only admin who can approve in this group. To approve your own preparation or payout, say so (confirmSelfApproval) and write a note of at least 10 characters saying why. Every officer is told.', 403, 'SELF_APPROVAL_NEEDS_CONFIRMATION');
+    throw new RuleError('You are the only admin who can approve in this circle. To approve your own preparation or payout, say so (confirmSelfApproval) and write a note of at least 10 characters saying why. Every officer is told.', 403, 'SELF_APPROVAL_NEEDS_CONFIRMATION');
   }
   return { self: true, note };
 }
@@ -685,7 +685,7 @@ export async function completeGroup(input: { associationId: number; groupId: num
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ajo-payout:' + input.groupId}))`;
       const group = await loadGroup(tx, input.associationId, input.groupId);
       if (group.status === 'COMPLETED') return { group, replayed: true };
-      if (group.status !== 'ACTIVE') throw new RuleError('Only a running group can be completed.', 409, 'INVALID_GROUP_STATE');
+      if (group.status !== 'ACTIVE') throw new RuleError('Only a running circle can be completed.', 409, 'INVALID_GROUP_STATE');
       const today = businessDay(now, group.timezone, group.cutoffTime);
       if (!group.endsOn || today.getTime() <= group.endsOn.getTime()) throw new RuleError('The cycle is not over yet.', 409, 'CYCLE_NOT_FINISHED');
 
@@ -708,7 +708,7 @@ export async function completeGroup(input: { associationId: number; groupId: num
           if (f.canPay) waiting.push(`${target.recipient.name}: ${formatNaira(f.netKobo)}`);
         }
       }
-      if (waiting.length) throw new RuleError(`These are still payable: ${waiting.join('; ')}. Pay them, or void and re-prepare, before completing the group.`, 409, 'PAYOUTS_PENDING');
+      if (waiting.length) throw new RuleError(`These are still payable: ${waiting.join('; ')}. Pay them, or void and re-prepare, before completing the circle.`, 409, 'PAYOUTS_PENDING');
 
       const done = await tx.ajoGroup.update({ where: { id: group.id }, data: { status: 'COMPLETED' } });
       await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_GROUP_COMPLETED', tableName: 'ajo_groups', recordId: group.id, oldValues: { status: 'ACTIVE' }, newValues: { status: 'COMPLETED' } });

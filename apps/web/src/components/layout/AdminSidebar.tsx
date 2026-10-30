@@ -54,6 +54,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { THRIFT_ONLY_ADMIN_LABELS, THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
+import { THRIFT_SETTINGS_HREFS, thriftWord } from '@/lib/ajo/thriftScope';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
@@ -1034,7 +1035,7 @@ export function AdminSidebar() {
                 {user?.association?.name || 'SocietyLedger'}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Admin Portal
+                {thriftWord('Admin Portal', ajoNav.thriftOnly)}
               </p>
             </div>
           </Link>
@@ -1062,7 +1063,7 @@ export function AdminSidebar() {
           {/* MEMBER SECTION */}
           <SectionDivider 
             icon={<IconUser size={16} />} 
-            title="My Member Area" 
+            title={thriftWord('My Member Area', ajoNav.thriftOnly)} 
             color="blue"
           />
           {memberNavItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_MEMBER_LABELS.includes(item.label)).map(renderNavItem)}
@@ -1070,10 +1071,14 @@ export function AdminSidebar() {
           {/* ADMINISTRATION SECTION */}
           <SectionDivider 
             icon={<IconSettings size={16} />} 
-            title="Administration" 
+            title={thriftWord('Administration', ajoNav.thriftOnly)} 
             color="purple"
           />
-          {adminNavItems.filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_ADMIN_LABELS.includes(item.label)).map(renderNavItem)}
+          {adminNavItems
+            .filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_ADMIN_LABELS.includes(item.label))
+            // A standalone group keeps only the settings it has (not members' signup, finance, payment gateways, accounting or cron jobs).
+            .map((item) => (ajoNav.thriftOnly && item.label === 'Settings' && item.children ? { ...item, children: item.children.filter((c) => c.href && THRIFT_SETTINGS_HREFS.includes(c.href)).map((c) => ({ ...c, label: thriftWord(c.label, true) })) } : item))
+            .map(renderNavItem)}
         </nav>
 
         {/* Footer Actions */}

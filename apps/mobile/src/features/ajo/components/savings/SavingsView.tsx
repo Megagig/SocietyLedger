@@ -285,7 +285,7 @@ function RecordView({ membershipId }: { membershipId: number }) {
               <Text variant="body">{r.trust.text}</Text>
               <Text variant="body">{r.streak > 0 ? `${r.streak} payment${r.streak === 1 ? '' : 's'} on time in a row.` : 'No streak yet.'}</Text>
               <Text variant="caption" tone="tertiary">
-                Only you and the group&apos;s officers can see this.
+                Only you and the circle&apos;s officers can see this.
               </Text>
             </BoardCard>
             <BoardCard title="Past cycles">
@@ -336,7 +336,7 @@ function StatementsView({ membershipId }: { membershipId: number }) {
   return (
     <BoardCard title="My statement" testID="savings-statements">
       <Text variant="body" tone="secondary">
-        Everything for the cycle you are in: what fell due, every payment, your savings and what you will receive. From SocietyLedger&apos;s records; your group&apos;s bank statement is the final word.
+        Everything for the cycle you are in: what fell due, every payment, your savings and what you will receive. From SocietyLedger&apos;s records; your circle&apos;s bank statement is the final word.
       </Text>
       <Button loading={busy === 'pdf'} onPress={() => void get('pdf')} testID="savings-statement-pdf">
         Share PDF

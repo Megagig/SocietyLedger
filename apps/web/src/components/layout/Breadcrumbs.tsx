@@ -3,9 +3,16 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { IconChevronRight, IconHome } from '@tabler/icons-react';
+import { useGroupDetail } from '@/lib/ajo/staffHooks';
+
+/** Words for the Thrift pages, so the trail reads "Thrift circles" and never a bare "Ajo" or a database number. */
+const LABELS: Record<string, string> = { ajo: 'Thrift circles', 'my-thrift': 'My thrift', collect: 'Collect', 'payout-account': 'Payout account' };
 
 export function Breadcrumbs() {
   const pathname = usePathname();
+  // A circle's own page: its number in the address is shown as its name.
+  const circleId = Number(/^\/dashboard\/ajo\/(\d+)(\/|$)/.exec(pathname)?.[1] ?? 0);
+  const circle = useGroupDetail(circleId).data;
 
   // Don't show breadcrumbs on home/dashboard root or member dashboard
   if (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/member') {
@@ -18,10 +25,14 @@ export function Breadcrumbs() {
   // Generate breadcrumb items
   const breadcrumbs = segments.map((segment, index) => {
     const href = '/' + segments.slice(0, index + 1).join('/');
-    const label = segment
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    const isNumber = /^\d+$/.test(segment);
+    const previous = segments[index - 1];
+    const label = isNumber
+      ? previous === 'ajo' ? (circle?.name ?? 'Circle') : previous === 'my-thrift' ? 'My circle' : segment
+      : (LABELS[segment] ?? segment
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' '));
 
     return {
       label,

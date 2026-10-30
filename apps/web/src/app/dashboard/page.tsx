@@ -1,5 +1,8 @@
 'use client';
 
+import { ThriftHome } from '@/components/ajo/ThriftHome';
+import { AjoLoading } from '@/components/ajo/AjoStates';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -14,7 +17,7 @@ import { chargeHref, chargesHref, paymentsHref } from '@/lib/reports-drill';
 
 // Only officers who can read the ledger get the officer dashboard. Every other role — the Election Committee, a custom role — is a
 // member first, so it lands on the member dashboard; assigning a role overwrites the legacy `role` field, so it can't be assumed to be 'member'.
-export default function DashboardPage() {
+function AssociationDashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
   const isOfficer = canSeeOfficerDashboard(user);
@@ -570,4 +573,12 @@ function TableIcon({ className = "w-6 h-6" }: { className?: string }) {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
     </svg>
   );
+}
+
+/** A standalone thrift group has no association dashboard: it gets its own Thrift home, and nothing of the association is fetched or drawn. */
+export default function DashboardPage() {
+  const nav = useAjoNav();
+  if (nav.thriftOnly) return <ThriftHome />;
+  if (nav.resolving) return <AjoLoading />;
+  return <AssociationDashboardPage />;
 }

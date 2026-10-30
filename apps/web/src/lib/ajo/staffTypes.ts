@@ -1,3 +1,4 @@
+import type { TrustDTO } from './types';
 /** What the staff side of the Ajo API sends (T7.1 to T7.4). Money is kobo as a string; days are ISO strings. */
 import type { ContributionDTO, DisputeDTO, GroupDTO, LateFeeDTO, MembershipStatus } from './types';
 
@@ -211,3 +212,9 @@ export type TeamInviteResult = { email: string; status: 'invited' | 'invited_ema
 export type PersonNameDTO = { membershipId: number; name: string; status: MembershipStatus; shares: number };
 export type GuarantorLinkDTO = { link: string; expiresAt: string; wording: string };
 export type GuarantorPublicDTO = { guarantorName: string; relationship: string; memberName: string; groupName: string; expiresAt: string; wording: string };
+
+/** `POST /ajo/groups/:id/payouts/prepare-all`: who was prepared and who was not ready, with the reason in words. */
+export type PrepareAllResult = { prepared: PayoutDTO[]; notReady: Array<{ membershipId: number; name: string; code: string; message: string }> };
+
+/** One person's on-time record in a circle, as the officers see it (`GET /ajo/groups/:id/trust`). */
+export type GroupTrustRowDTO = { membershipId: number; name: string } & TrustDTO;

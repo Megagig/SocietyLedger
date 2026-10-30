@@ -13,6 +13,8 @@ export function isSetupPending(user: SessionUser | null | undefined): boolean {
 /** Where a signed-in person lands: the setup wizard for a new association's admin, Home for everyone else. */
 export function landingHref(user: SessionUser | null | undefined): Href {
   if (isSetupPending(user)) return SETUP_HREF;
+  // A standalone thrift group has no association Home: its Thrift tab (the Money route) is its home.
+  if (user?.tenantKind === 'THRIFT_GROUP') return '/(app)/(tabs)/money';
   return '/(app)/(tabs)/home';
 }
 

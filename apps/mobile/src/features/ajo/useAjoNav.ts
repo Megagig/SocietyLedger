@@ -1,5 +1,6 @@
 import { useCan } from '@/hooks/useCan';
-import { AJO_COLLECT_ACCESS, AJO_MEMBER_ACCESS, AJO_STAFF_ACCESS, useAjoStatus, useMyMemberships } from './queries';
+import { useSessionStore } from '@/stores/session';
+import { AJO_COLLECT_ACCESS, AJO_MEMBER_ACCESS, AJO_STAFF_ACCESS, useAjoStatus, useRotatingCircles } from './queries';
 
 /**
  * Which Ajo entries this person gets on Home, Money and Manage. Entries follow permissions: a contributor sees "My thrift", a
@@ -15,9 +16,11 @@ export function useAjoNav() {
   // The same query the gate uses, so asking costs nothing extra once an Ajo screen is open.
   const status = useAjoStatus(any);
   const result = status.data;
-  const thriftOnly = result?.kind === 'ok' && result.status.tenantKind === 'THRIFT_GROUP';
-  // A standalone group gets a Circle tab (the board) only when the person is in a rotating pot. Asked only then, so nobody else pays for the call.
-  const mine = useMyMemberships(thriftOnly && member);
+  // The session says what kind of account this is from the first screen, so nothing from the association app flashes before the Ajo call answers.
+  const sessionKind = useSessionStore((state) => state.user?.tenantKind);
+  const thriftOnly = sessionKind === 'THRIFT_GROUP' || (sessionKind === undefined && result?.kind === 'ok' && result.status.tenantKind === 'THRIFT_GROUP');
+  // A standalone group gets a Circle tab (the board) when the person is in a rotating pot, or is an officer of one. Asked only then, so nobody else pays for the call.
+  const rotating = useRotatingCircles(thriftOnly);
   return {
     member,
     collect,
@@ -28,8 +31,8 @@ export function useAjoNav() {
     /** An account that exists only to run Ajo (a standalone thrift group). */
     thriftOnly,
     /** In at least one rotating pot (spec §16.4): the circles whose board this person can open. */
-    circles: (mine.data ?? []).filter((m) => m.group.model === 'ROTATING_POT' && m.status !== 'LEFT'),
+    circles: rotating.circles,
     /** True until we know what kind of account this is, so a screen can wait instead of flashing association content. */
-    resolving: any && status.isPending,
+    resolving: sessionKind === undefined && any && status.isPending,
   };
 }

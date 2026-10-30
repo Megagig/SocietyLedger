@@ -13,6 +13,7 @@ export function mapMeUserToSessionUser(user: MeResponseDTO['user']): SessionUser
     permissions: user.permissions,
     roles: user.roles,
     requiresOnboarding: user.requiresOnboarding,
+    tenantKind: user.association?.kind,
     subscriptionAccess: user.subscriptionAccess ?? null,
     platformRole: user.platformRole,
     member: user.member

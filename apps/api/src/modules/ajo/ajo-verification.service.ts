@@ -56,7 +56,7 @@ export async function ensureVerificationRequested(tx: Tx, input: { associationId
 export async function resubmitVerification(input: { associationId: number; memberId: number; actorUserId: number }) {
   return prisma.$transaction(async (tx) => {
     const latest = await latestVerification(tx, input.associationId, input.memberId);
-    if (!latest) throw new RuleError('This person has not been put forward for verification yet. Approve them in a group first.', 409, 'VERIFICATION_NOT_REQUESTED');
+    if (!latest) throw new RuleError('This person has not been put forward for verification yet. Approve them in a circle first.', 409, 'VERIFICATION_NOT_REQUESTED');
     if (latest.status === 'PENDING') return { row: latest, replayed: true };
     if (latest.status === 'VERIFIED') throw new RuleError('This person is already verified.', 409, 'ALREADY_VERIFIED');
     const snapshot = await snapshotOf(tx, input.associationId, input.memberId);
@@ -163,7 +163,7 @@ export interface DecideInput {
 export async function decideVerification(input: DecideInput) {
   const reason = (input.reason ?? '').trim();
   if (input.decision === 'REJECTED' && reason.length < MIN_REJECTION_REASON) {
-    throw new RuleError(`Give a reason of at least ${MIN_REJECTION_REASON} characters, so the group admin knows what to fix.`, 400, 'REASON_REQUIRED');
+    throw new RuleError(`Give a reason of at least ${MIN_REJECTION_REASON} characters, so the circle admin knows what to fix.`, 400, 'REASON_REQUIRED');
   }
   const { nameMatchesAccount, phoneConfirmed, addressFilled } = input.checklist;
   if (input.decision === 'VERIFIED' && !(nameMatchesAccount && phoneConfirmed && addressFilled)) {

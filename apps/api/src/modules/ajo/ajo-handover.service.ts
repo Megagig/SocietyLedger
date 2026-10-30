@@ -25,7 +25,7 @@ const handoverKey = (associationId: number, key: string) => `a${associationId}:$
 
 async function activeGroup(db: Tx | typeof prisma, associationId: number, groupId: number) {
   const group = await db.ajoGroup.findFirst({ where: { id: groupId, associationId } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   return group;
 }
 
@@ -138,7 +138,7 @@ export async function createHandover(input: HandoverInput) {
     return await prisma.$transaction(
       async (tx) => {
         const group = await activeGroup(tx, input.associationId, input.groupId);
-        if (group.status !== 'ACTIVE') throw new RuleError('This group is not running, so there is nothing to hand over.', 409, 'GROUP_NOT_STARTED');
+        if (group.status !== 'ACTIVE') throw new RuleError('This circle is not running, so there is nothing to hand over.', 409, 'GROUP_NOT_STARTED');
         const today = businessDay(now, group.timezone, group.cutoffTime);
         const forDate = input.forDate ? toCalendarDate(input.forDate) : today;
         if (forDate.getTime() > today.getTime()) throw new RuleError('You cannot hand over cash for a day that has not come yet.', 400, 'INVALID_DATE');

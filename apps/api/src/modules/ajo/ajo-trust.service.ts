@@ -61,7 +61,7 @@ export async function getMembershipTrust(input: { associationId: number; members
 /** Everyone in a group with their band, for the officers' list. */
 export async function listGroupTrust(input: { associationId: number; groupId: number; now?: Date }) {
   const g = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true } });
-  if (!g) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!g) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   const people = await prisma.ajoMembership.findMany({ where: { groupId: g.id, status: { in: ['ACTIVE', 'PENDING'] } }, select: { id: true, memberId: true, member: { select: { firstName: true, lastName: true } } }, orderBy: { id: 'asc' } });
   const out = [];
   for (const p of people) out.push({ membershipId: p.id, name: `${p.member.firstName} ${p.member.lastName}`.trim(), ...toTrustView(await personTrust(prisma, input.associationId, p.memberId, input.now ?? new Date())) });

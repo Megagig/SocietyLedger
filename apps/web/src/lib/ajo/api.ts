@@ -3,7 +3,7 @@
  * number or a proof: those are fetched when a person asks and are not kept in the query cache (see `hooks.ts`).
  */
 import api from '@/lib/axios';
-import type { OrderDTO } from './staffTypes';
+import type { CaseDTO, OrderDTO, PayoutDTO } from './staffTypes';
 import type {
   AjoStatusDTO,
   ContributionDTO,
@@ -72,6 +72,11 @@ export const ajoApi = {
   requestSwap: (groupId: number, body: { slotAId: number; slotBId: number; reason?: string }) => unwrap<unknown>(api.post(`/ajo/groups/${groupId}/swaps`, body)),
   lateFees: (membershipId: number) => unwrap<LateFeeDTO[]>(api.get(`/ajo/memberships/${membershipId}/late-fees`)),
   trust: (membershipId: number) => unwrap<TrustDTO>(api.get(`/ajo/memberships/${membershipId}/trust`)),
+  /** Cases the officers opened about this person's unpaid rounds, and their own side of it. */
+  cases: (membershipId: number) => unwrap<CaseDTO[]>(api.get(`/ajo/memberships/${membershipId}/cases`)),
+  respondToCase: (caseId: number, note: string) => unwrap<unknown>(api.post(`/ajo/cases/${caseId}/member-response`, { note })),
+  /** What this person has been, or will be, paid out of any circle. */
+  myPayouts: () => unwrap<PayoutDTO[]>(api.get('/ajo/payouts/mine')),
   disputes: (membershipId: number) => unwrap<DisputeDTO[]>(api.get(`/ajo/memberships/${membershipId}/disputes`)),
 
   rulesToAccept: (membershipId: number) => unwrap<RulesToAcceptDTO>(api.get(`/ajo/memberships/${membershipId}/rules-to-accept`)),

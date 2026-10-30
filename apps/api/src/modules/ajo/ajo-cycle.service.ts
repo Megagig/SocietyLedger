@@ -48,7 +48,7 @@ export async function setSaverAmount(input: { associationId: number; membershipI
   const result = await prisma.$transaction(async (tx) => {
     const m = await loadSaver(tx, input.associationId, input.membershipId);
     const group = m.group;
-    if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw bad('This group is closed, so amounts cannot change.', 'GROUP_CLOSED', 409);
+    if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw bad('This circle is closed, so amounts cannot change.', 'GROUP_CLOSED', 409);
     const problem = checkSaverAmount(input.amountKobo, group.contributionKobo, formatNaira);
     if (problem) throw bad(problem, 'INVALID_AMOUNT');
 
@@ -115,8 +115,8 @@ export async function decideCycleEnd(input: { associationId: number; membershipI
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${LOCK(found.groupId)}))`;
     const m = await loadSaver(tx, input.associationId, input.membershipId);
     const group = m.group;
-    if (group.status !== 'ACTIVE' || m.status !== 'ACTIVE') throw bad('Only a current saver in a running group can answer this.', 'NOT_ACTIVE', 409);
-    if (!group.endsOn) throw bad('This group has no end date yet.', 'NO_CYCLE', 409);
+    if (group.status !== 'ACTIVE' || m.status !== 'ACTIVE') throw bad('Only a current saver in a running circle can answer this.', 'NOT_ACTIVE', 409);
+    if (!group.endsOn) throw bad('This circle has no end date yet.', 'NO_CYCLE', 409);
     const today = businessDay(now, group.timezone, group.cutoffTime);
     if (!isPromptOpen(group.endsOn, today)) throw bad(`You can choose from ${iso(promptOpensOn(group.endsOn))}, three days before this cycle ends.`, 'TOO_EARLY', 409);
     const standing = await tx.ajoPayout.count({ where: { membershipId: m.id, cycleNo: group.cycleNo, round: null, status: { in: ['PREPARED', 'APPROVED', 'PAID'] } } });
@@ -143,7 +143,7 @@ export async function decideCycleEnd(input: { associationId: number; membershipI
 export async function getGroupCycle(input: { associationId: number; groupId: number; now?: Date }) {
   const now = input.now ?? new Date();
   const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId } });
-  if (!group) throw bad('That group was not found.', 'GROUP_NOT_FOUND', 404);
+  if (!group) throw bad('That circle was not found.', 'GROUP_NOT_FOUND', 404);
   if (group.model !== 'COLLECTOR_THRIFT') throw bad('Only a collector-thrift scheme has savings cycles.', 'NOT_COLLECTOR_THRIFT');
   const today = businessDay(now, group.timezone, group.cutoffTime);
   const memberships = await prisma.ajoMembership.findMany({ where: { groupId: group.id, status: { in: ['ACTIVE', 'LEFT'] } }, orderBy: { id: 'asc' }, select: { id: true, status: true, member: { select: { firstName: true, lastName: true } } } });
@@ -194,9 +194,9 @@ export async function startNextCycle(input: { associationId: number; groupId: nu
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${LOCK(input.groupId)}))`;
       const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId } });
-      if (!group) throw bad('That group was not found.', 'GROUP_NOT_FOUND', 404);
+      if (!group) throw bad('That circle was not found.', 'GROUP_NOT_FOUND', 404);
       if (group.model !== 'COLLECTOR_THRIFT') throw bad('Only a collector-thrift scheme has savings cycles.', 'NOT_COLLECTOR_THRIFT');
-      if (group.status !== 'ACTIVE') throw bad('Only a running group can start another cycle.', 'INVALID_GROUP_STATE', 409);
+      if (group.status !== 'ACTIVE') throw bad('Only a running circle can start another cycle.', 'INVALID_GROUP_STATE', 409);
       const today = businessDay(now, group.timezone, group.cutoffTime);
       if (!group.endsOn || today.getTime() <= toCalendarDate(group.endsOn).getTime()) throw bad('The cycle is not over yet.', 'CYCLE_NOT_FINISHED', 409);
 
@@ -205,7 +205,7 @@ export async function startNextCycle(input: { associationId: number; groupId: nu
       for (const m of active) cycles.set(m.id, await ensureCycle(tx, { id: m.id, associationId: m.associationId, groupId: group.id }, group.cycleNo, group.contributionKobo));
       const continuing = active.filter((m) => effectiveChoice(cycles.get(m.id)?.choice as CycleChoice) === 'CONTINUE');
       const leaving = active.filter((m) => !continuing.includes(m));
-      if (continuing.length === 0) throw bad('Nobody is continuing, so there is no next cycle. Pay everyone out and complete the group instead.', 'NOBODY_CONTINUING', 409);
+      if (continuing.length === 0) throw bad('Nobody is continuing, so there is no next cycle. Pay everyone out and complete the circle instead.', 'NOBODY_CONTINUING', 409);
 
       // Nobody leaves with money still owed to them, and nobody's payout is half done.
       const unpaid: string[] = [];

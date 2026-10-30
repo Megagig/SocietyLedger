@@ -36,7 +36,7 @@ export async function atRiskMemberships(db: Db, groupId: number, now: Date = new
 async function lockGroup(tx: Tx, associationId: number, groupId: number) {
   await tx.$queryRaw`SELECT id FROM ajo_groups WHERE id = ${groupId} AND association_id = ${associationId} FOR UPDATE`;
   const group = await tx.ajoGroup.findFirst({ where: { id: groupId, associationId } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   if (group.model !== 'ROTATING_POT') throw new RuleError('Only a rotating pot has a payout order.', 409, 'NOT_A_ROTATING_POT');
   return group;
 }
@@ -172,14 +172,14 @@ export interface RequestSwapInput {
 export async function requestSwap(input: RequestSwapInput) {
   const result = await prisma.$transaction(async (tx) => {
     const group = await lockGroup(tx, input.associationId, input.groupId);
-    if (group.status !== 'OPEN' && group.status !== 'ACTIVE') throw new RuleError('Positions can be swapped while a group is open or running.', 409, 'INVALID_GROUP_STATE');
+    if (group.status !== 'OPEN' && group.status !== 'ACTIVE') throw new RuleError('Positions can be swapped while a circle is open or running.', 409, 'INVALID_GROUP_STATE');
     if (input.slotAId === input.slotBId) throw new RuleError('Choose two different slots to swap.', 400, 'INVALID_SWAP');
     if (await anyPayoutPaid(tx, group.id)) throw new RuleError('A payout has already been paid, so positions can no longer be swapped. Ask the admin for an emergency exception instead.', 409, 'USE_EXCEPTION');
 
     const slots = await tx.ajoPayoutSlot.findMany({ where: { groupId: group.id, id: { in: [input.slotAId, input.slotBId] } }, include: { membership: { select: { id: true, member: { select: { userId: true, firstName: true } } } } } });
-    if (slots.length !== 2) throw new RuleError('Those slots are not part of this group.', 404, 'SLOT_NOT_FOUND');
+    if (slots.length !== 2) throw new RuleError('Those slots are not part of this circle.', 404, 'SLOT_NOT_FOUND');
     const [a, b] = [slots.find((s) => s.id === input.slotAId)!, slots.find((s) => s.id === input.slotBId)!];
-    if (a.membershipId === b.membershipId) throw new RuleError('Both slots belong to the same person, so swapping them changes nothing for the group.', 400, 'SAME_PERSON');
+    if (a.membershipId === b.membershipId) throw new RuleError('Both slots belong to the same person, so swapping them changes nothing for the circle.', 400, 'SAME_PERSON');
     const held = await lockedPositions(tx, group.id);
     if (held.has(a.position) || held.has(b.position)) throw new RuleError('A payout has been prepared for one of these positions, so it cannot move until that payout is paid or cancelled.', 409, 'SLOT_LOCKED');
     if (!input.actorIsOfficer && a.membership.member.userId !== input.actorUserId && b.membership.member.userId !== input.actorUserId) {
@@ -273,11 +273,11 @@ export interface ExceptionInput {
 /** Move one unpaid slot to another unpaid position, with a written reason. Only possible once a payout has been paid; before that, swap. */
 export async function emergencyException(input: ExceptionInput) {
   const reason = (input.reason ?? '').trim();
-  if (reason.length < MIN_EXCEPTION_REASON) throw new RuleError(`An exception needs a written reason of at least ${MIN_EXCEPTION_REASON} characters. It is shown to the whole group.`, 400, 'REASON_REQUIRED');
+  if (reason.length < MIN_EXCEPTION_REASON) throw new RuleError(`An exception needs a written reason of at least ${MIN_EXCEPTION_REASON} characters. It is shown to the whole circle.`, 400, 'REASON_REQUIRED');
 
   const result = await prisma.$transaction(async (tx) => {
     const group = await lockGroup(tx, input.associationId, input.groupId);
-    if (group.status !== 'ACTIVE') throw new RuleError('Exceptions apply to a running group.', 409, 'INVALID_GROUP_STATE');
+    if (group.status !== 'ACTIVE') throw new RuleError('Exceptions apply to a running circle.', 409, 'INVALID_GROUP_STATE');
     if (!(await anyPayoutPaid(tx, group.id))) throw new RuleError('No payout has been paid yet, so use an ordinary swap or draw again instead of an exception.', 409, 'EXCEPTION_NOT_NEEDED');
 
     const slots = await tx.ajoPayoutSlot.findMany({ where: { groupId: group.id }, include: { membership: { select: { id: true, member: { select: { userId: true } } } } } });

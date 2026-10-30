@@ -11,7 +11,9 @@ import { Screen } from '@/components/layout/Screen';
 import { Section } from '@/components/layout/Section';
 import { tokens } from '@/theme/tokens';
 import { ThriftEntry } from '@/features/ajo/components/ThriftEntry';
+import { AjoLoading } from '@/features/ajo/components/AjoStates';
 import { ThriftHomeRedirect } from '@/features/ajo/components/ThriftHomeRedirect';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
 import { ActiveVoteCard } from '@/features/home/components/ActiveVoteCard';
 import { AnnouncementsList } from '@/features/home/components/AnnouncementsList';
 import { AssociationRecentTransactions } from '@/features/home/components/AssociationRecentTransactions';
@@ -56,7 +58,7 @@ function getGreetingLabel(): string {
  * segmented toggle added for officers (users with `ledger.view` = FINANCE_VIEW permission).
  * Officers are also members and see their personal data on the "Me" tab.
  */
-export default function HomeScreen() {
+function AssociationHomeScreen() {
   const router = useRouter();
   const tenant = useTenantStore((state) => state.current);
   const { color } = useThemeTokens();
@@ -329,4 +331,18 @@ function QuickStatRow({ label, value, change }: { label: string; value: string; 
       {change === undefined ? null : <Text variant="caption" style={{ color: changeColor }}>{changeText}</Text>}
     </View>
   );
+}
+
+/** A standalone thrift group has no association Home: it goes to its own Thrift home, and nothing of the association is drawn on the way. */
+export default function HomeScreen() {
+  const nav = useAjoNav();
+  if (nav.thriftOnly || nav.resolving) {
+    return (
+      <Screen edges={['top']}>
+        <ThriftHomeRedirect />
+        <AjoLoading />
+      </Screen>
+    );
+  }
+  return <AssociationHomeScreen />;
 }

@@ -17,7 +17,7 @@ export default function MySavingsPage() {
   if (mine.isLoading) return <AjoLoading />;
   if (mine.isError) return <AjoError error={mine.error} onRetry={() => mine.refetch()} />;
   if (!item) return <AjoEmpty title="We could not find that circle." hint="It may not be one of yours." />;
-  if (item.group.model !== 'COLLECTOR_THRIFT') return <AjoEmpty title="Savings are for collector-thrift groups." hint="A rotating pot shows the circle board instead." />;
+  if (item.group.model !== 'COLLECTOR_THRIFT') return <AjoEmpty title="Savings are for collector-thrift circles." hint="A rotating pot shows the circle board instead." />;
 
   return (
     <div className="space-y-6">
@@ -26,7 +26,7 @@ export default function MySavingsPage() {
           <IconArrowLeft size={14} /> {item.group.name}
         </Link>
         <h1 className="mt-2 text-3xl font-bold text-ink">My savings</h1>
-        <p className="mt-1 text-ink-muted">Every naira you have given, where your cash is, and what you will get back. Only you and the group&apos;s officers can see this page.</p>
+        <p className="mt-1 text-ink-muted">Every naira you have given, where your cash is, and what you will get back. Only you and the circle&apos;s officers can see this page.</p>
       </div>
       <SavingsView membershipId={membershipId} />
     </div>

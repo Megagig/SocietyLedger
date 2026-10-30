@@ -8,7 +8,7 @@ import { frequencyText, MODEL_LABEL, formatKobo } from '@/lib/ajo/format';
 import type { GroupListItemDTO } from '@/lib/ajo/staffTypes';
 
 /**
- * Step 2: the first circle, made with the same wizard as Ajo's "New group". If the admin already has one (they skipped earlier and came
+ * Step 2: the first circle, made with the same wizard as Ajo's "New circle". If the admin already has one (they skipped earlier and came
  * back) they are asked whether to use it, so setup never makes a second circle by accident.
  */
 export function StepCircle({ existing, chosenId, onChoose, onCreated, onSkip }: { existing: GroupListItemDTO[]; chosenId: number | null; onChoose: (id: number) => void; onCreated: (id: number) => Promise<void>; onSkip: () => Promise<void> }) {

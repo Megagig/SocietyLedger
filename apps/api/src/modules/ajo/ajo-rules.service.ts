@@ -196,8 +196,8 @@ export async function publishRuleVersion(input: PublishInput) {
 
   const result = await prisma.$transaction(async (tx) => {
     const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, name: true, status: true, model: true } });
-    if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
-    if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This group is closed, so its rules cannot change.', 409, 'GROUP_CLOSED');
+    if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
+    if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This circle is closed, so its rules cannot change.', 409, 'GROUP_CLOSED');
 
     const latest = await tx.ajoGroupRuleVersion.findFirst({ where: { groupId: group.id }, orderBy: { version: 'desc' } });
     const rules = normaliseRules(input.rules, latest ? rulesOf(latest) : DEFAULT_RULES, group.model);

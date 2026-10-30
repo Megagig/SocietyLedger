@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { Can } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
+import { THRIFT_SETTINGS_HREFS, thriftWord } from '@/lib/ajo/thriftScope';
 import { 
   Shield, Users, Settings, Building, CreditCard, 
   Bell, ChevronRight, Lock, Plug, FileText
@@ -99,22 +101,25 @@ const settingsCards: SettingsCard[] = [
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { thriftOnly } = useAjoNav();
+  // A standalone thrift group keeps only the settings it has, and says "group" where an association says "association".
+  const cards = thriftOnly ? settingsCards.filter((c) => THRIFT_SETTINGS_HREFS.includes(c.href)) : settingsCards;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          Association Settings
+          {thriftOnly ? 'Group settings' : 'Association Settings'}
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Configure your association&apos;s preferences and settings
+          {thriftOnly ? 'Configure your group, its people and its plan.' : 'Configure your association&apos;s preferences and settings'}
         </p>
       </div>
 
       {/* Settings Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {settingsCards.map((card, index) => {
+        {cards.map((card, index) => {
           const CardContent = (
             <div
               key={index}
@@ -138,10 +143,10 @@ export default function SettingsPage() {
                 )}
               </div>
               <h3 className="mt-3 sm:mt-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-                {card.title}
+                {thriftWord(card.title, thriftOnly)}
               </h3>
               <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                {card.description}
+                {thriftOnly ? card.description.replace(/association/gi, 'group') : card.description}
               </p>
             </div>
           );

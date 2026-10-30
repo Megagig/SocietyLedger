@@ -37,7 +37,7 @@ export default function AjoReportsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-ink">Thrift reports</h1>
-        <p className="mt-1 text-ink-muted">Every figure is worked out from the group ledger and the schedule, the same way on every screen and in every file. Open a report to choose the circle and dates, and to download it.</p>
+        <p className="mt-1 text-ink-muted">Every figure is worked out from the circle's ledger and the schedule, the same way on every screen and in every file. Open a report to choose the circle and dates, and to download it.</p>
       </div>
       {list.isLoading ? (
         <AjoLoading rows={4} />

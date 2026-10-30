@@ -66,7 +66,7 @@ export function StepReview({ group, roster, rules, progress, groupName, onFix, o
             <>
               <p>{group.name}: {MODEL_LABEL[group.model]}, {formatKobo(group.contributionKobo)} {frequencyText(group).toLowerCase()}, starting {formatDay(group.startDate)}.</p>
               <p>{group.model === 'ROTATING_POT' ? `${group.rounds ?? 'Several'} rounds` : `${group.cycleLength ?? '—'} payments`} · collector fee {group.collectorFee.type === 'NONE' ? 'none' : group.collectorFee.type === 'FIXED' ? formatKobo(group.collectorFee.value) : group.collectorFee.type === 'PERCENT' ? `${Number(group.collectorFee.value) / 100}%` : `${group.collectorFee.value} day(s) of contribution`}</p>
-              <p>Group account: {group.bankAccount ? `${group.bankAccount.bankName} ${group.bankAccount.masked}` : 'not added yet'}</p>
+              <p>Circle account: {group.bankAccount ? `${group.bankAccount.bankName} ${group.bankAccount.masked}` : 'not added yet'}</p>
               {rules && <ul className="mt-1 list-disc pl-5">{rules.summary.slice(0, 4).map((l) => <li key={l}>{l}</li>)}</ul>}
             </>
           ) : 'No circle yet.'}

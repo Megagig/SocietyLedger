@@ -117,7 +117,7 @@ export async function bulkAddContributors(input: BulkInput): Promise<{ results: 
   if (input.items.length > MAX_BULK_ROWS) throw new RuleError(`Add up to ${MAX_BULK_ROWS} people at a time.`, 400, 'TOO_MANY_ROWS');
 
   const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, model: true, maxSharesPerMember: true, status: true } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
 
   const makeNumber = await nextMemberNumbers(input.associationId);
   const seenPhones = new Map<string, number>();

@@ -1,5 +1,6 @@
 'use client';
 
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Text } from '@mantine/core';
@@ -35,6 +36,7 @@ export default function MembersPage() {
   // Filters and pagination
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const { thriftOnly } = useAjoNav();
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loginFilter, setLoginFilter] = useState('');
   const [stats, setStats] = useState<MemberStats | null>(null);
@@ -265,7 +267,8 @@ export default function MembersPage() {
             </select>
           </div>
 
-          {/* Category Filter */}
+          {/* Category Filter (an association idea: a thrift group has no member categories) */}
+          {!thriftOnly && (
           <div>
             <select
               value={categoryFilter}
@@ -282,6 +285,7 @@ export default function MembersPage() {
               <option value="student">Student</option>
             </select>
           </div>
+          )}
 
           {/* Login Filter */}
           <div>
@@ -333,7 +337,7 @@ export default function MembersPage() {
                     </div>
                     <div className="flex flex-col gap-1 items-end">
                       {getStatusBadge(member.status)}
-                      <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{member.category}</span>
+                      {!thriftOnly && <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{member.category}</span>}
                       <span className="text-xs text-gray-500 dark:text-gray-400">{LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}</span>
                     </div>
                   </div>
@@ -393,9 +397,11 @@ export default function MembersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Status
                     </th>
+                    {!thriftOnly && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Category
                     </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Login
                     </th>
@@ -427,9 +433,11 @@ export default function MembersPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {getStatusBadge(member.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 capitalize">
-                        {member.category}
-                      </td>
+                      {!thriftOnly && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 capitalize">
+                          {member.category}
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                         {LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}
                       </td>

@@ -151,6 +151,10 @@ export const flow: Flow = {
     ajo({ name: 'saver-my-thrift', role: 'saver', url: '/dashboard/my-thrift' }),
     ajo({ name: 'saver-savings', role: 'saver', url: '/dashboard/my-thrift', fullPage: true, prepare: (p) => openMyCircle(p, '/savings') }),
 
+    // ---- Added with the account-type alignment (new screens)
+    ajo({ name: 'thrift-payouts', role: 'officer', url: '/dashboard/ajo', fullPage: true, prepare: (p) => openCircle(p, THRIFT, '/payouts') }),
+    ajo({ name: 'my-thrift-payouts', role: 'member', url: '/dashboard/my-thrift', fullPage: true }),
+
     // ---- Added after the T11 review (pages that had no screenshot)
     ajo({
       name: 'pot-guarantor',

@@ -3,12 +3,15 @@
  * Money goes out as kobo strings, never as floats.
  */
 import api from '@/lib/axios';
+import type { MyMembershipDTO } from './types';
 import type {
   AssignedContributorDTO,
   BulkResultDTO,
   OnboardingStatusDTO,
   TeamInviteResult,
   CaseDTO,
+  GroupTrustRowDTO,
+  PrepareAllResult,
   CollectorAssignmentDTO,
   CollectorCandidateDTO,
   CollectorDayDTO,
@@ -134,6 +137,15 @@ export const ajoStaffApi = {
   // payouts (T7.4)
   payoutPreview: (id: number, params: { round?: number; membershipId?: number }) => unwrap<PayoutPreviewDTO>(api.get(`/ajo/groups/${id}/payouts/preview`, { params })),
   payouts: (id: number, params: { status?: string } = {}) => unwrap<PayoutDTO[]>(api.get(`/ajo/groups/${id}/payouts`, { params })),
+  /** Collector thrift: prepare a payout for everyone who is ready, and say who is not and why. */
+  prepareAllPayouts: (id: number) => unwrap<PrepareAllResult>(api.post(`/ajo/groups/${id}/payouts/prepare-all`, {})),
+  /** Send a person's payout-account details to SocietyLedger to be checked again. */
+  resubmitVerification: (memberId: number) => unwrap<{ status: string }>(api.post(`/ajo/members/${memberId}/verification/resubmit`, {})),
+  /** Every circle one person is, or was, in (officers). */
+  personCircles: (memberId: number) => unwrap<MyMembershipDTO[]>(api.get(`/ajo/members/${memberId}/circles`)),
+  groupTrust: (id: number) => unwrap<GroupTrustRowDTO[]>(api.get(`/ajo/groups/${id}/trust`)),
+  /** Send the receipts that could not be sent when the payment was confirmed (for example no SMS credits then). */
+  sendQueuedReceipts: () => unwrap<{ attempted: number; sent: number; stillQueued: number; waiting: number }>(api.post('/ajo/receipts/send-queued', {})),
   preparePayout: (id: number, body: { round?: number; membershipId?: number }) => post<unknown>(`/ajo/groups/${id}/payouts`, body),
   approvePayout: (payoutId: number, body: { password: string; confirmSelfApproval?: boolean; note?: string }) => post<unknown>(`/ajo/payouts/${payoutId}/approve`, body),
   voidPayout: (payoutId: number, reason: string) => post<unknown>(`/ajo/payouts/${payoutId}/void`, { reason }),

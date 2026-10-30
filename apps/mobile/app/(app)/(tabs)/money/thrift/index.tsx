@@ -11,6 +11,7 @@ import { AjoLoading } from '@/features/ajo/components/AjoStates';
 import { AjoScreen } from '@/features/ajo/components/AjoScreen';
 import { AjoStatusBadge } from '@/features/ajo/components/AjoStatusBadge';
 import { MembershipCard } from '@/features/ajo/components/MembershipCard';
+import { MyPayoutsCard } from '@/features/ajo/components/MyPayoutsCard';
 import { AJO_MEMBER_ACCESS, useMyMemberships, useVerification } from '@/features/ajo/queries';
 
 /** THM1 (my circles, next due, payout position) with THM9 (where SocietyLedger's check of me stands). */
@@ -64,6 +65,7 @@ export default function MyThriftScreen() {
           {mine.data.map((item) => (
             <MembershipCard key={item.membershipId} item={item} />
           ))}
+          <MyPayoutsCard />
           {!check || check.status === 'VERIFIED' ? (
             <Button variant="ghost" onPress={() => router.push('/(app)/(tabs)/money/thrift/payout-account' as never)} testID="ajo-payout-account-link">
               My payout account

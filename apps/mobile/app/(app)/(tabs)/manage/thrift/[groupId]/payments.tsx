@@ -4,6 +4,8 @@ import { CircleDollarSign } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
+import { toast } from 'sonner-native';
+
 import { ajoApi } from '@/api/endpoints/ajo';
 import { ApiError } from '@/api/errors';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -20,6 +22,7 @@ import { AjoScreen } from '@/features/ajo/components/AjoScreen';
 import { AjoStatusBadge } from '@/features/ajo/components/AjoStatusBadge';
 import { ConfirmPaymentSheet, type ConfirmPaymentSheetHandle } from '@/features/ajo/components/ConfirmPaymentSheet';
 import { formatDay, formatKobo, formatMoment } from '@/features/ajo/format';
+import { useAjoAction } from '@/features/ajo/mutations';
 import { usePeople, useQueue } from '@/features/ajo/queries';
 import { useAjoCan } from '@/features/ajo/useAjoCan';
 import type { QueueContributionDTO } from '@/types/api/ajo';
@@ -51,6 +54,7 @@ export default function CirclePaymentsScreen() {
   const [reversing, setReversing] = useState<QueueContributionDTO | null>(null);
   const [proofProblem, setProofProblem] = useState<string | null>(null);
   const can = reconcile && canWrite;
+  const sendWaiting = useAjoAction<void, { sent: number; stillQueued: number }>(() => ajoApi.sendQueuedReceipts());
   const nameOf = (id: number) => names.get(id) ?? 'A member';
 
   const openProof = async (id: number) => {
@@ -68,6 +72,27 @@ export default function CirclePaymentsScreen() {
       <Text variant="body" tone="secondary">
         Only confirmed money counts. Check each transfer against the bank statement before you confirm it. Cash recorded by a collector is confirmed when the collector&apos;s handover is reconciled.
       </Text>
+      {can ? (
+        <View className="flex-row">
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={sendWaiting.isPending}
+            onPress={async () => {
+              setProofProblem(null);
+              try {
+                const r = await sendWaiting.mutateAsync();
+                toast.success(r.stillQueued ? `${r.sent} sent, ${r.stillQueued} still waiting (check your SMS credits).` : `${r.sent} receipt${r.sent === 1 ? '' : 's'} sent.`);
+              } catch (error) {
+                setProofProblem(error instanceof ApiError ? error.message : 'Could not send the waiting receipts.');
+              }
+            }}
+            testID="ajo-send-waiting-receipts"
+          >
+            Send waiting receipts
+          </Button>
+        </View>
+      ) : null}
       <View className="flex-row flex-wrap gap-2">
         {FILTERS.map((f) => (
           <FilterChip key={f.value} label={f.label} active={status === f.value} onPress={() => setStatus(f.value)} />

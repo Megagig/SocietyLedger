@@ -13,7 +13,7 @@ import { acceptanceStats } from './ajo-rules.service';
 /** Everyone in a group, with what each person is still waiting for. For the officer's roster. */
 export async function listGroupMembers(input: { associationId: number; groupId: number; now?: Date }) {
   const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   const rows = await prisma.ajoMembership.findMany({
     where: { groupId: group.id },
     orderBy: { id: 'asc' },
@@ -72,10 +72,10 @@ export async function listMembershipInstallments(input: { associationId: number;
  * start from, because every other member call needs a membership id. It only ever reads rows that belong to the person’s own member
  * record, so an officer sees their own memberships here, not everyone’s.
  */
-export async function listMyMemberships(input: { associationId: number; userId: number; now?: Date }) {
+export async function listMyMemberships(input: { associationId: number; userId?: number; /** An officer looking at one person: every circle that person is, or was, in. */ memberId?: number; now?: Date }) {
   const now = input.now ?? new Date();
   const rows = await prisma.ajoMembership.findMany({
-    where: { associationId: input.associationId, status: { not: 'LEFT' }, member: { userId: input.userId } },
+    where: input.memberId !== undefined ? { associationId: input.associationId, member: { id: input.memberId } } : { associationId: input.associationId, status: { not: 'LEFT' }, member: { userId: input.userId } },
     orderBy: { id: 'desc' },
     include: { group: true },
   });
@@ -143,7 +143,7 @@ export async function listCollectorCandidates(associationId: number) {
  */
 export async function listGroupPeople(input: { associationId: number; groupId: number }) {
   const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   const rows = await prisma.ajoMembership.findMany({ where: { groupId: group.id }, orderBy: { id: 'asc' }, select: { id: true, status: true, shares: true, member: { select: { firstName: true, lastName: true } } } });
   return rows.map((m) => ({ membershipId: m.id, name: `${m.member.firstName} ${m.member.lastName}`.trim(), status: m.status, shares: m.shares }));
 }

@@ -20,7 +20,7 @@ export default function MySavingsScreen() {
       ) : !item ? (
         <EmptyState title="We could not find that circle." description="It may not be one of yours." />
       ) : item.group.model !== 'COLLECTOR_THRIFT' ? (
-        <EmptyState title="Savings are for collector-thrift groups." description="A rotating pot shows the circle board instead." />
+        <EmptyState title="Savings are for collector-thrift circles." description="A rotating pot shows the circle board instead." />
       ) : (
         <SavingsView membershipId={membershipId} />
       )}

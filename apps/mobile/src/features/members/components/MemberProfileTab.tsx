@@ -16,9 +16,38 @@ function yearsSince(iso: string): string {
 }
 
 /** MG2 Profile tab — personal details, membership, emergency contact and notes, as on the web profile. */
-export function MemberProfileTab({ member }: { member: MemberDetailDTO }) {
+export function MemberProfileTab({ member, thrift = false }: { member: MemberDetailDTO; /** A standalone thrift group: only the details a circle needs (contact, address, when they joined), none of an association's. */ thrift?: boolean }) {
   const address = [member.address, member.city, member.state, member.country].filter(Boolean).join(', ');
   const hasEmergency = Boolean(member.emergencyContactName || member.emergencyContactPhone);
+
+  if (thrift) {
+    return (
+      <View className="gap-6">
+        <Section title="Contact">
+          <ListGroup>
+            <FactRow label="Phone" value={member.phone} />
+            <FactRow label="Email" value={member.email} />
+            <FactRow label="Address" value={address} />
+          </ListGroup>
+        </Section>
+        <Section title="In the group">
+          <ListGroup>
+            <FactRow label="Joined" value={member.joinDate ? formatDate(member.joinDate, 'long') : null} />
+            <FactRow label="Login" value={loginStatusLabel(member.loginStatus)} />
+          </ListGroup>
+        </Section>
+        {hasEmergency ? (
+          <Section title="Emergency contact">
+            <ListGroup>
+              <FactRow label="Name" value={member.emergencyContactName} />
+              <FactRow label="Phone" value={member.emergencyContactPhone} />
+              <FactRow label="Relationship" value={member.emergencyContactRelationship} />
+            </ListGroup>
+          </Section>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View className="gap-6">

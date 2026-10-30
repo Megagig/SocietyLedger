@@ -67,7 +67,7 @@ export async function acceptRules(input: AcceptRulesInput): Promise<AcceptRulesR
     const version = input.ruleVersionId
       ? await tx.ajoGroupRuleVersion.findFirst({ where: { id: input.ruleVersionId, groupId: membership.groupId } })
       : await tx.ajoGroupRuleVersion.findFirst({ where: { groupId: membership.groupId }, orderBy: { version: 'desc' } });
-    if (!version) throw new RuleError('This group has no rules to accept.', 404, 'RULES_NOT_FOUND');
+    if (!version) throw new RuleError('This circle has no rules to accept.', 404, 'RULES_NOT_FOUND');
 
     const existing = await tx.ajoRuleAcceptance.findUnique({ where: { membershipId_ruleVersionId: { membershipId: membership.id, ruleVersionId: version.id } } });
     if (existing) {
@@ -148,7 +148,7 @@ export async function recordGuarantorConsent(input: GuarantorInput) {
     if (normalizePhone(membership.member.phone) === phone) throw new RuleError('The guarantor must be a different person from the member (the phone number is the same).', 400, 'GUARANTOR_IS_MEMBER');
 
     const version = await currentRuleVersion(tx, membership.groupId, now);
-    if (version?.guarantorPolicy === 'NOT_REQUIRED') throw new RuleError('This group does not use guarantors.', 409, 'GUARANTOR_NOT_USED');
+    if (version?.guarantorPolicy === 'NOT_REQUIRED') throw new RuleError('This circle does not use guarantors.', 409, 'GUARANTOR_NOT_USED');
 
     const memberName = `${membership.member.firstName} ${membership.member.lastName}`.trim();
     const wording = guarantorWording({ guarantorName: name, memberName, groupName: membership.group.name });

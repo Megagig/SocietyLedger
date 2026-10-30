@@ -54,7 +54,7 @@ export default function AccountabilityPage() {
         <Button variant="default" size="xs" leftSection={<IconDownload size={14} />} loading={busy} onClick={exportCsv}>Download report (CSV)</Button>
       </div>
 
-      <Card title="Who prepared, approved and recorded each payout" hint="One person preparing and approving a payout is allowed in a group with a single admin, but it is shown here.">
+      <Card title="Who prepared, approved and recorded each payout" hint="One person preparing and approving a payout is allowed in a circle with a single admin, but it is shown here.">
         {a.separation.payouts.length === 0 ? (
           <p className="text-sm text-ink-muted">No payouts yet.</p>
         ) : (

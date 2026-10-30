@@ -20,7 +20,7 @@ export default function ReportsHubScreen() {
   return (
     <AjoScreen title="Reports" access={['AJO_REPORTS']} refreshing={list.isRefetching} onRefresh={() => void list.refetch()}>
       <Text variant="caption" tone="secondary">
-        Every figure is worked out from the group ledger and the schedule, the same way here, on the web and in every file.
+        Every figure is worked out from the circle's ledger and the schedule, the same way here, on the web and in every file.
       </Text>
       {list.isPending ? (
         <AjoLoading rows={4} />

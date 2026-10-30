@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { MembershipCard } from '@/components/ajo/MembershipCard';
+import { MyPayouts } from '@/components/ajo/member/MyPayouts';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
 import { useMyMemberships, useVerification } from '@/lib/ajo/hooks';
@@ -53,6 +54,8 @@ export default function MyThriftPage() {
       ) : (
         <AjoEmpty title="You are not in any savings circle yet." hint="When an officer adds you, it will show here and you will be told what to do next." />
       )}
+
+      <MyPayouts />
     </div>
   );
 }

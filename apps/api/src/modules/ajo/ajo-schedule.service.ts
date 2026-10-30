@@ -30,8 +30,8 @@ function shapeOf(group: { model: 'COLLECTOR_THRIFT' | 'ROTATING_POT'; frequency:
  */
 export async function syncMembershipSchedule(tx: Tx, input: { groupId: number; membershipId: number; now: Date }): Promise<ScheduleSummary> {
   const group = await tx.ajoGroup.findUnique({ where: { id: input.groupId } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
-  if (group.status !== 'ACTIVE') throw new RuleError('A schedule exists only once a group has started.', 409, 'GROUP_NOT_STARTED');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
+  if (group.status !== 'ACTIVE') throw new RuleError('A schedule exists only once a circle has started.', 409, 'GROUP_NOT_STARTED');
   const membership = await tx.ajoMembership.findFirst({ where: { id: input.membershipId, groupId: group.id }, select: { id: true, associationId: true, status: true, shares: true, joinedAt: true } });
   if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
 

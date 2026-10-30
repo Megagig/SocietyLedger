@@ -96,7 +96,7 @@ export function StepReview({
                       : `${group.collectorFee.value} day(s) of contribution`}
               </Text>
               <Text variant="caption" tone="secondary">
-                Group account: {group.bankAccount ? `${group.bankAccount.bankName} ${group.bankAccount.masked}` : 'not added yet'}
+                Circle account: {group.bankAccount ? `${group.bankAccount.bankName} ${group.bankAccount.masked}` : 'not added yet'}
               </Text>
               {rules
                 ? rules.summary.slice(0, 4).map((l) => (

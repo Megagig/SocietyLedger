@@ -4,6 +4,8 @@ import { AJO_QUEUE_PAGE, ajoApi } from '@/api/endpoints/ajo';
 import { useCan } from '@/hooks/useCan';
 import { useTenantKey } from '@/hooks/useTenantKey';
 import type { PermissionAlias } from '@/lib/permissions';
+import type { GroupDTO } from '@/types/api/ajo';
+import { mergeRotatingCircles } from './circles';
 
 /** The module code the API answers `MODULE_DISABLED` with. */
 export const AJO_MODULE = 'ajo';
@@ -28,6 +30,8 @@ export const ajoKeys = {
   lateFees: (tenant: string, membershipId: number) => [...ajoKeys.all(tenant), 'late-fees', membershipId] as const,
   trust: (tenant: string, membershipId: number) => [...ajoKeys.all(tenant), 'trust', membershipId] as const,
   disputes: (tenant: string, membershipId: number) => [...ajoKeys.all(tenant), 'disputes', membershipId] as const,
+  cases: (tenant: string, membershipId: number) => [...ajoKeys.all(tenant), 'cases', membershipId] as const,
+  myPayouts: (tenant: string) => [...ajoKeys.all(tenant), 'my-payouts'] as const,
   rules: (tenant: string, membershipId: number) => [...ajoKeys.all(tenant), 'rules', membershipId] as const,
   payoutAccount: (tenant: string) => [...ajoKeys.all(tenant), 'payout-account'] as const,
   verification: (tenant: string) => [...ajoKeys.all(tenant), 'verification'] as const,
@@ -71,6 +75,20 @@ export function useMyDisputes(membershipId: number) {
   const tenant = useTenantKey();
   return useQuery({ queryKey: ajoKeys.disputes(tenant, membershipId), queryFn: () => ajoApi.disputes(membershipId), enabled: valid(membershipId) });
 }
+export function useMemberCases(membershipId: number) {
+  const tenant = useTenantKey();
+  return useQuery({ queryKey: ajoKeys.cases(tenant, membershipId), queryFn: () => ajoApi.memberCases(membershipId), enabled: valid(membershipId) });
+}
+export function useMyPayouts() {
+  const tenant = useTenantKey();
+  return useQuery({ queryKey: ajoKeys.myPayouts(tenant), queryFn: () => ajoApi.myPayouts() });
+}
+/** The on-time record of everyone in a circle, for the officers. */
+export function useGroupTrust(groupId: number) {
+  const tenant = useTenantKey();
+  const enabled = useCan(AJO_STAFF_ACCESS);
+  return useQuery({ queryKey: ajoKeys.staff(tenant, 'trust', groupId), queryFn: () => ajoApi.groupTrust(groupId), enabled: enabled && valid(groupId) });
+}
 export function useRulesToAccept(membershipId: number) {
   const tenant = useTenantKey();
   return useQuery({ queryKey: ajoKeys.rules(tenant, membershipId), queryFn: () => ajoApi.rulesToAccept(membershipId), enabled: valid(membershipId) });
@@ -85,9 +103,9 @@ export function useVerification() {
 }
 
 // ── staff ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-export function useGroups() {
+export function useGroups(on = true) {
   const tenant = useTenantKey();
-  const enabled = useCan(AJO_STAFF_ACCESS);
+  const enabled = useCan(AJO_STAFF_ACCESS) && on;
   return useQuery({ queryKey: ajoKeys.staff(tenant, 'groups'), queryFn: () => ajoApi.groups(), enabled });
 }
 /** A collector-thrift saver's own cycle: their amount, what they brought forward, and whether they can still choose. */
@@ -202,4 +220,24 @@ export function useGroupCases(id: number) {
 export function useCase(id: number) {
   const tenant = useTenantKey();
   return useQuery({ queryKey: ajoKeys.staff(tenant, 'case', id), queryFn: () => ajoApi.getCase(id), enabled: valid(id) });
+}
+
+/**
+ * The rotating pots this person can open the Circle board for: the ones they are in, and (for an officer) every running or open
+ * rotating pot of the group, even when the officer is not a contributor. One list for the Circle tab, its picker and the tab's visibility.
+ */
+export function useRotatingCircles(enabled = true) {
+  const member = useCan(AJO_MEMBER_ACCESS);
+  const staff = useCan(AJO_STAFF_ACCESS);
+  const mine = useMyMemberships(enabled && member);
+  const groups = useGroups(enabled && staff);
+  const queries = [enabled && member ? mine : null, enabled && staff ? groups : null].filter((q): q is NonNullable<typeof q> => q !== null);
+  return {
+    circles: mergeRotatingCircles(mine.data ?? [], groups.data ?? []),
+    isPending: queries.some((q) => q.isPending),
+    isError: queries.some((q) => q.isError),
+    error: queries.find((q) => q.isError)?.error ?? null,
+    isRefetching: queries.some((q) => q.isRefetching),
+    refetch: () => Promise.all(queries.map((q) => q.refetch())),
+  };
 }

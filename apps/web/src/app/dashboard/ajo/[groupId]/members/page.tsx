@@ -11,7 +11,7 @@ import { ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay, formatKobo, nairaToKobo } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
 import type { RosterPersonDTO } from '@/lib/ajo/staffTypes';
-import { useAjoAction, useGroupDetail, useRoster } from '@/lib/ajo/staffHooks';
+import { useAjoAction, useGroupDetail, useGroupTrust, useRoster } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 
@@ -166,6 +166,9 @@ export default function MembersPage() {
   const roster = useRoster(groupId);
   const approve = useAjoAction((membershipId: number) => ajoStaffApi.approveMember(membershipId));
   const setShares = useAjoAction((input: { membershipId: number; shares: number }) => ajoStaffApi.setShares(input.membershipId, input.shares));
+  const trust = useGroupTrust(groupId);
+  const trustOf = new Map((trust.data ?? []).map((t) => [t.membershipId, t]));
+  const recheck = useAjoAction((memberId: number) => ajoStaffApi.resubmitVerification(memberId));
   const [adding, setAdding] = useState(false);
   const [guarantorFor, setGuarantorFor] = useState<RosterPersonDTO | null>(null);
   const [sharesFor, setSharesFor] = useState<RosterPersonDTO | null>(null);
@@ -207,14 +210,15 @@ export default function MembersPage() {
         <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-sm">
             <thead className="bg-surface-muted text-left text-ink-muted">
-              <tr><th className="px-4 py-2 font-medium">Person</th><th className="px-4 py-2 font-medium">Status</th><th className="px-4 py-2 font-medium">SocietyLedger check</th><th className="px-4 py-2 font-medium">Rules</th><th className="px-4 py-2 font-medium">Waiting for</th><th className="px-4 py-2" /></tr>
+              <tr><th className="px-4 py-2 font-medium">Person</th><th className="px-4 py-2 font-medium">Status</th><th className="px-4 py-2 font-medium">SocietyLedger check</th><th className="px-4 py-2 font-medium">On-time record</th><th className="px-4 py-2 font-medium">Rules</th><th className="px-4 py-2 font-medium">Waiting for</th><th className="px-4 py-2" /></tr>
             </thead>
             <tbody>
               {roster.data.people.map((p) => (
                 <tr key={p.membershipId} className="border-t border-line-soft align-top">
                   <td className="px-4 py-3"><p className="font-medium">{p.name}{rotating && p.shares > 1 ? ` (${p.shares} shares)` : ''}</p><p className="text-xs text-ink-faint">{p.phone ?? 'No phone'}{p.hasLogin ? '' : ' · no login'}</p></td>
                   <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                  <td className="px-4 py-3"><StatusBadge status={p.verification} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={p.verification} />{can && p.verification === 'REJECTED' && <Button className="mt-1 block" size="compact-xs" variant="subtle" loading={recheck.isLoading && recheck.variables === p.memberId} onClick={async () => { setProblem(null); try { await recheck.mutateAsync(p.memberId); toast.success(`${p.name}'s details were sent to be checked again.`); } catch (error) { setProblem(ajoErrorMessage(error)); } }}>Check again</Button>}</td>
+                  <td className="px-4 py-3 text-xs">{trustOf.get(p.membershipId) ? <><StatusBadge status={trustOf.get(p.membershipId)!.band} />{trustOf.get(p.membershipId)!.onTimePercent !== null && <span className="ml-1 text-ink-muted">{trustOf.get(p.membershipId)!.onTimePercent}% on time</span>}</> : '—'}</td>
                   <td className="px-4 py-3 text-xs">{p.acceptedRuleVersion ? `Version ${p.acceptedRuleVersion}${p.acceptedVia ? ` (${p.acceptedVia})` : ''}` : 'Not accepted'}{p.guarantorRecorded ? ' · guarantor on file' : ''}</td>
                   <td className="px-4 py-3 text-xs text-ink-muted">{p.waitingFor.length ? <ul className="list-disc pl-4">{p.waitingFor.map((w) => <li key={w.requirement}>{w.text}</li>)}</ul> : '—'}</td>
                   <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">

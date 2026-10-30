@@ -18,6 +18,7 @@ import { AjoScreen } from '@/features/ajo/components/AjoScreen';
 import { AjoStatusBadge } from '@/features/ajo/components/AjoStatusBadge';
 import { DisputeSheet, type DisputeSheetHandle } from '@/features/ajo/components/DisputeSheet';
 import { LeaveCircle } from '@/features/ajo/components/LeaveCircle';
+import { MemberCasesCard } from '@/features/ajo/components/MemberCasesCard';
 import { thriftHref } from '@/features/ajo/components/MembershipCard';
 import { PhoneConfirmCard } from '@/features/ajo/components/PhoneConfirmCard';
 import { ReceiptsSheet, type ReceiptsSheetHandle } from '@/features/ajo/components/ReceiptsSheet';
@@ -308,6 +309,8 @@ function DetailBody({ loading, error, onRetry, item, membershipId, schedule, pay
           ))}
         </SectionCard>
       ) : null}
+
+      <MemberCasesCard membershipId={membershipId} canWrite={canWrite} />
 
       {canWrite ? <LeaveCircle membershipId={membershipId} groupName={item.group.name} onLeft={onLeft} /> : null}
       <DisputeSheet ref={disputeSheet} membershipId={membershipId} />

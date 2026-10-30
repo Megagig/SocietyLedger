@@ -228,7 +228,7 @@ function RecordTab({ membershipId }: { membershipId: number }) {
       <Card title="My record">
         <p className="text-sm text-ink">{r.trust.text}</p>
         <p className="text-sm text-ink">{r.streak > 0 ? `${r.streak} payment${r.streak === 1 ? '' : 's'} on time in a row.` : 'No streak yet.'}</p>
-        <p className="text-xs text-ink-muted">Only you and the group&apos;s officers can see this.</p>
+        <p className="text-xs text-ink-muted">Only you and the circle&apos;s officers can see this.</p>
       </Card>
       <Card title="Past cycles">
         {r.pastCycles.length === 0 ? (
@@ -271,7 +271,7 @@ function StatementsTab({ membershipId }: { membershipId: number }) {
   };
   return (
     <Card title="My statement">
-      <p className="text-sm text-ink-muted">Everything for the cycle you are in: what fell due, every payment, your savings and what you will receive. From SocietyLedger&apos;s records; your group&apos;s bank statement is the final word.</p>
+      <p className="text-sm text-ink-muted">Everything for the cycle you are in: what fell due, every payment, your savings and what you will receive. From SocietyLedger&apos;s records; your circle&apos;s bank statement is the final word.</p>
       <div className="flex flex-wrap gap-3">
         <Button color="green" leftSection={<IconDownload size={14} />} loading={busy === 'pdf'} onClick={() => get('pdf')}>Download PDF</Button>
         <Button variant="default" leftSection={<IconDownload size={14} />} loading={busy === 'csv'} onClick={() => get('csv')}>Download CSV</Button>

@@ -19,7 +19,7 @@ import { AjoStatusBadge } from '@/features/ajo/components/AjoStatusBadge';
 import { GuarantorSheet, type GuarantorSheetHandle } from '@/features/ajo/components/GuarantorSheet';
 import { SharesSheet, type SharesSheetHandle } from '@/features/ajo/components/SharesSheet';
 import { useAjoAction } from '@/features/ajo/mutations';
-import { useGroupDetail, useRoster } from '@/features/ajo/queries';
+import { useGroupDetail, useGroupTrust, useRoster } from '@/features/ajo/queries';
 import { useAjoCan } from '@/features/ajo/useAjoCan';
 import type { RosterPersonDTO } from '@/types/api/ajo';
 
@@ -31,6 +31,9 @@ export default function CircleMembersScreen() {
   const { manage } = useAjoCan();
   const group = useGroupDetail(groupId).data;
   const roster = useRoster(groupId);
+  const trust = useGroupTrust(groupId);
+  const trustOf = new Map((trust.data ?? []).map((t) => [t.membershipId, t]));
+  const recheck = useAjoAction((memberId: number) => ajoApi.resubmitVerification(memberId));
   const approve = useAjoAction((membershipId: number) => ajoApi.approveMember(membershipId));
   const addSheet = useRef<AddPersonSheetHandle>(null);
   const guarantorSheet = useRef<GuarantorSheetHandle>(null);
@@ -95,6 +98,42 @@ export default function CircleMembersScreen() {
                   </Text>
                   <AjoStatusBadge status={p.verification} />
                 </View>
+                {can && p.verification === 'REJECTED' ? (
+                  <View className="flex-row">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={recheck.isPending && recheck.variables === p.memberId}
+                      onPress={async () => {
+                        setProblem(null);
+                        try {
+                          await recheck.mutateAsync(p.memberId);
+                          toast.success(`${p.name}'s details were sent to be checked again.`);
+                        } catch (error) {
+                          setProblem(error instanceof ApiError ? error.message : 'Could not send this for checking.');
+                        }
+                      }}
+                      testID={`ajo-recheck-${p.membershipId}`}
+                    >
+                      Check again
+                    </Button>
+                  </View>
+                ) : null}
+                {trustOf.get(p.membershipId) ? (
+                  <View className="flex-row items-center justify-between gap-2">
+                    <Text variant="caption" tone="secondary">
+                      On-time record
+                    </Text>
+                    <View className="flex-row items-center gap-2">
+                      <AjoStatusBadge status={trustOf.get(p.membershipId)!.band} />
+                      {trustOf.get(p.membershipId)!.onTimePercent !== null ? (
+                        <Text variant="caption" tone="secondary">
+                          {trustOf.get(p.membershipId)!.onTimePercent}% on time
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
                 <Text variant="caption" tone="secondary">
                   Rules: {p.acceptedRuleVersion ? `Version ${p.acceptedRuleVersion}${p.acceptedVia ? ` (${p.acceptedVia})` : ''}` : 'Not accepted'}
                   {p.guarantorRecorded ? ' · guarantor on file' : ''}

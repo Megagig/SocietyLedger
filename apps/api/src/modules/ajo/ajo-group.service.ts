@@ -113,7 +113,7 @@ export function resolveGroupFields(base: GroupFields | null, patch: GroupPatch):
   }
 
   const name = (patch.name ?? base?.name ?? '').trim();
-  if (name.length < 2 || name.length > 120) throw bad('Give the group a name of 2 to 120 characters.');
+  if (name.length < 2 || name.length > 120) throw bad('Give the circle a name of 2 to 120 characters.');
 
   const rawContribution = patch.contributionKobo ?? base?.contributionKobo;
   if (rawContribution === undefined) throw bad('Say how much each person contributes.');
@@ -167,7 +167,7 @@ export function validateBank(input: BankInput) {
   const bankName = input.bankName?.trim() ?? '';
   const accountName = input.accountName?.trim() ?? '';
   const accountNumber = normaliseAccountNumber(input.accountNumber);
-  if (bankName.length < 2 || bankName.length > 80) throw bad("Enter the group's bank name.", 'INVALID_BANK_ACCOUNT');
+  if (bankName.length < 2 || bankName.length > 80) throw bad("Enter the circle's bank name.", 'INVALID_BANK_ACCOUNT');
   if (accountName.length < 2 || accountName.length > 120) throw bad('Enter the name on the account.', 'INVALID_BANK_ACCOUNT');
   if (!accountNumber) throw bad('A bank account number is exactly 10 digits.', 'INVALID_BANK_ACCOUNT');
   return { bankName, accountName, accountNumber };
@@ -235,7 +235,7 @@ async function lockGroup(tx: Tx, associationId: number, groupId: number): Promis
   await tx.$queryRaw`SELECT id FROM ajo_groups WHERE id = ${groupId} AND association_id = ${associationId} FOR UPDATE`;
   const group = await tx.ajoGroup.findFirst({ where: { id: groupId, associationId } });
   // Another association's group is reported as missing, never as forbidden.
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   return group;
 }
 
@@ -297,7 +297,7 @@ export async function updateGroup(input: UpdateGroupInput) {
 
   const outcome = await prisma.$transaction(async (tx) => {
     const group = await lockGroup(tx, input.associationId, input.groupId);
-    if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This group is closed, so it cannot be changed.', 409, 'GROUP_CLOSED');
+    if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This circle is closed, so it cannot be changed.', 409, 'GROUP_CLOSED');
 
     const before = fieldsOf(group);
     const after = resolveGroupFields(before, input.fields ?? {});
@@ -305,18 +305,18 @@ export async function updateGroup(input: UpdateGroupInput) {
 
     if (group.status === 'ACTIVE') {
       const locked = changed.filter((k) => (MONEY_FIELDS as readonly string[]).includes(k));
-      if (locked.length) throw new RuleError(`This group has started, so these can no longer change: ${locked.join(', ')}.`, 409, 'GROUP_LOCKED');
+      if (locked.length) throw new RuleError(`This circle has started, so these can no longer change: ${locked.join(', ')}.`, 409, 'GROUP_LOCKED');
       if (changed.includes('maxParticipants') && (group.model === 'ROTATING_POT' || after.maxParticipants < before.maxParticipants)) {
-        throw new RuleError('Once a group has started, its number of places can only be raised, and not in a rotating pot.', 409, 'GROUP_LOCKED');
+        throw new RuleError('Once a circle has started, its number of places can only be raised, and not in a rotating pot.', 409, 'GROUP_LOCKED');
       }
     }
     if (changed.includes('maxParticipants')) {
       const taken = await tx.ajoMembership.count({ where: { groupId: group.id, status: { not: 'LEFT' } } });
-      if (after.maxParticipants < taken) throw new RuleError(`This group already has ${taken} people, so it cannot have fewer than ${taken} places.`, 409, 'CAP_BELOW_MEMBERS');
+      if (after.maxParticipants < taken) throw new RuleError(`This circle already has ${taken} people, so it cannot have fewer than ${taken} places.`, 409, 'CAP_BELOW_MEMBERS');
     }
     if (changed.includes('startDate') && after.startDate.getTime() < dayInZone(now, after.timezone).getTime()) throw bad('The start date cannot be in the past.', 'START_DATE_PASSED');
     // A different model changes which instalments exist and who can hold shares, so people already added would be left in the wrong shape.
-    if (changed.includes('model') && group.status !== 'DRAFT') throw new RuleError('The kind of group cannot change once people have been added. Create a new group instead.', 409, 'GROUP_LOCKED');
+    if (changed.includes('model') && group.status !== 'DRAFT') throw new RuleError('The kind of circle cannot change once people have been added. Create a new circle instead.', 409, 'GROUP_LOCKED');
     if (changed.includes('maxSharesPerMember')) {
       const over = await tx.ajoMembership.count({ where: { groupId: group.id, status: { not: 'LEFT' }, shares: { gt: after.maxSharesPerMember } } });
       if (over) throw new RuleError('Some people already hold more shares than that.', 409, 'SHARES_ABOVE_LIMIT');
@@ -367,10 +367,10 @@ export async function openGroup(input: { associationId: number; groupId: number;
   const group = await prisma.$transaction(async (tx) => {
     const g = await lockGroup(tx, input.associationId, input.groupId);
     if (g.status === 'OPEN') return g;
-    if (g.status !== 'DRAFT') throw new RuleError(`A ${g.status.toLowerCase()} group cannot be opened.`, 409, 'INVALID_GROUP_STATE');
-    if (!g.bankAccountEnc) throw new RuleError("Add the group's bank account first: it is where contributors pay.", 409, 'BANK_ACCOUNT_REQUIRED');
+    if (g.status !== 'DRAFT') throw new RuleError(`A ${g.status.toLowerCase()} circle cannot be opened.`, 409, 'INVALID_GROUP_STATE');
+    if (!g.bankAccountEnc) throw new RuleError("Add the circle's bank account first: it is where contributors pay.", 409, 'BANK_ACCOUNT_REQUIRED');
     if (g.startDate.getTime() < dayInZone(now, g.timezone).getTime()) throw new RuleError('The start date has passed. Choose a new one.', 409, 'START_DATE_PASSED');
-    if (!(await currentRuleVersion(tx, g.id, now))) throw new RuleError('The group has no rules yet.', 409, 'RULES_NOT_FOUND');
+    if (!(await currentRuleVersion(tx, g.id, now))) throw new RuleError('The circle has no rules yet.', 409, 'RULES_NOT_FOUND');
     const opened = await tx.ajoGroup.update({ where: { id: g.id }, data: { status: 'OPEN' } });
     // People staged while the group was a draft, who already met every requirement, become active now.
     const waiting = await tx.ajoMembership.findMany({ where: { groupId: g.id, status: 'PENDING', approvedAt: { not: null } }, select: { id: true }, orderBy: { id: 'asc' } });
@@ -390,9 +390,9 @@ export async function cancelGroup(input: { associationId: number; groupId: numbe
   const result = await prisma.$transaction(async (tx) => {
     const g = await lockGroup(tx, input.associationId, input.groupId);
     if (g.status === 'CANCELLED') return { group: g, replayed: true, userIds: [] as number[] };
-    if (g.status === 'COMPLETED') throw new RuleError('A completed group cannot be cancelled.', 409, 'INVALID_GROUP_STATE');
+    if (g.status === 'COMPLETED') throw new RuleError('A completed circle cannot be cancelled.', 409, 'INVALID_GROUP_STATE');
     const money = await tx.ajoContribution.count({ where: { groupId: g.id, status: { in: ['CASH_RECEIVED', 'CONFIRMED'] }, reversedBy: null, reversalOfId: null } });
-    if (money > 0) throw new RuleError('This group has contributions on its books. Reverse them, or complete the payouts, before cancelling.', 409, 'GROUP_HAS_MONEY');
+    if (money > 0) throw new RuleError('This circle has contributions on its books. Reverse them, or complete the payouts, before cancelling.', 409, 'GROUP_HAS_MONEY');
     const userIds = await memberUserIds(tx, g.id);
     const cancelled = await tx.ajoGroup.update({ where: { id: g.id }, data: { status: 'CANCELLED', cancelledAt: now, cancelReason: reason } });
     // No money was confirmed, so SocietyLedger's levy on the group is not owed.
@@ -422,7 +422,7 @@ export async function startGroup(input: StartGroupInput) {
   const result = await prisma.$transaction(async (tx) => {
     const g = await lockGroup(tx, input.associationId, input.groupId);
     if (g.status === 'ACTIVE') return { group: g, replayed: true, userIds: [] as number[], installments: 0 };
-    if (g.status !== 'OPEN') throw new RuleError(`Only an open group can be started. This one is ${g.status.toLowerCase()}.`, 409, 'INVALID_GROUP_STATE');
+    if (g.status !== 'OPEN') throw new RuleError(`Only an open circle can be started. This one is ${g.status.toLowerCase()}.`, 409, 'INVALID_GROUP_STATE');
     if (g.startDate.getTime() < dayInZone(now, g.timezone).getTime()) throw new RuleError('The start date has passed. Change it before starting.', 409, 'START_DATE_PASSED');
     // Unpaid platform levy more than 60 days old stops a NEW group starting, and nothing else.
     await assertNoOverdueLevy(tx, input.associationId, now);
@@ -439,7 +439,7 @@ export async function startGroup(input: StartGroupInput) {
       if (slots.length < 2) throw new RuleError('A rotating pot needs at least 2 shares to start.', 409, 'NOT_ENOUGH_PARTICIPANTS');
       await assertCurrentDraw(tx, g.id, slots);
       if (active.length < g.maxParticipants && !input.confirmSmallerGroup) {
-        throw new RuleError(`This group has ${active.length} people for ${g.maxParticipants} places. Starting will fix it at ${active.length}. Confirm to go ahead.`, 409, 'CONFIRM_SMALLER_GROUP');
+        throw new RuleError(`This circle has ${active.length} people for ${g.maxParticipants} places. Starting will fix it at ${active.length}. Confirm to go ahead.`, 409, 'CONFIRM_SMALLER_GROUP');
       }
       rounds = slots.length;
       maxParticipants = active.length;
@@ -474,10 +474,10 @@ export async function listGroups(input: { associationId: number; userId: number;
 /** Can this person see the group? Managers always can; a member can see a group they are in. Anyone else gets "not found". */
 export async function assertGroupVisible(input: { associationId: number; groupId: number; userId: number; isManager: boolean }) {
   const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   if (input.isManager) return group;
   const mine = await prisma.ajoMembership.findFirst({ where: { groupId: group.id, status: { not: 'LEFT' }, member: { userId: input.userId } }, select: { id: true } });
-  if (!mine) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!mine) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   return group;
 }
 
@@ -497,6 +497,6 @@ export async function getGroupDetail(input: { associationId: number; groupId: nu
  */
 export async function getGroupBankAccount(input: { associationId: number; groupId: number; userId: number; isManager: boolean }) {
   const group = await assertGroupVisible(input);
-  if (!group.bankAccountEnc) throw new RuleError("This group has not added its bank account yet.", 404, 'BANK_ACCOUNT_REQUIRED');
+  if (!group.bankAccountEnc) throw new RuleError("This circle has not added its bank account yet.", 404, 'BANK_ACCOUNT_REQUIRED');
   return { bankName: group.bankName, accountName: group.bankAccountName, accountNumber: decryptGroupAccountNumber(group.id, group.bankAccountEnc), masked: maskAccount(group.bankAccountLast4) };
 }

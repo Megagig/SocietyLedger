@@ -38,7 +38,7 @@ export function CircleBoard({ groupId }: { groupId: number }) {
   if (overview.isError) {
     const code = codeOf(overview.error);
     if (code === 'BOARD_NOT_AVAILABLE') {
-      return <AjoEmpty title="There is no circle board for this group." hint="A collector-thrift scheme keeps each saver's records private. You can see your own savings on your circle page." />;
+      return <AjoEmpty title="There is no circle board for this circle." hint="A collector-thrift scheme keeps each saver's records private. You can see your own savings on your circle page." />;
     }
     if (code === 'BOARD_OFF') {
       return <AjoEmpty title="The circle board is switched off." hint="The admin has not turned on the circle board for this circle. Ask them if you would like members to see each other's progress." />;

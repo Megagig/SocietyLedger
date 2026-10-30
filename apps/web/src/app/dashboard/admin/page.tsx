@@ -1,5 +1,8 @@
 'use client';
 
+import { ThriftHome } from '@/components/ajo/ThriftHome';
+import { AjoLoading } from '@/components/ajo/AjoStates';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +20,7 @@ import {
   IconChartBar,
 } from '@tabler/icons-react';
 
-export default function AdminDashboardPage() {
+function AssociationAdminDashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
   const isOfficer = canSeeOfficerDashboard(user);
@@ -411,4 +414,12 @@ function EmptyTableState({ message }: { message: string }) {
       <p className="text-gray-500 dark:text-gray-400 text-sm">{message}</p>
     </div>
   );
+}
+
+/** A standalone thrift group has no association dashboard: it gets its own Thrift home, and nothing of the association is fetched or drawn. */
+export default function AdminDashboardPage() {
+  const nav = useAjoNav();
+  if (nav.thriftOnly) return <ThriftHome />;
+  if (nav.resolving) return <AjoLoading />;
+  return <AssociationAdminDashboardPage />;
 }

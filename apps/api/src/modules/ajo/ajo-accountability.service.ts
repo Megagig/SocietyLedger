@@ -44,7 +44,7 @@ export function backlogBucket(ageHours: number): (typeof BACKLOG_BUCKETS)[number
 export async function getAccountability(input: { associationId: number; groupId: number; now?: Date }) {
   const now = input.now ?? new Date();
   const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
 
   const [payouts, waiting, handovers, reversals, waivers, orderEvents, versions] = await Promise.all([
     prisma.ajoPayout.findMany({ where: { groupId: group.id, status: { in: ['PREPARED', 'APPROVED', 'PAID', 'VOID', 'REVERSED'] } }, orderBy: { id: 'desc' }, take: 100, include: { membership: { select: { member: { select: { firstName: true, lastName: true } } } } } }),

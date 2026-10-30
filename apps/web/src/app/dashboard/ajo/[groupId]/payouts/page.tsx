@@ -13,7 +13,7 @@ import { StatusBadge } from '@/components/ajo/StatusBadge';
 import { ajoErrorCode, ajoErrorMessage } from '@/lib/ajo/api';
 import { formatKobo, formatMoment, koboPositive, ordinal } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
-import type { PayoutDTO } from '@/lib/ajo/staffTypes';
+import type { PayoutDTO, PrepareAllResult } from '@/lib/ajo/staffTypes';
 import { useAjoAction, useGroupDetail, usePayouts, usePeople } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
@@ -149,6 +149,8 @@ export default function PayoutsPage() {
   const preview = useQuery({ queryKey: ['ajo', 'staff', 'preview', groupId, JSON.stringify(target)], queryFn: () => ajoStaffApi.payoutPreview(groupId, target ?? {}), enabled: !!target && manage, retry: false });
   const prepare = useAjoAction((body: { round?: number; membershipId?: number }) => ajoStaffApi.preparePayout(groupId, body));
   const complete = useAjoAction<void>(() => ajoStaffApi.completeGroup(groupId));
+  const prepareAll = useAjoAction<void>(() => ajoStaffApi.prepareAllPayouts(groupId).then((r) => setAllResult(r)));
+  const [allResult, setAllResult] = useState<PrepareAllResult | null>(null);
   const [approving, setApproving] = useState<PayoutDTO | null>(null);
   const [paying, setPaying] = useState<PayoutDTO | null>(null);
   const [voiding, setVoiding] = useState<PayoutDTO | null>(null);
@@ -231,6 +233,24 @@ export default function PayoutsPage() {
           </ul>
         ) : <AjoEmpty title="No payouts yet." />}
       </section>
+
+      {manage && canWrite && !rotating && group && (group.status === 'ACTIVE' || group.status === 'COMPLETED') && (
+        <section className="space-y-3 rounded-lg border border-line p-5">
+          <h2 className="font-semibold">Prepare everyone's payout</h2>
+          <p className="text-sm text-ink-muted">At the end of a cycle, prepare a payout for every saver who is ready in one go. Anyone who is not ready (for example no verified payout account) is listed with the reason, and nothing is prepared for them.</p>
+          <Button color="green" loading={prepareAll.isLoading} onClick={async () => { setProblem(null); try { await prepareAll.mutateAsync(); toast.success('Done. See the list below.'); } catch (error) { setProblem(ajoErrorMessage(error)); } }}>Prepare all ready payouts</Button>
+          {allResult && (
+            <div className="space-y-2 text-sm">
+              <p className="font-medium text-ink">{allResult.prepared.length} prepared, {allResult.notReady.length} not ready.</p>
+              {allResult.notReady.length > 0 && (
+                <ul className="list-disc space-y-1 pl-5 text-ink-soft">
+                  {allResult.notReady.map((n) => (<li key={n.membershipId}><span className="font-medium">{n.name}</span>: {n.message}</li>))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {approvePayout && canWrite && group?.status === 'ACTIVE' && (
         <section className="rounded-lg border border-line p-5">

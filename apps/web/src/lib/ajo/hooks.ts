@@ -17,6 +17,8 @@ export const ajoKeys = {
   lateFees: (membershipId: number) => ['ajo', 'late-fees', membershipId] as const,
   trust: (membershipId: number) => ['ajo', 'trust', membershipId] as const,
   disputes: (membershipId: number) => ['ajo', 'disputes', membershipId] as const,
+  cases: (membershipId: number) => ['ajo', 'cases', membershipId] as const,
+  myPayouts: () => ['ajo', 'my-payouts'] as const,
   rules: (membershipId: number) => ['ajo', 'rules', membershipId] as const,
   payoutAccount: () => ['ajo', 'payout-account'] as const,
   verification: () => ['ajo', 'verification'] as const,
@@ -30,6 +32,8 @@ export const useContributions = (membershipId: number) => useQuery({ queryKey: a
 export const useLateFees = (membershipId: number) => useQuery({ queryKey: ajoKeys.lateFees(membershipId), queryFn: () => ajoApi.lateFees(membershipId), enabled: membershipId > 0 });
 export const useTrust = (membershipId: number) => useQuery({ queryKey: ajoKeys.trust(membershipId), queryFn: () => ajoApi.trust(membershipId), enabled: membershipId > 0 });
 export const useDisputes = (membershipId: number) => useQuery({ queryKey: ajoKeys.disputes(membershipId), queryFn: () => ajoApi.disputes(membershipId), enabled: membershipId > 0 });
+export const useMemberCases = (membershipId: number) => useQuery({ queryKey: ajoKeys.cases(membershipId), queryFn: () => ajoApi.cases(membershipId), enabled: membershipId > 0 });
+export const useMyPayouts = () => useQuery({ queryKey: ajoKeys.myPayouts(), queryFn: ajoApi.myPayouts });
 export const useRulesToAccept = (membershipId: number) => useQuery({ queryKey: ajoKeys.rules(membershipId), queryFn: () => ajoApi.rulesToAccept(membershipId), enabled: membershipId > 0 });
 export const usePayoutAccount = () => useQuery({ queryKey: ajoKeys.payoutAccount(), queryFn: ajoApi.payoutAccount });
 export const useVerification = () => useQuery({ queryKey: ajoKeys.verification(), queryFn: ajoApi.verification });
@@ -48,6 +52,11 @@ export function useReportTransfer(groupId: number) {
 export function useAcceptRules(membershipId: number) {
   const refresh = useRefreshAjo();
   return useMutation({ mutationFn: (body: { ruleVersionId: number; note?: string }) => ajoApi.acceptRules(membershipId, body), onSuccess: refresh });
+}
+
+export function useRespondToCase() {
+  const refresh = useRefreshAjo();
+  return useMutation({ mutationFn: (input: { caseId: number; note: string }) => ajoApi.respondToCase(input.caseId, input.note), onSuccess: refresh });
 }
 
 export function useSavePayoutAccount() {

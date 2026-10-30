@@ -57,7 +57,7 @@ export async function requestPhoneCode(input: RequestCodeInput): Promise<{ sentT
     include: { group: { select: { name: true, requirePhoneConfirm: true } }, member: { select: { id: true, phone: true, firstName: true, lastName: true } } },
   });
   if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
-  if (!membership.group.requirePhoneConfirm) throw new RuleError('This group does not ask members to confirm their phone.', 409, 'PHONE_CONFIRMATION_NOT_REQUIRED');
+  if (!membership.group.requirePhoneConfirm) throw new RuleError('This circle does not ask members to confirm their phone.', 409, 'PHONE_CONFIRMATION_NOT_REQUIRED');
   if (membership.status !== 'PENDING') throw new RuleError('Only a pending member needs to confirm their phone.', 409, 'INVALID_MEMBERSHIP_STATE');
 
   const phone = normalizePhone(membership.member.phone);

@@ -45,9 +45,9 @@ const isUniqueViolation = (error: unknown) => error instanceof Prisma.PrismaClie
 /** Active, started and not closed. A payment needs a schedule to land on. */
 async function loadActiveGroup(tx: Tx, associationId: number, groupId: number) {
   const group = await tx.ajoGroup.findFirst({ where: { id: groupId, associationId } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
-  if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This group is closed, so no payments can be recorded.', 409, 'GROUP_CLOSED');
-  if (group.status !== 'ACTIVE') throw new RuleError('This group has not started yet, so there is nothing to pay.', 409, 'GROUP_NOT_STARTED');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
+  if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This circle is closed, so no payments can be recorded.', 409, 'GROUP_CLOSED');
+  if (group.status !== 'ACTIVE') throw new RuleError('This circle has not started yet, so there is nothing to pay.', 409, 'GROUP_NOT_STARTED');
   return group;
 }
 
@@ -72,7 +72,7 @@ export async function assertMayConfirm(tx: Tx | typeof prisma, input: { associat
   if (!sole) throw new RuleError(`You recorded or made this ${input.what}, so another officer has to confirm it.`, 403, 'SELF_CONFIRM_NOT_ALLOWED');
   const note = (input.note ?? '').trim();
   if (!input.confirmOwn || note.length < MIN_NOTE_LENGTH) {
-    throw new RuleError(`You are the only person who can confirm in this group. To confirm your own ${input.what}, say so (confirmOwn) and add a note saying how you checked it.`, 403, 'SELF_CONFIRM_NEEDS_NOTE');
+    throw new RuleError(`You are the only person who can confirm in this circle. To confirm your own ${input.what}, say so (confirmOwn) and add a note saying how you checked it.`, 403, 'SELF_CONFIRM_NEEDS_NOTE');
   }
   return { self: true, note };
 }
@@ -129,7 +129,7 @@ export async function listMembershipContributions(input: { associationId: number
 /** The officers' queue: payments in a group, by status and method. */
 export async function listGroupContributions(input: { associationId: number; groupId: number; status?: string; method?: 'CASH' | 'TRANSFER'; take?: number; skip?: number }) {
   const group = await prisma.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   const where: Prisma.AjoContributionWhereInput = { groupId: group.id, associationId: input.associationId, ...(input.status ? { status: input.status as never } : {}), ...(input.method ? { method: input.method } : {}) };
   const [rows, total] = await Promise.all([
     prisma.ajoContribution.findMany({ where, orderBy: [{ receivedAt: 'asc' }, { id: 'asc' }], take: Math.min(Math.max(input.take ?? 50, 1), 200), skip: Math.max(input.skip ?? 0, 0), include: viewInclude }),

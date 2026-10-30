@@ -25,6 +25,8 @@ export function useAjoNav() {
   // The same query the Ajo pages use, so asking costs nothing extra once they are open.
   const status = useQuery({ queryKey: ajoKeys.status(), queryFn: ajoApi.status, staleTime: 30_000, retry: false, enabled: member || collect || staff });
   const result = status.data;
+  // The session says what kind of account this is from the first screen, so no association page shows before the Ajo call answers.
+  const sessionKind = useAuthStore((s) => s.user?.association?.kind);
   return {
     member,
     collect,
@@ -34,6 +36,8 @@ export function useAjoNav() {
     /** True only when the account is known not to have Ajo switched on. */
     locked: result?.kind === 'locked',
     /** An account that exists only to run Ajo (a standalone thrift group). */
-    thriftOnly: result?.kind === 'ok' && result.status.tenantKind === 'THRIFT_GROUP',
+    thriftOnly: sessionKind === 'THRIFT_GROUP' || (sessionKind === undefined && result?.kind === 'ok' && result.status.tenantKind === 'THRIFT_GROUP'),
+    /** True until we know what kind of account this is (older servers only), so a page can wait instead of flashing association content. */
+    resolving: sessionKind === undefined && (member || collect || staff) && status.isLoading,
   };
 }

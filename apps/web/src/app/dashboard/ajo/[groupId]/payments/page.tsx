@@ -99,6 +99,8 @@ export default function PaymentsPage() {
   const [reversing, setReversing] = useState<QueueContributionDTO | null>(null);
   const [proofProblem, setProofProblem] = useState<string | null>(null);
   const can = reconcile && canWrite;
+  const [sending, setSending] = useState(false);
+  const client2 = useQueryClient();
   const nameOf = (id: number) => names.get(id) ?? 'A member';
 
   const openProof = async (id: number) => {
@@ -115,7 +117,12 @@ export default function PaymentsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-2xl text-sm text-ink-muted">Only confirmed money counts. Check each transfer against the bank statement before you confirm it. Cash recorded by a collector is confirmed when the collector&apos;s handover is reconciled.</p>
-        <NativeSelect aria-label="Show" data={FILTERS} value={status} onChange={(e) => setStatus(e.currentTarget.value)} />
+        <div className="flex flex-wrap items-end gap-2">
+          {can && (
+            <Button variant="default" size="xs" loading={sending} onClick={async () => { setProofProblem(null); setSending(true); try { const r = await ajoStaffApi.sendQueuedReceipts(); await client2.invalidateQueries({ queryKey: ['ajo'] }); toast.success(r.stillQueued ? `${r.sent} sent, ${r.stillQueued} still waiting (check your SMS credits).` : `${r.sent} receipt${r.sent === 1 ? '' : 's'} sent.`); } catch (error) { setProofProblem(ajoErrorMessage(error)); } finally { setSending(false); } }}>Send waiting receipts</Button>
+          )}
+          <NativeSelect aria-label="Show" data={FILTERS} value={status} onChange={(e) => setStatus(e.currentTarget.value)} />
+        </div>
       </div>
       {proofProblem && <p role="alert" className="text-sm text-danger">{proofProblem}</p>}
 

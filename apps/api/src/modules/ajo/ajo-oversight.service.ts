@@ -98,7 +98,7 @@ export async function getGroup(groupId: number) {
     where: { id: groupId },
     include: { association: { select: { id: true, name: true, kind: true, status: true, subdomain: true } } },
   });
-  if (!g) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!g) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   const [memberStatus, payouts, cases, held, options, activeContributors, levy] = await Promise.all([
     prisma.ajoMembership.groupBy({ by: ['status'], where: { groupId }, _count: { _all: true } }),
     prisma.ajoPayout.findMany({
@@ -160,14 +160,14 @@ export async function getGroup(groupId: number) {
 
 async function associationOfGroup(groupId: number): Promise<number> {
   const g = await prisma.ajoGroup.findUnique({ where: { id: groupId }, select: { associationId: true } });
-  if (!g) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!g) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   return g.associationId;
 }
 
 export async function previewGroupTier(input: { groupId: number; targetAddonId: number }) {
   const associationId = await associationOfGroup(input.groupId);
   if ((await listTierOptions(AJO_FAMILY)).some((o) => o.addonId === input.targetAddonId && NOT_A_TARGET.has(o.code))) {
-    throw new RuleError('Groups are not moved to the trial tier.', 400, 'TIER_NOT_ALLOWED');
+    throw new RuleError('Circles are not moved to the trial tier.', 400, 'TIER_NOT_ALLOWED');
   }
   const r = await previewTierChange({ associationId, family: AJO_FAMILY, targetAddonId: input.targetAddonId, activeContributors: (db) => countActiveContributors(associationId, db) });
   return { direction: r.decision.direction, timing: r.decision.timing, blockers: r.decision.blockers, effectiveAt: r.effectiveAt, from: r.current?.name ?? null, to: r.target.name };
@@ -179,7 +179,7 @@ export async function changeGroupTier(input: { groupId: number; targetAddonId: n
   const associationId = await associationOfGroup(input.groupId);
   const options = await listTierOptions(AJO_FAMILY);
   if (options.some((o) => o.addonId === input.targetAddonId && NOT_A_TARGET.has(o.code))) {
-    throw new RuleError('Groups are not moved to the trial tier.', 400, 'TIER_NOT_ALLOWED');
+    throw new RuleError('Circles are not moved to the trial tier.', 400, 'TIER_NOT_ALLOWED');
   }
   return changeTier({ associationId, family: AJO_FAMILY, targetAddonId: input.targetAddonId, activeContributors: (db) => countActiveContributors(associationId, db), reason, actor: input.actor });
 }

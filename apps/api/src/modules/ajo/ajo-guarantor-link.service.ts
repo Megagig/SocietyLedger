@@ -46,7 +46,7 @@ export async function createGuarantorLink(input: GuarantorLinkInput) {
     if (membership.status !== 'PENDING' && membership.status !== 'ACTIVE') throw new RuleError(`A ${membership.status.toLowerCase()} membership cannot have a guarantor.`, 409, 'INVALID_MEMBERSHIP_STATE');
     if (normalizePhone(membership.member.phone) === phone) throw new RuleError('The guarantor must be a different person from the member (the phone number is the same).', 400, 'GUARANTOR_IS_MEMBER');
     const version = await currentRuleVersion(tx, membership.groupId, now);
-    if (version?.guarantorPolicy === 'NOT_REQUIRED') throw new RuleError('This group does not use guarantors.', 409, 'GUARANTOR_NOT_USED');
+    if (version?.guarantorPolicy === 'NOT_REQUIRED') throw new RuleError('This circle does not use guarantors.', 409, 'GUARANTOR_NOT_USED');
 
     // Only the newest link works: an older one for the same person is put away.
     await tx.ajoGuarantorInvite.updateMany({ where: { membershipId: membership.id, usedAt: null, revokedAt: null }, data: { revokedAt: now } });
@@ -63,14 +63,14 @@ const stateOf = (i: { usedAt: Date | null; revokedAt: Date | null; expiresAt: Da
 
 const REFUSAL: Record<Exclude<InviteState, 'OPEN'>, RuleError> = {
   USED: new RuleError('This link has already been used. Thank you: your agreement is on record.', 409, 'LINK_USED'),
-  REVOKED: new RuleError('This link was replaced by a newer one. Ask the group officer for the latest link.', 409, 'LINK_REPLACED'),
-  EXPIRED: new RuleError('This link has expired. Ask the group officer to send you a new one.', 409, 'LINK_EXPIRED'),
+  REVOKED: new RuleError('This link was replaced by a newer one. Ask the circle officer for the latest link.', 409, 'LINK_REPLACED'),
+  EXPIRED: new RuleError('This link has expired. Ask the circle officer to send you a new one.', 409, 'LINK_EXPIRED'),
 };
 
 async function loadOpen(token: string, now: Date) {
   const invite = await prisma.ajoGuarantorInvite.findUnique({ where: { tokenHash: hashToken(token || '') }, include: { membership: { include: { member: { select: { firstName: true, lastName: true } }, group: { select: { name: true } } } } } });
   // One answer for "no such link", so a guess tells nobody anything.
-  if (!invite) throw new RuleError('This link is not valid. Check you opened the whole link, or ask the group officer for a new one.', 404, 'LINK_INVALID');
+  if (!invite) throw new RuleError('This link is not valid. Check you opened the whole link, or ask the circle officer for a new one.', 404, 'LINK_INVALID');
   const state = stateOf(invite, now);
   if (state !== 'OPEN') throw REFUSAL[state];
   return invite;

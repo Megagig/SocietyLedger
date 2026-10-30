@@ -7,6 +7,8 @@ import type { RuleVersionsReplyDTO ,
   AssignedContributorDTO,
   BulkResultDTO,
   CaseDTO,
+  GroupTrustRowDTO,
+  PrepareAllResultDTO,
   CollectorAssignmentDTO,
   CollectorCandidateDTO,
   CollectorDayDTO,
@@ -128,6 +130,11 @@ export const ajoApi = {
   leave: (membershipId: number, reason?: string) => post<{ replayed: boolean }>(`/ajo/memberships/${membershipId}/leave`, { reason }),
   lateFees: (membershipId: number) => get<LateFeeDTO[]>(`/ajo/memberships/${membershipId}/late-fees`),
   trust: (membershipId: number) => get<TrustDTO>(`/ajo/memberships/${membershipId}/trust`),
+  /** Cases the officers opened about this person's unpaid rounds, and their own side of it. */
+  memberCases: (membershipId: number) => get<CaseDTO[]>(`/ajo/memberships/${membershipId}/cases`),
+  respondToCase: (caseId: number, note: string) => post<unknown>(`/ajo/cases/${caseId}/member-response`, { note }),
+  /** What this person has been, or will be, paid out of any circle. */
+  myPayouts: () => get<PayoutDTO[]>('/ajo/payouts/mine'),
   disputes: (membershipId: number) => get<DisputeDTO[]>(`/ajo/memberships/${membershipId}/disputes`),
   rulesToAccept: (membershipId: number) => get<RulesToAcceptDTO>(`/ajo/memberships/${membershipId}/rules-to-accept`),
   acceptRules: (membershipId: number, body: { ruleVersionId: number; note?: string }) =>
@@ -228,6 +235,15 @@ export const ajoApi = {
 
   // ── payouts ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   payoutPreview: (id: number, params: { round?: number; membershipId?: number }) => get<PayoutPreviewDTO>(`/ajo/groups/${id}/payouts/preview`, params),
+  /** Collector thrift: prepare a payout for everyone who is ready, and say who is not and why. */
+  prepareAllPayouts: (id: number) => post<PrepareAllResultDTO>(`/ajo/groups/${id}/payouts/prepare-all`),
+  /** Send a person's payout-account details to SocietyLedger to be checked again. */
+  resubmitVerification: (memberId: number) => post<{ status: string }>(`/ajo/members/${memberId}/verification/resubmit`),
+  /** Every circle one person is, or was, in (officers). */
+  personCircles: (memberId: number) => get<MyMembershipDTO[]>(`/ajo/members/${memberId}/circles`),
+  groupTrust: (id: number) => get<GroupTrustRowDTO[]>(`/ajo/groups/${id}/trust`),
+  /** Send the receipts that could not be sent when the payment was confirmed (for example no SMS credits then). */
+  sendQueuedReceipts: () => post<{ attempted: number; sent: number; stillQueued: number; waiting: number }>('/ajo/receipts/send-queued'),
   payouts: (id: number, params: { status?: string } = {}) => get<PayoutDTO[]>(`/ajo/groups/${id}/payouts`, params),
   preparePayout: (id: number, body: { round?: number; membershipId?: number }) => post<unknown>(`/ajo/groups/${id}/payouts`, body),
   /** Needs the signed-in person's password (the server checks it): approving moves money out of the group's account. */

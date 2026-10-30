@@ -1,5 +1,6 @@
 import { BookOpen, Bell, HelpCircle, Info, LogOut, Moon, Repeat, ShieldCheck, User } from 'lucide-react-native';
 import { router, useRouter } from 'expo-router';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
 import { View } from 'react-native';
 
 import { EditableAvatar } from '@/features/members/components/EditableAvatar';
@@ -17,6 +18,7 @@ import { useThemeTokens } from '@/providers/ThemeProvider';
 
 /** project-overview.md §6.7 P1 — full profile home with avatar, name, role chip, and menu rows. */
 export default function ProfileScreen() {
+  const { thriftOnly } = useAjoNav();
   const expoRouter = useRouter();
   const logout = useLogout();
   const { color } = useThemeTokens();
@@ -143,7 +145,7 @@ export default function ProfileScreen() {
         <ListGroup>
           <ListItem
             leading={<Repeat size={20} color={color.textSecondary} strokeWidth={1.75} />}
-            title={t('profile.switchAssociationRow')}
+            title={thriftOnly ? 'Switch group' : t('profile.switchAssociationRow')}
             onPress={switchAssociation}
             disabled={logout.isPending}
             testID="profile-switch-association"

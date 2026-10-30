@@ -40,6 +40,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { PERMISSIONS, hasAnyPermission } from '@/lib/permissions';
 import { THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
+import { thriftWord } from '@/lib/ajo/thriftScope';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { docsUrl } from '@/lib/docs';
 import { toast } from '@/lib/toast';
@@ -481,7 +482,7 @@ export function MemberSidebar() {
                 {user?.association?.name || 'SocietyLedger'}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Member Portal
+                {thriftWord('Member Portal', ajoNav.thriftOnly)}
               </p>
             </div>
           </Link>

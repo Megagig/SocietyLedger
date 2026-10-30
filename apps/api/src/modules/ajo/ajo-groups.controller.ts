@@ -77,7 +77,7 @@ async function assertModelEntitled(associationId: number, model: keyof typeof MO
 
 async function groupModelOf(associationId: number, groupId: number) {
   const group = await prisma.ajoGroup.findFirst({ where: { id: groupId, associationId }, select: { model: true } });
-  if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+  if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
   return group.model;
 }
 
@@ -237,6 +237,16 @@ export const ajoGroupsController = {
       return res.json({ success: true, data: await listMyMemberships({ associationId, userId }) });
     } catch (error) {
       return fail(res, error, 'Could not load your groups.');
+    }
+  },
+
+  /** Every circle one person is, or was, in (officers only): the "Circles" view on a person's page. */
+  async memberCircles(req: Request, res: Response) {
+    try {
+      const { associationId } = actor(req);
+      return res.json({ success: true, data: await listMyMemberships({ associationId, memberId: id.parse(req.params.memberId) }) });
+    } catch (error) {
+      return fail(res, error, "Could not load this person's circles.");
     }
   },
 

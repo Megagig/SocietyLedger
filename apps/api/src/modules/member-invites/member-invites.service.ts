@@ -70,15 +70,20 @@ export async function sendMemberInviteEmail(
     ? Math.round((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60))
     : DEFAULT_INVITE_TOKEN_EXPIRY_HOURS;
 
+  // A standalone thrift group is a savings group, not an association: it is invited in those words.
+  const owner = subdomain ? await prisma.association.findFirst({ where: { subdomain }, select: { kind: true } }) : null;
+  const thrift = owner?.kind === 'THRIFT_GROUP';
+
   await sendEmail({
     to: email,
-    subject: `You're Invited to Join ${associationName} - SocietyLedger`,
+    subject: thrift ? `You're invited to join ${associationName} on SocietyLedger Thrift` : `You're Invited to Join ${associationName} - SocietyLedger`,
     template: 'member-invite',
     data: {
       memberName,
       associationName,
       activateUrl,
       expiryHours,
+      thrift,
     },
   });
 }

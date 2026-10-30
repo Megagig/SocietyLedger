@@ -42,7 +42,7 @@ export async function assignCollector(input: AssignInput) {
     const membership = await tx.ajoMembership.findFirst({ where: { id: input.membershipId, associationId: input.associationId }, include: { group: { select: { name: true, status: true } }, member: { select: { firstName: true, lastName: true } } } });
     if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
     if (membership.status !== 'ACTIVE' && membership.status !== 'PENDING') throw new RuleError('Only a current participant can be assigned a collector.', 409, 'INVALID_MEMBERSHIP_STATE');
-    if (membership.group.status === 'COMPLETED' || membership.group.status === 'CANCELLED') throw new RuleError('This group is closed.', 409, 'GROUP_CLOSED');
+    if (membership.group.status === 'COMPLETED' || membership.group.status === 'CANCELLED') throw new RuleError('This circle is closed.', 409, 'GROUP_CLOSED');
 
     // Take turns with anyone else reassigning the same contributor.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ajo-collector:' + membership.id}))`;

@@ -9,6 +9,7 @@ import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { DisputeDialog } from '@/components/ajo/DisputeDialog';
 import { CycleCard } from '@/components/ajo/member/CycleCard';
+import { MemberCases } from '@/components/ajo/member/MemberCases';
 import { LeaveGroup, PhoneConfirmCard, ReceiptsDialog, SwapRequestCard } from '@/components/ajo/member/MemberExtras';
 import { Money } from '@/components/ajo/Money';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
@@ -234,6 +235,8 @@ export default function MembershipDetailPage() {
           </ul>
         </Section>
       )}
+
+      <MemberCases membershipId={membershipId} canWrite={canWrite} />
 
       <DisputeDialog membershipId={membershipId} installment={disputing} onClose={() => setDisputing(null)} />
       <ReceiptsDialog contributionId={receiptFor} onClose={() => setReceiptFor(null)} />

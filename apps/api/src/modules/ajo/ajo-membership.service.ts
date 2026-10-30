@@ -102,11 +102,11 @@ export interface ActivationOutcome {
 /** A group that has started no longer takes everyone: a rotating pot is frozen, and a thrift group may have switched late joining off. */
 export function assertGroupTakesJoiners(group: { status: string; model: string; allowLateJoin: boolean }, options: { allowDraft?: boolean } = {}): void {
   // Only setup (the onboarding bulk add) may put people into a draft; everywhere else a group must be opened first.
-  if (group.status === 'DRAFT' && !options.allowDraft) throw new RuleError('This group is not open yet, so no one can be added.', 409, 'GROUP_NOT_OPEN');
-  if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This group is closed, so no one can be added.', 409, 'GROUP_CLOSED');
+  if (group.status === 'DRAFT' && !options.allowDraft) throw new RuleError('This circle is not open yet, so no one can be added.', 409, 'GROUP_NOT_OPEN');
+  if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This circle is closed, so no one can be added.', 409, 'GROUP_CLOSED');
   if (group.status === 'ACTIVE') {
     if (group.model === 'ROTATING_POT') throw new RuleError('This rotating pot has started and its order is fixed, so no one can join it now.', 409, 'ROSTER_FROZEN');
-    if (!group.allowLateJoin) throw new RuleError('This group has started and is not taking late joiners.', 409, 'LATE_JOIN_CLOSED');
+    if (!group.allowLateJoin) throw new RuleError('This circle has started and is not taking late joiners.', 409, 'LATE_JOIN_CLOSED');
   }
 }
 
@@ -177,7 +177,7 @@ export async function addMember(input: { associationId: number; groupId: number;
   return prisma.$transaction(async (tx) => {
     const group = await tx.ajoGroup.findFirst({ where: { id: input.groupId, associationId: input.associationId }, select: { id: true, status: true, model: true, allowLateJoin: true, maxParticipants: true, maxSharesPerMember: true, contributionKobo: true, cycleNo: true } });
     // Another association's group is reported as missing, never as forbidden.
-    if (!group) throw new RuleError('That group was not found.', 404, 'GROUP_NOT_FOUND');
+    if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
     assertGroupTakesJoiners(group, { allowDraft: input.allowDraft });
 
     const shares = input.shares ?? 1;
@@ -191,17 +191,17 @@ export async function addMember(input: { associationId: number; groupId: number;
 
     const member = await tx.member.findFirst({ where: { id: input.memberId, associationId: input.associationId }, select: { id: true, status: true } });
     if (!member) throw new RuleError('That member was not found.', 404, 'MEMBER_NOT_FOUND');
-    if (member.status !== 'active') throw new RuleError('Only an active member can be added to a group.', 409, 'MEMBER_NOT_ACTIVE');
+    if (member.status !== 'active') throw new RuleError('Only an active member can be added to a circle.', 409, 'MEMBER_NOT_ACTIVE');
 
     // Seats are counted behind a lock on the group, so two officers adding the last two people at once cannot both fit.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ajo-seats:' + group.id}))`;
     const taken = await seatsTaken(tx, group.id);
-    if (taken >= group.maxParticipants) throw new RuleError(`This group is full (${group.maxParticipants} participants).`, 409, 'GROUP_FULL');
+    if (taken >= group.maxParticipants) throw new RuleError(`This circle is full (${group.maxParticipants} participants).`, 409, 'GROUP_FULL');
 
     try {
       // A person who left can be added again: their old row comes back as a fresh pending one.
       const left = await tx.ajoMembership.findUnique({ where: { groupId_memberId: { groupId: group.id, memberId: member.id } } });
-      if (left && left.status !== 'LEFT') throw new RuleError('This member is already in the group.', 409, 'ALREADY_IN_GROUP');
+      if (left && left.status !== 'LEFT') throw new RuleError('This member is already in the circle.', 409, 'ALREADY_IN_GROUP');
       const membership = left
         ? await tx.ajoMembership.update({ where: { id: left.id }, data: { status: 'PENDING', leftAt: null, joinedAt: null, approvedAt: null, approvedBy: null, shares, phoneConfirmedAt: null, phoneConfirmedNumber: null, guarantorAgreementId: null } })
         : await tx.ajoMembership.create({ data: { associationId: input.associationId, groupId: group.id, memberId: member.id, shares } });
@@ -218,7 +218,7 @@ export async function addMember(input: { associationId: number; groupId: number;
       return membership;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new RuleError('This member is already in the group.', 409, 'ALREADY_IN_GROUP');
+        throw new RuleError('This member is already in the circle.', 409, 'ALREADY_IN_GROUP');
       }
       throw error;
     }
@@ -228,7 +228,7 @@ export async function addMember(input: { associationId: number; groupId: number;
 function assertShares(group: { model: string; maxSharesPerMember: number }, shares: number): void {
   if (!Number.isInteger(shares) || shares < 1) throw new RuleError('Shares must be a whole number of at least 1.', 400, 'INVALID_SHARES');
   if (group.model !== 'ROTATING_POT' && shares !== 1) throw new RuleError('Only a rotating pot has shares. In collector thrift, a person who wants to save more sets a higher contribution.', 400, 'SHARES_NOT_USED');
-  if (shares > group.maxSharesPerMember) throw new RuleError(`One person can hold at most ${group.maxSharesPerMember} share${group.maxSharesPerMember === 1 ? '' : 's'} in this group.`, 400, 'TOO_MANY_SHARES');
+  if (shares > group.maxSharesPerMember) throw new RuleError(`One person can hold at most ${group.maxSharesPerMember} share${group.maxSharesPerMember === 1 ? '' : 's'} in this circle.`, 400, 'TOO_MANY_SHARES');
 }
 
 /** Change a person's shares. Only before the group starts: after that the pot and everyone's instalments are fixed. */
@@ -236,8 +236,8 @@ export async function setShares(input: { associationId: number; membershipId: nu
   return prisma.$transaction(async (tx) => {
     const m = await tx.ajoMembership.findFirst({ where: { id: input.membershipId, associationId: input.associationId }, include: { group: { select: { status: true, model: true, maxSharesPerMember: true } } } });
     if (!m) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
-    if (m.group.status !== 'DRAFT' && m.group.status !== 'OPEN') throw new RuleError('Shares are fixed once a group has started.', 409, 'GROUP_LOCKED');
-    if (m.status === 'LEFT') throw new RuleError('This person has left the group.', 409, 'INVALID_MEMBERSHIP_STATE');
+    if (m.group.status !== 'DRAFT' && m.group.status !== 'OPEN') throw new RuleError('Shares are fixed once a circle has started.', 409, 'GROUP_LOCKED');
+    if (m.status === 'LEFT') throw new RuleError('This person has left the circle.', 409, 'INVALID_MEMBERSHIP_STATE');
     assertShares(m.group, input.shares);
     if (m.shares === input.shares) return { membershipId: m.id, shares: m.shares, replayed: true };
     await tx.ajoMembership.update({ where: { id: m.id }, data: { shares: input.shares } });
@@ -300,7 +300,7 @@ export async function leaveMembership(input: { associationId: number; membership
     if (!m) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
     if (m.status === 'LEFT') return { membershipId: m.id, status: 'LEFT' as const, replayed: true };
     if (m.group.status === 'ACTIVE' && m.group.model === 'ROTATING_POT') {
-      throw new RuleError('This rotating pot has started, so a participant cannot simply leave: the group owes them and they owe the group. Use the default process.', 409, 'USE_DEFAULT_PROCESS');
+      throw new RuleError('This rotating pot has started, so a participant cannot simply leave: the circle owes them and they owe the circle. Use the default process.', 409, 'USE_DEFAULT_PROCESS');
     }
     await tx.ajoMembership.update({ where: { id: m.id }, data: { status: 'LEFT', leftAt: now } });
     await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_MEMBER_LEFT', tableName: 'ajo_memberships', recordId: m.id, oldValues: { status: m.status }, newValues: { status: 'LEFT', reason: input.reason ?? null } });
@@ -319,7 +319,7 @@ export async function assertCanContribute(db: Tx | typeof prisma, input: { assoc
     include: { group: { select: { status: true } } },
   });
   if (!membership) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
-  if ((CLOSED_GROUP as readonly string[]).includes(membership.group.status)) throw new RuleError('This group is closed.', 409, 'GROUP_CLOSED');
+  if ((CLOSED_GROUP as readonly string[]).includes(membership.group.status)) throw new RuleError('This circle is closed.', 409, 'GROUP_CLOSED');
   if (membership.status === 'ACTIVE') return;
 
   if (membership.status === 'PENDING') {

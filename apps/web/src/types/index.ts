@@ -34,6 +34,8 @@ export interface User {
     name: string;
     logo?: string | null;
     subdomain?: string;
+    /** ASSOCIATION, or THRIFT_GROUP for a standalone thrift group. Known from the first screen. */
+    kind?: 'ASSOCIATION' | 'THRIFT_GROUP';
   };
 }
 

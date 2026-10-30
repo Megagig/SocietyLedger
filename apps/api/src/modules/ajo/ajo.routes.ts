@@ -74,6 +74,7 @@ const manage = requirePermission(PERMISSIONS.AJO_MANAGE);
 const approve = requirePermission(PERMISSIONS.AJO_APPROVE_PAYOUT);
 
 router.get('/me', readers, groups.mine);
+router.get('/members/:memberId/circles', requireAnyPermission([PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE]), groups.memberCircles);
 router.get('/people', manage, groups.people);
 router.get('/collector-candidates', manage, groups.collectorCandidates);
 router.get('/groups', readers, groups.list);

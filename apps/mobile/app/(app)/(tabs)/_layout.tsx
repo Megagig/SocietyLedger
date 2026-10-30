@@ -1,10 +1,13 @@
 import { Briefcase, Home, User, Users, Wallet } from 'lucide-react-native';
+import { useRouter, useSegments } from 'expo-router';
 import { Tabs } from 'expo-router/tabs';
+import { useEffect } from 'react';
 
 import { MANAGE_TAB_PERMISSIONS } from '@/lib/permissions';
 import { TabBar } from '@/components/layout/TabBar';
 import { useCan } from '@/hooks/useCan';
 import { useAjoNav } from '@/features/ajo/useAjoNav';
+import { thriftRedirectFor } from '@/features/ajo/thriftRouteGuard';
 
 /**
  * project-overview.md §5.1 — 5 permission-aware bottom tabs, custom `TabBar` (library-docs.md's
@@ -17,6 +20,13 @@ export default function TabsLayout() {
   const canManage = useCan(MANAGE_TAB_PERMISSIONS);
   // A standalone thrift group is only Ajo: no association home or community, and Money is its thrift.
   const { thriftOnly, circles } = useAjoNav();
+  // Hiding a tab does not close its screens: a deep link, a push or a remembered route can still open one. Close them for a standalone group.
+  const segments = useSegments();
+  const router = useRouter();
+  const away = thriftRedirectFor(segments, thriftOnly);
+  useEffect(() => {
+    if (away) router.replace(away as never);
+  }, [away, router]);
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>

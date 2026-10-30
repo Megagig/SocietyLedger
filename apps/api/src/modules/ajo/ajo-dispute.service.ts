@@ -90,7 +90,7 @@ export async function raiseDispute(input: RaiseInput) {
       const own = membership.member.userId !== null && membership.member.userId === input.actorUserId;
       // Someone else's membership is reported as missing to a person who has no right to act for them.
       if (!own && !input.actorCanManage) throw new RuleError('That membership was not found.', 404, 'MEMBERSHIP_NOT_FOUND');
-      if (membership.group.status !== 'ACTIVE') throw new RuleError('Disputes are for a running group.', 409, 'GROUP_NOT_ACTIVE');
+      if (membership.group.status !== 'ACTIVE') throw new RuleError('Disputes are for a running circle.', 409, 'GROUP_NOT_ACTIVE');
 
       const installment = await tx.ajoInstallment.findFirst({ where: { id: input.installmentId, membershipId: membership.id } });
       if (!installment) throw new RuleError('That instalment was not found.', 404, 'INSTALMENT_NOT_FOUND');

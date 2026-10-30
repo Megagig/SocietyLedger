@@ -1,5 +1,8 @@
 'use client';
 
+import { ThriftHome } from '@/components/ajo/ThriftHome';
+import { AjoLoading } from '@/components/ajo/AjoStates';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -21,7 +24,7 @@ interface FinanceSummary {
   upcomingPayments: { id: number; category: { name: string }; balance: number; dueDate: string }[];
 }
 
-export default function MemberDashboardPage() {
+function AssociationMemberDashboardPage() {
   const { user } = useAuthStore();
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -263,4 +266,12 @@ function ActionCard({
       </div>
     </Link>
   );
+}
+
+/** A standalone thrift group has no association dashboard: it gets its own Thrift home, and nothing of the association is fetched or drawn. */
+export default function MemberDashboardPage() {
+  const nav = useAjoNav();
+  if (nav.thriftOnly) return <ThriftHome />;
+  if (nav.resolving) return <AjoLoading />;
+  return <AssociationMemberDashboardPage />;
 }

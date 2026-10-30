@@ -11,6 +11,8 @@ export interface TenantRequest extends Request {
     status: AssociationStatus;
     name: string;
     logo?: string | null;
+    /** ASSOCIATION, or THRIFT_GROUP for a standalone thrift group. The apps use it to show the right home and menus from the first screen. */
+    kind: 'ASSOCIATION' | 'THRIFT_GROUP';
   } | null;
 }
 
@@ -127,6 +129,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           status: association.status,
           name: association.name,
           logo: association.logo,
+          kind: association.kind === 'THRIFT_GROUP' ? 'THRIFT_GROUP' : 'ASSOCIATION',
         };
         req.tenantId = association.id;
       }
@@ -173,6 +176,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           status: association.status,
           name: association.name,
           logo: association.logo,
+          kind: association.kind === 'THRIFT_GROUP' ? 'THRIFT_GROUP' : 'ASSOCIATION',
         };
         req.tenantId = association.id;
       }
@@ -233,6 +237,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       status: association.status,
       name: association.name,
       logo: association.logo,
+      kind: association.kind === 'THRIFT_GROUP' ? 'THRIFT_GROUP' : 'ASSOCIATION',
     };
     req.tenantId = association.id;
 

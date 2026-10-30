@@ -105,7 +105,7 @@ export function CycleCard({ membershipId }: { membershipId: number }) {
             <Radio.Group value={picked ?? ''} onChange={(v) => setChoice(v as 'WITHDRAW' | 'CONTINUE')} name="cycle-choice" label="What would you like to do with your savings?">
               <div className="mt-2 space-y-2">
                 <Radio value="WITHDRAW" label="Withdraw them: they are paid to your payout account" />
-                <Radio value="CONTINUE" label="Continue into the next cycle: they stay in the group" />
+                <Radio value="CONTINUE" label="Continue into the next cycle: they stay in the circle" />
               </div>
             </Radio.Group>
             {picked === 'CONTINUE' && (

@@ -49,7 +49,7 @@ export function CircleBoard({ groupId }: { groupId: number }) {
   if (overview.isError) {
     const closed = boardClosedReason(overview.error);
     if (closed === 'NOT_AVAILABLE') {
-      return <EmptyState icon={LockKeyhole} title="There is no circle board for this group." description="A collector-thrift scheme keeps each saver's records private. You can see your own savings on your circle page." />;
+      return <EmptyState icon={LockKeyhole} title="There is no circle board for this circle." description="A collector-thrift scheme keeps each saver's records private. You can see your own savings on your circle page." />;
     }
     if (closed === 'OFF') {
       return <EmptyState icon={Users} title="The circle board is switched off." description="The admin has not turned on the circle board for this circle. Ask them if you would like members to see each other's progress." />;

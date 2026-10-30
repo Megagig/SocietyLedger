@@ -7,6 +7,8 @@ export type AuthAssociationDTO = {
   name: string;
   subdomain: string;
   isPlatformAssociation?: boolean;
+  /** ASSOCIATION, or THRIFT_GROUP for a standalone thrift group. Absent from an older server. */
+  kind?: 'ASSOCIATION' | 'THRIFT_GROUP';
 };
 
 /** The `member` shape as returned alongside the login/me user — narrower than MemberSelfDTO (members.ts). */
