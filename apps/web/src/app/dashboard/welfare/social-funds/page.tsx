@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -117,7 +118,7 @@ export default function SocialFundsPage() {
   };
 
   const formatCurrency = (amount: string | number) => {
-    return `₦${Number(amount).toLocaleString()}`;
+    return formatNairaFull(Number(amount));
   };
 
   const getFundTypeInfo = (type: string) => {

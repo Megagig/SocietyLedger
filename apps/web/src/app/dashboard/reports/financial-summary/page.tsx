@@ -1,5 +1,6 @@
 'use client';
 
+import { formatAxisNaira } from '@/utils/format';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -386,7 +387,7 @@ export default function FinancialSummaryPage() {
               <BarChart data={comparisonData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
+                <YAxis width={104} tickFormatter={formatAxisNaira} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value: any) => formatCurrency(value)} />
                 <Legend />
                 <Bar dataKey="income" fill="#0088FE" name="Income" />

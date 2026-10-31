@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState } from 'react';
 import { Button, Select } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -86,7 +87,7 @@ export function PaymentButton({
         fullWidth={fullWidth}
         leftSection={isLoading ? <IconLoader2 size={18} /> : <IconCreditCard size={18} />}
       >
-        {isLoading ? 'Initializing...' : `Pay ₦${amount.toLocaleString()}`}
+        {isLoading ? 'Initializing...' : `Pay ${formatNairaFull(amount)}`}
       </Button>
     </div>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Text, Progress } from '@mantine/core';
@@ -312,7 +313,7 @@ export default function LevyCampaignDetailPage() {
 
       {campaign.status === 'CLOSED' && (
         <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200 p-4 rounded-lg text-sm">
-          Closed to new members. {totalMembers - paidMembers} member(s) still owe ₦{Number(stillOwed).toLocaleString()} —
+          Closed to new members. {totalMembers - paidMembers} member(s) still owe {formatNairaFull(Number(stillOwed))} —
           these charges stay owed and keep being reminded until they are paid, waived or voided.
         </div>
       )}
@@ -337,7 +338,7 @@ export default function LevyCampaignDetailPage() {
             <Target className="w-6 h-6 mx-auto text-purple-600 mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">Target</p>
             <p className="text-xl font-bold text-gray-900 dark:text-white">
-              ₦{Number(campaign.targetAmount).toLocaleString()}
+              {formatNairaFull(Number(campaign.targetAmount))}
             </p>
           </div>
           
@@ -345,7 +346,7 @@ export default function LevyCampaignDetailPage() {
             <DollarSign className="w-6 h-6 mx-auto text-blue-600 mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">Assigned</p>
             <p className="text-xl font-bold text-gray-900 dark:text-white">
-              ₦{Number(totalAssigned).toLocaleString()}
+              {formatNairaFull(Number(totalAssigned))}
             </p>
           </div>
           
@@ -353,7 +354,7 @@ export default function LevyCampaignDetailPage() {
             <TrendingUp className="w-6 h-6 mx-auto text-green-600 mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">Collected</p>
             <p className="text-xl font-bold text-green-600">
-              ₦{Number(totalCollected).toLocaleString()}
+              {formatNairaFull(Number(totalCollected))}
             </p>
           </div>
           
@@ -399,7 +400,7 @@ export default function LevyCampaignDetailPage() {
             <div>
               <p className="text-sm text-gray-500">Amount Per Member</p>
               <p className="font-semibold text-gray-900 dark:text-white">
-                {campaign.amountPerMember ? `₦${Number(campaign.amountPerMember).toLocaleString()}` : 'Variable'}
+                {campaign.amountPerMember ? formatNairaFull(Number(campaign.amountPerMember)) : 'Variable'}
               </p>
             </div>
           </div>
@@ -456,10 +457,10 @@ export default function LevyCampaignDetailPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-900 dark:text-white">
-                        ₦{Number(assignment.amount).toLocaleString()}
+                        {formatNairaFull(Number(assignment.amount))}
                       </td>
                       <td className="px-4 py-3 text-green-600 font-medium">
-                        ₦{paidAmount.toLocaleString()}
+                        {formatNairaFull(paidAmount)}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(assignment.status)}`}>

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatAxisNaira } from '@/utils/format';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -200,7 +201,7 @@ export default function AgingAnalysisPage() {
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
+            <YAxis width={100} tickFormatter={formatAxisNaira} tick={{ fontSize: 11 }} />
             <Tooltip
               formatter={(value: any, name: string) => {
                 if (name === 'amount') return formatCurrency(value);

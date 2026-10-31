@@ -23,7 +23,7 @@ export interface PayableRow {
   group: 'charges' | 'loans' | 'savings' | 'welfare';
 }
 
-const naira = (n: number) => `₦${n.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
+const naira = (n: number) => `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const payableKey = (kind: CashItemKind, targetId: number) => `${kind}:${targetId}`;
 
 export const GROUP_TITLES: Record<PayableRow['group'], string> = {

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { Badge, Select } from '@mantine/core';
 import { IconCreditCard, IconCheck, IconClock, IconReceipt } from '@tabler/icons-react';
@@ -40,7 +41,7 @@ export default function PaymentHistoryPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => formatNairaFull(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { 
     month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
   });

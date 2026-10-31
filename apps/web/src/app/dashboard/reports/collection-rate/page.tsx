@@ -1,5 +1,6 @@
 'use client';
 
+import { formatAxisNaira } from '@/utils/format';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -203,7 +204,7 @@ export default function CollectionRatePage() {
             <LineChart data={monthlyChartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+              <YAxis yAxisId="left" width={100} tickFormatter={formatAxisNaira} tick={{ fontSize: 11 }} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
               <Tooltip
                 formatter={(value: any, name: string) => {

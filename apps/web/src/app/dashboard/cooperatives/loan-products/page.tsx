@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, NumberInput, Textarea, Select, Switch, Button, Badge, Pagination } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -156,7 +157,7 @@ export default function LoanProductsPage() {
     }
   };
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
 
   if (isLoading) {
     return (
@@ -286,7 +287,7 @@ export default function LoanProductsPage() {
             {formData.maxLoanToSavingsRatio && parseFloat(formData.maxLoanToSavingsRatio) > 0 && (
               <Switch
                 label="Hold savings while the loan is running"
-                description={`When a loan is paid out, the loan amount ÷ ${parseFloat(formData.maxLoanToSavingsRatio)} is held from the member's savings (a ₦200,000 loan holds ₦${(200000 / parseFloat(formData.maxLoanToSavingsRatio)).toLocaleString()}). It stays in their account but can't be withdrawn or borrowed against, and is released as they repay.`}
+                description={`When a loan is paid out, the loan amount ÷ ${parseFloat(formData.maxLoanToSavingsRatio)} is held from the member's savings (a ₦200,000 loan holds ${formatNairaFull((200000 / parseFloat(formData.maxLoanToSavingsRatio)))}). It stays in their account but can't be withdrawn or borrowed against, and is released as they repay.`}
                 checked={formData.lockSavings}
                 onChange={(e) => setFormData({ ...formData, lockSavings: e.currentTarget.checked })}
               />

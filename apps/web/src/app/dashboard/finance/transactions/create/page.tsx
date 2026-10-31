@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FinancialCategory, Member } from '@/types';
@@ -214,7 +215,7 @@ export default function CreateTransactionPage() {
                 <option value="">Select category</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.name} ({cat.type}) {cat.amount ? `- ₦${Number(cat.amount).toLocaleString()}` : ''}
+                    {cat.name} ({cat.type}) {cat.amount ? `- ${formatNairaFull(Number(cat.amount))}` : ''}
                   </option>
                 ))}
               </select>

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState } from 'react';
 import { Modal, Stack, Group, Text, Button, Badge, Progress, Alert, ScrollArea, Checkbox, Card } from '@mantine/core';
 import { IconCheck, IconX, IconAlertTriangle } from '@tabler/icons-react';
@@ -136,7 +137,7 @@ export function AutoMatchPreview({ matches, onApply, onCancel }: AutoMatchPrevie
                 <Group gap="xs">
                   <Text size="sm" c="dimmed">Variance:</Text>
                   <Text fw={700} c={match.variance > 0 ? 'red' : 'green'}>
-                    ₦{match.variance.toLocaleString()}
+                    {formatNairaFull(match.variance)}
                   </Text>
                 </Group>
               </Card>
@@ -179,7 +180,7 @@ export function AutoMatchPreview({ matches, onApply, onCancel }: AutoMatchPrevie
                 <Group gap="xs">
                   <Text size="sm" c="dimmed">Variance:</Text>
                   <Text fw={700} c={match.variance > 0 ? 'red' : 'green'}>
-                    ₦{match.variance.toLocaleString()}
+                    {formatNairaFull(match.variance)}
                   </Text>
                 </Group>
               </Card>
@@ -222,7 +223,7 @@ export function AutoMatchPreview({ matches, onApply, onCancel }: AutoMatchPrevie
                 <Group gap="xs">
                   <Text size="sm" c="dimmed">Variance:</Text>
                   <Text fw={700} c={match.variance > 0 ? 'red' : 'green'}>
-                    ₦{match.variance.toLocaleString()}
+                    {formatNairaFull(match.variance)}
                   </Text>
                 </Group>
               </Card>

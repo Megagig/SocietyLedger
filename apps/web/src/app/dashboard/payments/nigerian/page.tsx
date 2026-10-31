@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -139,7 +140,7 @@ export default function NigerianPaymentsDashboard() {
           <Card shadow="sm" padding="lg" withBorder>
             <Stack align="center">
               <Text size="xl" fw={700} c="orange">
-                ₦{(dashboardData.totalUnmatchedAmount ?? 0).toLocaleString()}
+                {formatNairaFull((dashboardData.totalUnmatchedAmount ?? 0))}
               </Text>
               <Text size="sm" c="dimmed">
                 Unmatched Amount
@@ -220,7 +221,7 @@ export default function NigerianPaymentsDashboard() {
                   </div>
                   <Group gap="sm">
                     <Text fw={700} c="orange">
-                      ₦{entry.amount.toLocaleString()}
+                      {formatNairaFull(entry.amount)}
                     </Text>
                     <Badge
                       color={

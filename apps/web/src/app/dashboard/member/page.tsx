@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { ThriftHome } from '@/components/ajo/ThriftHome';
 import { AjoLoading } from '@/components/ajo/AjoStates';
 import { useAjoNav } from '@/lib/ajo/useAjoNav';
@@ -46,7 +47,7 @@ function AssociationMemberDashboardPage() {
     fetchSummary();
   }, []);
 
-  const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => formatNairaFull(amount);
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
 

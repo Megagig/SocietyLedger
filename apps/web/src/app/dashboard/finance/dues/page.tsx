@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -228,7 +229,7 @@ export default function DuesPage() {
                   <option value="">Select a due category</option>
                   {dueCategories.map(cat => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.name} {cat.amount ? `(₦${Number(cat.amount).toLocaleString()})` : ''}
+                      {cat.name} {cat.amount ? `(${formatNairaFull(Number(cat.amount))})` : ''}
                     </option>
                   ))}
                 </select>
@@ -247,7 +248,7 @@ export default function DuesPage() {
                   )}
                   <div className="mt-2 flex gap-4 text-blue-700 dark:text-blue-300">
                     {selectedCategoryData.amount && (
-                      <span>Default: ₦{Number(selectedCategoryData.amount).toLocaleString()}</span>
+                      <span>Default: {formatNairaFull(Number(selectedCategoryData.amount))}</span>
                     )}
                     {selectedCategoryData.frequency && (
                       <span className="capitalize">{selectedCategoryData.frequency}</span>
@@ -314,13 +315,13 @@ export default function DuesPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500">Amount per Member:</span>
                 <span className="font-medium text-gray-900 dark:text-white">
-                  ₦{(customAmount ? parseFloat(customAmount) : selectedCategoryData?.amount || 0).toLocaleString()}
+                  {formatNairaFull((customAmount ? parseFloat(customAmount) : selectedCategoryData?.amount || 0))}
                 </span>
               </div>
               <div className="flex justify-between border-t pt-3">
                 <span className="text-gray-500">Total Amount:</span>
                 <span className="font-bold text-lg text-green-600">
-                  ₦{((customAmount ? parseFloat(customAmount) : selectedCategoryData?.amount || 0) * selectedMembers.length).toLocaleString()}
+                  {formatNairaFull(((customAmount ? parseFloat(customAmount) : selectedCategoryData?.amount || 0) * selectedMembers.length))}
                 </span>
               </div>
             </div>

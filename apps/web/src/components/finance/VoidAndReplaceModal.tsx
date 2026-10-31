@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { apiPost, apiGet } from '@/utils/api';
@@ -143,7 +144,7 @@ export function VoidAndReplaceModal({ transaction, onClose, onSuccess }: VoidAnd
                   Reference: {transaction.referenceNumber || transaction.id}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Amount: ₦{transaction.amount.toLocaleString()}
+                  Amount: {formatNairaFull(transaction.amount)}
                 </p>
               </div>
 

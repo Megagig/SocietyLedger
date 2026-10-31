@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -155,7 +156,7 @@ export default function PayoutRequestsPage() {
   };
 
   const formatCurrency = (amount: string | number) => {
-    return `₦${Number(amount).toLocaleString()}`;
+    return formatNairaFull(Number(amount));
   };
 
   const formatDate = (date: string) => {
@@ -789,7 +790,7 @@ function RequestDetailsModal({
   const [disbursementMethod, setDisbursementMethod] = useState('bank_transfer');
   const [disbursementReference, setDisbursementReference] = useState('');
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', {
     year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
   });

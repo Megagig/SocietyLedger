@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Modal, Textarea, Select, Button, Badge } from '@mantine/core';
@@ -111,7 +112,7 @@ export default function ApplicationDetailPage() {
   };
 
   const openReviewModal = (action: 'approve' | 'reject') => { setReviewAction(action); openReview(); };
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const getStatusColor = (status: string) => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge, Progress, Button } from '@mantine/core';
@@ -90,7 +91,7 @@ export default function MyFinancesPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => formatNairaFull(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
 
   const getPaymentProgress = () => {

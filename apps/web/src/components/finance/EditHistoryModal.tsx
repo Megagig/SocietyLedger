@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { X, History, User, Calendar } from 'lucide-react';
 
@@ -64,7 +65,7 @@ export function EditHistoryModal({
     if (typeof value === 'string' && !isNaN(Date.parse(value)) && value.includes('T')) {
       return formatDate(value);
     }
-    if (typeof value === 'number') return `₦${value.toLocaleString()}`;
+    if (typeof value === 'number') return formatNairaFull(value);
     return String(value);
   };
 

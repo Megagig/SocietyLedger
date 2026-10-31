@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getWelfareDashboard, getFundSummaries, getMyWelfareProfile } from '@/lib/api/welfare';
@@ -77,7 +78,7 @@ export default function WelfareDashboardPage() {
   };
 
   const formatCurrency = (amount: string | number) => {
-    return `₦${Number(amount).toLocaleString()}`;
+    return formatNairaFull(Number(amount));
   };
 
   const getFundTypeColor = (type: string) => {

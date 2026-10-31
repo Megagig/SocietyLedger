@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Transaction, FinancialCategory } from '@/types';
@@ -188,7 +189,7 @@ export default function TransactionsPage() {
   };
 
   const formatCurrency = (amount: number | string) => {
-    return `₦${Number(amount).toLocaleString()}`;
+    return formatNairaFull(Number(amount));
   };
 
   const formatDate = (date: string | Date) => {
@@ -950,7 +951,7 @@ export default function TransactionsPage() {
                   {getUnpaidSelectedTransactions().length} transaction(s) to be marked as paid
                 </p>
                 <p className="text-lg font-bold mt-1">
-                  Total: ₦{getUnpaidTotalAmount().toLocaleString()}
+                  Total: {formatNairaFull(getUnpaidTotalAmount())}
                 </p>
               </div>
             </div>

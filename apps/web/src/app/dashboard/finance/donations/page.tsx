@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Text, Tabs } from '@mantine/core';
@@ -488,7 +489,7 @@ export default function DonationsPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Donations</p>
               <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">
-                ₦{Number(donationStats?.totalAmount || 0).toLocaleString()}
+                {formatNairaFull(Number(donationStats?.totalAmount || 0))}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-full">
@@ -627,7 +628,7 @@ export default function DonationsPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">Suggested Amount:</span>
                     <span className="font-semibold text-green-600">
-                      ₦{Number(donation.amount).toLocaleString()}
+                      {formatNairaFull(Number(donation.amount))}
                     </span>
                   </div>
                 )}
@@ -692,7 +693,7 @@ export default function DonationsPage() {
                     {allocation.targetAmount && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Target:</span>
-                        <span className="font-semibold">₦{Number(allocation.targetAmount).toLocaleString()}</span>
+                        <span className="font-semibold">{formatNairaFull(Number(allocation.targetAmount))}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
@@ -747,7 +748,7 @@ export default function DonationsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 font-semibold text-green-600">
-                        ₦{Number(donation.amount || donation.transaction?.amount || 0).toLocaleString()}
+                        {formatNairaFull(Number(donation.amount || donation.transaction?.amount || 0))}
                       </td>
                       <td className="px-4 py-3 text-sm">{donation.category || donation.transaction?.category?.name || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">
@@ -1168,7 +1169,7 @@ export default function DonationsPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500">Amount:</span>
                 <span className="font-bold text-green-600">
-                  ₦{Number(selectedReceipt.amount || selectedReceipt.transaction?.amount || 0).toLocaleString()}
+                  {formatNairaFull(Number(selectedReceipt.amount || selectedReceipt.transaction?.amount || 0))}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -1228,7 +1229,7 @@ export default function DonationsPage() {
               
               <div className="text-center my-6">
                 <span className="text-3xl font-bold text-green-600">
-                  ₦{Number(printReceiptData.amount).toLocaleString()}
+                  {formatNairaFull(Number(printReceiptData.amount))}
                 </span>
               </div>
               

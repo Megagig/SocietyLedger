@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
@@ -158,7 +159,7 @@ export default function BankTransferDetailPage() {
             <Card shadow="sm" padding="lg" withBorder>
               <Stack align="center" gap="xs">
                 <Text size="xl" fw={700} c="green">
-                  ₦{transfer.amount.toLocaleString()}
+                  {formatNairaFull(transfer.amount)}
                 </Text>
                 <Text size="sm" c="dimmed">
                   Transfer Amount

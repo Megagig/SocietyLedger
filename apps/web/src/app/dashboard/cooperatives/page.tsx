@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCooperativeDashboard } from '@/lib/api/cooperatives';
@@ -63,7 +64,7 @@ function OfficerDashboard() {
   };
 
   const formatCurrency = (amount: string | number) => {
-    return `₦${Number(amount).toLocaleString()}`;
+    return formatNairaFull(Number(amount));
   };
 
   if (isLoading) {

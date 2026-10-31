@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { Modal, Button, Badge, Textarea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -101,7 +102,7 @@ export default function GuarantorsPage() {
     openResponse();
   };
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
 
   if (isLoading) {

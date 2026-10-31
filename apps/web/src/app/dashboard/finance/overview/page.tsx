@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiGet } from '@/utils/api';
@@ -55,7 +56,7 @@ export default function FinanceOverviewPage() {
   };
 
   const formatCurrency = (amount: number | string) => {
-    return `₦${Number(amount).toLocaleString()}`;
+    return formatNairaFull(Number(amount));
   };
 
   const formatDate = (date: string) => {

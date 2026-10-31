@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, Text, Badge, Loader, Alert, Button, Table, Group, Stack } from '@mantine/core';
@@ -64,7 +65,7 @@ export default function SavingsAccountDetailPage() {
     fetchData();
   }, [accountId]);
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
 
   if (isLoading) {

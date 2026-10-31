@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
@@ -216,7 +217,7 @@ export default function FinanceSetupPage() {
                     </div>
                     <p className="font-medium text-gray-900 dark:text-gray-100">{template.name}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      ₦{Number(template.amount).toLocaleString()} / {template.frequency}
+                      {formatNairaFull(Number(template.amount))} / {template.frequency}
                     </p>
                   </button>
                 );
@@ -324,7 +325,7 @@ export default function FinanceSetupPage() {
                       <div>
                         <p className="font-medium text-gray-900 dark:text-gray-100">{category.name}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          ₦{Number(category.amount).toLocaleString()} / {category.frequency}
+                          {formatNairaFull(Number(category.amount))} / {category.frequency}
                         </p>
                       </div>
                     </div>

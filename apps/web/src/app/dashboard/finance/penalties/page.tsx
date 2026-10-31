@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Text, Tabs } from '@mantine/core';
@@ -396,7 +397,7 @@ export default function PenaltiesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to apply late fees');
 
-      toast.success(`Applied ${data.data.applied} late fee(s), total: ₦${data.data.totalAmount.toLocaleString()}`);
+      toast.success(`Applied ${data.data.applied} late fee(s), total: ${formatNairaFull(data.data.totalAmount)}`);
       fetchStats();
       fetchAppliedPenalties();
     } catch (err: any) {
@@ -433,14 +434,14 @@ export default function PenaltiesPage() {
         children: (
           <div>
             <Text size="sm" mb="sm">
-              This charges {preview.count} late fee(s) to {preview.memberCount} member(s), ₦{preview.totalAmount.toLocaleString()} in total.
+              This charges {preview.count} late fee(s) to {preview.memberCount} member(s), {formatNairaFull(preview.totalAmount)} in total.
               Voided charges, donation pledges and charges inside their grace period are left out.
             </Text>
             <div className="max-h-48 overflow-y-auto text-sm">
               {preview.items.map((item) => (
                 <div key={item.transactionId} className="flex justify-between gap-2 py-1 border-b border-gray-100 dark:border-gray-700">
                   <span>{item.memberName} · {item.chargeName} · {item.daysOverdue} days overdue</span>
-                  <span className="font-medium">₦{item.penaltyAmount.toLocaleString()}</span>
+                  <span className="font-medium">{formatNairaFull(item.penaltyAmount)}</span>
                 </div>
               ))}
               {preview.truncated && <p className="text-gray-500 pt-1">…and more.</p>}
@@ -604,7 +605,7 @@ export default function PenaltiesPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Penalties</p>
               <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">
-                ₦{Number(stats?.penalties.totalAmount || 0).toLocaleString()}
+                {formatNairaFull(Number(stats?.penalties.totalAmount || 0))}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-full">
@@ -618,7 +619,7 @@ export default function PenaltiesPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Collected</p>
               <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">
-                ₦{Number(stats?.penalties.totalCollected || 0).toLocaleString()}
+                {formatNairaFull(Number(stats?.penalties.totalCollected || 0))}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-full">
@@ -646,7 +647,7 @@ export default function PenaltiesPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Waived</p>
               <p className="text-lg sm:text-2xl font-bold text-purple-600 mt-1">
-                ₦{Number(stats?.waivers.totalWaived || 0).toLocaleString()}
+                {formatNairaFull(Number(stats?.waivers.totalWaived || 0))}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
@@ -744,7 +745,7 @@ export default function PenaltiesPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">Default Amount:</span>
                     <span className="font-semibold text-red-600">
-                      ₦{Number(penalty.amount).toLocaleString()}
+                      {formatNairaFull(Number(penalty.amount))}
                     </span>
                   </div>
                 )}
@@ -817,7 +818,7 @@ export default function PenaltiesPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-500">Fee:</span>
                       <span className="font-semibold text-red-600">
-                        {rule.feeType === 'percentage' ? `${rule.feeAmount}%` : `₦${Number(rule.feeAmount).toLocaleString()}`}
+                        {rule.feeType === 'percentage' ? `${rule.feeAmount}%` : formatNairaFull(Number(rule.feeAmount))}
                       </span>
                     </div>
                     {rule.isCompounding && (
@@ -899,8 +900,8 @@ export default function PenaltiesPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm">{txn.category.name}</td>
-                        <td className="px-4 py-3 text-red-600">₦{Number(txn.amount).toLocaleString()}</td>
-                        <td className="px-4 py-3">₦{outstanding.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-red-600">{formatNairaFull(Number(txn.amount))}</td>
+                        <td className="px-4 py-3">{formatNairaFull(outstanding)}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 capitalize">
                             {txn.status}
@@ -964,10 +965,10 @@ export default function PenaltiesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-red-600">
-                        ₦{Number(waiver.transaction.amount).toLocaleString()}
+                        {formatNairaFull(Number(waiver.transaction.amount))}
                       </td>
                       <td className="px-4 py-3 font-semibold text-purple-600">
-                        ₦{Number(waiver.waivedAmount).toLocaleString()}
+                        {formatNairaFull(Number(waiver.waivedAmount))}
                       </td>
                       <td className="px-4 py-3 text-sm max-w-xs truncate">{waiver.reason}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">

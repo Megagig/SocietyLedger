@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState } from 'react';
 import { Card, Text, Group, Badge, Stack, ActionIcon, Menu, Modal, Button } from '@mantine/core';
 import { IconEye, IconTrash, IconDots } from '@tabler/icons-react';
@@ -58,7 +59,7 @@ export function ReconciliationCard({ reconciliation, onView, onDelete }: Reconci
           <Group gap="xs">
             <Text size="sm" c="dimmed">Variance:</Text>
             <Text fw={700} c={reconciliation.variance > 0 ? 'red' : 'green'}>
-              ₦{reconciliation.variance.toLocaleString()}
+              {formatNairaFull(reconciliation.variance)}
             </Text>
           </Group>
 

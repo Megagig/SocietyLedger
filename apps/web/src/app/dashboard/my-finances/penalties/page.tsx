@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge, Button } from '@mantine/core';
@@ -40,7 +41,7 @@ export default function MyPenaltiesPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `₦${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => formatNairaFull(amount);
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' });
 
   const totalOutstanding = penalties.filter(p => p.status !== 'paid').reduce((sum, p) => sum + p.balance, 0);

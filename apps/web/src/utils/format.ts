@@ -76,6 +76,15 @@ export function formatCurrency(
 }
 
 /**
+ * Tick label for a naira amount on a chart axis: always the full figure (₦300,000.00), never 300k or a bare number.
+ * Give the axis a width of about 100 so the label is not clipped.
+ */
+export const formatAxisNaira = (value: number | string): string => formatCurrency(value);
+
+/** A naira amount in full with two decimals (₦5,000.00). Same as formatCurrency; the distinct name avoids clashing with a page's own local formatCurrency. */
+export const formatNairaFull = (amount: number | string | null | undefined): string => formatCurrency(amount);
+
+/**
  * Format a number with thousand separators
  * @param num - Number to format
  * @returns Formatted number string

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
@@ -247,7 +248,7 @@ export default function RemindersPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
               <p className="text-lg sm:text-2xl font-bold text-orange-600 mt-1">
-                ₦{(summary?.totalOutstanding || 0).toLocaleString()}
+                {formatNairaFull((summary?.totalOutstanding || 0))}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
@@ -314,7 +315,7 @@ export default function RemindersPage() {
           <div className="flex items-center gap-3 sm:gap-4">
             {selectedMembers.length > 0 && (
               <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                {selectedMembers.length} selected • ₦{selectedTotal.toLocaleString()}
+                {selectedMembers.length} selected • {formatNairaFull(selectedTotal)}
               </div>
             )}
             
@@ -390,7 +391,7 @@ export default function RemindersPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-orange-600">
-                          ₦{item.totalOutstanding.toLocaleString()}
+                          {formatNairaFull(item.totalOutstanding)}
                         </p>
                         <p className="text-xs text-gray-500">
                           {item.transactions.length} transaction(s)
@@ -421,7 +422,7 @@ export default function RemindersPage() {
                             </span>
                           </span>
                           <span className="font-medium text-gray-900 dark:text-white">
-                            ₦{txn.balance.toLocaleString()}
+                            {formatNairaFull(txn.balance)}
                           </span>
                         </div>
                       ))}
@@ -513,7 +514,7 @@ export default function RemindersPage() {
                       <strong>{selectedTransactions.length}</strong> pending transaction(s)
                     </p>
                     <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
-                      Total outstanding: <strong>₦{selectedTotal.toLocaleString()}</strong>
+                      Total outstanding: <strong>{formatNairaFull(selectedTotal)}</strong>
                     </p>
                   </div>
 

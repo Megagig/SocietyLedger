@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { apiGet } from '@/utils/api';
@@ -146,7 +147,7 @@ export default function PaymentVerifyPage() {
               <Group justify="space-between">
                 <Text fw={500}>Amount Paid:</Text>
                 <Text size="xl" fw={700} c="green">
-                  ₦{data.amount?.toLocaleString()}
+                  {formatNairaFull(data.amount)}
                 </Text>
               </Group>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Modal, TextInput, Select, NumberInput, Textarea, Button, Badge, Pagination } from '@mantine/core';
@@ -165,7 +166,7 @@ export default function SavingsPage() {
     openTransaction();
   };
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
 
   const getStatusColor = (status: string) => {
     switch (status) {

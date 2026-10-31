@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState } from 'react';
 import { Paper, Text, TextInput, Button, Badge, Table, Loader, Code, Accordion } from '@mantine/core';
 import { IconSearch, IconBrain, IconDatabase, IconSparkles, IconUser, IconReceipt, IconCurrencyNaira } from '@tabler/icons-react';
@@ -88,7 +89,7 @@ export default function AIQueryPage() {
 
     const renderCellValue = (col: string, value: any) => {
       if (col === 'amount' || col === 'totalExpected' || col === 'totalCollected' || col === 'outstanding') {
-        return <Text fw={500}>₦{formatValue(value)}</Text>;
+        return <Text fw={500}>{typeof value === 'number' ? formatNairaFull(value) : `₦${formatValue(value)}`}</Text>;
       }
       if (col === 'status') {
         return (

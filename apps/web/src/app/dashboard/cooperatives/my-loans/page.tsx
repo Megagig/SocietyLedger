@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal, NumberInput, Select, Textarea, TextInput, FileInput, Button, Badge, Progress, Alert, CopyButton, ActionIcon, Tooltip } from '@mantine/core';
@@ -215,7 +216,7 @@ export default function MyLoansPage() {
     );
   };
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
 
   const getStatusColor = (status: string) => {

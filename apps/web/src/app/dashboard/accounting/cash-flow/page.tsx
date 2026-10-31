@@ -1,5 +1,6 @@
 'use client';
 
+import { formatAxisNaira } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -330,7 +331,7 @@ export default function CashFlowPage() {
             <ResponsiveContainer width="100%" height={200} className="sm:h-[250px]">
               <BarChart data={chartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                <XAxis type="number" tickFormatter={formatAxisNaira} tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(value: any) => formatCurrency(value)} />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]}>

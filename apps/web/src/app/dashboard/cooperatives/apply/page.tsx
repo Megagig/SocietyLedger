@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NumberInput, Select, Textarea, MultiSelect, Button, Stepper, Badge } from '@mantine/core';
@@ -212,7 +213,7 @@ export default function ApplyForLoanPage() {
     }
   };
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
 
   const canProceed = () => {
     switch (activeStep) {

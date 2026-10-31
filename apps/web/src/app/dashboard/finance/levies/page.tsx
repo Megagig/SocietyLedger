@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Text, Progress, Tabs } from '@mantine/core';
@@ -322,7 +323,7 @@ export default function LeviesPage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Billed</p>
               <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">
-                ₦{Number(stats?.totalAmount || 0).toLocaleString()}
+                {formatNairaFull(Number(stats?.totalAmount || 0))}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -433,7 +434,7 @@ export default function LeviesPage() {
                       <div className="flex justify-between">
                         <span className="text-gray-500">Amount:</span>
                         <span className="font-semibold text-gray-900 dark:text-white">
-                          ₦{Number(levy.amount).toLocaleString()}
+                          {formatNairaFull(Number(levy.amount))}
                         </span>
                       </div>
                     )}
@@ -523,7 +524,7 @@ export default function LeviesPage() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-500">Target:</span>
-                        <span className="font-semibold">₦{Number(campaign.targetAmount).toLocaleString()}</span>
+                        <span className="font-semibold">{formatNairaFull(Number(campaign.targetAmount))}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Members:</span>

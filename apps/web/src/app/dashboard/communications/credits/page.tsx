@@ -56,7 +56,7 @@ export default function SMSCreditsPage() {
   const [loading, setLoading] = useState(false);
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(amount);
+    new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   const purchase = async (credits: number, packageId: string) => {
     setLoading(true);
@@ -112,7 +112,7 @@ export default function SMSCreditsPage() {
           <Group justify="space-between" mb="md">
             <div>
               <Text size="sm" c="dimmed">Current Rate</Text>
-              <Text size="xl" fw={700}>₦{PRICE_PER_CREDIT} per SMS</Text>
+              <Text size="xl" fw={700}>{formatCurrency(PRICE_PER_CREDIT)} per SMS</Text>
             </div>
             <div>
               <Text size="sm" c="dimmed">Minimum Purchase</Text>
@@ -150,7 +150,7 @@ export default function SMSCreditsPage() {
                     <Divider />
                     <div>
                       <Text size="xl" fw={700}>{formatCurrency(pkg.price)}</Text>
-                      <Text size="xs" c="dimmed">₦{PRICE_PER_CREDIT} per credit</Text>
+                      <Text size="xs" c="dimmed">{formatCurrency(PRICE_PER_CREDIT)} per credit</Text>
                     </div>
                     <Button
                       fullWidth

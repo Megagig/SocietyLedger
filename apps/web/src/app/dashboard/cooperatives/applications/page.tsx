@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Modal, TextInput, NumberInput, Textarea, Select, MultiSelect, Button, Badge, Pagination } from '@mantine/core';
@@ -104,7 +105,7 @@ export default function ApplicationsPage() {
     } catch (err: any) { toast.error(err.message); } finally { setIsSubmitting(false); }
   };
 
-  const formatCurrency = (amount: string | number) => `₦${Number(amount).toLocaleString()}`;
+  const formatCurrency = (amount: string | number) => formatNairaFull(Number(amount));
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
 
   const getStatusColor = (status: string) => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatAxisNaira } from '@/utils/format';
 import { ThriftHome } from '@/components/ajo/ThriftHome';
 import { AjoLoading } from '@/components/ajo/AjoStates';
 import { useAjoNav } from '@/lib/ajo/useAjoNav';
@@ -178,7 +179,7 @@ function AssociationAdminDashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
                     <XAxis dataKey="month" stroke="#9ca3af" tick={{ fontSize: 10 }} />
-                    <YAxis stroke="#9ca3af" tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
+                    <YAxis stroke="#9ca3af" width={100} tickFormatter={formatAxisNaira} tick={{ fontSize: 10 }} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', fontSize: '12px' }}
                       labelStyle={{ color: '#f3f4f6' }}

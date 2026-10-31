@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge, Table, Pagination, TextInput, Select } from '@mantine/core';
@@ -119,7 +120,7 @@ export default function MemberLedgerPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => `₦${Math.abs(amount).toLocaleString()}`;
+  const formatCurrency = (amount: number) => formatNairaFull(Math.abs(amount));
   const formatDate = (date: string | null) => date 
     ? new Date(date).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })
     : 'No activity';

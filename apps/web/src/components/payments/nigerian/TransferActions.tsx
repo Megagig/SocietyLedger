@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState } from 'react';
 import { Button, Menu, ActionIcon, Modal, Stack, Group, Text, Textarea } from '@mantine/core';
 import { IconEye, IconEdit, IconTrash, IconDots } from '@tabler/icons-react';
@@ -73,7 +74,7 @@ export function TransferActions({ transfer, onView, onEdit, onDelete }: Transfer
           </Group>
           <Group gap="xs" mb="md">
             <Text size="sm" fw={500}>Amount:</Text>
-            <Text size="sm" fw={700} c="green">₦{transfer.amount.toLocaleString()}</Text>
+            <Text size="sm" fw={700} c="green">{formatNairaFull(transfer.amount)}</Text>
           </Group>
           <Text size="sm" c="dimmed">
             This action cannot be undone.

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Text } from '@mantine/core';
@@ -280,7 +281,7 @@ export default function OverduePage() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
               <p className="text-lg sm:text-2xl font-bold text-orange-600 mt-1">
-                ₦{(stats?.totalAmount || 0).toLocaleString()}
+                {formatNairaFull((stats?.totalAmount || 0))}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
@@ -416,7 +417,7 @@ export default function OverduePage() {
                     </div>
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{txn.category.name}</span>
-                      <span className="font-semibold text-red-600">₦{Number(txn.balance).toLocaleString()}</span>
+                      <span className="font-semibold text-red-600">{formatNairaFull(Number(txn.balance))}</span>
                     </div>
                     <div className="mt-2 flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
                       <button
@@ -504,7 +505,7 @@ export default function OverduePage() {
                     </td>
                     <td className="px-4 py-4">
                       <span className="text-sm font-semibold text-red-600">
-                        ₦{Number(txn.balance).toLocaleString()}
+                        {formatNairaFull(Number(txn.balance))}
                       </span>
                     </td>
                     <td className="px-4 py-4">

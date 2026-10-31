@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
 import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
@@ -302,7 +303,7 @@ export default function CategoriesPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">Amount:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      ₦{Number(category.amount).toLocaleString()}
+                      {formatNairaFull(Number(category.amount))}
                     </span>
                   </div>
                 )}
