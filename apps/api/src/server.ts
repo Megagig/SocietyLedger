@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { apiCacheHeaders } from './middleware/http-cache.middleware';
 import { ALLOWED_REQUEST_HEADERS } from './lib/cors-headers';
+import { trustProxyHops } from './lib/trust-proxy';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
@@ -80,6 +81,9 @@ import documentationAdminRoutes from './modules/documentation/documentation-admi
 import adminAuthRoutes from './modules/admin/admin-auth.routes';
 
 const app: Express = express();
+
+// Behind Dokploy's proxy, so use the visitor's real address (rate limits, login attempts, audit log) and not the proxy's. See lib/trust-proxy.ts.
+app.set('trust proxy', trustProxyHops());
 const PORT = process.env.PORT || 4000;
 
 // Security middleware
