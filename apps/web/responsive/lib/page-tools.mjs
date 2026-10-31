@@ -6,7 +6,7 @@ export const INIT_SCRIPT = `
     const RealDate = Date; const offset = fixed - RealDate.now();
     class FixedDate extends RealDate { constructor(...a) { if (a.length === 0) { super(RealDate.now() + offset); } else { super(...a); } } static now() { return RealDate.now() + offset; } }
     window.Date = FixedDate;
-    const css = '*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;caret-color:transparent!important}';
+    const css = '*:not(.overflow-x-auto),*::before,*::after{animation-duration:0s!important;animation-delay:0s!important}*,*::before,*::after{transition-duration:0s!important;transition-delay:0s!important;caret-color:transparent!important}';
     const add = () => { const s = document.createElement('style'); s.setAttribute('data-resp-audit', ''); s.textContent = css; (document.head || document.documentElement).appendChild(s); };
     if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
   })();

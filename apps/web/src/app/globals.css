@@ -290,3 +290,67 @@ body.no-overscroll {
     padding-bottom: 0.5rem;
   }
 }
+/* ===== Responsive layer (see RESPONSIVE.md) ===== */
+
+/* Inputs stay at 16px below the lg breakpoint, so iOS Safari does not zoom the page when one is focused. */
+@media (max-width: 1023.98px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([hidden]),
+  select:not([hidden]),
+  textarea:not([hidden]) {
+    font-size: 16px;
+  }
+}
+
+/* Mantine modals become bottom sheets on phones: full width, as tall as the visible screen allows, scrolling inside. */
+@media (max-width: 639.98px) {
+  .mantine-Modal-root:not([data-full-screen]) {
+    --modal-inner-align: flex-end;
+    --modal-inner-x-offset: 0;
+    --modal-inner-y-offset: 0;
+    --modal-content-flex: 0 0 100%;
+    --modal-content-max-height: 92dvh;
+  }
+  .mantine-Modal-root:not([data-full-screen]) .mantine-Modal-content {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Tables that scroll sideways fade out at the edge where more columns are hidden. The fade is driven by the scroll position, so it
+   only shows while there is more to scroll; browsers without scroll-driven animations show no fade and nothing else changes. */
+@property --sl-fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --sl-fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes sl-edge-fade {
+  0% { --sl-fade-start: 0px; --sl-fade-end: 2rem; }
+  4% { --sl-fade-start: 2rem; --sl-fade-end: 2rem; }
+  96% { --sl-fade-start: 2rem; --sl-fade-end: 2rem; }
+  100% { --sl-fade-start: 2rem; --sl-fade-end: 0px; }
+}
+@supports (animation-timeline: scroll()) {
+  .overflow-x-auto:has(> table) {
+    animation: sl-edge-fade linear both;
+    animation-timeline: scroll(self inline);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black var(--sl-fade-start), black calc(100% - var(--sl-fade-end)), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, black var(--sl-fade-start), black calc(100% - var(--sl-fade-end)), transparent 100%);
+  }
+}
+
+/* Figures line up in columns, and long words, e-mails and reference numbers wrap instead of pushing the page wider. */
+table {
+  font-variant-numeric: tabular-nums;
+}
+main {
+  overflow-wrap: break-word;
+}
+main :is(dd, h1, h2, h3, h4) {
+  overflow-wrap: anywhere;
+}
