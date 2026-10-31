@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { apiGet } from '@/utils/api';
 import {
   Container,
   Paper,
@@ -63,12 +64,8 @@ export default function PaymentVerifyPage() {
         ? `/api/payments/nomba/verify/${reference}`
         : `/api/payments/paystack/verify/${reference}`;
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
-        {
-          credentials: 'include',
-        }
-      );
+      // Through the shared client so it carries THIS tab's token and association, not whichever group signed in last in the browser.
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`);
 
       const result = await response.json();
 

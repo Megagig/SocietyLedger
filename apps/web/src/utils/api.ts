@@ -7,18 +7,32 @@ import { useAuthStore } from '@/store/authStore';
 const MODULE_LOCK_ERROR_CODES = new Set(['MODULE_DISABLED', 'FEATURE_DISABLED', 'MODULES_DISABLED', 'NO_MODULE_AVAILABLE']);
 
 /**
- * Get auth token from cookie or localStorage
+ * The token for THIS tab's sign-in.
+ *
+ * It comes from this site's own saved sign-in (the same place the axios client reads), because that is the only token that is certainly for
+ * the association in this tab's address. Without one, the API falls back to its own HttpOnly login cookie, which belongs to the API host and
+ * is shared by every association in the browser: it holds whoever signed in last, in any tab, so a person with accounts in two groups
+ * would be refused with TENANT_MISMATCH. The readable cookie is only a fallback (impersonation writes it).
  */
-function getAuthToken(): string | null {
+export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
-  
-  // Try to get from cookie
+
+  try {
+    const saved = window.localStorage.getItem('auth-storage');
+    if (saved) {
+      const token = JSON.parse(saved)?.state?.token;
+      if (typeof token === 'string' && token.length > 0) return token;
+    }
+  } catch {
+    // unreadable saved state: fall through to the cookie
+  }
+
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
     const [name, value] = cookie.trim().split('=');
     if (name === 'token') return value;
   }
-  
+
   return null;
 }
 
