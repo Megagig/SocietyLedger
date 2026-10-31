@@ -5,7 +5,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 export interface RemovablePersister {
-  removeClient: () => void | Promise<void>;
+  removeClient: () => void | PromiseLike<void>;
 }
 
 export async function resetClientCache(queryClient: QueryClient, persister?: RemovablePersister | null): Promise<void> {

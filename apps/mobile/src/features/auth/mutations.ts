@@ -1,8 +1,9 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 
 import { authApi } from '@/api/endpoints/auth';
 import { memberInvitesApi } from '@/api/endpoints/memberInvites';
 import { setTokens } from '@/lib/secure';
+import { resetAppQueryCache } from '@/lib/queryClient';
 import { useAppLockStore } from '@/stores/appLock';
 import { useSessionStore } from '@/stores/session';
 import { mapLoginUserToSessionUser } from './mappers';
@@ -12,7 +13,6 @@ import { mapLoginUserToSessionUser } from './mappers';
  * (code-standards.md §4 — routes compose feature hooks, they don't disappear into them). */
 export function useLogin() {
   const setUser = useSessionStore((state) => state.setUser);
-  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: authApi.login,
@@ -23,7 +23,7 @@ export function useLogin() {
       useAppLockStore.getState().unlock();
       // Clear any stale cached data (e.g. 403 errors from before RBAC was fixed) so
       // queries re-fetch fresh data with the new session's permissions.
-      queryClient.clear();
+      void resetAppQueryCache(); // memory, the saved copy on the phone, and requests in flight
     },
   });
 }

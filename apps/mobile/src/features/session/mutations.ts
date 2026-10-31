@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, type ChangePasswordPayload } from '@/api/endpoints/auth';
 import { membersApi, type UpdateProfilePayload } from '@/api/endpoints/members';
 import { clearTokens, getTokenCache } from '@/lib/secure';
+import { resetAppQueryCache } from '@/lib/queryClient';
 import { unregisterPushToken } from '@/lib/push';
 import { useAppLockStore } from '@/stores/appLock';
 import { useModulesStore } from '@/stores/modules';
@@ -50,7 +51,6 @@ export function useRevokeSession() {
  * Login can be reached again quickly.
  */
 export function useLogout() {
-  const queryClient = useQueryClient();
   const resetSession = useSessionStore((state) => state.reset);
   const resetModules = useModulesStore((state) => state.reset);
   const clearTenant = useTenantStore((state) => state.clearCurrent);
@@ -66,7 +66,7 @@ export function useLogout() {
       return options ?? {};
     },
     onSuccess: (options) => {
-      queryClient.clear();
+      void resetAppQueryCache(); // memory, the saved copy on the phone, and requests in flight
       resetSession();
       resetModules();
       lock();

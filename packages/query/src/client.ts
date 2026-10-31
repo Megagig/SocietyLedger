@@ -18,6 +18,8 @@ export interface ClientOptions {
   /** Mobile: show saved data and run the request when the network comes back instead of failing at once. */
   offlineFirst?: boolean;
   /** For a query whose domain has no entry in the table yet. Keep what the app had before it moved over. */
+  /** Refetch stale queries when the window or app comes back to the front. Off on the web; on in the mobile app, where it means "the app was reopened". */
+  refetchOnFocus?: boolean;
   defaultStaleTime?: number;
   defaultGcTime?: number;
 }
@@ -30,7 +32,7 @@ export function createQueryClient(options: ClientOptions): QueryClient {
         gcTime: options.defaultGcTime ?? 5 * 60_000,
         retry: (failureCount, error) => failureCount < MAX_READ_RETRIES && options.isRetryable(error),
         retryDelay: (attempt) => retryDelay(attempt),
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: options.refetchOnFocus ?? false,
         refetchOnReconnect: true,
         networkMode: options.offlineFirst ? 'offlineFirst' : 'online',
       },
