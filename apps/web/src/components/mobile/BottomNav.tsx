@@ -85,7 +85,7 @@ export function BottomNav({ onMenuClick, notificationCount = 0 }: BottomNavProps
   };
 
   return (
-    <nav aria-label="Primary" className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+    <nav aria-label="Primary" className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       {/* Safe area padding for iOS */}
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pb-safe">
         <div className="flex items-center justify-around h-16">

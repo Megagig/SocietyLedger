@@ -123,7 +123,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       <UpdatePrompt />
       
       {renderSidebar()}
-      <main className="flex-1 min-w-0 lg:ml-72 min-h-screen min-h-dvh">
+      <main className="flex-1 min-w-0 md:ml-[4.5rem] lg:ml-72 min-h-screen min-h-dvh">
         {/* Phase 22: Context Indicator for impersonation */}
         <ContextIndicator />
         

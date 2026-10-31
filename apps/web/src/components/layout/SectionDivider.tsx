@@ -15,7 +15,7 @@ export function SectionDivider({ icon, title, color = 'teal' }: SectionDividerPr
   };
 
   return (
-    <div className="px-4 py-3 my-2">
+    <div className="sl-rail-hide px-4 py-3 my-2">
       <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${colorClasses[color]}`}>
         <div className="flex-shrink-0">{icon}</div>
         <span className="text-xs font-bold uppercase tracking-wider">{title}</span>

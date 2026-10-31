@@ -79,6 +79,8 @@ export function AdminSidebar() {
   const asideRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   useNavDrawer(isOpen, setIsOpen, asideRef, toggleRef);
+  // True while the tablet rail (768-1023px) is showing its icons only.
+  const railNow = () => !isOpen && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px) and (max-width: 1023.98px)').matches;
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
@@ -917,9 +919,11 @@ export function AdminSidebar() {
         {hasChildren ? (
           <>
             <button
-              onClick={() => toggleExpanded(item.label)}
+              title={item.label}
+              aria-label={item.label}
+              onClick={() => { toggleExpanded(item.label); if (railNow()) setIsOpen(true); }}
               className={`
-                w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg
+                w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg sl-rail-item
                 transition-all duration-200 group bg-transparent
                 ${active
                   ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
@@ -929,16 +933,16 @@ export function AdminSidebar() {
             >
               <div className="flex items-center gap-3">
                 {item.icon}
-                <span className="font-medium">{item.label}</span>
+                <span className="sl-rail-hide font-medium">{item.label}</span>
               </div>
               <IconChevronDown
                 size={16}
-                className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                className={`sl-rail-hide transition-transform ${isExpanded ? 'rotate-180' : ''}`}
               />
             </button>
 
             {isExpanded && item.children && (
-              <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+              <div className="sl-rail-hide ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
                 {item.children.map((child) => {
                   if (!checkPermission(child.permission, child.roleRequired, child.hideForSuperAdmin)) return null;
 
@@ -966,7 +970,7 @@ export function AdminSidebar() {
                         <span>{child.label}</span>
                       </div>
                       {child.comingSoon && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                        <span className="sl-rail-hide text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                           Soon
                         </span>
                       )}
@@ -978,6 +982,8 @@ export function AdminSidebar() {
           </>
         ) : (
           <Link
+            aria-label={item.label}
+            title={item.label}
             href={item.comingSoon ? '#' : (item.href || '#')}
             onClick={(e) => {
               if (item.comingSoon) {
@@ -986,7 +992,7 @@ export function AdminSidebar() {
               setIsOpen(false);
             }}
             className={`
-              flex items-center justify-between gap-3 px-4 py-3 rounded-lg
+              flex items-center justify-between gap-3 px-4 py-3 rounded-lg sl-rail-item
               transition-all duration-200 group bg-transparent
               ${active
                 ? 'bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-600 dark:text-teal-400'
@@ -996,10 +1002,10 @@ export function AdminSidebar() {
           >
             <div className="flex items-center gap-3">
               {item.icon}
-              <span className="font-medium">{item.label}</span>
+              <span className="sl-rail-hide font-medium">{item.label}</span>
             </div>
             {(item.comingSoon || item.badge) && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+              <span className="sl-rail-hide text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                 {item.badge || 'Soon'}
               </span>
             )}
@@ -1036,11 +1042,12 @@ export function AdminSidebar() {
       <aside
         ref={asideRef}
         id="app-sidebar"
+        data-open={isOpen}
         aria-label="Main navigation"
         className={`
           fixed top-0 left-0 h-screen h-dvh w-72 glass-strong border-r border-gray-200/50 dark:border-gray-700/50 
-          z-[45] transition-[transform,visibility] duration-300 flex flex-col [@media(max-height:480px)]:overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0
-          ${isOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible lg:translate-x-0'}
+          z-[45] transition-[transform,visibility] duration-300 flex flex-col [@media(max-height:480px)]:overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-[env(safe-area-inset-bottom)] lg:pb-0
+          ${isOpen ? 'translate-x-0' : '-translate-x-full invisible md:max-lg:visible md:max-lg:translate-x-0 lg:visible lg:translate-x-0'}
         `}
       >
         {/* Logo/Brand */}
@@ -1057,7 +1064,7 @@ export function AdminSidebar() {
             ) : (
               <BrandMark size={40} className="flex-shrink-0 group-hover:scale-110 transition-transform" />
             )}
-            <div className="min-w-0">
+            <div className="sl-rail-hide min-w-0">
               <span title={user?.association?.name || undefined} className="line-clamp-2 break-words text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
                 {user?.association?.name || 'SocietyLedger'}
               </span>
@@ -1073,7 +1080,7 @@ export function AdminSidebar() {
           <div className="px-4 py-3 border-b border-gray-200/50 dark:border-gray-700/50">
             <div className="flex items-center gap-3">
               <SidebarAvatar email={user.email} />
-              <div className="flex-1 min-w-0">
+              <div className="sl-rail-hide flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user.email}
                 </p>
@@ -1111,16 +1118,16 @@ export function AdminSidebar() {
         {/* Footer Actions */}
         <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50 space-y-2 bg-white/50 dark:bg-gray-900/50">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>
+            <span className="sl-rail-hide text-sm text-gray-600 dark:text-gray-400">Theme</span>
             <ThemeToggle />
           </div>
           
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 font-medium"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 sl-rail-item rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 font-medium"
           >
             <IconLogout size={20} />
-            <span>Logout</span>
+            <span className="sl-rail-hide">Logout</span>
           </button>
         </div>
       </aside>

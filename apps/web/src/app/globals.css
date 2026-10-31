@@ -170,7 +170,7 @@ aside nav a:not(.bg-gradient-to-r) {
   margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .mb-bottom-nav {
     margin-bottom: 0;
   }
@@ -410,6 +410,32 @@ main :is(dd, h1, h2, h3, h4) {
 @media (max-width: 1023.98px) {
   :is(button, a, [role='button']):has(> svg:only-child) {
     min-width: 2.75rem;
+    justify-content: center;
+  }
+}
+
+/* Tablet sidebar (768-1023px): a 72px rail of icons that stays on screen; the menu button opens the full sidebar over the page, and tapping
+   an item that has sub-pages opens it too. Labels, chevrons, badges, sub-menus and section headers carry sl-rail-hide. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  #app-sidebar[data-open='false'] {
+    width: 4.5rem;
+  }
+  #app-sidebar[data-open='false'] .sl-rail-hide {
+    display: none;
+  }
+  #app-sidebar[data-open='false'] > div,
+  #app-sidebar[data-open='false'] > nav {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  #app-sidebar[data-open='false'] .sl-rail-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #app-sidebar[data-open='false'] > div:first-child a,
+  #app-sidebar[data-open='false'] > div:nth-child(2) > div,
+  #app-sidebar[data-open='false'] > div:last-child > div {
     justify-content: center;
   }
 }
