@@ -64,7 +64,7 @@ export function Breadcrumbs() {
           ) : (
             <Link
               href={crumb.href}
-              className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+              className="max-lg:inline-flex max-lg:min-h-11 max-lg:min-w-11 max-lg:items-center max-lg:justify-center hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
             >
               {index === 0 ? (
                 <IconHome size={16} className="inline" />

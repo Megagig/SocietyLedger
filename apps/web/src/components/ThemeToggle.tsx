@@ -15,7 +15,7 @@ export function ThemeToggle() {
   if (!mounted) {
     return (
       <button
-        className="p-2 rounded-lg bg-white/10 dark:bg-gray-800/50 transition-colors backdrop-blur-sm border border-white/20 dark:border-gray-700"
+        className="p-2 max-lg:min-h-11 max-lg:min-w-11 max-lg:inline-flex max-lg:items-center max-lg:justify-center rounded-lg bg-white/10 dark:bg-gray-800/50 transition-colors backdrop-blur-sm border border-white/20 dark:border-gray-700"
         aria-label="Toggle theme"
       >
         <div className="w-5 h-5" />
@@ -26,7 +26,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-lg bg-white/10 dark:bg-gray-800/50 hover:bg-white/20 dark:hover:bg-gray-700/50 transition-colors backdrop-blur-sm border border-white/20 dark:border-gray-700"
+      className="p-2 max-lg:min-h-11 max-lg:min-w-11 max-lg:inline-flex max-lg:items-center max-lg:justify-center rounded-lg bg-white/10 dark:bg-gray-800/50 hover:bg-white/20 dark:hover:bg-gray-700/50 transition-colors backdrop-blur-sm border border-white/20 dark:border-gray-700"
       aria-label="Toggle theme"
     >
       {theme === 'dark' ? (

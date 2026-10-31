@@ -299,6 +299,10 @@ body.no-overscroll {
   textarea:not([hidden]) {
     font-size: 16px;
   }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([hidden]),
+  select:not([hidden]) {
+    min-height: 2.75rem;
+  }
 }
 
 /* Mantine modals become bottom sheets on phones: full width, as tall as the visible screen allows, scrolling inside. */
@@ -393,4 +397,19 @@ main :is(dd, h1, h2, h3, h4) {
 .sl-price {
   font-size: clamp(1.5rem, 14cqi, 2.25rem);
   line-height: 1.1;
+}
+
+/* Mantine icon buttons reach the 44px touch size below the lg breakpoint (the size is a Mantine variable, so no prop changes). */
+@media (max-width: 1023.98px) {
+  .sl-touch {
+    --ai-size: 2.75rem;
+  }
+}
+
+/* Icon-only buttons and links are at least 44px wide below the lg breakpoint (the 44px height already comes from the touch rule above). */
+@media (max-width: 1023.98px) {
+  :is(button, a, [role='button']):has(> svg:only-child) {
+    min-width: 2.75rem;
+    justify-content: center;
+  }
 }

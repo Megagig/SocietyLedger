@@ -59,7 +59,7 @@ export default function Footer() {
           {/* Quick Links */}
           <div>
             <h3 className="font-semibold text-white mb-4">Quick links</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2 text-sm max-lg:space-y-0 max-lg:[&_a]:inline-block max-lg:[&_a]:py-3">
               <li>
                 <Link href="/features" className="text-gray-400 hover:text-teal-400 transition-colors">
                   Features
@@ -106,7 +106,7 @@ export default function Footer() {
           {/* Social */}
           <div>
             <h3 className="font-semibold text-white mb-4">Social</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2 text-sm max-lg:space-y-0 max-lg:[&_a]:inline-block max-lg:[&_a]:py-3">
               <li>
                 <a 
                   href="https://facebook.com/societyledger" 
@@ -173,7 +173,7 @@ export default function Footer() {
           {/* Legal */}
           <div>
             <h3 className="font-semibold text-white mb-4">Legal</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2 text-sm max-lg:space-y-0 max-lg:[&_a]:inline-block max-lg:[&_a]:py-3">
               <li>
                 <Link href="/privacy" className="text-gray-400 hover:text-teal-400 transition-colors">
                   Privacy Policy

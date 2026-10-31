@@ -25,6 +25,7 @@ export function HelpLink() {
         rel="noopener noreferrer"
         variant="subtle"
         color="gray"
+        className="sl-touch"
         aria-label="Help for this page"
       >
         <IconHelpCircle size={20} />

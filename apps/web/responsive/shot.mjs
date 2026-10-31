@@ -28,7 +28,8 @@ for (const vp of vps) {
     const m = await page.evaluate(measure);
     const file = path.join(out, `${vp.name}-${p.replace(/\//g, '__')}.png`);
     await page.screenshot({ path: file, fullPage: !click });
-    console.log(vp.name.padEnd(9), p.padEnd(34), `overflow ${m.overflowPx}px`, `smallInputs ${m.smallInputs}/${m.inputs}`, m.offenders[0] ? `culprit ${m.offenders[0].el} "${m.offenders[0].text}"` : '', file);
+    console.log(vp.name.padEnd(9), p.padEnd(34), `overflow ${m.overflowPx}px`, `smallInputs ${m.smallInputs}/${m.inputs}`, `smallTargets ${m.smallTargets}/${m.interactive}`, m.offenders[0] ? `culprit ${m.offenders[0].el} "${m.offenders[0].text}"` : '', file);
+    if (process.argv.includes('--targets')) console.log('   ', m.smallTargetSamples.join(' ; '));
     await page.close();
   }
   await ctx.close();
