@@ -2,7 +2,7 @@
  * The query client every app builds. Reads retry (a GET can be repeated safely); writes never retry, so a payment or a contribution is
  * never sent twice by the cache. Window focus does not refetch by itself: data is refreshed by staleTime, by opening a screen, and by invalidation.
  */
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/query-core';
 
 export const MAX_READ_RETRIES = 2;
 

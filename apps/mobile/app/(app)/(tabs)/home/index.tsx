@@ -5,6 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Avatar } from '@/components/ui/Avatar';
+import { FreshnessNote } from '@/components/ui/FreshnessNote';
 import { IconButton } from '@/components/ui/IconButton';
 import { Text } from '@/components/ui/Text';
 import { Screen } from '@/components/layout/Screen';
@@ -129,6 +130,7 @@ function AssociationHomeScreen() {
           <Text variant="h1" numberOfLines={1} style={{ marginTop: displayName ? 2 : 0 }}>
             {displayName || t('home.greeting.plain')}
           </Text>
+          <FreshnessNote query={isOfficer ? dashboardQuery : summaryQuery} />
         </View>
         <Avatar
           name={displayName || (tenant?.name ?? '')}

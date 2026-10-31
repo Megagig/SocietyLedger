@@ -1,9 +1,7 @@
 /**
- * The small "Offline · last updated 10:42" / "Updating…" line shown when saved data is on screen. Hidden when the data is fresh and nothing is happening.
+ * The small "Offline · last updated 10:42" / "Updating…" line shown when saved data is on screen. Hidden when the data is fresh and nothing is
+ * happening. Pure: each app reads whether it is online with its own hook and passes it in.
  */
-import { useSyncExternalStore } from 'react';
-import { onlineManager } from '@tanstack/react-query';
-
 export type FreshnessState = 'fresh' | 'updating' | 'offline';
 
 export interface FreshnessInput {
@@ -31,17 +29,8 @@ export function freshnessLabel(state: FreshnessState, dataUpdatedAt: number): st
   return null;
 }
 
-const subscribeOnline = (listener: () => void) => onlineManager.subscribe(listener);
-const isOnline = () => onlineManager.isOnline();
-
-/** Is the app online right now? Follows NetInfo on mobile and the browser on web. */
-export function useIsOnline(): boolean {
-  return useSyncExternalStore(subscribeOnline, isOnline, () => true);
-}
-
-/** `useFreshness(query)` -> { state, label }. */
-export function useFreshness(query: { isFetching: boolean; data: unknown; dataUpdatedAt: number }): { state: FreshnessState; label: string | null } {
-  const online = useIsOnline();
-  const state = freshnessState({ isOnline: online, isFetching: query.isFetching, hasData: query.data !== undefined });
-  return { state, label: freshnessLabel(state, query.dataUpdatedAt) };
+/** Everything a screen needs from one query to draw the line. */
+export function freshnessLabelFor(query: { isFetching: boolean; data: unknown; dataUpdatedAt: number }, isOnline: boolean): string | null {
+  const state = freshnessState({ isOnline, isFetching: query.isFetching, hasData: query.data !== undefined });
+  return freshnessLabel(state, query.dataUpdatedAt);
 }

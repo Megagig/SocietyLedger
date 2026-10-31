@@ -2,7 +2,7 @@
  * Forget everything that was cached for the person who is leaving. Run on logout, on switching association, and when the refresh token fails.
  * Clears the in-memory cache and the saved copy, and stops requests still in flight so a late answer cannot refill it.
  */
-import type { QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/query-core';
 
 export interface RemovablePersister {
   removeClient: () => void | PromiseLike<void>;

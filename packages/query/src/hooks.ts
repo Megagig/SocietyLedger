@@ -1,19 +1,20 @@
 /**
- * The way a screen asks for cached data. It builds the scoped key, applies the freshness window for the domain, and stays switched off until
- * the association (and, for personal data, the person) is known, so a key without a tenant is never built.
+ * How a screen asks for cached data. The pieces that decide things live here and are pure (no React), so web and mobile, which run different
+ * React versions, share them without sharing a copy of React. Each app wraps them in its own few-line hook:
  *
- *   const { tenant } = useQueryScope();                       // each app has its own, from its own session
- *   const settings = useDomainQuery({ tenant, domain: 'settings', parts: ['association'], queryFn: () => api.get('/settings/association') });
- *   const mine     = useDomainQuery({ tenant, userId, personal: true, domain: 'ajoSavings', parts: [membershipId], queryFn: ... });
+ *   function useScopedQuery(spec) {                       // apps/web/src/lib/query/index.ts
+ *     const { tenant, userId } = useQueryScope();
+ *     const { queryFn, ...rest } = spec;
+ *     return useQuery({ ...domainQueryOptions({ ...spec, tenant, userId }), queryFn, ...rest });
+ *   }
  *
- * The freshness window and whether the answer may be saved on the device come from the domain's entry in policy.ts. Pass `staleTime` only
- * when one screen really needs something different.
+ * `domainQueryOptions` gives the scoped key, the freshness window of the domain, and `enabled`, which stays false until the association (and,
+ * for personal data, the person) is known so a key without a tenant is never built.
  */
-import { useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
 import { key, userKey, type KeyPart, type TenantId, type UserId } from './keys';
-import { queryDefaults } from './policy';
+import { queryDefaults, type QueryDefaults } from './policy';
 
-export interface DomainQueryOptions<TData, TError = Error> extends Omit<UseQueryOptions<TData, TError, TData, readonly unknown[]>, 'queryKey' | 'queryFn'> {
+export interface DomainQuerySpec {
   /** The association. Null/undefined while it is not known yet: the query waits. */
   tenant: TenantId | null | undefined;
   /** The person, for `personal` data. */
@@ -22,30 +23,29 @@ export interface DomainQueryOptions<TData, TError = Error> extends Omit<UseQuery
   personal?: boolean;
   domain: string;
   parts?: readonly KeyPart[];
-  queryFn: () => Promise<TData>;
+  /** Set false to hold the query back for a reason of the screen's own (a permission, a closed panel). */
+  enabled?: boolean;
 }
 
 /** Placed in the key while the tenant is unknown: the query is disabled, never fetched, never saved. */
 const WAITING = '__waiting__';
 
-export function domainQueryKey(options: Pick<DomainQueryOptions<unknown>, 'tenant' | 'userId' | 'personal' | 'domain' | 'parts'>): { queryKey: readonly unknown[]; ready: boolean } {
-  const parts = options.parts ?? [];
-  if (options.tenant === null || options.tenant === undefined || options.tenant === '') return { queryKey: [WAITING, options.domain, ...parts], ready: false };
-  if (options.personal) {
-    if (options.userId === null || options.userId === undefined) return { queryKey: [WAITING, options.domain, ...parts], ready: false };
-    return { queryKey: userKey(options.tenant, options.userId, options.domain, ...parts), ready: true };
+export function domainQueryKey(spec: Pick<DomainQuerySpec, 'tenant' | 'userId' | 'personal' | 'domain' | 'parts'>): { queryKey: readonly unknown[]; ready: boolean } {
+  const parts = spec.parts ?? [];
+  if (spec.tenant === null || spec.tenant === undefined || spec.tenant === '') return { queryKey: [WAITING, spec.domain, ...parts], ready: false };
+  if (spec.personal) {
+    if (spec.userId === null || spec.userId === undefined) return { queryKey: [WAITING, spec.domain, ...parts], ready: false };
+    return { queryKey: userKey(spec.tenant, spec.userId, spec.domain, ...parts), ready: true };
   }
-  return { queryKey: key(options.tenant, options.domain, ...parts), ready: true };
+  return { queryKey: key(spec.tenant, spec.domain, ...parts), ready: true };
 }
 
-export function useDomainQuery<TData, TError = Error>(options: DomainQueryOptions<TData, TError>): UseQueryResult<TData, TError> {
-  const { tenant, userId, personal, domain, parts, queryFn, enabled, ...rest } = options;
-  const { queryKey, ready } = domainQueryKey({ tenant, userId, personal, domain, parts });
-  return useQuery<TData, TError, TData, readonly unknown[]>({
-    ...queryDefaults(domain),
-    ...rest,
-    queryKey,
-    queryFn,
-    enabled: ready && enabled !== false,
-  });
+export interface DomainQueryOptions extends QueryDefaults {
+  queryKey: readonly unknown[];
+  enabled: boolean;
+}
+
+export function domainQueryOptions(spec: DomainQuerySpec): DomainQueryOptions {
+  const { queryKey, ready } = domainQueryKey(spec);
+  return { ...queryDefaults(spec.domain), queryKey, enabled: ready && spec.enabled !== false };
 }

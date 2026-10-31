@@ -1,5 +1,5 @@
-import type { UseQueryResult } from '@tanstack/react-query';
-import { useDomainQuery, type DomainQueryOptions } from '@societyledger/query';
+import { useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
+import { domainQueryOptions, type DomainQuerySpec } from '@societyledger/query';
 import { useAuthStore } from '@/store/authStore';
 import { queryScope, type QueryScope } from './identity';
 
@@ -19,12 +19,16 @@ export function useQueryScope(): QueryScope {
   return queryScope(user, impersonated);
 }
 
+export type ScopedQueryOptions<TData, TError> = Omit<DomainQuerySpec, 'tenant' | 'userId'> &
+  Omit<UseQueryOptions<TData, TError, TData, readonly unknown[]>, 'queryKey' | 'enabled'> & { queryFn: () => Promise<TData> };
+
 /**
- * `useScopedQuery({ domain: 'settings', parts: ['association'], queryFn })`: the shared `useDomainQuery` with this app's association and
- * person filled in. Use it for any screen that should be cached; the domain's entry in @societyledger/query/policy.ts sets how long the answer
- * is trusted and whether it is saved on the device.
+ * useScopedQuery({ domain: 'settings', parts: ['association'], queryFn }): a cached query for the signed-in association (and person, for
+ * `personal` data). The key, the freshness window and whether the answer may be saved on the device come from the domain's entry in
+ * @societyledger/query (policy.ts); the query waits until the association is known. Anything else useQuery accepts can be passed to override.
  */
-export function useScopedQuery<TData, TError = Error>(options: Omit<DomainQueryOptions<TData, TError>, 'tenant' | 'userId'>): UseQueryResult<TData, TError> {
+export function useScopedQuery<TData, TError = Error>(options: ScopedQueryOptions<TData, TError>): UseQueryResult<TData, TError> {
   const { tenant, userId } = useQueryScope();
-  return useDomainQuery<TData, TError>({ ...options, tenant, userId });
+  const { domain, parts, personal, enabled, ...rest } = options;
+  return useQuery<TData, TError, TData, readonly unknown[]>({ ...domainQueryOptions({ tenant, userId, personal, domain, parts, enabled }), ...rest });
 }

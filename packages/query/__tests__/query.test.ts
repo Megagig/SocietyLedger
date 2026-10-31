@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/query-core';
 import {
   INVALIDATION,
   PERSIST_MAX_AGE_MS,

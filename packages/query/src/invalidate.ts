@@ -8,7 +8,7 @@
  *
  * Money is never confirmed optimistically: these run after the server has answered, or after the app learns the result of a payment.
  */
-import type { QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/query-core';
 import { domainPrefix, type TenantId } from './keys';
 
 export const INVALIDATION = {
