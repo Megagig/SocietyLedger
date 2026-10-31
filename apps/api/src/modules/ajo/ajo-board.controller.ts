@@ -10,6 +10,7 @@ import { getNoticePreferences, setNoticePreferences } from './ajo-circle-notices
 import { makeCircleStatement } from './ajo-circle-statement';
 import { boardActivity, boardArrears, boardMatrix, boardMembers, boardMetrics, boardOverview, boardPayouts, boardRound, type BoardViewer } from './ajo-board.service';
 import { actor, fail, hasAjoPermission } from './ajo-members.controller';
+import { ajoCached } from './ajo-cache';
 
 const id = z.coerce.number().int().positive();
 
@@ -21,10 +22,21 @@ async function viewerOf(req: Request): Promise<{ associationId: number; groupId:
 
 const send = (res: Response, data: unknown) => res.json({ success: true, data });
 
+type BoardAsk = Awaited<ReturnType<typeof viewerOf>>;
+
+/**
+ * The board answer for this person and circle, from the short-lived cache when it is there (ajo-cache.ts). The key is the association, the
+ * viewer and everything that changes the answer, so nobody is ever given another person's or another circle's copy.
+ */
+async function cachedBoard<T>(req: Request, scope: ReadonlyArray<string | number>, run: (ask: BoardAsk) => Promise<T>): Promise<T> {
+  const ask = await viewerOf(req);
+  return ajoCached(ask.associationId, ask.viewer, ['board', ask.groupId, ...scope], () => run(ask));
+}
+
 export const ajoBoardController = {
   async overview(req: Request, res: Response) {
     try {
-      return send(res, await boardOverview(await viewerOf(req)));
+      return send(res, await cachedBoard(req, ['overview'], (ask) => boardOverview(ask)));
     } catch (error) {
       return fail(res, error, 'Could not load the circle board.');
     }
@@ -32,42 +44,43 @@ export const ajoBoardController = {
   async round(req: Request, res: Response) {
     try {
       const filter = z.enum(['ALL', 'PAID', 'NOT_PAID']).optional().parse(req.query.filter);
-      return send(res, await boardRound({ ...(await viewerOf(req)), round: id.parse(req.params.round), filter }));
+      const round = id.parse(req.params.round);
+      return send(res, await cachedBoard(req, ['round', round, filter ?? 'ALL'], (ask) => boardRound({ ...ask, round, filter })));
     } catch (error) {
       return fail(res, error, 'Could not load that round.');
     }
   },
   async matrix(req: Request, res: Response) {
     try {
-      return send(res, await boardMatrix(await viewerOf(req)));
+      return send(res, await cachedBoard(req, ['matrix'], (ask) => boardMatrix(ask)));
     } catch (error) {
       return fail(res, error, 'Could not load the payment history.');
     }
   },
   async payouts(req: Request, res: Response) {
     try {
-      return send(res, await boardPayouts(await viewerOf(req)));
+      return send(res, await cachedBoard(req, ['payouts'], (ask) => boardPayouts(ask)));
     } catch (error) {
       return fail(res, error, 'Could not load the payouts.');
     }
   },
   async members(req: Request, res: Response) {
     try {
-      return send(res, await boardMembers(await viewerOf(req)));
+      return send(res, await cachedBoard(req, ['members'], (ask) => boardMembers(ask)));
     } catch (error) {
       return fail(res, error, 'Could not load the members.');
     }
   },
   async arrears(req: Request, res: Response) {
     try {
-      return send(res, await boardArrears(await viewerOf(req)));
+      return send(res, await cachedBoard(req, ['arrears'], (ask) => boardArrears(ask)));
     } catch (error) {
       return fail(res, error, 'Could not load the arrears.');
     }
   },
   async metrics(req: Request, res: Response) {
     try {
-      return send(res, await boardMetrics(await viewerOf(req)));
+      return send(res, await cachedBoard(req, ['metrics'], (ask) => boardMetrics(ask)));
     } catch (error) {
       return fail(res, error, 'Could not load the figures.');
     }
@@ -132,7 +145,7 @@ export const ajoBoardController = {
   async activity(req: Request, res: Response) {
     try {
       const q = z.object({ limit: z.coerce.number().int().min(1).max(100).optional(), before: z.string().datetime().optional() }).parse(req.query);
-      return send(res, await boardActivity({ ...(await viewerOf(req)), limit: q.limit, before: q.before ? new Date(q.before) : undefined }));
+      return send(res, await cachedBoard(req, ['activity', q.limit ?? '-', q.before ?? '-'], (ask) => boardActivity({ ...ask, limit: q.limit, before: q.before ? new Date(q.before) : undefined })));
     } catch (error) {
       return fail(res, error, 'Could not load the circle activity.');
     }
