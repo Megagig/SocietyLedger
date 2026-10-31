@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/Text';
 import { useLogout } from '@/features/session/mutations';
 import { useProfile } from '@/features/session/queries';
 import { openUserManual } from '@/lib/docs';
+import { appVersionLabel } from '@/lib/appVersion';
 import { t } from '@/lib/i18n';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
@@ -22,6 +23,9 @@ export default function ProfileScreen() {
   const expoRouter = useRouter();
   const logout = useLogout();
   const { color } = useThemeTokens();
+  // Shown under the About row so the version is visible without opening the screen.
+  const version = appVersionLabel();
+  const appVersionText = version ? `${t('profile.about.version')} ${version}` : undefined;
   const profileQuery = useProfile();
   const profile = profileQuery.data;
 
@@ -136,6 +140,7 @@ export default function ProfileScreen() {
           <ListItem
             leading={<Info size={20} color={color.textSecondary} strokeWidth={1.75} />}
             title={t('profile.aboutRow')}
+            meta={appVersionText}
             showChevron
             onPress={() => expoRouter.push('/(app)/(tabs)/profile/about' as never)}
             testID="profile-about"

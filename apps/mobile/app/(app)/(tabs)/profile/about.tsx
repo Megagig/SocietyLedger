@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { ExternalLink } from 'lucide-react-native';
 import { Image, Linking, View } from 'react-native';
-import Constants from 'expo-constants';
 
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { ListGroup, ListItem } from '@/components/layout/ListItem';
 import { Text } from '@/components/ui/Text';
+import { appVersionLabel } from '@/lib/appVersion';
 import { t } from '@/lib/i18n';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
@@ -16,7 +16,8 @@ const WEB_BASE_URL = (process.env.EXPO_PUBLIC_WEB_URL ?? 'https://societyledger.
 /** project-overview.md §6.7 — About screen (F3.3). App version + legal links. */
 export default function AboutScreen() {
   const { color } = useThemeTokens();
-  const version = Constants.expoConfig?.version ?? '1.0.0';
+  // The version set in app.config.ts, plus the installed build number when there is one. Never a guessed number.
+  const version = appVersionLabel();
 
   return (
     <Screen edges={['top']}>
@@ -32,8 +33,8 @@ export default function AboutScreen() {
             accessibilityLabel="SocietyLedger"
           />
           <Text variant="h2">SocietyLedger</Text>
-          <Text variant="caption" tone="tertiary">
-            {t('profile.about.version')} {version}
+          <Text variant="caption" tone="tertiary" testID="about-version">
+            {version ? `${t('profile.about.version')} ${version}` : t('profile.about.versionUnavailable')}
           </Text>
         </View>
 

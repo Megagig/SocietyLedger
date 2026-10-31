@@ -1903,3 +1903,8 @@ Web (`apps/web`, Tailwind tokens) and phone (`apps/mobile`, NativeWind) show the
 - **Web:** `components/common/FreshnessNote.tsx`, a `p` with `role="status"`, `text-xs text-ink-muted`, used under the Dashboard and Members headings.
 - **Mobile:** `components/ui/FreshnessNote.tsx`, `Text` `variant="micro" tone="tertiary"`, under the greeting on Home (officer: dashboard; member: finance summary). No new colours or styles.
 - **Wording** comes from `freshnessLabelFor` in `@societyledger/query`, so both apps say the same thing. Not yet run on a device.
+
+## App version on Profile → About (2026-10-31)
+- **About screen:** under the logo and "SocietyLedger", a `Text` `variant="caption" tone="tertiary"` reading "Version 1.0.0 (build 37)", or "Version not available" when the version cannot be read. No new colours.
+- **Profile screen:** the About `ListItem` gets the same text as its `meta` subtitle line, like the "User manual" row.
+- **Source:** `appVersionLabel()` in `src/lib/appVersion.ts`. Not yet run on a device.
