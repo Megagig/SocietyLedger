@@ -56,3 +56,17 @@ Balances and dues: persisted only as "last known, updated at" and always refetch
 Needs a running stack. Today only the API (port 4001) is running; web and Metro are not. What can be measured:
 - **Database queries per endpoint:** in-process with Prisma query events against the scratch database, on the demo Ajo seed. Can be done without you.
 - **Requests per screen and time to first content on Slow 3G:** needs web running in a throttled browser and the app on a throttled emulator or device.
+
+## 6. What was done, and what was measured (2026-10-31)
+
+Corrections to the audit above: "`/ajo/groups/` is fetched from 21 files" counted a URL prefix, not duplicate requests (they are different sub-resources); the real duplicate was the dashboard overview, fetched under one key by two pages (now one scoped entry).
+
+| Measure | Before | After |
+|---|---|---|
+| Database queries to open the circle board (8 reads, 3-person circle) | 121 | 121 first open; **0** on a repeat open within 30 s; 121 again, with the new payment, on the first open after a confirmed payment |
+| Members page requests per visit | 3 (members, stats, waiting) on every mount, loader on every filter change | same 3, but the saved list shows at once, they run together and revalidate on open, old rows stay while a filter loads; first page prefetched from the dashboard |
+| Response size | uncompressed JSON | gzip; unchanged answers are a 304 |
+| Officers' waiting-payments badge/queue (asked every minute) | scans every payment the association ever had | index on (association, status, received at) |
+| Cash overview and support list polling (mobile) | every 60 s | every 120 s |
+
+Not measured, and needing a person at a browser or device: requests per screen and time to first useful content on Slow 3G, airplane mode and reconnect, association switch, signing in as a different user, and a payment completing with the balance updating at once.

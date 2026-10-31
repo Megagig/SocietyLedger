@@ -93,12 +93,14 @@ Install Expo-managed packages with `pnpm -F @societyledger/mobile exec expo inst
 - **Static-export SSR gotcha (found at F1.2):** `expo export -p web` (and `app.config.ts`'s `web.output: 'static'`) renders every route once on Node via Expo Router's static server renderer, not just in-browser. Any code that runs during initial render (an unguarded `useState(() => ...)` initializer, a `useSyncExternalStore` `getSnapshot` used as `getServerSnapshot`, a module-scope side effect) and touches a browser-only API — MMKV's web shim backed by `localStorage`, for instance — throws during that server pass even though the exact same code works fine in the actual browser/device runtime. Any value read from such a source for initial state must go through `useSyncExternalStore` with a distinct `getServerSnapshot` that returns a static default and never touches the browser-only API — see `src/providers/ThemeProvider.tsx`.
 
 ## TanStack Query
-- Single `QueryClient` in `providers/QueryProvider.tsx` with defaults from architecture.md §11.
-- `PersistQueryClientProvider` with an MMKV-backed persister; `dehydrateOptions.shouldDehydrateQuery` allow-lists keys whose 2nd element is in `PERSISTED_DOMAINS = ['session','memberFinance','memberLedger','meetings','voting','notifications','profile']` and only first pages.
+- The single `QueryClient` and its persister live in `lib/queryClient.ts` (no native wiring, so features can reset the cache without importing native modules); `providers/QueryProvider.tsx` wires NetInfo and AppState and renders the provider. Defaults come from `createQueryClient` in `@societyledger/query`: reads retry only on network failures (2 tries, exponential backoff), writes never retry, offline-first reads, refetch when the app returns to the front.
+- `PersistQueryClientProvider` with an MMKV-backed persister; `dehydrateOptions.shouldDehydrateQuery` is `shouldPersistQuery` from `@societyledger/query` (allow-list in its `policy.ts`, deny by default; `meta: { persist: false }` opts a query out) and `serializeData` is `trimInfiniteData` (first page only).
 - `focusManager.setEventListener` with `AppState`; `onlineManager.setEventListener` with NetInfo.
 - `useRefreshOnFocus(refetch)` hook for tab roots (refetch when a tab regains focus if stale).
 - Pull-to-refresh uses `refetch()` and shows `isRefetching` (not `isLoading`).
-- After logout/tenant switch: `queryClient.clear()` and `persister.removeClient()`.
+- After logout/tenant switch/failed refresh: `resetAppQueryCache()` (memory, saved copy, requests in flight). `watchSessionForCacheReset()` calls it on any move into `unauthenticated`.
+- **Do not import `react` or `@tanstack/react-query` hooks into `packages/query`:** pnpm installs react-query once per React version, so a hook there binds to the wrong React on mobile. `@tanstack/query-core` is one copy for every app, so the online/focus managers wired here are the ones the shared client uses.
+- **pnpm on Windows:** run only a full `pnpm install` (a `--filter` install can leave empty package folders under `node_modules/.pnpm`; a full install restores them).
 
 ## Zustand
 - `create<State>()(persist(...))` only for `tenant` and `prefs`; storage adapter `createJSONStorage(() => mmkvStorage)`.

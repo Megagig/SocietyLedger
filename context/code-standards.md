@@ -134,7 +134,10 @@ export function useMemberOutstanding() {
   });
 }
 ```
-- Every query key starts with the tenant subdomain via a `<domain>Keys` factory. No inline array keys in components.
+- Every query key starts with the tenant subdomain via a `<domain>Keys` factory. No inline array keys in components. New keys should be built with `key()` / `userKey()` from `@societyledger/query` (they refuse a missing tenant) and the domain should have an entry in its `policy.ts`.
+- **Freshness** comes from the domain's class, not a number in the hook: spread `queryDefaults('<domain>')` (static 30 min, directory 5 min, aggregate 90 s, money 30 s + always recheck on open). Pick `money` for anything that shows what someone owes or has paid.
+- **After a mutation**, refresh by named event: `invalidateFor(queryClient, tenant, 'payment.changed')` in `onSuccess` (never the whole cache, never before the server answers). A payment, contribution or payout is never confirmed optimistically.
+- Saving on the phone is opt-in per domain in `policy.ts`; payments, payouts, bank details, proofs and links are never saved.
 - Endpoint functions return **normalised** types (money → Decimal, lists → `{ items, pagination }`).
 - Mutations live in `mutations.ts`, invalidate precisely (use key factories), show success toast via `onSuccess`, and map field errors via `onError` → `applyApiErrors(form, error)`.
 - Optimistic updates only where specified (attendance marking, mark-as-read); always implement rollback.
