@@ -117,13 +117,13 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="flex min-h-screen min-h-dvh bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* PWA Status Indicators */}
       <OfflineIndicator />
       <UpdatePrompt />
       
       {renderSidebar()}
-      <main className="flex-1 min-w-0 lg:ml-72 min-h-screen">
+      <main className="flex-1 min-w-0 lg:ml-72 min-h-screen min-h-dvh">
         {/* Phase 22: Context Indicator for impersonation */}
         <ContextIndicator />
         
@@ -131,15 +131,17 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
         <RoleIndicator />
         
         {/* Top Bar with Notification Bell */}
-        <div className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 px-4 sm:px-6 lg:px-8 py-3">
+        <div className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 px-4 sm:px-6 lg:px-8 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <div className="flex items-center justify-end">
             <NotificationBell />
           </div>
         </div>
         <div className="p-4 sm:p-5 lg:p-6 mb-bottom-nav">
-          <TrialEndingBanner />
-          <Breadcrumbs />
-          {closedToThrift ? <Loader size="sm" /> : children}
+          <div className="mx-auto w-full max-w-screen-2xl">
+            <TrialEndingBanner />
+            <Breadcrumbs />
+            {closedToThrift ? <Loader size="sm" /> : children}
+          </div>
         </div>
       </main>
       

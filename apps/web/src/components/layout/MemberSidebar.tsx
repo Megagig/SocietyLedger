@@ -1,7 +1,8 @@
 'use client';
 
 import { SidebarAvatar } from '@/components/members/SidebarAvatar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavDrawer } from './useNavDrawer';
 import { BrandMark } from '@/components/brand/BrandLogo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -59,6 +60,9 @@ interface NavItem {
 
 export function MemberSidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  useNavDrawer(isOpen, setIsOpen, asideRef, toggleRef);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
@@ -480,8 +484,12 @@ export function MemberSidebar() {
     <>
       {/* Mobile Menu Button */}
       <button
+        ref={toggleRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg glass-strong border border-gray-200/50 dark:border-gray-700/50"
+        aria-label={isOpen ? 'Close menu' : 'Open menu'}
+        aria-expanded={isOpen}
+        aria-controls="app-sidebar"
+        className="lg:hidden fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 z-50 flex h-11 w-11 items-center justify-center rounded-lg glass-strong border border-gray-200/50 dark:border-gray-700/50"
       >
         {isOpen ? <IconX size={24} /> : <IconMenu2 size={24} />}
       </button>
@@ -490,20 +498,24 @@ export function MemberSidebar() {
       {isOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          aria-hidden="true"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
+        ref={asideRef}
+        id="app-sidebar"
+        aria-label="Main navigation"
         className={`
-          fixed top-0 left-0 h-screen w-72 glass-strong border-r border-gray-200/50 dark:border-gray-700/50 
-          z-40 transition-transform duration-300 flex flex-col pb-16 lg:pb-0
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          fixed top-0 left-0 h-screen h-dvh w-72 glass-strong border-r border-gray-200/50 dark:border-gray-700/50 
+          z-[45] transition-[transform,visibility] duration-300 flex flex-col [@media(max-height:480px)]:overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0
+          ${isOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible lg:translate-x-0'}
         `}
       >
         {/* Logo/Brand */}
-        <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50">
+        <div className="p-6 pt-[calc(4.5rem+env(safe-area-inset-top))] lg:pt-6 border-b border-gray-200/50 dark:border-gray-700/50">
           <Link href="/dashboard/member" className="flex items-center gap-3 group">
             {user?.association?.logo ? (
               <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
@@ -516,8 +528,8 @@ export function MemberSidebar() {
             ) : (
               <BrandMark size={40} className="flex-shrink-0 group-hover:scale-110 transition-transform" />
             )}
-            <div>
-              <span className="text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
+            <div className="min-w-0">
+              <span title={user?.association?.name || undefined} className="line-clamp-2 break-words text-lg font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
                 {user?.association?.name || 'SocietyLedger'}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -545,7 +557,7 @@ export function MemberSidebar() {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto [@media(max-height:480px)]:flex-none [@media(max-height:480px)]:overflow-visible p-4 space-y-1">
           {(ajoNav.thriftOnly ? thriftItems : navItems).map(renderNavItem)}
         </nav>
 

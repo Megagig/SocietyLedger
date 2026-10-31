@@ -84,3 +84,4 @@ apps/api/prisma/migrations/migration_lock.toml
 # Responsive audit
 apps/web/.next-resp/
 apps/web/responsive/artifacts/
+apps/web/.next-resp-dev/
