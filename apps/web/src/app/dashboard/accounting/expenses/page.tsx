@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Alert,
   Anchor,
@@ -94,7 +94,7 @@ export default function ExpensesPage() {
   const list = useQuery({
     queryKey: ['expenses', status, debounced, page],
     queryFn: () => expensesApi.list({ status: status || undefined, search: debounced || undefined, page, limit: 20 }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     retry: false,
   });
   const options = useQuery({ queryKey: ['expense-options'], queryFn: () => expensesApi.getOptions(), enabled: formOpen });

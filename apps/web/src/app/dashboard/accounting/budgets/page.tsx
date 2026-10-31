@@ -81,7 +81,7 @@ export default function BudgetsPage() {
     },
   });
 
-  const { data: budgetsData, isLoading, error } = useQuery({
+  const { data: budgetsData, isPending, error } = useQuery({
     queryKey: ['budgets', filterStatus, filterYear],
     queryFn: () =>
       accountingApi.getBudgets({
@@ -97,7 +97,7 @@ export default function BudgetsPage() {
     queryFn: () => accountingApi.getChartOfAccounts({ type: 'EXPENSE', isActive: true }),
   });
 
-  const { data: varianceData, isLoading: varianceLoading } = useQuery({
+  const { data: varianceData, isPending: varianceLoading } = useQuery({
     queryKey: ['budget-variance', selectedBudget?.id],
     queryFn: () => selectedBudget ? accountingApi.getBudgetVariance(selectedBudget.id) : null,
     enabled: !!selectedBudget && varianceOpened,
@@ -216,7 +216,7 @@ export default function BudgetsPage() {
 
   const totalBudgetAmount = form.values.items.reduce((sum, item) => sum + (item.annualAmount || 0), 0);
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex justify-center py-12">
         <Loader size="lg" />

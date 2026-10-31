@@ -112,7 +112,7 @@ export default function ElectionDetailPage() {
   const [rejectingCandidateId, setRejectingCandidateId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  const { data: electionData, isLoading } = useQuery({
+  const { data: electionData, isPending } = useQuery({
     queryKey: ['election', electionId],
     queryFn: () => getElection(electionId),
   });
@@ -308,7 +308,7 @@ export default function ElectionDetailPage() {
     addPositionMutation.mutate({ title, maxCandidates: 1 });
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>

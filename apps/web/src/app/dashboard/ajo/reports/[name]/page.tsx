@@ -119,8 +119,8 @@ export default function AjoReportPage() {
       ) : report.isError || !data ? (
         <AjoError error={report.error} onRetry={() => report.refetch()} />
       ) : (
-        <div className={`space-y-5 transition-opacity ${report.isPreviousData ? 'opacity-50' : ''}`} aria-busy={report.isFetching}>
-          {report.isPreviousData ? <p role="status" className="text-sm font-medium text-ink">Updating for your new choice…</p> : null}
+        <div className={`space-y-5 transition-opacity ${report.isPlaceholderData ? 'opacity-50' : ''}`} aria-busy={report.isFetching}>
+          {report.isPlaceholderData ? <p role="status" className="text-sm font-medium text-ink">Updating for your new choice…</p> : null}
           <p className="text-sm text-ink-muted">
             {data.filters.from} to {data.filters.to} · made {formatMoment(data.generatedAt)}
           </p>

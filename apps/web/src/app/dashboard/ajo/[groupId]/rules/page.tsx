@@ -64,7 +64,7 @@ export default function GroupRulesPage() {
         <section className="space-y-4 rounded-lg border border-line p-5">
           <RulesFields value={form} onChange={setForm} rotating={rotating} />
           {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
-          <div className="flex gap-2"><Button color="green" onClick={submit} loading={publish.isLoading}>Publish</Button><Button variant="default" onClick={() => setEditing(false)}>Cancel</Button></div>
+          <div className="flex gap-2"><Button color="green" onClick={submit} loading={publish.isPending}>Publish</Button><Button variant="default" onClick={() => setEditing(false)}>Cancel</Button></div>
         </section>
       )}
 

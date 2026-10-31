@@ -40,6 +40,6 @@ export function useAjoNav() {
     /** An account that exists only to run Ajo (a standalone thrift group). */
     thriftOnly: sessionKind === 'THRIFT_GROUP' || (sessionKind === undefined && result?.kind === 'ok' && result.status.tenantKind === 'THRIFT_GROUP'),
     /** True until we know what kind of account this is (older servers only), so a page can wait instead of flashing association content. */
-    resolving: sessionKind === undefined && (member || collect || staff) && status.isLoading,
+    resolving: sessionKind === undefined && (member || collect || staff) && status.isPending,
   };
 }

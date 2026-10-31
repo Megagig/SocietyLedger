@@ -73,7 +73,7 @@ export default function GroupOverviewPage() {
         <section className="rounded-lg border border-info-line bg-info-soft p-4">
           <p className="font-medium text-info-strong">This circle is a draft.</p>
           <p className="mt-1 text-sm text-info-text">Check the details below, then open it so you can add and approve people.</p>
-          <Button className="mt-3" onClick={doOpen} loading={open.isLoading}>Open for joining</Button>
+          <Button className="mt-3" onClick={doOpen} loading={open.isPending}>Open for joining</Button>
           {refusal(openProblem)}
         </section>
       )}
@@ -84,7 +84,7 @@ export default function GroupOverviewPage() {
           {smaller ? (
             <div className="mt-3 space-y-2">
               <p className="text-sm text-success-strong">{smaller}</p>
-              <div className="flex gap-2"><Button color="green" onClick={() => doStart(true)} loading={start.isLoading}>Start with {group.activeParticipants} people</Button><Button variant="default" onClick={() => setSmaller(null)}>Wait for more</Button></div>
+              <div className="flex gap-2"><Button color="green" onClick={() => doStart(true)} loading={start.isPending}>Start with {group.activeParticipants} people</Button><Button variant="default" onClick={() => setSmaller(null)}>Wait for more</Button></div>
             </div>
           ) : noOneApproved ? (
             <div className="mt-3 space-y-2">
@@ -95,7 +95,7 @@ export default function GroupOverviewPage() {
               </div>
             </div>
           ) : (
-            <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isLoading}>Start the circle</Button>
+            <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isPending}>Start the circle</Button>
           )}
           {refusal(startProblem)}
           {startProblem && /draw/i.test(startProblem) && (
@@ -213,7 +213,7 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
         )}
         <Checkbox label="Members must confirm their phone number" checked={phone} onChange={(e) => setPhone(e.currentTarget.checked)} />
         {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
-        <div className="flex justify-end gap-2"><Button variant="default" onClick={onClose}>Cancel</Button><Button color="green" onClick={submit} loading={save.isLoading}>Save</Button></div>
+        <div className="flex justify-end gap-2"><Button variant="default" onClick={onClose}>Cancel</Button><Button color="green" onClick={submit} loading={save.isPending}>Save</Button></div>
       </div>
     </Modal>
   );

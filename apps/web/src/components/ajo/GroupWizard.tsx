@@ -234,7 +234,7 @@ export function GroupWizard({ onCreated, examples = false }: { onCreated: (group
 
       <div className="flex justify-between">
         <Button variant="default" disabled={step === 0} onClick={() => { setProblem(null); setStep((s) => s - 1); }}>Back</Button>
-        {step < 5 ? <Button onClick={next}>Next</Button> : <Button color="green" onClick={submit} loading={create.isLoading}>Create circle</Button>}
+        {step < 5 ? <Button onClick={next}>Next</Button> : <Button color="green" onClick={submit} loading={create.isPending}>Create circle</Button>}
       </div>
       <p className="text-xs text-ink-faint">The circle is saved as a draft. You add people, then open it for joining, then start it when you are ready.</p>
     </div>

@@ -23,7 +23,7 @@ function AssociationDashboardPage() {
   const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: getDashboardOverview,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -59,7 +59,7 @@ function AssociationDashboardPage() {
   }
 
   // Loading state
-  if (isLoading) {
+  if (isPending) {
     return <DashboardSkeleton />;
   }
 

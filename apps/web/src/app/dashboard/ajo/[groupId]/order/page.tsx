@@ -72,7 +72,7 @@ export default function PayoutOrderPage() {
           <h2 className="font-semibold">The order has not been drawn yet.</h2>
           <p className="mt-1 text-sm text-ink-muted">The draw is random, recorded with its seed so anyone can check it later, and it happens once. Do it after everyone has joined and before the circle starts.</p>
           {data.pendingPeople > 0 && <p className="mt-2 text-sm text-warning-strong">{data.pendingPeople} {data.pendingPeople === 1 ? 'person has' : 'people have'} joined but {data.pendingPeople === 1 ? 'is' : 'are'} not approved yet. {data.pendingPeople === 1 ? 'They are' : 'They are'} not in a draw made now.</p>}
-          {can && data.canDraw && <Button className="mt-3" color="green" onClick={() => (data.pendingPeople > 0 ? setWarnUnapproved(true) : run(() => draw.mutateAsync(), 'The order was drawn.'))} loading={draw.isLoading}>Draw the order</Button>}
+          {can && data.canDraw && <Button className="mt-3" color="green" onClick={() => (data.pendingPeople > 0 ? setWarnUnapproved(true) : run(() => draw.mutateAsync(), 'The order was drawn.'))} loading={draw.isPending}>Draw the order</Button>}
           {can && !data.canDraw && group?.status !== 'OPEN' && <p className="mt-2 text-sm text-ink-faint">The draw is made while the circle is open for joining.</p>}
         </section>
       ) : !data.drawn ? null : (
@@ -82,7 +82,7 @@ export default function PayoutOrderPage() {
               <p className="font-semibold text-warning-strong">This draw is out of date.</p>
               <p className="text-sm text-warning-strong">{data.staleBecause}. An order drawn for a different circle cannot be used, so the circle cannot start until it is drawn again. The old draw stays on the record.</p>
               {data.pendingPeople > 0 && <p className="text-sm text-warning-strong">{data.pendingPeople} {data.pendingPeople === 1 ? 'person is' : 'people are'} still waiting for approval and would not be in the new draw.</p>}
-              {can && data.canDraw && <Button color="green" onClick={() => (data.pendingPeople > 0 ? setWarnUnapproved(true) : run(() => draw.mutateAsync(), 'The order was drawn again.'))} loading={draw.isLoading}>Draw again</Button>}
+              {can && data.canDraw && <Button color="green" onClick={() => (data.pendingPeople > 0 ? setWarnUnapproved(true) : run(() => draw.mutateAsync(), 'The order was drawn again.'))} loading={draw.isPending}>Draw again</Button>}
             </div>
           )}
           {data.stale && data.method === 'ADMIN_SET' && (
@@ -114,7 +114,7 @@ export default function PayoutOrderPage() {
             <NativeSelect label="Second place" data={[{ value: '', label: 'Choose…' }, ...data.slots.map((s) => ({ value: String(s.slotId), label: `${ordinal(s.position)} · ${s.name}` }))]} value={b} onChange={(e) => setB(e.currentTarget.value)} />
           </div>
           <Textarea label="Reason (optional)" autosize minRows={1} value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
-          <Button disabled={!a || !b || a === b} onClick={() => run(() => request.mutateAsync({ slotAId: Number(a), slotBId: Number(b), reason: reason.trim() || undefined }), 'The swap was requested.')} loading={request.isLoading}>Request the swap</Button>
+          <Button disabled={!a || !b || a === b} onClick={() => run(() => request.mutateAsync({ slotAId: Number(a), slotBId: Number(b), reason: reason.trim() || undefined }), 'The swap was requested.')} loading={request.isPending}>Request the swap</Button>
         </section>
       )}
 

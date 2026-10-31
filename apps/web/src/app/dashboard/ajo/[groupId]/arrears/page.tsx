@@ -59,7 +59,7 @@ function CaseDetail({ caseId, canManage, canClose, canWrite, onClose }: { caseId
                 <ul className="mt-2 grid gap-1 text-xs text-ink-muted sm:grid-cols-2">{p.schedule.map((l) => <li key={l.dueDate}>{formatDay(l.dueDate)}: {formatKobo(l.amountKobo)}</li>)}</ul>
               </div>
             ))}
-            {canWrite && canManage && open && <Button size="compact-xs" variant="light" onClick={() => run(() => draft.mutateAsync(), 'A plan was drafted and offered to the member.')} loading={draft.isLoading}>Draft a new plan</Button>}
+            {canWrite && canManage && open && <Button size="compact-xs" variant="light" onClick={() => run(() => draft.mutateAsync(), 'A plan was drafted and offered to the member.')} loading={draft.isPending}>Draft a new plan</Button>}
           </section>
 
           <section className="space-y-2">
@@ -164,7 +164,7 @@ export default function ArrearsPage() {
           <Tabs.Panel value="cases" pt="md" className="space-y-3">
             <p className="max-w-3xl text-sm text-ink-muted">A case opens when someone who has already collected stops paying. It keeps a record and can offer a repayment plan. Nothing is taken from other members or guarantors, and nobody is removed automatically.</p>
             {canWrite && manage && (
-              <div className="flex flex-wrap items-end gap-2"><NativeSelect label="Open a case by hand" data={[{ value: '', label: 'Choose a person…' }, ...(people.data ?? []).filter((p) => p.status === 'ACTIVE').map((p) => ({ value: String(p.membershipId), label: p.name }))]} value={newCaseFor} onChange={(e) => setNewCaseFor(e.currentTarget.value)} /><Button variant="default" disabled={!newCaseFor} onClick={async () => { setProblem(null); try { await openCase.mutateAsync(Number(newCaseFor)); toast.success('Case opened.'); setNewCaseFor(''); } catch (e) { setProblem(ajoErrorMessage(e)); } }} loading={openCase.isLoading}>Open case</Button></div>
+              <div className="flex flex-wrap items-end gap-2"><NativeSelect label="Open a case by hand" data={[{ value: '', label: 'Choose a person…' }, ...(people.data ?? []).filter((p) => p.status === 'ACTIVE').map((p) => ({ value: String(p.membershipId), label: p.name }))]} value={newCaseFor} onChange={(e) => setNewCaseFor(e.currentTarget.value)} /><Button variant="default" disabled={!newCaseFor} onClick={async () => { setProblem(null); try { await openCase.mutateAsync(Number(newCaseFor)); toast.success('Case opened.'); setNewCaseFor(''); } catch (e) { setProblem(ajoErrorMessage(e)); } }} loading={openCase.isPending}>Open case</Button></div>
             )}
             {cases.isLoading ? <AjoLoading /> : cases.isError ? <AjoError error={cases.error} onRetry={() => cases.refetch()} /> : cases.data && cases.data.length > 0 ? (
               <ul className="divide-y divide-line-soft rounded-lg border border-line">{cases.data.map((c) => (

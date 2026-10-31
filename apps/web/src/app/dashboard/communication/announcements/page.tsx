@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { IconSend, IconMail, IconMessage, IconUsers } from '@tabler/icons-react';
 import {
   notificationsApi,
@@ -88,7 +88,7 @@ export default function AnnouncementsPage() {
     queryKey: ['announcement-preview', debounced],
     queryFn: () => notificationsApi.previewAnnouncement(JSON.parse(debounced)),
     enabled: ready,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     retry: false,
   });
   const reach = preview.data?.data.reach;
@@ -98,8 +98,8 @@ export default function AnnouncementsPage() {
   const history = useQuery({
     queryKey: ['announcements-history'],
     queryFn: () => notificationsApi.listAnnouncements({ limit: 20 }),
-    refetchInterval: (data) =>
-      data?.data.announcements.some((a) => a.status === 'SENDING') ? 4000 : false,
+    refetchInterval: (query) =>
+      query.state.data?.data.announcements.some((a) => a.status === 'SENDING') ? 4000 : false,
   });
 
   const send = useMutation({

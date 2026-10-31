@@ -62,7 +62,7 @@ export default function LoanDetailPage() {
   const loan: LoanDetail | undefined = loanQuery.data?.data;
   const repayments: RepaymentRow[] = repaymentsQuery.data?.data?.repayments ?? [];
 
-  if (loanQuery.isLoading) {
+  if (loanQuery.isPending) {
     return (
       <div className="flex justify-center py-12">
         <Loader size="lg" />

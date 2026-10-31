@@ -29,8 +29,8 @@ export default function NotificationArchivePage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => notificationsApi.deleteNotification(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['archived-notifications']);
-      queryClient.invalidateQueries(['notifications']);
+      queryClient.invalidateQueries({ queryKey: ['archived-notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     },
@@ -41,8 +41,8 @@ export default function NotificationArchivePage() {
     mutationFn: (ids: number[]) => Promise.all(ids.map(id => notificationsApi.deleteNotification(id))),
     onSuccess: () => {
       setSelectedNotifications([]);
-      queryClient.invalidateQueries(['archived-notifications']);
-      queryClient.invalidateQueries(['notifications']);
+      queryClient.invalidateQueries({ queryKey: ['archived-notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     },

@@ -574,8 +574,8 @@ importers:
         specifier: ^2.40.0
         version: 2.47.0(react@18.3.1)
       '@tanstack/react-query':
-        specifier: ^4.32.0
-        version: 4.44.0(react-dom@18.3.1(react@18.3.1))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.3.1))(react@18.3.1)
+        specifier: ^5.104.5
+        version: 5.104.5(@types/react@18.2.79)(react@18.3.1)
       '@types/canvas-confetti':
         specifier: ^1.9.0
         version: 1.9.0
@@ -3483,9 +3483,6 @@ packages:
   '@tanstack/query-async-storage-persister@5.104.5':
     resolution: {integrity: sha512-PvWWD1tdE9fnQa/ndEREhkZAaW72RcixAFwC2F6c+JhhRCJ/wSjdl6DgY4IjJ+EX0H6AykjEMGw+EPvzSltyqA==}
 
-  '@tanstack/query-core@4.44.0':
-    resolution: {integrity: sha512-swSgb7OiPRR3UuIL7NuDrZNSMGmQD+wdtHxPD7j60SvBEnxbXurl5XOirtGEX2gm2hbK6mC8kMV1I+uO3l0UOw==}
-
   '@tanstack/query-core@5.104.4':
     resolution: {integrity: sha512-nU4Yrb8Sjn0DeVb7PKG9uiepNavys3yoxy1FX0hViY4/P6Ng/mBje2SMl7i9812rtyHKtHyqiaC/td6GkI8StA==}
 
@@ -3503,18 +3500,6 @@ packages:
       react: ^18 || ^19
     peerDependenciesMeta:
       '@types/react':
-        optional: true
-
-  '@tanstack/react-query@4.44.0':
-    resolution: {integrity: sha512-RuIqHYrS98LrK/8kJJOJMMSQ/BCpojwsXDh7p0fBmp38ZOz6dlk+uyFRRusH+V+t3POoCsDOQ2zhomEYOeReXw==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-native: '*'
-    peerDependenciesMeta:
-      react-dom:
-        optional: true
-      react-native:
         optional: true
 
   '@tanstack/react-query@5.104.4':
@@ -12958,16 +12943,6 @@ snapshots:
 
   '@react-native/normalize-colors@0.88.0': {}
 
-  '@react-native/virtualized-lists@0.88.0(@types/react@18.2.79)(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      invariant: 2.2.4
-      nullthrows: 1.1.1
-      react: 18.3.1
-      react-native: 0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.3.1)
-    optionalDependencies:
-      '@types/react': 18.2.79
-    optional: true
-
   '@react-native/virtualized-lists@0.88.0(@types/react@19.3.0)(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)':
     dependencies:
       invariant: 2.2.4
@@ -13389,8 +13364,6 @@ snapshots:
       '@tanstack/query-core': 5.104.5
       '@tanstack/query-persist-client-core': 5.104.5
 
-  '@tanstack/query-core@4.44.0': {}
-
   '@tanstack/query-core@5.104.4': {}
 
   '@tanstack/query-core@5.104.5': {}
@@ -13407,18 +13380,16 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@tanstack/react-query@4.44.0(react-dom@18.3.1(react@18.3.1))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@tanstack/query-core': 4.44.0
-      react: 18.3.1
-      use-sync-external-store: 1.7.0(react@18.3.1)
-    optionalDependencies:
-      react-dom: 18.3.1(react@18.3.1)
-      react-native: 0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.3.1)
-
   '@tanstack/react-query@5.104.4(@types/react@18.2.79)(react@18.3.1)':
     dependencies:
       '@tanstack/query-core': 5.104.4
+      react: 18.3.1
+    optionalDependencies:
+      '@types/react': 18.2.79
+
+  '@tanstack/react-query@5.104.5(@types/react@18.2.79)(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.104.5
       react: 18.3.1
     optionalDependencies:
       '@types/react': 18.2.79
@@ -20095,49 +20066,6 @@ snapshots:
       whatwg-fetch: 3.6.20
     transitivePeerDependencies:
       - supports-color
-
-  react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.3.1):
-    dependencies:
-      '@react-native/asset-utils': 0.88.0
-      '@react-native/codegen': 0.88.0(@babel/core@7.29.7)
-      '@react-native/community-cli-plugin': 0.88.0(@react-native/metro-config@0.88.0(@babel/core@7.29.7))
-      '@react-native/gradle-plugin': 0.88.0
-      '@react-native/normalize-colors': 0.88.0
-      '@react-native/virtualized-lists': 0.88.0(@types/react@18.2.79)(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@18.2.79)(react@18.3.1))(react@18.3.1)
-      anser: 1.4.10
-      ansi-regex: 5.0.1
-      base64-js: 1.5.1
-      flow-enums-runtime: 0.0.6
-      flow-parser: 0.327.0
-      hermes-compiler: 260318099.0.4
-      invariant: 2.2.4
-      memoize-one: 5.2.1
-      metro-runtime: 0.87.1
-      metro-source-map: 0.87.1
-      nullthrows: 1.1.1
-      pretty-format: 29.7.0
-      promise: 8.3.0
-      react: 18.3.1
-      react-devtools-core: 6.1.5
-      react-refresh: 0.14.2
-      regenerator-runtime: 0.13.11
-      scheduler: 0.28.0
-      semver: 7.8.5
-      stacktrace-parser: 0.1.11
-      tinyglobby: 0.2.17
-      whatwg-fetch: 3.6.20
-      ws: 7.5.13
-      yargs: 17.7.3
-    optionalDependencies:
-      '@types/react': 18.2.79
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@react-native-community/cli'
-      - '@react-native/metro-config'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-    optional: true
 
   react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0):
     dependencies:

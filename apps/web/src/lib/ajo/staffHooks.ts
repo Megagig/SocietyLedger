@@ -24,7 +24,8 @@ export const useSwaps = (id: number) => useQuery({ queryKey: k('swaps', id), que
 export function useQueue(id: number, status?: string) {
   const q = useInfiniteQuery({
     queryKey: k('queue', id, status),
-    queryFn: ({ pageParam = 0 }) => ajoStaffApi.queue(id, { ...(status ? { status } : {}), skip: pageParam }),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => ajoStaffApi.queue(id, { ...(status ? { status } : {}), skip: pageParam }),
     getNextPageParam: (last, all) => { const loaded = all.reduce((n, p) => n + p.items.length, 0); return loaded < last.total ? loaded : undefined; },
     enabled: id > 0,
   });
@@ -35,7 +36,8 @@ export function useQueue(id: number, status?: string) {
 export function useHandovers(id: number, reconciled?: boolean) {
   const q = useInfiniteQuery({
     queryKey: k('handovers', id, String(reconciled)),
-    queryFn: ({ pageParam = 0 }) => ajoStaffApi.handovers(id, reconciled, pageParam),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => ajoStaffApi.handovers(id, reconciled, pageParam),
     getNextPageParam: (last, all) => (last.length === QUEUE_PAGE ? all.reduce((n, p) => n + p.length, 0) : undefined),
     enabled: id > 0,
   });

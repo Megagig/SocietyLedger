@@ -78,7 +78,7 @@ export default function RulesPage() {
           <Checkbox label="I have read these rules and I agree to them." checked={read} onChange={(e) => setRead(e.currentTarget.checked)} />
           <Textarea label="Note (optional)" value={note} onChange={(e) => setNote(e.currentTarget.value)} maxLength={300} autosize minRows={2} />
           {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
-          <Button color="green" onClick={submit} loading={accept.isLoading}>
+          <Button color="green" onClick={submit} loading={accept.isPending}>
             Accept the rules
           </Button>
         </div>

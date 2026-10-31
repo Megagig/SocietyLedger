@@ -26,7 +26,7 @@ function AssociationAdminDashboardPage() {
   const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (officers only: the endpoint needs ledger.view)
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: getDashboardOverview,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -40,7 +40,7 @@ function AssociationAdminDashboardPage() {
   }, [_hasHydrated, user, isOfficer, router]);
 
   // Loading state (also while a non-officer is being sent to the member dashboard)
-  if (isLoading || (user && !isOfficer)) {
+  if (isPending || (user && !isOfficer)) {
     return <DashboardSkeleton />;
   }
 
