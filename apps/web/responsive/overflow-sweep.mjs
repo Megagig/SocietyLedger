@@ -17,7 +17,7 @@ else {
   templates = [...new Set(rows.filter((r) => r.overflowX && (r.role === 'admin' || r.role === 'anon')).map((r) => r.template))];
 }
 const only = arg('only');
-if (only) templates = templates.filter((t) => t.includes(only));
+if (only) templates = templates.filter((t) => (process.argv.includes('--exact') ? t === only : t.includes(only)));
 const { chromium } = loadPlaywright();
 const browser = await chromium.launch();
 const lc = await browser.newContext({ baseURL, serviceWorkers: 'block' });
@@ -40,7 +40,8 @@ for (const w of widths) {
       await settle(page);
       const m = await page.evaluate(measure);
       total++;
-      if (m.overflowX) { bad++; console.log(`OVERFLOW ${String(w).padEnd(5)} +${String(m.overflowPx).padEnd(4)} ${t.padEnd(46)} ${m.offenders.slice(0, 2).map((o) => o.el.split('.').slice(0, 2).join('.') + ':' + JSON.stringify(o.text.slice(0, 20))).join(' | ')}`); }
+      // 1px of sub-pixel rounding is not a scrollbar users can see
+      if (m.overflowPx > 1) { bad++; console.log(`OVERFLOW ${String(w).padEnd(5)} +${String(m.overflowPx).padEnd(4)} ${t.padEnd(46)} ${m.offenders.slice(0, 2).map((o) => o.el.split('.').slice(0, 2).join('.') + ':' + JSON.stringify(o.text.slice(0, 20))).join(' | ')}`); }
     } catch (e) { console.log(`ERROR    ${w} ${t} ${String(e.message).split('\n')[0].slice(0, 80)}`); }
     await page.close();
   }

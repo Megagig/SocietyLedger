@@ -87,7 +87,7 @@ export function HomeContent({ pricingSlot, offerDescription, startBadges }: Home
               <span>Trusted by 500+ Associations Across Nigeria</span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 leading-tight">
               <span className="bg-gradient-to-r from-gray-900 via-teal-800 to-green-800 dark:from-white dark:via-teal-200 dark:to-green-200 bg-clip-text text-transparent">
                 Modern Management for
               </span>
