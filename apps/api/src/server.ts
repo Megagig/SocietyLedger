@@ -1,6 +1,8 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
+import { apiCacheHeaders } from './middleware/http-cache.middleware';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
@@ -82,6 +84,9 @@ const PORT = process.env.PORT || 4000;
 // Security middleware
 app.use(helmet());
 
+// Smaller responses on slow networks. Text only; images and already-compressed files are left alone by the library's own filter.
+app.use(compression());
+
 // CORS configuration - Allow subdomains for multi-tenancy
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -153,6 +158,9 @@ app.use('/uploads', (req, res, next) => {
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(uploadsPath));
+
+// Reads are revalidated, never stored by a shared cache; writes are not stored at all (http-cache.middleware.ts). A route can set its own.
+app.use('/api', apiCacheHeaders);
 
 // Webhook handler routes (must be before tenantMiddleware for raw body access)
 app.use('/api/webhooks', webhookHandlerRoutes);

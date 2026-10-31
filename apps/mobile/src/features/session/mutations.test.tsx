@@ -18,6 +18,9 @@ jest.mock('@/lib/secure', () => ({
 // F3.1 — logout also unregisters the push token; that path needs native modules + storage helpers.
 jest.mock('@/lib/push', () => ({ unregisterPushToken: jest.fn(async () => undefined) }));
 
+const mockResetAppQueryCache = jest.fn(async () => {});
+jest.mock('@/lib/queryClient', () => ({ resetAppQueryCache: mockResetAppQueryCache }));
+
 const mockLogout = jest.fn();
 jest.mock('@/api/endpoints/auth', () => ({ authApi: { logout: mockLogout } }));
 
@@ -73,6 +76,8 @@ describe('useLogout', () => {
     expect(useModulesStore.getState().isDisabled('welfare')).toBe(false);
     expect(useAppLockStore.getState().isLocked).toBe(true);
     expect(useTenantStore.getState().current).toEqual(fakeTenant);
+    // Signing out forgets what was cached for this person, in memory and on the phone.
+    expect(mockResetAppQueryCache).toHaveBeenCalled();
 
     unmount();
     queryClient.clear();

@@ -41,7 +41,11 @@ function CheckoutContent() {
   const [catalog, setCatalog] = useState<PurchasableCatalog | null>(null);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   // null = "whatever the server includes by default" (the add-ons the association already has); an array = the person's own choice
-  const [addonIds, setAddonIds] = useState<number[] | null>(null);
+  // A tier chosen on the Plans page arrives as ?addons=3 (or 3,4) and starts ticked; the server still prices it and refuses anything it does not allow.
+  const [addonIds, setAddonIds] = useState<number[] | null>(() => {
+    const asked = (searchParams.get('addons') ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    return asked.length > 0 ? asked : null;
+  });
   const [provider, setProvider] = useState<PaymentProvider | null>(null);
   const [pricing, setPricing] = useState(false);
   const [paying, setPaying] = useState(false);

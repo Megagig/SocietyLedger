@@ -183,6 +183,16 @@ describe('who can reach what', () => {
     expect(svc.emergencyException).toHaveBeenCalledWith({ associationId: ASSOC, groupId: 1, actorUserId: ADMIN, slotId: 5, newPosition: 3, reason: 'A long enough reason' });
   });
 
+  it('passes the "take effect now" choice through when an officer publishes rules, and otherwise leaves it off', async () => {
+    svc.publishRuleVersion.mockResolvedValue({ id: 1, version: 3, effectiveFrom: new Date() });
+    const post = (b: object) => request(app).post('/api/ajo/groups/1/rules').set('x-test-user', as(OFFICER)).send(b);
+    expect((await post({ rules: { memberVisibility: 'FULL' }, immediate: true })).status).toBe(201);
+    expect(svc.publishRuleVersion).toHaveBeenLastCalledWith(expect.objectContaining({ immediate: true, rules: { memberVisibility: 'FULL' } }));
+    expect((await post({ rules: { memberVisibility: 'FULL' } })).status).toBe(201);
+    expect(svc.publishRuleVersion).toHaveBeenLastCalledWith(expect.objectContaining({ immediate: undefined }));
+    expect((await post({ rules: { memberVisibility: 'FULL' }, immediate: 'yes' })).status).toBe(400);
+  });
+
   it('lets only someone who can approve payouts set the order by hand, and any member of the circle check a draw', async () => {
     svc.setOrderByAdmin.mockResolvedValue({ eventId: 1, redo: false, slots: 2 });
     svc.verifyOrder.mockResolvedValue({ method: 'RANDOM_DRAW', checkable: true, matches: true });

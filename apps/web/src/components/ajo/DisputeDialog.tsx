@@ -58,7 +58,7 @@ export function DisputeDialog({ membershipId, installment, onClose }: { membersh
             <Button variant="default" onClick={close}>
               Cancel
             </Button>
-            <Button onClick={submit} loading={raise.isLoading}>
+            <Button onClick={submit} loading={raise.isPending}>
               Send my claim
             </Button>
           </div>

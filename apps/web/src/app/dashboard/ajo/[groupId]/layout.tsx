@@ -5,6 +5,7 @@ import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { AjoError, AjoLoading } from '@/components/ajo/AjoStates';
+import { MyMembershipBanner } from '@/components/ajo/MyMembershipBanner';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
 import { frequencyText, MODEL_LABEL } from '@/lib/ajo/format';
 import { useGroupDetail } from '@/lib/ajo/staffHooks';
@@ -67,6 +68,8 @@ export default function GroupWorkspaceLayout({ children }: { children: ReactNode
             })}
         </nav>
       )}
+
+      {group.data && <MyMembershipBanner groupId={groupId} />}
 
       {group.isLoading ? <AjoLoading /> : group.data ? children : null}
     </div>

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { key } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { Plug, Save, Loader2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from '@/lib/toast';
@@ -18,6 +20,7 @@ interface IntegrationsSettings {
 
 export default function IntegrationsSettingsPage() {
   const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   const [formData, setFormData] = useState<IntegrationsSettings>({
     paystackEnabled: false,
     nombaEnabled: false,
@@ -27,8 +30,9 @@ export default function IntegrationsSettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['settings', 'integrations'],
+  const { data, isLoading } = useScopedQuery({
+    domain: 'settings',
+    parts: ['integrations'],
     queryFn: async () => {
       const response = await api.get('/settings/integrations');
       return response.data.data as IntegrationsSettings;
@@ -49,7 +53,7 @@ export default function IntegrationsSettingsPage() {
     },
     onSuccess: () => {
       toast.success('Integration settings updated');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'integrations'] });
+      queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'integrations') });
       setHasChanges(false);
     },
     onError: (error: any) => {

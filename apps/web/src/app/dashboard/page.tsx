@@ -6,10 +6,17 @@ import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { useScopedQuery } from '@/lib/query';
+import { FreshnessNote } from '@/components/common/FreshnessNote';
+import { useQueryClient } from '@tanstack/react-query';
+import { key, queryDefaults } from '@societyledger/query';
+import { DEFAULT_MEMBERS_FILTERS, fetchMembersPage, membersListParts } from '@/lib/api/members-list';
+import { PERMISSIONS } from '@/lib/permissions';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useQueryScope } from '@/lib/query';
 import { canSeeOfficerDashboard } from '@/lib/permissions';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
@@ -23,14 +30,28 @@ function AssociationDashboardPage() {
   const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['dashboard-overview'],
+  // Cached per association (shown at once from the saved copy on the next open, then refreshed); the freshness window is the 'dashboard' entry in @societyledger/query.
+  const overview = useScopedQuery({
+    domain: 'dashboard',
+    parts: ['overview'],
     queryFn: getDashboardOverview,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
     enabled: _hasHydrated && isOfficer, // everyone else is sent to the member dashboard
-
   });
+  const { data, isPending, isError, error, refetch } = overview;
+
+  // Officers usually open Members next: fetch its first page quietly once the dashboard has arrived, so it opens already filled.
+  const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
+  const { can } = usePermissions();
+  const canSeeMembers = can(PERMISSIONS.MEMBER_VIEW);
+  useEffect(() => {
+    if (!overview.isSuccess || !canSeeMembers || tenant === null) return;
+    void queryClient.prefetchQuery({
+      queryKey: key(tenant, 'members', ...membersListParts(DEFAULT_MEMBERS_FILTERS)),
+      queryFn: () => fetchMembersPage(DEFAULT_MEMBERS_FILTERS),
+      ...queryDefaults('members'),
+    });
+  }, [overview.isSuccess, canSeeMembers, tenant, queryClient]);
 
   // Smart redirect based on user role
   useEffect(() => {
@@ -59,7 +80,7 @@ function AssociationDashboardPage() {
   }
 
   // Loading state
-  if (isLoading) {
+  if (isPending) {
     return <DashboardSkeleton />;
   }
 
@@ -113,6 +134,7 @@ function AssociationDashboardPage() {
           <HelpLink />
         </div>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here&apos;s your overview</p>
+        <FreshnessNote query={overview} />
       </div>
 
       <div className="space-y-4 sm:space-y-6">

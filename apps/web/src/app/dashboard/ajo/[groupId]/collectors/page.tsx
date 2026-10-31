@@ -96,7 +96,7 @@ export default function CollectorsPage() {
           <MultiSelect label="Contributors" searchable data={eligible.map((p) => ({ value: String(p.membershipId), label: p.name }))} value={people} onChange={setPeople} placeholder="Choose people" />
           <TextInput label="Daily target (₦, optional)" description="What you expect this collector to bring in each day from these people." inputMode="decimal" value={target} onChange={(e) => setTarget(e.currentTarget.value)} />
           {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
-          <div className="flex justify-end gap-2"><Button variant="default" onClick={() => setOpen(false)}>Cancel</Button><Button color="green" onClick={submit} loading={assign.isLoading}>Assign</Button></div>
+          <div className="flex justify-end gap-2"><Button variant="default" onClick={() => setOpen(false)}>Cancel</Button><Button color="green" onClick={submit} loading={assign.isPending}>Assign</Button></div>
         </div>
       </Modal>
     </div>

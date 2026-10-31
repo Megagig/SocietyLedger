@@ -452,7 +452,10 @@ Enum values used in UI (status chips, pickers) are mirrored as TS string-literal
 - Persisted cache is wiped on logout / tenant switch.
 - Mutations disabled while offline (`useOnline()`); buttons show "You're offline".
 - Lists use FlashList with `estimatedItemSize`; images via expo-image with memory+disk cache.
-- Query keys: `['<tenant>', '<domain>', '<resource>', params]` — tenant first so switching never leaks data.
+- Query keys: `['<tenant>', '<domain>', '<resource>', params]` — tenant first so switching never leaks data. Personal data adds the person: `[tenant, domain, 'u', userId, ...]`.
+- **One set of rules for all apps (2026-10-31):** `packages/query` (`@societyledger/query`) holds the key builders, the freshness table (static 30 min, directory 5 min, aggregate 90 s, money 30 s and always rechecked on open, live 0), the persistence allow-list, the named invalidation events and the client factory. It is pure logic with no React (web/admin run React 18, mobile React 19), so each app wraps it in its own few-line hook. See `CACHING.md` at the repo root.
+- **What is saved on the phone** is decided by `shouldPersistQuery`: deny by default; success only; the allow-listed domains; this association and this person; never a key part that marks a secret or a one-time value; never payments, contributions or payouts. The buster is `v3|<app version>|<tenant>`. Long lists are saved as their first page.
+- **The cache is wiped the moment the session becomes `unauthenticated`** (logout, a failed token refresh, a cold start with an expired session): `watchSessionForCacheReset()` in `lib/queryClient.ts` clears memory and the saved copy. `api/**` still only flips the session; it never imports the cache.
 
 ---
 

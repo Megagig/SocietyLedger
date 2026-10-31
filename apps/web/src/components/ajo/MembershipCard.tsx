@@ -39,6 +39,11 @@ export function MembershipCard({ item }: { item: MyMembershipDTO }) {
               <li key={w.requirement}>{w.text}</li>
             ))}
           </ul>
+          {item.waitingFor.some((w) => w.requirement === 'RULE_ACCEPTANCE') && (
+            <Button component={Link} href={`${base}/rules`} color="green" size="sm" className="mt-3">
+              Read and accept the rules
+            </Button>
+          )}
         </div>
       )}
 

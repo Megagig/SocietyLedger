@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { key } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { CreditCard, Save, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/axios';
@@ -50,6 +52,7 @@ const CURRENCIES = [
 
 export default function FinancialSettingsPage() {
   const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   const [formData, setFormData] = useState<FinancialSettings>({
     defaultGracePeriodDays: 7,
     enableLateFees: false,
@@ -67,8 +70,9 @@ export default function FinancialSettingsPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   // Fetch settings
-  const { data, isLoading } = useQuery({
-    queryKey: ['settings', 'financial'],
+  const { data, isLoading } = useScopedQuery({
+    domain: 'settings',
+    parts: ['financial'],
     queryFn: async () => {
       const response = await api.get('/settings/financial');
       return response.data.data as FinancialSettings;
@@ -90,7 +94,7 @@ export default function FinancialSettingsPage() {
     },
     onSuccess: () => {
       toast.success('Financial settings updated');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'financial'] });
+      queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'financial') });
       setHasChanges(false);
       setShowConfirmation(false);
     },

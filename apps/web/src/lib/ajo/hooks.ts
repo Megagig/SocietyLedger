@@ -5,6 +5,8 @@
  * A group's full bank account number and a proof are never kept here: they are fetched on demand with `gcTime`-less one-off calls.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidateFor } from '@societyledger/query';
+import { useQueryScope } from '@/lib/query';
 import { ajoApi } from './api';
 
 export const ajoKeys = {
@@ -41,7 +43,9 @@ export const useVerification = () => useQuery({ queryKey: ajoKeys.verification()
 /** Anything a write can change is refreshed together; it is cheap and avoids showing a stale balance. */
 function useRefreshAjo() {
   const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: ajoKeys.all });
+  const { tenant } = useQueryScope();
+  // The Ajo screens (all of them), and everything scoped to this association that adds payments up: the dashboard, reports, balances.
+  return () => Promise.all([client.invalidateQueries({ queryKey: ajoKeys.all }), invalidateFor(client, tenant, 'circle.changed', 'payment.changed')]);
 }
 
 export function useReportTransfer(groupId: number) {

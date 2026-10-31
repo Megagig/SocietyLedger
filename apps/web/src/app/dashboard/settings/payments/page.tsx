@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { key } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { CreditCard, Save, Loader2, Check, Info } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from '@/lib/toast';
@@ -28,6 +30,7 @@ const PAYMENT_CHANNELS = [
 
 export default function PaymentsSettingsPage() {
   const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   const [formData, setFormData] = useState<PaymentsSettings>({
     enabledChannels: ['bank_transfer', 'cash'],
     defaultPaymentMethod: 'bank_transfer',
@@ -38,8 +41,9 @@ export default function PaymentsSettingsPage() {
   });
   const [hasChanges, setHasChanges] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['settings', 'payments'],
+  const { data, isLoading } = useScopedQuery({
+    domain: 'settings',
+    parts: ['payments'],
     queryFn: async () => {
       const response = await api.get('/settings/payments');
       return response.data.data as PaymentsSettings;
@@ -60,7 +64,7 @@ export default function PaymentsSettingsPage() {
     },
     onSuccess: () => {
       toast.success('Payment settings updated');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'payments'] });
+      queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'payments') });
       setHasChanges(false);
     },
     onError: (error: any) => {

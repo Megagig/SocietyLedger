@@ -205,7 +205,7 @@ describe('what the page asks for', () => {
     expect(mockCollectors).toHaveBeenCalledWith(true);
   });
   it('says so, and dims the figures, while the new choice is loading, so old numbers are not read as the new ones', () => {
-    mockReport.mockReturnValue({ ...ok(result()), isPreviousData: true, isFetching: true });
+    mockReport.mockReturnValue({ ...ok(result()), isPlaceholderData: true, isFetching: true });
     const el = render(<AjoReportPage />);
     expect(el.textContent).toContain('Updating for your new choice');
     expect(el.querySelector('.opacity-50')).not.toBeNull();

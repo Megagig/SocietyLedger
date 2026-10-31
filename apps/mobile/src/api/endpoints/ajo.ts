@@ -194,7 +194,8 @@ export const ajoApi = {
   completeGroup: (id: number) => post<unknown>(`/ajo/groups/${id}/complete`),
   /** The API sends `{ versions, acceptance? }`, not a bare list. */
   ruleVersions: (id: number) => get<RuleVersionsReplyDTO>(`/ajo/groups/${id}/rules`),
-  publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, { rules }),
+  /** `immediate`: take effect now, with no notice period. Allowed only before the circle starts; a waiting version is brought forward. */
+  publishRules: (id: number, rules: RulesInput, options: { immediate?: boolean } = {}) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, { rules, ...(options.immediate ? { immediate: true } : {}) }),
 
   // ── members ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   people: (id: number) => get<PersonNameDTO[]>(`/ajo/groups/${id}/people`),

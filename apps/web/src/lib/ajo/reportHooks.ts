@@ -4,7 +4,7 @@
  * Ajo reports (T10): the list of reports with what is locked, one report with its filters and page, and the file downloads. A report is
  * never worked out in the browser: every figure and row comes from the API, and a file is the API's own CSV or PDF.
  */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { downloadFile } from './savingsHooks';
 import type { ReportFilters, ReportListItem, ReportName, ReportResult } from './reportTypes';
@@ -37,7 +37,7 @@ export const useReport = (name: ReportName, filters: ReportFilters, page: number
     queryKey: ['ajo', 'reports', name, filters, page],
     queryFn: async () => ((await api.get(`/ajo/reports/${name}?${reportQuery(filters, { page, pageSize: REPORT_PAGE_SIZE })}`)) as { data: Envelope<ReportResult> }).data.data,
     enabled,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
 

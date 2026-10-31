@@ -4,6 +4,9 @@ import { useAppLockStore } from '@/stores/appLock';
 import { useSessionStore } from '@/stores/session';
 import { renderHookWithQueryClient } from '@/test-utils/renderWithProviders';
 
+const mockResetAppQueryCache = jest.fn(async () => {});
+jest.mock('@/lib/queryClient', () => ({ resetAppQueryCache: mockResetAppQueryCache }));
+
 const mockSetTokens = jest.fn(async () => {});
 jest.mock('@/lib/secure', () => ({ setTokens: mockSetTokens }));
 
@@ -26,6 +29,7 @@ const { useLogin } = require('./mutations');
 describe('useLogin', () => {
   beforeEach(() => {
     mockSetTokens.mockClear();
+    mockResetAppQueryCache.mockClear();
     mockLogin.mockReset();
     useSessionStore.getState().reset();
     useAppLockStore.getState().lock();
@@ -62,6 +66,8 @@ describe('useLogin', () => {
     expect(useSessionStore.getState().status).toBe('authenticated');
     expect(useSessionStore.getState().user?.email).toBe('ada@example.com');
     expect(useAppLockStore.getState().isLocked).toBe(false);
+    // Whatever the previous person had cached (in memory and on the phone) is gone before the new session loads anything.
+    expect(mockResetAppQueryCache).toHaveBeenCalledTimes(1);
     unmount();
     queryClient.clear();
   });

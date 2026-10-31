@@ -34,7 +34,7 @@ export const CASH_PAGE_SIZE = 20;
 export function useCashOverview() {
   const tenant = useTenantKey();
   const enabled = useCan(CASH_ANY_ACCESS);
-  return useQuery({ queryKey: cashKeys.overview(tenant), queryFn: () => cashApi.getOverview(), enabled, refetchInterval: 60_000 });
+  return useQuery({ queryKey: cashKeys.overview(tenant), queryFn: () => cashApi.getOverview(), enabled, refetchInterval: 120_000 }); // a full overview, not a count: every two minutes is plenty
 }
 
 /** One status of the collections list, newest first, loaded a page at a time. */

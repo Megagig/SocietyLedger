@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { key } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { Building, Upload, Save, Loader2, Trash2 } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from '@/lib/toast';
@@ -60,6 +62,7 @@ const CURRENCIES = [
 
 export default function AssociationProfilePage() {
   const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<AssociationProfile>({
     name: '',
@@ -72,8 +75,9 @@ export default function AssociationProfilePage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Fetch association profile
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['settings', 'association', 'profile'],
+  const { data, isLoading, error } = useScopedQuery({
+    domain: 'settings',
+    parts: ['association', 'profile'],
     queryFn: async () => {
       const response = await api.get('/settings/association/profile');
       return response.data.data as AssociationProfile;
@@ -96,7 +100,7 @@ export default function AssociationProfilePage() {
     },
     onSuccess: () => {
       toast.success('Association profile updated successfully');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'association'] });
+      queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'association') });
       setHasChanges(false);
     },
     onError: (error: any) => {
@@ -135,7 +139,7 @@ export default function AssociationProfilePage() {
 
       if (response.data.success) {
         toast.success('Logo uploaded successfully');
-        queryClient.invalidateQueries({ queryKey: ['settings', 'association'] });
+        queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'association') });
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to upload logo');
@@ -156,7 +160,7 @@ export default function AssociationProfilePage() {
       if (response.data.success) {
         toast.success('Logo deleted successfully');
         setFormData(prev => ({ ...prev, logo: undefined }));
-        queryClient.invalidateQueries({ queryKey: ['settings', 'association'] });
+        queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'association') });
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to delete logo');

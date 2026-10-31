@@ -83,7 +83,7 @@ export default function PayoutAccountPage() {
           <TextInput label="Account number" inputMode="numeric" autoComplete="off" value={accountNumber} onChange={(e) => setAccountNumber(e.currentTarget.value)} required />
           <TextInput label="Account name" description="Exactly as the bank has it." value={accountName} onChange={(e) => setAccountName(e.currentTarget.value)} required minLength={2} maxLength={120} />
           {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
-          <Button type="submit" color="green" loading={save.isLoading}>
+          <Button type="submit" color="green" loading={save.isPending}>
             {current ? 'Change account' : 'Save account'}
           </Button>
         </form>

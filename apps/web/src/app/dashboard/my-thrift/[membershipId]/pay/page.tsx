@@ -153,7 +153,7 @@ export default function PayContributionPage() {
         <TextInput label="Bank reference (optional)" description="The reference or session ID on your slip." value={reference} onChange={(e) => setReference(e.currentTarget.value)} maxLength={80} />
         <FileInput label="Slip or screenshot" description="JPG, PNG, WebP or PDF, up to 5 MB." accept="image/jpeg,image/png,image/webp,application/pdf" value={proof} onChange={setProof} clearable required />
         {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
-        <Button type="submit" color="green" fullWidth loading={report.isLoading}>
+        <Button type="submit" color="green" fullWidth loading={report.isPending}>
           Report my payment
         </Button>
       </form>

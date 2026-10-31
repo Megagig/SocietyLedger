@@ -17,6 +17,7 @@ import { AjoLoading } from '@/features/ajo/components/AjoStates';
 import { AjoScreen } from '@/features/ajo/components/AjoScreen';
 import { AjoStatusBadge } from '@/features/ajo/components/AjoStatusBadge';
 import { GuarantorSheet, type GuarantorSheetHandle } from '@/features/ajo/components/GuarantorSheet';
+import { RecordRulesAcceptanceSheet, type RecordRulesAcceptanceSheetHandle } from '@/features/ajo/components/RecordRulesAcceptanceSheet';
 import { SharesSheet, type SharesSheetHandle } from '@/features/ajo/components/SharesSheet';
 import { useAjoAction } from '@/features/ajo/mutations';
 import { useGroupDetail, useGroupTrust, useRoster } from '@/features/ajo/queries';
@@ -37,6 +38,7 @@ export default function CircleMembersScreen() {
   const approve = useAjoAction((membershipId: number) => ajoApi.approveMember(membershipId));
   const addSheet = useRef<AddPersonSheetHandle>(null);
   const guarantorSheet = useRef<GuarantorSheetHandle>(null);
+  const rulesSheet = useRef<RecordRulesAcceptanceSheetHandle>(null);
   const sharesSheet = useRef<SharesSheetHandle>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const can = manage && canWrite;
@@ -157,6 +159,11 @@ export default function CircleMembersScreen() {
                         Approve
                       </Button>
                     ) : null}
+                    {p.status !== 'LEFT' && p.waitingFor.some((w) => w.requirement === 'RULE_ACCEPTANCE') ? (
+                      <Button size="sm" variant="secondary" onPress={() => rulesSheet.current?.open(p)} testID={`ajo-record-rules-${p.membershipId}`}>
+                        Record rules acceptance
+                      </Button>
+                    ) : null}
                     {p.status !== 'LEFT' ? (
                       <Button size="sm" variant="secondary" onPress={() => guarantorSheet.current?.open(p)} testID={`ajo-guarantor-${p.membershipId}`}>
                         Guarantor
@@ -179,6 +186,7 @@ export default function CircleMembersScreen() {
 
       <AddPersonSheet ref={addSheet} groupId={groupId} rotating={!!rotating} maxShares={group?.maxSharesPerMember ?? 1} minAmountKobo={group?.contributionKobo} />
       <GuarantorSheet ref={guarantorSheet} />
+      <RecordRulesAcceptanceSheet ref={rulesSheet} groupId={groupId} />
       <SharesSheet ref={sharesSheet} maxShares={group?.maxSharesPerMember ?? 1} />
     </AjoScreen>
   );

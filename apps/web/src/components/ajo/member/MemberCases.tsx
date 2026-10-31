@@ -80,7 +80,7 @@ export function MemberCases({ membershipId, canWrite }: { membershipId: number; 
                     >
                       Cancel
                     </Button>
-                    <Button color="green" loading={respond.isLoading} onClick={() => send(c.id)}>
+                    <Button color="green" loading={respond.isPending} onClick={() => send(c.id)}>
                       Send
                     </Button>
                   </div>

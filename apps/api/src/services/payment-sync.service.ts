@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { accountingIntegrationService } from './accounting-integration.service';
 import { memberLedgerService } from '../modules/member-finance/member-ledger.service';
+import { cacheInvalidationService } from './cache-invalidation.service';
 
 /**
  * What must follow a payment row being written, whichever way the money arrived (card, bank transfer, cash, a proof an officer approved):
@@ -47,6 +48,13 @@ export async function syncPaymentEffects(payment: { paymentId?: number; receiptN
       await accountingIntegrationService.onPaymentRecorded(full, userId);
     } catch (error) {
       console.error(`Accounting sync failed for payment ${full.id} (non-critical):`, error);
+    }
+    // The dashboard and reports add payments up and are cached. Clear them now the money has landed, for every route that gets here
+    // (card webhooks, Nomba, cash, an approved proof), so a figure is never older than the payment behind it.
+    try {
+      await cacheInvalidationService.onPaymentChange(full.associationId);
+    } catch (error) {
+      console.error(`Cache invalidation failed for payment ${full.id} (non-critical):`, error);
     }
   } catch (error) {
     console.error('Payment sync failed (non-critical):', error);

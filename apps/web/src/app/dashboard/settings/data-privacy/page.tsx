@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { key } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { Shield, Save, Loader2, Download, AlertTriangle, Info } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from '@/lib/toast';
@@ -17,6 +19,7 @@ interface DataPrivacySettings {
 
 export default function DataPrivacySettingsPage() {
   const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   const [formData, setFormData] = useState<DataPrivacySettings>({
     dataRetentionMonths: 84,
     softDeleteEnabled: true,
@@ -27,8 +30,9 @@ export default function DataPrivacySettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['settings', 'data_privacy'],
+  const { data, isLoading } = useScopedQuery({
+    domain: 'settings',
+    parts: ['data_privacy'],
     queryFn: async () => {
       const response = await api.get('/settings/data_privacy');
       return response.data.data as DataPrivacySettings;
@@ -49,7 +53,7 @@ export default function DataPrivacySettingsPage() {
     },
     onSuccess: () => {
       toast.success('Data privacy settings updated');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'data_privacy'] });
+      queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'data_privacy') });
       setHasChanges(false);
     },
     onError: (error: any) => {

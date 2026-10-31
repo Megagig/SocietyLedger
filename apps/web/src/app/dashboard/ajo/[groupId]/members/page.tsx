@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Modal, NumberInput, SegmentedControl, TextInput, Textarea } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { StatusBadge } from '@/components/ajo/StatusBadge';
@@ -11,6 +11,7 @@ import { ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay, formatKobo, nairaToKobo } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
 import type { RosterPersonDTO } from '@/lib/ajo/staffTypes';
+import { RecordRulesAcceptanceDialog } from '@/components/ajo/RecordRulesAcceptanceDialog';
 import { useAjoAction, useGroupDetail, useGroupTrust, useRoster } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
@@ -21,7 +22,7 @@ function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares, minAmo
   // Collector thrift: the amount the saver chose to pay each time. Empty means the group's smallest.
   const [amount, setAmount] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
-  const people = useQuery({ queryKey: ['ajo', 'staff', 'people', search], queryFn: () => ajoStaffApi.searchPeople(search), enabled: opened, keepPreviousData: true });
+  const people = useQuery({ queryKey: ['ajo', 'staff', 'people', search], queryFn: () => ajoStaffApi.searchPeople(search), enabled: opened, placeholderData: keepPreviousData });
   const add = useAjoAction((input: { memberId: number; amountKobo?: string }) => ajoStaffApi.addMember(groupId, input.memberId, rotating ? shares : undefined, input.amountKobo));
 
   const choose = async (memberId: number, name: string) => {
@@ -52,7 +53,7 @@ function AddMemberDialog({ groupId, opened, onClose, rotating, maxShares, minAmo
             {people.data.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2">
                 <div><p className="text-sm font-medium">{p.name}</p><p className="text-xs text-ink-faint">{p.memberNumber}{p.phone ? ` · ${p.phone}` : ' · no phone yet'}{p.hasLogin ? '' : ' · no login'}</p></div>
-                <Button size="compact-sm" variant="light" onClick={() => choose(p.id, p.name)} loading={add.isLoading && add.variables?.memberId === p.id}>Add</Button>
+                <Button size="compact-sm" variant="light" onClick={() => choose(p.id, p.name)} loading={add.isPending && add.variables?.memberId === p.id}>Add</Button>
               </li>
             ))}
           </ul>
@@ -147,7 +148,7 @@ function GuarantorDialog({ person, onClose }: { person: RosterPersonDTO | null; 
             {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="default" onClick={close}>Cancel</Button>
-              {mode === 'link' ? <Button color="green" onClick={createLink} loading={makeLink.isLoading}>Create the link</Button> : <Button color="green" onClick={submit} loading={save.isLoading}>Record agreement</Button>}
+              {mode === 'link' ? <Button color="green" onClick={createLink} loading={makeLink.isPending}>Create the link</Button> : <Button color="green" onClick={submit} loading={save.isPending}>Record agreement</Button>}
             </div>
           </>
         )}
@@ -171,6 +172,7 @@ export default function MembersPage() {
   const recheck = useAjoAction((memberId: number) => ajoStaffApi.resubmitVerification(memberId));
   const [adding, setAdding] = useState(false);
   const [guarantorFor, setGuarantorFor] = useState<RosterPersonDTO | null>(null);
+  const [rulesFor, setRulesFor] = useState<RosterPersonDTO | null>(null);
   const [sharesFor, setSharesFor] = useState<RosterPersonDTO | null>(null);
   const [newShares, setNewShares] = useState(1);
   const [problem, setProblem] = useState<string | null>(null);
@@ -217,12 +219,13 @@ export default function MembersPage() {
                 <tr key={p.membershipId} className="border-t border-line-soft align-top">
                   <td className="px-4 py-3"><p className="font-medium">{p.name}{rotating && p.shares > 1 ? ` (${p.shares} shares)` : ''}</p><p className="text-xs text-ink-faint">{p.phone ?? 'No phone'}{p.hasLogin ? '' : ' · no login'}</p></td>
                   <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                  <td className="px-4 py-3"><StatusBadge status={p.verification} />{can && p.verification === 'REJECTED' && <Button className="mt-1 block" size="compact-xs" variant="subtle" loading={recheck.isLoading && recheck.variables === p.memberId} onClick={async () => { setProblem(null); try { await recheck.mutateAsync(p.memberId); toast.success(`${p.name}'s details were sent to be checked again.`); } catch (error) { setProblem(ajoErrorMessage(error)); } }}>Check again</Button>}</td>
+                  <td className="px-4 py-3"><StatusBadge status={p.verification} />{can && p.verification === 'REJECTED' && <Button className="mt-1 block" size="compact-xs" variant="subtle" loading={recheck.isPending && recheck.variables === p.memberId} onClick={async () => { setProblem(null); try { await recheck.mutateAsync(p.memberId); toast.success(`${p.name}'s details were sent to be checked again.`); } catch (error) { setProblem(ajoErrorMessage(error)); } }}>Check again</Button>}</td>
                   <td className="px-4 py-3 text-xs">{trustOf.get(p.membershipId) ? <><StatusBadge status={trustOf.get(p.membershipId)!.band} />{trustOf.get(p.membershipId)!.onTimePercent !== null && <span className="ml-1 text-ink-muted">{trustOf.get(p.membershipId)!.onTimePercent}% on time</span>}</> : '—'}</td>
                   <td className="px-4 py-3 text-xs">{p.acceptedRuleVersion ? `Version ${p.acceptedRuleVersion}${p.acceptedVia ? ` (${p.acceptedVia})` : ''}` : 'Not accepted'}{p.guarantorRecorded ? ' · guarantor on file' : ''}</td>
                   <td className="px-4 py-3 text-xs text-ink-muted">{p.waitingFor.length ? <ul className="list-disc pl-4">{p.waitingFor.map((w) => <li key={w.requirement}>{w.text}</li>)}</ul> : '—'}</td>
                   <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">
-                    {can && p.status === 'PENDING' && !p.approvedAt && <Button size="compact-xs" color="green" onClick={() => doApprove(p)} loading={approve.isLoading && approve.variables === p.membershipId}>Approve</Button>}
+                    {can && p.status === 'PENDING' && !p.approvedAt && <Button size="compact-xs" color="green" onClick={() => doApprove(p)} loading={approve.isPending && approve.variables === p.membershipId}>Approve</Button>}
+                    {can && p.status !== 'LEFT' && p.waitingFor.some((w) => w.requirement === 'RULE_ACCEPTANCE') && <Button size="compact-xs" variant="subtle" onClick={() => setRulesFor(p)}>Record rules acceptance</Button>}
                     {can && p.status !== 'LEFT' && <Button size="compact-xs" variant="subtle" onClick={() => setGuarantorFor(p)}>Guarantor</Button>}
                     {can && rotating && group?.status !== 'ACTIVE' && p.status !== 'LEFT' && <Button size="compact-xs" variant="subtle" onClick={() => { setSharesFor(p); setNewShares(p.shares); }}>Shares</Button>}
                   </td>
@@ -235,10 +238,11 @@ export default function MembersPage() {
 
       <AddMemberDialog groupId={groupId} opened={adding} onClose={() => setAdding(false)} rotating={!!rotating} maxShares={group?.maxSharesPerMember ?? 1} />
       <GuarantorDialog person={guarantorFor} onClose={() => setGuarantorFor(null)} />
+      <RecordRulesAcceptanceDialog person={rulesFor} groupId={groupId} onClose={() => setRulesFor(null)} />
       <Modal opened={sharesFor !== null} onClose={() => setSharesFor(null)} title={`Shares for ${sharesFor?.name ?? ''}`} centered size="sm">
         <div className="space-y-4">
           <NumberInput label="Shares" min={1} max={group?.maxSharesPerMember ?? 1} value={newShares} onChange={(v) => setNewShares(typeof v === 'number' ? v : 1)} />
-          <div className="flex justify-end gap-2"><Button variant="default" onClick={() => setSharesFor(null)}>Cancel</Button><Button color="green" onClick={doShares} loading={setShares.isLoading}>Save</Button></div>
+          <div className="flex justify-end gap-2"><Button variant="default" onClick={() => setSharesFor(null)}>Cancel</Button><Button color="green" onClick={doShares} loading={setShares.isPending}>Save</Button></div>
         </div>
       </Modal>
     </div>

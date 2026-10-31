@@ -1,0 +1,42 @@
+---
+title: "Roles in a thrift group"
+description: "The roles in a standalone thrift group (Administrator, Officer, Collector, Member), what each can do, and how to give someone a role on web and phone."
+type: concept
+audience: ["admin"]
+platforms: ["web", "mobile"]
+status: published
+lastVerified: "2026-10-31"
+related: ["/docs/settings/assigning-roles", "/docs/ajo-thrift/standalone-thrift-groups", "/docs/ajo-thrift/officer-accountability", "/docs/ajo-thrift/handovers-and-counting-cash"]
+keywords: ["roles", "officer", "collector", "administrator", "member", "assign", "give a role", "permissions", "standalone"]
+---
+
+Everyone in a thrift group holds a role, and a role decides what they can see and do. A standalone group has four:
+
+| Role | What they can do |
+|---|---|
+| **Administrator** | Runs the group: circles, people, payments, payouts and settings. Approves payouts, and is the only one who can set a circle's payout order by hand. |
+| **Officer** | Runs circles day to day: adds and approves people, confirms payments, records payments for members, manages rules, reports. Does not approve payouts. |
+| **Collector** | Collects contributions from the people assigned to them and records cash. A collector does not confirm payments: the officer's handover count does. |
+| **Member** | Pays into a circle and sees their own records. Everyone is a member as well as anything else. |
+
+A person can hold more than one role. The roles that exist only for an association (Treasurer, Financial Secretary, Election Committee) are not offered in a thrift group.
+
+## Give someone a role
+
+<PlatformTabs>
+<PlatformTab>
+Go to <MenuPath items={["Settings", "User Management"]} />, find the person, and give them the role. See also [Assigning roles](/docs/settings/assigning-roles).
+</PlatformTab>
+<PlatformTab>
+Go to <MenuPath items={["Manage", "Settings"]} />, open the person under user roles, and choose the role under **Give a role**.
+</PlatformTab>
+</PlatformTabs>
+
+The person must already have a login and be approved. To invite someone who does not have one yet, invite them from the people list first.
+
+## Good to know
+
+- **You cannot change your own roles.** Ask another Administrator. A group always keeps at least one Administrator.
+- **You can only give a role whose permissions you hold yourself.** The roles a thrift group offers are built so that its Administrator holds all of them, so you will always see Officer and Collector in the list.
+- **Taking a role away** is recorded, with who did it and when, in the audit log.
+- **Keep the jobs apart.** The person who collects cash should not be the only person who confirms it. That is why a collector cannot confirm a transfer and an officer cannot approve a payout. See [Officer accountability](/docs/ajo-thrift/officer-accountability).

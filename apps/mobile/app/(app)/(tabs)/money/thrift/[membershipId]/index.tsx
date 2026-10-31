@@ -143,6 +143,20 @@ function DetailBody({ loading, error, onRetry, item, membershipId, schedule, pay
         ) : null}
       </View>
 
+      {item.waitingFor.some((w) => w.requirement === 'RULE_ACCEPTANCE') ? (
+        <Card testID="ajo-next-step-rules">
+          <View className="gap-2">
+            <Text variant="h3">Your next step: read and accept the circle’s rules.</Text>
+            <Text variant="body" tone="secondary">
+              You become a member of the circle once you accept them. It takes a minute, and you can read them first.
+            </Text>
+            <Button onPress={() => router.push(thriftHref(membershipId, '/rules'))} testID="ajo-next-step-rules-button">
+              Read and accept the rules
+            </Button>
+          </View>
+        </Card>
+      ) : null}
+
       {needsPhone && canWrite ? <PhoneConfirmCard membershipId={membershipId} /> : null}
       {item.group.model === 'ROTATING_POT' && item.status !== 'LEFT' ? <SwapRequestCard groupId={item.group.id} /> : null}
       {item.group.model === 'COLLECTOR_THRIFT' && item.status !== 'LEFT' ? <CycleCard membershipId={membershipId} /> : null}

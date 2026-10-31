@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { runAjoDailyJobs, runAjoRiskCycle } from '../modules/ajo/ajo-risk-cycle';
+import { bumpAjoCacheForAll } from '../modules/ajo/ajo-cache';
 
 /**
  * Ajo's scheduled work (T6). Every step is safe to run twice, so a restart or a second server does no harm. Switch the whole thing off
@@ -12,6 +13,7 @@ export const ajoRiskCycleJob = cron.schedule('5 * * * *', async () => {
   if (disabled()) return;
   try {
     const s = await runAjoRiskCycle();
+    await bumpAjoCacheForAll(); // fees, reminders and cases changed data outside any request
     console.log(`[CRON] Ajo cycle: ${s.groups} groups, ${s.feesAssessed} fees assessed, ${s.reminded} reminded, ${s.casesOpened} cases opened${s.errors.length ? `, ${s.errors.length} step error(s)` : ''}`);
   } catch (error) {
     console.error('[CRON] Error running the Ajo cycle:', error);
@@ -23,6 +25,7 @@ export const ajoDailyJob = cron.schedule('30 2 * * *', async () => {
   if (disabled()) return;
   try {
     const s = await runAjoDailyJobs();
+    await bumpAjoCacheForAll();
     console.log(`[CRON] Ajo daily: ${s.snapshots} trust snapshots${s.errors.length ? `, ${s.errors.length} error(s)` : ''}`);
   } catch (error) {
     console.error('[CRON] Error running the Ajo daily job:', error);

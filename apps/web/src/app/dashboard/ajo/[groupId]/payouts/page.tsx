@@ -205,7 +205,7 @@ export default function PayoutsPage() {
               {!preview.data.readiness.ok && <p className="text-danger">{preview.data.readiness.message ?? 'This round is not ready yet.'}</p>}
               {!preview.data.eligibility.ok && <p className="text-danger">{preview.data.eligibility.message ?? 'This person cannot be paid out yet.'}</p>}
               {preview.data.openPayoutId && <p className="text-ink-muted">There is already an open payout for this.</p>}
-              <Button color="green" onClick={doPrepare} loading={prepare.isLoading} disabled={!preview.data.canPrepare}>Prepare this payout</Button>
+              <Button color="green" onClick={doPrepare} loading={prepare.isPending} disabled={!preview.data.canPrepare}>Prepare this payout</Button>
             </div>
           )}
         </section>
@@ -238,7 +238,7 @@ export default function PayoutsPage() {
         <section className="space-y-3 rounded-lg border border-line p-5">
           <h2 className="font-semibold">Prepare everyone's payout</h2>
           <p className="text-sm text-ink-muted">At the end of a cycle, prepare a payout for every saver who is ready in one go. Anyone who is not ready (for example no verified payout account) is listed with the reason, and nothing is prepared for them.</p>
-          <Button color="green" loading={prepareAll.isLoading} onClick={async () => { setProblem(null); try { await prepareAll.mutateAsync(); toast.success('Done. See the list below.'); } catch (error) { setProblem(ajoErrorMessage(error)); } }}>Prepare all ready payouts</Button>
+          <Button color="green" loading={prepareAll.isPending} onClick={async () => { setProblem(null); try { await prepareAll.mutateAsync(); toast.success('Done. See the list below.'); } catch (error) { setProblem(ajoErrorMessage(error)); } }}>Prepare all ready payouts</Button>
           {allResult && (
             <div className="space-y-2 text-sm">
               <p className="font-medium text-ink">{allResult.prepared.length} prepared, {allResult.notReady.length} not ready.</p>
@@ -256,7 +256,7 @@ export default function PayoutsPage() {
         <section className="rounded-lg border border-line p-5">
           <h2 className="font-semibold">Finish the circle</h2>
           <p className="mt-1 text-sm text-ink-muted">When every payout has been made and nothing is open, close the circle. It stays readable and can still be reported on.</p>
-          <Button className="mt-3" variant="default" onClick={async () => { setProblem(null); try { await complete.mutateAsync(); toast.success('The circle is completed.'); } catch (e) { setProblem(ajoErrorMessage(e)); } }} loading={complete.isLoading}>Complete the circle</Button>
+          <Button className="mt-3" variant="default" onClick={async () => { setProblem(null); try { await complete.mutateAsync(); toast.success('The circle is completed.'); } catch (e) { setProblem(ajoErrorMessage(e)); } }} loading={complete.isPending}>Complete the circle</Button>
         </section>
       )}
 

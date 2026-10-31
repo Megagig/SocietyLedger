@@ -7,6 +7,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { requireAnyPermission, requirePermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
 import { AJO_MODULE, requireAjoAccess, type AjoRequest } from './ajo-access';
+import { bumpAjoCacheOnWrite } from './ajo-cache.middleware';
 import { contributorCapacity, tenantKind } from './ajo-capacity';
 import { ajoBoardController as board } from './ajo-board.controller';
 import { ajoCycleController as cycles } from './ajo-cycle.controller';
@@ -22,6 +23,8 @@ const router: Router = Router();
 
 router.use(authMiddleware);
 router.use(requireAjoAccess());
+// Any write makes the cached board answers out of date; the version is bumped before the writer gets its response (ajo-cache.ts).
+router.use(bumpAjoCacheOnWrite);
 
 /**
  * GET /api/ajo/status: what the signed-in tenant can do with Ajo right now, and how much of its contributor quota is used.

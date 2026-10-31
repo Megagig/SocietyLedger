@@ -92,6 +92,14 @@ export default function MembershipDetailPage() {
         )}
       </div>
 
+      {item.waitingFor.some((w) => w.requirement === 'RULE_ACCEPTANCE') && (
+        <section className="space-y-2 rounded-lg border border-warning-line bg-warning-soft p-4" role="status">
+          <p className="font-semibold text-warning-strong">Your next step: read and accept the circle’s rules.</p>
+          <p className="text-sm text-warning-strong">You become a member of the circle once you accept them. It takes a minute, and you can read them first.</p>
+          <Button component={Link} href={`${base}/rules`} color="green" size="sm">Read and accept the rules</Button>
+        </section>
+      )}
+
       {needsPhone && canWrite && <PhoneConfirmCard membershipId={membershipId} />}
       {item.group.model === 'ROTATING_POT' && item.status !== 'LEFT' && <SwapRequestCard groupId={item.group.id} />}
       {item.group.model === 'COLLECTOR_THRIFT' && item.status !== 'LEFT' && <CycleCard membershipId={membershipId} />}

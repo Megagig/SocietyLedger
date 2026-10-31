@@ -1897,3 +1897,9 @@ Web (`apps/web`, Tailwind tokens) and phone (`apps/mobile`, NativeWind) show the
 - **Figures:** `BoardCard` per circle with ledger rows (label left, figure right, hint under), not tiles, so a full-length amount always fits. Totals as above.
 - **Details (full parity with the web table):** every row is a block in one `BoardCard` "Details (60 rows)" separated by hairlines: the first text column as the title, the circle under it when more than one is shown, then every other column as "label … value" (long free text stacked under its label). An empty cell is not drawn; a zero is. "Show more (n left)" loads the next 25.
 - **Not on a device:** none of these phone screens has been run on a device or emulator; the formatting and the row cards are tested.
+
+## FreshnessNote (2026-10-31)
+- **What:** the quiet line under a heading when saved data is on screen: "Updating…" while the server is being asked, "Offline · last updated 10:42" when it cannot be reached. Draws nothing when the data is fresh or there is none yet (the screen shows its own skeleton).
+- **Web:** `components/common/FreshnessNote.tsx`, a `p` with `role="status"`, `text-xs text-ink-muted`, used under the Dashboard and Members headings.
+- **Mobile:** `components/ui/FreshnessNote.tsx`, `Text` `variant="micro" tone="tertiary"`, under the greeting on Home (officer: dashboard; member: finance summary). No new colours or styles.
+- **Wording** comes from `freshnessLabelFor` in `@societyledger/query`, so both apps say the same thing. Not yet run on a device.

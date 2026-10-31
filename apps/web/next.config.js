@@ -27,8 +27,13 @@ const nextConfig = {
     domains: ['localhost'],
   },
 
+  // The saved query cache is only reused by the build that wrote it (see lib/query/QueryBoundary.tsx).
+  env: {
+    NEXT_PUBLIC_APP_BUILD: process.env.SOURCE_COMMIT || process.env.GIT_COMMIT || require('./package.json').version,
+  },
+
   // Transpile packages that need it (monorepo support)
-  transpilePackages: ['react-quill', 'quill', '@societyledger/shared'],
+  transpilePackages: ['react-quill', 'quill', '@societyledger/shared', '@societyledger/query'],
 
   // Optimize font loading and handle timeouts gracefully
   optimizeFonts: true,

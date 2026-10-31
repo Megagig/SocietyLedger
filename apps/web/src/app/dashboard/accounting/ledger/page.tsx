@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Alert, Anchor, Card, Group, Loader, Pagination, Select, SimpleGrid, Stack, Table, Text, TextInput } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconArrowLeft, IconBook, IconSearch } from '@tabler/icons-react';
@@ -49,7 +49,7 @@ export default function LedgerPage() {
         limit: 30,
       }),
     retry: false,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
   const ledger: Ledger | undefined = data?.data;
   const single = ledger && ledger.accounts.length === 1 ? ledger.accounts[0] : null;

@@ -3,10 +3,9 @@
 import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
 import { TenantProvider } from '@/contexts/TenantContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { QueryBoundary } from '@/lib/query';
 
 // Mantine theme configuration
 const mantineTheme = createTheme({
@@ -38,18 +37,9 @@ function MantineThemeWrapper({ children }: { children: React.ReactNode }) {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  // Create a client that won't be shared between requests
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000, // 1 minute
-        refetchOnWindowFocus: false,
-      },
-    },
-  }));
-
+  // One query client per signed-in identity, so nothing cached for one person or association can reach another (lib/query/QueryBoundary.tsx).
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryBoundary>
       <ThemeProvider>
         <TenantProvider>
           <MantineThemeWrapper>
@@ -57,6 +47,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </MantineThemeWrapper>
         </TenantProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </QueryBoundary>
   );
 }

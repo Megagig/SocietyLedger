@@ -45,7 +45,10 @@ export const EditCircleSheet = forwardRef<EditCircleSheetHandle, { groupId: numb
         setRotatingPot(group.model === 'ROTATING_POT');
         const [y, m, d] = originalDay.current.split('-').map(Number);
         // Noon, so the picked day cannot slip back a day through UTC.
-        const startDate = y && m && d ? new Date(y, m - 1, d, 12).toISOString() : '';
+        // A start date that has already passed cannot be used: offer today so saving is one tap.
+        const saved = y && m && d ? new Date(y, m - 1, d, 12) : null;
+        const todayNoon = new Date(new Date().setHours(12, 0, 0, 0));
+        const startDate = saved ? (saved.getTime() < new Date().setHours(0, 0, 0, 0) ? todayNoon : saved).toISOString() : '';
         reset({ name: group.name, contribution: koboToNaira(group.contributionKobo), maxParticipants: String(group.maxParticipants), cutoffTime: group.cutoffTime, startDate, orderMethod: group.orderMethod ?? 'RANDOM_DRAW', requirePhoneConfirm: group.requirePhoneConfirm });
         setProblem(null);
         sheet.current?.present();

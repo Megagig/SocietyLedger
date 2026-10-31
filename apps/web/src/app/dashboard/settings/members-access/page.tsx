@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { key } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { Users, Save, Loader2, Info } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from '@/lib/toast';
@@ -25,6 +27,7 @@ const DEFAULT_ROLES = [
 
 export default function MembersAccessPage() {
   const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   const [formData, setFormData] = useState<MembersAccessSettings>({
     selfSignupEnabled: false,
     defaultRole: 'member',
@@ -37,8 +40,9 @@ export default function MembersAccessPage() {
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch settings
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['settings', 'members_access'],
+  const { data, isLoading, error } = useScopedQuery({
+    domain: 'settings',
+    parts: ['members_access'],
     queryFn: async () => {
       const response = await api.get('/settings/members_access');
       return response.data.data as MembersAccessSettings;
@@ -60,7 +64,7 @@ export default function MembersAccessPage() {
     },
     onSuccess: () => {
       toast.success('Members access settings updated');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'members_access'] });
+      queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'members_access') });
       setHasChanges(false);
     },
     onError: (error: any) => {
