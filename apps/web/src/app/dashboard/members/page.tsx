@@ -153,7 +153,7 @@ export default function MembersPage() {
           <FreshnessNote query={membersQuery} />
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <HelpLink />
           <Can permission={PERMISSIONS.MEMBER_EDIT_ALL}>
             <button

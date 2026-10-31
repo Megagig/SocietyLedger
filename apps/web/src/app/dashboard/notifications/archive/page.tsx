@@ -279,7 +279,7 @@ export default function NotificationArchivePage() {
           <div className="text-sm text-gray-600 dark:text-gray-400">
             Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, data.data.total)} of {data.data.total} notifications
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}

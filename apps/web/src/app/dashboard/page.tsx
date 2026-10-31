@@ -141,7 +141,7 @@ function AssociationDashboardPage() {
         <NeedsAttentionCard />
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6">
           <StatCard
             title="Total Members"
             href="/dashboard/members"
@@ -501,13 +501,13 @@ function StatCard({ title, value, icon, color, bgColor, href }: {
   href?: string;
 }) {
   const card = (
-    <div className="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
-      <div className="flex items-start justify-between">
-        <div>
+    <div className="sl-stat glass rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
+      <div className="sl-stat-row flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1 sm:mb-2">{title}</p>
-          <p className={`text-lg sm:text-3xl font-bold ${color}`}>{value}</p>
+          <p className={`sl-stat-value font-bold ${color}`}>{value}</p>
         </div>
-        <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${bgColor}`}>
+        <div className={`shrink-0 p-2 sm:p-3 rounded-lg sm:rounded-xl ${bgColor}`}>
           {icon}
         </div>
       </div>

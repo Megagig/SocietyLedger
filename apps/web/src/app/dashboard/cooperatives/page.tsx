@@ -131,74 +131,74 @@ function OfficerDashboard() {
       )}
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Savings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Savings</p>
-              <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">
+              <p className="sl-stat-value font-bold text-green-600 mt-1">
                 {formatCurrency(data?.savingsSummary.totalBalance || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1 hidden sm:block">
                 {data?.savingsSummary.activeAccounts || 0} active accounts
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
               <IconCurrencyNaira className="text-green-600 dark:text-green-400" size={20} />
             </div>
           </div>
         </div>
 
         {/* Outstanding Loans */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
-              <p className="text-lg sm:text-2xl font-bold text-blue-600 mt-1">
+              <p className="sl-stat-value font-bold text-blue-600 mt-1">
                 {formatCurrency(data?.loansSummary.totalOutstanding || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1 hidden sm:block">
                 {data?.loansSummary.totalActiveLoans || 0} active loans
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
               <IconWallet className="text-blue-600 dark:text-blue-400" size={20} />
             </div>
           </div>
         </div>
 
         {/* Overdue Loans */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Overdue</p>
-              <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">
+              <p className="sl-stat-value font-bold text-red-600 mt-1">
                 {formatCurrency(data?.loansSummary.overdueAmount || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1 hidden sm:block">
                 {data?.loansSummary.overdueLoans || 0} loans overdue
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
               <IconAlertTriangle className="text-red-600 dark:text-red-400" size={20} />
             </div>
           </div>
         </div>
 
         {/* Default Rate */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Default Rate</p>
-              <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="sl-stat-value font-bold text-gray-900 dark:text-white mt-1">
                 {(data?.loansSummary.defaultRate || 0).toFixed(1)}%
               </p>
               <p className="text-xs text-gray-500 mt-1 hidden sm:block">
                 Portfolio health
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
               <IconTrendingDown className="text-gray-600 dark:text-gray-400" size={20} />
             </div>
           </div>
@@ -210,7 +210,7 @@ function OfficerDashboard() {
         <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
           This Month
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <div className="text-center p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <IconTrendingUp className="mx-auto text-green-600 mb-1 sm:mb-2" size={20} />
             <p className="text-base sm:text-xl font-bold text-green-600">

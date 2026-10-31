@@ -339,27 +339,27 @@ export default function TransactionDetailPage() {
             Transaction Details
           </h2>
           <dl className="space-y-3">
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <dt className="text-gray-500">Reference</dt>
-              <dd className="font-medium text-gray-900 dark:text-white">{transaction.referenceNumber}</dd>
+              <dd className="min-w-0 text-right font-medium text-gray-900 dark:text-white">{transaction.referenceNumber}</dd>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <dt className="text-gray-500">Category</dt>
-              <dd className="font-medium text-gray-900 dark:text-white">{transaction.category.name}</dd>
+              <dd className="min-w-0 text-right font-medium text-gray-900 dark:text-white">{transaction.category.name}</dd>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <dt className="text-gray-500">Type</dt>
-              <dd className="font-medium text-gray-900 dark:text-white capitalize">{transaction.category.type}</dd>
+              <dd className="min-w-0 text-right font-medium text-gray-900 dark:text-white capitalize">{transaction.category.type}</dd>
             </div>
             {transaction.dueDate && (
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">Due Date</dt>
-                <dd className="font-medium text-gray-900 dark:text-white">{formatDate(transaction.dueDate)}</dd>
+                <dd className="min-w-0 text-right font-medium text-gray-900 dark:text-white">{formatDate(transaction.dueDate)}</dd>
               </div>
             )}
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <dt className="text-gray-500">Created</dt>
-              <dd className="font-medium text-gray-900 dark:text-white">{formatDate(transaction.createdAt)}</dd>
+              <dd className="min-w-0 text-right font-medium text-gray-900 dark:text-white">{formatDate(transaction.createdAt)}</dd>
             </div>
             {transaction.notes && (
               <div className="pt-2 border-t">
@@ -388,13 +388,13 @@ export default function TransactionDetailPage() {
           </div>
           <dl className="space-y-2">
             {transaction.member.email && (
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">Email</dt>
                 <dd className="text-gray-900 dark:text-white">{transaction.member.email}</dd>
               </div>
             )}
             {transaction.member.phone && (
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">Phone</dt>
                 <dd className="text-gray-900 dark:text-white">{transaction.member.phone}</dd>
               </div>

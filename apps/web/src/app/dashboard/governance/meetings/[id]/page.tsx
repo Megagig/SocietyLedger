@@ -354,12 +354,12 @@ export default function MeetingDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex gap-4">
+        <nav className="flex gap-1 sm:gap-4 overflow-x-auto">
           {['details', 'attendance', 'minutes'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`px-4 py-2 border-b-2 font-medium text-sm transition-colors ${
+              className={`px-3 sm:px-4 py-2 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                 activeTab === tab
                   ? 'border-teal-500 text-teal-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'

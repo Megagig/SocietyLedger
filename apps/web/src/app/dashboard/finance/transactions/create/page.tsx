@@ -167,7 +167,7 @@ export default function CreateTransactionPage() {
 
       {/* Mode Toggle */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <button
             onClick={() => setIsBulkMode(false)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${

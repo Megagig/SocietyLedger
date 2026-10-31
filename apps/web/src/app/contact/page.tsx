@@ -57,7 +57,7 @@ export default function ContactPage() {
       <section className="pt-32 pb-12 px-4">
         <Container size="lg">
           <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
               <span className="bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
                 Get in Touch
               </span>
@@ -80,9 +80,9 @@ export default function ContactPage() {
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500/20 to-green-500/20 border border-teal-500/30 flex items-center justify-center flex-shrink-0">
                     <IconMail className="text-teal-500" size={24} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-bold text-gray-900 dark:text-white mb-2">Email Us</h3>
-                    <a href="mailto:support@societyledger.com.ng" className="text-teal-600 dark:text-teal-400 hover:underline">
+                    <a href="mailto:support@societyledger.com.ng" className="break-words text-teal-600 dark:text-teal-400 hover:underline">
                       support@societyledger.com.ng
                     </a>
                   </div>

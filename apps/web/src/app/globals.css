@@ -369,3 +369,28 @@ main :is(dd, h1, h2, h3, h4) {
     pointer-events: none;
   }
 }
+
+/* KPI cards: the figure sizes itself to the card, so a full amount such as N12,345,678.90 never overflows or truncates. Wide cards keep
+   the icon beside the text; narrow ones put the icon above it. */
+.sl-stat {
+  container-type: inline-size;
+}
+.sl-stat-value {
+  font-size: clamp(0.875rem, 12cqi, 1.875rem);
+  line-height: 1.2;
+}
+@container (max-width: 20rem) {
+  .sl-stat-row {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+  }
+}
+
+/* Plan cards: the price sizes itself to the card (full size on wide cards), so it never outgrows a narrow one. */
+.sl-card {
+  container-type: inline-size;
+}
+.sl-price {
+  font-size: clamp(1.5rem, 14cqi, 2.25rem);
+  line-height: 1.1;
+}

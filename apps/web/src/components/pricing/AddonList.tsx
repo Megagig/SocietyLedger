@@ -17,7 +17,9 @@ export function AddonList({ addons, planNames }: { addons: PricingAddon[]; planN
             <p className="mt-4 text-gray-900 dark:text-white">
               <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">{addon.prices.monthly}</span>
               <span className="text-gray-600 dark:text-gray-400">/month</span>
+              <wbr />
               <span className="mx-2 text-gray-400">or</span>
+              <wbr />
               <span className="text-xl font-semibold text-primary-600 dark:text-primary-400">{addon.prices.annual}</span>
               <span className="text-gray-600 dark:text-gray-400">/year</span>
             </p>

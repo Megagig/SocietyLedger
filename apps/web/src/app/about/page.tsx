@@ -25,7 +25,7 @@ export default function AboutPage() {
       <section className="pt-32 pb-12 px-4">
         <Container size="lg">
           <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
               <span className="bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent">
                 About SocietyLedger
               </span>

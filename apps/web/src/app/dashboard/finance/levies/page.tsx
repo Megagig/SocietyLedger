@@ -252,7 +252,7 @@ export default function LeviesPage() {
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <HelpLink />
           <Can permission={PERMISSIONS.FINANCE_CREATE}>
             <button

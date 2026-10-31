@@ -174,10 +174,10 @@ export default function AccountingIntegrationPage() {
           <p className="text-sm text-gray-600 mb-6">Transactions and payments synchronization</p>
           <div className="space-y-4">
             {/* Transactions */}
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Transactions</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>Total: {syncStatus.finance.transactions.total}</span>
                   <span className="text-green-600">Synced: {syncStatus.finance.transactions.synced}</span>
                   <span className="text-orange-600">Unsynced: {syncStatus.finance.transactions.unsynced}</span>
@@ -206,10 +206,10 @@ export default function AccountingIntegrationPage() {
             </div>
 
             {/* Payments */}
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Payments</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>Total: {syncStatus.finance.payments.total}</span>
                   <span className="text-green-600">Synced: {syncStatus.finance.payments.synced}</span>
                   <span className="text-orange-600">Unsynced: {syncStatus.finance.payments.unsynced}</span>
@@ -246,10 +246,10 @@ export default function AccountingIntegrationPage() {
           <h2 className="text-xl font-semibold mb-2">Welfare Module</h2>
           <p className="text-sm text-gray-600 mb-6">Contributions and payouts synchronization</p>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Contributions</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>Total: {syncStatus.welfare.contributions.total}</span>
                   <span className="text-green-600">Synced: {syncStatus.welfare.contributions.synced}</span>
                   <span className="text-orange-600">Unsynced: {syncStatus.welfare.contributions.unsynced}</span>
@@ -276,10 +276,10 @@ export default function AccountingIntegrationPage() {
                 )}
               </button>
             </div>
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Payouts</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>Total: {syncStatus.welfare.payouts.total}</span>
                   <span className="text-green-600">Synced: {syncStatus.welfare.payouts.synced}</span>
                   <span className="text-orange-600">Unsynced: {syncStatus.welfare.payouts.unsynced}</span>
@@ -316,10 +316,10 @@ export default function AccountingIntegrationPage() {
           <h2 className="text-xl font-semibold mb-2">Cooperatives Module</h2>
           <p className="text-sm text-gray-600 mb-6">Savings, loans, and repayments synchronization</p>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Savings Transactions</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>Total: {syncStatus.cooperatives.savingsTransactions.total}</span>
                   <span className="text-green-600">Synced: {syncStatus.cooperatives.savingsTransactions.synced}</span>
                   <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.savingsTransactions.unsynced}</span>
@@ -346,10 +346,10 @@ export default function AccountingIntegrationPage() {
                 )}
               </button>
             </div>
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Loans</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>Total: {syncStatus.cooperatives.loans.total}</span>
                   <span className="text-green-600">Synced: {syncStatus.cooperatives.loans.synced}</span>
                   <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.loans.unsynced}</span>
@@ -376,10 +376,10 @@ export default function AccountingIntegrationPage() {
                 )}
               </button>
             </div>
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-gray-200 rounded-lg">
               <div className="space-y-2">
                 <h4 className="font-medium text-gray-900">Loan Repayments</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>Total: {syncStatus.cooperatives.loanRepayments.total}</span>
                   <span className="text-green-600">Synced: {syncStatus.cooperatives.loanRepayments.synced}</span>
                   <span className="text-orange-600">Unsynced: {syncStatus.cooperatives.loanRepayments.unsynced}</span>

@@ -93,7 +93,7 @@ export default function PayoutOrderPage() {
           )}
           <ol className="divide-y divide-line-soft rounded-lg border border-line">
             {data.slots.map((s) => (
-              <li key={s.slotId} className="flex items-center justify-between gap-3 px-4 py-3">
+              <li key={s.slotId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3"><span className="w-12 font-semibold tabular-nums">{ordinal(s.position)}</span><span>{s.name}{s.shareNo > 1 ? ` (share ${s.shareNo})` : ''}</span></div>
                 <div className="flex items-center gap-2">
                   {s.paid && <StatusBadge status="PAID" label="Collected" />}

@@ -179,11 +179,11 @@ function CheckoutContent() {
                     return (
                       <label key={addon.id} className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${on ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10' : 'border-gray-200 dark:border-gray-700'}`}>
                         <input type="checkbox" className="mt-1" checked={on} onChange={() => toggleAddon(addon.id)} disabled={pricing || paying} />
-                        <span className="flex-1">
+                        <span className="min-w-0 flex-1">
                           <span className="block font-medium text-gray-900 dark:text-white">{addon.name}</span>
                           {addon.description && <span className="block text-sm text-gray-600 dark:text-gray-400">{addon.description}</span>}
                         </span>
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">{billingCycle === 'ANNUAL' ? `${addon.prices.annual}/year` : `${addon.prices.monthly}/month`}</span>
+                        <span className="shrink-0 text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">{billingCycle === 'ANNUAL' ? `${addon.prices.annual}/year` : `${addon.prices.monthly}/month`}</span>
                       </label>
                     );
                   })}

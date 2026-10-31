@@ -36,8 +36,8 @@ export function PlanGrid({ plans, cycle, renderAction, currentPlanId = null, var
         const perMonth = cycle === 'ANNUAL' && plan.prices.annualKobo > 0 ? formatKobo(Math.round(plan.prices.annualKobo / 12)) : null;
 
         const card = marketing
-          ? `glass-strong p-8 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] relative ${highlighted ? 'border-primary-500 shadow-xl shadow-primary-500/20' : 'border-gray-200/50 dark:border-gray-700/50'}`
-          : `bg-white dark:bg-gray-800 rounded-xl p-6 border-2 relative ${isCurrent || highlighted ? 'border-blue-500' : 'border-gray-200 dark:border-gray-700'}`;
+          ? `sl-card glass-strong p-8 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] relative ${highlighted ? 'border-primary-500 shadow-xl shadow-primary-500/20' : 'border-gray-200/50 dark:border-gray-700/50'}`
+          : `sl-card bg-white dark:bg-gray-800 rounded-xl p-6 border-2 relative ${isCurrent || highlighted ? 'border-blue-500' : 'border-gray-200 dark:border-gray-700'}`;
 
         return (
           <div key={plan.id} className={card} data-testid={`plan-card-${plan.code}`}>
@@ -47,8 +47,8 @@ export function PlanGrid({ plans, cycle, renderAction, currentPlanId = null, var
               </div>
             )}
             <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{plan.name}</h3>
-            <div className="mb-1">
-              <span className="text-4xl font-bold text-primary-600 dark:text-primary-400" data-testid="plan-price">
+            <div className="mb-1 flex flex-wrap items-baseline gap-x-1">
+              <span className="sl-price font-bold text-primary-600 dark:text-primary-400" data-testid="plan-price">
                 {price}
               </span>
               <span className="text-gray-600 dark:text-gray-400">{per}</span>

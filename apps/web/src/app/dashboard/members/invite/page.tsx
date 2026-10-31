@@ -305,15 +305,15 @@ export default function InviteMembersPage() {
         <>
           {/* Search and Actions */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <input
                 type="text"
                 placeholder="Search members..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-[12rem] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               />
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {selectedMembers.length} selected
                 </span>

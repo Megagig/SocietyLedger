@@ -272,7 +272,7 @@ export default function NotificationsCenterPage() {
           </div>
 
           {/* Date Range */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="date"
               value={filters.startDate}

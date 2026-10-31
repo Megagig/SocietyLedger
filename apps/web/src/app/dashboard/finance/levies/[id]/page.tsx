@@ -266,15 +266,15 @@ export default function LevyCampaignDetailPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <button
           onClick={() => router.push('/dashboard/finance/levies')}
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-[12rem]">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {campaign.name}
             </h1>
