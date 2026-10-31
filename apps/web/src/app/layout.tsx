@@ -89,15 +89,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Pinch-zoom stays on (WCAG 1.4.4); inputs are 16px on phones so iOS does not zoom by itself. The status-bar colour is set from the
+// app's own theme by the inline script below, not from the phone's light/dark setting.
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-  ],
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
 };
 
@@ -113,6 +109,15 @@ export default function RootLayout({
       if (savedTheme === 'light') {
         document.documentElement.classList.remove('dark');
       }
+      // Browser and installed-app chrome follows the app's theme (the page defaults to dark and the user can switch it).
+      var meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      var sync = function() {
+        meta.content = document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff';
+      };
+      sync();
+      document.head.appendChild(meta);
+      new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     })();
   `;
 
