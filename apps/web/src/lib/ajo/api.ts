@@ -60,7 +60,8 @@ export const ajoApi = {
 
   mine: () => unwrap<MyMembershipDTO[]>(api.get('/ajo/me')),
   group: (groupId: number) => unwrap<GroupDTO & { seats: { taken: number; total: number }; currentRuleVersion: number | null }>(api.get(`/ajo/groups/${groupId}`)),
-  groupBank: (groupId: number) => unwrap<GroupBankDTO>(api.get(`/ajo/groups/${groupId}/bank-account`, { headers: { 'Cache-Control': 'no-store' } })),
+  // The server marks the bank account and the revealed number no-store itself, so no request header is needed (one would also force a browser pre-check).
+  groupBank: (groupId: number) => unwrap<GroupBankDTO>(api.get(`/ajo/groups/${groupId}/bank-account`)),
 
   schedule: (membershipId: number) => unwrap<ScheduleDTO>(api.get(`/ajo/memberships/${membershipId}/installments`)),
   contributions: (membershipId: number) => unwrap<ContributionDTO[]>(api.get(`/ajo/memberships/${membershipId}/contributions`)),
@@ -88,7 +89,7 @@ export const ajoApi = {
   payoutAccount: () => unwrap<PayoutAccountDTO>(api.get('/ajo/members/me/payout-account')),
   savePayoutAccount: (body: { bankName: string; accountNumber: string; accountName: string }) =>
     unwrap<{ replayed: boolean }>(api.put('/ajo/members/me/payout-account', body)),
-  revealPayoutAccount: () => unwrap<{ accountNumber: string }>(api.post('/ajo/members/me/payout-account/reveal', {}, { headers: { 'Cache-Control': 'no-store' } })),
+  revealPayoutAccount: () => unwrap<{ accountNumber: string }>(api.post('/ajo/members/me/payout-account/reveal', {})),
   verification: () => unwrap<VerificationDTO>(api.get('/ajo/members/me/verification')),
 
   /** A bank transfer the person has made, with the slip. The key makes a double click or a retry report it once. */

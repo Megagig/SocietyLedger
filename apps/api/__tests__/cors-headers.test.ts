@@ -1,7 +1,8 @@
 /**
  * A browser asks the API first (a preflight) whether it may send a request header, and refuses to send the real request if the answer is no. A
- * header the web app sends but the API does not name makes that whole feature fail in the browser (payments did, on Idempotency-Key). So:
- * the real preflight answers yes to every header the web app sends, and a new header added to the web app without updating the list fails here.
+ * header the web app sends but the API does not name makes that whole feature fail in the browser (payments did, on Idempotency-Key, and the
+ * bank-account screen did, on Cache-Control). So: the real preflight answers yes to the payment header, and ANY custom header used anywhere in the
+ * web app must be on the API's list or fail here.
  */
 import cors from 'cors';
 import express from 'express';
@@ -48,19 +49,33 @@ describe('every custom header the web app sends is allowed', () => {
     return out;
   }
 
-  it('names each Idempotency-Key and X-… header used as a request header in apps/web/src', () => {
+  // Headers a browser may always send to another origin without asking. Everything else needs to be on the API's list.
+  const ALWAYS_ALLOWED = ['accept', 'accept-language', 'content-language', 'content-type'];
+  // Capitalised, hyphenated words that look like headers to the scan but are display labels used as object keys. A NEW name that is not a
+  // header and shows up here has to be looked at and added on purpose.
+  const NOT_HEADERS = ['add-on', 're-run'];
+  const HEADERS_OBJECT_KEY = /['"]([A-Z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+)['"]\s*:/g; // 'Header-Name': value
+  const HEADERS_SET_CALL = /\.(?:set|append)\(\s*['"]([A-Z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*)['"]\s*,/g; // headers.set('Header-Name', ...)
+  const ROUTE_HANDLER = /(^|\/)route\.ts$/;
+
+  it('allows every custom request header used anywhere in apps/web/src (Cache-Control, Idempotency-Key, X-..., and so on)', () => {
     const webSrc = path.resolve(__dirname, '../../web/src');
     expect(fs.existsSync(webSrc)).toBe(true);
-    const wanted = new Set<string>();
+    const found = new Map<string, string>(); // header -> a file that sends it
     for (const file of sourceFiles(webSrc)) {
-      // not a header sent by the browser: the webhook tester carries these as DATA inside a test payload it asks the server to relay
-      if (file.includes(`${path.sep}webhooks${path.sep}`)) continue;
+      const rel = path.relative(webSrc, file).split(path.sep).join('/');
+      // Not request headers: the webhook tester carries these as DATA inside a payload it asks the server to relay, and a route handler's
+      // headers are the RESPONSE the web server sends back.
+      if (rel.startsWith('components/webhooks/') || ROUTE_HANDLER.test(rel)) continue;
       const text = fs.readFileSync(file, 'utf8');
-      for (const m of text.matchAll(/['"](Idempotency-Key|X-[A-Za-z][A-Za-z-]*)['"]\s*:/g)) wanted.add(m[1]);
+      for (const m of text.matchAll(HEADERS_OBJECT_KEY)) found.set(m[1], rel);
+      for (const m of text.matchAll(HEADERS_SET_CALL)) found.set(m[1], rel);
     }
     const allowedLower = ALLOWED_REQUEST_HEADERS.map((h) => h.toLowerCase());
-    const missing = [...wanted].filter((h) => !allowedLower.includes(h.toLowerCase()));
-    expect(missing).toEqual([]);
-    expect(wanted.has('Idempotency-Key')).toBe(true); // the scan really did find the payment header
+    const refused = [...found.entries()]
+      .filter(([h]) => !allowedLower.includes(h.toLowerCase()) && !ALWAYS_ALLOWED.includes(h.toLowerCase()) && !NOT_HEADERS.includes(h.toLowerCase()))
+      .map(([h, file]) => `${h}  (sent from ${file})`);
+    expect(refused).toEqual([]);
+    expect(found.has('Idempotency-Key')).toBe(true); // the scan really does see the payment header
   });
 });
