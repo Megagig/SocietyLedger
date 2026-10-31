@@ -81,3 +81,6 @@ apps/api/prisma/migrations/migration_lock.toml
 # Old backup files
 *.old
 *.backup
+# Responsive audit
+apps/web/.next-resp/
+apps/web/responsive/artifacts/
