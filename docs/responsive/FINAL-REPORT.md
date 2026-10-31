@@ -55,7 +55,7 @@ All 1,180 before/after screenshot pairs, and side-by-side images for the pages t
 - **Not the app:** `/auth/login`, `/auth/register` (the baseline captured them without a tenant, the later run with one); `ai/reminders`, `/dashboard/reports` (baseline caught the loading screen); notifications and archive (my own test meetings created notifications).
 - Phones and tablets: about 90% of pairs differ, as expected (menu button, bottom-nav space, input sizing, wrapping). A sample was inspected, not every image.
 
-## 4. Deliberate desktop differences: please approve or reject
+## 4. Deliberate desktop differences: APPROVED by the owner on 2026-10-31 (all four kept as built)
 1. **KPI cards stack the icon above the figure** when the card is narrower than 20rem. At 1440px with a sidebar the cards are about 264px, so dashboard, admin and cooperatives KPI cards changed at 1024-1535px. Before, the figure overflowed.
 2. **Sidebar association name clamps to two lines** (full name on hover).
 3. **Page content is capped at 1536px** (nothing changes up to 1440px; wider screens centre the content).
