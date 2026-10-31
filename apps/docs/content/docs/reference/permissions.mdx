@@ -6,7 +6,7 @@ audience: ["admin"]
 platforms: ["web", "mobile"]
 covers: ["apps/api/src/lib/permissions.ts", "apps/api/prisma/seeds/rbac-seed.ts", "apps/api/prisma/seeds/help-permissions.seed.ts"]
 status: published
-lastVerified: "2026-10-21"
+lastVerified: "2026-10-30"
 ---
 
 
@@ -14,12 +14,33 @@ lastVerified: "2026-10-21"
 
 Permissions control what a role can see and do. This reference lists every permission SocietyLedger recognises, which of the built-in roles get it automatically, and (for a few older ones) the earlier name it was known by. Custom roles you create can be granted any of these individually — see [Custom roles](/docs/settings/custom-roles).
 
+### Ajo / Thrift
+
+| Key | Description | Default roles | Also known as |
+|---|---|---|---|
+| `ajo.approve_payout` | Approve an Ajo payout. The person who prepared it cannot approve it. | admin | `AJO_APPROVE_PAYOUT` |
+| `ajo.collect` | Record collections from the contributors assigned to you and hand cash over. | admin | `AJO_COLLECT` |
+| `ajo.contribute` | Report your own Ajo contribution and upload proof of a transfer. | admin, member | `AJO_CONTRIBUTE` |
+| `ajo.manage` | Create and run Ajo groups: members, schedules, rules, collectors, and the group's bank details. | admin | `AJO_MANAGE` |
+| `ajo.reconcile` | Confirm transfers and cash against the group's account, and reverse a wrong entry with a reason. | admin | `AJO_RECONCILE` |
+| `ajo.reports` | View and export Ajo reports. | admin | `AJO_REPORTS` |
+| `ajo.view_own` | See your own Ajo groups, schedule, receipts, balance and payout position. | admin, member | `AJO_VIEW_OWN` |
+
 ### Audit & Compliance
 
 | Key | Description | Default roles | Also known as |
 |---|---|---|---|
 | `audit.export` | Export audit logs. | admin | `AUDIT_EXPORT` |
 | `audit.view` | View audit logs. | admin | `AI_USAGE_VIEW`, `AUDIT_VIEW` |
+
+### Cash Collections
+
+| Key | Description | Default roles | Also known as |
+|---|---|---|---|
+| `cash.collect` | Collect cash from members at meetings and record receipts. | admin, treasurer, financial_secretary | `CASH_COLLECT` |
+| `cash.lodge` | Lodge collected cash into an association bank account. | admin, treasurer, financial_secretary | `CASH_LODGE` |
+| `cash.verify` | Verify a cash lodgment against the bank statement (not your own). | admin, treasurer, financial_secretary | `CASH_VERIFY` |
+| `cash.view` | View cash collections, cash in hand and lodgments. | admin, treasurer, financial_secretary | `CASH_VIEW` |
 
 ### Cooperatives
 
@@ -56,14 +77,14 @@ Permissions control what a role can see and do. This reference lists every permi
 
 | Key | Description | Default roles | Also known as |
 |---|---|---|---|
-| `help.manage` | Create, edit, and delete help articles and FAQs | admin | `HELP_MANAGE` |
-| `help.view` | View help articles and FAQs | admin, treasurer, financial_secretary, member | `HELP_VIEW` |
-| `support.create` | Create support tickets | admin, treasurer, financial_secretary, member | `SUPPORT_CREATE` |
-| `support.escalate` | Contact SocietyLedger support, and escalate a member's ticket to it | admin | `SUPPORT_ESCALATE` |
-| `support.manage` | Manage support tickets (assign, close, etc.) | admin | `SUPPORT_MANAGE` |
-| `support.respond` | Respond to support tickets | admin | `SUPPORT_RESPOND` |
-| `support.view_all` | View all support tickets | admin | `SUPPORT_VIEW_ALL` |
-| `support.view_own` | View own support tickets | admin, treasurer, financial_secretary, member | `SUPPORT_VIEW_OWN` |
+| `help.manage` | Create, edit and delete help articles and FAQs. | admin | `HELP_MANAGE` |
+| `help.view` | Use the help centre's AI answers and article suggestions (reading articles and FAQs needs no permission). | admin, treasurer, financial_secretary, member | `HELP_VIEW` |
+| `support.create` | Open support tickets, and reply to, close or reopen your own. | admin, treasurer, financial_secretary, member | `SUPPORT_CREATE` |
+| `support.escalate` | Contact SocietyLedger support on the association's behalf, and escalate a member's ticket to it. | admin | `SUPPORT_ESCALATE` |
+| `support.manage` | Manage support tickets: assign, update status, close and reopen any ticket. | admin | `SUPPORT_MANAGE` |
+| `support.respond` | Reply to support tickets as staff. | admin | `SUPPORT_RESPOND` |
+| `support.view_all` | View every support ticket in the association. | admin | `SUPPORT_VIEW_ALL` |
+| `support.view_own` | View your own support tickets. | admin, treasurer, financial_secretary, member | `SUPPORT_VIEW_OWN` |
 
 ### Meetings
 
@@ -77,7 +98,7 @@ Permissions control what a role can see and do. This reference lists every permi
 | Key | Description | Default roles | Also known as |
 |---|---|---|---|
 | `members.bulk_import` | Import members in bulk via CSV/Excel. | admin | `MEMBER_BULK_IMPORT` |
-| `members.create` | Create new member records. | admin | `ELECTION_MANAGE`, `MEETING_CREATE`, `MEMBER_CREATE`, `POLL_MANAGE`, `USER_CREATE` |
+| `members.create` | Create new member records. | admin | `MEETING_CREATE`, `MEMBER_CREATE`, `USER_CREATE` |
 | `members.disable` | Disable or deactivate members. | admin | `MEETING_DELETE`, `MEMBER_DELETE`, `MEMBER_DISABLE`, `USER_DELETE` |
 | `members.edit` | Edit member details. | admin | `MEETING_EDIT`, `MEMBER_EDIT` |
 | `members.edit_all` | Edit any member's details. | admin | `MEMBER_EDIT_ALL`, `USER_EDIT` |
@@ -162,9 +183,16 @@ Permissions control what a role can see and do. This reference lists every permi
 
 | Key | Description | Default roles | Also known as |
 |---|---|---|---|
+| `elections.candidates.manage` | Register candidates, and approve or reject nominations. | — | `ELECTION_CANDIDATES` |
+| `elections.manage` | Create, edit and delete elections and their positions, and cancel an election. | — | `ELECTION_MANAGE` |
 | `elections.nominate_own` | Self-nominate as a candidate in an election. | admin, treasurer, financial_secretary, member | `ELECTION_NOMINATE` |
+| `elections.results.publish` | Publish an election's results to the members. | — | `ELECTION_RESULTS_PUBLISH` |
+| `elections.results.view` | See an election's results as soon as voting closes, before they are published. | — | `ELECTION_RESULTS_VIEW` |
+| `elections.rules.manage` | Set the association's rules for who can vote and who can stand in elections. | admin | `ELECTION_RULES` |
+| `elections.run` | Open and close nominations and voting. | — | `ELECTION_RUN` |
 | `elections.view_own` | View elections and own candidacy/voting status. | admin, treasurer, financial_secretary, member | `ELECTION_VIEW` |
 | `elections.vote_own` | Cast a vote in an election. | admin, treasurer, financial_secretary, member | `ELECTION_VOTE` |
+| `polls.manage` | Create, edit, start, close and cancel polls. | admin | `POLL_MANAGE` |
 | `polls.view_own` | View polls and their results. | admin, treasurer, financial_secretary, member | `POLL_VIEW` |
 | `polls.vote_own` | Respond to a poll. | admin, treasurer, financial_secretary, member | `POLL_VOTE` |
 

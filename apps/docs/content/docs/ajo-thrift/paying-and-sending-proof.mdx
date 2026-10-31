@@ -1,0 +1,77 @@
+---
+title: "Paying and sending proof"
+description: "Send your contribution to the circle's bank account, then tell SocietyLedger you have paid and attach your slip, and what happens until it is confirmed."
+type: task
+audience: ["member"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/my-thrift/[membershipId]/pay"]
+permission: "ajo.contribute"
+module: "ajo"
+status: published
+lastVerified: "2026-10-31"
+related: ["/docs/ajo-thrift/payment-statuses", "/docs/ajo-thrift/raising-a-query-about-a-payment", "/docs/ajo-thrift/staying-safe", "/docs/ajo-thrift/confirming-payments"]
+keywords: ["pay", "transfer", "proof", "slip", "screenshot", "bank reference", "report payment", "receipt", "account details"]
+---
+
+SocietyLedger never takes your money. You pay your circle's own bank account, then tell SocietyLedger that you have paid and attach your proof. An officer checks the bank statement and **confirms** it. When they do, you get a receipt.
+
+Saving with a collector? Your collector records your cash, and you do not need to do anything here. See [Your savings as a saver](/docs/ajo-thrift/your-savings-as-a-saver).
+
+## Before you start
+
+- Your membership must be **Running**. If it is not, the page says "You can pay once the circle has approved you."
+- Have your **proof of payment**: a screenshot of the transfer, or the bank's receipt. It can be a JPG, PNG, WebP or PDF, **up to 5 MB**.
+- Have the **amount** you sent, the **date**, and, if your slip shows one, the **bank reference or session ID**.
+
+## Pay
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["My Thrift"]} /> and select <UiLabel>Pay</UiLabel> on your circle. The page says what you owe: "Nothing is overdue. Your next payment is ₦5,000.00," or how much is overdue.</Step>
+<Step>Under **1. Send the money to the circle's account**, select <UiLabel>Show the account details</UiLabel>. Send the money from your bank app. This is the circle's own bank account, and SocietyLedger does not hold your money.</Step>
+<Step>Under **2. Tell us you have paid**, enter the **Amount you paid (₦)**, the **Date you paid**, and (if you have it) the **Bank reference**.</Step>
+<Step>Attach the **Slip or screenshot**.</Step>
+<Step>Select <UiLabel>Report my payment</UiLabel>.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Money", "My thrift"]} />, open your circle, and tap **Pay**.</Step>
+<Step>Tap **Show the account details** and send the money from your bank app.</Step>
+<Step>Come back, enter the amount, the date and the bank reference, take or choose a photo of your slip, and tap **Report my payment**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/my-circle-pay-1.webp"
+  alt="The Pay page for a rotating pot with two steps: show the circle's account details, then report your payment with the amount, the date, an optional bank reference and a slip."
+  caption="Pay in two steps: send the money, then tell SocietyLedger and attach your slip."
+/>
+
+## Find it again
+
+Open **My Payments** in the sidebar (on the phone: **Thrift**, then **Pay and report a payment**). For each of your circles it shows what is due, a **Report a payment** button, and every payment with where it stands: **Reported**, **Confirmed** or **Turned down**. Before your circle has started, or before you have been approved, the page says so instead of hiding the button: "Payments open when the circle starts on [date]".
+
+If you paid and forgot to report it, an officer who has seen it at the bank can record it for you. It then shows as **recorded by an officer from the bank**.
+
+## What happens next
+
+- **Your payment is Reported.** You will see "Reported." and it shows as **Waiting to be confirmed**. It is not counted as paid yet. See [Payment statuses](/docs/ajo-thrift/payment-statuses).
+- **An officer checks it** against the circle's bank statement, usually within **48 hours**. When they confirm it, it counts, and you get a **receipt**.
+- **If they turn it down**, you see the reason. This can be because the money is not in the statement, or the slip does not match. Check with your bank, and report it again with the right slip.
+- **If they cannot find it**, you can [raise a query](/docs/ajo-thrift/raising-a-query-about-a-payment) about the payment.
+
+Pay before the due date. If you pay inside the grace period, your round shows **Paid late**, with no fee. If you pay after it, a late fee may apply if your circle's rules have one.
+
+## Good habits
+
+- **Pay only to the account shown on the Pay page.** Never to an account someone gives you by message.
+- **Keep your slip** until you have your receipt.
+- **Report as soon as you pay**, so the officer sees it while the statement is fresh.
+- **Do not report the same payment twice.** The same slip or reference used again is flagged to the officer.
+
+<Callout type="warning" title="Reported is not paid">
+If you do not see a receipt, your payment is not counted yet, even though you sent the money. Do not assume it is fine. Check your circle page after a day or two, and ask an officer if it is still waiting.
+</Callout>

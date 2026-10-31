@@ -1,5 +1,6 @@
 /** Member finance self-service — real path `/api/members/me/*`, no `X-Tenant` needed — api-contract.md §4. */
 import type { MoneyValue, IsoDateString } from './common';
+import type { PaymentProofDTO } from './nigerianPayments';
 
 /** GET /members/me/dues — verified against member-finance.controller.ts getDues. */
 export type DueDTO = {
@@ -88,7 +89,6 @@ export type DonationsResponseDTO = {
   donations: DonationDTO[];
   donationCategories: DonationCategoryDTO[];
 };
-import type { PaymentProofDTO } from './nigerianPayments';
 
 /** `FinancialCategory.type` is a free-form `String` column (not a Prisma enum). */
 export type FinanceCategoryRefDTO = {

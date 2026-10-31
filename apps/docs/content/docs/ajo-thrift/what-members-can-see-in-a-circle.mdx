@@ -1,0 +1,99 @@
+---
+title: "What members can see in a circle"
+description: "What each member of a rotating pot sees about the circle, what stays private, and what collector-thrift savers see about their own savings."
+type: concept
+audience: ["member", "admin"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/my-thrift", "/dashboard/ajo"]
+status: published
+lastVerified: "2026-10-31"
+related: ["/docs/ajo-thrift", "/docs/ajo-thrift/setting-up-your-thrift-group"]
+keywords: ["circle board", "transparency", "privacy", "statement", "my savings", "where my cash is", "withdraw or continue"]
+---
+
+Savings circles work on trust, and trust grows when people can see how the circle is doing. SocietyLedger shows members what they need to see, and keeps everything else private. What you see depends on the kind of circle you are in.
+
+| | Rotating pot (esusu, adashe) | Collector thrift |
+|---|---|---|
+| How the money works | Everyone's payment this round funds one person's payout, so every member depends on the others paying. | Each saver saves for themselves. Other savers never affect your payout. |
+| What you see | The whole circle: who has paid, when, who is next, who is behind, and the circle's numbers. | Only your own savings: every naira you gave, where your cash is, what you will get back and when. |
+| Where | The **Circle board** | **My savings** |
+
+## Rotating pot: the Circle board
+
+On the web, open your circle and choose **Circle board**. On the phone, a thrift group that is only a rotating pot has a **Circle** tab; if you are in a rotating pot through an association, open the circle from **My thrift** and choose **Circle board**.
+
+The board has eight views:
+
+- **Overview**: this round's progress ("₦70,000.00 of ₦100,000.00 collected, 7 of 10 paid"), who receives the pot next and on what date, where you stand, and the circle's health.
+- **This round**: every member for the round, those who still need to pay first. You can look back at any earlier round.
+- **Payment history**: a grid of members against rounds, so the whole circle's history fits on one screen.
+- **Payouts**: the payout order, each position's status (upcoming, prepared, approved, paid, or held with a reason), who approved and recorded each one, how the order was drawn, and every swap or emergency exception.
+- **Members**, **Arrears**, **Charts** and **Activity**: the roster, who is behind (stated as "Behind by ₦20,000.00", never a label), the charts, and a read-only log of what has happened.
+
+### What other members can see about you
+
+Other members of the same rotating pot can see your **name** (by default your first name and the first letter of your surname, such as "Adaeze O."), how many shares you hold, your payout position, when you joined, the **status** of each of your payments with the date it was paid, and whether SocietyLedger has verified you (a yes or no).
+
+They **never** see your phone number, email, home address, payout bank account, guarantor, proof of payment, dispute evidence, case notes, repayment plan, or your trust score. Nobody outside your circle sees anything about it.
+
+<Callout type="note" title="You agree to this before it applies to you">
+The circle's rules say, in plain words: "Other members of this circle can see your name, your payment status and dates, and your payout position." You read and accept the rules before you join. If you have not accepted the version that says this, other members see you as "Member 7" until you do. Officers always see names.
+</Callout>
+
+### Payment statuses
+
+Every status is shown as words with an icon, never colour alone, and means the same thing everywhere.
+
+| Status | What it means |
+|---|---|
+| Paid on time | Confirmed, on or before the due date |
+| Paid late | Confirmed, after the due date |
+| Reported, awaiting confirmation | Someone says it was paid and an officer has not yet confirmed it. **A reported payment is never shown as paid.** |
+| Due | Due today or coming up |
+| Overdue | Past the due date but still inside the grace period (it shows "grace until" the date) |
+| Missed | The grace period is over and it is still unpaid |
+| Under review | A dispute is open. It is not counted as missed while it is decided. |
+| Waived | An officer excused it, with a reason on record |
+| Upcoming | A later round |
+
+All dates and times are in the circle's own timezone, following its cut-off time.
+
+### The circle statement
+
+Choose **Download circle statement** (web) or **Share circle statement** (phone) for a one-page PDF with the payment grid, the payouts, the recorded balance and recent activity. It carries a **verification code**. Anyone holding the statement can open the link printed on it, or enter the code, to see when it was made and whether the circle's figures still match. That page shows circle totals only, never a name.
+
+The recorded balance is worked out from SocietyLedger's records. Your group's bank statement is the final word.
+
+### Notifications about your circle
+
+You can switch each of these off under **Circle notifications** on My thrift: when a round is fully paid, when a payout is recorded, and when your turn is two rounds away. A weekly summary ("7 of 10 paid this round, 1 behind, next payout Friday") is **off** until you turn it on. A reminder about your own overdue payment always reaches you, and is only ever sent to you and the officers, never to the whole circle.
+
+## Collector thrift: My savings
+
+Savers in a collector-thrift scheme see only their own records. Open your circle and choose **My savings**.
+
+- **Saved so far**, with money that has been reported but not yet confirmed shown separately, how many payments you have made, and whether you are up to date.
+- **What you will receive**: for example "₦15,500.00 saved − ₦500.00 collector fee = ₦15,000.00", with the date the cycle ends and the state of your payout.
+- **Your calendar** and **Payments**, with a receipt you can download for every confirmed payment.
+- **Where my cash is**: every cash payment goes through three steps (your collector recorded it, handed it in, and the office confirmed it), each with who and when. If a step takes too long (a day for your collector, two for the office) it says so and you can ask about it with one tap.
+- **Collector and fees**, **My record** (your trust band with the counts behind it, your streak, and past cycles) and **Statements** (a PDF or CSV for the cycle you are in).
+
+### Your amount, and the end of a cycle
+
+You choose how much you save each time, at least the group's smallest amount, and it stays the same for the whole cycle. The collector's fee is one of your own contributions per cycle.
+
+A few days before the cycle ends you are asked whether to **withdraw** your savings or **continue** into the next cycle (and you can change your amount for the next one). **If you do not answer, your savings are paid out to you**, so nobody's money stays in the group just because they did not reply.
+
+## For admins and officers
+
+- **Turning the board on or off.** The board is chosen per circle when you create it (on by default for a rotating pot), and it is part of the circle's **rules**. On the circle's **overview** a **Circle board** card shows whether it is **On**, **Off**, or "Off now, turns on 6 Nov 2026".
+  - **Before the circle starts** (Draft or Open), while nobody is paying under the rules yet, you can press **Turn it on now** (or **Turn it off now**). It takes effect straight away, with no notice period, and members are told. If a rule change is already waiting, it is brought forward too, so its other changes apply now as well.
+  - **Once the circle is running,** a change is a new version of the rules that takes effect after **7 days' notice** (use **Turn it on in Rules**: web, the circle's **Rules** tab, **Publish a new version**; phone, **Manage**, **Thrift**, the circle, **Circle board**). Until the date, members see "The circle board turns on on 6 Nov 2026, when the admin's new rules take effect".
+  - **Names:** a person's name shows on the board only after they have accepted rules that include the board. Until then they appear as "Member 3". Admins and officers always see the board, and a collector-thrift scheme never has one.
+- **How names are shown.** First name and last initial, or full names. This is part of the same rule.
+- **Accountability.** Officers answer to members as well as the other way round. Under **Accountability** you can see who prepared, approved and recorded each payout (one person doing both the preparing and the approving is flagged), how long payments have waited for confirmation against the 48-hour target members see, cash by collector and day, and every reversal, waiver, order change and rule change with its reason. You can download it as a CSV for your meetings or auditors.
+
+<Callout type="note" title="Nothing here moves money">
+SocietyLedger records what happens in your circle. It never holds your group's money. Everything on these pages comes from the same records the officers work from, so members and officers always see the same figures.
+</Callout>

@@ -711,6 +711,8 @@ A member can raise "I paid" with evidence; a dispute pauses late-fee escalation;
 ### T7.4 Payouts queue/approval, defaults and cases
 ### T7.5 Member self-service: my groups, schedule, pay, receipts, rules acceptance, payout account
 ### T7.6 Standalone thrift-group sign-up & onboarding
+- **Onboarding is defined in `thrift-ajo-spec.md` §15** (five steps: profile, first circle, contributors, team and collectors, review and open). Docs page for it is T11.1.
+- **Build last in T7.** A standalone group pays only the Ajo tier (hidden zero-price `thrift-group` base plan); it must never be asked to buy or choose an association plan. **Step 1: verify the Ajo-only checkout works for a `THRIFT_GROUP`; fix billing first if not.** Then the public sign-up page (hidden until `ajoStandaloneSignup` is on) and a trimmed, Ajo-first dashboard. The legal-opinion gate on standalone groups is still open.
 - **DoD (T7):** screens in `project-overview.md §12`; loading/empty/error/forbidden states; money shown in full (₦10,000.00); module-locked state when the add-on is absent; read-only banner when expired.
 
 ## Phase T8 — Mobile (apps/mobile)
@@ -746,7 +748,18 @@ A member can raise "I paid" with evidence; a dispute pauses late-fee escalation;
 ### T12.3 Pilot — 2–3 real groups; collect collector feedback on the online-only constraint (F2)
 - **DoD:** pilot report in `docs/thrift/`. **Milestone TL: Ajo add-on live.**
 
-**Track T totals:** 13 phases, 55 features (T0 2 · T1 6 · T2 3 · T3 7 · T4 4 · T5 4 · T6 5 · T7 6 · T8 5 · T9 4 · T10 3 · T11 3 · T12 3).
+## Phase T13 — Transparency & member dashboards (owner-approved 2026-10-29; full spec `thrift-ajo-spec.md` §16)
+> Builds on the finished Ajo add-on. Order: A, B, C, D; each phase finishes web, mobile, tests and docs before the next starts.
+### T13.1 Phase A — Circle board for rotating pots: status service, `memberVisibility`/`nameDisplay` rule fields and acceptance, board endpoints with separate DTOs, web board, mobile Circle tab (standalone) and circle-page entry (association)
+- **DoD:** acceptance 1–6 in spec §16.9; the leak test (no phone, email, address, account, guarantor detail, note or proof link in any board response) passes; money in full; statuses are text plus icon.
+### T13.2 Phase B — Collector-thrift cycles: per-saver amount (group minimum), cycle number and per-cycle record, withdraw or continue (no answer means withdraw), fee as one contribution per cycle, migration of existing groups
+- **DoD:** an amount cannot change within a cycle; existing groups migrate without changing any saver's schedule; collector Today list, trust counts and late fees still correct.
+### T13.3 Phase C — Saver's own view: my savings, calendar, history, where my cash is, my collector, fees, my record, past cycles, statements
+- **DoD:** acceptance 8; no access to other people's data; web and mobile.
+### T13.4 Phase D — Statement PDF with verification code, transparency notifications (weekly summary opt-in), officer accountability screens, docs page "What members can see in a circle"
+- **DoD:** acceptance 7; Docs DoD applies.
+
+**Track T totals:** 14 phases, 59 features (T0 2 · T1 6 · T2 3 · T3 7 · T4 4 · T5 4 · T6 5 · T7 6 · T8 5 · T9 4 · T10 3 · T11 3 · T12 3 · T13 4).
 
 ---
 
@@ -773,7 +786,7 @@ A member can raise "I paid" with evidence; a dispute pauses late-fee escalation;
 | 7 | 5 | Admin & AI |
 | 8 | 2 | Signup & onboarding |
 | 9 | 6 | Hardening & release |
-| T | 55 | Thrift (Ajo) add-on: 13 phases T0–T12 (Milestone TL) |
-| **Total** | **171** (30 docs + 21 admin + 65 mobile + 55 thrift) | |
+| T | 59 | Thrift (Ajo) add-on: 14 phases T0–T13 (Milestone TL) |
+| **Total** | **175** (30 docs + 21 admin + 65 mobile + 59 thrift) | |
 
 Follow the Master sequence at the top. Mobile Phase 0 and Phase 1 may also run in parallel with each other only if two agents/sessions work simultaneously.

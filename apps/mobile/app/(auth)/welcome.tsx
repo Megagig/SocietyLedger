@@ -48,6 +48,9 @@ export default function WelcomeScreen() {
         >
           {t('auth.welcome.createAssociation')}
         </Button>
+        <Button size="lg" variant="ghost" fullWidth onPress={() => router.push('/(auth)/create-thrift-group' as never)} testID="welcome-create-thrift-group">
+          Start a thrift group
+        </Button>
       </View>
     </View>
   );

@@ -11,6 +11,8 @@ export interface TenantRequest extends Request {
     status: AssociationStatus;
     name: string;
     logo?: string | null;
+    /** ASSOCIATION, or THRIFT_GROUP for a standalone thrift group. The apps use it to show the right home and menus from the first screen. */
+    kind: 'ASSOCIATION' | 'THRIFT_GROUP';
   } | null;
 }
 
@@ -24,7 +26,9 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
     // Allow public association endpoints without an existing tenant
     if (
       req.path.startsWith('/api/associations/check-subdomain') ||
-      req.path.startsWith('/api/associations/signup')
+      req.path.startsWith('/api/associations/signup') ||
+      // A standalone thrift group has no association yet either; this is not covered by the `signup` prefix above.
+      req.path.startsWith('/api/associations/thrift-signup')
     ) {
       return next();
     }
@@ -125,6 +129,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           status: association.status,
           name: association.name,
           logo: association.logo,
+          kind: association.kind === 'THRIFT_GROUP' ? 'THRIFT_GROUP' : 'ASSOCIATION',
         };
         req.tenantId = association.id;
       }
@@ -171,6 +176,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
           status: association.status,
           name: association.name,
           logo: association.logo,
+          kind: association.kind === 'THRIFT_GROUP' ? 'THRIFT_GROUP' : 'ASSOCIATION',
         };
         req.tenantId = association.id;
       }
@@ -231,6 +237,7 @@ export async function tenantMiddleware(req: TenantRequest, res: Response, next: 
       status: association.status,
       name: association.name,
       logo: association.logo,
+      kind: association.kind === 'THRIFT_GROUP' ? 'THRIFT_GROUP' : 'ASSOCIATION',
     };
     req.tenantId = association.id;
 

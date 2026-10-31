@@ -1,0 +1,70 @@
+---
+title: "Cash reconciliation"
+description: "How cash a collector takes in becomes confirmed money: recorded, handed over, counted, then confirmed, and what happens when the count is short."
+type: concept
+audience: ["all"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/handovers", "/dashboard/ajo/collect"]
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/payment-statuses", "/docs/ajo-thrift/handovers-and-counting-cash", "/docs/ajo-thrift/handing-over-at-the-end-of-the-day"]
+keywords: ["reconcile", "handover", "count", "cash", "short", "missing", "collector", "carried over", "receipt"]
+---
+
+In a collector-thrift circle, most money starts as cash in a collector's hand. SocietyLedger never holds that cash. What it keeps is a record of **who gave what, who has it, and whether an officer has seen it**. Reconciliation is the step that turns a collector's record into confirmed money, and it is what makes the records trustworthy.
+
+## The four steps
+
+1. **Recorded.** The collector takes cash from a saver and records it in the app. The saver is told, and the payment shows as **Cash received, awaiting confirmation**. It is not counted as saved yet.
+2. **Handed over.** At the end of the day the collector hands the day's cash to the office and records how much they handed over.
+3. **Counted.** An officer counts the cash, and ticks each payment that was really in the bag.
+4. **Confirmed.** Every ticked payment becomes **Confirmed**, is counted in the saver's savings and the circle's figures, and the saver gets a receipt.
+
+Only step 4 changes anyone's savings. Until then the collector's record is a claim, and the officer's count is the check on it.
+
+## What the officer sees
+
+The handover compares three numbers:
+
+- **Collected:** everything the collector recorded that day, plus any cash left over from an earlier day.
+- **Handed over:** what the collector says they gave the office.
+- **Difference:** handed over less collected. **Zero means they handed in all of it.**
+
+The officer adds a fourth, what they **counted**. The count has to equal the payments they tick, to the naira. If it does not, SocietyLedger will not save it. This stops a count being typed in that does not match the payments being confirmed.
+
+## A worked example
+
+On Friday the collector records cash from five savers: **₦1,000.00, ₦1,000.00, ₦2,000.00, ₦1,000.00 and ₦2,000.00**. That is **₦7,000.00 collected**.
+
+In the evening the collector hands over **₦6,000.00** and says Chukwuemeka's ₦1,000.00 is still with them, to bring in the morning.
+
+The officer counts **₦6,000.00**, ticks the four payments that were in the bag, and leaves Chukwuemeka's unticked. The officer writes a note saying what happened, because the count differs from the payments recorded.
+
+- The four ticked payments become Confirmed and get receipts.
+- Chukwuemeka's ₦1,000.00 stays **Cash received, awaiting confirmation**. It is not lost and it is not counted.
+- It is **carried over**: on Saturday it is added to what the collector collected, so Saturday's handover is ₦1,000.00 higher than Saturday's own cash. When the officer counts Saturday and ticks it, it is confirmed.
+
+If the ₦1,000.00 never appears, the payment stays unconfirmed and shows in the officer's [accountability report](/docs/ajo-thrift/officer-accountability) as cash the office has not seen.
+
+<Screenshot
+  src="/images/ajo-thrift/thrift-count-handover-1.webp"
+  alt="The Count and reconcile window for a day's handover, listing the payments in the bag with a tick against each, a box for the amount counted and a box for a note."
+  caption="Counting a handover: tick what was really in the bag, enter the count, and add a note if anything does not add up."
+/>
+
+## Rules that keep it honest
+
+- **The collector cannot confirm their own cash.** Someone else, with permission to reconcile, does the counting. A group with only one such person can confirm its own, but must write a note, and it is flagged.
+- **A note is required** whenever a payment was not in the bag or the count differs from what the collector said they handed over.
+- **A counted handover is final.** To correct a mistake, an officer reverses a payment with a reason. Nothing is edited or deleted.
+- **Cash recorded after a handover** for that day is not allowed. The collector hands over once a day, at the end.
+- **Cash is recorded online.** A collector's phone needs internet to record cash or hand it over. Nothing is saved for later, so a payment is never in the app twice or not at all.
+
+## Bank transfers
+
+A saver who pays by transfer follows a shorter path. They report the transfer with proof, and an officer checks it against the group's bank statement and confirms it. It is the same idea: a claim, then a check, then confirmed. See [Confirming payments](/docs/ajo-thrift/confirming-payments).
+
+<Callout type="note" title="Why this matters to savers">
+A saver sees exactly where their cash is: with the collector, handed to the office, or confirmed. It is the answer to "did my money get there?" without having to ask anyone.
+</Callout>

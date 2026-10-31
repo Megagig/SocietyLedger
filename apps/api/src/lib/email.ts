@@ -991,7 +991,17 @@ function getTemplateContent(template: string, data: Record<string, any>): string
           </div>
           <div class="content">
             <h2>Hello ${data.memberName}!</h2>
-            <p>You've been invited to activate your login account for <strong>${data.associationName}</strong> on SocietyLedger.</p>
+            ${data.thrift
+              ? `<p>You've been invited to join <strong>${data.associationName}</strong> on SocietyLedger Thrift. Activate your login to get started.</p>
+            
+            <p>With your account, you'll be able to:</p>
+            <ul>
+              <li>✅ See your circles, what you pay and what you are owed</li>
+              <li>✅ Pay and get a receipt for every payment</li>
+              <li>✅ Add the account you want to be paid into</li>
+              <li>✅ Get reminders and notices from your circle</li>
+            </ul>`
+              : `<p>You've been invited to activate your login account for <strong>${data.associationName}</strong> on SocietyLedger.</p>
             
             <p>With your account, you'll be able to:</p>
             <ul>
@@ -999,7 +1009,7 @@ function getTemplateContent(template: string, data: Record<string, any>): string
               <li>✅ Track your dues and payments</li>
               <li>✅ Receive important notifications</li>
               <li>✅ Access association resources</li>
-            </ul>
+            </ul>`}
             
             <center>
               <a href="${data.activateUrl}" class="button">Activate Your Account</a>

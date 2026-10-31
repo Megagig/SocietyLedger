@@ -118,7 +118,7 @@ export function DocPageForm({ pageId }: { pageId?: number }) {
           label="Title"
           placeholder="e.g. How to add a new member"
           value={values.title}
-          onChange={(e) => setValues((v) => ({ ...v, title: e.currentTarget.value }))}
+          onChange={(e) => { const next = e.currentTarget.value; setValues((v) => ({ ...v, title: next })); }}
           required
         />
         <Textarea
@@ -126,7 +126,7 @@ export function DocPageForm({ pageId }: { pageId?: number }) {
           description="Short summary shown in search results and listings"
           placeholder="A brief summary of this page…"
           value={values.excerpt}
-          onChange={(e) => setValues((v) => ({ ...v, excerpt: e.currentTarget.value }))}
+          onChange={(e) => { const next = e.currentTarget.value; setValues((v) => ({ ...v, excerpt: next })); }}
           autosize
           minRows={2}
           maxRows={4}
@@ -135,7 +135,7 @@ export function DocPageForm({ pageId }: { pageId?: number }) {
           label="Content"
           placeholder="Write the page…"
           value={values.content}
-          onChange={(e) => setValues((v) => ({ ...v, content: e.currentTarget.value }))}
+          onChange={(e) => { const next = e.currentTarget.value; setValues((v) => ({ ...v, content: next })); }}
           autosize
           minRows={10}
           required

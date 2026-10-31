@@ -45,6 +45,8 @@ export interface BuilderAddon {
   isPublic: boolean;
   isArchived: boolean;
   sortOrder: number;
+  /** Add-ons in one family are tiers of one product: a tenant holds at most one of them. */
+  family: string | null;
   eligiblePlans: { plan: { id: number; code: string; name: string } }[];
   versions: BuilderVersion[];
 }
@@ -52,7 +54,8 @@ export interface BuilderAddon {
 export interface CatalogInfo {
   modules: { code: string; name: string; description: string | null; isCore: boolean }[];
   features: { code: string; name: string; description: string | null; moduleCode: string; isCore: boolean }[];
-  limits: readonly { key: string; label: string; unit: string }[];
+  /** `source: 'addon'` marks a quota only an add-on can grant (a plan cannot set it). */
+  limits: readonly { key: string; label: string; unit: string; source?: 'plan' | 'addon' }[];
 }
 
 export interface PublishPreview {

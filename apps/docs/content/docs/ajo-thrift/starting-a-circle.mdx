@@ -1,0 +1,71 @@
+---
+title: "Starting a circle"
+description: "What must be true before a circle can start, what each refusal means (people waiting, start date passed, draw out of date), and how to fix it."
+type: task
+audience: ["admin", "officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]"]
+permission: "ajo.manage"
+module: "ajo"
+status: published
+lastVerified: "2026-10-31"
+related: ["/docs/ajo-thrift/adding-and-approving-people", "/docs/ajo-thrift/the-payout-order-and-draw", "/docs/ajo-thrift/setting-up-your-thrift-group", "/docs/ajo-thrift/rules-grace-and-late-fees"]
+keywords: ["start", "start the circle", "start date", "first payment date", "draw again", "waiting", "pending", "open for joining", "refused"]
+---
+
+A circle is **Open for joining** until you start it. Starting fixes the circle, makes the payout order final (for a rotating pot) and creates everyone's payment schedule. After that, the amounts and dates cannot change. This page lists what must be true first, and what to do when SocietyLedger refuses.
+
+## Before you start
+
+- You need the **manage** permission, and for a rotating pot the **approve payouts** permission if the order is set by the admin.
+- The circle must be **Open for joining**, with a bank account added.
+
+## What must be true
+
+1. **At least one person is approved, and the people you want are active.** A person is **Active** only when they are approved *and* have met everything else the circle needs: accepted the rules, confirmed their phone number (if you ask for it), and had a guarantor recorded (if you require one). The overview says "9 of 10 people are approved". That means nine are fully in. Someone who is approved but still waiting is not counted.
+2. **The start date has not passed.** The **First payment date** is the day the circle starts. If it is in the past, Start is refused.
+3. **For a rotating pot, the payout order is current.** If anyone joined, left or was approved after the draw, the order is out of date.
+
+## Check the people
+
+<Steps>
+<Step>Open the circle and choose <UiLabel>Members</UiLabel>.</Step>
+<Step>Look at the **Waiting for** column. It says what each person still needs, for example "waiting for them to accept the group's rules".</Step>
+<Step>Help them finish it. A person who uses the app can accept the rules themselves under **My Thrift**, the circle, **Read and accept the rules**. If they accepted in person, use **Record rules acceptance**. See [Adding and approving people](/docs/ajo-thrift/adding-and-approving-people).</Step>
+</Steps>
+
+If you are an officer and also a member of the circle, a yellow banner at the top of the circle's pages shows your own pending steps and puts the buttons there.
+
+## Fix a start date that has passed
+
+<Steps>
+<Step>On the circle's overview, select <UiLabel>Change the start date</UiLabel> under the message (or <UiLabel>Edit settings</UiLabel> on the phone).</Step>
+<Step>The <UiLabel>First payment date</UiLabel> is filled in with **today**. Pick a later day if you want one. It cannot be in the past.</Step>
+<Step>Select <UiLabel>Save</UiLabel>.</Step>
+</Steps>
+
+## Fix a draw that is out of date
+
+If the message says to run the draw again, open **Payout order** and select **Draw again** (or set the order again if the admin sets it). The old draw stays on the record. Approve everyone first, then draw once. See [The payout order and the draw](/docs/ajo-thrift/the-payout-order-and-draw).
+
+## Start the circle
+
+<Steps>
+<Step>On the overview, select <UiLabel>Start the circle</UiLabel>.</Step>
+<Step>If fewer people are active than the circle has places, SocietyLedger asks whether to start with the people who are in. Confirm only if you are sure.</Step>
+<Step>In a rotating pot whose Circle board is off, SocietyLedger asks before it starts, because after the start the board can no longer be turned on instantly. Choose <UiLabel>Turn it on, then start</UiLabel>, <UiLabel>Start without the board</UiLabel> or <UiLabel>Cancel</UiLabel>.</Step>
+</Steps>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-overview-1.webp"
+  alt="The overview of a rotating pot circle, with its status, what each person pays, seats taken and the way to start it."
+  caption="The circle overview. Start the circle is here, and any refusal appears directly under it."
+/>
+
+## What happens next
+
+The circle becomes **Running**. Every active person gets a payment schedule, the payout order is final, and members can report payments. If you need to change something, only the allowed changes remain: swaps before the first payout, and emergency changes with a reason.
+
+<Callout type="note" title="The refusals are protection, not faults">
+Each refusal stops a circle starting with the wrong people, the wrong date or an order drawn for someone else. They all have a button next to them that takes you to the fix.
+</Callout>

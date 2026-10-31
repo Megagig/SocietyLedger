@@ -179,6 +179,15 @@ export const PERMISSIONS = {
   CASH_VERIFY: 'cash.verify',
   CASH_VIEW: 'cash.view',
 
+  // Thrift (Ajo) add-on
+  AJO_VIEW_OWN: 'ajo.view_own',
+  AJO_CONTRIBUTE: 'ajo.contribute',
+  AJO_COLLECT: 'ajo.collect',
+  AJO_MANAGE: 'ajo.manage',
+  AJO_RECONCILE: 'ajo.reconcile',
+  AJO_APPROVE_PAYOUT: 'ajo.approve_payout',
+  AJO_REPORTS: 'ajo.reports',
+
   // Notifications & Announcements
   NOTIFICATION_VIEW: 'notifications.view',
   NOTIFICATION_SEND: 'notifications.send',
@@ -239,6 +248,11 @@ export const MANAGE_TAB_PERMISSIONS: PermissionAlias[] = [
   'PAYMENT_VERIFY',
   'CASH_COLLECT',
   'CASH_VIEW',
+  'AJO_MANAGE',
+  'AJO_RECONCILE',
+  'AJO_APPROVE_PAYOUT',
+  'AJO_COLLECT',
+  'AJO_REPORTS',
   'REPORTS_GENERATE',
   'REPORTS_FINANCIAL_SUMMARY',
   'REPORTS_EXPORT',

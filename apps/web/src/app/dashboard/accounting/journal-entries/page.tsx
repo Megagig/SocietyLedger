@@ -89,7 +89,7 @@ export default function JournalEntriesPage() {
     },
   });
 
-  const { data: entriesData, isLoading, error } = useQuery({
+  const { data: entriesData, isPending, error } = useQuery({
     queryKey: ['journal-entries', filterStatus, search],
     queryFn: () =>
       accountingApi.getJournalEntries({
@@ -266,7 +266,7 @@ export default function JournalEntriesPage() {
   const totalCredit = form.values.lines.reduce((sum, line) => sum + (line.creditAmount || 0), 0);
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex justify-center py-12">
         <Loader size="lg" />

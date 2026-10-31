@@ -27,6 +27,7 @@ import {
   IconBuildingCommunity,
   IconBadge,
   IconBuildingBank,
+  IconPigMoney,
   IconCash,
   IconCalendarEvent,
   IconClipboardCheck,
@@ -52,6 +53,9 @@ import {
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { THRIFT_ONLY_ADMIN_LABELS, THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
+import { THRIFT_SETTINGS_HREFS, thriftWord } from '@/lib/ajo/thriftScope';
+import { useWaitingCount } from '@/lib/ajo/staffHooks';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from '@/lib/toast';
 import { modals } from '@mantine/modals';
@@ -146,6 +150,13 @@ export function AdminSidebar() {
     return hasPermission(userPermissions, permission as any);
   };
 
+  // Ajo / Thrift entries follow permissions and are marked "Locked" when the add-on is not on the account.
+  const ajoNav = useAjoNav();
+  const ajoBadge = ajoNav.locked ? 'Locked' : undefined;
+  // Transfers waiting to be confirmed, for people who can confirm them.
+  const waiting = useWaitingCount(ajoNav.reconcile);
+  const payBadge = ajoNav.locked ? 'Locked' : waiting.data && waiting.data.transfersToConfirm > 0 ? String(waiting.data.transfersToConfirm) : undefined;
+
   // MEMBER SECTION - Admin's personal member features
   const memberNavItems: NavItem[] = [
     {
@@ -218,6 +229,18 @@ export function AdminSidebar() {
       permission: PERMISSIONS.COOPERATIVE_VIEW,
       badge: 'Enterprise',
     },
+    {
+      label: 'My Thrift',
+      icon: <IconPigMoney size={20} />,
+      permission: PERMISSIONS.AJO_VIEW_OWN,
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
+      children: [
+        { label: 'My Circles', icon: <IconChecklist size={18} />, href: '/dashboard/my-thrift' },
+        { label: 'My Payments', icon: <IconCurrencyNaira size={18} />, href: '/dashboard/my-thrift/payments' },
+        { label: 'Payout Account', icon: <IconBuildingBank size={18} />, href: '/dashboard/my-thrift/payout-account' },
+      ],
+    },
   ];
 
   // ADMINISTRATION SECTION - Association management features
@@ -232,6 +255,38 @@ export function AdminSidebar() {
       icon: <IconUsers size={20} />,
       href: '/dashboard/members',
       permission: PERMISSIONS.MEMBER_VIEW,
+    },
+    {
+      label: 'Thrift Circles',
+      icon: <IconPigMoney size={20} />,
+      href: '/dashboard/ajo',
+      permission: [PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE, PERMISSIONS.AJO_APPROVE_PAYOUT],
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
+    },
+    {
+      label: 'Payments',
+      icon: <IconCurrencyNaira size={20} />,
+      href: '/dashboard/ajo/payments',
+      permission: [PERMISSIONS.AJO_MANAGE, PERMISSIONS.AJO_RECONCILE],
+      hideForSuperAdmin: true,
+      badge: payBadge,
+    },
+    {
+      label: 'Collect',
+      icon: <IconCurrencyNaira size={20} />,
+      href: '/dashboard/ajo/collect',
+      permission: PERMISSIONS.AJO_COLLECT,
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
+    },
+    {
+      label: 'Thrift Reports',
+      icon: <IconFileAnalytics size={20} />,
+      href: '/dashboard/ajo/reports',
+      permission: PERMISSIONS.AJO_REPORTS,
+      hideForSuperAdmin: true,
+      badge: ajoBadge,
     },
     {
       label: 'Finance',
@@ -818,6 +873,7 @@ export function AdminSidebar() {
 
   const isActive = (href?: string) => {
     if (!href) return false;
+    if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/dashboard/member' || pathname === '/dashboard/admin';
     return pathname === href || pathname.startsWith(href + '/');
   };
 
@@ -993,7 +1049,7 @@ export function AdminSidebar() {
                 {user?.association?.name || 'SocietyLedger'}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Admin Portal
+                {thriftWord('Admin Portal', ajoNav.thriftOnly)}
               </p>
             </div>
           </Link>
@@ -1021,18 +1077,22 @@ export function AdminSidebar() {
           {/* MEMBER SECTION */}
           <SectionDivider 
             icon={<IconUser size={16} />} 
-            title="My Member Area" 
+            title={thriftWord('My Member Area', ajoNav.thriftOnly)} 
             color="blue"
           />
-          {memberNavItems.map(renderNavItem)}
+          {(ajoNav.thriftOnly ? [{ label: 'Thrift Home', icon: <IconLayoutDashboard size={20} />, href: '/dashboard' } as NavItem, ...memberNavItems.filter((item) => THRIFT_ONLY_MEMBER_LABELS.includes(item.label))] : memberNavItems).map(renderNavItem)}
 
           {/* ADMINISTRATION SECTION */}
           <SectionDivider 
             icon={<IconSettings size={16} />} 
-            title="Administration" 
+            title={thriftWord('Administration', ajoNav.thriftOnly)} 
             color="purple"
           />
-          {adminNavItems.map(renderNavItem)}
+          {adminNavItems
+            .filter((item) => !ajoNav.thriftOnly || THRIFT_ONLY_ADMIN_LABELS.includes(item.label))
+            // A standalone group keeps only the settings it has (not members' signup, finance, payment gateways, accounting or cron jobs).
+            .map((item) => (ajoNav.thriftOnly && item.label === 'Settings' && item.children ? { ...item, children: item.children.filter((c) => c.href && THRIFT_SETTINGS_HREFS.includes(c.href)).map((c) => ({ ...c, label: thriftWord(c.label, true) })) } : item))
+            .map(renderNavItem)}
         </nav>
 
         {/* Footer Actions */}

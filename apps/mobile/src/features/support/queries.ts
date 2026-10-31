@@ -58,7 +58,7 @@ export function useStaffTickets() {
     queryKey: supportKeys.list(tenant, 'staff'),
     queryFn: () => supportApi.listTickets(),
     enabled,
-    refetchInterval: 60_000,
+    refetchInterval: 120_000, // the whole ticket list: every two minutes is plenty
   });
 }
 

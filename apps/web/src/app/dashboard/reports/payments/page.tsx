@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Badge, Button, Card, Group, Loader, Pagination, Stack, Table, Text, Title } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { reportsApi } from '@/lib/api/reports';
@@ -40,7 +40,7 @@ function PaymentsDrill() {
     queryKey: ['report-payments', params, page],
     queryFn: () => reportsApi.listPayments({ ...params, page, limit: PAGE_SIZE }),
     retry: false,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
   const result = data?.data;
 

@@ -30,9 +30,68 @@ export interface PlatformSettings {
   expiryReminderDays: number[];
   defaultAssociationTier: string;
   platformVersion: string;
+  /** Thrift (Ajo): may outsiders register a standalone thrift group? Platform staff switch this off to close sign-up. */
+  ajoStandaloneSignup: boolean;
+  /** Thrift (Ajo) platform levy, billed on the add-on invoice. Rates are basis points (50 = 0.5%); amounts are kobo. */
+  ajoCycleLevyBps: number;
+  ajoCycleLevyMinKobo: number;
+  ajoCycleLevyMaxKobo: number;
+  ajoParticipantLevyBps: number;
+  ajoParticipantLevyMinKobo: number;
+  ajoParticipantLevyMaxKobo: number;
+  /** Add-on codes whose groups pay no levy (Starter pays the subscription only). */
+  ajoLevyExemptAddonCodes: string[];
+  /** Hours after any payout account change (including the first entry) during which no payout to that person can be approved or recorded. */
+  ajoPayoutCooloffHours: number;
 }
 
 export class SettingsValidationError extends Error {}
+
+/** The owner's caps on the Ajo levy (2026-10-27): at most ₦5,000.00 per cycle and ₦1,000.00 per participant. Settings cannot go above them. */
+export const AJO_LEVY_CEILING = { cycleMaxKobo: 500_000, participantMaxKobo: 100_000, maxBps: 1_000 } as const;
+
+/** The longest payout cool-off staff can set: two weeks. */
+export const AJO_COOLOFF_MAX_HOURS = 336;
+
+function wholeNumber(value: unknown, label: string, min: number, max: number): number {
+  const n = Number(value);
+  if (value === null || value === '' || !Number.isInteger(n) || n < min || n > max) {
+    throw new SettingsValidationError(`${label} must be a whole number from ${min} to ${max}.`);
+  }
+  return n;
+}
+
+/**
+ * Check the Thrift (Ajo) settings before they are stored. The levy is money billed to groups, so a bad rate or a cap above the owner's
+ * ceiling is refused, not saved. Checks the merged result so a minimum can never end up above its maximum.
+ */
+export function validateAjoSettings(input: Partial<PlatformSettings>, current: PlatformSettings): Partial<PlatformSettings> {
+  const out: Record<string, unknown> = { ...input };
+  const has = (k: keyof PlatformSettings) => input[k] !== undefined;
+
+  if (has('ajoStandaloneSignup') && typeof input.ajoStandaloneSignup !== 'boolean') {
+    throw new SettingsValidationError('Standalone sign-up must be on or off.');
+  }
+  if (has('ajoCycleLevyBps')) out.ajoCycleLevyBps = wholeNumber(input.ajoCycleLevyBps, 'The cycle levy rate (basis points)', 0, AJO_LEVY_CEILING.maxBps);
+  if (has('ajoParticipantLevyBps')) out.ajoParticipantLevyBps = wholeNumber(input.ajoParticipantLevyBps, 'The participant levy rate (basis points)', 0, AJO_LEVY_CEILING.maxBps);
+  if (has('ajoCycleLevyMinKobo')) out.ajoCycleLevyMinKobo = wholeNumber(input.ajoCycleLevyMinKobo, 'The cycle levy minimum', 0, AJO_LEVY_CEILING.cycleMaxKobo);
+  if (has('ajoCycleLevyMaxKobo')) out.ajoCycleLevyMaxKobo = wholeNumber(input.ajoCycleLevyMaxKobo, 'The cycle levy maximum', 0, AJO_LEVY_CEILING.cycleMaxKobo);
+  if (has('ajoParticipantLevyMinKobo')) out.ajoParticipantLevyMinKobo = wholeNumber(input.ajoParticipantLevyMinKobo, 'The participant levy minimum', 0, AJO_LEVY_CEILING.participantMaxKobo);
+  if (has('ajoParticipantLevyMaxKobo')) out.ajoParticipantLevyMaxKobo = wholeNumber(input.ajoParticipantLevyMaxKobo, 'The participant levy maximum', 0, AJO_LEVY_CEILING.participantMaxKobo);
+  if (has('ajoPayoutCooloffHours')) out.ajoPayoutCooloffHours = wholeNumber(input.ajoPayoutCooloffHours, 'The payout cool-off (hours)', 0, AJO_COOLOFF_MAX_HOURS);
+  if (has('ajoLevyExemptAddonCodes')) {
+    const list = input.ajoLevyExemptAddonCodes;
+    if (!Array.isArray(list) || list.length > 10 || !list.every((c) => typeof c === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(c))) {
+      throw new SettingsValidationError('Exempt add-ons must be up to 10 add-on codes.');
+    }
+    out.ajoLevyExemptAddonCodes = [...new Set(list)];
+  }
+
+  const merged = { ...current, ...out } as PlatformSettings;
+  if (merged.ajoCycleLevyMinKobo > merged.ajoCycleLevyMaxKobo) throw new SettingsValidationError('The cycle levy minimum cannot be more than its maximum.');
+  if (merged.ajoParticipantLevyMinKobo > merged.ajoParticipantLevyMaxKobo) throw new SettingsValidationError('The participant levy minimum cannot be more than its maximum.');
+  return out as Partial<PlatformSettings>;
+}
 
 const POLICIES = ['TRIAL', 'COMPLIMENTARY', 'BILLABLE'] as const;
 
@@ -107,6 +166,16 @@ const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   expiryReminderDays: [7, 3, 1],
   defaultAssociationTier: 'STARTER',
   platformVersion: '1.0.0',
+  // Closed until staff open it: outsiders cannot register a thrift group until the pilot is over and the owner switches this on.
+  ajoStandaloneSignup: false,
+  ajoCycleLevyBps: 50,
+  ajoCycleLevyMinKobo: 50_000,
+  ajoCycleLevyMaxKobo: 500_000,
+  ajoParticipantLevyBps: 25,
+  ajoParticipantLevyMinKobo: 5_000,
+  ajoParticipantLevyMaxKobo: 100_000,
+  ajoLevyExemptAddonCodes: ['ajo-starter'],
+  ajoPayoutCooloffHours: 72,
 };
 
 export class PlatformSettingsService {
@@ -142,6 +211,7 @@ export class PlatformSettingsService {
     userId: number
   ): Promise<PlatformSettings> {
     settings = await validateBillingSettings(settings);
+    settings = validateAjoSettings(settings, await this.getSettings());
     for (const [key, value] of Object.entries(settings)) {
       const fullKey = `platform.${key}`;
       const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -160,10 +230,8 @@ export class PlatformSettingsService {
       } else {
         // For platform settings, we need to handle the null associationId case
         await prisma.$executeRaw`
-          INSERT INTO settings (key, value, description, updated_by, created_at, updated_at)
-          VALUES (${fullKey}, ${stringValue}, ${'Platform setting: ' + key}, ${userId}, NOW(), NOW())
-          ON CONFLICT (association_id, key) WHERE association_id IS NULL
-          DO UPDATE SET value = ${stringValue}, updated_by = ${userId}, updated_at = NOW()
+          INSERT INTO settings (key, value, description, updated_by, updated_at)
+          VALUES (${fullKey}, ${stringValue}, ${'Platform setting: ' + key}, ${userId}, NOW())
         `;
       }
     }

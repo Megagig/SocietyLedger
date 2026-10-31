@@ -1,3 +1,4 @@
+import { onboardingFlowFor } from '@societyledger/shared';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { createHash } from 'crypto';
@@ -257,6 +258,8 @@ export class AuthController {
         // Requires onboarding if no progress record exists or onboarding not complete
         requiresOnboarding = !onboardingProgress?.onboardingComplete;
       }
+      // Which setup this account walks through: a standalone thrift group has its own, shorter one.
+      const onboardingFlow = onboardingFlowFor(requiresOnboarding ? (await prisma.association.findUnique({ where: { id: (tenantId ?? user.associationId) as number }, select: { kind: true } }))?.kind : null);
 
       // Generate JWT token
       // For platform logins, use the user's actual associationId (Platform Association)
@@ -345,6 +348,7 @@ export class AuthController {
             } : tenant,
             platformRole: user.platformRole,
             requiresOnboarding,
+            onboardingFlow,
             subscriptionAccess,
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,
@@ -466,15 +470,19 @@ export class AuthController {
       const { tenantId } = req as TenantRequest;
       const { email, code } = verifyEmailSchema.parse(req.body);
 
-      // Find user
-      const user = await prisma.user.findFirst({
-        where: { 
+      // An email is only unique within one association, so the same address can exist several times (a person who runs a group and
+      // also belongs to an association, or the platform admin). With no tenant on the request, check the code against every account
+      // for that address that is still waiting to be verified, newest first. The code is hashed per account, so only its own matches.
+      const candidates = await prisma.user.findMany({
+        where: {
           email: email.toLowerCase(),
-          ...(tenantId ? { associationId: tenantId } : {}),
+          ...(tenantId ? { associationId: tenantId } : { emailVerified: false }),
         },
+        orderBy: { id: 'desc' },
+        select: { id: true },
       });
 
-      if (!user) {
+      if (candidates.length === 0) {
         res.status(404).json({
           success: false,
           message: 'User not found',
@@ -482,7 +490,13 @@ export class AuthController {
         return;
       }
 
-      const result = await verifyEmailCode(user.id, code);
+      let result = await verifyEmailCode(candidates[0].id, code);
+      for (const candidate of candidates.slice(1)) {
+        if (result.success) break;
+        result = await verifyEmailCode(candidate.id, code);
+      }
+      // Several accounts were tried; report the newest one's reason (the one the person was most likely just given a code for).
+      if (!result.success && candidates.length > 1) result = await verifyEmailCode(candidates[0].id, code);
 
       if (!result.success) {
         res.status(400).json({
@@ -518,12 +532,13 @@ export class AuthController {
       const { tenantId, tenant } = req as TenantRequest;
       const { email } = resendCodeSchema.parse(req.body);
 
-      // Find user
+      // The same address can exist in several associations; without a tenant, resend to the newest account still waiting to be verified.
       const user = await prisma.user.findFirst({
-        where: { 
+        where: {
           email: email.toLowerCase(),
-          ...(tenantId ? { associationId: tenantId } : {}),
+          ...(tenantId ? { associationId: tenantId } : { emailVerified: false }),
         },
+        orderBy: { id: 'desc' },
       });
 
       if (!user) {
@@ -755,6 +770,8 @@ export class AuthController {
         });
         requiresOnboarding = !onboardingProgress?.onboardingComplete;
       }
+      // Which setup this account walks through: a standalone thrift group has its own, shorter one.
+      const onboardingFlow = onboardingFlowFor(requiresOnboarding ? (await prisma.association.findUnique({ where: { id: (tenantId ?? user.associationId) as number }, select: { kind: true } }))?.kind : null);
 
       // Resolve user permissions from database
       const rbacContext: RBACContext = {
@@ -786,6 +803,7 @@ export class AuthController {
               isPlatformAssociation: true,
             } : tenant,
             requiresOnboarding,
+            onboardingFlow,
             subscriptionAccess: await loadSubscriptionAccess(user.associationId, user.platformRole),
             permissions: Array.from(userPermissions.permissions),
             roles: userPermissions.roles,

@@ -1,0 +1,103 @@
+---
+title: "Confirming payments"
+description: "Check a reported transfer against the bank statement and confirm it, turn it down, or reverse a payment that was entered by mistake."
+type: task
+audience: ["officer", "admin"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/payments"]
+permission: "ajo.reconcile"
+module: "ajo"
+status: published
+lastVerified: "2026-10-31"
+related: ["/docs/ajo-thrift/payment-statuses", "/docs/ajo-thrift/cash-reconciliation", "/docs/ajo-thrift/paying-and-sending-proof", "/docs/ajo-thrift/staying-safe"]
+keywords: ["confirm", "payment", "transfer", "proof", "slip", "bank statement", "turn down", "reverse", "duplicate", "receipt", "queue"]
+---
+
+Until an officer confirms it, a payment is only a claim. Confirming is how a transfer becomes money in the circle, and it is the step that gives the member a receipt. This page covers confirming a transfer, turning one down, and reversing a payment that should not have been confirmed.
+
+## Before you start
+
+- You need the **reconcile** permission. A circle's officers usually have it.
+- Have the circle's **bank statement** open. SocietyLedger never sees your bank account, so the check is yours.
+- Cash recorded by a collector is not confirmed here. It is confirmed when the collector's handover is counted. See [Handovers and counting cash](/docs/ajo-thrift/handovers-and-counting-cash).
+
+## Confirm a transfer
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Thrift Circles"]} />, open the circle, and choose the <UiLabel>Payments</UiLabel> tab. The list opens on **Transfers to confirm**, oldest first.</Step>
+<Step>Look at a payment's amount, name, reference, and when it was reported. Select <UiLabel>See slip</UiLabel> to open the proof the member attached.</Step>
+<Step>Find the same amount in the circle's bank statement.</Step>
+<Step>Select <UiLabel>Confirm</UiLabel>. Check the amount, add a short note under **How you checked** (for example "seen in the GTBank statement, 30 Oct"), and select <UiLabel>Confirm payment</UiLabel>.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} />, open the circle, and tap **Payments**.</Step>
+<Step>Tap a payment to see its details and open the slip.</Step>
+<Step>Check the circle's bank statement for the same amount, then tap **Confirm payment**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-payments-1.webp"
+  alt="The Payments tab showing two transfers waiting to be confirmed, each with the member's name, the amount, a reference, See slip, Confirm and Turn down buttons."
+  caption="Transfers waiting to be confirmed. Each shows who paid, how much, a reference, and the slip."
+/>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-confirm-payment-1.webp"
+  alt="The Confirm this payment window, reminding the officer to confirm only after seeing the amount in the circle's bank statement, with a box for how you checked."
+  caption="Confirm only after you have seen the money in the bank statement."
+/>
+
+### Receipts that were not sent
+
+If a receipt could not be sent when you confirmed a payment (for example the circle had no SMS credits then), it waits. On the **Payments** page, select **Send waiting receipts** to try again. It tells you how many went and how many are still waiting.
+
+## Where to find payments
+
+Open **Payments** in the sidebar (on the phone: **Manage**, **Thrift**, then **Payments**). It lists the payments waiting for you across **every circle** at once, with a badge on the menu showing how many transfers are waiting. Pick a circle to narrow it down, or use the **Payments** tab inside one circle. For each transfer you can open the slip, then **Confirm** or **Turn down**. This is the same in an association with the Thrift add-on and in a standalone thrift group.
+
+## Record a payment for a member
+
+Sometimes a member pays and never reports it, for example because they were too busy to attach a slip. If you can confirm payments and you have seen it at the bank:
+
+1. Select **Record a payment** on the Payments page.
+2. Choose the circle and the person, then enter the **amount**, the **date paid** and the **bank reference** exactly as it appears on the statement.
+3. Under **How you checked it**, write a short note, for example "seen in the 14 Nov statement". You can attach a slip if you have one.
+4. Select **Record and confirm**.
+
+It is confirmed in the same step, so it counts at once and the member is told. It is marked **recorded by an officer from the bank** on the member's payment list and in [Officer accountability](/docs/ajo-thrift/officer-accountability), so an admin can see how many were done this way. You cannot do this for your own payment, a bank reference that is already on a confirmed payment is refused, and like any payment it can be reversed with a reason.
+
+If you can manage a circle but cannot confirm payments, the same form says **Record**: it records the payment as reported, and a person who can confirm checks it against the bank statement.
+
+## Warnings you may see
+
+- **A possible duplicate.** SocietyLedger noticed that the same proof file, or the same bank reference, was used on another payment in your association. Look again. If it really is a different payment, tick **I checked, and this is a different payment** to go on. This catches a slip used twice.
+- **"I am the only person who can confirm here."** You cannot normally confirm a payment you recorded, or your own. A circle with one person who can confirm may confirm its own, but only by ticking this box and writing a note. It is flagged on the [accountability page](/docs/ajo-thrift/officer-accountability) as **confirmed by the person who recorded it**.
+
+## What happens next
+
+The payment becomes **Confirmed**, is counted towards what the member owes, and is shown in the circle's figures. The member gets a receipt and a message, and the instalments it covers are marked paid, oldest first. If a late fee was waiting to be paid, it is paid after the instalments.
+
+## Turn a payment down
+
+If the money is not in the statement, or the slip does not match, select <UiLabel>Turn down</UiLabel>, write a reason, and save. The reason is shown to the member. A turned-down payment is never counted, and nothing needs undoing.
+
+## Reverse a payment
+
+If a payment was confirmed by mistake, for example it was entered twice, you can reverse it.
+
+<Steps>
+<Step>Under **Show**, choose <UiLabel>Confirmed</UiLabel>, and find the payment.</Step>
+<Step>Select **Reverse**, write the reason, and save.</Step>
+</Steps>
+
+A reversal never deletes anything. It writes a new entry that cancels the first, with your name and your reason, and the amount comes off the member's record. The member's instalments go back to unpaid. A payment can be reversed once, and a reversal cannot itself be reversed: to put the money back, record the payment again.
+
+<Callout type="warning" title="Reversing a payment that funded a payout">
+If a payout has been prepared from a round this payment funded, reversing the payment leaves the round short, and that payout cannot go on until the round is funded again. Speak to your admin before reversing a payment from a round that has a payout in progress.
+</Callout>

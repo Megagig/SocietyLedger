@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { key } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { Bell, Save, Loader2, Plus, X, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/axios';
@@ -27,6 +29,7 @@ const REMINDER_FREQUENCIES = [
 
 export default function NotificationsSettingsPage() {
   const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   const [formData, setFormData] = useState<NotificationsSettings>({
     emailEnabled: true,
     smsEnabled: false,
@@ -38,8 +41,9 @@ export default function NotificationsSettingsPage() {
   const [newReminderDay, setNewReminderDay] = useState('');
 
   // Fetch settings
-  const { data, isLoading } = useQuery({
-    queryKey: ['settings', 'notifications'],
+  const { data, isLoading } = useScopedQuery({
+    domain: 'settings',
+    parts: ['notifications'],
     queryFn: async () => {
       const response = await api.get('/settings/notifications');
       return response.data.data as NotificationsSettings;
@@ -61,7 +65,7 @@ export default function NotificationsSettingsPage() {
     },
     onSuccess: () => {
       toast.success('Notification settings updated');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'notifications'] });
+      queryClient.invalidateQueries({ queryKey: key(tenant, 'settings', 'notifications') });
       setHasChanges(false);
     },
     onError: (error: any) => {

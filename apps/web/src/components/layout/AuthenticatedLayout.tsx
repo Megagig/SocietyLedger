@@ -13,11 +13,19 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BottomNav, InstallPrompt, UpdatePrompt, OfflineIndicator } from '@/components/mobile';
 import { ModuleLockedModal } from '@/components/layout/ModuleLockedModal';
 import { SubscriptionBlockedScreen, TrialEndingBanner } from '@/components/subscription/SubscriptionBanners';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
+import { isThriftPathAllowed } from '@/lib/ajo/thriftScope';
 import { Loader } from '@mantine/core';
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  // A standalone thrift group has no association pages. Hiding the menu entries is not enough: a typed address or an old link would still open one.
+  const ajoNav = useAjoNav();
+  const closedToThrift = ajoNav.thriftOnly && !isThriftPathAllowed(pathname);
+  useEffect(() => {
+    if (closedToThrift) router.replace('/dashboard');
+  }, [closedToThrift, router]);
   const { isAuthenticated, isLoading, checkAuth, user, _hasHydrated } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -57,7 +65,8 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       
       // Redirect admins who haven't completed onboarding (exclude super admins)
       if (user.role === 'admin' && user.requiresOnboarding && !user.platformRole) {
-        router.push('/onboarding');
+        // A standalone thrift group has its own, shorter setup.
+        router.push(user.onboardingFlow === 'THRIFT' ? '/onboarding/thrift' : '/onboarding');
       }
     }
   }, [isChecking, isAuthenticated, user, pathname, router]);
@@ -114,7 +123,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       <UpdatePrompt />
       
       {renderSidebar()}
-      <main className="flex-1 lg:ml-72 min-h-screen">
+      <main className="flex-1 min-w-0 lg:ml-72 min-h-screen">
         {/* Phase 22: Context Indicator for impersonation */}
         <ContextIndicator />
         
@@ -130,7 +139,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
         <div className="p-4 sm:p-5 lg:p-6 mb-bottom-nav">
           <TrialEndingBanner />
           <Breadcrumbs />
-          {children}
+          {closedToThrift ? <Loader size="sm" /> : children}
         </div>
       </main>
       

@@ -10,6 +10,8 @@ const ctrl = new AssociationsController();
 // Public
 router.get('/check-subdomain', (req, res) => ctrl.checkSubdomain(req, res));
 router.post('/signup', (req, res) => ctrl.signup(req, res));
+// Standalone thrift group (Ajo only). Refuses with THRIFT_SIGNUP_CLOSED unless platform staff have opened it.
+router.post('/thrift-signup', (req, res) => ctrl.thriftSignup(req, res));
 
 // Platform-admin managed (super admin only)
 router.post('/', authMiddleware, requirePlatformRole([PlatformRole.SUPER_ADMIN]), (req, res) => ctrl.create(req, res));

@@ -1,0 +1,89 @@
+---
+title: "Plans, billing and limits"
+description: "The Ajo tiers, what each includes, how the contributor limit works, the platform levy, and what happens when your Ajo add-on ends."
+type: task
+audience: ["admin"]
+platforms: ["web"]
+covers: ["/dashboard/subscription", "/dashboard/subscription/addons"]
+permission: "settings.edit"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/plan-billing/add-ons", "/docs/plan-billing/when-a-subscription-ends", "/docs/ajo-thrift/ajo-reports-and-exports", "/docs/ajo-thrift/setting-up-your-thrift-group"]
+keywords: ["ajo", "tier", "starter", "growth", "business", "enterprise", "limit", "contributors", "levy", "add-on", "expire", "read-only", "trial", "price"]
+---
+
+Ajo is sold as an add-on, in tiers. You choose the tier by how many people save with you. This page explains what each tier includes, how the limit is counted, what the platform levy is, and what happens if the add-on ends.
+
+## The tiers
+
+You hold **one** tier at a time. These are the launch prices; the **Add-ons** page always shows the current price for your billing interval.
+
+| Tier | Active contributors | Monthly | What it adds |
+|---|---|---|---|
+| **Ajo Starter** | up to 30 | ₦3,000.00 | Rotating pots, guarantors, schedules, the member ledger and basic reports. |
+| **Ajo Growth** | 31 to 150 | ₦8,000.00 | Everything in Starter, plus collector thrift, automated reminders, payout tracking and advanced reports. |
+| **Ajo Business** | 151 to 500 | ₦20,000.00 | Everything in Growth, plus audit reports, expanded administration and finer permissions. |
+| **Ajo Enterprise** | more than 500 | By agreement | Everything in Business. Granted by SocietyLedger after a conversation; it is not on the public price list. |
+
+An annual plan costs ten months for twelve. A standalone thrift group also gets a **14-day trial** of Ajo with everything in Growth, for up to 30 contributors, before it chooses a tier.
+
+<Callout type="note" title="Which reports each tier opens">
+Basic reports come with every tier, advanced reports with Growth and above, and the audit report with Business and above. See [Reports and exports](/docs/ajo-thrift/ajo-reports-and-exports).
+</Callout>
+
+## Before you start
+
+You need the **edit settings** permission and an active paid subscription. An association adds Ajo from its subscription. A standalone thrift group has no association plan to pay for: its base plan is free, and it pays only for the Ajo tier.
+
+## Add or change your Ajo tier
+
+<Steps>
+<Step>Go to <MenuPath items={["Subscription", "Add-ons"]} />.</Step>
+<Step>Choose the Ajo tier that fits your number of active contributors. The page shows each price.</Step>
+<Step>Review the total. You pay only for the days left until your plan renews.</Step>
+<Step>Tick the tier. The button then shows the total, for example <UiLabel>Pay ₦3,000.00</UiLabel>. Select it and complete the payment.</Step>
+</Steps>
+
+<Screenshot
+  src="/images/ajo-thrift/subscription-addons-1.webp"
+  alt="The Add-ons page listing Ajo Starter at ₦3,000.00 a month and Ajo Growth at ₦8,000.00 a month, each with a tick box, and a Choose an add-on button."
+  caption="The Add-ons page lists the tiers you can add, with the monthly price. Tick one and the button shows what you will pay."
+/>
+
+<Screenshot
+  src="/images/ajo-thrift/subscription-addon-1.webp"
+  alt="The Subscription page showing the Enterprise plan, its renewal date, and an Add-ons section listing Ajo Business with a Do not renew button."
+  caption="Your Ajo tier appears under Add-ons on the Subscription page, with the date it renews."
+/>
+
+## How the contributor limit works
+
+An **active contributor** is a distinct person with at least one running membership in any of your circles. Someone in three circles counts once. People waiting for approval, suspended, or who have left are not counted.
+
+- **Joining stops at the limit.** If approving a person would take you past your tier's limit, SocietyLedger says so and asks you to move to a bigger tier. It never removes anyone.
+- **Going over is not a penalty.** If you end up with more contributors than your tier allows (for example, after a downgrade by staff), nobody already in loses anything. New people simply cannot join until you are back under the limit or on a bigger tier.
+- **People who have left stop counting**, but what they owed and what they were paid stays in the records.
+
+## The platform levy
+
+Circles on a tier above Starter pay a small **platform levy** to SocietyLedger, worked out when a circle starts. It is **0.5% of the cycle's contributions** (at least ₦500.00 and at most ₦5,000.00) plus **0.25% for each participant** (at least ₦50.00 and at most ₦1,000.00 each). Starter pays none.
+
+- It is the circle's own cost to SocietyLedger. It is **never taken from a payout** and never from members' savings.
+- It is added to the invoice when you pay for an add-on or a plan, as separate lines for each circle, so you can see exactly what it is for.
+- Each levy line shows how it was worked out in words.
+- Unpaid levy older than **60 days** stops you **starting a new circle**. Circles already running are not touched.
+
+## When your Ajo add-on ends
+
+If the add-on expires and is not renewed:
+
+- **Nothing is deleted or hidden.** Your circles, payments, payouts and reports all stay readable.
+- **Circles become read-only.** You can look at everything, download statements and reports your tier included, but you cannot record, confirm, approve or change anything until you renew.
+- A banner on every Ajo screen says so.
+
+Renew from <MenuPath items={["Subscription", "Add-ons"]} />, and everything works again at once.
+
+## What happens next
+
+If your group grows past your tier, pick the next tier up before approving more people. The checkout shows the exact amount before you pay, including any credit for the part of your current tier you have not used.

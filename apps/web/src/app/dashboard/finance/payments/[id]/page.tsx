@@ -49,7 +49,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export default function PaymentDetailPage() {
   const params = useParams();
   const paymentId = Number(params.id);
-  const { data, isLoading, error } = useQuery({
+  const { data, isPending, error } = useQuery({
     queryKey: ['payment', paymentId],
     queryFn: async () => (await api.get(`${API_URL}/api/finance/payments/${paymentId}`)).data,
     enabled: Number.isInteger(paymentId) && paymentId > 0,
@@ -57,7 +57,7 @@ export default function PaymentDetailPage() {
   });
   const payment: PaymentDetail | undefined = data?.data;
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex justify-center py-12">
         <Loader size="lg" />

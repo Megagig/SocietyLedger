@@ -29,6 +29,7 @@ import { SETTINGS_HUB_ACCESS } from '@/features/settings/labels';
 import { SUPPORT_STAFF_ACCESS } from '@/features/support/queries';
 import { sessionKeys } from '@/features/session/queries';
 import { useCan } from '@/hooks/useCan';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
 import { useModuleAccess, useModuleDisabled } from '@/hooks/useModuleAccess';
 import { useTenantKey } from '@/hooks/useTenantKey';
 
@@ -41,6 +42,10 @@ export default function ManageScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const tenantKey = useTenantKey();
+  // Thrift (Ajo): staff run circles, collectors get today's list. The entry still shows when the add-on is off, marked Locked, so people can find out why.
+  const thrift = useAjoNav();
+  // A standalone thrift group keeps only what the web keeps for it: Members, Thrift and Settings (notifications, help and the plan are reached from the bell, Profile and Settings). The rest is association-only.
+  const assoc = !thrift.thriftOnly;
   // Permissions come from the session (/auth/me); re-check them whenever the hub opens so a role granted
   // after sign-in shows up without a full sign-out.
   useFocusEffect(
@@ -49,42 +54,42 @@ export default function ManageScreen() {
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.attention(tenantKey) });
     }, [queryClient, tenantKey]),
   );
-  const canSupport = useCan(SUPPORT_STAFF_ACCESS);
+  const canSupport = useCan(SUPPORT_STAFF_ACCESS) && assoc;
   // Settings: any settings, roles or audit permission (each screen inside checks its own).
   const canSettings = useCan(SETTINGS_HUB_ACCESS);
   // Accounting: the permission to read the books and the accounting module on; the badge is entries waiting for this officer to approve or post.
-  const canAccounting = useModuleAccess(ACCOUNTING_VIEW_ACCESS, ACCOUNTING_MODULE);
-  const canAi = useModuleAccess(AI_VIEW_ACCESS, AI_MODULE);
+  const canAccounting = useModuleAccess(ACCOUNTING_VIEW_ACCESS, ACCOUNTING_MODULE) && assoc;
+  const canAi = useModuleAccess(AI_VIEW_ACCESS, AI_MODULE) && assoc;
   const canMembers = useCan(MEMBERS_VIEW_ACCESS);
   const canApprove = useCan(MEMBERS_APPROVE_ACCESS);
   const canInvite = useCan(MEMBERS_INVITE_ACCESS);
-  const canProofs = useCan([PROOFS_VIEW_ACCESS, ...BANK_ACCOUNTS_VIEW_ACCESS]);
+  const canProofs = useCan([PROOFS_VIEW_ACCESS, ...BANK_ACCOUNTS_VIEW_ACCESS]) && assoc;
   // One call for every pending badge; the server only counts what this officer may open.
   const attention = useAttention().data;
   const waitingProofs = attentionCount(attention, 'paymentProofs') + attentionCount(attention, 'bankTransfers');
   const waitingApprovals = attentionCount(attention, 'memberApprovals');
-  const canCash = useCan(CASH_ANY_ACCESS);
+  const canCash = useCan(CASH_ANY_ACCESS) && assoc;
   const meetingsOff = useModuleDisabled(MEETINGS_MODULE);
-  const canMeetings = useCan(MEETINGS_ADMIN_ACCESS) && !meetingsOff;
+  const canMeetings = useCan(MEETINGS_ADMIN_ACCESS) && !meetingsOff && assoc;
   const upcomingMeetings = useMeetingStats().data?.scheduledMeetings ?? 0;
-  const canFinance = useCan(FINANCE_VIEW_ACCESS);
+  const canFinance = useCan(FINANCE_VIEW_ACCESS) && assoc;
   // Communication: announcements need `notifications.send`; texting needs an SMS permission (the hub shows only what each can open).
-  const canCommunication = useCan(COMMUNICATION_ACCESS);
+  const canCommunication = useCan(COMMUNICATION_ACCESS) && assoc;
   // Reports: the officer permission with the reports module on, or any export permission (files are made on the server).
   const canReadReports = useModuleAccess(REPORTS_VIEW_ACCESS, REPORTS_MODULE);
   const canExport = useCan(EXPORT_ANY_ACCESS);
-  const canReports = canReadReports || canExport;
+  const canReports = (canReadReports || canExport) && assoc;
   // Cooperatives: officer permission and the module on; the badge adds up everything waiting for a decision.
-  const canCoop = useModuleAccess(COOP_ADMIN_ACCESS, COOP_MODULE);
+  const canCoop = useModuleAccess(COOP_ADMIN_ACCESS, COOP_MODULE) && assoc;
   const coopWaiting = attentionCount(attention, 'savingsDeposits') + attentionCount(attention, 'loanRepayments') + attentionCount(attention, 'loanApplications');
   // Welfare: officer permission and the module on; the badge adds contributions to confirm and requests to decide.
-  const canWelfare = useModuleAccess(WELFARE_ADMIN_ACCESS, WELFARE_MODULE);
+  const canWelfare = useModuleAccess(WELFARE_ADMIN_ACCESS, WELFARE_MODULE) && assoc;
   const welfareWaiting = attentionCount(attention, 'welfareContributions') + attentionCount(attention, 'welfarePayouts');
   // Voting: the Election Committee runs elections, the Administrator runs polls; the badge adds up what is waiting for the committee.
-  const canElections = useModuleAccess(ELECTION_ADMIN_ACCESS, VOTING_MODULE);
-  const canPolls = useModuleAccess('POLL_MANAGE', VOTING_MODULE);
+  const canElections = useModuleAccess(ELECTION_ADMIN_ACCESS, VOTING_MODULE) && assoc;
+  const canPolls = useModuleAccess('POLL_MANAGE', VOTING_MODULE) && assoc;
   // Who can vote and stand: the association's rules for new elections. Nothing is set until it chooses to.
-  const canVotingRules = useModuleAccess('ELECTION_RULES', VOTING_MODULE);
+  const canVotingRules = useModuleAccess('ELECTION_RULES', VOTING_MODULE) && assoc;
   const electionsWaiting = attentionCount(attention, 'electionNominations') + attentionCount(attention, 'electionsToClose') + attentionCount(attention, 'electionResults');
   const overdueCharges = attentionCount(attention, 'overdueCharges');
   const journalWaiting = attentionCount(attention, 'journalEntries');
@@ -92,6 +97,7 @@ export default function ManageScreen() {
   const cashOverview = useCashOverview().data;
   const cashToLodge = cashOverview?.mine?.readyToLodge ?? 0;
   const cashToVerify = attentionCount(attention, 'cashLodgments');
+  const canThrift = thrift.staff || thrift.collect;
   const statsQuery = useMemberStats();
   const needsReply = attentionCount(attention, 'supportTickets');
 
@@ -105,7 +111,7 @@ export default function ManageScreen() {
         }
       />
 
-      {canMembers || canProofs || canCash || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canAccounting || canAi || canSettings || canSupport ? (
+      {canMembers || canProofs || canCash || canThrift || canFinance || canMeetings || canCoop || canWelfare || canElections || canPolls || canVotingRules || canCommunication || canReports || canAccounting || canAi || canSettings || canSupport ? (
         <View className="gap-6">
           {canMembers ? (
             <Section title="Members">
@@ -172,6 +178,34 @@ export default function ManageScreen() {
                   onPress={() => router.push('/(app)/(tabs)/manage/cooperatives' as never)}
                   testID="manage-cooperatives"
                 />
+              </ListGroup>
+            </Section>
+          ) : null}
+
+          {canThrift ? (
+            <Section title="Thrift">
+              <ListGroup>
+                {thrift.collect ? (
+                  <ListItem
+                    leading={<IconCircle icon={CalendarDays} tone="primary" />}
+                    title="Today's collection"
+                    meta="Your contributors, record cash, end-of-day handover"
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/thrift/today' as never)}
+                    testID="manage-thrift-today"
+                  />
+                ) : null}
+                {thrift.staff ? (
+                  <ListItem
+                    leading={<IconCircle icon={PiggyBank} tone="primary" />}
+                    title="Thrift circles"
+                    meta="Members, payments, payouts and cases"
+                    trailing={thrift.locked ? <Badge tone="neutral">Locked</Badge> : undefined}
+                    showChevron
+                    onPress={() => router.push('/(app)/(tabs)/manage/thrift' as never)}
+                    testID="manage-thrift"
+                  />
+                ) : null}
               </ListGroup>
             </Section>
           ) : null}

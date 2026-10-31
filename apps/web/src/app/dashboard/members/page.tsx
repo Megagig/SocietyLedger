@@ -1,6 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
+import { useState } from 'react';
+import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
+import { invalidateFor } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
+import { FreshnessNote } from '@/components/common/FreshnessNote';
+import { fetchMembersPage, membersListParts } from '@/lib/api/members-list';
 import { useRouter } from 'next/navigation';
 import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
@@ -28,89 +34,64 @@ const LOGIN_LABELS: Record<string, string> = {
 
 export default function MembersPage() {
   const router = useRouter();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  
+  const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   // Filters and pagination
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const { thriftOnly } = useAjoNav();
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loginFilter, setLoginFilter] = useState('');
-  const [stats, setStats] = useState<MemberStats | null>(null);
-  const [waitingApprovals, setWaitingApprovals] = useState(0);
   const { can } = usePermissions();
   const canApprove = can(PERMISSIONS.MEMBER_EDIT_ALL);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    fetchMembers();
-  }, [search, statusFilter, categoryFilter, loginFilter, page, limit]);
+  // The saved list is shown at once and then checked against the server every time the page opens, so a member created or edited on another
+  // screen is never missing from it; a filter or page change keeps the old rows on screen until the new ones arrive instead of a loading flash.
+  const filters = { page, limit, search, statusFilter, categoryFilter, loginFilter };
+  const membersQuery = useScopedQuery({
+    domain: 'members',
+    parts: membersListParts(filters),
+    queryFn: () => fetchMembersPage(filters),
+    placeholderData: keepPreviousData,
+    refetchOnMount: 'always',
+    // Only the plain first page is saved on the device; a searched or filtered list is not.
+    meta: { persist: !search && !statusFilter && !categoryFilter && !loginFilter && page === 1 },
+  });
+  const members = membersQuery.data?.members ?? [];
+  const totalPages = membersQuery.data?.pagination.totalPages ?? 1;
+  const totalCount = membersQuery.data?.pagination.totalCount ?? 0;
+  const isLoading = membersQuery.isPending; // only when there is nothing to show yet
+  const error = membersQuery.isError ? (membersQuery.error as Error).message : '';
 
-  // How many self-registrations are waiting — only officers who can approve them ask.
-  useEffect(() => {
-    if (!canApprove) return;
-    const fetchWaiting = async () => {
-      try {
-        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/approvals?status=pending&limit=1`);
-        if (!response.ok) return;
-        const data = await response.json();
-        setWaitingApprovals(data.data?.total ?? 0);
-      } catch (error) {
-        console.error('Error fetching pending approvals:', error);
-      }
-    };
-    fetchWaiting();
-  }, [canApprove]);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/stats`);
-        if (!response.ok) return;
-        const data = await response.json();
-        setStats(data.data);
-      } catch (error) {
-        console.error('Error fetching member stats:', error);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  const fetchMembers = async () => {
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(search && { search }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(categoryFilter && { category: categoryFilter }),
-        ...(loginFilter && { loginStatus: loginFilter }),
-      });
-
-      const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?${params}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch members');
-      }
-
+  // How many self-registrations are waiting: only officers who can approve them ask.
+  const waitingQuery = useScopedQuery({
+    domain: 'members',
+    parts: ['approvals-waiting'],
+    queryFn: async () => {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/approvals?status=pending&limit=1`);
+      if (!response.ok) return 0;
       const data = await response.json();
-      setMembers(data.data.members);
-      setTotalPages(data.data.pagination.totalPages);
-      setTotalCount(data.data.pagination.totalCount);
-    } catch (error: any) {
-      console.error('Error fetching members:', error);
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return (data.data?.total ?? 0) as number;
+    },
+    enabled: canApprove,
+    refetchOnMount: 'always',
+  });
+  const waitingApprovals = waitingQuery.data ?? 0;
+
+  const statsQuery = useScopedQuery({
+    domain: 'members',
+    parts: ['stats'],
+    queryFn: async () => {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/stats`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.data as MemberStats;
+    },
+    refetchOnMount: 'always',
+  });
+  const stats = statsQuery.data ?? null;
 
   const handleDisable = async (id: number) => {
     modals.openConfirmModal({
@@ -135,7 +116,7 @@ export default function MembersPage() {
           }
 
           toast.success('Member disabled');
-          fetchMembers();
+          await invalidateFor(queryClient, tenant, 'member.changed');
         } catch (error: any) {
           toast.error(error.message || 'Failed to disable member');
         }
@@ -169,6 +150,7 @@ export default function MembersPage() {
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Manage your association members ({totalCount} total)
           </p>
+          <FreshnessNote query={membersQuery} />
         </div>
         
         <div className="flex items-center gap-2">
@@ -265,7 +247,8 @@ export default function MembersPage() {
             </select>
           </div>
 
-          {/* Category Filter */}
+          {/* Category Filter (an association idea: a thrift group has no member categories) */}
+          {!thriftOnly && (
           <div>
             <select
               value={categoryFilter}
@@ -282,6 +265,7 @@ export default function MembersPage() {
               <option value="student">Student</option>
             </select>
           </div>
+          )}
 
           {/* Login Filter */}
           <div>
@@ -333,7 +317,7 @@ export default function MembersPage() {
                     </div>
                     <div className="flex flex-col gap-1 items-end">
                       {getStatusBadge(member.status)}
-                      <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{member.category}</span>
+                      {!thriftOnly && <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{member.category}</span>}
                       <span className="text-xs text-gray-500 dark:text-gray-400">{LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}</span>
                     </div>
                   </div>
@@ -393,9 +377,11 @@ export default function MembersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Status
                     </th>
+                    {!thriftOnly && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Category
                     </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Login
                     </th>
@@ -427,9 +413,11 @@ export default function MembersPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {getStatusBadge(member.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 capitalize">
-                        {member.category}
-                      </td>
+                      {!thriftOnly && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 capitalize">
+                          {member.category}
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                         {LOGIN_LABELS[member.loginStatus || 'no_login'] || member.loginStatus}
                       </td>

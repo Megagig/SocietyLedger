@@ -1,12 +1,22 @@
 'use client';
 
+import { ThriftHome } from '@/components/ajo/ThriftHome';
+import { AjoLoading } from '@/components/ajo/AjoStates';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { useScopedQuery } from '@/lib/query';
+import { FreshnessNote } from '@/components/common/FreshnessNote';
+import { useQueryClient } from '@tanstack/react-query';
+import { key, queryDefaults } from '@societyledger/query';
+import { DEFAULT_MEMBERS_FILTERS, fetchMembersPage, membersListParts } from '@/lib/api/members-list';
+import { PERMISSIONS } from '@/lib/permissions';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useQueryScope } from '@/lib/query';
 import { canSeeOfficerDashboard } from '@/lib/permissions';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
@@ -14,20 +24,34 @@ import { chargeHref, chargesHref, paymentsHref } from '@/lib/reports-drill';
 
 // Only officers who can read the ledger get the officer dashboard. Every other role — the Election Committee, a custom role — is a
 // member first, so it lands on the member dashboard; assigning a role overwrites the legacy `role` field, so it can't be assumed to be 'member'.
-export default function DashboardPage() {
+function AssociationDashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
   const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['dashboard-overview'],
+  // Cached per association (shown at once from the saved copy on the next open, then refreshed); the freshness window is the 'dashboard' entry in @societyledger/query.
+  const overview = useScopedQuery({
+    domain: 'dashboard',
+    parts: ['overview'],
     queryFn: getDashboardOverview,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
     enabled: _hasHydrated && isOfficer, // everyone else is sent to the member dashboard
-
   });
+  const { data, isPending, isError, error, refetch } = overview;
+
+  // Officers usually open Members next: fetch its first page quietly once the dashboard has arrived, so it opens already filled.
+  const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
+  const { can } = usePermissions();
+  const canSeeMembers = can(PERMISSIONS.MEMBER_VIEW);
+  useEffect(() => {
+    if (!overview.isSuccess || !canSeeMembers || tenant === null) return;
+    void queryClient.prefetchQuery({
+      queryKey: key(tenant, 'members', ...membersListParts(DEFAULT_MEMBERS_FILTERS)),
+      queryFn: () => fetchMembersPage(DEFAULT_MEMBERS_FILTERS),
+      ...queryDefaults('members'),
+    });
+  }, [overview.isSuccess, canSeeMembers, tenant, queryClient]);
 
   // Smart redirect based on user role
   useEffect(() => {
@@ -56,7 +80,7 @@ export default function DashboardPage() {
   }
 
   // Loading state
-  if (isLoading) {
+  if (isPending) {
     return <DashboardSkeleton />;
   }
 
@@ -110,6 +134,7 @@ export default function DashboardPage() {
           <HelpLink />
         </div>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Welcome back! Here&apos;s your overview</p>
+        <FreshnessNote query={overview} />
       </div>
 
       <div className="space-y-4 sm:space-y-6">
@@ -570,4 +595,12 @@ function TableIcon({ className = "w-6 h-6" }: { className?: string }) {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
     </svg>
   );
+}
+
+/** A standalone thrift group has no association dashboard: it gets its own Thrift home, and nothing of the association is fetched or drawn. */
+export default function DashboardPage() {
+  const nav = useAjoNav();
+  if (nav.thriftOnly) return <ThriftHome />;
+  if (nav.resolving) return <AjoLoading />;
+  return <AssociationDashboardPage />;
 }

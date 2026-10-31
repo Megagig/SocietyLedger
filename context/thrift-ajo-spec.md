@@ -155,3 +155,85 @@ One release: Mode A (the group's own bank account), both models, member approval
 | ID | Question | Resolved in |
 |---|---|---|
 | F2 | Collector tools are online only; weak connectivity in markets is a real risk | revisit after the T12.3 pilot |
+
+## 15. Standalone thrift-group onboarding (T7.6b) — **OWNER-APPROVED 2026-10-29**
+
+> Fills the gap in `build-plan.md` T7.6, `project-overview.md` THO9 and §5 above, which said "onboarding" without defining it. Built 2026-10-29; see "As built" at the end for where it differs from the plan.
+
+**Purpose.** The admin of a standalone thrift group (`Association.kind = THRIFT_GROUP`) goes from "account approved" to "first circle ready to open, with its people in it" in about ten minutes, without seeing anything that belongs to an association (dues, levies, finance setup, association profile, association roles). Applies to that admin only; associations (including ones that bought Ajo) keep their five-step onboarding unchanged. Web only (THO9). Nothing here collects or moves contribution money; the only bank details captured are the group's own account, in the circle wizard.
+
+**Routing.** After sign-in, an admin who still needs onboarding goes to `/onboarding` (association) or `/onboarding/thrift` (`THRIFT_GROUP`), chosen from `onboardingFlow` returned by login and `/auth/me`. Each kind that opens the other's onboarding address is redirected to its own. Skipping, or finishing, always ends in Ajo, never in association screens. Non-admins never see onboarding.
+
+| # | Step | What happens | Required | Skippable |
+|---|---|---|---|---|
+| — | Welcome | What is ahead, trial end date, start or skip | — | skip all |
+| 1 | Group profile | Name, contact phone (required), email, area and state, logo | yes | yes |
+| 2 | Your first circle | The same wizard as Ajo's "New group" (`GroupWizard`), saved as a draft; two plain examples; "use the circle you already have" | yes | yes |
+| 3 | Contributors | Create people one by one or from a CSV (up to 200), add them to the circle, optionally approve them and record rule acceptance on their behalf, optionally email login links | yes | yes |
+| 4 | Team and collectors | Invite a co-admin, Ajo officers, collectors (collector only for a collector-thrift circle) | no | yes |
+| 5 | Review and open | Checklist with Fix links, what happens next, open the circle or keep it as a draft | yes | — |
+
+**Decisions (all taken as recommended).** D1 **A**: the trial includes Growth features (collector thrift, reminders) with Starter's cap of 30 active contributors. D2: step 4 is included, optional. D3: approval and on-behalf rule acceptance are both offered in step 3 with explicit checkboxes; approval ticked by default, on-behalf unticked; both logged. D4: login links by email on, SMS off (SMS costs credits). D5: a new bulk endpoint, answered per row.
+
+**API.** `GET /onboarding/status` returns `flow` and the step list; `PATCH /onboarding/complete-step` and `POST /onboarding/team` validate against the tenant's kind (a thrift group cannot complete association steps, or invite as Treasurer, and the other way round). No migration: `OnboardingProgress` is reused and the association-only flags are left alone for thrift groups. New `POST /ajo/groups/:id/members/bulk` (`ajo.manage`).
+
+**Acceptance (met, with the tests that prove them).** Kind-aware steps, completion and roles: `ajo-thrift-onboarding.test.ts`. Bulk add, idempotency, per-row results, own-approval refused, limit, isolation: `ajo-bulk.integration.test.ts` and the routes test. Trial add-on and standalone checkout: `thrift-checkout.integration.test.ts`. Routing guards: not covered by an automated test (they are web code).
+
+### As built: where it differs from the plan above
+1. **People staged in a draft circle.** The existing rule refused anyone added to a draft, but the plan adds people in step 3 and opens in step 5. Only the bulk add may now stage people in a draft (`addMember(allowDraft)`). They can be approved and have rules recorded, and stay `PENDING` ("0 active yet") until the circle is opened; opening the circle activates everyone who is ready. Everywhere else a draft still takes nobody.
+2. **Repeating a list.** Instead of a stored idempotency key, a person is matched by phone number within the association, so the same list twice adds nobody and records nothing twice. A half-done list is finished by sending it again with approval ticked.
+3. **Trial (D1).** A hidden, non-purchasable add-on `ajo-trial` (Growth features, 30 contributors, never levied) is granted at the start of a standalone group's trial instead of `ajo-starter`. It has to exist in each database (the Ajo seed creates it, and runs on container start). Groups already in a trial keep the Starter add-on.
+4. **Step 1.** Area and state are saved in the group's address line; there are no new profile fields.
+5. **Step 3.** "I'm also a contributor" is a note, not a toggle: add yourself as a row and another officer approves you. Contributor limit is enforced before sending when approval is ticked (an over-limit list is refused with an upgrade link); the server still reports a person it cannot activate for the plan.
+6. **Step 4.** Assigning contributors to a new collector is not offered: an invited collector has no login until they accept. The page says to assign from Collectors afterwards.
+7. **Resume and re-run.** The resume card appears on the Thrift Groups page (dismissed for the visit only), and "Setup guide" on that page re-runs setup. It is not under Settings.
+8. **Not built here.** The mobile "finish on the web" card (T8). The Ajo docs page "Setting up your thrift group": the docs site has no Ajo section yet, so it belongs to T11.1.
+
+## 16. Transparency and member dashboards (T13) — **OWNER-APPROVED 2026-10-29**
+
+> Today a contributor sees only their own schedule, payments, receipts, late fees, disputes, cases and trust score, plus the payout order. The member list and the payments queue are officers-only, so nothing shows a circle's shared progress. This section adds it, in four phases (A–D), with the owner's decisions below. Where it changes something built earlier it says so.
+
+### 16.1 Principle: two models, two levels of visibility
+| | Rotating pot (a **circle**) | Collector thrift (a **scheme**) |
+|---|---|---|
+| Money | Everyone's payment this round funds one person's payout, so members depend on each other. | Each saver saves for themselves. Other savers never affect their payout. |
+| Members see | The whole circle: who has paid, when, who is next, who is behind, the circle's numbers (the **Circle board**). | Only their own savings: every naira, where their cash is, what they get back and when. |
+| Why | Shared risk calls for shared information; it stops disputes. | Other people's savings are private. |
+| Amount | Fixed by the group before it starts. | **Each saver chooses one amount and keeps it for the whole cycle** (16.5). |
+
+Words: **circle** = a rotating-pot group (`model = ROTATING_POT`); a collector-thrift group is a **scheme** and never has a board. A **round** is one due date shared by the whole pot; a member with two shares pays once per round and holds two payout positions.
+
+### 16.2 Privacy guardrails (every shared view)
+**Shown to other members of the same circle:** display name (first name and last initial, "Adaeze O."; the group may choose full names), shares, payout position, join date, payment status with the date paid and time confirmed, payout order, dates and status, a "SocietyLedger verified" yes/no badge, and arrears (rounds and amount behind).
+**Never shown:** phone, email, address, payout bank account, guarantor details, proof images, dispute evidence, case notes, repayment-plan terms, trust score and band, and anything about other circles.
+1. **Consent through the rules.** Each rule version has `memberVisibility` (`FULL` or `OFF`, stored as text so a middle level can be added later without a migration) and `nameDisplay` (`FIRST_INITIAL` or `FULL`). Members accept it with the rules: "Other members of this circle can see your name, your payment status and dates, and your payout position." Rotating pots default to `FULL`; collector thrift is forced to `OFF`. For circles that already exist, a person appears by name only once they accept a rule version that has the setting; until then they show as "Member 7". "Status only" was considered and **dropped** (owner decision 2026-10-29).
+2. **Reported is not paid.** Only `CONFIRMED` shows as paid. A reported payment reads "Reported, awaiting confirmation".
+3. **No shaming words.** "Overdue", "Missed", "Behind by ₦20,000.00", never "defaulter". A payment under dispute reads "Under review" and does not count as missed. A waived payment reads "Waived".
+4. **Everyone sees the same facts.** One service computes statuses and metrics for the board, the officer screens and the reports.
+5. **One clock.** Dates and times are in the group's timezone and follow the circle's cut-off time.
+
+### 16.3 Status set (used everywhere; always text plus an icon, never colour alone)
+Paid on time (green) · Paid late (amber-green) · Reported (blue) · Due (grey) · Overdue, "grace until {date}" (amber) · Missed (red) · Under review (purple) · Waived (grey outline) · Upcoming (light grey). Money is always shown in full (₦10,000.00).
+
+### 16.4 Phase A — the Circle board (rotating pots; every member of the circle, officers too)
+Six views plus the activity log: **Overview** (header with round x of n, this-round progress and counts, up next, "you" card, health strip) · **This round** (every member, sorted overdue, due, reported, paid; All / Paid / Not yet paid; round selector; receipt last 4 only) · **Payment history** (members by rounds matrix with totals) · **Payouts** (position, recipient, scheduled, status Upcoming / Prepared / Approved / Paid / Held with a reason category, pot, recorded time and last 4 of the reference, who approved and who recorded; draw record; swaps and emergency exceptions) · **Members** (roster with counts) · **Arrears and accountability** (members past grace, after-payout arrears highlighted, late-fee totals only, "payments waiting for confirmation: 3 (oldest 2 days)") · **Charts and metrics** (collected vs expected per round, on-time rate per round, contributions vs payouts cumulative, recorded balance with the line "From SocietyLedger records — your group's bank statement is the final word", status mix donut of at most 5 segments, payout punctuality, average days late, members fully up to date, total behind, days to next payout) · **Circle activity** (read-only, newest first, a correction is a new entry; built from audit entries through an allow-list of action types with member-safe wording; excludes payout-account changes, dispute details, case notes and verification outcomes beyond the badge).
+**API** (circle members and officers; rotating pot only; respects `memberVisibility`): `GET /ajo/groups/:id/board`, `/board/rounds/:round`, `/board/matrix`, `/board/payouts`, `/board/members`, `/board/arrears`, `/board/metrics`, `/board/activity`. A collector-thrift group answers `403 { code: 'BOARD_NOT_AVAILABLE' }`; a non-member answers as if the circle did not exist. **Separate DTOs** built from an explicit list of allowed fields, never the officer DTOs, with an automated test that fails if a phone, email, address, account number, guarantor detail, note or proof link appears in any board response. Figures are cached for 60 seconds and cleared when a contribution is confirmed or reversed.
+**Where it lives.** Web: a Circle board tab on the member's circle page. Mobile: a **Circle** tab for a standalone rotating-pot account (shown only to people in a rotating pot, with a picker for several); an association member opens the same screens from Money, My thrift, the circle, "Circle board". A standalone collector-thrift account is unchanged (no Community tab).
+
+### 16.5 Phase B — collector-thrift cycles
+- **Per-saver amount.** When joining, a saver chooses one amount (the group sets a minimum) and keeps it for the whole cycle. Installments are already per member, so this reuses them. Late fees, missed days, arrears and the trust score keep working.
+- **Collector fee.** One contribution of each saver per cycle: the existing "days of contribution" fee set to 1 day, so a ₦500.00 saver pays ₦500.00 and a ₦1,000.00 saver pays ₦1,000.00.
+- **Cycles.** A group has a cycle number; each saver has a record per cycle (amount, and withdraw or continue). A few days before the cycle ends the saver is asked: **withdraw** (a payout is prepared as today) or **continue** (savings stay in the group, minus the fee for the finished cycle; the saver may change their amount for the next cycle). **No answer means withdraw.** Existing groups migrate to one cycle where every saver's amount is the group's current amount.
+
+### 16.6 Phase C — what a collector-thrift saver sees (their own records only)
+My savings (saved so far, reported-not-yet-confirmed shown separately, progress ring, up to date or behind, "what you will receive" = saved minus the collector fee with cycle end and payout dates, payout status and why it is held) · contribution calendar (month for daily savers, week list for weekly) · payment history with receipt download · **Where my cash is** (three steps per cash payment: collector recorded, collector handed in, office confirmed; a late step reads "Not yet handed in" with a one-tap query) · my collector (the saver's own assigned collector only) · fees and charges · my record (trust band with its counts, streak, past cycles) · statements (PDF and CSV per cycle) · "I paid but it's not showing". Group information: name, rules, the group's bank account, cycle dates, fee rule, office contact; not other savers, and not group totals unless the admin turns that on (default off).
+These extend the existing own-data endpoints (`/memberships/:id/installments`, `/contributions`, `/late-fees`, `/payouts/mine`, `/trust`) with the cash custody steps, the projected payout and the cycle summary. They add no access to other people's data.
+
+### 16.7 Phase D — shared extras and officer accountability
+Circle statement PDF (payment matrix, payouts, recorded balance, activity summary, date generated and a verification code linking to the live record; matches the board on the day it is made) · transparency notifications, each switchable off ("Round 4 is fully paid", "Payout to {name} was recorded", "Your turn is in 2 rounds"; the weekly summary is off by default and opt-in; individual overdue notices go only to the member and the officers) · officer accountability (separation of duties per payout with single-admin approvals flagged, confirmation backlog by age against a 48-hour target, cash reconciliation per collector per day, exceptions with reasons, the audit export) · a docs page "What members can see in a circle".
+
+### 16.8 Owner decisions (2026-10-29, all taken as recommended unless noted)
+D1 board default **Full**, chosen per circle at creation and accepted by every member (no "Status only") · D2 first name and initial, group may switch to full names · D3 verified badge shown · D4 collector-thrift group totals off by default, admin may turn on · D5 confirmation target 48 hours · D6 weekly summary off, opt-in · **new:** per-saver amount, withdraw or continue with withdraw as the default, and the mobile placement in 16.4.
+
+### 16.9 Acceptance
+1. A member of a rotating pot sees all board views for their own circle and nothing for circles they are not in. 2. A collector-thrift saver sees only their own records; board endpoints answer `BOARD_NOT_AVAILABLE`. 3. No board response contains phone, email, address, payout account, guarantor details, notes or proof links (automated test). 4. Reported never shows as paid; disputed never shows as missed. 5. A member who has not accepted the rule version with `memberVisibility` shows anonymised. 6. The board and the officer screens show the same totals for the same round. 7. The statement PDF matches the board on the day it is made. 8. Every cash payment a saver made shows its three steps with times. 9. A saver's amount cannot change within a cycle; at cycle end no answer means withdraw.

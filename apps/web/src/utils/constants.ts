@@ -131,6 +131,7 @@ export const API_ROUTES = {
   ASSOCIATIONS: {
     CHECK_SUBDOMAIN: `${API_BASE_URL}/api/associations/check-subdomain`,
     SIGNUP: `${API_BASE_URL}/api/associations/signup`,
+    THRIFT_SIGNUP: `${API_BASE_URL}/api/associations/thrift-signup`,
     BY_ID: (id: string) => `${API_BASE_URL}/api/associations/${id}`,
     SETTINGS: (id: string) => `${API_BASE_URL}/api/associations/${id}/settings`,
   },

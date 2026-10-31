@@ -1,11 +1,14 @@
 'use client';
 
+import { ThriftHome } from '@/components/ajo/ThriftHome';
+import { AjoLoading } from '@/components/ajo/AjoStates';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { useScopedQuery } from '@/lib/query';
 import { canSeeOfficerDashboard } from '@/lib/permissions';
 import {
   IconWallet,
@@ -17,17 +20,16 @@ import {
   IconChartBar,
 } from '@tabler/icons-react';
 
-export default function AdminDashboardPage() {
+function AssociationAdminDashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
   const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (officers only: the endpoint needs ledger.view)
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['dashboard-overview'],
+  const { data, isPending, isError, error, refetch } = useScopedQuery({
+    domain: 'dashboard', // the same entry the main dashboard uses, so the two share one request
+    parts: ['overview'],
     queryFn: getDashboardOverview,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
     enabled: _hasHydrated && isOfficer,
   });
 
@@ -37,7 +39,7 @@ export default function AdminDashboardPage() {
   }, [_hasHydrated, user, isOfficer, router]);
 
   // Loading state (also while a non-officer is being sent to the member dashboard)
-  if (isLoading || (user && !isOfficer)) {
+  if (isPending || (user && !isOfficer)) {
     return <DashboardSkeleton />;
   }
 
@@ -411,4 +413,12 @@ function EmptyTableState({ message }: { message: string }) {
       <p className="text-gray-500 dark:text-gray-400 text-sm">{message}</p>
     </div>
   );
+}
+
+/** A standalone thrift group has no association dashboard: it gets its own Thrift home, and nothing of the association is fetched or drawn. */
+export default function AdminDashboardPage() {
+  const nav = useAjoNav();
+  if (nav.thriftOnly) return <ThriftHome />;
+  if (nav.resolving) return <AjoLoading />;
+  return <AssociationAdminDashboardPage />;
 }

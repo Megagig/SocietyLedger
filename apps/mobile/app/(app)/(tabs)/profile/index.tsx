@@ -1,5 +1,6 @@
 import { BookOpen, Bell, HelpCircle, Info, LogOut, Moon, Repeat, ShieldCheck, User } from 'lucide-react-native';
 import { router, useRouter } from 'expo-router';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
 import { View } from 'react-native';
 
 import { EditableAvatar } from '@/features/members/components/EditableAvatar';
@@ -12,14 +13,19 @@ import { Text } from '@/components/ui/Text';
 import { useLogout } from '@/features/session/mutations';
 import { useProfile } from '@/features/session/queries';
 import { openUserManual } from '@/lib/docs';
+import { appVersionLabel } from '@/lib/appVersion';
 import { t } from '@/lib/i18n';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 
 /** project-overview.md §6.7 P1 — full profile home with avatar, name, role chip, and menu rows. */
 export default function ProfileScreen() {
+  const { thriftOnly } = useAjoNav();
   const expoRouter = useRouter();
   const logout = useLogout();
   const { color } = useThemeTokens();
+  // Shown under the About row so the version is visible without opening the screen.
+  const version = appVersionLabel();
+  const appVersionText = version ? `${t('profile.about.version')} ${version}` : undefined;
   const profileQuery = useProfile();
   const profile = profileQuery.data;
 
@@ -134,6 +140,7 @@ export default function ProfileScreen() {
           <ListItem
             leading={<Info size={20} color={color.textSecondary} strokeWidth={1.75} />}
             title={t('profile.aboutRow')}
+            meta={appVersionText}
             showChevron
             onPress={() => expoRouter.push('/(app)/(tabs)/profile/about' as never)}
             testID="profile-about"
@@ -143,7 +150,7 @@ export default function ProfileScreen() {
         <ListGroup>
           <ListItem
             leading={<Repeat size={20} color={color.textSecondary} strokeWidth={1.75} />}
-            title={t('profile.switchAssociationRow')}
+            title={thriftOnly ? 'Switch group' : t('profile.switchAssociationRow')}
             onPress={switchAssociation}
             disabled={logout.isPending}
             testID="profile-switch-association"

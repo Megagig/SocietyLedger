@@ -169,7 +169,7 @@ export default function ActivateAccountPage() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {inviteData?.association.name || tenant?.name || 'SocietyLedger'}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Activate your member account</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Activate your account</p>
         </div>
 
         {/* Activation Form Card */}

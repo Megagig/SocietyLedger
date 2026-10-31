@@ -232,6 +232,14 @@ export async function startTrialIfPending(associationId: number, now = new Date(
     console.error('Could not record the onboarding term (the subscription itself was started):', error);
   });
 
+  // A standalone thrift group's trial includes the Ajo Starter add-on for the same days. Never allowed to fail the approval.
+  try {
+    const { grantThriftTrialAddon } = await import('../modules/ajo/ajo-standalone');
+    await grantThriftTrialAddon(associationId, trialEndsAt, now);
+  } catch (error) {
+    console.error('Could not grant the Ajo trial add-on (the trial itself was started):', error);
+  }
+
   invalidateAccessCache(associationId);
   void announceOnboarding(pending.id, associationId, trialEndsAt, policy);
   return { trialEndsAt, days };

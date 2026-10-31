@@ -1,0 +1,81 @@
+---
+title: "Guarantors"
+description: "Record a guarantor's agreement for a member, in person or by sending them a link, and understand what a guarantor is and is not."
+type: task
+audience: ["admin", "officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/members"]
+permission: "ajo.manage"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/adding-and-approving-people", "/docs/ajo-thrift/rules-grace-and-late-fees", "/docs/ajo-thrift/staying-safe", "/docs/ajo-thrift/late-fees-defaults-and-disputes"]
+keywords: ["guarantor", "guarantee", "consent", "agreement", "link", "wording", "relationship", "sister", "brother"]
+---
+
+A **guarantor** is someone who agrees to stand behind a member: a sister, a brother, a friend or an employer. In SocietyLedger, a guarantor is a **recorded agreement and nothing more**. It is an honest record that a named person was told what the circle expects and agreed. It does not create a legal guarantee, SocietyLedger does not enforce one, and **nothing is ever taken from a guarantor automatically**.
+
+Whether a guarantor is needed is a circle rule: **Not needed**, **Optional** or **Required before joining**. See [Rules, grace and late fees](/docs/ajo-thrift/rules-grace-and-late-fees).
+
+## Before you start
+
+- You need the **manage** permission.
+- If the circle requires a guarantor, the member stays in **Waiting for approval** until one is recorded. The **Waiting for** column on the Members tab says so.
+- Have the guarantor's **name**, **phone number** and **relationship to the member**.
+
+## Record an agreement in person
+
+Use this when the guarantor is with you, or you have spoken to them by phone and they agreed.
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Thrift Circles"]} />, open the circle, and choose the <UiLabel>Members</UiLabel> tab.</Step>
+<Step>On the member's row, select <UiLabel>Guarantor</UiLabel>.</Step>
+<Step>Select <UiLabel>Show the wording</UiLabel> and read it to the guarantor. This is exactly what they are agreeing to, and it is the text that is saved.</Step>
+<Step>Enter the **Guarantor's name**, their **Phone**, and the **Relationship to the member**.</Step>
+<Step>Under **How they agreed**, write how it happened, for example "Read the wording to her on the phone on 29 August, and she agreed."</Step>
+<Step>Select <UiLabel>Record agreement</UiLabel>.</Step>
+</Steps>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-guarantor-1.webp"
+  alt="The Guarantor dialog for a member: a note that a guarantor is a recorded agreement only, a choice between Send them a link and I will record it myself, and fields for the guarantor's name, phone and relationship."
+  caption="The Guarantor dialog. Send a link, or record the agreement yourself after reading the wording to the guarantor."
+/>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} />, open the circle, and tap **Members**.</Step>
+<Step>Tap the member, then tap **Guarantor**.</Step>
+<Step>Read the wording to the guarantor, enter their details and how they agreed, and tap **Record agreement**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+## Or send the guarantor a link
+
+Use this when the guarantor is not with you. They read the wording and accept it themselves, on their own phone.
+
+<Steps>
+<Step>Open the same **Guarantor** window.</Step>
+<Step>Enter the guarantor's name, phone and relationship, and select <UiLabel>Create the link</UiLabel>.</Step>
+<Step>Copy the **Link for the guarantor** and send it to them by WhatsApp or SMS. The window shows the name of the person they will be agreeing for.</Step>
+<Step>The guarantor opens the link in their browser, reads the wording and accepts or declines. They do not need an account.</Step>
+</Steps>
+
+A few things to know about the link:
+
+- It can be used **once**, and it expires after **7 days**.
+- **Creating another link replaces the first**, so an old link in someone's messages cannot be used.
+- You are told when the guarantor accepts, and the member is activated if nothing else is missing.
+
+<Callout type="note" title="Guarantor consent opens in a browser">
+On a phone, you create and share the link from the app, and the guarantor opens it in their browser. They never need the SocietyLedger app.
+</Callout>
+
+## What happens next
+
+The member's row shows **guarantor on file**. If a new agreement is recorded later, it replaces the earlier one, and the earlier one stays on file, so the history is complete.
+
+If someone later falls behind, a guarantor is **not** charged. The circle can contact the guarantor, but SocietyLedger will only record that it did. See [Late fees, default cases, repayment plans and disputes](/docs/ajo-thrift/late-fees-defaults-and-disputes).

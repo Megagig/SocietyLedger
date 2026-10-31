@@ -1660,7 +1660,7 @@ _(none)_
 - **`components/subscription/SubscriptionBanners`** - `TrialEndingBanner` now also covers a paid period ending within 7 days and the grace period; `SubscriptionBlockedScreen` shows the end date, **Resubscribe Now**, billing and support links. **`VerifyPayment`** handles success, still-processing (re-checks), needs-review and failed.
 
 ### Admin (`apps/admin/src/components/billing/`)
-- **`VersionedEditor`** - one editor for a plan or an add-on: details/visibility (apply at once), a draft of prices, limits, modules and features, version history, and a publish dialog that shows the impact first (price change, modules added/removed, current subscribers, warnings, blockers) and requires a reason when changing something already on sale.
+- **`VersionedEditor`** - (2026-10-27: limit inputs are now generic per catalog limit; a quota only an add-on can grant, e.g. Ajo contributors, shows only on an add-on that includes the Ajo module, and an empty value is saved as unlimited; add-ons gain a "Product family" field) one editor for a plan or an add-on: details/visibility (apply at once), a draft of prices, limits, modules and features, version history, and a publish dialog that shows the impact first (price change, modules added/removed, current subscribers, warnings, blockers) and requires a reason when changing something already on sale.
 - **`PlansOverview`** (tabs: Plans, Add-ons, Pricing preview, Migrations), **`MigrationsTab`** (preview, schedule with date and reason, history). Pages: `/plans`, `/plans/[id]`, `/plans/addons/[id]`, `/subscriptions`, `/subscriptions/[associationId]`.
 - **Receipt page** (`apps/web/src/app/dashboard/subscription/receipt/[id]/page.tsx`) - white card with receipt number, billed-to, what was paid for, quoted lines, total, and a print-hidden "Print or save as PDF" button. Linked as "Receipt" beside each confirmed payment on the Subscription page.
 - **Licences page** (`apps/web/src/app/licenses/page.tsx`) - same shell as the Privacy and Terms pages (gradient page, icon tile, `glass-strong` prose card, outline buttons to the sibling legal pages). Groups open-source packages with their licences.
@@ -1691,3 +1691,220 @@ When a request is refused because of who the person is or what their association
 - **Landing page:** `apps/web/src/components/home/AppDownloadButton.tsx` sits beside Sign In in the hero. It appears only when a version is published. The form posts first name, last name, email, phone and a required consent checkbox (link to /privacy) to `POST /api/public/app-download`; the API answers with the link and the browser starts the download. A hidden honeypot field catches bots. The file link is never in the page.
 - **Admin console:** `/downloads` (nav: App Downloads), super admin only. Tabs: Overview (stat cards, downloads-per-day bars, by version, by device, 7/30/90 days), Releases (add, edit, make current, turn off, delete only when never downloaded), Leads (search, CSV and Excel export, each export audit-logged). Uses Mantine colour variables only.
 - **Counting:** one lead per email; every hand-out is a download event. A download means the link was given, not that the install finished.
+
+## Ajo web components (T7 step 1, 2026-10-28)
+
+### AjoGate
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/AjoGate.tsx`
+- **Added / changed:** T7.5 (2026-10-28)
+- **Purpose:** wraps every Ajo page; draws loading, locked (no add-on), not-allowed or the page, with a read-only banner when the add-on has lapsed.
+- **Props:** `children` · exports `useAjoAccess(): { readOnly, canWrite }`
+- **Tokens used:** Tailwind `gray` / `amber` utilities as elsewhere in the web app
+- **Used in:** THM1–THM5 (via `my-thrift/layout.tsx`)
+- **Notes:** write controls must check `canWrite`. The locked state has no purchase button on purpose.
+
+### AjoStates (`AjoLoading`, `AjoEmpty`, `AjoError`, `AjoLocked`, `AjoReadOnlyBanner`)
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/AjoStates.tsx`
+- **Purpose:** the shared loading (skeletons), empty, error (403/404 read as "no access", otherwise retry), locked and read-only states.
+- **Props:** `AjoLoading rows?` · `AjoEmpty title hint? action?` · `AjoError error onRetry?`
+- **Used in:** all Ajo web pages.
+
+### Money
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/Money.tsx`
+- **Purpose:** an amount in full with tabular figures. **Props:** `kobo: string` · `className?`
+- **Notes:** never abbreviate (no 10k). Uses `formatKobo` from `lib/ajo/format.ts`.
+
+### StatusBadge
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/StatusBadge.tsx`
+- **Purpose:** one table of Ajo statuses (group, membership, instalment, payment, late fee, verification, dispute, trust band) to words and a Mantine colour. **Props:** `status: string` · `label?`
+
+### MembershipCard
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/MembershipCard.tsx`
+- **Purpose:** one of the person's groups with overdue, next payment, payout position, what they are waiting for, and Open / Pay. **Props:** `item: MyMembershipDTO` · **Used in:** THM1.
+
+### DisputeDialog
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/DisputeDialog.tsx`
+- **Purpose:** THM8, "I already paid this": a written claim (10+ characters) and optional evidence file for one instalment. **Props:** `membershipId` · `installment: InstallmentDTO | null` · `onClose`
+- **Notes:** file limits live in `components/ajo/proof.ts` (JPG, PNG, WebP, PDF; 5 MB), the same as the API.
+
+### ActionDialog
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/ActionDialog.tsx`
+- **Added / changed:** T7.1–T7.4 (2026-10-28)
+- **Purpose:** the one confirmation for every sensitive Ajo action: a summary of what will happen, an optional written reason with a minimum length, an optional password re-entry, extra fields, and the server's refusal shown in the dialog.
+- **Props:** `opened` · `onClose` · `title` · `summary?` · `confirmLabel` · `color?: 'green' | 'red' | 'blue'` · `reasonMin?` · `reasonLabel?` · `needPassword?` · `extra?` · `validate?` · `onConfirm({ reason, password })` · `successMessage`
+- **Used in:** group cancel, emergency order change, turn down and reverse a payment, void, fail and reverse a payout, waive and undo a fee, decide a claim, plan agree and cancel, close a case.
+- **Notes:** red for anything not quietly undone. It refreshes every Ajo query on success.
+
+### RulesFields
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/RulesFields.tsx`
+- **Purpose:** the group's rules as a form (naira and percent in, kobo and basis points out through `rulesFormToInput`). **Used in:** THO2 wizard and the rules page.
+
+### ThriftHomeRedirect
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/ThriftHomeRedirect.tsx`
+- **Purpose:** sends a standalone thrift group from the dashboard home into Ajo. Renders nothing; does nothing for an ordinary association. **Used in:** `AuthenticatedLayout`.
+
+### GroupWizard
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/GroupWizard.tsx`
+- **Added / changed:** T7.1 (2026-10-28), extracted from the New group page 2026-10-29
+- **Purpose:** the six-step create-a-circle wizard (kind, money, collector, account, rules, review), saved as a draft. **Props:** `onCreated(group)` · `examples?` (shows the two plain examples)
+- **Used in:** THO2 (`/dashboard/ajo/new`) and thrift onboarding step 2. The caller decides what happens next.
+
+### Thrift onboarding steps (StepProfile, StepCircle, StepContributors, StepTeam, StepReview)
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/onboarding/`
+- **Purpose:** the five steps of THO9, driven by `app/onboarding/thrift/page.tsx`. Each step saves on its own and reports its result in words; `StepContributors` has the editable list, CSV upload and template, the approval and on-behalf checkboxes and the limit line.
+
+### OnboardingResume
+- **Surface:** web
+- **Path:** `apps/web/src/components/ajo/OnboardingResume.tsx`
+- **Purpose:** "Finish setting up {group} · N of 5 done" for an unfinished standalone-group admin; dismissed for the visit only (sessionStorage in try/catch).
+
+
+## Ajo mobile components (T8, 2026-10-29)
+
+> **Standalone thrift groups (fixed 2026-10-29):** the Money tab renders `MyThriftScreen` (not the association Money screen) and Manage shows only Members, Thrift and Settings. Any new association-only section on Money, Manage or Home must be hidden when `useAjoNav().thriftOnly`.
+
+All under `apps/mobile/src/features/ajo/`. Built only from the existing design system (Screen, ScreenHeader, Card, SectionCard, ListItem, Badge, StatTile, FilterChip, SegmentedControl, BottomSheet and the react-hook-form fields). Colours are tokens only.
+
+### AjoScreen
+- **Surface:** mobile
+- **Path:** `components/AjoScreen.tsx`
+- **Purpose:** the frame every Ajo screen shares: header (back arrow only when there is somewhere to go back to), the permission check, and `AjoGate`. **Props:** `title` · `access?` (permission aliases) · `onRefresh?`/`refreshing?` · `rightActions?` · `keyboard?`
+
+### AjoGate and `useAjoWrite`
+- **Surface:** mobile
+- **Path:** `components/AjoGate.tsx`
+- **Purpose:** loading, locked (no add-on), not allowed, or the screen with a read-only banner. `useAjoWrite()` reads the same status query, so a screen can use it in its own body; write buttons check `canWrite`. No purchase button anywhere (ui-rules rule 16).
+
+### AjoStatusBadge, AjoMoney, AjoLoading, AjoReadOnlyBanner, NeedsInternet
+- **Path:** `components/AjoStatusBadge.tsx`, `AjoMoney.tsx`, `AjoStates.tsx`
+- **Purpose:** one place that turns an Ajo status into words and a tone; money from kobo in full (a short difference keeps its minus sign); skeleton rows; the read-only banner; the collector's offline banner.
+
+### AjoActionSheet
+- **Path:** `components/AjoActionSheet.tsx`
+- **Purpose:** one confirmation for every sensitive action: summary, optional extra choices (`children`), optional written reason (`reasonMin`), optional password typed again (`needPassword`, checked by the server). Stays open on failure, clears a wrong password, refreshes every Ajo query on success.
+- **Used in:** cancel circle, turn down / reverse a payment, void / fail / reverse a payout, waive / undo a fee, decide a claim, agree / cancel a plan, close a case, emergency change of place, leave a circle, remove a collector.
+
+### Sheets with their own form
+- `ConfirmPaymentSheet`, `ReconcileSheet` (tick the payments that were in the cash), `ApprovePayoutSheet` (shows who, how much, which account; password), `RecordPaidSheet`, `RecordCashSheet`, `HandoverSheet`, `DisputeSheet`, `ReceiptsSheet`, `GuarantorSheet` (link or recorded agreement; copy and share), `AddPersonSheet`, `SharesSheet`, `AssignCollectorSheet`, `EditCircleSheet`. Each exposes `open(...)` through a ref.
+
+### Cards and pieces
+- `MembershipCard`, `PhoneConfirmCard`, `SwapRequestCard`, `LeaveCircle`, `TickRow` (tappable row with a tick box, for picking from a list), `ThriftEntry` (the "My thrift" row on Home and Money), `ThriftHomeRedirect`, `OnboardingResume`.
+
+### GroupWizard and RulesFields
+- **Path:** `components/GroupWizard.tsx`, `components/RulesFields.tsx`, logic in `groupForm.ts`
+- **Purpose:** the six-step create-a-circle wizard (kind, money, collector, account, rules, review), saved as a draft; used by Manage → Thrift → New circle and by thrift onboarding. `RulesFields` binds the rules to a form with a field-name prefix.
+
+### Thrift onboarding steps
+- **Path:** `components/onboarding/` (`StepProfile`, `StepCircle`, `StepContributors`, `StepTeam`, `StepReview`), driven by `app/(app)/onboarding/thrift.tsx`.
+- **Notes:** contributors are typed in one at a time (a list builds up); a long list is added on the web.
+
+## Circle board (T13 phase A, 2026-10-29)
+
+Read-only views of a rotating pot for its members (spec §16.4). Same words and statuses on web and mobile. Colours are theme tokens only.
+
+### Board status
+- **Surface:** web, mobile
+- **Path:** web `components/ajo/board/BoardParts.tsx` (`StatusChip`, `StatusGlyph`, `PayoutChip`), mobile `features/ajo/components/board/BoardParts.tsx` (`StatusPill`, `StatusSquare`)
+- **Rule:** a status is always text plus an icon, never colour alone. Paid on time (success, check), Paid late (accent, check), Reported (info, clock), Due (neutral, circle), Overdue (warning, triangle; says "grace until d/m"), Missed (danger, x), Under review (primary, magnifier), Waived (neutral, minus), Upcoming (neutral, calendar). Words: Overdue, Missed, "Behind by ₦20,000.00", never "defaulter".
+
+### Circle board shell
+- **Path:** web `components/ajo/board/CircleBoard.tsx` (tabs), mobile `features/ajo/components/board/CircleBoard.tsx` (a horizontally scrolling row of `FilterChip`s, one view at a time)
+- **Views:** Overview, This round, Payment history (matrix: a grid on web, a wrapping row of squares per member on mobile), Payouts, Members, Arrears, Charts, Activity.
+- **Closed states:** `BOARD_NOT_AVAILABLE` (collector thrift) and `BOARD_OFF` each get their own empty state with a reason; nothing else leaks.
+- **Charts:** web recharts, mobile gifted-charts, both behind the view, with a text summary; mobile has a "View as list" toggle.
+- **Mobile entry points:** the `Circle` tab for a standalone rotating pot (a list first when there are several circles), and a `Circle board` button on the circle page for association members.
+
+## Savings cycle (T13 phase B, 2026-10-29)
+
+### Cycle card (saver)
+- **Surface:** web `components/ajo/member/CycleCard.tsx`, mobile `features/ajo/components/CycleCard.tsx`
+- **Shows:** the amount the saver chose (and keeps for the cycle), savings brought forward, and "When this cycle ends": withdraw or continue (continue asks for next cycle's amount, empty keeps the same). Always says "If you do not answer, your savings are paid out to you." Placed on the circle page of a collector-thrift saver.
+
+### Savings cycle (officer)
+- **Surface:** web tab `ajo/[groupId]/cycle`, mobile `manage/thrift/[groupId]/cycle`
+- **Shows:** counts (continuing, withdrawing, no answer), each saver with amount, saved so far and their choice, and "Start the next cycle" (admin only, behind a confirmation). Says why it cannot start (cycle not over, nobody continuing).
+
+## My savings (T13 phase C, 2026-10-29)
+
+### Savings view (saver)
+- **Surface:** web `components/ajo/savings/SavingsView.tsx` (tabs), mobile `features/ajo/components/savings/SavingsView.tsx` (a scrolling row of `FilterChip`s)
+- **Views:** My savings (saved so far, reported shown apart, progress, behind or up to date, what you will receive, calendar), Payments (with a receipt download), Where my cash is, Collector and fees, My record, Statements. Statuses reuse the Circle board's `StatusChip` / `StatusPill`.
+- **Where my cash is:** one card per cash payment with three steps (recorded, handed in, office confirmed), each with who and when; a late step is flagged and offers "Ask about this payment".
+- **Entry:** a "My savings" button on a collector-thrift circle page (web and mobile).
+
+## Statement, notifications and accountability (T13 phase D, 2026-10-29)
+
+### Circle statement
+- **Surface:** web (`Download circle statement` in `CircleBoard`), mobile (`Share circle statement`, opens the share sheet), public page web `/verify/circle/[code]`.
+- **Verify page:** two columns, "On the statement" and "In the record now", with a banner that says the figures match or that the record has changed since (normal, as payments are confirmed). Totals only.
+
+### Circle notifications (member)
+- **Surface:** web `my-thrift/notifications`, mobile `money/thrift/notifications`: four switches (round fully paid, payout recorded, your turn, weekly summary, off by default) with an example of each message. Says that reminders about your own payments are not affected.
+
+### Accountability (officer)
+- **Surface:** web tab `ajo/[groupId]/accountability`, mobile `manage/thrift/[groupId]/accountability` (with a CSV share).
+- **Shows:** payouts with who prepared, approved and recorded them and a warning flag (icon and words) where one person did both; the backlog in four age buckets; cash by collector and day (collector thrift only); and exceptions newest first with reason and who.
+
+## Admin console: Ajo (T9, 2026-10-30)
+
+All in `apps/admin` (Mantine, `--admin-surface` cards). No new design primitives: they reuse `PageHeader`, `StatCard`, `StatusBadge`, `ConfirmDestructive`, `ReasonField`, `ErrorState`, `EmptyState`. Shared types and role lists live in `lib/ajo-admin.ts`. Sidebar: Ajo groups, Ajo analytics, Ajo pricing, Ajo verification.
+
+### Verification queue and review
+- **Surface:** `/ajo/verifications` (tabs Waiting, Verified, Rejected, 25 a page) and `/ajo/verifications/[id]`.
+- **Review:** "What the person submitted" card, a Checklist card with three checkboxes, then Reject… (opens `ConfirmDestructive`; the reason is shown to the group admin) and Verify (disabled until all three pass). Buttons are hidden for roles that cannot decide, with a sentence saying why.
+
+### Groups and group detail
+- **Surface:** `/ajo/groups` (search, owner kind, type and status filters; "Needs a look" badges for open payouts and default cases) and `/ajo/groups/[id]`.
+- **Detail cards:** summary, **Ajo tier** (limit, in use, paid or not, a "Moves to X at renewal" badge, "Change tier…"), Payouts (with "Cancel payout…" on prepared and approved ones), Default cases, Platform levy.
+- **Change tier dialog:** a Select showing price and size, then a live preview in an `Alert`: blocked (red, says how many to remove), upgrade starts now, downgrade at the period end with the date, a never-paid downgrade that applies at once, or "cancels the waiting downgrade". Confirm needs a reason of at least 10 characters.
+- **Over the limit:** an "Over tier limit" red badge in the list and an orange "Over the tier limit" alert in the tier card (nobody in loses anything, nobody new can join).
+- **Suspend / Reactivate owner:** a light red "Suspend X…" button (light blue "Reactivate X…" when suspended) under the summary, with the line "Suspension applies to the whole owner, not only this circle", super admins only; opens `ConfirmDestructive`.
+
+### Settings: Ajo platform levy
+- **Surface:** a card on `/settings` between Onboarding and AI. Percent inputs with a % suffix, money inputs with ₦ and two decimals, a MultiSelect of the Ajo tiers that pay no levy. Saved with the page's existing Save changes bar.
+
+### Ajo pricing and analytics
+- **Pricing:** `/ajo/pricing` is a table of tiers with no editor; "Edit price" opens the Plan Builder add-on page.
+- **Analytics:** four `StatCard`s, an adoption table by tier, then two 6-month series (paid for tiers, and platform levy) as labelled progress bars (the amount is written beside each bar, so colour carries nothing). Roles that cannot see revenue get the `Forbidden` state, not a request that fails.
+
+## Ajo reports and exports (T10, 2026-10-30)
+
+Web (`apps/web`, Tailwind tokens) and phone (`apps/mobile`, NativeWind) show the same eight reports from one API (`/api/ajo/reports`). No new design primitives.
+
+### Web
+- **Hub:** `/dashboard/ajo/reports`, a two-column grid of entries: title, a tier badge (Basic gray, Advanced blue, Audit violet), one line of description. A locked report is shown, not hidden: warning-coloured text with a lock icon says why ("Audit reports are not part of your Ajo tier. Upgrade the tier to use this report."), it is not a link, and its card sits on `bg-surface-muted`. Linked cards use `no-underline` (the app's global link style would underline the whole card).
+- **Report:** `/dashboard/ajo/reports/[name]`. Back link "All reports", the title, then **"How this is counted."** and the report's rule in words. Filters in one row that wraps: Circle (Mantine `Select`, clearable), From and To (`TextInput type="date"`), Person (only once a circle is chosen and the report understands it), Collector (only when the person may list collectors). CSV and PDF buttons at the right. With no dates the page says it shows the running month and that up to 12 months can be chosen.
+- **Figures:** one block per circle (`dl` grid, four across on a wide screen), each figure a tile (`border-line-strong` on `bg-surface-muted`, so it reads in the dark theme): label, figure, optional hint. Then, only when two or more circles of the same kind are shown, an "All rotating pots" or "All collector-thrift groups" block labelled "n circles added together". A figure that does not apply is "—", never 0. Money is always in full (₦300,000.00); a percentage is one decimal.
+- **Details:** `ReportTable` (a bordered scroll container, so the table scrolls inside itself and never widens the page; money, counts and percentages right-aligned and tabular), then `ReportPager` ("Rows 1 to 25 of 60", Previous, "Page 1 of 3", Next). Changing any filter returns to page 1; the previous figures stay on screen but dimmed, with "Updating for your new choice…" above them, until the new ones arrive.
+- **States:** skeleton rows while loading, `AjoError` with a retry on failure (the API's own message, for example "Pick a range of 12 months or less."), "Nothing to show for these dates." when the figures stand but there are no rows, "No circles to report on yet." when there is no opened circle.
+- **Layout fixes found in the browser:** the dashboard `<main>` now has `min-w-0` (a wide table used to stretch the whole page: the thrift circles list was 504px wide on a 390px screen), and the breadcrumb trail wraps.
+- **Downloads:** the file is the API's, named by the API (`ajo-contributions-2027-03-01-to-2027-03-31.csv`); the API now exposes `Content-Disposition` to browsers, which every web download needed.
+
+### Phone
+- **Entry:** a "Reports" row on the Thrift circles screen for anyone with the reports permission; the hub is `manage/thrift/reports` (a `ListGroup`: `IconCircle` with a file icon, or a lock icon in the warning tone for a locked report, with the reason as the row's meta line).
+- **Report:** the rule first ("How this is counted."), two `OptionDropdown`s side by side (Circle, Dates: This month, Last month, Last 3 months, This year; "This month" sends no dates so the API's default applies), a second row for Person and Collector when they apply, then Share PDF and Share CSV (`Button` secondary, the existing share sheet helper `saveAndShareFile`).
+- **Figures:** `BoardCard` per circle with ledger rows (label left, figure right, hint under), not tiles, so a full-length amount always fits. Totals as above.
+- **Details (full parity with the web table):** every row is a block in one `BoardCard` "Details (60 rows)" separated by hairlines: the first text column as the title, the circle under it when more than one is shown, then every other column as "label … value" (long free text stacked under its label). An empty cell is not drawn; a zero is. "Show more (n left)" loads the next 25.
+- **Not on a device:** none of these phone screens has been run on a device or emulator; the formatting and the row cards are tested.
+
+## FreshnessNote (2026-10-31)
+- **What:** the quiet line under a heading when saved data is on screen: "Updating…" while the server is being asked, "Offline · last updated 10:42" when it cannot be reached. Draws nothing when the data is fresh or there is none yet (the screen shows its own skeleton).
+- **Web:** `components/common/FreshnessNote.tsx`, a `p` with `role="status"`, `text-xs text-ink-muted`, used under the Dashboard and Members headings.
+- **Mobile:** `components/ui/FreshnessNote.tsx`, `Text` `variant="micro" tone="tertiary"`, under the greeting on Home (officer: dashboard; member: finance summary). No new colours or styles.
+- **Wording** comes from `freshnessLabelFor` in `@societyledger/query`, so both apps say the same thing. Not yet run on a device.
+
+## App version on Profile → About (2026-10-31)
+- **About screen:** under the logo and "SocietyLedger", a `Text` `variant="caption" tone="tertiary"` reading "Version 1.0.0 (build 37)", or "Version not available" when the version cannot be read. No new colours.
+- **Profile screen:** the About `ListItem` gets the same text as its `meta` subtitle line, like the "User manual" row.
+- **Source:** `appVersionLabel()` in `src/lib/appVersion.ts`. Not yet run on a device.

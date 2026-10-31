@@ -1,0 +1,410 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SocietyLedger — Flier (A4, double-sided)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 0; }
+  :root {
+    --blue: #0B6BFF;
+    --blue-deep: #0A3FA8;
+    --navy: #06204F;
+    --green: #14B866;
+    --green-deep: #0E9A55;
+    --sun: #FFC83D;
+    --coral: #FF5C7A;
+    --ink: #0F1F3D;
+    --muted: #51607C;
+    --mist: #EEF5FF;
+    --mint: #E8FAF1;
+    --white: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #cfd8e6; }
+  body {
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm; height: 297mm; margin: 0 auto 10mm; position: relative; overflow: hidden;
+    background: var(--white); page-break-after: always; break-after: page;
+  }
+  @media print { html, body { background: none; } .page { margin: 0; } }
+
+  /* ============ FRONT ============ */
+  .hero {
+    position: absolute; inset: 0 0 auto 0; height: 168mm;
+    background: linear-gradient(135deg, var(--blue) 0%, #0A8FD0 55%, var(--green) 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%);
+  }
+  .hero::before, .hero::after { content: ''; position: absolute; border-radius: 50%; }
+  .hero::before { width: 120mm; height: 120mm; right: -30mm; top: -35mm; background: rgba(255,255,255,.10); }
+  .hero::after  { width: 70mm; height: 70mm; left: -25mm; bottom: 8mm; background: rgba(255,255,255,.09); }
+
+  .brand { position: absolute; top: 11mm; left: 14mm; right: 14mm; display: flex; align-items: center; justify-content: space-between; z-index: 3; }
+  .brand .logo { display: flex; align-items: center; gap: 3mm; color: var(--white); font-weight: 800; font-size: 21px; letter-spacing: -.3px; }
+  .brand .logo img { width: 13mm; height: 13mm; background: var(--white); border-radius: 3.5mm; padding: 1.6mm; }
+  .brand .tag { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.5); color: var(--white); font-size: 10.5px; font-weight: 700; padding: 5px 12px; border-radius: 99px; }
+
+  .headline { position: absolute; z-index: 3; left: 14mm; top: 33mm; width: 112mm; color: var(--white); }
+  .headline .kicker { display: inline-block; background: var(--sun); color: var(--navy); font-weight: 800; font-size: 11px; padding: 5px 12px; border-radius: 6px; letter-spacing: .6px; text-transform: uppercase; transform: rotate(-2deg); }
+  .headline h1 { font-size: 41px; line-height: 1.04; font-weight: 800; letter-spacing: -1.4px; margin: 5mm 0 4mm; }
+  .headline h1 em { font-style: normal; color: var(--sun); }
+  .headline p { font-size: 13.2px; line-height: 1.5; font-weight: 500; color: rgba(255,255,255,.95); }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5mm; }
+  .pills span { background: var(--white); color: var(--blue-deep); font-weight: 700; font-size: 10.5px; padding: 5px 10px; border-radius: 99px; }
+
+  /* phone */
+  .phone { position: absolute; z-index: 4; right: 12mm; top: 30mm; width: 66mm; height: 128mm; background: var(--navy); border-radius: 9mm; padding: 2.4mm; box-shadow: 0 8mm 14mm rgba(6,32,79,.45); transform: rotate(4deg); }
+  .screen { width: 100%; height: 100%; background: var(--mist); border-radius: 7mm; overflow: hidden; position: relative; }
+  .screen .top { background: linear-gradient(135deg, var(--blue), var(--green)); color: var(--white); padding: 7mm 4mm 4mm; }
+  .screen .top small { font-size: 7px; opacity: .85; font-weight: 600; }
+  .screen .top b { display: block; font-size: 9px; margin-top: 1px; }
+  .owe { background: var(--white); margin: -3mm 3mm 0; border-radius: 3mm; padding: 3mm; box-shadow: 0 1.5mm 3mm rgba(11,107,255,.18); position: relative; }
+  .owe small { font-size: 7px; color: var(--muted); font-weight: 600; }
+  .owe .amt { font-size: 15px; font-weight: 800; color: var(--ink); letter-spacing: -.4px; }
+  .owe .pay { margin-top: 2mm; background: linear-gradient(90deg, var(--blue), var(--green)); color: var(--white); text-align: center; font-weight: 800; font-size: 8.5px; padding: 2mm; border-radius: 99px; }
+  .qa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6mm; padding: 3mm; }
+  .qa i { font-style: normal; background: var(--white); border-radius: 2.2mm; text-align: center; padding: 1.6mm 0 1.2mm; font-size: 11px; }
+  .qa i span { display: block; font-size: 5.6px; font-weight: 700; color: var(--muted); margin-top: .5mm; }
+  .card { background: var(--white); margin: 0 3mm 2.4mm; border-radius: 3mm; padding: 2.6mm; }
+  .card h6 { font-size: 7.4px; font-weight: 800; margin-bottom: 1.2mm; }
+  .vote { display: flex; align-items: center; gap: 2mm; font-size: 7px; font-weight: 700; }
+  .vote .dot { width: 6mm; height: 6mm; border-radius: 50%; background: var(--mint); display: grid; place-items: center; font-size: 9px; }
+  .vote small { display: block; font-weight: 500; color: var(--muted); font-size: 6.2px; }
+  .notch { position: absolute; top: 1.8mm; left: 50%; transform: translateX(-50%); width: 18mm; height: 3.6mm; background: var(--navy); border-radius: 99px; z-index: 5; }
+
+  .float { position: absolute; z-index: 6; background: var(--white); border-radius: 4mm; padding: 3mm 4mm; box-shadow: 0 3mm 7mm rgba(6,32,79,.28); font-weight: 800; font-size: 11px; }
+  .float small { display: block; font-weight: 600; font-size: 8.5px; color: var(--muted); }
+  .float.f1 { left: 104mm; top: 108mm; transform: rotate(-4deg); color: var(--green-deep); }
+  .float.f2 { right: 4mm; top: 154mm; transform: rotate(3deg); color: var(--blue-deep); }
+
+  /* below hero */
+  .pains { position: absolute; left: 14mm; right: 14mm; top: 174mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+  .pain { border-radius: 4mm; padding: 4mm; background: var(--mist); position: relative; }
+  .pain:nth-child(2) { background: var(--mint); }
+  .pain:nth-child(3) { background: #FFF6DC; }
+  .pain .q { font-size: 10px; font-weight: 700; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--coral); text-decoration-thickness: 2px; }
+  .pain .a { font-size: 13.5px; font-weight: 800; line-height: 1.2; margin-top: 1.5mm; letter-spacing: -.3px; }
+  .pain .a b { color: var(--blue); }
+  .pain:nth-child(2) .a b { color: var(--green-deep); }
+  .pain:nth-child(3) .a b { color: #B77900; }
+
+  .dash { position: absolute; left: 14mm; right: 14mm; top: 198mm; }
+  .dash h2 { font-size: 17px; font-weight: 800; letter-spacing: -.4px; margin-bottom: 3mm; }
+  .dash h2 span { color: var(--blue); }
+  .dash h2 small { font-size: 9px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+  .charts { display: grid; grid-template-columns: 1.55fr 1fr 1fr; gap: 4mm; }
+  .chart { border: 1.5px solid #D9E6FA; border-radius: 4mm; padding: 3mm; background: var(--white); }
+  .chart h4 { font-size: 9.2px; font-weight: 800; margin-bottom: 1.5mm; }
+  .chart svg { width: 100%; display: block; }
+  .aging { margin-top: 3mm; }
+  .aging h4 span { color: var(--muted); font-weight: 600; }
+  .aging .bar { display: flex; height: 6.4mm; border-radius: 99px; overflow: hidden; margin-top: 2mm; }
+  .aging .bar i { font-style: normal; color: var(--white); font-size: 8.4px; font-weight: 800; display: grid; place-items: center; }
+  .legend { display: flex; gap: 8px; font-size: 7.4px; font-weight: 700; color: var(--muted); margin-top: 1mm; }
+  .legend i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
+
+  .cta-front { position: absolute; left: 0; right: 0; bottom: 0; height: 26mm; background: var(--navy); color: var(--white); display: flex; align-items: center; justify-content: space-between; padding: 0 14mm; }
+  .cta-front .l b { display: block; font-size: 19px; font-weight: 800; letter-spacing: -.4px; }
+  .cta-front .l b em { font-style: normal; color: var(--sun); }
+  .cta-front .l span { font-size: 10.5px; opacity: .85; font-weight: 600; }
+  .btn { background: linear-gradient(90deg, var(--blue), var(--green)); color: var(--white); font-weight: 800; font-size: 13px; padding: 10px 20px; border-radius: 99px; white-space: nowrap; text-align: center; }
+  .btn small { display: block; font-size: 8.5px; font-weight: 600; opacity: .9; }
+
+  /* ============ BACK ============ */
+  .back-head { background: linear-gradient(120deg, var(--blue-deep), var(--blue) 60%, var(--green)); color: var(--white); padding: 8mm 14mm 6mm; position: relative; clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%); height: 36mm; }
+  .back-head h2 { font-size: 25px; font-weight: 800; letter-spacing: -.9px; line-height: 1.05; }
+  .back-head h2 em { font-style: normal; color: var(--sun); }
+  .back-head p { font-size: 11.2px; margin-top: 2mm; font-weight: 500; opacity: .95; width: 135mm; }
+  .back-head img { position: absolute; right: 14mm; top: 6mm; width: 17mm; background: var(--white); border-radius: 5mm; padding: 2.6mm; }
+
+  .grid { padding: 3mm 14mm 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
+  .f { border-radius: 3.6mm; padding: 3mm 3.4mm 2.6mm; border: 1.5px solid transparent; }
+  .f.b { background: var(--mist); border-color: #D3E3FF; }
+  .f.g { background: var(--mint); border-color: #C5EED8; }
+  .f.y { background: #FFF6DC; border-color: #F8E3A2; }
+  .f h3 { font-size: 11px; font-weight: 800; letter-spacing: -.2px; display: flex; align-items: center; gap: 5px; margin-bottom: 1.6mm; }
+  .f h3 .ic { width: 6.2mm; height: 6.2mm; border-radius: 2mm; display: grid; place-items: center; font-size: 11px; background: var(--white); box-shadow: 0 .6mm 1.4mm rgba(15,31,61,.12); flex: none; }
+  .f ul { list-style: none; }
+  .f li { font-size: 8.5px; line-height: 1.3; font-weight: 600; color: var(--ink); padding-left: 11px; position: relative; margin-bottom: .4mm; }
+  .f li::before { content: '✓'; position: absolute; left: 0; top: 0; color: var(--green-deep); font-weight: 800; font-size: 8px; }
+  .f.b li::before { color: var(--blue); }
+  .f.y li::before { color: #B77900; }
+
+  .ajo { margin: 3mm 14mm 0; border-radius: 4.5mm; background: linear-gradient(110deg, var(--green-deep), var(--green)); color: var(--white); padding: 4.2mm 4.6mm 4mm; position: relative; overflow: hidden; }
+  .ajo-top { display: grid; grid-template-columns: 1fr 33mm; gap: 4mm; align-items: center; }
+  .ajo .new { display: inline-block; background: var(--sun); color: var(--navy); font-size: 8.4px; font-weight: 800; padding: 2px 8px; border-radius: 99px; letter-spacing: .5px; }
+  .ajo h3 { font-size: 18px; font-weight: 800; letter-spacing: -.5px; margin: 1.4mm 0 1mm; line-height: 1.1; }
+  .ajo p { font-size: 9.4px; line-height: 1.4; font-weight: 500; }
+  .models { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-top: 3mm; }
+  .model { background: rgba(255,255,255,.17); border: 1px solid rgba(255,255,255,.45); border-radius: 3mm; padding: 2.4mm 3mm; font-size: 8.8px; line-height: 1.32; font-weight: 500; }
+  .model b { display: block; font-size: 10.6px; font-weight: 800; margin-bottom: .6mm; }
+  .afeat { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4mm; margin-top: 3mm; }
+  .afeat div { background: var(--white); color: var(--ink); border-radius: 2.8mm; padding: 2.2mm 2.4mm; font-size: 8.1px; line-height: 1.3; font-weight: 600; }
+  .afeat div b { display: block; font-size: 9.2px; font-weight: 800; color: var(--green-deep); margin-bottom: .5mm; }
+  .afoot { display: grid; grid-template-columns: 1.25fr 1fr; gap: 4mm; margin-top: 3mm; align-items: center; }
+  .trust h5 { font-size: 9px; font-weight: 800; margin-bottom: 1.2mm; }
+  .trust .tb { display: flex; height: 5.6mm; border-radius: 99px; overflow: hidden; }
+  .trust .tb i { font-style: normal; font-size: 7.4px; font-weight: 800; display: grid; place-items: center; color: var(--white); }
+  .note { font-size: 8.2px; line-height: 1.35; font-weight: 600; background: rgba(6,32,79,.28); border-radius: 2.8mm; padding: 2mm 3mm; }
+  .note b { color: var(--sun); }
+
+  .cta-back { position: absolute; left: 0; right: 0; bottom: 0; height: 42mm; background: linear-gradient(120deg, var(--navy), var(--blue-deep)); color: var(--white); padding: 6mm 14mm 0; display: grid; grid-template-columns: 1fr 1.3fr; gap: 7mm; align-items: center; clip-path: polygon(0 9%, 100% 0, 100% 100%, 0 100%); }
+  .cta-back h3 { font-size: 21px; font-weight: 800; letter-spacing: -.6px; line-height: 1.08; }
+  .cta-back h3 em { font-style: normal; color: var(--sun); }
+  .cta-back p { font-size: 9.4px; font-weight: 600; opacity: .9; margin-top: 1.6mm; line-height: 1.4; }
+  .contact { background: var(--white); color: var(--ink); border-radius: 4mm; padding: 2mm 4mm; }
+  .contact a { color: inherit; text-decoration: none; display: flex; align-items: center; gap: 2.4mm; padding: .7mm 0; }
+  .contact a + a { border-top: 1px solid #E3ECFA; }
+  .contact .ci { width: 7mm; height: 7mm; border-radius: 2mm; display: grid; place-items: center; font-size: 12px; flex: none; background: var(--mist); }
+  .contact .ci.wa { background: #DDF8E8; }
+  .contact b { display: block; font-size: 11.4px; font-weight: 800; color: var(--blue-deep); letter-spacing: -.2px; line-height: 1.15; }
+  .contact span { display: block; font-size: 8.2px; font-weight: 700; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ======================= FRONT ======================= -->
+<section class="page">
+  <div class="hero"></div>
+
+  <div class="brand">
+    <div class="logo"><img src="../../apps/web/public/brand/logo-mark.svg" alt=""> SocietyLedger</div>
+    <div class="tag">🇳🇬 Built for Nigerian associations</div>
+  </div>
+
+  <div class="headline">
+    <span class="kicker">Dues · Meetings · Votes · Savings</span>
+    <h1>Stop chasing dues. <em>Start running</em> a better association.</h1>
+    <p>One app for your estate, union, cooperative, alumni group, club or church. Collect money, keep honest books, hold meetings and vote — all from your phone.</p>
+    <div class="pills"><span>✓ 14-day free trial</span><span>✓ iOS &amp; Android</span><span>✓ Your own web address</span></div>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="top"><small>Good morning</small><b>Opu Ogun Estate Association</b></div>
+      <div class="owe">
+        <small>You owe</small>
+        <div class="amt">₦25,000.00</div>
+        <small>Next due 30 Nov · 1 item</small>
+        <div class="pay">Pay now</div>
+      </div>
+      <div class="qa">
+        <i>💳<span>Pay</span></i><i>🧾<span>Statement</span></i><i>🏦<span>Savings</span></i><i>🤝<span>Loan</span></i>
+      </div>
+      <div class="card">
+        <h6>Association pulse</h6>
+        <svg viewBox="0 0 120 38" width="100%">
+          <g fill="#BBD0F5"><rect x="4" y="14" width="9" height="22" rx="2"/><rect x="24" y="10" width="9" height="26" rx="2"/><rect x="44" y="8" width="9" height="28" rx="2"/><rect x="64" y="6" width="9" height="30" rx="2"/><rect x="84" y="5" width="9" height="31" rx="2"/><rect x="104" y="4" width="9" height="32" rx="2"/></g>
+          <g fill="#0B6BFF"><rect x="4" y="22" width="9" height="14" rx="2"/><rect x="24" y="18" width="9" height="18" rx="2"/><rect x="44" y="14" width="9" height="22" rx="2"/><rect x="64" y="12" width="9" height="24" rx="2"/><rect x="84" y="9" width="9" height="27" rx="2"/><rect x="104" y="7" width="9" height="29" rx="2"/></g>
+        </svg>
+      </div>
+      <div class="card">
+        <div class="vote"><div class="dot">🗳️</div><div>Voting is open<small>2026 Executive Election</small></div></div>
+      </div>
+      <div class="card">
+        <div class="vote"><div class="dot">📅</div><div>AGM · Saturday 10am<small>Community Hall — you're marked present</small></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="float f1">✔ Payment confirmed<small>₦25,000.00 · receipt sent</small></div>
+  <div class="float f2">🔔 Voting is open<small>Tap once to cast your ballot</small></div>
+
+  <div class="pains">
+    <div class="pain"><div class="q">“Who has paid? Who hasn't?”</div><div class="a">Every kobo tracked <b>live</b>, per member.</div></div>
+    <div class="pain"><div class="q">“Send me your transfer screenshot.”</div><div class="a">Members <b>pay in a few taps</b> or upload proof.</div></div>
+    <div class="pain"><div class="q">“Sorry, who has the register?”</div><div class="a">Attendance, minutes &amp; votes <b>all in one place</b>.</div></div>
+  </div>
+
+  <div class="dash">
+    <h2>See your whole association <span>at a glance</span><small>Sample data</small></h2>
+    <div class="charts">
+      <div class="chart">
+        <h4>Revenue: expected vs collected</h4>
+        <svg viewBox="-12 0 252 92">
+          <g stroke="#E3ECFA" stroke-width="1"><line x1="22" y1="12" x2="236" y2="12"/><line x1="22" y1="36" x2="236" y2="36"/><line x1="22" y1="60" x2="236" y2="60"/><line x1="22" y1="82" x2="236" y2="82"/></g>
+          <g font-size="7" fill="#51607C" font-weight="700" text-anchor="end"><text x="18" y="15">₦2.0M</text><text x="18" y="39">₦1.5M</text><text x="18" y="63">₦1.0M</text></g>
+          <g fill="#C9DAF8"><rect x="30" y="22" width="14" height="60" rx="2.5"/><rect x="66" y="20" width="14" height="62" rx="2.5"/><rect x="102" y="18" width="14" height="64" rx="2.5"/><rect x="138" y="16" width="14" height="66" rx="2.5"/><rect x="174" y="14" width="14" height="68" rx="2.5"/><rect x="210" y="12" width="14" height="70" rx="2.5"/></g>
+          <g fill="#0B6BFF"><rect x="30" y="48" width="14" height="34" rx="2.5"/><rect x="66" y="40" width="14" height="42" rx="2.5"/><rect x="102" y="36" width="14" height="46" rx="2.5"/><rect x="138" y="28" width="14" height="54" rx="2.5"/><rect x="174" y="24" width="14" height="58" rx="2.5"/><rect x="210" y="18" width="14" height="64" rx="2.5"/></g>
+          <polyline points="37,48 73,40 109,36 145,28 181,24 217,18" fill="none" stroke="#14B866" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <g fill="#14B866" stroke="#fff" stroke-width="1.4"><circle cx="37" cy="48" r="2.6"/><circle cx="73" cy="40" r="2.6"/><circle cx="109" cy="36" r="2.6"/><circle cx="145" cy="28" r="2.6"/><circle cx="181" cy="24" r="2.6"/><circle cx="217" cy="18" r="2.6"/></g>
+          <g font-size="7" fill="#51607C" font-weight="700" text-anchor="middle"><text x="37" y="91">May</text><text x="73" y="91">Jun</text><text x="109" y="91">Jul</text><text x="145" y="91">Aug</text><text x="181" y="91">Sep</text><text x="217" y="91">Oct</text></g>
+        </svg>
+        <div class="legend"><span><i style="background:#C9DAF8"></i>Expected</span><span><i style="background:#0B6BFF"></i>Collected</span><span><i style="background:#14B866"></i>Trend ↗</span></div>
+      </div>
+      <div class="chart">
+        <h4>How members pay</h4>
+        <svg viewBox="0 0 118 74">
+          <g transform="translate(36 37) rotate(-90)" fill="none" stroke-width="13">
+            <circle r="24" stroke="#EEF5FF"/>
+            <circle r="24" stroke="#0B6BFF" stroke-dasharray="75.4 150.8" stroke-dashoffset="0"/>
+            <circle r="24" stroke="#14B866" stroke-dasharray="45.2 150.8" stroke-dashoffset="-75.4"/>
+            <circle r="24" stroke="#FFC83D" stroke-dasharray="30.2 150.8" stroke-dashoffset="-120.6"/>
+          </g>
+          <text x="36" y="35" font-size="9.5" font-weight="800" text-anchor="middle" fill="#0F1F3D">₦8.4M</text>
+          <text x="36" y="44" font-size="5.5" font-weight="700" text-anchor="middle" fill="#51607C">this year</text>
+          <g font-size="6.4" font-weight="700" fill="#0F1F3D"><rect x="72" y="22" width="5" height="5" rx="1.4" fill="#0B6BFF"/><text x="80" y="27">Card</text><rect x="72" y="34" width="5" height="5" rx="1.4" fill="#14B866"/><text x="80" y="39">Transfer</text><rect x="72" y="46" width="5" height="5" rx="1.4" fill="#FFC83D"/><text x="80" y="51">Cash</text></g>
+        </svg>
+      </div>
+      <div class="chart">
+        <h4>Collection rate</h4>
+        <svg viewBox="0 0 118 74">
+          <g transform="translate(59 34) rotate(-90)" fill="none" stroke-linecap="round" stroke-width="9">
+            <circle r="23" stroke="#E8FAF1"/>
+            <circle r="23" stroke="#14B866" stroke-dasharray="125.7 144.5"/>
+          </g>
+          <text x="59" y="39" font-size="14" font-weight="800" text-anchor="middle" fill="#0E9A55">87%</text>
+          <text x="59" y="71" font-size="6" font-weight="700" text-anchor="middle" fill="#51607C">of dues collected</text>
+        </svg>
+      </div>
+    </div>
+    <div class="chart aging">
+      <h4>Who owes, and for how long <span>(aging analysis)</span></h4>
+      <div class="bar"><i style="flex:46;background:#14B866">0–30 days</i><i style="flex:27;background:#0B6BFF">31–60</i><i style="flex:17;background:#FFC83D;color:#06204F">61–90</i><i style="flex:10;background:#FF5C7A">90+</i></div>
+    </div>
+  </div>
+
+  <div class="cta-front">
+    <div class="l"><b>Your association in <em>your pocket.</em></b><span>Move from paper registers &amp; WhatsApp chaos to one trusted ledger.</span></div>
+    <div class="btn">Start FREE for 14 days<small>Android app: societyledger.com.ng</small></div>
+  </div>
+</section>
+
+<!-- ======================= BACK ======================= -->
+<section class="page">
+  <div class="back-head">
+    <img src="../../apps/web/public/brand/logo-mark.svg" alt="">
+    <h2>Everything your association needs.<br><em>Nothing it doesn't.</em></h2>
+    <p>Everything below is part of SocietyLedger — on the web and on your phone.</p>
+  </div>
+
+  <div class="grid">
+    <div class="f b"><h3><span class="ic">💳</span>Dues, levies &amp; fines</h3><ul>
+      <li>Set dues by category, one-off or bulk to all members</li>
+      <li>Special levy campaigns with progress bars</li>
+      <li>Automatic late-fee penalties &amp; waivers</li>
+      <li>Donations to causes, with receipts</li>
+      <li>Overdue list &amp; one-tap reminders</li></ul></div>
+
+    <div class="f g"><h3><span class="ic">📲</span>Easy payments</h3><ul>
+      <li>Pay online by card or bank (Paystack)</li>
+      <li>Bank transfer? Snap &amp; upload the receipt</li>
+      <li>Officers verify proofs in seconds</li>
+      <li>Import bank statements &amp; auto-match payments</li>
+      <li>Instant digital receipts</li></ul></div>
+
+    <div class="f y"><h3><span class="ic">📒</span>Honest books</h3><ul>
+      <li>Personal ledger for every member</li>
+      <li>Download statements as PDF</li>
+      <li>Chart of accounts &amp; journal entries</li>
+      <li>Income statement, balance sheet, cash flow</li>
+      <li>Budgets with actual-vs-plan variance</li></ul></div>
+
+    <div class="f g"><h3><span class="ic">👥</span>Members &amp; access</h3><ul>
+      <li>Member profiles, IDs &amp; categories</li>
+      <li>Invite by email or SMS; approve sign-ups</li>
+      <li>Custom roles &amp; fine-grained permissions</li>
+      <li>Full audit log of who did what</li>
+      <li>Your own web address &amp; logo</li></ul></div>
+
+    <div class="f b"><h3><span class="ic">📅</span>Meetings</h3><ul>
+      <li>Schedule with venue, online link &amp; agenda</li>
+      <li>Take attendance live on your phone</li>
+      <li>Minutes, decisions &amp; action items</li>
+      <li>Attendance history &amp; rates</li>
+      <li>Add to calendar</li></ul></div>
+
+    <div class="f y"><h3><span class="ic">🗳️</span>Elections &amp; polls</h3><ul>
+      <li>Nominations, candidates &amp; manifestos</li>
+      <li>Secure one-member-one-ballot voting</li>
+      <li>Live turnout, published results</li>
+      <li>Quick polls for any decision</li>
+      <li>Higher turnout with push alerts</li></ul></div>
+
+    <div class="f g"><h3><span class="ic">🏦</span>Cooperative savings &amp; loans</h3><ul>
+      <li>Member savings accounts &amp; deposits</li>
+      <li>Loan products with rates &amp; tenure</li>
+      <li>Apply on phone, guarantors accept in-app</li>
+      <li>Repayment schedules &amp; tracking</li>
+      <li>Approve &amp; disburse with one tap</li></ul></div>
+
+    <div class="f b"><h3><span class="ic">🤲</span>Welfare funds</h3><ul>
+      <li>Fund contributions &amp; balances</li>
+      <li>Bereavement, medical &amp; wedding payouts</li>
+      <li>Eligibility checks &amp; document upload</li>
+      <li>Review, approve &amp; disburse</li>
+      <li>Transparent for every member</li></ul></div>
+
+    <div class="f y"><h3><span class="ic">📣</span>Communication &amp; AI</h3><ul>
+      <li>Announcements by push, in-app &amp; email</li>
+      <li>Bulk SMS with templates &amp; campaigns</li>
+      <li>AI assistant: “Who owes the most?”</li>
+      <li>Smart reminder suggestions</li>
+      <li>Help centre &amp; support tickets</li></ul></div>
+  </div>
+
+  <div class="ajo">
+    <div class="ajo-top">
+      <div>
+        <span class="new">NEW · AJO / ESUSU / ADASHE THRIFT</span>
+        <h3>Run thrift groups without the stress</h3>
+        <p>Keep the collector — lose the notebook. Every contribution is recorded and receipted, every payout is transparent, and “who paid?” disputes end. Run it inside your association, or as a standalone group.</p>
+      </div>
+      <svg viewBox="0 0 100 100" width="100%">
+        <circle cx="50" cy="50" r="33" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-dasharray="3 4"/>
+        <circle cx="50" cy="17" r="10" fill="#FFC83D"/>
+        <g fill="#FFFFFF"><circle cx="78.6" cy="33.5" r="9"/><circle cx="78.6" cy="66.5" r="9"/><circle cx="50" cy="83" r="9"/><circle cx="21.4" cy="66.5" r="9"/><circle cx="21.4" cy="33.5" r="9"/></g>
+        <g font-size="9.5" font-weight="800" text-anchor="middle" fill="#0E9A55"><text x="50" y="20.4" fill="#06204F">1</text><text x="78.6" y="36.7">2</text><text x="78.6" y="69.7">3</text><text x="50" y="86.2">4</text><text x="21.4" y="69.7">5</text><text x="21.4" y="36.7">6</text></g>
+        <text x="50" y="48" font-size="8" font-weight="800" text-anchor="middle" fill="#FFFFFF">Pot</text>
+        <text x="50" y="58" font-size="7" font-weight="700" text-anchor="middle" fill="#FFFFFF">each round</text>
+      </svg>
+    </div>
+
+    <div class="models">
+      <div class="model"><b>🧺 Collector thrift</b>Contributors pay a fixed amount daily, weekly or monthly. The collector records every collection and the contributor is paid at cycle end.</div>
+      <div class="model"><b>🔄 Rotating pot (esusu)</b>A fixed group each pays the same amount every period, and one member takes the whole pot each round until everyone has had a turn.</div>
+    </div>
+
+    <div class="afeat">
+      <div><b>Your rules, enforced</b>Late fee, grace period, guarantor and reminders set per group — accepted by every member.</div>
+      <div><b>Fair payout order</b>Recorded random draw, approved swaps, and order locked after the first payout.</div>
+      <div><b>Collector tools</b>Assigned contributors, daily targets and an end-of-day cash handover summary.</div>
+      <div><b>Receipt for every kobo</b>SMS, push or email receipt on each contribution. Corrections are logged, never erased.</div>
+      <div><b>Reported vs confirmed</b>A claim of payment is only “confirmed” once matched to the bank account or cash handover.</div>
+      <div><b>Two-step verification</b>Group approves, then SocietyLedger verifies the member before any payout. Payout accounts shown masked.</div>
+      <div><b>Safe payouts</b>Whoever prepares a payout can't approve it. Changing bank details voids approval.</div>
+      <div><b>Defaults &amp; reports</b>Arrears cases, repayment plans, and CSV / PDF reports on contributions, payouts and collectors.</div>
+    </div>
+
+    <div class="afoot">
+      <div class="trust">
+        <h5>Member trust score — from on-time payments, never an automatic penalty</h5>
+        <div class="tb"><i style="flex:30;background:#0A6B3C">Excellent 95%+</i><i style="flex:27;background:#0B6BFF">Good 85–94%</i><i style="flex:24;background:#C98A00">Fair 70–84%</i><i style="flex:19;background:#FF5C7A">At risk &lt;70%</i></div>
+      </div>
+      <div class="note"><b>Your money stays yours.</b> Contributions sit in your group's own bank account — SocietyLedger is the record-keeper. Plans from <b>₦3,000.00/month</b> with a 14-day trial.</div>
+    </div>
+  </div>
+
+  <div class="cta-back">
+    <div>
+      <h3>Ready for an association that <em>runs itself?</em></h3>
+      <p>Try every feature free for 14 days. Set up in minutes.<br>Android app: download it from our website.</p>
+    </div>
+    <div class="contact">
+      <a href="https://www.societyledger.com.ng"><div class="ci">⬇️</div><div><b>www.societyledger.com.ng</b><span>Visit &amp; download the Android app</span></div></a>
+      <a href="https://wa.me/2348060374755"><div class="ci wa">💬</div><div><b>WhatsApp: +234 806 037 4755</b><span>Chat with us — we reply fast</span></div></a>
+      <a href="mailto:support@societyledger.com.ng"><div class="ci">✉️</div><div><b>support@societyledger.com.ng</b><span>Email support</span></div></a>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
+

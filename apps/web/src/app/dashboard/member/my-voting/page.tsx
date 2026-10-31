@@ -11,12 +11,12 @@ import { getActiveVotingItems, getElections, getVoterStatus, Election } from '@/
 // /voting/active, /voting/elections (closed) and per-election voter-status
 // already existed.
 export default function MyVotingPage() {
-  const { data: activeData, isLoading: activeLoading } = useQuery({
+  const { data: activeData, isPending: activeLoading } = useQuery({
     queryKey: ['active-voting-items'],
     queryFn: () => getActiveVotingItems(),
   });
 
-  const { data: closedData, isLoading: closedLoading } = useQuery({
+  const { data: closedData, isPending: closedLoading } = useQuery({
     queryKey: ['closed-elections'],
     queryFn: () => getElections({ status: 'RESULTS_PUBLISHED', limit: 10 }),
   });
@@ -34,7 +34,7 @@ export default function MyVotingPage() {
   });
 
   const votedCount = voterStatusQueries.filter((q) => q.data?.data?.hasVoted).length;
-  const historyLoading = closedLoading || voterStatusQueries.some((q) => q.isLoading);
+  const historyLoading = closedLoading || voterStatusQueries.some((q) => q.isPending);
 
   return (
     <>

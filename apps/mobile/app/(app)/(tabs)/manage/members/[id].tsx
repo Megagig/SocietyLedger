@@ -9,6 +9,8 @@ import { ApiError } from '@/api/errors';
 import { ConfirmSheet } from '@/components/feedback/ConfirmSheet';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { NoPermission } from '@/components/feedback/NoPermission';
+import { PersonCirclesCard } from '@/features/ajo/components/PersonCirclesCard';
+import { useAjoNav } from '@/features/ajo/useAjoNav';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Avatar } from '@/components/ui/Avatar';
@@ -58,10 +60,12 @@ export default function MemberDetailScreen() {
   const id = Number(params.id);
 
   const canView = useCan(MEMBERS_VIEW_ACCESS);
-  const canFinance = useCan(MEMBER_FINANCE_ACCESS);
-  const canAttendance = useModuleAccess(MEMBER_ATTENDANCE_ACCESS, 'meetings');
-  const canCooperative = useModuleAccess(MEMBER_COOPERATIVE_ACCESS, 'cooperatives');
-  const canWelfare = useModuleAccess(MEMBER_WELFARE_ACCESS, 'welfare');
+  // A standalone thrift group's person has no Finance, Cooperative, Welfare or Attendance: those are an association's.
+  const { thriftOnly } = useAjoNav();
+  const canFinance = useCan(MEMBER_FINANCE_ACCESS) && !thriftOnly;
+  const canAttendance = useModuleAccess(MEMBER_ATTENDANCE_ACCESS, 'meetings') && !thriftOnly;
+  const canCooperative = useModuleAccess(MEMBER_COOPERATIVE_ACCESS, 'cooperatives') && !thriftOnly;
+  const canWelfare = useModuleAccess(MEMBER_WELFARE_ACCESS, 'welfare') && !thriftOnly;
   const canEdit = useCan(MEMBERS_EDIT_ACCESS);
   const canDisable = useCan(MEMBERS_DISABLE_ACCESS);
   const [tab, setTab] = useState<TabKey>('profile');
@@ -127,7 +131,7 @@ export default function MemberDetailScreen() {
               {memberFullName(member)}
             </Text>
             <Text variant="caption" tone="secondary">
-              {member.memberId}
+              {thriftOnly ? null : member.memberId}
             </Text>
             <View className="flex-row items-center gap-2">
               <StatusChip status={member.status.toLowerCase()} label={statusLabel(member.status.toLowerCase())} />
@@ -169,7 +173,8 @@ export default function MemberDetailScreen() {
             </ScrollView>
           ) : null}
 
-          {tab === 'profile' ? <MemberProfileTab member={member} /> : null}
+          {tab === 'profile' ? <MemberProfileTab member={member} thrift={thriftOnly} /> : null}
+          {tab === 'profile' ? <PersonCirclesCard memberId={member.id} /> : null}
           {tab === 'finance' ? <MemberFinanceTab memberId={member.id} /> : null}
           {tab === 'attendance' ? <MemberAttendanceTab memberId={member.id} /> : null}
           {tab === 'cooperative' ? <MemberCooperativeTab memberId={member.id} /> : null}

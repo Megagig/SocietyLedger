@@ -15,6 +15,18 @@ interface VerifyPaymentProps {
 
 const MAX_CHECKS = 8;
 const WAIT_MS = 2500;
+/** One check may take this long; after that it counts as "still processing" instead of leaving the spinner up forever. */
+const CHECK_TIMEOUT_MS = 30_000;
+
+function checkWithTimeout(reference: string): Promise<VerifyOutcome> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve({ state: 'pending', message: 'Your payment is still being processed.' }), CHECK_TIMEOUT_MS);
+    verifySubscriptionPayment(reference).then(
+      (result) => { clearTimeout(timer); resolve(result); },
+      () => { clearTimeout(timer); resolve({ state: 'error', message: 'We could not reach the server to confirm your payment. Please try again.' }); },
+    );
+  });
+}
 
 /**
  * Landing page after the payment provider redirects back. It asks the API to confirm the payment; the API activates the subscription
@@ -24,24 +36,28 @@ export function VerifyPayment({ successHref, fallback, retryHref }: VerifyPaymen
   const router = useRouter();
   const searchParams = useSearchParams();
   const reference = searchParams.get('reference') || searchParams.get('trxref');
+  // The latest router and link builder, read when the answer arrives. The check itself depends only on the payment reference, so a re-render of
+  // the page (or a parent that passes a new inline function) can never restart it.
+  const latest = useRef({ router, successHref });
+  latest.current = { router, successHref };
   const [outcome, setOutcome] = useState<VerifyOutcome | { state: 'loading'; message: string }>({ state: 'loading', message: 'Verifying your payment...' });
-  const started = useRef(false);
-
+  // Every run of this effect does its own work and is cancelled by its own cleanup. (A "run only once" guard breaks in development, where React
+  // runs the effect, cleans it up and runs it again: the first run is then cancelled and the second never starts, so the answer was thrown away
+  // and the page spun forever. The server activates a payment at most once, so checking twice there is harmless.)
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
     if (!reference) {
       setOutcome({ state: 'error', message: 'No payment reference found.' });
       return;
     }
     let cancelled = false;
+    let redirect: ReturnType<typeof setTimeout> | undefined;
     (async () => {
       for (let attempt = 0; attempt < MAX_CHECKS; attempt += 1) {
-        const result = await verifySubscriptionPayment(reference);
+        const result = await checkWithTimeout(reference);
         if (cancelled) return;
         if (result.state !== 'pending') {
           setOutcome(result);
-          if (result.state === 'success') setTimeout(() => router.push(successHref(result.subdomain)), 2000);
+          if (result.state === 'success') redirect = setTimeout(() => latest.current.router.push(latest.current.successHref(result.subdomain)), 2000);
           return;
         }
         await new Promise((r) => setTimeout(r, WAIT_MS));
@@ -50,8 +66,9 @@ export function VerifyPayment({ successHref, fallback, retryHref }: VerifyPaymen
     })();
     return () => {
       cancelled = true;
+      if (redirect) clearTimeout(redirect);
     };
-  }, [reference, router, successHref]);
+  }, [reference]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">

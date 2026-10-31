@@ -26,6 +26,8 @@ export type SessionUser = {
   permissions: string[];
   roles: string[];
   requiresOnboarding: boolean;
+  /** What kind of account this is, known from the first screen. THRIFT_GROUP is a standalone thrift group (Ajo only). */
+  tenantKind?: 'ASSOCIATION' | 'THRIFT_GROUP';
   /** The association's trial / subscription standing; absent when the server did not say. */
   subscriptionAccess?: SubscriptionAccessDTO | null;
   platformRole: PlatformRole | null;

@@ -20,6 +20,8 @@ export interface User {
   platformRole?: 'SUPER_ADMIN' | 'SUPPORT_AGENT';
   isActive: boolean;
   requiresOnboarding?: boolean;
+  /** Which setup the admin walks through: a standalone thrift group has its own. */
+  onboardingFlow?: 'ASSOCIATION' | 'THRIFT';
   /** Where the association's free trial / subscription stands (null for platform staff). */
   subscriptionAccess?: SubscriptionAccess | null;
   permissions?: string[];
@@ -32,6 +34,8 @@ export interface User {
     name: string;
     logo?: string | null;
     subdomain?: string;
+    /** ASSOCIATION, or THRIFT_GROUP for a standalone thrift group. Known from the first screen. */
+    kind?: 'ASSOCIATION' | 'THRIFT_GROUP';
   };
 }
 

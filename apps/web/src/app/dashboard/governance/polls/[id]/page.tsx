@@ -62,7 +62,7 @@ export default function PollDetailPage() {
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [hasResponded, setHasResponded] = useState(false);
 
-  const { data: pollData, isLoading } = useQuery({
+  const { data: pollData, isPending } = useQuery({
     queryKey: ['poll', pollId],
     queryFn: () => getPoll(pollId),
   });
@@ -138,7 +138,7 @@ export default function PollDetailPage() {
     submitResponseMutation.mutate(selectedOptions);
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>

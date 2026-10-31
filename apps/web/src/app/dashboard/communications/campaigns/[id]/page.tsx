@@ -32,12 +32,12 @@ export default function CampaignDetailPage() {
 
   const [showRecipients, setShowRecipients] = useState(false);
 
-  const { data: campaign, isLoading, error, refetch } = useQuery<SMSCampaign>({
+  const { data: campaign, isPending, error, refetch } = useQuery<SMSCampaign>({
     queryKey: ['sms-campaign', campaignId],
     queryFn: () => smsApi.getCampaign(campaignId),
     enabled: !!campaignId,
     // A campaign sends in the background: follow it until it has finished
-    refetchInterval: (data) => (data?.status === 'IN_PROGRESS' ? 3000 : false),
+    refetchInterval: (query) => (query.state.data?.status === 'IN_PROGRESS' ? 3000 : false),
   });
 
   const startMutation = useMutation({
@@ -118,7 +118,7 @@ export default function CampaignDetailPage() {
     deleteMutation.mutate();
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <Container size="xl" py="xl">
         <Stack gap="md">

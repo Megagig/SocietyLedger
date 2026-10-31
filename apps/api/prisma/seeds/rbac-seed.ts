@@ -294,6 +294,49 @@ const PERMISSION_REGISTRY = [
     module: "Cash Collections",
     examples: ["GET /api/cash/overview"]
   },
+  // Thrift (Ajo) add-on. Every route also needs the Ajo module (the add-on); see modules/ajo/ajo-access.ts.
+  {
+    key: "ajo.view_own",
+    description: "See your own Ajo groups, schedule, receipts, balance and payout position.",
+    module: "Ajo / Thrift",
+    examples: ["GET /api/ajo/me/groups"]
+  },
+  {
+    key: "ajo.contribute",
+    description: "Report your own Ajo contribution and upload proof of a transfer.",
+    module: "Ajo / Thrift",
+    examples: ["POST /api/ajo/contributions"]
+  },
+  {
+    key: "ajo.collect",
+    description: "Record collections from the contributors assigned to you and hand cash over.",
+    module: "Ajo / Thrift",
+    examples: ["GET /api/ajo/collections/today", "POST /api/ajo/collections"]
+  },
+  {
+    key: "ajo.manage",
+    description: "Create and run Ajo groups: members, schedules, rules, collectors, and the group's bank details.",
+    module: "Ajo / Thrift",
+    examples: ["POST /api/ajo/groups", "POST /api/ajo/groups/:id/members"]
+  },
+  {
+    key: "ajo.reconcile",
+    description: "Confirm transfers and cash against the group's account, and reverse a wrong entry with a reason.",
+    module: "Ajo / Thrift",
+    examples: ["POST /api/ajo/contributions/:id/confirm", "POST /api/ajo/contributions/:id/reverse"]
+  },
+  {
+    key: "ajo.approve_payout",
+    description: "Approve an Ajo payout. The person who prepared it cannot approve it.",
+    module: "Ajo / Thrift",
+    examples: ["POST /api/ajo/payouts/:id/approve"]
+  },
+  {
+    key: "ajo.reports",
+    description: "View and export Ajo reports.",
+    module: "Ajo / Thrift",
+    examples: ["GET /api/ajo/reports/contributions", "GET /api/ajo/reports/export"]
+  },
   // SMS & Communications
   {
     key: "communication.sms.view",

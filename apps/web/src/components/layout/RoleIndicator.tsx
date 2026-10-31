@@ -2,16 +2,21 @@
 
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { IconUser, IconShield } from '@tabler/icons-react';
 
 export function RoleIndicator() {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const { thriftOnly } = useAjoNav();
 
   // Don't show on super admin routes
   if (pathname.startsWith('/admin')) {
     return null;
   }
+
+  // Member View / Admin View is an association idea: a standalone thrift group has one area.
+  if (thriftOnly) return null;
 
   // Determine current context
   const isMemberContext = pathname.startsWith('/dashboard/member');

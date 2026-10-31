@@ -36,7 +36,12 @@ export function ConfirmDestructive({
 
   async function handleConfirm() {
     if (!canSubmit) return;
-    await onConfirm(reason);
+    try {
+      await onConfirm(reason);
+    } catch {
+      // The action failed (the caller shows why): keep the reason the person typed so they can fix it and try again.
+      return;
+    }
     setReason('');
     setTyped('');
   }

@@ -49,7 +49,7 @@ export default function LoginPage() {
       if (success) {
         const { user } = useAuthStore.getState();
         if (user?.requiresOnboarding && user?.role === 'admin' && !user?.platformRole) {
-          router.push('/onboarding');
+          router.push(user.onboardingFlow === 'THRIFT' ? '/onboarding/thrift' : '/onboarding');
         } else {
           router.push('/dashboard');
         }

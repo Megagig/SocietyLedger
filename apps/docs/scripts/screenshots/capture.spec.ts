@@ -23,11 +23,20 @@ for (const flow of flows) {
         // Freeze the clock before any page script reads it, so relative-time
         // text ("3 days ago") matches the seeded demo data's fixed dates
         // (seed-demo.md) instead of drifting with the real wall clock.
-        await context.clock.install({ time: captureInstant });
+        await context.clock.install({ time: shot.instant ?? captureInstant });
+        // The app keeps its theme in localStorage and does not follow the browser's setting, so the light and dark shots set it themselves.
+        await context.addInitScript((scheme) => {
+          try {
+            localStorage.setItem('theme', scheme);
+          } catch {
+            /* storage unavailable: the app falls back to its default */
+          }
+        }, colorScheme ?? 'light');
 
         const page = await context.newPage();
         await page.goto(shot.url);
         await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(1500); // let the page become interactive
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await page.addStyleTag({
           // Hides anything the app marks as unstable for a deterministic
@@ -40,6 +49,15 @@ for (const flow of flows) {
           content: '[data-volatile="hide"] { visibility: hidden !important; }',
         });
         await shot.prepare?.(page);
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(1200);
+
+        if (shot.fullPage) {
+          // The sidebar is fixed to the window, so a plain full-page capture leaves it cut off halfway. Fit the window to the page instead.
+          const height = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+          await page.setViewportSize({ width: viewport?.width ?? 1280, height: Math.min(Math.max(height, viewport?.height ?? 800), 2600) });
+          await page.waitForTimeout(800);
+        }
 
         const png = await page.screenshot({
           mask: [page.locator('[data-volatile="mask"]')],

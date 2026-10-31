@@ -1,0 +1,66 @@
+---
+title: "Leaving a circle"
+description: "When you can leave a circle, what happens to what you have paid and are owed, and what to do instead if the circle has already started paying out."
+type: task
+audience: ["member"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/my-thrift/[membershipId]"]
+permission: "ajo.view_own"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/your-savings-as-a-saver", "/docs/ajo-thrift/late-fees-defaults-and-disputes", "/docs/ajo-thrift/savings-cycles", "/docs/ajo-thrift/troubleshooting-and-faq"]
+keywords: ["leave", "quit", "exit", "withdraw", "stop", "circle", "rotating pot", "collector thrift"]
+---
+
+You can leave a circle, but how depends on its type and on whether it has started. This page explains each case, so you know what to do and what is still owed.
+
+## Before you start
+
+Think about money first. In a **rotating pot**, other people are paying in for the round that pays you, and you are paying in for the round that pays them. Leaving halfway leaves people short, which is why the circle handles it carefully.
+
+## Leave a circle
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["My Thrift"]} /> and open the circle.</Step>
+<Step>At the bottom of the page, select <UiLabel>Leave this circle</UiLabel>.</Step>
+<Step>Write **why you are leaving** (at least 5 characters; the officers see it), then select <UiLabel>Leave the circle</UiLabel>. You cannot confirm without a reason.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Money", "My thrift"]} /> and open the circle.</Step>
+<Step>Tap **Leave this circle**, write why you are leaving, and confirm. A reason is required, and the officers see it.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/my-leave-1.webp"
+  alt="The Leave Umuoji Market Women Ajo dialog: it explains that everything already paid stays on the record, asks Why are you leaving, and has Cancel and Leave the circle buttons."
+  caption="The Leave dialog. It tells you that what you have paid stays on the record, and asks for a reason."
+/>
+
+## What happens in each case
+
+**The circle has not started yet.** You leave straight away. You have paid nothing, and you owe nothing.
+
+**A collector-thrift circle that is running.** You can leave. Your **future days are removed from your schedule**, so you do not owe them. What you have already saved is still **yours**: it stays on record, and an officer prepares your payout in the normal way, less the collector's fee. Tell your collector and the officers, so the payout is not forgotten.
+
+**A rotating pot that has started.** You **cannot simply leave**. The circle owes you your turn, and you owe the circle the rounds you have agreed to. SocietyLedger will say so. Speak to an admin instead. The officers settle what is owed in each direction. What they usually do is:
+
+- Agree a **repayment plan**, if you have already been paid and still owe the circle. See [Late fees, default cases, repayment plans and disputes](/docs/ajo-thrift/late-fees-defaults-and-disputes).
+- Make an **emergency change** to your place in the order, if you cannot be paid on your turn but want to stay. See [The payout order and the draw](/docs/ajo-thrift/the-payout-order-and-draw).
+- Record how the circle lets you go and what is owed in each direction, so nothing is lost.
+
+Nothing in SocietyLedger deletes your history when you leave. What you paid, what you were paid and what you owed stay in the circle's records.
+
+## What happens next
+
+The page says "You have left the circle." Once you have left, the circle no longer counts you as an active contributor, and you stop getting reminders for it. If you change your mind, ask an officer to add you again, which means accepting the rules again.
+
+<Callout type="warning" title="Leaving does not cancel what you owe">
+If you have already been paid out of a rotating pot, you still owe the rounds you agreed to pay. The officers settle it with you through a case and a repayment plan, and your debt does not disappear when you leave.
+</Callout>

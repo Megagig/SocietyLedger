@@ -156,6 +156,7 @@
   "profile.photo.change": "Change profile photo",
   "profile.about.title": "About",
   "profile.about.version": "Version",
+  "profile.about.versionUnavailable": "Version not available",
   "profile.about.privacyPolicy": "Privacy policy",
   "profile.about.terms": "Terms of service",
   "profile.about.licenses": "Open-source licences",

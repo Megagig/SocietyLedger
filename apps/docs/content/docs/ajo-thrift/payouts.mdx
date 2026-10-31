@@ -1,0 +1,124 @@
+---
+title: "Preparing, approving and recording a payout"
+description: "How a payout is worked out, approved by a second person, paid from the circle's own account and recorded, and what to do if the transfer fails."
+type: task
+audience: ["officer", "admin"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/payouts"]
+permission: "ajo.approve_payout"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/the-payout-order-and-draw", "/docs/ajo-thrift/your-payout-account-and-verification", "/docs/ajo-thrift/officer-accountability", "/docs/ajo-thrift/staying-safe"]
+keywords: ["payout", "prepare", "approve", "record paid", "bank reference", "shortfall", "reverse", "transfer failed", "password", "second payout", "complete"]
+---
+
+A payout is the moment a circle pays a person. **SocietyLedger never sends the money.** It works out how much is owed, makes sure more than one person agrees, and keeps the record. Your circle pays from its own bank account, then records the bank's reference here.
+
+There are three steps, and they are done by different people:
+
+1. **Prepare.** An officer works out the payout and checks that it can go ahead.
+2. **Approve.** An admin approves it. The person who prepared it cannot approve it, and nobody can approve a payout to themselves.
+3. **Record as paid.** After your circle has paid from its account, an officer records the bank's reference.
+
+Only step 3 writes anything to the circle's ledger. Preparing and approving change nothing about the money.
+
+## Before you start
+
+- You need the **manage** permission to prepare, **approve payouts** to approve, and **reconcile** to record. An **admin** usually has all three.
+- Payouts are made **in the drawn order**. A round cannot be prepared until the one before it has been recorded as paid.
+- The person being paid must have a payout account entered and **verified**, and must not have changed it in the last **72 hours**. See [Your payout account and verification](/docs/ajo-thrift/your-payout-account-and-verification).
+
+## Prepare a payout
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Thrift Circles"]} />, open the circle, and choose the <UiLabel>Payouts</UiLabel> tab.</Step>
+<Step>Under **Prepare a payout**, choose the **Round**.</Step>
+<Step>Read the preview: **To pay out**, the **Collector fee** (if any), **Confirmed so far**, who is **Short by** how much, and the account it will go to.</Step>
+<Step>If it can go ahead, select <UiLabel>Prepare this payout</UiLabel>.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} />, open the circle, and tap **Payouts**.</Step>
+<Step>Choose the round and read the preview.</Step>
+<Step>Tap **Prepare this payout**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+If the preview says it cannot go ahead, it says why: the previous round is unpaid, the person has no verified account, they changed their account recently, or an open payout already exists for this round.
+
+**If someone has not paid.** If one person is short, the preview names them and shows how much. You can still pay out what has been **confirmed**. For example, in a pot of ten people paying **₦5,000.00**, if one person has not paid, **₦45,000.00** can be paid out now with a note that **₦5,000.00** is short. If that money arrives later, it is paid as a **second payout** to the same person. Nothing is taken from anyone else.
+
+<Screenshot
+  src="/images/ajo-thrift/pot-payouts-1.webp"
+  alt="The Payouts tab listing the first three rounds as Paid, each with the person, amount, bank and reference, and the fourth round as Approved, waiting to be paid, with Record as paid, Transfer failed and Cancel buttons."
+  caption="Three payouts are paid. The fourth is approved and waiting for the circle to pay it and record the reference."
+/>
+
+### Collector thrift: prepare everyone's payout at once
+
+At the end of a cycle in a collector-thrift circle, open **Payouts** and select **Prepare all ready payouts** (phone: the same button, under **Prepare everyone's payout**). SocietyLedger prepares a payout for every saver who is ready and tells you how many it prepared. Anyone who is not ready, for example because they have no verified payout account yet, is listed with the reason, and nothing is prepared for them. Each prepared payout is then approved and paid like any other, as described below.
+
+<Screenshot
+  src="/images/ajo-thrift/thrift-payouts-1.webp"
+  alt="The Payouts page of a collector-thrift circle, with Prepare a payout, an empty Payouts list, and a Prepare everyone's payout section with a Prepare all ready payouts button."
+  caption="On a collector-thrift circle, Prepare everyone's payout does the whole circle in one go."
+/>
+
+## Approve a payout
+
+<Steps>
+<Step>On the **Payouts** tab, find the payout marked **Waiting for approval**, and select <UiLabel>Approve</UiLabel>.</Step>
+<Step>Check the amount, the person and the account. The window reminds you that approving does not send any money.</Step>
+<Step>Type **Your password** again, to be sure it is you, and approve.</Step>
+</Steps>
+
+If your circle has only one admin, you can approve a payout you prepared yourself, but you must tick **I am the only admin, and I checked this myself** and write a note. It is flagged, and every officer is told.
+
+## Pay it, then record it
+
+Pay the person from your circle's bank account, outside SocietyLedger. Then:
+
+<Steps>
+<Step>On the **Payouts** tab, find the payout marked **Approved, waiting to be paid** and select <UiLabel>Record as paid</UiLabel>.</Step>
+<Step>Enter the **Bank reference** from the transfer. You can attach the **Slip** (optional) and add a **Note**.</Step>
+<Step>Record it. The payout becomes **Paid**.</Step>
+</Steps>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-record-payout-1.webp"
+  alt="The Record that this was paid window with boxes for the bank reference, an optional slip and a note."
+  caption="Record the bank's reference only after you have sent the money."
+/>
+
+The person who is being paid cannot record their own payout. A bank reference that has already been used on another payout is refused, and a reference typed again is treated as the same payout, so it can never be counted twice.
+
+## If something goes wrong
+
+- **The transfer failed.** Select <UiLabel>Transfer failed</UiLabel>. Nothing is written to the records, the round goes back to waiting, and the admins are told. Prepare it again once it is fixed.
+- **You do not want to go ahead.** Select **Cancel**. The officer who prepared a payout can cancel it. An admin can cancel any payout that has not been recorded as paid.
+- **A paid payout was recorded by mistake, or the money came back.** An admin can **Reverse** it: choose the payout, write the reason, enter your password, and select <UiLabel>Reverse it</UiLabel>. The ledger gets an entry that cancels it, with the reason and your name, and the payout shows as **Reversed**. This is the only way to undo a recorded payout.
+
+If the payout account was changed after a payout was prepared, SocietyLedger cancels the prepared payout, because the money would go to a different account from the one that was checked.
+
+## What a member sees
+
+Each person can see their own payouts under **My payouts** on **My Thrift** (web and phone): the amount after any collector fee, where it goes (the account is shown masked), the status, the date it was paid and the bank reference.
+
+<Screenshot
+  src="/images/ajo-thrift/my-thrift-payouts-1.webp"
+  alt="A member's My Thrift page showing their circle, and a My payouts list with one payout of 50,000 naira for round 4, approved and waiting to be paid, to a masked Zenith Bank account."
+  caption="My payouts: the amount, where it goes (masked), and its status."
+/>
+
+## What happens next
+
+After a payout is recorded, the person is told, and it appears in the circle's activity. When every round has been paid and nothing is open, select <UiLabel>Finish the circle</UiLabel> to close it. A finished circle stays readable and can still be reported on.
+
+<Callout type="warning" title="Approving does not pay">
+Approving only records that two people agree the payout is right. No money moves until your circle pays the person from its own account. Do not tell the person it has been paid until you have recorded it.
+</Callout>

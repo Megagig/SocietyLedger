@@ -1,6 +1,9 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
+import { apiCacheHeaders } from './middleware/http-cache.middleware';
+import { ALLOWED_REQUEST_HEADERS } from './lib/cors-headers';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
@@ -12,6 +15,7 @@ import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
 import { startCashLodgmentJobs, stopCashLodgmentJobs } from './jobs/cash-lodgment-jobs';
 import { startSmsJobs, stopSmsJobs } from './jobs/sms-jobs';
 import { startPaymentReminderJobs, stopPaymentReminderJobs } from './jobs/payment-reminder-jobs';
+import { startAjoJobs, stopAjoJobs } from './jobs/ajo-jobs';
 import { startPushReceiptsJob, stopPushReceiptsJob } from './services/push.service';
 // Phase 12: Caching & Performance
 import { initializeRedis, closeRedisConnection } from './lib/redis';
@@ -27,6 +31,7 @@ import associationRoutes from './modules/associations/associations.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import billingAdminRoutes from './modules/admin/billing-admin.routes';
 import publicPricingRoutes from './modules/public/pricing.routes';
+import ajoPublicRoutes from './modules/ajo/ajo-public.routes';
 import { publicRouter as appDownloadPublicRoutes, adminRouter as appDownloadAdminRoutes } from './modules/app-downloads/app-download.routes';
 import subscriptionRoutes from './modules/subscription/subscription.routes';
 import webhookHandlerRoutes from './modules/webhooks/webhooks.routes';
@@ -52,6 +57,10 @@ import memberFinanceRoutes from './modules/member-finance/member-finance.routes'
 import memberLedgerRoutes from './modules/member-finance/member-ledger.routes';
 import meetingsRoutes from './modules/meetings/meetings.routes';
 import welfareRoutes from './modules/welfare/welfare.routes';
+import ajoRoutes from './modules/ajo/ajo.routes';
+import ajoAdminRoutes from './modules/ajo/ajo-admin.routes';
+import ajoLevyAdminRoutes from './modules/ajo/ajo-levy-admin.routes';
+import ajoOversightRoutes from './modules/ajo/ajo-oversight.routes';
 import smsRoutes from './modules/sms/sms.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import votingRoutes from './modules/voting/voting.routes';
@@ -75,6 +84,9 @@ const PORT = process.env.PORT || 4000;
 
 // Security middleware
 app.use(helmet());
+
+// Smaller responses on slow networks. Text only; images and already-compressed files are left alone by the library's own filter.
+app.use(compression());
 
 // CORS configuration - Allow subdomains for multi-tenancy
 const corsOptions = {
@@ -124,8 +136,9 @@ const corsOptions = {
   },
   credentials: true, // CRITICAL: Enable credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id', 'X-Association-Id'],
-  exposedHeaders: ['Set-Cookie'],
+  allowedHeaders: ALLOWED_REQUEST_HEADERS,
+  // Content-Disposition lets the web app use the file name the API chose for a download (a report names its dates); without it a browser hides it.
+  exposedHeaders: ['Set-Cookie', 'Content-Disposition'],
   maxAge: 86400, // 24 hours
   optionsSuccessStatus: 200, // Some legacy browsers choke on 204
 };
@@ -147,6 +160,9 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(uploadsPath));
 
+// Reads are revalidated, never stored by a shared cache; writes are not stored at all (http-cache.middleware.ts). A route can set its own.
+app.use('/api', apiCacheHeaders);
+
 // Webhook handler routes (must be before tenantMiddleware for raw body access)
 app.use('/api/webhooks', webhookHandlerRoutes);
 
@@ -164,6 +180,8 @@ app.use('/api/blog', blogPublicRoutes);
 app.use('/api/public', publicPricingRoutes);
 // Website APK download: the form posts here and gets the link back
 app.use('/api/public/app-download', appDownloadPublicRoutes);
+// Ajo: a guarantor accepts through a one-time link, with no account and no tenant
+app.use('/api/public/ajo', ajoPublicRoutes);
 app.use('/api/docs', documentationPublicRoutes);
 // Admin routes - Super Admin only
 app.use('/api/admin/blog', blogAdminRoutes);
@@ -172,6 +190,11 @@ app.use('/api/admin/docs', documentationAdminRoutes);
 app.use('/api/admin/documentation', documentationAdminRoutes); // alias for admin console BFF
 // Tier 2 support tickets — SUPPORT_AGENT as well as SUPER_ADMIN, so it must be mounted before the SUPER_ADMIN-only /api/admin router
 app.use('/api/admin/support', platformSupportRoutes);
+// Ajo participant verification: compliance and support staff as well as SUPER_ADMIN, so also ahead of the SUPER_ADMIN-only router
+app.use('/api/admin/ajo', ajoAdminRoutes);
+// The Ajo platform levy: finance and support staff as well as SUPER_ADMIN, so also ahead of the SUPER_ADMIN-only router
+app.use('/api/admin/ajo-levy', ajoLevyAdminRoutes);
+app.use('/api/admin/ajo-oversight', ajoOversightRoutes);
 
 // Platform auth routes — must be before tenantMiddleware (no tenant context needed)
 app.use('/api/admin/auth', adminAuthRoutes);
@@ -237,6 +260,7 @@ app.use('/api/cash', cashRoutes);
 app.use('/api/member-ledger', memberLedgerRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/welfare', welfareRoutes);
+app.use('/api/ajo', ajoRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/voting', votingRoutes);
@@ -289,6 +313,7 @@ if (process.env.NODE_ENV !== 'test') {
         startCashLodgmentJobs();
         startSmsJobs();
         startPaymentReminderJobs();
+        startAjoJobs();
         startPushReceiptsJob();
       });
     })
@@ -308,6 +333,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopCashLodgmentJobs();
     stopSmsJobs();
     stopPaymentReminderJobs();
+    stopAjoJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);
@@ -320,6 +346,7 @@ if (process.env.NODE_ENV !== 'test') {
     stopCashLodgmentJobs();
     stopSmsJobs();
     stopPaymentReminderJobs();
+    stopAjoJobs();
     stopPushReceiptsJob();
     await closeRedisConnection();
     process.exit(0);

@@ -13,6 +13,7 @@
  */
 import type { BillingCycle } from '@prisma/client';
 import prisma from '../../lib/prisma';
+import { attachLevyToQuote } from '../../modules/ajo/ajo-levy.service';
 import { evaluateAccess, pickDecidingSubscription } from '../subscription-access.service';
 import {
   type CatalogAddon,
@@ -38,7 +39,8 @@ export class BillingError extends Error {
 }
 
 export interface QuoteLine {
-  type: 'PLAN' | 'ADDON' | 'CREDIT';
+  /** LEVY is SocietyLedger's Ajo platform levy: its own line, never part of the plan or add-on price. */
+  type: 'PLAN' | 'ADDON' | 'CREDIT' | 'LEVY';
   label: string;
   amountKobo: number;
   amount: string;
@@ -55,6 +57,8 @@ export interface QuoteAddon {
   prorated: boolean;
   /** The tenant's existing row for this add-on, when it is being renewed rather than bought. */
   tenantAddonId: number | null;
+  /** Rows of another tier in the same family that this purchase replaces (they end when it is applied). */
+  replacesTenantAddonIds?: number[];
 }
 
 export interface Quote {
@@ -72,6 +76,8 @@ export interface Quote {
   total: string;
   /** When the paid period will end once this is applied. */
   periodEndsAt: string;
+  /** The Ajo levy on this quote, if any: which assessments it carries, and how much it adds to the total. */
+  levy?: { assessmentIds: number[]; totalKobo: number };
   /** A downgrade does not charge anything now: it is scheduled for the end of the current period. */
   deferred: boolean;
   deferredEffectiveAt: string | null;
@@ -84,12 +90,15 @@ export interface HeldAddon {
   addonVersionId: number;
   code: string;
   name: string;
+  family: string | null;
   prices: { priceMonthlyKobo: number; priceAnnualKobo: number };
   startsAt: Date;
   endsAt: Date;
   /** What the tenant actually paid for the running add-on term (0 if it was granted). */
   amountPaidKobo: number;
   cancelAtPeriodEnd: boolean;
+  /** A staff downgrade waiting for renewal: the tier this add-on becomes. The renewal quote prices that tier and ends this one. */
+  pendingAddonId?: number | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -177,7 +186,13 @@ export function buildPlanQuote(
 
   // ---- add-ons that come along with this checkout
   const held = new Map(ctx.heldAddons.map((a) => [a.addonId, a]));
-  const wanted = input.addonIds ?? ctx.heldAddons.filter((a) => !a.cancelAtPeriodEnd).map((a) => a.addonId);
+  // A tier with a scheduled downgrade renews as the lower tier. It is charged in full (it is not a late add-on) and it replaces the tier it was.
+  // If that lower tier can no longer be sold (archived, unpublished), the group keeps the tier it has: renewing must never drop a tier silently.
+  const sellable = (addonId: number | null | undefined): addonId is number => !!addonId && ctx.purchasableAddons.some((p) => p.id === addonId);
+  const nextTier = (h: HeldAddon) => (sellable(h.pendingAddonId) ? h.pendingAddonId : h.addonId);
+  const pendingTargets = new Set(input.addonIds ? [] : ctx.heldAddons.filter((h) => !h.cancelAtPeriodEnd && sellable(h.pendingAddonId)).map((h) => h.pendingAddonId as number));
+  const wanted = input.addonIds ?? ctx.heldAddons.filter((h) => !h.cancelAtPeriodEnd).map(nextTier);
+  assertOnePerFamily(wanted, ctx);
   const addons: QuoteAddon[] = [];
   const lines: QuoteLine[] = [line('PLAN', `${priced.name} (${cycleLabel(cycle)})`, planPrice)];
   let total = planPrice;
@@ -205,9 +220,20 @@ export function buildPlanQuote(
     const fullPrice = priceForCycle(prices, cycle);
 
     // A brand-new add-on added while the plan is simply being extended only runs from today, so it is prorated to the new end.
-    const prorated = kind === 'RENEW' && !heldAddon;
+    const prorated = kind === 'RENEW' && !heldAddon && !pendingTargets.has(addonId);
     const amount = prorated ? addonProrationKobo(fullPrice, newEnd, cycle, now) : fullPrice;
-    addons.push({ addonId, addonVersionId: versionId, code, amountKobo: amount, prorated, tenantAddonId: heldAddon?.id ?? null });
+    // Buying another tier of a product the tenant already holds replaces that tier.
+    const family = catalog?.family ?? heldAddon?.family ?? null;
+    const siblings = family ? ctx.heldAddons.filter((h) => h.family === family && h.addonId !== addonId) : [];
+    addons.push({
+      addonId,
+      addonVersionId: versionId,
+      code,
+      amountKobo: amount,
+      prorated,
+      tenantAddonId: heldAddon?.id ?? null,
+      ...(siblings.length ? { replacesTenantAddonIds: siblings.map((h) => h.id) } : {}),
+    });
     lines.push(line('ADDON', `${name} (${cycleLabel(cycle)}${prorated ? ', prorated' : ''})`, amount, addonId));
     total += amount;
   }
@@ -269,6 +295,17 @@ export function buildPlanQuote(
   };
 }
 
+/** Two tiers of one product cannot be bought together. */
+function assertOnePerFamily(addonIds: number[], ctx: QuoteContext): void {
+  const seen = new Set<string>();
+  for (const addonId of new Set(addonIds)) {
+    const family = ctx.purchasableAddons.find((a) => a.id === addonId)?.family ?? ctx.heldAddons.find((a) => a.addonId === addonId)?.family ?? null;
+    if (!family) continue;
+    if (seen.has(family)) throw new BillingError('ADDON_FAMILY_CONFLICT', 'Choose one tier of this add-on, not two.');
+    seen.add(family);
+  }
+}
+
 /** Pure: price adding add-ons to a running subscription, aligned to its renewal date. */
 export function buildAddonQuote(ctx: QuoteContext, input: { addonIds: number[] }): Quote {
   const { now, subscription: sub } = ctx;
@@ -291,10 +328,36 @@ export function buildAddonQuote(ctx: QuoteContext, input: { addonIds: number[] }
 
     const full = priceForCycle({ priceMonthlyKobo: catalog.prices.monthlyKobo, priceAnnualKobo: catalog.prices.annualKobo }, sub.billingCycle);
     const amount = addonProrationKobo(full, sub.currentPeriodEnd, sub.billingCycle, now);
-    addons.push({ addonId, addonVersionId: catalog.versionId, code: catalog.code, amountKobo: amount, prorated: true, tenantAddonId: existing?.id ?? null });
+    // Another tier of the same product already held: this is a tier change. Only a bigger tier can start mid-term (the unused part of the
+    // old tier is credited); a smaller one waits for renewal, because a credit larger than the charge would be lost.
+    const sibling = catalog.family ? ctx.heldAddons.find((h) => h.family === catalog.family && h.addonId !== addonId) : undefined;
+    if (sibling) {
+      const oldFull = priceForCycle(sibling.prices, sub.billingCycle);
+      if (full < oldFull) {
+        throw new BillingError('ADDON_TIER_DOWNGRADE', `You are on ${sibling.name}. You can move to a smaller tier when you renew.`, 409);
+      }
+    }
+    addons.push({
+      addonId,
+      addonVersionId: catalog.versionId,
+      code: catalog.code,
+      amountKobo: amount,
+      prorated: true,
+      tenantAddonId: existing?.id ?? null,
+      ...(sibling ? { replacesTenantAddonIds: [sibling.id] } : {}),
+    });
     const { remainingDays } = cycleDaysLeft(sub.currentPeriodEnd, sub.billingCycle, now);
     lines.push(line('ADDON', `${catalog.name} (${remainingDays} days until your renewal date)`, amount, addonId));
     total += amount;
+    if (sibling) {
+      const share = unusedShare(sibling.startsAt, sibling.endsAt, now);
+      const credit = Math.min(creditKobo(sibling.amountPaidKobo, share.remainingDays, share.totalDays), amount);
+      if (credit > 0) {
+        // Tagged with the NEW add-on so its recorded net price is the charge minus this credit.
+        lines.push(line('CREDIT', `Unused part of ${sibling.name} (${share.remainingDays} days)`, -credit, addonId));
+        total -= credit;
+      }
+    }
   }
 
   return {
@@ -318,6 +381,8 @@ export function buildAddonQuote(ctx: QuoteContext, input: { addonIds: number[] }
 
 /** Load everything a quote depends on for one association. */
 export async function loadQuoteContext(associationId: number, now = new Date()): Promise<QuoteContext> {
+  // A standalone thrift group is offered its own plan; an association is offered the association plans.
+  const kind = (await prisma.association.findUnique({ where: { id: associationId }, select: { kind: true } }))?.kind ?? 'ASSOCIATION';
   const [subs, purchasablePlans, purchasableAddons] = await Promise.all([
     prisma.subscription.findMany({
       where: { associationId },
@@ -334,7 +399,7 @@ export async function loadQuoteContext(associationId: number, now = new Date()):
         plan: { select: { code: true } },
       },
     }),
-    listPurchasablePlans(),
+    listPurchasablePlans(kind),
     listPurchasableAddons(),
   ]);
 
@@ -377,11 +442,13 @@ export async function loadQuoteContext(associationId: number, now = new Date()):
     addonVersionId: r.addonVersionId,
     code: r.addonVersion.addon.code,
     name: r.addonVersion.addon.name,
+    family: r.addonVersion.addon.family,
     prices: { priceMonthlyKobo: r.addonVersion.priceMonthlyKobo, priceAnnualKobo: r.addonVersion.priceAnnualKobo },
     startsAt: r.startsAt,
     endsAt: r.endsAt,
     amountPaidKobo: r.amountPaidKobo,
     cancelAtPeriodEnd: r.cancelAtPeriodEnd,
+    pendingAddonId: r.pendingAddonId,
   }));
 
   return {
@@ -398,11 +465,11 @@ export async function loadQuoteContext(associationId: number, now = new Date()):
 }
 
 export async function quotePlanCheckout(associationId: number, input: { planId: number; billingCycle: BillingCycle; addonIds?: number[] }): Promise<Quote> {
-  return buildPlanQuote(await loadQuoteContext(associationId), input);
+  return attachLevyToQuote(associationId, buildPlanQuote(await loadQuoteContext(associationId), input));
 }
 
 export async function quoteAddonCheckout(associationId: number, input: { addonIds: number[] }): Promise<Quote> {
-  return buildAddonQuote(await loadQuoteContext(associationId), input);
+  return attachLevyToQuote(associationId, buildAddonQuote(await loadQuoteContext(associationId), input));
 }
 
 export { pricesOf };

@@ -1,0 +1,114 @@
+---
+title: "Adding and approving people"
+description: "Add people to a circle, see what each one is still waiting for, and approve them so they can start, including adding many at once from a list."
+type: task
+audience: ["admin", "officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/members", "/onboarding/thrift"]
+permission: "ajo.manage"
+module: "ajo"
+status: published
+lastVerified: "2026-10-31"
+related: ["/docs/ajo-thrift/starting-a-circle", "/docs/ajo-thrift/guarantors", "/docs/ajo-thrift/rules-grace-and-late-fees", "/docs/ajo-thrift/joining-and-accepting-the-rules", "/docs/ajo-thrift/the-payout-order-and-draw", "/docs/ajo-thrift/plans-billing-and-limits"]
+keywords: ["add member", "approve", "join", "shares", "csv", "bulk", "upload", "waiting for", "phone", "verification", "contributors", "roster"]
+---
+
+A person is not in a circle just because you typed their name. They join when four things are true: **an officer has approved them**, **they have a phone number**, **they have accepted the rules**, and **any guarantor the circle requires is recorded**. The Members tab shows what each person is still waiting for, so you always know what is holding someone up.
+
+## Before you start
+
+- You need the **manage** permission.
+- Set the circle's [rules](/docs/ajo-thrift/rules-grace-and-late-fees) first. Each person accepts the version in force when they join.
+- Your Ajo tier has a limit on **active contributors**. Approving someone past it is refused, with a link to a bigger tier. See [Plans, billing and limits](/docs/ajo-thrift/plans-billing-and-limits).
+- Someone must already be a **member** of your association (or your thrift group's member list) before you can add them to a circle. Add new people under **Members** first.
+
+## Add one person
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Thrift Circles"]} />, open the circle, and choose the <UiLabel>Members</UiLabel> tab.</Step>
+<Step>Select <UiLabel>Add a person</UiLabel>.</Step>
+<Step>Under **Find an association member**, type a name, member number or phone number, and choose the person.</Step>
+<Step>For a **rotating pot**, choose their **Shares**: a person with two shares pays twice each round and collects twice. For **collector thrift**, enter **What this person will save each time (₦)**.</Step>
+<Step>Add them. You will see "They need the circle to approve them." They appear on the list as **Waiting for approval**.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} />, open the circle, and tap **Members**.</Step>
+<Step>Tap to add a person, find them by name, number or phone, set their shares or amount, and add them.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/pot-add-person-1.webp"
+  alt="The Add a person window with a search box for an association member and a field for shares."
+  caption="Find the person among your association's members, then set their shares."
+/>
+
+## See what each person is waiting for
+
+<Screenshot
+  src="/images/ajo-thrift/thrift-members-1.webp"
+  alt="The Members tab of a collector-thrift circle. Savers show Running, with their phone numbers and rules version. The last person shows Waiting for approval, with a note that they are waiting for an officer to approve them and to accept the rules, and an Approve button."
+  caption="The last person is still waiting: for an officer to approve them, and to accept the rules."
+/>
+
+Each row shows the person's **Status**, their **SocietyLedger check** (see below), which **version of the rules** they accepted (and whether they accepted it themselves or an officer recorded it), and **Waiting for**, a plain list of what is still missing. For example:
+
+- waiting for an officer to approve them
+- waiting for them to accept the group's rules
+- waiting for their phone number to be confirmed (if the circle asks everyone to confirm their phone)
+- waiting for a guarantor (if the circle requires one)
+
+When the last item is done, the person's status changes to **Running** by itself.
+
+## Approve a person
+
+<Steps>
+<Step>On the person's row, select <UiLabel>Approve</UiLabel>.</Step>
+<Step>You will see "&lt;name&gt; was approved." If they have nothing else outstanding, they are now **Running**.</Step>
+</Steps>
+
+**Nobody can approve their own membership.** If you added yourself as a contributor, another officer has to approve you. This is deliberate: it is the first of several places where one person cannot be the only one to say yes.
+
+## Rules, phone and the SocietyLedger check
+
+- **Rules.** The person accepts the circle's rules themselves after signing in (see [Joining and accepting the rules](/docs/ajo-thrift/joining-and-accepting-the-rules)). If someone has no login, you can record that you explained the rules and they agreed, and your name is recorded against it. The row shows **(officer)** instead of **(app)**.
+- **Phone.** A circle can ask everyone to **confirm their phone** with a code that is texted to them. Leave it off if your people do not use SMS.
+- **SocietyLedger check.** Approving a person also asks SocietyLedger to check them, so they can be paid out later. It checks that their name matches their account name, that their phone is confirmed and that their address is filled in. A person without a verified account is never paid. See [Your payout account and verification](/docs/ajo-thrift/your-payout-account-and-verification).
+- **Home address** is optional at first, but is needed before a person can be paid out.
+
+### Record that someone accepted the rules in person
+
+Some people will not use the app, or agree at a meeting. A person stays **Pending** until they accept the circle's rules, and the Members list shows "waiting for them to accept the group's rules". If you manage the circle you can record it for them:
+
+1. On the **Members** page, find the person and select **Record rules acceptance** (on the phone: the same button on their row).
+2. Read the version shown, which is the one in force now.
+3. Tick **I read these rules to [name] and they agreed to them**, and under **How it was given** write a short note, for example "read aloud at the 14 Nov meeting".
+4. Select **Record acceptance**.
+
+It is recorded with your name and the note, and the roster shows the rules as accepted by an officer. The person becomes active once everything else they were waiting for is done. A person who uses the app can accept for themselves instead: **My Thrift**, the circle, **Read and accept the rules**.
+
+## Add many people at once
+
+When you set up a thrift group (or add a batch), you can upload a list instead of adding people one by one.
+
+<Steps>
+<Step>In the setup step for people, select <UiLabel>Download the template</UiLabel>. It is a spreadsheet with the columns **first_name, last_name, phone, address, email, shares**.</Step>
+<Step>Fill it in, one row for each person. Only a name and a phone number are needed. You can add up to **200 rows** at a time.</Step>
+<Step>Select <UiLabel>Upload a list (CSV)</UiLabel>, or use <UiLabel>Add a row</UiLabel> to type people in.</Step>
+<Step>Choose what to do for all of them: approve them now, and record that you explained the rules and they agreed.</Step>
+</Steps>
+
+If the list has more people than your tier has room for, SocietyLedger **refuses the whole list** and says so: remove some people, untick approval, or move to a bigger tier. It never adds some of the people and not the rest.
+
+## What happens next
+
+When the roster is final and everyone is **Running**, a rotating pot is ready for [the draw](/docs/ajo-thrift/the-payout-order-and-draw). A person who has been added but cannot be approved (for example, the plan limit) stays on the list as waiting, and nothing is lost.
+
+<Callout type="note" title="People who leave">
+A person who leaves stops counting towards your tier's limit, but what they owed and what they were paid stays in the record. Nothing is erased.
+</Callout>

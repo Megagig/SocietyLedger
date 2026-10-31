@@ -12,6 +12,7 @@ import { activateFreeQuote, scheduleDeferredChange } from './lifecycle.service';
 import { BillingError, quoteAddonCheckout, quotePlanCheckout, type Quote } from './quote.service';
 import { koboToNaira } from './money';
 import { notifyBillingEvent } from './billing-notifications.service';
+import { markLevyBilled } from '../../modules/ajo/ajo-levy.service';
 
 export type PaymentProviderId = 'paystack' | 'nomba';
 
@@ -142,7 +143,7 @@ async function finishCheckout(input: {
     });
     if (!response.status) throw new BillingError('GATEWAY_ERROR', 'We could not start the payment. Please try again.', 502);
 
-    await prisma.paymentHistory.create({
+    const payment = await prisma.paymentHistory.create({
       data: {
         subscriptionId,
         amount: koboToNaira(quote.totalKobo),
@@ -157,6 +158,8 @@ async function finishCheckout(input: {
         quote: storedQuote,
       },
     });
+    // The Ajo levy on this quote is now on a payment in progress. If it is abandoned, the next checkout takes the levy again.
+    if (quote.levy?.assessmentIds.length) await markLevyBilled(prisma, quote.levy.assessmentIds, payment.id);
     return {
       type: 'PAYMENT',
       provider,
@@ -176,7 +179,7 @@ async function finishCheckout(input: {
     callbackUrl,
     metadata: { ...metadata, provider: 'nomba' },
   });
-  await prisma.paymentHistory.create({
+  const nombaPayment = await prisma.paymentHistory.create({
     data: {
       subscriptionId,
       amount: koboToNaira(quote.totalKobo),
@@ -191,5 +194,6 @@ async function finishCheckout(input: {
       quote: storedQuote,
     },
   });
+  if (quote.levy?.assessmentIds.length) await markLevyBilled(prisma, quote.levy.assessmentIds, nombaPayment.id);
   return { type: 'PAYMENT', provider, reference, authorizationUrl: nomba.data.checkoutLink, quote };
 }

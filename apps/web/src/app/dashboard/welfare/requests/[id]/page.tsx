@@ -30,7 +30,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export default function PayoutRequestDetailPage() {
   const params = useParams();
   const requestId = Number(params.id);
-  const { data, isLoading, error } = useQuery({
+  const { data, isPending, error } = useQuery({
     queryKey: ['welfare-payout', requestId],
     queryFn: () => getPayoutRequest(requestId),
     enabled: Number.isInteger(requestId) && requestId > 0,
@@ -38,7 +38,7 @@ export default function PayoutRequestDetailPage() {
   });
   const request: (WelfarePayoutRequest & { accountingEntryId?: number | null; disbursedAt?: string | null }) | undefined = data?.data;
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex justify-center py-12">
         <Loader size="lg" />

@@ -102,7 +102,8 @@ export interface VerifyOutcome {
 /** Ask the API to confirm a payment. Safe to call again and again: it activates at most once. */
 export async function verifySubscriptionPayment(reference: string): Promise<VerifyOutcome> {
   try {
-    const response = await fetch(`${base()}/verify/${encodeURIComponent(reference)}`, { credentials: 'include' });
+    // Through the shared client so it carries THIS tab's token and association, like every other subscription call.
+    const response = await apiGet(`${base()}/verify/${encodeURIComponent(reference)}`);
     const body = await response.json().catch(() => ({}));
     if (response.status === 202 || body?.data?.status === 'PENDING') {
       return { state: 'pending', message: body?.message || 'Your payment is still being processed.' };

@@ -37,3 +37,12 @@ describe('routePushNotification — Phase 4 notification types', () => {
     expect(router.push).toHaveBeenCalledWith('/(app)/(tabs)/profile/help/tickets/5');
   });
 });
+
+describe('routePushNotification — thrift (Ajo)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('sends an ajo push to the notifications list when the person holds no Ajo permission', () => {
+    routePushNotification({ type: 'ajo.payout_prepared', entityId: 5 });
+    expect(router.push).toHaveBeenCalledWith('/(app)/notifications');
+  });
+});

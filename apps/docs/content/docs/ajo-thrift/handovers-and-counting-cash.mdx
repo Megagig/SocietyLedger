@@ -1,0 +1,107 @@
+---
+title: "Handovers and counting cash"
+description: "Count the cash a collector hands over, tick the payments that were really in it, and confirm them, including what to do when the count is short."
+type: task
+audience: ["officer", "admin"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/handovers", "/dashboard/ajo/[groupId]/collectors"]
+permission: "ajo.reconcile"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/cash-reconciliation", "/docs/ajo-thrift/your-day-as-a-collector", "/docs/ajo-thrift/handing-over-at-the-end-of-the-day", "/docs/ajo-thrift/officer-accountability"]
+keywords: ["handover", "count", "reconcile", "cash", "collector", "short", "difference", "collectors", "assign", "target", "carried over"]
+---
+
+At the end of each day, a collector hands the cash they took to the office. You count it and tick what was really there. Only then is the cash confirmed and the savers receipted. This page covers assigning collectors, then counting a handover.
+
+Read [Cash reconciliation](/docs/ajo-thrift/cash-reconciliation) first for the idea behind the steps.
+
+## Before you start
+
+- You need the **reconcile** permission. To assign collectors you need **manage**.
+- Collector thrift must be part of your Ajo tier (**Growth** and above).
+- Do not count your own collection. If you are the collector and the only person who can reconcile, you may do it, but you must tick a box and write a note, and it is flagged.
+
+## Assign a collector to savers
+
+A collector can only record cash from the people assigned to them.
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Thrift Circles"]} />, open the circle, and choose the <UiLabel>Collectors</UiLabel> tab.</Step>
+<Step>Choose the **collector** (a person with the collector role) and the savers they will collect from.</Step>
+<Step>Set the **daily target** for each saver, the amount the collector is expected to take from them each day, and save.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} />, open the circle, and tap **Collectors**.</Step>
+<Step>Tap to assign a collector to a saver, set the daily target, and save.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/thrift-collectors-1.webp"
+  alt="The Collectors tab listing the savers assigned to a collector, with each saver's daily target."
+  caption="Each saver is assigned to a collector, with a daily target."
+/>
+
+## Count a handover
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Open the circle and choose the <UiLabel>Cash handovers</UiLabel> tab. Under **Show**, choose <UiLabel>Waiting to be counted</UiLabel>.</Step>
+<Step>Find the day. You will see what the collector **Collected**, what they **Handed over**, and the **Difference**.</Step>
+<Step>Count the cash. Select <UiLabel>Count and reconcile</UiLabel>.</Step>
+<Step>The window lists every payment in the handover. **Tick each payment that was really in the cash**, and type **Cash you counted (₦)**.</Step>
+<Step>If a payment was not in the cash, or the count differs from what the collector said they handed over, write a **Note** saying what happened. SocietyLedger will not save it without one.</Step>
+<Step>Select <UiLabel>Reconcile</UiLabel>.</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Manage", "Thrift circles"]} />, open the circle, and tap **Cash handovers**.</Step>
+<Step>Tap a day waiting to be counted. Tick the payments that were in the cash, enter the amount you counted, add a note if anything does not add up, and tap **Reconcile**.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/thrift-handovers-1.webp"
+  alt="The Cash handovers tab filtered to Waiting to be counted, listing a day with the amount collected, the amount handed over, the difference and a Count and reconcile button."
+  caption="Handovers waiting to be counted, oldest last."
+/>
+
+<Screenshot
+  src="/images/ajo-thrift/thrift-count-handover-1.webp"
+  alt="The Reconcile this handover window listing the payments in the handover with a tick box for each, a box for the cash counted and a note."
+  caption="Tick what was in the cash, then enter what you counted. The two must match."
+/>
+
+## When the count is right
+
+The ticked payments become **Confirmed**, the savers get receipts, and the day's figures are final. The handover shows as **Reconciled**.
+
+## When the count is short
+
+The count has to equal the payments you tick, to the naira, so a short count means **leaving a payment unticked**.
+
+For example, a collector recorded **₦7,000.00** from five savers and handed over **₦6,000.00**, saying one saver's **₦1,000.00** is still with them. You count ₦6,000.00, tick the four payments that were in the cash, and leave that saver's **unticked**. Write a note ("Chukwuemeka's ₦1,000.00 was not in the bag. The collector will bring it in the morning").
+
+- The four ticked payments are confirmed.
+- The unticked one stays **Cash received, awaiting confirmation**. It is not lost.
+- The next day it is **carried over**, so the next handover is ₦1,000.00 higher than that day's own cash. When you count that day and tick it, it is confirmed.
+
+If the money never appears, the payment stays unconfirmed, and appears on the [accountability page](/docs/ajo-thrift/officer-accountability) as cash the office has not seen.
+
+## What happens next
+
+A counted handover is final. If you counted wrongly, reverse a payment from the **Payments** tab with a reason (see [Confirming payments](/docs/ajo-thrift/confirming-payments)) and record it again. Nothing is edited or deleted.
+
+<Callout type="tip" title="Count every day">
+A collector can only hand over once a day, and cash recorded after a handover for that day is refused. Counting each morning keeps the day's figures small enough to check, and means a shortage is spotted the day after, while everyone remembers.
+</Callout>

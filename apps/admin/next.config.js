@@ -20,7 +20,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  transpilePackages: ['@societyledger/shared'],
+  transpilePackages: ['@societyledger/shared', '@societyledger/query'],
 
   headers: async () => [
     {

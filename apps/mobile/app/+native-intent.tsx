@@ -1,3 +1,4 @@
+import { thriftDeepLinkPath } from '@/lib/ajoPush';
 import { parseDeepLink } from '@/lib/linking';
 
 /**
@@ -28,6 +29,8 @@ export function redirectSystemPath({ path }: { path: string; initial: boolean })
         return `/(auth)/reset-password?token=${encodeURIComponent(deepLink.token)}&tenant=${encodeURIComponent(deepLink.tenant)}`;
       case 'paymentsReturn':
         return `/(app)/(tabs)/money/transaction/${encodeURIComponent(deepLink.reference)}`;
+      case 'thrift':
+        return thriftDeepLinkPath(deepLink.route) ?? path;
       case 'notifications':
         return path;
       default:

@@ -1,0 +1,80 @@
+---
+title: "Savings cycles"
+description: "How a collector-thrift circle runs in cycles: each saver's own amount, the choice to withdraw or continue, and starting the next cycle."
+type: task
+audience: ["admin", "officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/ajo/[groupId]/cycle"]
+permission: "ajo.approve_payout"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/choosing-a-circle-type", "/docs/ajo-thrift/payouts", "/docs/ajo-thrift/your-savings-as-a-saver", "/docs/ajo-thrift/handovers-and-counting-cash"]
+keywords: ["cycle", "withdraw", "continue", "next cycle", "amount", "saver", "collector thrift", "savings", "carry forward"]
+---
+
+A collector-thrift circle runs in **cycles**: a fixed run of days (for example, 30) in which every saver saves the same amount each time. At the end, each saver chooses to **withdraw** (their savings are paid to them, less the collector's fee) or **continue** into the next cycle. This page covers how a cycle works and how to run the end of one.
+
+## Before you start
+
+- This page is for **collector thrift**. A rotating pot has one cycle, its rounds.
+- You need the **approve payouts** permission to start the next cycle. Officers with **manage** can see the page and record a choice for a saver.
+
+## How a cycle works
+
+- **Each saver has their own amount.** It must be at least the circle's minimum, and the saver (or an officer for them) sets it **before the cycle begins**. It then **cannot change within the cycle**, which is what makes a saver's schedule and their final payout certain.
+- **A late joiner's cycle ends with everyone else's.** If someone joins on day 10, they save for the days that remain, and their cycle ends on the same day.
+- **The collector's fee** is set when the circle is created (for example, one day's contribution). It comes out of each saver's savings when the cycle ends.
+- **Cash is counted day by day.** See [Handovers and counting cash](/docs/ajo-thrift/handovers-and-counting-cash).
+
+## See where the cycle stands
+
+<PlatformTabs>
+<PlatformTab>
+Open the circle and choose the <UiLabel>Savings cycle</UiLabel> tab.
+</PlatformTab>
+<PlatformTab>
+Go to <MenuPath items={["Manage", "Thrift circles"]} />, open the circle, and tap **Savings cycle**.
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/thrift-cycle-1.webp"
+  alt="The Savings cycle page for cycle 1, running 19 October to 17 November, with counts of savers continuing, withdrawing and not yet answered, and a table of each saver with their amount, savings so far and their choice."
+  caption="The running cycle: who has chosen to continue, who is withdrawing, and who has not answered."
+/>
+
+The page shows the cycle's dates, how many savers are **Continuing**, **Withdrawing** and **Have not answered**, and for each saver: **Saves each time**, **Saved so far**, **At the end** (their choice), and **Next cycle**.
+
+## The end of a cycle
+
+Savers are asked **three days before the cycle ends** whether to withdraw or continue. In the demo above, the cycle ends on 17 November, so savers are asked from 14 November.
+
+- **Withdraw.** The saver's savings, less the collector's fee, are paid to their payout account. They need a verified payout account before then.
+- **Continue.** The saver stays in the circle for the next cycle, and chooses what to save each time. Any money that has not been paid out is **brought forward**.
+- **No answer means withdraw.** If a saver does not answer, their savings are paid out to them. This is the safe default: nobody's money is held longer than they asked.
+- **An officer can record a choice** for someone who has no login, and the page shows "(recorded by an officer)".
+
+Savers who withdraw are paid like any payout: an officer [prepares it](/docs/ajo-thrift/payouts), an admin approves it, and it is recorded as paid.
+
+## Start the next cycle
+
+You can start the next cycle only when:
+
+- **the current cycle is over**, and
+- **every saver who is withdrawing has been paid** (their payout is recorded as paid).
+
+<Steps>
+<Step>On the **Savings cycle** tab, select <UiLabel>Start the next cycle</UiLabel>.</Step>
+<Step>Confirm. A new cycle begins, with a fresh schedule for every saver who continued, at the amount they chose.</Step>
+</Steps>
+
+If a withdrawing saver has not been paid yet, SocietyLedger says who, and will not start the next cycle until they have been.
+
+## What happens next
+
+Savers see their new cycle on their own page, with their calendar of payments. Past cycles stay under **My record**, with their totals. Nothing from an earlier cycle is erased.
+
+<Callout type="note" title="A saver's amount is a promise to themselves">
+Fixing the amount for the whole cycle protects savers from slipping: a collector cannot talk a saver into a smaller amount halfway through, and a saver cannot lose track of what they agreed. If a saver needs to change their amount, it changes at the start of the next cycle.
+</Callout>

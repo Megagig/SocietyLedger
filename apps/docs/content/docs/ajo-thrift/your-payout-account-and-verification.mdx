@@ -1,0 +1,83 @@
+---
+title: "Your payout account and verification"
+description: "Add the bank account your circle pays you into, understand the SocietyLedger check, and what happens when you change the account."
+type: task
+audience: ["member"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/my-thrift/payout-account"]
+permission: "ajo.view_own"
+module: "ajo"
+status: published
+lastVerified: "2026-10-30"
+related: ["/docs/ajo-thrift/staying-safe", "/docs/ajo-thrift/payouts", "/docs/ajo-thrift/joining-and-accepting-the-rules"]
+keywords: ["payout account", "bank account", "verification", "verified", "cool-off", "change account", "account name", "society ledger check"]
+---
+
+Your **payout account** is where your circle pays you when it is your turn to collect, or when your savings are paid back. It must be an account **in your own name**. SocietyLedger also checks you before anyone can be paid, so a payout cannot be sent to the wrong person.
+
+## Before you start
+
+- Have your bank account details: the **bank**, the **account number** and the **account name** exactly as your bank has it.
+- Have your **phone number** confirmed and your **address** filled in on your profile. They are part of the check.
+
+## Add or change your payout account
+
+<PlatformTabs>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["My Thrift", "Payout Account"]} />.</Step>
+<Step>Choose the **Bank**, then enter the **Account number** and the **Account name**, exactly as the bank has it.</Step>
+<Step>Select <UiLabel>Change account</UiLabel> (or <UiLabel>Set payout account</UiLabel> if you have none yet).</Step>
+</Steps>
+</PlatformTab>
+<PlatformTab>
+<Steps>
+<Step>Go to <MenuPath items={["Money", "My thrift", "Payout account"]} />.</Step>
+<Step>Choose the bank, enter the account number and name, and save.</Step>
+</Steps>
+</PlatformTab>
+</PlatformTabs>
+
+<Screenshot
+  src="/images/ajo-thrift/my-payout-account-1.webp"
+  alt="The My payout account page showing a bank and masked account number, when it was last changed, a SocietyLedger check marked Verified with the message You are verified and can be paid out, and a form to change the account."
+  caption="Your account is shown with only the last four digits. The SocietyLedger check says whether you can be paid."
+/>
+
+Only you and the circle's officers can see the full number. Everyone else sees only the last four digits (for example ••••3351).
+
+## The SocietyLedger check
+
+Before a payout can be prepared for you, SocietyLedger checks three things:
+
+1. **Your name matches** the account name you entered.
+2. **Your phone number is confirmed.**
+3. **Your address is filled in.**
+
+The check shows one of: **Not started**, **Waiting for approval**, **Verified** or **Turned down**. When it is **Verified**, the page says "You are verified and can be paid out." If it is **Turned down**, you are given the reason, so you can fix it and ask for it to be checked again.
+
+The check is a safeguard, not a guarantee. It does not mean SocietyLedger has confirmed your identity with your bank.
+
+### If SocietyLedger turned your details down (officers)
+
+On the circle's **Members** page, a person whose check shows **Turned down** has a **Check again** button (phone: the same, on their row). Fix the details with the person first, then select it to send them to SocietyLedger to be checked again. The members list also shows each person's on-time record next to their check.
+
+<Screenshot
+  src="/images/ajo-thrift/pot-members-1.webp"
+  alt="The Members page of a rotating pot: each person with their status, SocietyLedger check, on-time record (for example Excellent, 100% on time), rules accepted and a Guarantor button."
+  caption="The roster: the check, and the on-time record beside it."
+/>
+
+## Changing your account: the waiting period
+
+If you change your payout account, a payout **cannot be approved for 72 hours**. This protects you: if someone got into your account and changed the details, they would have to wait three days, and you would be told. If a payout was already prepared for you, it is **cancelled**, and you are asked to check the new details.
+
+Because of this, set your account up **before** it is nearly your turn.
+
+## What happens next
+
+When it is your turn, an officer prepares the payout, an admin approves it, and the circle pays the money into your account and records the bank's reference. You are told at each stage. See [Staying safe in a circle](/docs/ajo-thrift/staying-safe) for the habits that protect your payout.
+
+<Callout type="warning" title="Use an account in your own name">
+A payout to an account that does not match your name will not pass the check. Never give an officer or a collector your account PIN, password or card details. They never need them.
+</Callout>

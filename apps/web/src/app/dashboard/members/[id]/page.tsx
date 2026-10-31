@@ -1,5 +1,7 @@
 'use client';
 
+import { PersonCircles } from '@/components/ajo/PersonCircles';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Calendar, CalendarCheck, FileText, Heart, MessageCircle, User, DollarSign, PiggyBank } from 'lucide-react';
@@ -71,6 +73,8 @@ const LOGIN_LABELS: Record<string, string> = {
 };
 
 export default function MemberDetailPage() {
+  // A standalone thrift group's person has no finance, cooperative, welfare, attendance, category, occupation or date of birth: those are an association's.
+  const { thriftOnly } = useAjoNav();
   const router = useRouter();
   const params = useParams();
   const memberId = params.id as string;
@@ -327,6 +331,7 @@ export default function MemberDetailPage() {
               <span>Statement</span>
             </button>
           </Can>
+          {!thriftOnly && (
           <button
             onClick={() => router.push(`/dashboard/cooperatives/members/${memberId}`)}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
@@ -334,6 +339,7 @@ export default function MemberDetailPage() {
             <PiggyBank className="w-4 h-4" />
             <span>Cooperative Profile</span>
           </button>
+          )}
           <Can permission={PERMISSIONS.MEMBER_EDIT}>
             <button
               onClick={() => router.push(`/dashboard/members/${memberId}/edit`)}
@@ -368,7 +374,7 @@ export default function MemberDetailPage() {
       </div>
 
       {/* Financial Summary Cards */}
-      {member.financialSummary && (
+      {!thriftOnly && member.financialSummary && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 sm:p-6">
             <div className="flex items-center justify-between sm:flex-col sm:items-start">
@@ -437,6 +443,7 @@ export default function MemberDetailPage() {
             </div>
 
             {/* Date of Birth */}
+            {!thriftOnly && (
             <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <Calendar className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
               <div className="min-w-0 flex-1">
@@ -445,6 +452,7 @@ export default function MemberDetailPage() {
               </div>
             </div>
 
+            )}
             {/* Gender */}
             <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <User className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -455,6 +463,7 @@ export default function MemberDetailPage() {
             </div>
 
             {/* Occupation */}
+            {!thriftOnly && (
             <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <User className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
               <div className="min-w-0 flex-1">
@@ -463,6 +472,7 @@ export default function MemberDetailPage() {
               </div>
             </div>
 
+            )}
             {/* Address - Full width on mobile */}
             <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg sm:col-span-2 lg:col-span-1">
               <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -483,16 +493,18 @@ export default function MemberDetailPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Membership Information
+            {thriftOnly ? 'In the group' : 'Membership Information'}
           </h2>
         </div>
         
         <div className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Category</p>
-              <p className="text-gray-900 dark:text-white mt-1 capitalize font-medium">{member.category}</p>
-            </div>
+            {!thriftOnly && (
+              <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Category</p>
+                <p className="text-gray-900 dark:text-white mt-1 capitalize font-medium">{member.category}</p>
+              </div>
+            )}
 
             <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Join Date</p>
@@ -513,8 +525,10 @@ export default function MemberDetailPage() {
         </div>
       </div>
 
+      <PersonCircles memberId={Number(memberId)} />
+
       {/* Attendance Summary Card */}
-      {attendance && (
+      {!thriftOnly && attendance && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
             <CalendarCheck className="w-5 h-5 text-gray-400" />
@@ -538,7 +552,7 @@ export default function MemberDetailPage() {
       )}
 
       {/* Welfare Summary Card */}
-      {welfare && (
+      {!thriftOnly && welfare && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
             <Heart className="w-5 h-5 text-gray-400" />

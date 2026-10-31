@@ -91,3 +91,22 @@ describe('ApiError.fromAxiosError', () => {
     });
   });
 });
+
+describe('an error that comes back as bytes (a report file that was refused)', () => {
+  const bytes = (text: string) => new TextEncoder().encode(text).buffer as ArrayBuffer;
+
+  it('reads the API\'s own explanation out of the bytes, so the person sees it', () => {
+    const error = ApiError.fromAxiosError(
+      fakeAxiosError({ response: { status: 400, data: bytes(JSON.stringify({ success: false, code: 'REPORT_TOO_LARGE_FOR_PDF', message: 'A PDF holds up to 5,000 rows and this report has 6,000. Download the CSV instead, or narrow the dates.' })) } as never }),
+    );
+    expect(error.status).toBe(400);
+    expect(error.code).toBe('REPORT_TOO_LARGE_FOR_PDF');
+    expect(error.message).toMatch(/Download the CSV instead/);
+  });
+
+  it('falls back to the plain request message when the bytes are not JSON', () => {
+    const error = ApiError.fromAxiosError(fakeAxiosError({ message: 'Request failed with status code 500', response: { status: 500, data: bytes('<html>oops</html>') } as never }));
+    expect(error.status).toBe(500);
+    expect(error.message).toBe('Request failed with status code 500');
+  });
+});

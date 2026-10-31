@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button, Select } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCreditCard, IconLoader2 } from '@tabler/icons-react';
-import { getTenantHeaders } from '@/utils/tenant';
+import { apiPost } from '@/utils/api';
 
 interface PaymentButtonProps {
   transactionId: number;
@@ -35,21 +35,11 @@ export function PaymentButton({
         ? '/api/payments/paystack/initialize'
         : '/api/payments/nomba/initialize';
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getTenantHeaders(),
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            transactionId,
-            callbackUrl: `${window.location.origin}/dashboard/finance/payments/verify`,
-          }),
-        }
-      );
+      // Through the shared client so it carries THIS tab's token and association, not whichever group signed in last in the browser.
+      const response = await apiPost(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+        transactionId,
+        callbackUrl: `${window.location.origin}/dashboard/finance/payments/verify`,
+      });
 
       const data = await response.json();
 
