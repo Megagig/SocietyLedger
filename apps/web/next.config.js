@@ -28,7 +28,7 @@ const nextConfig = {
   },
 
   // Transpile packages that need it (monorepo support)
-  transpilePackages: ['react-quill', 'quill', '@societyledger/shared'],
+  transpilePackages: ['react-quill', 'quill', '@societyledger/shared', '@societyledger/query'],
 
   // Optimize font loading and handle timeouts gracefully
   optimizeFonts: true,

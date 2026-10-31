@@ -1,0 +1,25 @@
+{
+  "name": "@societyledger/query",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Query keys, freshness policy, persistence rules and invalidation shared by the web, mobile and admin apps. TypeScript source, no build step.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "jest",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.104.5",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.104.5",
+    "@types/jest": "^29.5.14",
+    "@types/react": "^18",
+    "jest": "30.5.2",
+    "react": "^18",
+    "ts-jest": "29.4.14",
+    "typescript": "^5"
+  }
+}
