@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { apiCacheHeaders } from './middleware/http-cache.middleware';
+import { ALLOWED_REQUEST_HEADERS } from './lib/cors-headers';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
@@ -135,7 +136,7 @@ const corsOptions = {
   },
   credentials: true, // CRITICAL: Enable credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant', 'X-Tenant-Id', 'X-Association-Id'],
+  allowedHeaders: ALLOWED_REQUEST_HEADERS,
   // Content-Disposition lets the web app use the file name the API chose for a download (a report names its dates); without it a browser hides it.
   exposedHeaders: ['Set-Cookie', 'Content-Disposition'],
   maxAge: 86400, // 24 hours
