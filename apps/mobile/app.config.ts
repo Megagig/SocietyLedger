@@ -133,7 +133,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: identity.name,
     slug: 'societyledger',
     scheme: identity.scheme,
-    version: '1.0.0',
+    version: '2.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     icon: './assets/images/icon.png',
