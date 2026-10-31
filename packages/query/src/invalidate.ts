@@ -44,5 +44,5 @@ export async function invalidateFor(queryClient: QueryClient, tenant: TenantId |
   if (tenant === null || tenant === undefined || tenant === '') return;
   const domains = new Set<string>();
   for (const event of events) for (const domain of INVALIDATION[event]) domains.add(domain);
-  await Promise.all([...domains].map((domain) => queryClient.invalidateQueries({ queryKey: domainPrefix(tenant, domain) })));
+  await Promise.all(Array.from(domains).map((domain) => queryClient.invalidateQueries({ queryKey: domainPrefix(tenant, domain) })));
 }

@@ -39,8 +39,8 @@ importers:
         specifier: ^2.40.0
         version: 2.47.0(react@18.3.1)
       '@tanstack/react-query':
-        specifier: ^5.0.0
-        version: 5.104.4(@types/react@18.2.79)(react@18.3.1)
+        specifier: ^5.104.5
+        version: 5.104.5(@types/react@18.2.79)(react@18.3.1)
       axios:
         specifier: ^1.5.0
         version: 1.20.0
@@ -3523,9 +3523,6 @@ packages:
   '@tanstack/query-async-storage-persister@5.104.5':
     resolution: {integrity: sha512-PvWWD1tdE9fnQa/ndEREhkZAaW72RcixAFwC2F6c+JhhRCJ/wSjdl6DgY4IjJ+EX0H6AykjEMGw+EPvzSltyqA==}
 
-  '@tanstack/query-core@5.104.4':
-    resolution: {integrity: sha512-nU4Yrb8Sjn0DeVb7PKG9uiepNavys3yoxy1FX0hViY4/P6Ng/mBje2SMl7i9812rtyHKtHyqiaC/td6GkI8StA==}
-
   '@tanstack/query-core@5.104.5':
     resolution: {integrity: sha512-Q94gI8Opd+CbdVNOdj8ZCyV8WqLYitrDq1t96Xc8WZT6lY0r5iRnJLXYDxMex7EEf2v+mXvn4FcjaBKSxXZQ9A==}
 
@@ -3536,15 +3533,6 @@ packages:
     resolution: {integrity: sha512-nXtb9e3smFl5xzGuttzck5VjwA18ZolPLj1ybt2zjEJudIUh/gRFxeNY0855YFp/+N0V1s/lpWLSrO89iQ5IcQ==}
     peerDependencies:
       '@tanstack/react-query': ^5.104.5
-      '@types/react': ^18 || ^19
-      react: ^18 || ^19
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-
-  '@tanstack/react-query@5.104.4':
-    resolution: {integrity: sha512-YD5QkvUNy8Ey3LbOy2vwL97JjoYycwDv++cWAibTe+9BLYvl3c09XpYp5dZ2VcxcguwoDhGF+utYJYb79RB36w==}
-    peerDependencies:
       '@types/react': ^18 || ^19
       react: ^18 || ^19
     peerDependenciesMeta:
@@ -13446,8 +13434,6 @@ snapshots:
       '@tanstack/query-core': 5.104.5
       '@tanstack/query-persist-client-core': 5.104.5
 
-  '@tanstack/query-core@5.104.4': {}
-
   '@tanstack/query-core@5.104.5': {}
 
   '@tanstack/query-persist-client-core@5.104.5':
@@ -13469,13 +13455,6 @@ snapshots:
       react: 19.3.0
     optionalDependencies:
       '@types/react': 19.3.0
-
-  '@tanstack/react-query@5.104.4(@types/react@18.2.79)(react@18.3.1)':
-    dependencies:
-      '@tanstack/query-core': 5.104.4
-      react: 18.3.1
-    optionalDependencies:
-      '@types/react': 18.2.79
 
   '@tanstack/react-query@5.104.5(@types/react@18.2.79)(react@18.3.1)':
     dependencies:
