@@ -124,7 +124,14 @@ export const ajoStaffApi = {
   queue: (id: number, params: { status?: string; method?: string; take?: number; skip?: number } = {}) => unwrap<QueueDTO>(api.get(`/ajo/groups/${id}/contributions`, { params: { take: QUEUE_PAGE, ...params } })),
   /** Every circle's payments waiting for an officer (transfers to confirm by default), with the circle and person named. */
   waitingPayments: (params: { status?: string; groupId?: number } = {}) => unwrap<WaitingPaymentsDTO>(api.get('/ajo/payments/waiting', { params })),
-  waitingCount: () => unwrap<{ transfersToConfirm: number; cashToCount: number }>(api.get('/ajo/payments/waiting/count')),
+  /**
+   * The sidebar badge. It runs in the background on every page, so a refusal (Ajo not on for this association, or no permission) is an empty answer,
+   * not an error: an error would reach the app-wide "not part of your plan" pop-up on a page that has nothing to do with Ajo.
+   */
+  waitingCount: async (): Promise<{ transfersToConfirm: number; cashToCount: number } | null> => {
+    const response = await api.get<{ success: boolean; data: { transfersToConfirm: number; cashToCount: number } }>('/ajo/payments/waiting/count', { validateStatus: () => true });
+    return response.status === 200 ? response.data.data : null;
+  },
   /** An officer who can confirm records a payment already seen at the bank; it is confirmed in the same step. */
   recordReceived: (groupId: number, input: { membershipId: number; amountKobo: bigint; bankReference: string; note: string; paidOn?: string; proof?: File | null; idempotencyKey: string }) => {
     const form = new FormData();

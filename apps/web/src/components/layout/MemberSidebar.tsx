@@ -105,7 +105,8 @@ export function MemberSidebar() {
   // A standalone group's own circles, so each has its page and its board in the menu.
   const mine = useMyMemberships(ajoNav.thriftOnly && ajoNav.member);
   // Transfers waiting to be confirmed, for people who can confirm them.
-  const waiting = useWaitingCount(ajoNav.reconcile);
+  // Only asked once Ajo is known to be on for this association; otherwise the server refuses it on every page.
+  const waiting = useWaitingCount(ajoNav.reconcile && ajoNav.available);
   const payBadge = ajoNav.locked ? 'Locked' : waiting.data && waiting.data.transfersToConfirm > 0 ? String(waiting.data.transfersToConfirm) : undefined;
 
   const navItems: NavItem[] = [

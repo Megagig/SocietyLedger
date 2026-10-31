@@ -37,6 +37,8 @@ export function useAjoNav() {
     reports,
     /** True only when the account is known not to have Ajo switched on. */
     locked: result?.kind === 'locked',
+    /** True only once the server has said Ajo is on for this account. Background Ajo calls (a badge, a count) wait for this, so an account without the add-on never makes them. */
+    available: result?.kind === 'ok',
     /** An account that exists only to run Ajo (a standalone thrift group). */
     thriftOnly: sessionKind === 'THRIFT_GROUP' || (sessionKind === undefined && result?.kind === 'ok' && result.status.tenantKind === 'THRIFT_GROUP'),
     /** True until we know what kind of account this is (older servers only), so a page can wait instead of flashing association content. */
