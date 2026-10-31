@@ -1039,7 +1039,7 @@ export function Sidebar() {
                   </>
                 ) : (
                   <Link
-                    aria-label={item.label}
+                    aria-label={`${item.label}${item.badge ? ` ${item.badge}` : ''}`}
                     title={item.label}
                     href={item.comingSoon ? '#' : (item.href || '#')}
                     onClick={(e) => {

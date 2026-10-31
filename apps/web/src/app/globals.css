@@ -439,3 +439,11 @@ main :is(dd, h1, h2, h3, h4) {
     justify-content: center;
   }
 }
+
+/* Phones: while a text field has focus the on-screen keyboard is open, so the bottom bar steps out of the way instead of sitting between the
+   field and the keyboard (or over the field) in a screen that is already short. It returns when the field loses focus. */
+@media (max-width: 767.98px) {
+  body:has(input:focus:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']), textarea:focus, select:focus) nav[aria-label='Primary'] {
+    display: none;
+  }
+}
