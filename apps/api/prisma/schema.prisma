@@ -4483,6 +4483,7 @@ model AjoContribution {
   disputes       AjoDispute[]
 
   @@index([associationId, groupId, status])
+  @@index([associationId, status, receivedAt])
   @@index([membershipId, receivedAt])
   @@index([associationId, proofHash])
   @@index([associationId, bankReference])
