@@ -386,4 +386,69 @@ suite('The Circle board (database)', () => {
       expect(await codeOf(groups.createGroup({ associationId: w.A, actorUserId: w.admin.id, now: NOW, rules: { memberVisibility: 'FULL' } as never, fields: { name: 'Bad', model: 'COLLECTOR_THRIFT', frequency: 'WEEKLY', contributionKobo: 500000, startDate: START, cycleLength: 3, maxParticipants: 5 } as never }))).toBe('VISIBILITY_NOT_ALLOWED');
     });
   });
+  describe('what the short-lived cache saves', () => {
+    let counting = false;
+    let queries = 0;
+    let hooked = false;
+
+    it('serves a repeat open of the board with no database queries, and works it out again after a payment is confirmed', async () => {
+      const cache = require('../../src/modules/ajo/ajo-cache') as typeof import('../../src/modules/ajo/ajo-cache');
+      if (!hooked) {
+        hooked = true;
+        prisma.$use(async (params, next) => {
+          if (counting) queries += 1;
+          return next(params);
+        });
+      }
+      const w = await world();
+      const { g, people } = await pot(w);
+      cache.resetAjoCacheForTests();
+      const viewer = asMember(people[0].member);
+      const base = { associationId: w.A, groupId: g.id, viewer, now: ROUND1_DAY };
+      // The eight reads the board screens make, each through the same cache the controller uses.
+      const reads: Array<[string, () => Promise<unknown>]> = [
+        ['overview', () => board.boardOverview(base)],
+        ['round', () => board.boardRound({ ...base, round: 1 })],
+        ['matrix', () => board.boardMatrix(base)],
+        ['payouts', () => board.boardPayouts(base)],
+        ['members', () => board.boardMembers(base)],
+        ['arrears', () => board.boardArrears(base)],
+        ['metrics', () => board.boardMetrics(base)],
+        ['activity', () => board.boardActivity(base)],
+      ];
+      const perRead: Record<string, number> = {};
+      const openBoard = async () => {
+        const answers: unknown[] = [];
+        for (const [name, run] of reads) {
+          const before = queries;
+          answers.push(await cache.ajoCached(w.A, viewer, ['board', g.id, name], run));
+          perRead[name] = queries - before;
+        }
+        return answers;
+      };
+      const count = async () => {
+        queries = 0;
+        counting = true;
+        const answers = await openBoard();
+        counting = false;
+        return { answers, queries };
+      };
+
+      const first = await count();
+      const perReadFirst = { ...perRead };
+      const repeat = await count();
+      await pay(w, g.id, people[0].membership.id, ROUND1_DAY); // a payment is confirmed...
+      await cache.bumpAjoCache(w.A); // ...which bumps the version before the writer's response, as the route middleware does
+      const afterPayment = await count();
+
+      console.log(`[measure] circle board, 8 reads: first open ${first.queries} database queries, repeat open ${repeat.queries}, first open after a confirmed payment ${afterPayment.queries}`);
+      console.log(`[measure] first open, queries per read: ${JSON.stringify(perReadFirst)}`);
+      expect(first.queries).toBeGreaterThan(0);
+      expect(repeat.queries).toBe(0);
+      expect(repeat.answers).toEqual(JSON.parse(JSON.stringify(first.answers)));
+      expect(afterPayment.queries).toBeGreaterThan(0);
+      expect(JSON.stringify(afterPayment.answers)).not.toEqual(JSON.stringify(repeat.answers)); // the new payment is in what they see
+    });
+  });
+
 });
