@@ -192,7 +192,8 @@ async function staleWhileRevalidate(request, cacheName) {
       }
       return networkResponse;
     })
-    .catch(() => cachedResponse);
+    // Nothing saved and the network failed: answer with a network error. Answering with nothing makes the browser throw "Failed to convert value to Response".
+    .catch(() => cachedResponse || Response.error());
   
   return cachedResponse || fetchPromise;
 }

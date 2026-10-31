@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { IconChevronRight, IconHome } from '@tabler/icons-react';
 import { useGroupDetail } from '@/lib/ajo/staffHooks';
+import { PATHS_WITHOUT_A_PAGE } from '@/lib/breadcrumb-paths';
 
 /** Words for the Thrift pages, so the trail reads "Thrift circles" and never a bare "Ajo" or a database number. */
 const LABELS: Record<string, string> = { ajo: 'Thrift circles', 'my-thrift': 'My thrift', collect: 'Collect', 'payout-account': 'Payout account' };
@@ -58,6 +59,8 @@ export function Breadcrumbs() {
             <span className="text-gray-900 dark:text-gray-100 font-medium">
               {crumb.label}
             </span>
+          ) : PATHS_WITHOUT_A_PAGE.has(crumb.href) ? (
+            <span>{crumb.label}</span>
           ) : (
             <Link
               href={crumb.href}
