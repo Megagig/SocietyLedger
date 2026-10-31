@@ -6,6 +6,7 @@ import { subscriptionsApi, type CurrentSubscription, type PurchasableCatalog } f
 import { BillingToggle } from '@/components/pricing/BillingToggle';
 import { PlanGrid } from '@/components/pricing/PlanGrid';
 import { PlanComparison } from '@/components/pricing/PlanComparison';
+import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import type { BillingCycle } from '@/types/pricing';
 
 export default function PlansPage() {
@@ -14,6 +15,8 @@ export default function PlansPage() {
   const [current, setCurrent] = useState<CurrentSubscription | null>(null);
   const [cycle, setCycle] = useState<BillingCycle>('MONTHLY');
   const [error, setError] = useState('');
+  // A standalone thrift group has one free plan; what it actually chooses is an Ajo tier, so those are shown here too.
+  const { thriftOnly } = useAjoNav();
 
   useEffect(() => {
     let cancelled = false;
@@ -36,9 +39,13 @@ export default function PlansPage() {
   const ended = !!current && !current.access.allowed;
   const inGrace = !!current && current.access.allowed && current.access.inGrace;
 
-  const choose = (planId: number, billingCycle: BillingCycle) => {
-    router.push(`/dashboard/subscription/checkout?planId=${planId}&billingCycle=${billingCycle}`);
+  const choose = (planId: number, billingCycle: BillingCycle, addonId?: number) => {
+    router.push(`/dashboard/subscription/checkout?planId=${planId}&billingCycle=${billingCycle}${addonId ? `&addons=${addonId}` : ''}`);
   };
+
+  const trialing = current?.status === 'TRIALING';
+  const thriftPlan = thriftOnly && catalog ? catalog.plans[0] : undefined;
+  const tiers = thriftPlan && catalog ? catalog.addons.filter((a) => a.eligiblePlanCodes.length === 0 || a.eligiblePlanCodes.includes(thriftPlan.code)) : [];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
@@ -73,8 +80,9 @@ export default function PlansPage() {
               tone="app"
               currentPlanId={current?.access.allowed ? current.planId : null}
               renderAction={(plan, c) => {
-                const isCurrent = current?.access.allowed && current.planId === plan.id && current.billingCycle === c && !current.access.inGrace;
-                const label = ended || inGrace ? (ended ? 'Resubscribe' : 'Renew') : current?.planId === plan.id && current.billingCycle === c ? 'Renew' : current ? 'Switch to this plan' : 'Choose plan';
+                // A trial is not a plan you hold yet, so its button is the plain "Subscribe" button, not the outlined "current plan" one.
+                const isCurrent = !trialing && current?.access.allowed && current.planId === plan.id && current.billingCycle === c && !current.access.inGrace;
+                const label = ended || inGrace ? (ended ? 'Resubscribe' : 'Renew') : trialing ? 'Subscribe' : current?.planId === plan.id && current.billingCycle === c ? 'Renew' : current ? 'Switch to this plan' : 'Choose plan';
                 return (
                   <button
                     type="button"
@@ -86,10 +94,32 @@ export default function PlansPage() {
                 );
               }}
             />
-            <div className="mt-12">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Compare plans</h2>
-              <PlanComparison plans={catalog.plans} />
-            </div>
+            {thriftPlan && tiers.length > 0 && (
+              <div className="mt-10" data-testid="ajo-tiers">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Choose your Ajo tier</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">The tier decides how many contributors your group can have and which tools it gets. You will see the exact amount before you pay.</p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {tiers.map((tier) => (
+                    <div key={tier.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 flex flex-col">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{tier.name}</h3>
+                      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{cycle === 'ANNUAL' ? `${tier.prices.annual}/year` : `${tier.prices.monthly}/month`}</p>
+                      {tier.description && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{tier.description}</p>}
+                      <div className="mt-auto pt-4">
+                        <button type="button" onClick={() => choose(thriftPlan.id, cycle, tier.id)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
+                          Choose {tier.name}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {catalog.plans.length > 1 && (
+              <div className="mt-12">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Compare plans</h2>
+                <PlanComparison plans={catalog.plans} />
+              </div>
+            )}
           </>
         ) : null}
 
