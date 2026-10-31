@@ -3,7 +3,6 @@
  * never sent twice by the cache. Window focus does not refetch by itself: data is refreshed by staleTime, by opening a screen, and by invalidation.
  */
 import { QueryClient } from '@tanstack/react-query';
-import { FRESHNESS } from './policy';
 
 export const MAX_READ_RETRIES = 2;
 
@@ -18,14 +17,17 @@ export interface ClientOptions {
   isRetryable: (error: unknown) => boolean;
   /** Mobile: show saved data and run the request when the network comes back instead of failing at once. */
   offlineFirst?: boolean;
+  /** For a query whose domain has no entry in the table yet. Keep what the app had before it moved over. */
+  defaultStaleTime?: number;
+  defaultGcTime?: number;
 }
 
 export function createQueryClient(options: ClientOptions): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: FRESHNESS.directory.staleTime,
-        gcTime: FRESHNESS.directory.gcTime,
+        staleTime: options.defaultStaleTime ?? 60_000,
+        gcTime: options.defaultGcTime ?? 5 * 60_000,
         retry: (failureCount, error) => failureCount < MAX_READ_RETRIES && options.isRetryable(error),
         retryDelay: (attempt) => retryDelay(attempt),
         refetchOnWindowFocus: false,
