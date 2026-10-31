@@ -74,6 +74,27 @@ export default function PlansPage() {
           <div className="text-center text-gray-600 dark:text-gray-400">No plans are available right now. Please contact support.</div>
         ) : catalog ? (
           <>
+            {/* For a standalone thrift group the decision is the tier, so it comes first; the free plan below is the base it sits on. */}
+            {thriftPlan && tiers.length > 0 && (
+              <div className="mb-10" data-testid="ajo-tiers">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Choose your Ajo tier</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">The tier decides how many contributors your group can have and which tools it gets. You will see the exact amount before you pay.</p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {tiers.map((tier) => (
+                    <div key={tier.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 flex flex-col">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{tier.name}</h3>
+                      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{cycle === 'ANNUAL' ? `${tier.prices.annual}/year` : `${tier.prices.monthly}/month`}</p>
+                      {tier.description && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{tier.description}</p>}
+                      <div className="mt-auto pt-4">
+                        <button type="button" onClick={() => choose(thriftPlan.id, cycle, tier.id)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
+                          Choose {tier.name}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <PlanGrid
               plans={catalog.plans}
               cycle={cycle}
@@ -94,26 +115,6 @@ export default function PlansPage() {
                 );
               }}
             />
-            {thriftPlan && tiers.length > 0 && (
-              <div className="mt-10" data-testid="ajo-tiers">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Choose your Ajo tier</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">The tier decides how many contributors your group can have and which tools it gets. You will see the exact amount before you pay.</p>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {tiers.map((tier) => (
-                    <div key={tier.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 flex flex-col">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{tier.name}</h3>
-                      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{cycle === 'ANNUAL' ? `${tier.prices.annual}/year` : `${tier.prices.monthly}/month`}</p>
-                      {tier.description && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{tier.description}</p>}
-                      <div className="mt-auto pt-4">
-                        <button type="button" onClick={() => choose(thriftPlan.id, cycle, tier.id)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
-                          Choose {tier.name}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
             {catalog.plans.length > 1 && (
               <div className="mt-12">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Compare plans</h2>
