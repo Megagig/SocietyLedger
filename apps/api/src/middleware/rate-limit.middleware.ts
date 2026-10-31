@@ -58,8 +58,11 @@ function generateKey(req: Request, options: RateLimitOptions): string {
 
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   
-  if (options.perTenant && (req as any).associationId) {
-    return `ratelimit:tenant:${(req as any).associationId}:${ip}`;
+  // The tenant middleware (which runs before this) records the association as tenantId. This used to read associationId, which nothing sets, so
+  // 'perTenant' never took effect and every limit was per address only.
+  const tenantId = (req as any).tenantId ?? (req as any).associationId;
+  if (options.perTenant && tenantId) {
+    return `ratelimit:tenant:${tenantId}:${ip}`;
   }
 
   return `ratelimit:ip:${ip}`;
