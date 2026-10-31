@@ -5,6 +5,8 @@
  * every Ajo screen that could be showing the old figure.
  */
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { invalidateFor } from '@societyledger/query';
+import { useQueryScope } from '@/lib/query';
 import { ajoStaffApi, QUEUE_PAGE } from './staffApi';
 
 const k = (...parts: Array<string | number | undefined>) => ['ajo', 'staff', ...parts.filter((p) => p !== undefined)] as const;
@@ -57,5 +59,10 @@ export const useCase = (id: number) => useQuery({ queryKey: k('case', id), query
 /** A write. Whatever it changes, every Ajo screen refetches, which is cheap and never shows a stale balance. */
 export function useAjoAction<Input, Output = unknown>(fn: (input: Input) => Promise<Output>) {
   const client = useQueryClient();
-  return useMutation({ mutationFn: fn, onSuccess: () => client.invalidateQueries({ queryKey: ['ajo'] }) });
+  const { tenant } = useQueryScope();
+  return useMutation({
+    mutationFn: fn,
+    // Every Ajo screen, and what is scoped to this association and adds payments up (dashboard, reports, balances). Run after the server has answered.
+    onSuccess: () => Promise.all([client.invalidateQueries({ queryKey: ['ajo'] }), invalidateFor(client, tenant, 'circle.changed', 'payment.changed', 'payout.changed')]),
+  });
 }

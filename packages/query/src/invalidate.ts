@@ -36,8 +36,12 @@ export function domainsFor(event: InvalidationEvent): readonly string[] {
   return INVALIDATION[event];
 }
 
-/** Mark the affected domains of one association stale and refetch those on screen. */
+/**
+ * Mark the affected domains of one association stale and refetch those on screen. With no association known nothing is cached for anyone, so
+ * there is nothing to refresh: it returns quietly, because it runs after a write has already succeeded and must never turn that into an error.
+ */
 export async function invalidateFor(queryClient: QueryClient, tenant: TenantId | null | undefined, ...events: InvalidationEvent[]): Promise<void> {
+  if (tenant === null || tenant === undefined || tenant === '') return;
   const domains = new Set<string>();
   for (const event of events) for (const domain of INVALIDATION[event]) domains.add(domain);
   await Promise.all([...domains].map((domain) => queryClient.invalidateQueries({ queryKey: domainPrefix(tenant, domain) })));

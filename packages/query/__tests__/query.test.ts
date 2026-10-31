@@ -176,8 +176,11 @@ describe('invalidation touches the right domains of the right association, and n
     }
   });
 
-  it('refuses to run without an association', async () => {
-    await expect(invalidateFor(new QueryClient(), undefined, 'payment.changed')).rejects.toBeInstanceOf(QueryScopeError);
+  it('does nothing, and does not throw, without an association (it runs after a write that has already succeeded)', async () => {
+    const qc = seeded();
+    await expect(invalidateFor(qc, undefined, 'payment.changed')).resolves.toBeUndefined();
+    await expect(invalidateFor(qc, null, 'payment.changed')).resolves.toBeUndefined();
+    expect(stale(qc, A, 'payments')).toBe(false);
   });
 });
 

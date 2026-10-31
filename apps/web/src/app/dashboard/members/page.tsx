@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
 import { invalidateFor } from '@societyledger/query';
 import { useQueryScope, useScopedQuery } from '@/lib/query';
+import { FreshnessNote } from '@/components/common/FreshnessNote';
+import { fetchMembersPage, membersListParts } from '@/lib/api/members-list';
 import { useRouter } from 'next/navigation';
 import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
@@ -47,23 +49,11 @@ export default function MembersPage() {
 
   // The saved list is shown at once and then checked against the server every time the page opens, so a member created or edited on another
   // screen is never missing from it; a filter or page change keeps the old rows on screen until the new ones arrive instead of a loading flash.
+  const filters = { page, limit, search, statusFilter, categoryFilter, loginFilter };
   const membersQuery = useScopedQuery({
     domain: 'members',
-    parts: ['list', { page, limit, search, statusFilter, categoryFilter, loginFilter }],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(search && { search }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(categoryFilter && { category: categoryFilter }),
-        ...(loginFilter && { loginStatus: loginFilter }),
-      });
-      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch members');
-      const data = await response.json();
-      return data.data as { members: Member[]; pagination: { totalPages: number; totalCount: number } };
-    },
+    parts: membersListParts(filters),
+    queryFn: () => fetchMembersPage(filters),
     placeholderData: keepPreviousData,
     refetchOnMount: 'always',
     // Only the plain first page is saved on the device; a searched or filtered list is not.
@@ -160,6 +150,7 @@ export default function MembersPage() {
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Manage your association members ({totalCount} total)
           </p>
+          <FreshnessNote query={membersQuery} />
         </div>
         
         <div className="flex items-center gap-2">
