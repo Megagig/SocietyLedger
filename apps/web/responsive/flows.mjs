@@ -106,7 +106,9 @@ for (const w of widths) {
 
   await step(page, 'logout', 'sign out', async () => {
     await page.goto('/dashboard'); await settle(page);
-    if (w < 1024) { await page.getByRole('link', { name: 'Menu' }).click(); await page.waitForTimeout(500); }
+    // Phones open the sidebar from the bottom bar's Menu tab; tablets (768-1023px) have the menu button and the icon rail.
+    if (w < 768) { await page.getByRole('link', { name: 'Menu' }).click(); await page.waitForTimeout(500); }
+    else if (w < 1024) { await page.locator('button[aria-controls="app-sidebar"]').click(); await page.waitForTimeout(500); }
     await page.locator('#app-sidebar').getByRole('button', { name: /logout/i }).scrollIntoViewIfNeeded();
     await page.locator('#app-sidebar').getByRole('button', { name: /logout/i }).click();
     await page.getByRole('dialog').getByRole('button', { name: /^logout$/i }).click();

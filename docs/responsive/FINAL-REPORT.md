@@ -63,14 +63,14 @@ All 1,180 before/after screenshot pairs, and side-by-side images for the pages t
 5. **Modal sheets, 16px inputs, 44px targets** apply below 1024px only.
 
 ## 5. Not done, not verified, and decisions
-- **Real devices:** keyboard over forms, rotation, pull-to-refresh, safe-area insets (cannot be emulated), installing the PWA, the dark status-bar band in the iOS light theme. Checklist: `apps/web/RESPONSIVE.md` end and `AUDIT.md`.
+- **Real devices:** emulated afterwards (section 7); a real iPhone and Android phone are still needed for Safari, a real keyboard, a real notch and a real install. Checklist: `apps/web/RESPONSIVE.md` end and `AUDIT.md`.
 - **Cast a vote** and **pay dues**: not exercised. The seed has no eligible voter and no payment gateway; I confirmed the screens fit and their buttons are reachable.
-- **Icon-only tablet sidebar:** not built. Tablets (768-1023px) use the working drawer. A rail means reworking three 1,000-line sidebars; say if you want it.
+- **Icon-only tablet sidebar:** built afterwards, see section 7.
 - **Admin app and docs site:** listed in the audit, not captured or changed.
 - **Dialogs:** custom `fixed inset-0` dialogs (not Mantine) were not inventoried; they may still be taller than a short screen.
 - **Tables:** all keep their columns inside a scroll container with an edge fade; none was converted to cards. Sticky first column not added.
 - **Heading sizes:** only the public hero headings were made fluid.
-- **Money format gaps found, not changed (formatting logic, your call):** the Reports page shows "Total Collected" as ₦3,150,000 with no decimals; chart axes show ₦300k / ₦225k (dashboard) and plain 3200000 (Financial Summary).
+- **Money format gaps:** fixed afterwards, see section 7.
 - **Colours:** about 50 older files use raw `gray-*` classes; left alone.
 - **Loading state:** the screenshot harness did not catch a loading screen on the dashboard.
 - **Service worker:** not changed. `usePWA` already has an update prompt; I did not test an update end to end. Cache names are fixed (`societyledger-v2`).
@@ -80,3 +80,18 @@ All 1,180 before/after screenshot pairs, and side-by-side images for the pages t
 - Twice, `node_modules/.pnpm` package folders (`next`, `react`, `postcss`, ...) ended up empty, the known Windows filtered-`pnpm install` problem. `pnpm repair:deps` fixed it both times (approved by you the first time); no lockfile or source change. Cause not found.
 - Your own servers: the web dev server on 3000 was stopped (it was returning 500) and your API on 4001 was already down; neither is restarted. Expo/Metro was not touched.
 - Scratch stack still running: web 3100, API 4101, database `sl_responsive`. A temporary worktree `../SocietyLedger-baseline` held the original build for the A/B tests.
+
+## 7. Follow-ups completed (2026-11-01)
+
+**Money in full everywhere.** 88 hand-built amounts (`₦{x.toLocaleString()}`, which drops trailing zeros) now go through `formatNairaFull`; four local formatters that dropped the decimals (Reports, member balances, SMS credits, cash receipt) now show them; the per-SMS price reads ₦7.00; eight money chart axes (dashboard, admin, accounting, cash flow, financial summary, aging, collection rate) use `formatAxisNaira` with a wider axis (₦300,000.00, not ₦300k or a bare number). A guard test (`__tests__/format/moneyInFull.test.ts`) fails if the old patterns return. 20 suites, 111 tests pass. Presentation only: no value or calculation changed.
+
+**Icon-only tablet sidebar (768-1023px).** A 72px rail of icons stays on screen with the page beside it and no bottom bar. The menu button, or a tap on an item that has sub-pages, opens the full 288px sidebar over the page; Escape or choosing a page returns to the rail. Every icon-only item has an accessible name and a 44px target. Phones (under 768px) keep the drawer and bottom bar; 1024px and wider keep the full sidebar. A landscape phone 768px or wider also gets the rail. `verify-rail.mjs`: 31/31 on the production build.
+
+**Emulated device checks** (`verify-device.mjs`, Chromium, not Safari): rotation with the drawer open on an iPhone 13 and a Pixel 7; the on-screen keyboard (viewport cut to 45%); a 47px notch and 34px home indicator; a real standalone app window (`--app`); the light-theme status-bar band; the manifest, its icons and Chromium's installability errors on the production build. Found and fixed: with the keyboard open the fixed bottom bar took 64px of an already short screen, so it now hides while a text field has focus (phones only, CSS). A manual real-device list is in `DEVICE-CHECKLIST.md`.
+
+**Corrections to this report.**
+- The 112 "installed-app mode" captures were not in installed-app mode: Chromium's media emulation ignores `display-mode`. They are ordinary browser captures (also corrected in `AUDIT.md`). True standalone is only exercised by `verify-device.mjs`.
+- A notch and home indicator can be emulated in Chromium (the report said they could not); Safari and real hardware are what remain.
+- Tablets now have the rail, not the phone drawer, so the tablet rows of the earlier visual diff are out of date.
+
+**Still not verified.** A real iPhone or Android phone; Safari/WebKit; casting a vote and paying dues (section 5). The before/after screenshots were not regenerated after the rail and money changes.

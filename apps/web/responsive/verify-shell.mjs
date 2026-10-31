@@ -11,7 +11,8 @@ const browser = await chromium.launch();
 const results = [];
 const check = (name, ok, extra = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name} ${extra}`); };
 
-for (const vp of [{ w: 320, h: 568 }, { w: 390, h: 844 }, { w: 768, h: 1024 }, { w: 844, h: 390 }]) {
+// Phone widths only: from 768px the sidebar is an icon rail with no bottom bar (verify-rail.mjs covers that).
+for (const vp of [{ w: 320, h: 568 }, { w: 390, h: 844 }, { w: 667, h: 375 }]) {
   const ctx = await browser.newContext({ baseURL, serviceWorkers: 'block', viewport: { width: vp.w, height: vp.h }, hasTouch: true, reducedMotion: 'reduce' });
   await ctx.addInitScript(INIT_SCRIPT);
   const page = await ctx.newPage();

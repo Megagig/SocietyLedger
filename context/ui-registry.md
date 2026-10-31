@@ -1915,3 +1915,8 @@ Web (`apps/web`, Tailwind tokens) and phone (`apps/mobile`, NativeWind) show the
 - **Automatic below `lg`:** inputs 16px and 44px, icon-only buttons 44px wide, Mantine modals as bottom sheets (under 640px), wide tables fade at the scroll edge.
 - **Page content width:** capped at 1536px inside `AuthenticatedLayout`.
 - Guide for contributors: `apps/web/RESPONSIVE.md`.
+
+## Tablet rail and money helpers (2026-11-01)
+- **Tablet rail (768-1023px):** the three sidebars render a 72px icon rail when closed (`#app-sidebar[data-open='false']`); `sl-rail-hide` marks what disappears (labels, chevrons, badges, sub-menus, section headers, user text), `sl-rail-item` marks items that centre their icon. A new nav item needs `aria-label` (its label plus any badge text) and `title`, because its text is hidden in the rail. The bottom bar is `md:hidden`; the layout's content margin is `md:ml-[4.5rem] lg:ml-72`.
+- **Phones:** the bottom bar hides while a text field has focus (CSS `:has(input:focus)`).
+- **Money:** use `formatNairaFull(x)` (₦5,000.00) for every amount and `formatAxisNaira` for a money chart axis (give the axis a width of about 100). Never `₦{x.toLocaleString()}`, never 300k.

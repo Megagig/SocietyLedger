@@ -11,7 +11,7 @@ Evidence lives in `apps/web/responsive/artifacts/baseline/` (not committed: abou
 | Admin, signed in | all 198 app routes (49 dynamic, each resolved to one seeded record) x 14 viewports | 2,772 |
 | Public and auth pages | 38 routes x 14 viewports | 532 |
 | Other roles (treasurer, secretary, member, Ajo officer, collector, saver) | every static app route x 320, 390, 768, 1440 | 3,720 |
-| Installed-app mode | 8 shell pages x 14 viewports, `display-mode: standalone` emulated | 112 |
+| "Installed-app mode" (see the correction below) | 8 shell pages x 14 viewports | 112 |
 | Opened states | mobile menu, bottom-nav Menu, bell, confirm modal, create modals, date picker, select, error, loading, offline x 5 viewports | 88 |
 
 Every capture also records layout metrics (horizontal overflow and the elements causing it, tap targets under 44px, inputs under 16px, tables, dialogs taller than the viewport). Zero captures failed to load.
@@ -19,8 +19,8 @@ Every capture also records layout metrics (horizontal overflow and the elements 
 **Seed data:** 138 members, a 92-character association name, member names up to 45 characters, e-mails up to 85 characters, amounts from N7.00 to N99,999,999.99 including N12,345,678.90, 80 notifications per login, Ajo circles and collector thrift.
 
 ### Not captured, and why
-- **Real device behaviour:** on-screen keyboard, rotation, pull-to-refresh, safe-area insets (a notch or home indicator cannot be emulated), true "Add to Home Screen" installs. These are in the manual checklist for the end.
-- **Standalone mode** is emulated through the media query only, on shell pages only.
+- **Real device behaviour:** on-screen keyboard, rotation, pull-to-refresh, safe-area insets, true "Add to Home Screen" installs. (Correction, 2026-11-01: Chromium can emulate a notch and home indicator, and the later device checks did; Safari and real hardware are what only a real phone can show. See `DEVICE-CHECKLIST.md`.)
+- **CORRECTION (2026-11-01): the 112 "installed-app mode" captures were not in installed-app mode.** Chromium's media emulation ignores `display-mode`, so they are ordinary browser captures. A real standalone context is available in a headed `--app` window, and the later `verify-device.mjs` checks use it (notch, home indicator, light-theme status bar band). The first report text saying "emulated through the media query" was wrong.
 - **Blog post, category and tag detail pages:** no posts exist in the scratch database, so they redirect to `/blog`. `/documentation` redirects to the separate docs site.
 - **Guarantor and circle-verify pages:** captured with placeholder tokens, so they show their "invalid link" state, not the real page.
 - **Empty states:** only where the seed data is naturally empty (for example the payment-methods donut). I did not build a second, empty association.
