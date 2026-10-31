@@ -1908,3 +1908,10 @@ Web (`apps/web`, Tailwind tokens) and phone (`apps/mobile`, NativeWind) show the
 - **About screen:** under the logo and "SocietyLedger", a `Text` `variant="caption" tone="tertiary"` reading "Version 1.0.0 (build 37)", or "Version not available" when the version cannot be read. No new colours.
 - **Profile screen:** the About `ListItem` gets the same text as its `meta` subtitle line, like the "User manual" row.
 - **Source:** `appVersionLabel()` in `src/lib/appVersion.ts`. Not yet run on a device.
+
+## Responsive pass (2026-10-31)
+- **`useNavDrawer(isOpen, setIsOpen, asideRef, toggleRef)`** (`components/layout/useNavDrawer.ts`): drawer behaviour for the three sidebars below `lg` (close on navigate, open from the bottom nav via `requestNavToggle`, Escape, Tab trap, scroll lock, focus return). A new sidebar must call it and set `id="app-sidebar"`, `ref`, and `invisible` when closed.
+- **Layout classes in `globals.css`:** `sl-stat` / `sl-stat-row` / `sl-stat-value` (KPI card whose figure sizes itself; icon moves above the text under 20rem), `sl-card` / `sl-price` (plan card and its price), `sl-touch` (Mantine `ActionIcon` reaches 44px below `lg`). Use these for any new KPI tile or price; never a fixed pixel width for an amount.
+- **Automatic below `lg`:** inputs 16px and 44px, icon-only buttons 44px wide, Mantine modals as bottom sheets (under 640px), wide tables fade at the scroll edge.
+- **Page content width:** capped at 1536px inside `AuthenticatedLayout`.
+- Guide for contributors: `apps/web/RESPONSIVE.md`.
