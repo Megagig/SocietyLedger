@@ -1,17 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
 import { Badge, Group, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
 import { getDashboardAttention } from '@/lib/api/dashboard';
+import { useScopedQuery } from '@/lib/query';
 import { attentionRows } from './attention-lines';
 
 /** Work waiting on the signed-in officer, one line per queue. Hidden while loading, on error, and when nothing is waiting. */
 export function NeedsAttentionCard() {
-  const { data } = useQuery({
-    queryKey: ['dashboard-attention'],
+  const { data } = useScopedQuery({
+    domain: 'dashboard',
+    parts: ['attention'],
     queryFn: getDashboardAttention,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 30, // waiting payments: shorter than the rest of the dashboard
     refetchInterval: 1000 * 60,
   });
 

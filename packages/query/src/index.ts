@@ -5,3 +5,4 @@ export * from './invalidate';
 export * from './client';
 export * from './reset';
 export * from './freshness';
+export * from './hooks';

@@ -6,10 +6,10 @@ import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { useScopedQuery } from '@/lib/query';
 import { canSeeOfficerDashboard } from '@/lib/permissions';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
@@ -23,13 +23,12 @@ function AssociationDashboardPage() {
   const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (hooks stay above the early returns below so their order never changes)
-  const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: ['dashboard-overview'],
+  // Cached per association (shown at once from the saved copy on the next open, then refreshed); the freshness window is the 'dashboard' entry in @societyledger/query.
+  const { data, isPending, isError, error, refetch } = useScopedQuery({
+    domain: 'dashboard',
+    parts: ['overview'],
     queryFn: getDashboardOverview,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
     enabled: _hasHydrated && isOfficer, // everyone else is sent to the member dashboard
-
   });
 
   // Smart redirect based on user role

@@ -1,7 +1,10 @@
 'use client';
 
 import { useAjoNav } from '@/lib/ajo/useAjoNav';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
+import { invalidateFor } from '@societyledger/query';
+import { useQueryScope, useScopedQuery } from '@/lib/query';
 import { useRouter } from 'next/navigation';
 import { Text } from '@mantine/core';
 import { modals } from '@mantine/modals';
@@ -29,62 +32,25 @@ const LOGIN_LABELS: Record<string, string> = {
 
 export default function MembersPage() {
   const router = useRouter();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  
+  const queryClient = useQueryClient();
+  const { tenant } = useQueryScope();
   // Filters and pagination
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const { thriftOnly } = useAjoNav();
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loginFilter, setLoginFilter] = useState('');
-  const [stats, setStats] = useState<MemberStats | null>(null);
-  const [waitingApprovals, setWaitingApprovals] = useState(0);
   const { can } = usePermissions();
   const canApprove = can(PERMISSIONS.MEMBER_EDIT_ALL);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    fetchMembers();
-  }, [search, statusFilter, categoryFilter, loginFilter, page, limit]);
-
-  // How many self-registrations are waiting — only officers who can approve them ask.
-  useEffect(() => {
-    if (!canApprove) return;
-    const fetchWaiting = async () => {
-      try {
-        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/approvals?status=pending&limit=1`);
-        if (!response.ok) return;
-        const data = await response.json();
-        setWaitingApprovals(data.data?.total ?? 0);
-      } catch (error) {
-        console.error('Error fetching pending approvals:', error);
-      }
-    };
-    fetchWaiting();
-  }, [canApprove]);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/stats`);
-        if (!response.ok) return;
-        const data = await response.json();
-        setStats(data.data);
-      } catch (error) {
-        console.error('Error fetching member stats:', error);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  const fetchMembers = async () => {
-    setIsLoading(true);
-    try {
+  // The saved list is shown at once and then checked against the server every time the page opens, so a member created or edited on another
+  // screen is never missing from it; a filter or page change keeps the old rows on screen until the new ones arrive instead of a loading flash.
+  const membersQuery = useScopedQuery({
+    domain: 'members',
+    parts: ['list', { page, limit, search, statusFilter, categoryFilter, loginFilter }],
+    queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
@@ -93,26 +59,49 @@ export default function MembersPage() {
         ...(categoryFilter && { category: categoryFilter }),
         ...(loginFilter && { loginStatus: loginFilter }),
       });
-
-      const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/members?${params}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch members');
-      }
-
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch members');
       const data = await response.json();
-      setMembers(data.data.members);
-      setTotalPages(data.data.pagination.totalPages);
-      setTotalCount(data.data.pagination.totalCount);
-    } catch (error: any) {
-      console.error('Error fetching members:', error);
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return data.data as { members: Member[]; pagination: { totalPages: number; totalCount: number } };
+    },
+    placeholderData: keepPreviousData,
+    refetchOnMount: 'always',
+    // Only the plain first page is saved on the device; a searched or filtered list is not.
+    meta: { persist: !search && !statusFilter && !categoryFilter && !loginFilter && page === 1 },
+  });
+  const members = membersQuery.data?.members ?? [];
+  const totalPages = membersQuery.data?.pagination.totalPages ?? 1;
+  const totalCount = membersQuery.data?.pagination.totalCount ?? 0;
+  const isLoading = membersQuery.isPending; // only when there is nothing to show yet
+  const error = membersQuery.isError ? (membersQuery.error as Error).message : '';
+
+  // How many self-registrations are waiting: only officers who can approve them ask.
+  const waitingQuery = useScopedQuery({
+    domain: 'members',
+    parts: ['approvals-waiting'],
+    queryFn: async () => {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/approvals?status=pending&limit=1`);
+      if (!response.ok) return 0;
+      const data = await response.json();
+      return (data.data?.total ?? 0) as number;
+    },
+    enabled: canApprove,
+    refetchOnMount: 'always',
+  });
+  const waitingApprovals = waitingQuery.data ?? 0;
+
+  const statsQuery = useScopedQuery({
+    domain: 'members',
+    parts: ['stats'],
+    queryFn: async () => {
+      const response = await apiGet(`${process.env.NEXT_PUBLIC_API_URL}/api/members/stats`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.data as MemberStats;
+    },
+    refetchOnMount: 'always',
+  });
+  const stats = statsQuery.data ?? null;
 
   const handleDisable = async (id: number) => {
     modals.openConfirmModal({
@@ -137,7 +126,7 @@ export default function MembersPage() {
           }
 
           toast.success('Member disabled');
-          fetchMembers();
+          await invalidateFor(queryClient, tenant, 'member.changed');
         } catch (error: any) {
           toast.error(error.message || 'Failed to disable member');
         }

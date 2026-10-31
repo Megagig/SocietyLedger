@@ -21,11 +21,16 @@ export const NEVER_PERSIST_PARTS: readonly string[] = [
   'phone-code',
   'token',
   'password',
+  // settings that can carry payment-gateway or integration details
+  'integrations',
+  'payments',
 ];
 
 export interface PersistableQuery {
   queryKey: readonly unknown[];
   state: { status: string };
+  /** A query can opt out of being saved with `meta: { persist: false }` (for example a list the person has filtered or searched). */
+  meta?: Record<string, unknown> | undefined;
 }
 
 export interface PersistContext {
@@ -41,6 +46,7 @@ function hasSensitivePart(queryKey: readonly unknown[]): boolean {
 
 export function shouldPersistQuery(query: PersistableQuery, context: PersistContext): boolean {
   if (query.state.status !== 'success') return false;
+  if (query.meta?.persist === false) return false;
   if (context.tenant === null || context.tenant === undefined || context.userId === null || context.userId === undefined) return false;
   if (tenantOf(query.queryKey) !== context.tenant) return false;
   if (!policyFor(domainOf(query.queryKey)).persist) return false;

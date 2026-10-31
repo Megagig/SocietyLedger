@@ -77,6 +77,7 @@ describe('what is written to the device', () => {
 
   it('saves allow-listed data for this association', () => {
     expect(ok(key(A, 'settings', 'association'))).toBe(true);
+    expect(ok(key(A, 'settings', 'notifications'))).toBe(true);
     expect(ok(key(A, 'members', 'list'))).toBe(true);
     expect(ok(userKey(A, 42, 'profile'))).toBe(true);
   });
@@ -88,9 +89,14 @@ describe('what is written to the device', () => {
   });
 
   it('never saves a secret or a one-time value, even in an allowed domain', () => {
-    for (const part of ['bank-account', 'payout-account', 'reveal', 'proof', 'file-link', 'otp']) {
+    for (const part of ['bank-account', 'payout-account', 'reveal', 'proof', 'file-link', 'otp', 'integrations', 'payments']) {
       expect(ok(key(A, 'profile', part))).toBe(false);
     }
+  });
+
+  it('never saves a query that opts out, such as a filtered or searched list', () => {
+    expect(shouldPersistQuery({ queryKey: key(A, 'members', 'list'), state: { status: 'success' }, meta: { persist: false } }, ctx)).toBe(false);
+    expect(shouldPersistQuery({ queryKey: key(A, 'members', 'list'), state: { status: 'success' }, meta: { persist: true } }, ctx)).toBe(true);
   });
 
   it('never saves a failed or pending query', () => {

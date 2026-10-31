@@ -5,10 +5,10 @@ import { AjoLoading } from '@/components/ajo/AjoStates';
 import { useAjoNav } from '@/lib/ajo/useAjoNav';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardOverview, formatCurrency, formatPercentageChange, getStatusColor } from '@/lib/api/dashboard';
 import { useAuthStore } from '@/store/authStore';
+import { useScopedQuery } from '@/lib/query';
 import { canSeeOfficerDashboard } from '@/lib/permissions';
 import {
   IconWallet,
@@ -26,11 +26,10 @@ function AssociationAdminDashboardPage() {
   const isOfficer = canSeeOfficerDashboard(user);
 
   // Fetch dashboard data (officers only: the endpoint needs ledger.view)
-  const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: ['dashboard-overview'],
+  const { data, isPending, isError, error, refetch } = useScopedQuery({
+    domain: 'dashboard', // the same entry the main dashboard uses, so the two share one request
+    parts: ['overview'],
     queryFn: getDashboardOverview,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
     enabled: _hasHydrated && isOfficer,
   });
 
