@@ -11,6 +11,7 @@ import { ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay, formatKobo, nairaToKobo } from '@/lib/ajo/format';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
 import type { RosterPersonDTO } from '@/lib/ajo/staffTypes';
+import { RecordRulesAcceptanceDialog } from '@/components/ajo/RecordRulesAcceptanceDialog';
 import { useAjoAction, useGroupDetail, useGroupTrust, useRoster } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
@@ -171,6 +172,7 @@ export default function MembersPage() {
   const recheck = useAjoAction((memberId: number) => ajoStaffApi.resubmitVerification(memberId));
   const [adding, setAdding] = useState(false);
   const [guarantorFor, setGuarantorFor] = useState<RosterPersonDTO | null>(null);
+  const [rulesFor, setRulesFor] = useState<RosterPersonDTO | null>(null);
   const [sharesFor, setSharesFor] = useState<RosterPersonDTO | null>(null);
   const [newShares, setNewShares] = useState(1);
   const [problem, setProblem] = useState<string | null>(null);
@@ -223,6 +225,7 @@ export default function MembersPage() {
                   <td className="px-4 py-3 text-xs text-ink-muted">{p.waitingFor.length ? <ul className="list-disc pl-4">{p.waitingFor.map((w) => <li key={w.requirement}>{w.text}</li>)}</ul> : '—'}</td>
                   <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">
                     {can && p.status === 'PENDING' && !p.approvedAt && <Button size="compact-xs" color="green" onClick={() => doApprove(p)} loading={approve.isPending && approve.variables === p.membershipId}>Approve</Button>}
+                    {can && p.status !== 'LEFT' && p.waitingFor.some((w) => w.requirement === 'RULE_ACCEPTANCE') && <Button size="compact-xs" variant="subtle" onClick={() => setRulesFor(p)}>Record rules acceptance</Button>}
                     {can && p.status !== 'LEFT' && <Button size="compact-xs" variant="subtle" onClick={() => setGuarantorFor(p)}>Guarantor</Button>}
                     {can && rotating && group?.status !== 'ACTIVE' && p.status !== 'LEFT' && <Button size="compact-xs" variant="subtle" onClick={() => { setSharesFor(p); setNewShares(p.shares); }}>Shares</Button>}
                   </td>
@@ -235,6 +238,7 @@ export default function MembersPage() {
 
       <AddMemberDialog groupId={groupId} opened={adding} onClose={() => setAdding(false)} rotating={!!rotating} maxShares={group?.maxSharesPerMember ?? 1} />
       <GuarantorDialog person={guarantorFor} onClose={() => setGuarantorFor(null)} />
+      <RecordRulesAcceptanceDialog person={rulesFor} groupId={groupId} onClose={() => setRulesFor(null)} />
       <Modal opened={sharesFor !== null} onClose={() => setSharesFor(null)} title={`Shares for ${sharesFor?.name ?? ''}`} centered size="sm">
         <div className="space-y-4">
           <NumberInput label="Shares" min={1} max={group?.maxSharesPerMember ?? 1} value={newShares} onChange={(v) => setNewShares(typeof v === 'number' ? v : 1)} />

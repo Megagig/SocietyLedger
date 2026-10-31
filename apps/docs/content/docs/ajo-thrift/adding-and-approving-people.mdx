@@ -8,8 +8,8 @@ covers: ["/dashboard/ajo/[groupId]/members", "/onboarding/thrift"]
 permission: "ajo.manage"
 module: "ajo"
 status: published
-lastVerified: "2026-10-30"
-related: ["/docs/ajo-thrift/guarantors", "/docs/ajo-thrift/rules-grace-and-late-fees", "/docs/ajo-thrift/joining-and-accepting-the-rules", "/docs/ajo-thrift/the-payout-order-and-draw", "/docs/ajo-thrift/plans-billing-and-limits"]
+lastVerified: "2026-10-31"
+related: ["/docs/ajo-thrift/starting-a-circle", "/docs/ajo-thrift/guarantors", "/docs/ajo-thrift/rules-grace-and-late-fees", "/docs/ajo-thrift/joining-and-accepting-the-rules", "/docs/ajo-thrift/the-payout-order-and-draw", "/docs/ajo-thrift/plans-billing-and-limits"]
 keywords: ["add member", "approve", "join", "shares", "csv", "bulk", "upload", "waiting for", "phone", "verification", "contributors", "roster"]
 ---
 
@@ -80,6 +80,17 @@ When the last item is done, the person's status changes to **Running** by itself
 - **Phone.** A circle can ask everyone to **confirm their phone** with a code that is texted to them. Leave it off if your people do not use SMS.
 - **SocietyLedger check.** Approving a person also asks SocietyLedger to check them, so they can be paid out later. It checks that their name matches their account name, that their phone is confirmed and that their address is filled in. A person without a verified account is never paid. See [Your payout account and verification](/docs/ajo-thrift/your-payout-account-and-verification).
 - **Home address** is optional at first, but is needed before a person can be paid out.
+
+### Record that someone accepted the rules in person
+
+Some people will not use the app, or agree at a meeting. A person stays **Pending** until they accept the circle's rules, and the Members list shows "waiting for them to accept the group's rules". If you manage the circle you can record it for them:
+
+1. On the **Members** page, find the person and select **Record rules acceptance** (on the phone: the same button on their row).
+2. Read the version shown, which is the one in force now.
+3. Tick **I read these rules to [name] and they agreed to them**, and under **How it was given** write a short note, for example "read aloud at the 14 Nov meeting".
+4. Select **Record acceptance**.
+
+It is recorded with your name and the note, and the roster shows the rules as accepted by an officer. The person becomes active once everything else they were waiting for is done. A person who uses the app can accept for themselves instead: **My Thrift**, the circle, **Read and accept the rules**.
 
 ## Add many people at once
 

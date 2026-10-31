@@ -86,7 +86,8 @@ export const ajoStaffApi = {
   cancelGroup: (id: number, reason: string) => post<unknown>(`/ajo/groups/${id}/cancel`, { reason }),
   /** The API sends `{ versions, acceptance? }`, not a bare list. */
   ruleVersions: (id: number) => unwrap<RuleVersionsReplyDTO>(api.get(`/ajo/groups/${id}/rules`)),
-  publishRules: (id: number, rules: RulesInput) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, { rules }),
+  /** `immediate`: take effect now, with no notice period. Allowed only before the circle starts; a waiting version is brought forward. */
+  publishRules: (id: number, rules: RulesInput, options: { immediate?: boolean } = {}) => post<RuleVersionDTO>(`/ajo/groups/${id}/rules`, { rules, ...(options.immediate ? { immediate: true } : {}) }),
 
   // thrift onboarding
   onboardingStatus: () => unwrap<OnboardingStatusDTO>(api.get('/onboarding/status')),

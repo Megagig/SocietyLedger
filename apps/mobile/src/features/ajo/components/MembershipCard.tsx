@@ -44,6 +44,13 @@ export function MembershipCard({ item }: { item: MyMembershipDTO }) {
                 • {w.text}
               </Text>
             ))}
+            {item.waitingFor.some((w) => w.requirement === 'RULE_ACCEPTANCE') ? (
+              <View className="pt-2">
+                <Button size="sm" onPress={() => router.push(thriftHref(item.membershipId, '/rules'))} testID={`ajo-accept-rules-${item.membershipId}`}>
+                  Read and accept the rules
+                </Button>
+              </View>
+            ) : null}
           </View>
         ) : null}
 

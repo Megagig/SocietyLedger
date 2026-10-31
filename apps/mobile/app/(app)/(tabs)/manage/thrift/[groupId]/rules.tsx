@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { FileText } from 'lucide-react-native';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { View } from 'react-native';
+import { Switch, View } from 'react-native';
 import { toast } from 'sonner-native';
 
 import { ajoApi } from '@/api/endpoints/ajo';
@@ -30,8 +30,12 @@ export default function CircleRulesScreen() {
   const { manage } = useAjoCan();
   const versions = useRuleVersions(groupId);
   // Only a rotating pot has a Circle board, so only a rotating pot is asked whether its members may see each other.
-  const rotating = useGroup(groupId).data?.model !== 'COLLECTOR_THRIFT';
-  const publish = useAjoAction((rules: Parameters<typeof ajoApi.publishRules>[1]) => ajoApi.publishRules(groupId, rules));
+  const detail = useGroup(groupId).data;
+  const rotating = detail?.model !== 'COLLECTOR_THRIFT';
+  // Before the circle starts nobody is paying under the rules yet, so a change can take effect straight away if the admin chooses.
+  const canApplyNow = detail?.status === 'DRAFT' || detail?.status === 'OPEN';
+  const [applyNow, setApplyNow] = useState(false);
+  const publish = useAjoAction((input: { rules: Parameters<typeof ajoApi.publishRules>[1]; immediate: boolean }) => ajoApi.publishRules(groupId, input.rules, { immediate: input.immediate }));
   const { control, getValues, reset } = useForm<RulesFormValues>({ defaultValues: DEFAULT_RULES });
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -46,7 +50,7 @@ export default function CircleRulesScreen() {
     }
     setProblem(null);
     try {
-      await publish.mutateAsync(built.input);
+      await publish.mutateAsync({ rules: built.input, immediate: canApplyNow && applyNow });
       toast.success('A new version of the rules was published. Members accept it before it binds them.');
       setEditing(false);
     } catch (error) {
@@ -85,6 +89,17 @@ export default function CircleRulesScreen() {
         <Card testID="ajo-rules-editor">
           <View className="gap-4">
             <RulesFields control={control} rotating={rotating} />
+            {canApplyNow ? (
+              <View className="flex-row items-start gap-3 rounded-md bg-surface-sunken p-3">
+                <Switch value={applyNow} onValueChange={setApplyNow} accessibilityLabel="Take effect now" testID="ajo-rules-apply-now" />
+                <View className="flex-1">
+                  <Text variant="body-strong">Take effect now, without the usual 7 days’ notice</Text>
+                  <Text variant="caption" tone="secondary">
+                    Only possible before the circle starts, while nobody is paying under the rules. Members are told. Leave it off to give them the notice period.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             {problem ? (
               <Text variant="body" tone="danger">
                 {problem}

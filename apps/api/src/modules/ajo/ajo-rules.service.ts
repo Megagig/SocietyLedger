@@ -182,6 +182,11 @@ export interface PublishInput {
   rules: RuleInput;
   /** When it takes effect. Defaults to the earliest allowed; earlier than that is refused. */
   effectiveFrom?: Date;
+  /**
+   * Take effect now, without the notice period. Allowed only before the circle starts (Draft or Open), when nobody has paid anything under
+   * the rules yet. A version that is already waiting is brought forward to now, so there are never two waiting at once.
+   */
+  immediate?: boolean;
   now?: Date;
 }
 
@@ -189,8 +194,8 @@ export interface PublishInput {
 export async function publishRuleVersion(input: PublishInput) {
   const now = input.now ?? new Date();
   const earliest = new Date(now.getTime() + RULE_NOTICE_DAYS * DAY_MS);
-  const effectiveFrom = input.effectiveFrom ?? earliest;
-  if (effectiveFrom.getTime() < earliest.getTime()) {
+  const effectiveFrom = input.immediate ? now : (input.effectiveFrom ?? earliest);
+  if (!input.immediate && effectiveFrom.getTime() < earliest.getTime()) {
     throw new RuleError(`A rule change needs at least ${RULE_NOTICE_DAYS} days' notice, so members have time to read it. The earliest it can take effect is ${earliest.toISOString()}.`, 400, 'NOTICE_TOO_SHORT');
   }
 
@@ -199,9 +204,27 @@ export async function publishRuleVersion(input: PublishInput) {
     if (!group) throw new RuleError('That circle was not found.', 404, 'GROUP_NOT_FOUND');
     if (group.status === 'COMPLETED' || group.status === 'CANCELLED') throw new RuleError('This circle is closed, so its rules cannot change.', 409, 'GROUP_CLOSED');
 
-    const latest = await tx.ajoGroupRuleVersion.findFirst({ where: { groupId: group.id }, orderBy: { version: 'desc' } });
+    if (input.immediate && group.status !== 'DRAFT' && group.status !== 'OPEN') {
+      throw new RuleError('Rules can take effect straight away only before the circle starts. Once it is running, a change waits out its notice period so members can read it.', 409, 'IMMEDIATE_NOT_ALLOWED');
+    }
+
+    let latest = await tx.ajoGroupRuleVersion.findFirst({ where: { groupId: group.id }, orderBy: { version: 'desc' } });
+    // A version already waiting is brought forward, so the circle never has two new versions at once.
+    let broughtForward = false;
+    if (input.immediate && latest && latest.effectiveFrom.getTime() > now.getTime()) {
+      latest = await tx.ajoGroupRuleVersion.update({ where: { id: latest.id }, data: { effectiveFrom: now } });
+      broughtForward = true;
+      await auditAjo(tx, { associationId: input.associationId, userId: input.actorUserId, action: 'AJO_RULES_BROUGHT_FORWARD', tableName: 'ajo_group_rule_versions', recordId: latest.id, newValues: { version: latest.version, effectiveFrom: now.toISOString() } });
+    }
     const rules = normaliseRules(input.rules, latest ? rulesOf(latest) : DEFAULT_RULES, group.model);
-    if (latest && sameRules(rules, rulesOf(latest))) throw new RuleError('Nothing in these rules is different from the current version.', 409, 'RULES_UNCHANGED');
+    if (latest && sameRules(rules, rulesOf(latest))) {
+      // Nothing more to change. If a waiting version was just brought forward, that is the whole job.
+      if (broughtForward) {
+        const live = await tx.ajoMembership.findMany({ where: { groupId: group.id, status: { in: ['PENDING', 'ACTIVE'] } }, select: { member: { select: { userId: true } } } });
+        return { created: latest, groupName: group.name, userIds: live.map((m) => m.member.userId).filter((u): u is number => u !== null) };
+      }
+      throw new RuleError('Nothing in these rules is different from the current version.', 409, 'RULES_UNCHANGED');
+    }
     if (latest && latest.effectiveFrom.getTime() > now.getTime()) {
       throw new RuleError('A rule change is already waiting to take effect. Wait for it, so members are never asked to follow two new versions at once.', 409, 'CHANGE_PENDING');
     }

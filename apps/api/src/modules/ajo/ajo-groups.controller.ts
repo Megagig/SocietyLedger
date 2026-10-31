@@ -314,8 +314,8 @@ export const ajoGroupsController = {
   async publishRules(req: Request, res: Response) {
     try {
       const { userId, associationId } = actor(req);
-      const body = z.object({ effectiveFrom: z.string().datetime().optional(), rules: rulesSchema }).parse(req.body);
-      const result = await publishRuleVersion({ associationId, groupId: id.parse(req.params.id), actorUserId: userId, rules: body.rules, effectiveFrom: body.effectiveFrom ? new Date(body.effectiveFrom) : undefined });
+      const body = z.object({ effectiveFrom: z.string().datetime().optional(), immediate: z.boolean().optional(), rules: rulesSchema }).parse(req.body);
+      const result = await publishRuleVersion({ associationId, groupId: id.parse(req.params.id), actorUserId: userId, rules: body.rules, immediate: body.immediate, effectiveFrom: body.effectiveFrom ? new Date(body.effectiveFrom) : undefined });
       return res.status(201).json({ success: true, message: 'New rules published. Members have been told.', data: result });
     } catch (error) {
       return fail(res, error, 'Could not publish the rules.');

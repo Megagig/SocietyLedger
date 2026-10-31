@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeftRight, CircleDollarSign, FileText, Gavel, HandCoins, ListOrdered, RefreshCw, ShieldCheck, TriangleAlert, Users, Wallet } from 'lucide-react-native';
 import { useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { toast } from 'sonner-native';
 
@@ -12,9 +12,11 @@ import { ListGroup, ListItem } from '@/components/layout/ListItem';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { BoardSettingCard } from '@/features/ajo/components/BoardSettingCard';
+import { MyMembershipBanner } from '@/features/ajo/components/MyMembershipBanner';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Text } from '@/components/ui/Text';
 import { AjoActionSheet } from '@/features/ajo/components/AjoActionSheet';
+import { boardSetting } from '@/features/ajo/boardSetting';
 import { startReadiness } from '@/features/ajo/startReadiness';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { useAjoWrite } from '@/features/ajo/components/AjoGate';
@@ -25,7 +27,7 @@ import { AjoStatusBadge } from '@/features/ajo/components/AjoStatusBadge';
 import { EditCircleSheet, type EditCircleSheetHandle } from '@/features/ajo/components/EditCircleSheet';
 import { formatDay, formatKobo, frequencyText, MODEL_LABEL } from '@/features/ajo/format';
 import { useAjoAction } from '@/features/ajo/mutations';
-import { AJO_STAFF_ACCESS, useGroupDetail } from '@/features/ajo/queries';
+import { AJO_STAFF_ACCESS, useGroupDetail, useRuleVersions } from '@/features/ajo/queries';
 import { useAjoCan } from '@/features/ajo/useAjoCan';
 
 const FEE_TEXT = { NONE: 'No collector fee', FIXED: 'A fixed amount', PERCENT: 'A percentage of the pot', DAYS: 'Days of contribution' } as const;
@@ -63,6 +65,8 @@ export default function CircleOverviewScreen() {
   const [openProblem, setOpenProblem] = useState<string | null>(null);
   const [startProblem, setStartProblem] = useState<string | null>(null);
   const can = manage && canWrite;
+  // Once the circle starts the board can no longer be turned on instantly, so ask about it first if it is off.
+  const ruleVersions = useRuleVersions(groupId);
   const readiness = startReadiness(group?.activeParticipants ?? 0);
 
   const doOpen = async () => {
@@ -73,6 +77,28 @@ export default function CircleOverviewScreen() {
     } catch (error) {
       setOpenProblem(error instanceof ApiError ? error.message : 'Could not open the circle.');
     }
+  };
+  const boardOff = group?.model === 'ROTATING_POT' && !!ruleVersions.data && ['OFF', 'TURNS_ON'].includes(boardSetting(ruleVersions.data.versions).state);
+  const turnBoardOnThenStart = async (confirmSmaller: boolean) => {
+    setStartProblem(null);
+    try {
+      await ajoApi.publishRules(groupId, { memberVisibility: 'FULL' }, { immediate: true });
+      await doStart(confirmSmaller);
+    } catch (error) {
+      setStartProblem(error instanceof ApiError ? error.message : 'Could not turn the circle board on.');
+    }
+  };
+  const requestStart = (confirmSmaller: boolean) => {
+    if (!boardOff) return void doStart(confirmSmaller);
+    Alert.alert(
+      'The Circle board is off',
+      'Members will not see each other’s progress. You can turn the board on instantly only until the circle starts; after that a change needs 7 days’ notice. A person’s name shows on the board only after they accept rules that include it; until then they appear as “Member 3”.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start without the board', onPress: () => void doStart(confirmSmaller) },
+        { text: 'Turn it on, then start', onPress: () => void turnBoardOnThenStart(confirmSmaller) },
+      ],
+    );
   };
   const doStart = async (confirmSmaller: boolean) => {
     setStartProblem(null);
@@ -100,6 +126,8 @@ export default function CircleOverviewScreen() {
               {MODEL_LABEL[group.model]} · {frequencyText(group)}
             </Text>
           </View>
+
+          <MyMembershipBanner groupId={groupId} />
 
           {can && group.status === 'DRAFT' ? (
             <View className="gap-2 rounded-lg bg-info-soft p-4" testID="ajo-draft-banner">
@@ -130,7 +158,7 @@ export default function CircleOverviewScreen() {
                     {smaller}
                   </Text>
                   <View className="flex-row gap-3">
-                    <Button fullWidth loading={start.isPending} onPress={() => void doStart(true)} testID="ajo-start-smaller">
+                    <Button fullWidth loading={start.isPending} onPress={() => requestStart(true)} testID="ajo-start-smaller">
                       {`Start with ${group.activeParticipants} people`}
                     </Button>
                     <Button variant="secondary" fullWidth onPress={() => setSmaller(null)}>
@@ -151,7 +179,7 @@ export default function CircleOverviewScreen() {
                   </Button>
                 </View>
               ) : (
-                <Button loading={start.isPending} onPress={() => void doStart(false)} testID="ajo-start">
+                <Button loading={start.isPending} onPress={() => requestStart(false)} testID="ajo-start">
                   Start the circle
                 </Button>
               )}
@@ -230,7 +258,7 @@ export default function CircleOverviewScreen() {
               </View>
             </Card>
           ) : null}
-          {group.model === 'ROTATING_POT' ? <BoardSettingCard groupId={groupId} canChange={manage && canWrite} /> : null}
+          {group.model === 'ROTATING_POT' ? <BoardSettingCard groupId={groupId} canChange={manage && canWrite} groupStatus={group.status} /> : null}
 
           <ListGroup>
             {manage ? <ListItem leading={<IconCircle icon={Users} tone="primary" />} title="Members" meta="Approve people, verification, guarantors" showChevron onPress={() => router.push(sub(groupId, 'members'))} testID="ajo-nav-members" /> : null}

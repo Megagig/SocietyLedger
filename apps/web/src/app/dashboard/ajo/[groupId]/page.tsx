@@ -11,8 +11,9 @@ import { BoardSettingCard } from '@/components/ajo/BoardSettingCard';
 import { Money } from '@/components/ajo/Money';
 import { ajoErrorCode, ajoErrorMessage } from '@/lib/ajo/api';
 import { formatDay, formatKobo, nairaToKobo } from '@/lib/ajo/format';
+import { boardSetting } from '@/lib/ajo/boardSetting';
 import { ajoStaffApi } from '@/lib/ajo/staffApi';
-import { useAjoAction, useGroupDetail } from '@/lib/ajo/staffHooks';
+import { useAjoAction, useGroupDetail, useRuleVersions } from '@/lib/ajo/staffHooks';
 import { useAjoCan } from '@/lib/ajo/useAjoCan';
 import { toast } from '@/lib/toast';
 
@@ -30,6 +31,10 @@ export default function GroupOverviewPage() {
   const [cancelling, setCancelling] = useState(false);
   const [editing, setEditing] = useState(false);
   const [smaller, setSmaller] = useState<string | null>(null);
+  // Once the circle starts the board can no longer be turned on instantly, so ask about it first if it is off.
+  const ruleVersions = useRuleVersions(groupId);
+  const [boardAsk, setBoardAsk] = useState<{ confirmSmaller: boolean } | null>(null);
+  const [boardBusy, setBoardBusy] = useState(false);
   // Each action's refusal is shown in the panel the action lives in, right under its button, not at the top of the page.
   const [openProblem, setOpenProblem] = useState<string | null>(null);
   const [startProblem, setStartProblem] = useState<string | null>(null);
@@ -44,6 +49,24 @@ export default function GroupOverviewPage() {
       toast.success('The circle is open. Members can now be added and approved.');
     } catch (error) {
       setOpenProblem(ajoErrorMessage(error));
+    }
+  };
+  const boardOff = group.model === 'ROTATING_POT' && !!ruleVersions.data && ['OFF', 'TURNS_ON'].includes(boardSetting(ruleVersions.data.versions).state);
+  const requestStart = (confirmSmaller: boolean) => (boardOff ? setBoardAsk({ confirmSmaller }) : doStart(confirmSmaller));
+  const turnBoardOnThenStart = async () => {
+    if (!boardAsk) return;
+    setBoardBusy(true);
+    setStartProblem(null);
+    try {
+      await ajoStaffApi.publishRules(groupId, { memberVisibility: 'FULL' }, { immediate: true });
+      const again = boardAsk.confirmSmaller;
+      setBoardAsk(null);
+      await doStart(again);
+    } catch (error) {
+      setBoardAsk(null);
+      setStartProblem(ajoErrorMessage(error));
+    } finally {
+      setBoardBusy(false);
     }
   };
   const doStart = async (confirmSmaller: boolean) => {
@@ -84,7 +107,7 @@ export default function GroupOverviewPage() {
           {smaller ? (
             <div className="mt-3 space-y-2">
               <p className="text-sm text-success-strong">{smaller}</p>
-              <div className="flex gap-2"><Button color="green" onClick={() => doStart(true)} loading={start.isPending}>Start with {group.activeParticipants} people</Button><Button variant="default" onClick={() => setSmaller(null)}>Wait for more</Button></div>
+              <div className="flex gap-2"><Button color="green" onClick={() => requestStart(true)} loading={start.isPending}>Start with {group.activeParticipants} people</Button><Button variant="default" onClick={() => setSmaller(null)}>Wait for more</Button></div>
             </div>
           ) : noOneApproved ? (
             <div className="mt-3 space-y-2">
@@ -95,7 +118,7 @@ export default function GroupOverviewPage() {
               </div>
             </div>
           ) : (
-            <Button className="mt-3" color="green" onClick={() => doStart(false)} loading={start.isPending}>Start the circle</Button>
+            <Button className="mt-3" color="green" onClick={() => requestStart(false)} loading={start.isPending}>Start the circle</Button>
           )}
           {refusal(startProblem)}
           {startProblem && /draw/i.test(startProblem) && (
@@ -137,7 +160,7 @@ export default function GroupOverviewPage() {
           <Button component={Link} href={`/dashboard/ajo/${groupId}/order`} variant="default" size="xs" className="mt-2">{group.orderMethod === 'ADMIN_SET' ? 'Set the order' : 'Go to Payout order'}</Button>
         </section>
       )}
-      {group.model === 'ROTATING_POT' && <BoardSettingCard groupId={groupId} canChange={can} />}
+      {group.model === 'ROTATING_POT' && <BoardSettingCard groupId={groupId} canChange={can} groupStatus={group.status} />}
 
       {can && (group.status === 'DRAFT' || group.status === 'OPEN' || group.status === 'ACTIVE') && (
         <div className="flex flex-wrap gap-2">
@@ -145,6 +168,18 @@ export default function GroupOverviewPage() {
           <Button variant="subtle" color="red" onClick={() => setCancelling(true)}>Cancel this circle</Button>
         </div>
       )}
+
+      <Modal opened={boardAsk !== null} onClose={() => setBoardAsk(null)} title="The Circle board is off" centered>
+        <div className="space-y-3">
+          <p className="text-sm text-ink-soft">Members will not see each other’s progress. You can turn the board on instantly only until the circle starts; after that a change needs 7 days’ notice.</p>
+          <p className="text-sm text-ink-muted">A person’s name shows on the board only after they accept rules that include it; until then they appear as “Member 3”.</p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="default" onClick={() => setBoardAsk(null)}>Cancel</Button>
+            <Button variant="default" onClick={() => { const again = boardAsk?.confirmSmaller ?? false; setBoardAsk(null); void doStart(again); }}>Start without the board</Button>
+            <Button color="green" onClick={turnBoardOnThenStart} loading={boardBusy}>Turn it on, then start</Button>
+          </div>
+        </div>
+      </Modal>
 
       <ActionDialog opened={cancelling} onClose={() => setCancelling(false)} title="Cancel this circle" color="red" confirmLabel="Cancel the circle" reasonMin={10} reasonLabel="Why is it being cancelled" successMessage="The circle was cancelled."
         summary="Cancelling stops the circle for everyone. Money already recorded stays on the record; nothing is deleted." onConfirm={({ reason }) => ajoStaffApi.cancelGroup(groupId, reason)} />
@@ -172,7 +207,10 @@ function EditSettings({ open, onClose, groupId }: { open: boolean; onClose: () =
     setContribution((Number(group.contributionKobo) / 100).toFixed(2));
     setMax(group.maxParticipants);
     setCutoff(group.cutoffTime);
-    setStartDay(String(group.startDate).slice(0, 10));
+    // A start date that has already passed cannot be used: offer today so saving is one click.
+    const saved = String(group.startDate).slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    setStartDay(saved < today && (group.status === 'DRAFT' || group.status === 'OPEN') ? today : saved);
     setOrderMethod(group.orderMethod);
     setPhone(group.requirePhoneConfirm);
     setProblem(null);

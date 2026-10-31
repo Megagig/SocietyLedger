@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { Button } from '@mantine/core';
+import { Button, Checkbox } from '@mantine/core';
 import { useAjoAccess } from '@/components/ajo/AjoGate';
 import { AjoEmpty, AjoError, AjoLoading } from '@/components/ajo/AjoStates';
 import { DEFAULT_RULES, RulesFields, rulesFormToInput, type RulesFormValues } from '@/components/ajo/RulesFields';
@@ -22,8 +22,12 @@ export default function GroupRulesPage() {
   const { manage } = useAjoCan();
   const versions = useRuleVersions(groupId);
   // Only a rotating pot has a Circle board, so only a rotating pot is asked whether its members may see each other.
-  const rotating = useGroupDetail(groupId).data?.model !== 'COLLECTOR_THRIFT';
-  const publish = useAjoAction((rules: Parameters<typeof ajoStaffApi.publishRules>[1]) => ajoStaffApi.publishRules(groupId, rules));
+  const detail = useGroupDetail(groupId).data;
+  const rotating = detail?.model !== 'COLLECTOR_THRIFT';
+  // Before the circle starts nobody is paying under the rules yet, so a change can take effect straight away if the admin chooses.
+  const canApplyNow = detail?.status === 'DRAFT' || detail?.status === 'OPEN';
+  const [applyNow, setApplyNow] = useState(false);
+  const publish = useAjoAction((input: { rules: Parameters<typeof ajoStaffApi.publishRules>[1]; immediate: boolean }) => ajoStaffApi.publishRules(groupId, input.rules, { immediate: input.immediate }));
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<RulesFormValues>(DEFAULT_RULES);
   const [problem, setProblem] = useState<string | null>(null);
@@ -33,7 +37,7 @@ export default function GroupRulesPage() {
     if ('error' in built) return setProblem(built.error);
     setProblem(null);
     try {
-      await publish.mutateAsync(built.input);
+      await publish.mutateAsync({ rules: built.input, immediate: canApplyNow && applyNow });
       toast.success('A new version of the rules was published. Members accept it before it binds them.');
       setEditing(false);
     } catch (error) {
@@ -63,6 +67,14 @@ export default function GroupRulesPage() {
       {editing && (
         <section className="space-y-4 rounded-lg border border-line p-5">
           <RulesFields value={form} onChange={setForm} rotating={rotating} />
+          {canApplyNow && (
+            <Checkbox
+              label="Take effect now, without the usual 7 days’ notice"
+              description="Only possible before the circle starts, while nobody is paying under the rules. Members are told. Leave it off to give them the notice period."
+              checked={applyNow}
+              onChange={(e) => setApplyNow(e.currentTarget.checked)}
+            />
+          )}
           {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
           <div className="flex gap-2"><Button color="green" onClick={submit} loading={publish.isPending}>Publish</Button><Button variant="default" onClick={() => setEditing(false)}>Cancel</Button></div>
         </section>

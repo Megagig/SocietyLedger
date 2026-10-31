@@ -213,6 +213,13 @@ suite('Ajo groups, rules, schedules, order and collectors (database)', () => {
       await expect(members.addMember({ associationId: A, groupId: g.id, memberId: member.id, actorUserId: officer.id })).resolves.toBeTruthy();
     });
 
+    it('turns the Circle board on by default for a rotating pot, and leaves it off for collector thrift', async () => {
+      const pot = await newGroup({ fields: { model: 'ROTATING_POT', frequency: 'MONTHLY', contributionKobo: 5_000_000, cycleLength: null, maxParticipants: 3 } });
+      const collector = await newGroup();
+      expect((await rules.listRuleVersions(prisma, pot.id))[0].rules.memberVisibility).toBe('FULL');
+      expect((await rules.listRuleVersions(prisma, collector.id))[0].rules.memberVisibility).toBe('OFF');
+    });
+
     it('refuses a start date that has passed', async () => {
       await expect(groups.createGroup({ associationId: A, actorUserId: officer.id, now: new Date('2027-04-01T10:00:00Z'), fields: { name: 'Late', model: 'COLLECTOR_THRIFT', frequency: 'DAILY', contributionKobo: 100_000, startDate: START, cycleLength: 10, maxParticipants: 5 } })).rejects.toMatchObject({ code: 'START_DATE_PASSED' });
     });
@@ -358,6 +365,40 @@ suite('Ajo groups, rules, schedules, order and collectors (database)', () => {
 
   // ----------------------------------------------------------------------------------------------------------------------------
   describe('rules and acceptance (T3.2)', () => {
+    describe('rules that take effect now, before the circle starts', () => {
+      const inForce = (groupId: number, at: Date) => prisma.ajoGroupRuleVersion.findFirst({ where: { groupId, effectiveFrom: { lte: at } }, orderBy: { version: 'desc' } });
+
+      it('takes effect at once while the circle is open, with no notice period', async () => {
+        const g = await openedGroup({ fields: { model: 'ROTATING_POT', frequency: 'MONTHLY', contributionKobo: 5_000_000, cycleLength: null, maxParticipants: 5 }, rules: { memberVisibility: 'OFF' } });
+        const done = await rules.publishRuleVersion({ associationId: A, groupId: g.id, actorUserId: officer.id, rules: { memberVisibility: 'FULL' }, immediate: true, now: NOW });
+        expect(done.effectiveFrom.getTime()).toBe(NOW.getTime());
+        expect((await inForce(g.id, NOW))?.memberVisibility).toBe('FULL');
+        // Without the option the notice period still applies.
+        const waiting = await rules.publishRuleVersion({ associationId: A, groupId: g.id, actorUserId: officer.id, rules: { graceDays: 6 }, now: NOW });
+        expect(waiting.effectiveFrom.getTime()).toBe(NOW.getTime() + 7 * DAY);
+        expect((await inForce(g.id, NOW))?.version).toBe(done.version);
+      });
+
+      it('brings a waiting version forward instead of publishing a second one, so there is never more than one waiting', async () => {
+        const g = await openedGroup({ fields: { model: 'ROTATING_POT', frequency: 'MONTHLY', contributionKobo: 5_000_000, cycleLength: null, maxParticipants: 5 }, rules: { memberVisibility: 'OFF' } });
+        const waiting = await rules.publishRuleVersion({ associationId: A, groupId: g.id, actorUserId: officer.id, rules: { memberVisibility: 'FULL', graceDays: 5 }, now: NOW });
+        expect(waiting.effectiveFrom.getTime()).toBeGreaterThan(NOW.getTime());
+        expect((await inForce(g.id, NOW))?.version).toBe(1);
+
+        const forward = await rules.publishRuleVersion({ associationId: A, groupId: g.id, actorUserId: officer.id, rules: { memberVisibility: 'FULL' }, immediate: true, now: NOW });
+        expect(forward.version).toBe(waiting.version);
+        expect((await inForce(g.id, NOW))).toMatchObject({ version: waiting.version, memberVisibility: 'FULL', graceDays: 5 });
+        expect(await prisma.ajoGroupRuleVersion.count({ where: { groupId: g.id } })).toBe(2);
+        expect((await audits('AJO_RULES_BROUGHT_FORWARD')).length).toBeGreaterThan(0);
+      });
+
+      it('is refused once the circle is running: a change then waits out its notice period', async () => {
+        const g = await openedGroup();
+        await prisma.ajoGroup.update({ where: { id: g.id }, data: { status: 'ACTIVE' } });
+        expect(await codeOf(rules.publishRuleVersion({ associationId: A, groupId: g.id, actorUserId: officer.id, rules: { graceDays: 6 }, immediate: true, now: NOW }))).toBe('IMMEDIATE_NOT_ALLOWED');
+      });
+    });
+
     it('keeps a person pending until the rules are accepted, by the member themselves', async () => {
       const g = await openedGroup();
       const { member, membership, approval } = await join(g.id, { withUser: true, accept: false });
