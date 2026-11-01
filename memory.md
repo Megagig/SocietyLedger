@@ -1,47 +1,66 @@
-# Memory: Thrift/Ajo, T11 docs, standalone-group alignment, payments, payout order (2026-10-30)
+# Memory: T12 hardening, performance caching, and the production fixes after the first real deploy (2026-10-31)
 
-Last updated: 2026-10-30
+Last updated: 2026-10-31
 
-> Replaces the earlier "T8 mobile follow-ups and transparency work" memory (that work is in `context/progress-tracker.md` and `context/thrift-ajo-spec.md`). No secrets here. Nothing below was run in a browser or on a phone unless it says so.
+> Replaces the 2026-10-30 memory (Thrift/Ajo T11 docs, standalone groups, payments, payout order). That work is recorded in `context/progress-tracker.md` and git history. No secrets here (a deploy secret was pasted in chat once; its value is deliberately not kept).
 
-## What was built (all recorded in `context/progress-tracker.md`)
+## What was built
 
-- **T11 Documentation:** 31 pages under `apps/docs/content/docs/ajo-thrift/` (six sidebar groups), registered in `scripts/sitemap-data.ts`; demo seed `apps/api/prisma/seeds/demo-ajo.seed.ts` (+ `_demo-stubs.ts`), screenshot flow `scripts/screenshots/flows/ajo-thrift.ts` (~42 shots), reference pages regenerated. Review fixes done. Docs checks and build pass.
-- **Account kind in the session (Track T-A):** API puts `kind` (ASSOCIATION | THRIFT_GROUP) on `req.tenant` (login and `/auth/me`); web `user.association.kind`, mobile `SessionUser.tenantKind`; `useAjoNav().thriftOnly` is known from first render (no association flash). Mobile: landing = Thrift tab, route guard `thriftRouteGuard.ts`, Circle tab for members AND officers of a rotating pot (`useRotatingCircles`, `mergeRotatingCircles`), thrift-only person screen. Web: `ThriftHome` (the dashboard for a standalone group; **no redirect**), `thriftScope.ts` route allow-list, trimmed Settings, own sidebar (Thrift Home, My Thrift with circles and boards, My Payments, Payments with waiting badge, People, Settings), breadcrumbs say "Thrift circles / <name>".
-- **Roles in a standalone group:** `apps/api/src/lib/thrift-roles.ts`; roles carry no `welfare.`/`cooperatives.` permissions (migration `20261122_thrift_group_role_permissions`), roles list hides treasurer / financial_secretary / election_committee and names Officer / Collector.
-- **Screens for every API (Track T-A TA.4/5/6):** member cases + "Add your explanation", My payouts, officer prepare-all payouts, "Check again" on a turned-down payout check, on-time record column, send waiting receipts, per-person Circles card (`GET /ajo/members/:memberId/circles`), 83 server messages now say "circle", invitation email worded for standalone groups.
-- **Payments (Track T-B):** `POST /ajo/groups/:id/contributions/record-received` (confirm permission; bank reference + note required; own payment refused; marks `selfConfirmed`, label `recordedByOfficer`), `GET /ajo/payments/waiting` and `/waiting/count`; web `/dashboard/ajo/payments`, `/dashboard/my-thrift/payments`, `RecordPaymentDialog`, shared `ConfirmPaymentDialog`; mobile `manage/thrift/payments.tsx`, `money/thrift/payments.tsx`, `RecordPaymentSheet`. Collector role unchanged by owner decision (records cash; officer handover count confirms it).
-- **Payout order (Track T-C):** migration `20261123_ajo_order_method` (`AjoOrderMethod` RANDOM_DRAW | ADMIN_SET, `ajo_groups.order_method`, order event type ADMIN_SET); `setOrderByAdmin`, `verifyOrder`, pure `verifyDraw` (new draws save `atRiskMembershipIds`); order response has `current/stale/staleBecause/canDraw/canSet/method/madeBy/reason/verifiable/pendingPeople`; web+mobile: method choice (wizard, Edit settings), Payout order page with out-of-date notice and **Draw again**, admin editor (move up/down + required reason), member `PayoutOrderCard` with **Verify this draw**; warning before drawing while people are unapproved.
-- **Smaller fixes:** rules publish sent flat body (now `{ rules }`); start-date change in Edit settings; Circle board card on the circle overview (web+mobile) with on/off and "turns on <date>", and the member "not on yet" message now carries the date; collector/officer checkbox `e.currentTarget` bug in admin forms.
+**Security review (T12.1, partly):** `docs/thrift/security-review.md`. One fix: an officer cannot waive their own late fee while another officer exists (`ajo-latefee.service.ts`, test in `ajo-latefees.integration.test.ts`). Open findings F-1 (check production is not `FEATURE_FLAG_MODE=shadow`; it is `enforce`/empty), F-3 (no password re-check on payout-account change/reveal), F-4 (idempotency replay does not check who asks). **T12.2 failure drills and T12.3 pilot are NOT done.**
 
-## Decisions made (owner-approved)
+**Performance caching (merged: PR #33 into Thrift-Add-on, then develop, then main):**
+- `packages/query` (`@societyledger/query`): pure logic, NO React (web/admin are React 18, mobile React 19; react-query installs once per React version, so a shared hook binds to the wrong React). Keys always start with the association; freshness table (static 30 min, directory 5, aggregate 90 s, money 30 s + recheck on open); deny-by-default persistence; named invalidation events; client factory on `query-core`.
+- Web: TanStack Query v4 to v5; one query client per signed-in identity (`lib/query/QueryBoundary.tsx`), IndexedDB persistence, `useScopedQuery`, dashboard/settings/Members migrated, Members prefetch, "Updating / Offline · last updated" line (`FreshnessNote`). Mobile: shared rules, `lib/queryClient.ts`, cache wiped on any move into `unauthenticated`. Admin: shared client, react-query pinned to the same version.
+- API: gzip, `Cache-Control` private no-cache reads / no-store writes, payment callbacks clear dashboard+report caches via `syncPaymentEffects`, 30 s circle-board cache (`modules/ajo/ajo-cache.ts`, versioned per association, bumped before a writer's response and by the jobs), migration `20261124_ajo_waiting_payments_index`, DB pool `connection_limit=20&pool_timeout=20` in `docker-compose.dokploy.yml`.
+- Docs: `CACHING.md`, `docs/caching/audit.md`, context files, tracker, ui-registry.
 
-- "Circle" is the main word, "Thrift" the product area; a standalone group has its own home, menus, People, Settings and wording; association with the add-on keeps the Circle board under My thrift.
-- Payments: one Payments entry per role; officers who can confirm may record a payment already seen at the bank (one step, guardrails above); manage-only officers' form records it as Reported.
-- Payout order: automatic recorded draw stays the default and untouched; admin-set is a second per-circle option, approve-payout permission only, reason 10+ characters, locked once the circle starts, same out-of-date rule.
-- Rule changes (including the board on/off) need 7 days' notice; owner was offered an instant switch for open circles and has not decided.
+**Fixes found testing payments and after deploy (all on `main`, deployed and confirmed working by the owner):**
+- `apiFetch` sent no token (HttpOnly cookie unreadable), so the API used a browser-wide cookie holding whoever signed in last: `TENANT_MISMATCH` for anyone with accounts in two groups. `utils/api.ts` now reads this tab's `auth-storage` token first.
+- Plans page for standalone thrift groups shows the Ajo tiers first (`?addons=` pre-ticks checkout); trial button says Subscribe.
+- Payment return page stuck on "Verifying" in development (a `started` ref + React StrictMode double effect): `components/subscription/VerifyPayment.tsx`.
+- CORS: `Idempotency-Key` and `Cache-Control` request headers were blocked. Allowed list in `apps/api/src/lib/cors-headers.ts`; `Cache-Control` request header removed from two web calls; guard test scans all web header names.
+- Mobile Profile -> About shows version + build (`src/lib/appVersion.ts`; set `version` in `apps/mobile/app.config.ts` line ~136, package.json's copy is unused).
+- "Not part of your plan" pop-up on every page for associations without Ajo: the sidebar "payments waiting" call is now only made when `useAjoNav().available`, and a refusal is quiet.
+- 429s: API never trusted its proxy, so every visitor shared one `req.ip` bucket. `app.set('trust proxy', trustProxyHops())` (1 in production, no Cloudflare in front; `TRUST_PROXY_HOPS` overrides). Per-association limiter now reads `tenantId`.
+- Breadcrumbs: six folder-only sections shown as text (`lib/breadcrumb-paths.ts`, test checks against disk). Service worker `staleWhileRevalidate` now answers `Response.error()` when nothing is saved and the network fails.
+
+## Decisions made
+
+- The shared query package must stay React-free; each app wraps it in its own few-line hook.
+- Persistence is opt-in per domain in `packages/query/src/policy.ts`; payments, payouts, bank details, proofs, links are never saved on a device. Money screens keep the old broad refresh; only dashboard, settings, Members and the board moved to the new keys.
+- Board cache: never cache one person's own money (savings, payments, contributions).
+- Production API build is deliberately lenient: `tsconfig.prod.json` has `strict:false` and the Dockerfile ends the build with `|| true`, so ~86 Zod "optional but required" type errors print in the Dokploy log on every deploy. Identical count (86) before and after this work; not a failure.
+- `docker-entrypoint.sh` runs `prisma migrate deploy` and the seeds on EVERY container start (no manual migration step). A failing migration stops the API from starting: back up first. Ajo tiers are seeded once at 3,000 / 8,000 / 20,000 naira per month (Enterprise hidden).
+- Ajo is an add-on, not part of Enterprise; the admin "Change plan" dialog only swaps the plan (no billing cycle). To set a yearly cycle use admin Subscriptions -> association -> Activate a plan.
 
 ## Problems solved (do not repeat)
 
-- Dev DB has drift: apply migrations with `docker exec -i societyledger-postgres psql -U user -d societyledger < migration.sql` (needs `-i`) then `prisma migrate resolve --applied <name>`; scratch DB `sl_ajo_test` with `migrate deploy`. Run Ajo tests with `AJO_TEST_DATABASE_URL` (the dev URL with the database name swapped, never printed) and `--forceExit --runInBand`.
-- `prisma generate` hits EPERM while the user's dev API runs; the types still regenerate, the engine file does not.
-- The Windows shell mangles big heredocs and escaped regexes: write patch scripts with the Write tool; page `.mdx` alt text must not contain double quotes.
-- Docs link checker validates against `scripts/sitemap-data.ts`, not the files on disk.
-- A web client test that mocks `@/lib/axios` and asserts the request body catches wrong-shape bugs (found the rules publish bug).
+- `pnpm install --filter ...` on this Windows machine leaves EMPTY package folders under `node_modules/.pnpm` (web could not find `next`, API could not find `semver`). Only ever run a full `pnpm install`; repair by deleting the empty folders and a full `pnpm install --frozen-lockfile --prefer-offline`. A package-integrity check: `pnpm store status`.
+- Never `git add apps/web` or `git add .`: it swept the owner's uncommitted rules-acceptance work into a caching commit. Stage files by name. Check `git branch --show-current` before committing: the owner moves between Thrift-Add-on, develop and main; an earlier message wrongly said "Thrift-Add-on" when commits were on main.
+- Shell quoting: backticks and `$use`/regex backslashes get eaten inside `node -e "..."` and heredocs; write scripts/tests with the file tool.
+- A jest test that mocks `Response` fails under jsdom (no `Response`): return `{ status: 200 } as Response`. Mocks in `jest.mock` factories cannot see later `const`s (use the imported module and mutate it).
+- The same email can be several accounts (one per association); logins are tenant-scoped, so never assume one user per email.
+- Scratch DB for API integration tests is `sl_ajo_test`; run Ajo suites with `AJO_TEST_DATABASE_URL` (dev URL with the db name swapped, never printed) and `--forceExit --runInBand`.
+- Headless Chromium via `playwright-core` (in the pnpm store) can drive the dev server with stubbed `**/api/**` routes; used to reproduce the pop-up, the CORS block and the payment page.
 
 ## Current state
 
-- Last full runs: API Ajo + RBAC suites 871 pass (47 suites incl. integration); web 53; mobile Ajo+session 113; docs checks and build pass. Pre-existing, untouched: 3 mobile member-row suites and 2 multi-tenancy suites fail identically without these changes.
-- **Not verified live:** every screen above in a browser or on a phone; docs screenshots for payments, payout order, record-a-payment, board card, person Circles card; a standalone demo tenant for screenshots does not exist.
+- Branch `main` = `origin/main`, clean, deployed to production and working. `develop` and `Thrift-Add-on` do NOT have the last four commits (`91b09f4` pop-up, `fce9496` trust proxy, `0965cca` per-association limit, `9850f53` breadcrumbs + service worker).
+- Tests at last run: package 26; web 106 (type-check 0, build passes); mobile 1,199 (only `manage/index.test.tsx` fails, pre-existing); API Ajo suites ~866 plus the new cors/http-cache/trust-proxy/rate-limit/payment-sync tests. Two API multi-tenancy suites fail as before; `billing/default-plans` failed once in a full run, not reproduced.
+- NOT verified by a person: any new screen on a phone; Slow 3G timings and request counts; airplane mode / reconnect; switching association; a brand-new real Paystack payment through the fixed return page; the owner's live money check (a payment completing and the balance updating at once); the rules-acceptance feature (it came in with the owner's "Finalised the performance caching" commit and was not reviewed by me, though its tests pass).
+- Savio 96 Alumni Association (association 4, production) is on Enterprise; the owner said they would grant it the Ajo add-on themselves.
 
 ## Next session starts with
 
-1. Ask the owner what they want for the mobile **Manage** and **Circle** tabs (see open question), then run `/architect` again. Do not build before they confirm.
-2. Have the owner test: start the Opemulero circle (approve everyone, set or draw the order, start), report a transfer as a member, confirm as admin, record a payment as officer, check the Payout order section as a member, and the board turn-on date (6 Nov 2026 for version 2).
+1. Ask the owner whether to cherry-pick the four post-merge fixes onto `develop` and `Thrift-Add-on` (they are only on `main`). Do not touch those branches unasked.
+2. Then T12.2 failure-mode drills (duplicate request, partial payment, reversal, void payout, add-on expiry, stale draw, roster change after the order is set; one test each, ledger reconciles, plus an officer runbook in `docs/thrift/failure-drills.md`), then T12.3 pilot prep (`docs/thrift/pilot-plan.md`). Re-run `/architect` first if the owner wants changes.
+3. Owner to do (not me): rotate `REVALIDATE_SECRET` (it was pasted in chat), confirm Redis/`COOKIE_DOMAIN`/Paystack callback+webhook in production, and make one small real payment to watch the full return flow.
 
 ## Open questions
 
-- **Mobile Manage and Circle tabs:** the owner said my reading was wrong and halted it. The Manage tab shows an empty "Officer hub, arrives in the next releases" for someone who holds a manage-list permission but no hub entry (tab list `MANAGE_TAB_PERMISSIONS` and the hub's `can*` checks disagree); the Circle tab shows nothing when the board is off. The owner has not said what they want.
-- Instant (no-notice) Circle board switch for an open circle: undecided.
-- Member names on the payout order are full names (the Circle board uses first name and initial): confirm which is wanted.
-- F7 (standalone sign-up closed by default) and F8 (Enterprise price) remain "owner to confirm".
+- Mobile Manage and Circle tabs: the owner said my earlier reading was wrong and halted it; what they want is still unknown (Manage shows an empty "Officer hub" for someone with a manage-list permission but no hub entry; Circle shows nothing when the board is off).
+- Instant (no-notice) Circle board switch for an open circle: undecided. Payout-order names: full names vs first name and initial: undecided.
+- Owner decisions still open: F6 (what each Ajo tier includes), F7 (standalone sign-up ships closed by default), F8 (Enterprise price placeholder).
+- Admin "Change plan" dialog: show both monthly and yearly prices in the labels (safe), or add a cycle choice (changes live subscription behaviour; needs a decision).
+- Whether to turn `strict` on in the production API build (needs the ~86 Zod type errors fixed first; not needed for anything deployed).
+- Known follow-ups not done: ~200 older web query keys still use the old shape; ~50 web files fetch in `useEffect` outside the cache; every board read repeats a ~13-query preamble (121 queries to open a 3-person circle uncached); about 160 unbounded `findMany` calls; `lib/prisma.ts` retries a failed connection for up to 12 s; security findings F-3 and F-4.
