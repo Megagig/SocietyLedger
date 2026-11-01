@@ -95,3 +95,11 @@ All 1,180 before/after screenshot pairs, and side-by-side images for the pages t
 - Tablets now have the rail, not the phone drawer, so the tablet rows of the earlier visual diff are out of date.
 
 **Still not verified.** A real iPhone or Android phone; Safari/WebKit; casting a vote and paying dues (section 5). The before/after screenshots were not regenerated after the rail and money changes.
+
+### Final verification (2026-11-01, on a fresh production build)
+- **Overflow sweep, all 236 routes at 320/375/768/1024/1440px:** 1,174 of 1,177 route-widths passed (three page loads were aborted). The three real overflows it found were fixed: `finance/overdue` and `finance/reminders` (+3px, cramped two-column stat cards) and `welfare` (+9px: the fund balance is now shown in full, ₦150,000.00, and its row had no room). A second sweep over those pages and their neighbours (welfare, every finance page, members, Ajo, pricing, including the pricing loads that had aborted) passed 230 of 230 route-widths. **One full 236-route sweep was not rerun after those last fixes** (it takes about 55 minutes).
+- **Rail:** 31/31. Labels are now hidden to the eye with a 1px clip (still read by screen readers), so each icon is named by its own text and badge; this removed the one extra axe `label-content-name-mismatch` the first version of the rail had added (counts are back to the original build's: 4 and 4 on the dashboard, 1 and 1 on Members).
+- **Drawer (phones):** 30/30. **Device and installability:** 28/28.
+- **End-to-end flows:** 33/33 passed on an earlier build of this branch (before the rail-label and the three overflow fixes) and were not rerun afterwards. The 3 voting steps are skipped (no eligible voter in the seed).
+- **Typecheck, 20 suites, 111 unit tests:** pass.
+- **Unexplained:** `node_modules/.pnpm` package folders went empty three times during this work, each time just before a rebuild; `pnpm repair:deps` fixed it every time. A watcher logged no occurrence during the 55-minute sweep or the last rebuild (which started from a freshly deleted build folder). Cause not found.

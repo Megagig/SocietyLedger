@@ -382,7 +382,6 @@ export function MemberSidebar() {
           <>
             <button
               title={item.label}
-              aria-label={item.label}
               onClick={() => { toggleExpanded(item.label); if (railNow()) setIsOpen(true); }}
               className={`
                 w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg sl-rail-item
@@ -395,11 +394,11 @@ export function MemberSidebar() {
             >
               <div className="flex items-center gap-3">
                 {item.icon}
-                <span className="sl-rail-hide font-medium">{item.label}</span>
+                <span className="sl-rail-label font-medium">{item.label}</span>
               </div>
               <div className="flex items-center gap-2">
                 {item.badge && (
-                  <span className="sl-rail-hide text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                  <span className="sl-rail-label text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                     {item.badge}
                   </span>
                 )}
@@ -435,7 +434,6 @@ export function MemberSidebar() {
           </>
         ) : (
           <Link
-            aria-label={`${item.label}${item.badge ? ` ${item.badge}` : ''}`}
             title={item.label}
             href={item.href || '#'}
             onClick={() => setIsOpen(false)}
@@ -450,10 +448,10 @@ export function MemberSidebar() {
           >
             <div className="flex items-center gap-3">
               {item.icon}
-              <span className="sl-rail-hide font-medium">{item.label}</span>
+              <span className="sl-rail-label font-medium">{item.label}</span>
             </div>
             {item.badge && (
-              <span className="sl-rail-hide text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+              <span className="sl-rail-label text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                 {item.badge}
               </span>
             )}

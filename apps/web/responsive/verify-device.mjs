@@ -136,13 +136,14 @@ if (process.argv.includes('--install')) {
   check('manifest: standalone, no orientation lock, theme and background colours', parsed.display === 'standalone' && !('orientation' in parsed) && /^#/.test(parsed.theme_color) && /^#/.test(parsed.background_color));
   const icons = parsed.icons || [];
   check('manifest: 192 and 512 icons, including maskable', ['192x192', '512x512'].every((s) => icons.some((i) => i.sizes === s)) && icons.some((i) => /maskable/.test(i.purpose || '')), `(${icons.length} icons)`);
-  let iconsOk = true; for (const i of icons) { const r = await page.request.get(new URL(i.src, page.url()).href); if (r.status() !== 200 || !/image\/png/.test(r.headers()['content-type'] || '')) iconsOk = false; }
+  const probe = (url) => page.evaluate(async (u) => { const r = await fetch(u, { cache: 'no-store' }); return { status: r.status, type: r.headers.get('content-type') || '' }; }, url);
+  let iconsOk = true; for (const i of icons) { const r = await probe(new URL(i.src, page.url()).href); if (r.status !== 200 || !/image\/png/.test(r.type)) iconsOk = false; }
   check('manifest: every icon file loads as a PNG', iconsOk);
   let errs = [];
   try { errs = (await cdp.send('Page.getInstallabilityErrors')).installabilityErrors.map((e) => e.errorId); } catch (e) { errs = ['(not available: ' + String(e.message).slice(0, 40) + ')']; }
   check('Chromium reports no installability errors', errs.length === 0, errs.length ? `(${errs.join(', ')})` : '');
-  const sw = await page.request.get('/sw.js');
-  check('service worker file is served', sw.status() === 200 && /javascript/.test(sw.headers()['content-type'] || ''));
+  const sw = await probe('/sw.js');
+  check('service worker file is served', sw.status === 200 && /javascript/.test(sw.type));
   await ctx.close();
 }
 

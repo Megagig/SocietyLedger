@@ -920,7 +920,6 @@ export function AdminSidebar() {
           <>
             <button
               title={item.label}
-              aria-label={item.label}
               onClick={() => { toggleExpanded(item.label); if (railNow()) setIsOpen(true); }}
               className={`
                 w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg sl-rail-item
@@ -933,7 +932,7 @@ export function AdminSidebar() {
             >
               <div className="flex items-center gap-3">
                 {item.icon}
-                <span className="sl-rail-hide font-medium">{item.label}</span>
+                <span className="sl-rail-label font-medium">{item.label}</span>
               </div>
               <IconChevronDown
                 size={16}
@@ -970,7 +969,7 @@ export function AdminSidebar() {
                         <span>{child.label}</span>
                       </div>
                       {child.comingSoon && (
-                        <span className="sl-rail-hide text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                        <span className="sl-rail-label text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                           Soon
                         </span>
                       )}
@@ -982,7 +981,6 @@ export function AdminSidebar() {
           </>
         ) : (
           <Link
-            aria-label={`${item.label}${item.badge ? ` ${item.badge}` : ''}`}
             title={item.label}
             href={item.comingSoon ? '#' : (item.href || '#')}
             onClick={(e) => {
@@ -1002,10 +1000,10 @@ export function AdminSidebar() {
           >
             <div className="flex items-center gap-3">
               {item.icon}
-              <span className="sl-rail-hide font-medium">{item.label}</span>
+              <span className="sl-rail-label font-medium">{item.label}</span>
             </div>
             {(item.comingSoon || item.badge) && (
-              <span className="sl-rail-hide text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+              <span className="sl-rail-label text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                 {item.badge || 'Soon'}
               </span>
             )}

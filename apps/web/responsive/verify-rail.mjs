@@ -31,20 +31,22 @@ for (const w of [768, 820, 1024, 390]) {
 
   if (w >= 768 && w < 1024) {
     check(`${tag}: sidebar is a 72px rail`, (await width(page)) === 72, `(${await width(page)}px)`);
-    check(`${tag}: rail shows icons only (no "Members" label)`, !(await labelVisible(page, 'Members')));
+    // A label is hidden to the eye when it is clipped to about 1px (it stays in the page so screen readers still read it).
+    const box = await page.locator('#app-sidebar').getByText('Members', { exact: true }).first().boundingBox();
+    check(`${tag}: rail shows icons only (the "Members" label is clipped to 1px)`, !box || (box.width <= 2 && box.height <= 2), box ? `(${Math.round(box.width)}x${Math.round(box.height)})` : '');
     check(`${tag}: no bottom navigation on a tablet`, !bottomNav);
     const content = await page.locator('main').boundingBox();
     check(`${tag}: page content starts beside the rail`, content.x >= 70 && content.x <= 76, `(x=${Math.round(content.x)})`);
-    const named = await page.locator('#app-sidebar nav a[aria-label], #app-sidebar nav button[aria-label]').count();
-    check(`${tag}: every rail item has a name`, named >= 8, `(${named} named items)`);
-    const unnamed = await page.evaluate(() => [...document.querySelectorAll('#app-sidebar nav a, #app-sidebar nav button')].filter((e) => !e.getAttribute('aria-label') && !(e.textContent || '').trim()).length);
+    const named = await page.evaluate(() => [...document.querySelectorAll('#app-sidebar nav a, #app-sidebar nav button')].filter((e) => (e.textContent || '').trim()).length);
+    check(`${tag}: every rail item is named by its own text (hidden to the eye, read by screen readers)`, named >= 8, `(${named} named items)`);
+    const unnamed = await page.evaluate(() => [...document.querySelectorAll('#app-sidebar nav a, #app-sidebar nav button')].filter((e) => !(e.textContent || '').trim()).length);
     check(`${tag}: no unnamed item`, unnamed === 0, `(${unnamed})`);
     const small = await page.evaluate(() => [...document.querySelectorAll('#app-sidebar nav a, #app-sidebar nav button')].filter((e) => e.offsetParent !== null).filter((e) => { const r = e.getBoundingClientRect(); return r.width < 44 || r.height < 44; }).length);
     check(`${tag}: rail items are at least 44x44`, small === 0, `(${small} smaller)`);
     await page.screenshot({ path: path.join(out, `${tag}-rail.png`) });
 
     // Tapping an item that has sub-pages opens the full sidebar.
-    const parent = page.locator('#app-sidebar nav button[aria-label]').first();
+    const parent = page.locator('#app-sidebar nav button').first();
     await parent.click(); await page.waitForTimeout(500);
     check(`${tag}: tapping a parent item opens the full sidebar`, (await width(page)) === 288, `(${await width(page)}px)`);
     check(`${tag}: labels show when it is open`, await labelVisible(page, 'Members') || (await page.locator('#app-sidebar nav').innerText()).length > 40);
@@ -59,7 +61,7 @@ for (const w of [768, 820, 1024, 390]) {
     check(`${tag}: the menu button opens and closes it`, opened && (await width(page)) === 72);
 
     // A leaf item navigates and the sidebar stays a rail.
-    await page.locator('#app-sidebar nav a[aria-label="Members"]').first().click();
+    await page.locator('#app-sidebar nav a[href="/dashboard/members"]').first().click();
     await page.waitForURL(/\/dashboard\/members/, { timeout: 60000 }); await settle(page);
     check(`${tag}: a leaf item navigates and the rail stays a rail`, (await width(page)) === 72);
     check(`${tag}: no sideways scroll on Members`, (await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)) <= 1);

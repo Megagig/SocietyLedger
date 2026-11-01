@@ -228,58 +228,58 @@ export default function RemindersPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">With Balance</p>
-              <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              <p className="sl-stat-value font-bold text-gray-900 dark:text-white mt-1">
                 {summary?.totalMembers || 0}
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
               <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
-              <p className="text-lg sm:text-2xl font-bold text-orange-600 mt-1">
+              <p className="sl-stat-value font-bold text-orange-600 mt-1">
                 {formatNairaFull((summary?.totalOutstanding || 0))}
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-full">
               <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pending</p>
-              <p className="text-lg sm:text-2xl font-bold text-blue-600 mt-1">
+              <p className="sl-stat-value font-bold text-blue-600 mt-1">
                 {summary?.totalTransactions || 0}
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
               <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-          <div className="flex items-center justify-between">
+        <div className="sl-stat bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+          <div className="sl-stat-row flex items-center justify-between gap-2">
             <div>
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Overdue</p>
-              <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">
+              <p className="sl-stat-value font-bold text-red-600 mt-1">
                 {summary?.overdueTransactions || 0}
               </p>
             </div>
-            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-full">
+            <div className="shrink-0 p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-full">
               <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
             </div>
           </div>

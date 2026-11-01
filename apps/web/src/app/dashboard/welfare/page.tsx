@@ -282,8 +282,8 @@ export default function WelfareDashboardPage() {
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                   onClick={() => router.push(`/dashboard/welfare/social-funds?fundId=${fund.fundId}`)}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2">
                       <p className="font-medium text-gray-900 dark:text-white">
                         {fund.fundName}
                       </p>
@@ -295,7 +295,7 @@ export default function WelfareDashboardPage() {
                       {fund.contributorCount} contributors • {fund.pendingPayouts} pending
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 pl-2 text-right">
                     <p className="font-semibold text-green-600">
                       {formatCurrency(fund.currentBalance)}
                     </p>

@@ -423,6 +423,18 @@ main :is(dd, h1, h2, h3, h4) {
   #app-sidebar[data-open='false'] .sl-rail-hide {
     display: none;
   }
+  /* Labels and badges are hidden to the eye but still read out, so an icon-only item is named by its own text. */
+  #app-sidebar[data-open='false'] .sl-rail-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   #app-sidebar[data-open='false'] > div,
   #app-sidebar[data-open='false'] > nav {
     padding-left: 0.5rem;
