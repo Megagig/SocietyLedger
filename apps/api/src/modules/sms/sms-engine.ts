@@ -11,6 +11,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { sendSMS as providerSend, type SMSSendResult } from '../../lib/sms';
+import { isDemoAssociation } from '../../lib/demo';
 import { assertEnoughCredits, type Recipient } from './sms-rules';
 
 type Db = Prisma.TransactionClient;
@@ -160,6 +161,11 @@ export async function creditVerifiedPurchase(
 export async function dispatchMessages(input: DispatchInput): Promise<DispatchResult> {
   const { associationId, recipients, text, segments } = input;
   const credits = recipients.length * segments;
+
+  // Demo tenants never send real SMS and are never charged credits (lib/demo.ts)
+  if (await isDemoAssociation(associationId)) {
+    return { accepted: 0, credits: 0, messageIds: [], done: Promise.resolve({ sent: 0, failed: 0, refunded: 0 }) } as unknown as DispatchResult;
+  }
 
   const messageIds = await prisma.$transaction(async (tx) => {
     await reserveCredits(tx, associationId, credits, input.description, { campaignId: input.campaignId });

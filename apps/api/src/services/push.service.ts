@@ -14,6 +14,7 @@
  * tradeoff already used for email/SMS failures elsewhere in this codebase,
  * not a correctness issue (a dead token just gets caught on its next send).
  */
+import { withoutDemoUsers } from '../lib/demo';
 import cron from 'node-cron';
 import Expo, { ExpoPushMessage } from 'expo-server-sdk';
 import { prisma } from '../lib/prisma';
@@ -51,10 +52,14 @@ async function disableToken(expoPushToken: string): Promise<void> {
  * Sends one push message to every still-enabled device token registered for
  * the given users. Never throws.
  */
-export async function sendPushToUsers(userIds: number[], payload: PushPayload): Promise<void> {
-  if (userIds.length === 0) return;
+export async function sendPushToUsers(allUserIds: number[], payload: PushPayload): Promise<void> {
+  if (allUserIds.length === 0) return;
 
   try {
+    // Demo accounts never get real pushes (lib/demo.ts)
+    const userIds = await withoutDemoUsers(allUserIds);
+    if (userIds.length === 0) return;
+
     const tokens = await prisma.deviceToken.findMany({
       where: { userId: { in: userIds }, disabledAt: null },
       select: { expoPushToken: true },

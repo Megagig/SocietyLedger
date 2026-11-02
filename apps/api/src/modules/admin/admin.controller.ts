@@ -501,20 +501,22 @@ export class AdminController {
         totalRevenue,
         revenueThisMonth,
       ] = await Promise.all([
-        prisma.association.count(),
-        prisma.association.count({ where: { status: 'ACTIVE' } }),
-        prisma.association.count({ where: { status: 'SUSPENDED' } }),
-        prisma.user.count(),
-        prisma.member.count(),
+        prisma.association.count({ where: { isDemo: false } }),
+        prisma.association.count({ where: { isDemo: false, status: 'ACTIVE' } }),
+        prisma.association.count({ where: { isDemo: false, status: 'SUSPENDED' } }),
+        prisma.user.count({ where: { isDemo: false } }),
+        prisma.member.count({ where: { association: { isDemo: false } } }),
         prisma.userApproval.count({ where: { approvalStatus: 'pending' } }),
-        prisma.association.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-        prisma.association.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+        prisma.association.count({ where: { isDemo: false, createdAt: { gte: thirtyDaysAgo } } }),
+        prisma.association.count({ where: { isDemo: false, createdAt: { gte: sevenDaysAgo } } }),
         prisma.subscription.groupBy({
           by: ['status'],
+          where: { association: { isDemo: false } },
           _count: { status: true },
         }),
         prisma.association.groupBy({
           by: ['tier'],
+          where: { isDemo: false },
           _count: { tier: true },
         }),
         prisma.paymentHistory.aggregate({
@@ -601,12 +603,14 @@ export class AdminController {
       // Get subscription status distribution
       const subscriptionDistribution = await prisma.subscription.groupBy({
         by: ['status'],
+        where: { association: { isDemo: false } },
         _count: { status: true },
       });
 
       // Get tier distribution
       const tierDistribution = await prisma.association.groupBy({
         by: ['tier'],
+        where: { isDemo: false },
         _count: { tier: true },
       });
 
