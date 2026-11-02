@@ -47,8 +47,25 @@ export async function resetDemo(prisma: PrismaClient, opts: { dryRun?: boolean }
         const n = await tx.$executeRawUnsafe(`DELETE FROM ${q(table)} WHERE ${where}`);
         if (n) deleted[table] = (deleted[table] ?? 0) + n;
       };
+      // Some tables carry an association_id with no foreign key (onboarding, action logs, levy assessments...): FK-following cannot reach them,
+      // so they are swept by the ids of the demo tenants, captured before those tenants are deleted.
+      const demoIds = (await tx.$queryRawUnsafe<Array<{ id: number }>>('SELECT id FROM "associations" WHERE "is_demo" = true')).map((r) => r.id);
       await walk('associations', '"is_demo" = true', []);
       await walk('users', '"is_demo" = true', []);
+      if (demoIds.length) {
+        const loose = await tx.$queryRawUnsafe<Array<{ table_name: string }>>("SELECT table_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'association_id' AND table_name <> 'associations' GROUP BY table_name");
+        for (const { table_name: table } of loose) {
+          const list = demoIds.join(',');
+          if (opts.dryRun) {
+            const rows = await tx.$queryRawUnsafe<Array<{ n: bigint }>>('SELECT COUNT(*)::bigint AS n FROM ' + q(table) + ' WHERE association_id IN (' + list + ')');
+            const n = Number(rows[0]?.n ?? 0);
+            if (n > (deleted[table] ?? 0)) deleted[table] = n;
+          } else {
+            const n = await tx.$executeRawUnsafe('DELETE FROM ' + q(table) + ' WHERE association_id IN (' + list + ')');
+            if (n) deleted[table] = (deleted[table] ?? 0) + n;
+          }
+        }
+      }
       if (!opts.dryRun) await tx.$executeRawUnsafe(`DELETE FROM "system_seeds" WHERE "key" = 'demo' OR "key" LIKE 'demo:%'`);
       return deleted;
     },
