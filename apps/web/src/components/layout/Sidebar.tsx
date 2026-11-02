@@ -562,10 +562,22 @@ export function Sidebar() {
           permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
         },
         {
-          label: 'Savings Deposits',
+          label: 'Payment Requests',
           icon: <IconReceipt size={18} />,
-          href: '/dashboard/cooperatives/savings-deposits',
+          href: '/dashboard/cooperatives/payment-requests',
           permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+        },
+        {
+          label: 'Withdrawals',
+          icon: <IconCurrencyNaira size={18} />,
+          href: '/dashboard/cooperatives/withdrawals',
+          permission: [PERMISSIONS.COOPERATIVE_WITHDRAWAL_REVIEW, PERMISSIONS.COOPERATIVE_WITHDRAWAL_APPROVE, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE],
+        },
+        {
+          label: 'Setup',
+          icon: <IconSettings size={18} />,
+          href: '/dashboard/cooperatives/setup',
+          permission: PERMISSIONS.COOPERATIVE_MANAGE_TYPES,
         },
         {
           label: 'Loan Repayments',

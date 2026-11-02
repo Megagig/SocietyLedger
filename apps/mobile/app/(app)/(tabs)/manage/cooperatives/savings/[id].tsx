@@ -76,6 +76,9 @@ export default function SavingsAccountScreen() {
                 {availabilityLine(available, held)}
               </Text>
             ) : null}
+            <Button variant="ghost" size="sm" onPress={() => router.push(`/(app)/(tabs)/manage/cooperatives/cashbook?memberId=${account.memberId}` as never)} testID="account-cashbook">
+              View member cashbook
+            </Button>
           </View>
 
           <View className="flex-row gap-2">

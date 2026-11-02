@@ -14,6 +14,8 @@ export const savingsAccountStatusEnum = z.enum(['ACTIVE', 'DORMANT', 'CLOSED', '
 export const createSavingsAccountSchema = z.object({
   memberId: z.number().int().positive('Member ID is required'),
   accountType: savingsAccountTypeEnum.default('REGULAR'),
+  // The association's own account type. Left out, the association's first active type is used.
+  accountTypeId: z.number().int().positive().optional(),
   targetAmount: z.number().positive().optional(),
   monthlyContribution: z.number().positive().optional(),
   interestRate: z.number().min(0).max(100).optional(),
@@ -35,6 +37,7 @@ export const savingsAccountQuerySchema = z.object({
   limit: z.string().default('20'),
   memberId: z.string().optional(),
   accountType: savingsAccountTypeEnum.optional(),
+  accountTypeId: z.string().optional(),
   status: savingsAccountStatusEnum.optional(),
   search: z.string().optional(),
   sortBy: z.enum(['balance', 'openedAt', 'accountNumber']).default('openedAt'),
@@ -88,6 +91,7 @@ export const createLoanProductSchema = z.object({
   minGuarantors: z.number().int().min(0).max(10).default(1),
   maxLoanToSavingsRatio: z.number().min(0).optional(),
   lockSavings: z.boolean().optional(),
+  loanCategoryId: z.number().int().positive().nullable().optional(),
   gracePeriodDays: z.number().int().min(0).max(90).default(0),
   lateFeePercent: z.number().min(0).max(100).default(0),
   lateFeeFixed: z.number().min(0).default(0),
@@ -115,6 +119,7 @@ export const updateLoanProductSchema = z.object({
   minGuarantors: z.number().int().min(0).max(10).optional(),
   maxLoanToSavingsRatio: z.number().min(0).optional(),
   lockSavings: z.boolean().optional(),
+  loanCategoryId: z.number().int().positive().nullable().optional(),
   gracePeriodDays: z.number().int().min(0).max(90).optional(),
   lateFeePercent: z.number().min(0).max(100).optional(),
   lateFeeFixed: z.number().min(0).optional(),
@@ -145,6 +150,8 @@ export const createLoanApplicationSchema = z.object({
   guarantorIds: z.array(z.number().int().positive()).optional(),
   collateralDescription: z.string().max(500).optional(),
   collateralValue: z.number().positive().optional(),
+  // Required when the product's category is a goods (commodity) loan.
+  itemDescription: z.string().max(500).optional(),
 });
 
 export const updateLoanApplicationSchema = z.object({

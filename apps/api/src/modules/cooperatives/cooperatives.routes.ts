@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { cooperativesController } from './cooperatives.controller';
+import { cooperativeEnhancementsController } from './cooperative-enhancements.controller';
+import { cooperativeDepositCompat } from './cooperative-deposit-compat';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
 import { PERMISSIONS } from '../../lib/permissions';
@@ -136,31 +138,31 @@ router.post(
   '/savings-deposits',
   requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_DEPOSIT_OWN),
   receiptUpload.single('file'),
-  cooperativesController.createSavingsDeposit
+  cooperativeDepositCompat.create
 );
 
 router.get(
   '/savings-deposits',
   requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
-  cooperativesController.getSavingsDeposits
+  cooperativeDepositCompat.list
 );
 
 router.get(
   '/savings-deposits/:id/receipt',
   requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
-  cooperativesController.getSavingsDepositReceipt
+  cooperativeDepositCompat.receipt
 );
 
 router.post(
   '/savings-deposits/:id/approve',
   requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
-  cooperativesController.approveSavingsDeposit
+  cooperativeDepositCompat.approve
 );
 
 router.post(
   '/savings-deposits/:id/reject',
   requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE),
-  cooperativesController.rejectSavingsDeposit
+  cooperativeDepositCompat.reject
 );
 
 // ==========================================
@@ -364,5 +366,74 @@ router.post(
   requirePermission(PERMISSIONS.COOPERATIVE_LOANS_MANAGE),
   cooperativesController.processLoanRepayment
 );
+
+// ==========================================
+// COOPERATIVE ENHANCEMENTS
+// Officer-defined account types and loan categories, payment requests (one transfer, one proof, many lines) and two-stage withdrawals.
+// ==========================================
+
+const MEMBER_OR_OFFICER = [
+  PERMISSIONS.COOPERATIVE_VIEW_OWN,
+  PERMISSIONS.COOPERATIVE_SAVINGS_VIEW,
+  PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+  PERMISSIONS.COOPERATIVE_MANAGE_TYPES,
+];
+
+router.get('/account-types', requireAnyPermission(MEMBER_OR_OFFICER), cooperativeEnhancementsController.listAccountTypes);
+router.post('/account-types', requirePermission(PERMISSIONS.COOPERATIVE_MANAGE_TYPES), cooperativeEnhancementsController.createAccountType);
+router.put('/account-types/:id', requirePermission(PERMISSIONS.COOPERATIVE_MANAGE_TYPES), cooperativeEnhancementsController.updateAccountType);
+
+router.get('/loan-categories', requireAnyPermission([...MEMBER_OR_OFFICER, PERMISSIONS.COOPERATIVE_LOANS_VIEW, PERMISSIONS.COOPERATIVE_LOANS_MANAGE]), cooperativeEnhancementsController.listLoanCategories);
+router.post('/loan-categories', requirePermission(PERMISSIONS.COOPERATIVE_MANAGE_TYPES), cooperativeEnhancementsController.createLoanCategory);
+router.put('/loan-categories/:id', requirePermission(PERMISSIONS.COOPERATIVE_MANAGE_TYPES), cooperativeEnhancementsController.updateLoanCategory);
+
+router.post(
+  '/payment-requests',
+  requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_DEPOSIT_OWN),
+  receiptUpload.single('file'),
+  cooperativeEnhancementsController.createPaymentRequest
+);
+router.get(
+  '/payment-requests',
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
+  cooperativeEnhancementsController.listPaymentRequests
+);
+router.get(
+  '/payment-requests/:id/receipt',
+  requireAnyPermission([PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE, PERMISSIONS.COOPERATIVE_VIEW_OWN]),
+  cooperativeEnhancementsController.getPaymentReceipt
+);
+router.post('/payment-requests/:id/approve', requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE), cooperativeEnhancementsController.approvePaymentRequest);
+router.post('/payment-requests/:id/reject', requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE), cooperativeEnhancementsController.rejectPaymentRequest);
+
+router.get('/withdrawal-summary', requirePermission(PERMISSIONS.COOPERATIVE_WITHDRAW_OWN), cooperativeEnhancementsController.withdrawalSummary);
+router.post('/withdrawal-requests', requirePermission(PERMISSIONS.COOPERATIVE_WITHDRAW_OWN), cooperativeEnhancementsController.createWithdrawal);
+router.get(
+  '/withdrawal-requests',
+  requireAnyPermission([
+    PERMISSIONS.COOPERATIVE_WITHDRAW_OWN,
+    PERMISSIONS.COOPERATIVE_WITHDRAWAL_REVIEW,
+    PERMISSIONS.COOPERATIVE_WITHDRAWAL_APPROVE,
+    PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
+  ]),
+  cooperativeEnhancementsController.listWithdrawals
+);
+router.post('/withdrawal-requests/:id/cancel', requirePermission(PERMISSIONS.COOPERATIVE_WITHDRAW_OWN), cooperativeEnhancementsController.cancelWithdrawal);
+router.post('/withdrawal-requests/:id/review', requirePermission(PERMISSIONS.COOPERATIVE_WITHDRAWAL_REVIEW), cooperativeEnhancementsController.reviewWithdrawal);
+router.post('/withdrawal-requests/:id/approve', requirePermission(PERMISSIONS.COOPERATIVE_WITHDRAWAL_APPROVE), cooperativeEnhancementsController.approveWithdrawal);
+router.post('/withdrawal-requests/:id/reject', requirePermission(PERMISSIONS.COOPERATIVE_WITHDRAWAL_APPROVE), cooperativeEnhancementsController.rejectWithdrawal);
+
+router.get('/settings', requireAnyPermission([PERMISSIONS.COOPERATIVE_MANAGE_TYPES, PERMISSIONS.COOPERATIVE_WITHDRAW_OWN]), cooperativeEnhancementsController.getSettings);
+router.put('/settings', requirePermission(PERMISSIONS.COOPERATIVE_MANAGE_TYPES), cooperativeEnhancementsController.updateSettings);
+
+// A member's own cooperative pages. Officers open the same views for any member by id.
+router.get('/my-dashboard', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myDashboard);
+router.get('/my-transactions', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myTransactions);
+router.get('/my-cashbook', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myCashbook);
+router.get('/my-pending-payments', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myPendingPayments);
+router.get('/bank-accounts', requireAnyPermission([PERMISSIONS.COOPERATIVE_VIEW_OWN, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]), cooperativeEnhancementsController.bankAccounts);
+router.get('/members/:id/dashboard', requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE), cooperativeEnhancementsController.memberDashboard);
+router.get('/members/:id/cashbook', requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE), cooperativeEnhancementsController.memberCashbook);
+
 
 export default router;

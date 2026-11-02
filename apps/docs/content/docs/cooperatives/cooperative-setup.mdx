@@ -1,0 +1,44 @@
+---
+title: "Cooperative setup: account types and loan categories"
+description: "Create the savings types and loan categories your members see, and choose how withdrawals are approved."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cooperatives/setup", "/manage/cooperatives/setup"]
+status: published
+lastVerified: "2026-11-02"
+related: ["/docs/cooperatives/approving-withdrawals", "/docs/cooperatives/loan-products", "/docs/cooperatives/approving-savings-deposits"]
+---
+
+Nothing about your cooperative's savings types is fixed. You create the types your members use ("Monthly savings", "Christmas savings", "Building fund") and the loan categories ("Normal loans", "Commodity loans", "Emergency loans"). Members then see a tile for each on their dashboard.
+
+## Before you start
+
+You need the **cooperatives.manage_types** permission (by default the Administrator and the Treasurer).
+
+## Savings account types
+
+Each type picks one of three behaviours, which decides what it can do:
+
+| Behaves like | What it means |
+|---|---|
+| **Contribution** | Ordinary savings. Members can withdraw from it. |
+| **Shares** | Share capital. It can never be withdrawn. |
+| **Special** | Withdrawable savings, with an optional monthly limit. |
+
+<Steps>
+<Step>Open <MenuPath items={["Cooperatives", "Setup"]} /> (on the phone: **Manage → Cooperatives → Setup**).</Step>
+<Step>Under **Savings account types**, select **New account type**.</Step>
+<Step>Enter a **Name**, choose what it **Behaves like**, and optionally set a **usual monthly amount** (it fills in when a member pays) and a **monthly withdrawal limit**.</Step>
+<Step>Save. The type is available to members straight away.</Step>
+</Steps>
+
+Once members hold accounts of a type, what it behaves like can no longer change, so the rules never change under them. Create a new type instead. A type you no longer want can be set to **Retired**; members keep what they hold in it.
+
+## Loan categories
+
+A category groups loan products. Switch on **A goods (commodity) loan** for a category paid out as goods: members applying for those loans are asked to describe the item. Attach a category to a product in [Loan products](/docs/cooperatives/loan-products).
+
+## Withdrawal approval
+
+**Require two-stage approval for withdrawals** is on by default: one officer reviews, a different officer approves. Switch it off only if your cooperative can't staff two stages. See [Approving member withdrawals](/docs/cooperatives/approving-withdrawals).

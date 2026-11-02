@@ -150,6 +150,11 @@ export const PERMISSIONS = {
   COOPERATIVE_GUARANTOR: 'members.view_own', // Members can see guarantor requests
   COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own', // Declare a savings deposit with a receipt
   COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own', // Declare a payment towards your own loan with a receipt
+  COOPERATIVE_VIEW_OWN: 'cooperatives.view_own', // A member's own cooperative pages
+  COOPERATIVE_WITHDRAW_OWN: 'cooperatives.withdraw_own', // Ask to withdraw from your own savings
+  COOPERATIVE_MANAGE_TYPES: 'cooperatives.manage_types', // Create and edit account types and loan categories
+  COOPERATIVE_WITHDRAWAL_REVIEW: 'cooperatives.withdrawals.review', // Stage one of a member's withdrawal
+  COOPERATIVE_WITHDRAWAL_APPROVE: 'cooperatives.withdrawals.approve', // Stage two: approve and pay
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
   MEETING_VIEW: 'members.view_own', // Members can view meetings
   MEETING_CREATE: 'members.create',

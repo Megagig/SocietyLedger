@@ -14,11 +14,13 @@ import {
 } from '@/lib/api/cooperatives';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { useAccountTypes } from '@/lib/coop/hooks';
 
 interface SavingsAccount {
   id: number;
   accountNumber: string;
   accountType: string;
+  accountTypeName?: string | null;
   balance: string;
   status: string;
   member: { id: number; firstName: string; lastName: string; membershipId: string };
@@ -43,6 +45,8 @@ export default function SavingsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const accountTypes = useAccountTypes();
+  const typeOptions = (accountTypes.data ?? []).map((t) => ({ value: String(t.id), label: t.name }));
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -53,7 +57,7 @@ export default function SavingsPage() {
   // Form states
   const [formData, setFormData] = useState({
     memberId: '',
-    accountType: 'REGULAR',
+    accountTypeId: '',
     targetAmount: '',
     monthlyContribution: '',
     notes: ''
@@ -79,7 +83,7 @@ export default function SavingsPage() {
         page,
         limit: 10,
         status: statusFilter || undefined,
-        accountType: typeFilter || undefined,
+        accountTypeId: typeFilter ? parseInt(typeFilter) : undefined,
         search: search || undefined
       });
       setAccounts(result.data.accounts);
@@ -117,14 +121,14 @@ export default function SavingsPage() {
     try {
       await createSavingsAccount({
         memberId: parseInt(formData.memberId),
-        accountType: formData.accountType,
+        accountTypeId: formData.accountTypeId ? parseInt(formData.accountTypeId) : undefined,
         targetAmount: formData.targetAmount ? parseFloat(formData.targetAmount) : undefined,
         monthlyContribution: formData.monthlyContribution ? parseFloat(formData.monthlyContribution) : undefined,
         notes: formData.notes || undefined
       });
       toast.success('Savings account created successfully');
       closeCreate();
-      setFormData({ memberId: '', accountType: 'REGULAR', targetAmount: '', monthlyContribution: '', notes: '' });
+      setFormData({ memberId: '', accountTypeId: '', targetAmount: '', monthlyContribution: '', notes: '' });
       fetchAccounts();
     } catch (err: any) {
       toast.error(err.message);
@@ -245,12 +249,7 @@ export default function SavingsPage() {
             />
             <Select
               placeholder="Type"
-              data={[
-                { value: '', label: 'All Types' },
-                { value: 'REGULAR', label: 'Regular' },
-                { value: 'TARGET', label: 'Target' },
-                { value: 'FIXED', label: 'Fixed' }
-              ]}
+              data={typeOptions}
               value={typeFilter}
               onChange={setTypeFilter}
               clearable
@@ -286,7 +285,7 @@ export default function SavingsPage() {
                 </div>
                 
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">{getTypeLabel(account.accountType)}</span>
+                  <span className="text-gray-500">{account.accountTypeName ?? getTypeLabel(account.accountType)}</span>
                   <span className="font-mono text-xs text-gray-400">{account.accountNumber}</span>
                 </div>
                 
@@ -422,34 +421,28 @@ export default function SavingsPage() {
           />
           <Select
             label="Account Type"
-            data={[
-              { value: 'REGULAR', label: 'Regular Savings' },
-              { value: 'TARGET', label: 'Target Savings' },
-              { value: 'FIXED', label: 'Fixed Deposit' }
-            ]}
-            value={formData.accountType}
-            onChange={(v) => setFormData({ ...formData, accountType: v || 'REGULAR' })}
+            placeholder={accountTypes.isLoading ? 'Loading…' : 'Choose an account type (the first one is used if you leave it)'}
+            data={typeOptions}
+            value={formData.accountTypeId || null}
+            onChange={(v) => setFormData({ ...formData, accountTypeId: v || '' })}
+            clearable
           />
-          {formData.accountType === 'TARGET' && (
-            <>
-              <NumberInput
-                label="Target Amount"
-                placeholder="Enter target amount"
-                leftSection={<IconCurrencyNaira size={16} />}
-                value={formData.targetAmount ? parseFloat(formData.targetAmount) : ''}
-                onChange={(v) => setFormData({ ...formData, targetAmount: v?.toString() || '' })}
-                thousandSeparator=","
-              />
-              <NumberInput
-                label="Monthly Contribution"
-                placeholder="Enter monthly contribution"
-                leftSection={<IconCurrencyNaira size={16} />}
-                value={formData.monthlyContribution ? parseFloat(formData.monthlyContribution) : ''}
-                onChange={(v) => setFormData({ ...formData, monthlyContribution: v?.toString() || '' })}
-                thousandSeparator=","
-              />
-            </>
-          )}
+          <NumberInput
+            label="Target Amount (optional)"
+            placeholder="Enter target amount"
+            leftSection={<IconCurrencyNaira size={16} />}
+            value={formData.targetAmount ? parseFloat(formData.targetAmount) : ''}
+            onChange={(v) => setFormData({ ...formData, targetAmount: v?.toString() || '' })}
+            thousandSeparator=","
+          />
+          <NumberInput
+            label="Monthly Contribution (optional; the type's usual amount if left empty)"
+            placeholder="Enter monthly contribution"
+            leftSection={<IconCurrencyNaira size={16} />}
+            value={formData.monthlyContribution ? parseFloat(formData.monthlyContribution) : ''}
+            onChange={(v) => setFormData({ ...formData, monthlyContribution: v?.toString() || '' })}
+            thousandSeparator=","
+          />
           <Textarea
             label="Notes"
             placeholder="Optional notes"

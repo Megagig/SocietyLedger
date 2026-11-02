@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { FileText, HandCoins, Inbox, Landmark, PiggyBank, ScrollText, Wallet } from 'lucide-react-native';
+import { Banknote, FileText, HandCoins, Inbox, Landmark, PiggyBank, ScrollText, Settings2, Wallet } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -17,6 +17,7 @@ import { COOP_ADMIN_ACCESS, COOP_LOANS_ACCESS, COOP_MODULE, COOP_SAVINGS_ACCESS,
 import { attentionCount, useAttention } from '@/features/dashboard/queries';
 import { useCan } from '@/hooks/useCan';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
+import { COOPERATIVE_WITHDRAWAL_QUEUE_ACCESS } from '@/lib/permissions';
 import { formatMoney } from '@/lib/money';
 
 /** project-overview.md §6.9 CP1 — the cooperative at a glance: savings, loans, what is waiting for a decision, and the ways in. */
@@ -25,9 +26,12 @@ export default function CooperativesHubScreen() {
   const allowed = useModuleAccess(COOP_ADMIN_ACCESS, COOP_MODULE);
   const canSavings = useCan(COOP_SAVINGS_ACCESS);
   const canLoans = useCan(COOP_LOANS_ACCESS);
+  const canWithdrawals = useCan(COOPERATIVE_WITHDRAWAL_QUEUE_ACCESS);
+  const canSetup = useCan('COOPERATIVE_MANAGE_TYPES');
   const dashboard = useCoopDashboard();
   const attention = useAttention().data;
   const waitingDeposits = attentionCount(attention, 'savingsDeposits');
+  const waitingWithdrawals = attentionCount(attention, 'savingsWithdrawals');
   const waitingRepayments = attentionCount(attention, 'loanRepayments');
   const waitingApplications = attentionCount(attention, 'loanApplications');
   const back = () => router.back();
@@ -75,12 +79,23 @@ export default function CooperativesHubScreen() {
               {canSavings ? (
                 <ListItem
                   leading={<IconCircle icon={Inbox} tone={waitingDeposits > 0 ? 'warning' : 'primary'} />}
-                  title="Deposit requests"
-                  meta="Members' savings deposits to confirm"
+                  title="Payment requests"
+                  meta="Members' savings payments to confirm"
                   trailing={waitingDeposits > 0 ? <Badge tone="warning">{`${waitingDeposits} waiting`}</Badge> : undefined}
                   showChevron
-                  onPress={() => go('deposits')}
-                  testID="coop-deposits"
+                  onPress={() => go('payments')}
+                  testID="coop-payments"
+                />
+              ) : null}
+              {canWithdrawals ? (
+                <ListItem
+                  leading={<IconCircle icon={Banknote} tone={waitingWithdrawals > 0 ? 'warning' : 'primary'} />}
+                  title="Withdrawals"
+                  meta="Review, approve and pay out"
+                  trailing={waitingWithdrawals > 0 ? <Badge tone="warning">{`${waitingWithdrawals} waiting`}</Badge> : undefined}
+                  showChevron
+                  onPress={() => go('withdrawals')}
+                  testID="coop-withdrawals"
                 />
               ) : null}
               {canLoans ? (
@@ -132,6 +147,9 @@ export default function CooperativesHubScreen() {
               ) : null}
               {canLoans ? (
                 <ListItem leading={<IconCircle icon={ScrollText} tone="primary" />} title="Loan products" meta="Rates, tenure, limits and guarantors" showChevron onPress={() => go('products')} testID="coop-products" />
+              ) : null}
+              {canSetup ? (
+                <ListItem leading={<IconCircle icon={Settings2} tone="primary" />} title="Setup" meta="Savings types, loan categories and withdrawal approval" showChevron onPress={() => go('setup')} testID="coop-setup" />
               ) : null}
               {canLoans && data.loansSummary.overdueLoans > 0 ? (
                 <ListItem

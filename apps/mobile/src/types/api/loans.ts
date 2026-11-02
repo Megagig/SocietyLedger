@@ -19,6 +19,10 @@ export type RepaymentStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'WAIV
 
 export type LoanProductDTO = {
   id: number;
+  /** The product's loan category, and whether it is a goods (commodity) loan (the member then describes the item). */
+  loanCategoryId?: number | null;
+  categoryName?: string | null;
+  isGoodsLoan?: boolean;
   name: string;
   description: string | null;
   minAmount: MoneyValue;
@@ -83,6 +87,8 @@ export type CreateLoanApplicationPayload = {
   /** 10–500 characters. */
   purpose: string;
   guarantorIds?: number[];
+  /** Required when the product is a goods loan. */
+  itemDescription?: string;
 };
 
 export type LoanScheduleItemDTO = {

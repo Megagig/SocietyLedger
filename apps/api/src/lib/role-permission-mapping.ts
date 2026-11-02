@@ -19,6 +19,7 @@ const MEMBER_PERMISSIONS = [
   "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
   "welfare.view_own", "welfare.request_own",
   "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own",
+  "cooperatives.withdraw_own",
   "help.view", "support.create", "support.view_own",
   // Thrift (Ajo): a contributor sees and reports their own records. Without the add-on the module gate keeps these out of reach.
   "ajo.view_own", "ajo.contribute"
@@ -62,7 +63,9 @@ export const ROLE_PERMISSION_MAPPING = {
     // The Administrator sets the association's policy on who can vote and stand, but doesn't run the elections themselves.
     "elections.rules.manage",
     // Officers are members too: they can declare a deposit into their own savings.
-    "cooperatives.savings_deposit_own", "cooperatives.repay_own",
+    "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own", "cooperatives.withdraw_own",
+    // The Administrator shapes the cooperative (account types, loan categories) and gives final approval to withdrawals.
+    "cooperatives.manage_types", "cooperatives.withdrawals.review", "cooperatives.withdrawals.approve",
     "system.cron.view", "system.cron.trigger",
     "help.view", "help.manage", "support.create", "support.view_own", "support.view_all", "support.manage", "support.respond", "support.escalate",
     // Thrift (Ajo): the Administrator runs groups and is the only default role that approves payouts.
@@ -81,7 +84,9 @@ export const ROLE_PERMISSION_MAPPING = {
     "meetings.manage_minutes", "meetings.manage_attendance",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     // Officers are members too: they can declare a deposit into their own savings.
-    "cooperatives.savings_deposit_own", "cooperatives.repay_own",
+    "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own", "cooperatives.withdraw_own",
+    // The Treasurer sets up account types and reviews withdrawals (stage one); final approval stays with the Administrator.
+    "cooperatives.manage_types", "cooperatives.withdrawals.review",
     "communication.sms.view",
     "notifications.view",
     "settings.view",
@@ -99,7 +104,8 @@ export const ROLE_PERMISSION_MAPPING = {
     "meetings.manage_minutes", "meetings.manage_attendance",
     "elections.view_own", "elections.nominate_own", "elections.vote_own", "polls.view_own", "polls.vote_own",
     // Officers are members too: they can declare a deposit into their own savings.
-    "cooperatives.savings_deposit_own", "cooperatives.repay_own",
+    "cooperatives.view_own", "cooperatives.apply_own", "cooperatives.guarantor_own", "cooperatives.savings_deposit_own", "cooperatives.repay_own", "cooperatives.withdraw_own",
+    "cooperatives.withdrawals.review",
     "communication.sms.view",
     "notifications.view",
     "settings.view",

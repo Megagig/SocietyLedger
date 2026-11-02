@@ -1,48 +1,35 @@
 ---
-title: "Depositing into your savings (members)"
-description: "Pay the cooperative, upload your bank receipt, and see the deposit added once an officer confirms it."
+title: "Paying into your savings (members)"
+description: "Pay the cooperative, add what you paid for each savings type, upload your one bank receipt, and see it added once an officer confirms it."
 type: task
 audience: ["member"]
-platforms: ["web"]
-covers: ["/dashboard/cooperatives/my-savings"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cooperatives/my-savings", "/money/savings/pay"]
 status: published
-lastVerified: "2026-10-21"
-related: ["/docs/cooperatives/approving-savings-deposits", "/docs/cooperatives/savings-rule-and-held-savings"]
+lastVerified: "2026-11-02"
+related: ["/docs/cooperatives/approving-savings-deposits", "/docs/cooperatives/your-cooperative-pages", "/docs/cooperatives/savings-rule-and-held-savings"]
 ---
 
-Save money with your cooperative by paying into its bank account, then telling the app about the payment with your receipt. Your savings go up once an officer confirms the money arrived.
+Pay into your cooperative's bank account first, then tell the app what you paid. One bank transfer is one payment with one receipt, and it can cover several savings types at once, for example your monthly savings and your shares.
 
 ## Before you start
 
-- An officer must have [opened a savings account](/docs/cooperatives/savings-accounts) for you, and it must be **Active**.
-- Make the bank transfer first, and keep the receipt as a photo or PDF (up to 5MB).
+You need the transfer receipt (a photo or PDF, up to 5MB). The cooperative's account details are under **Cooperative Bank Accounts**.
 
-<Callout type="note" title="Nothing is added until it's confirmed">
-Submitting a deposit does not change your balance. It shows as **Awaiting confirmation** until an officer checks the cooperative's bank statement and approves it.
-</Callout>
-
-## Declare a deposit
+## Submit a payment
 
 <Steps>
-<Step>Go to <MenuPath items={["Cooperatives", "My Savings"]} /> and find the account you're saving into.</Step>
-<Step>Select **Make a Deposit**. The cooperative's bank account details are shown, with a button to copy the account number.</Step>
-<Step>Enter the **Amount you paid** and the **Date of payment** (it can't be in the future).</Step>
-<Step>Attach your **Bank receipt** — a JPEG, PNG, GIF or PDF.</Step>
-<Step>Optionally add the **Transfer reference** from your receipt and a **Note** for the officer.</Step>
-<Step>Select **Submit Deposit**.</Step>
+<Step>Open <MenuPath items={["Savings", "Savings"]} /> (on the phone: **Money → Savings → Pay into savings**).</Step>
+<Step>Under **Payment confirmation**, choose the **Savings type**. If your cooperative has a usual monthly amount for it, the amount fills in.</Step>
+<Step>Check the **Amount** and the **Month-Year** the payment is for, then select **Add**. Repeat for each savings type you paid in the same transfer. The same type for the same month is added together.</Step>
+<Step>Check the **Total** matches your transfer, choose the date you paid and the account you paid into, and attach your **evidence of payment**.</Step>
+<Step>Select **Submit payment**.</Step>
 </Steps>
 
-<Screenshot pending="My Savings page with the Make a Deposit form open: the cooperative's bank account, Amount, Date of payment, Bank receipt and Submit Deposit" />
+<Callout type="note" title="One transfer, one receipt">
+If you made two separate transfers, submit them as two payments, each with its own receipt. A payment never takes more than one receipt.
+</Callout>
 
 ## What happens next
 
-Your deposit appears under **My Deposits** on the same page, marked **Awaiting confirmation**.
-
-- **Confirmed** — the amount is added to your balance, and you get a notification.
-- **Not approved** — nothing is added. The officer's reason is shown next to the deposit, and you also get a notification. You can submit a corrected deposit.
-
-You can open the receipt you uploaded from the **Receipt** link beside each deposit.
-
-<Callout type="tip" title="Withdrawals">
-Members can't withdraw from the app. Withdrawals are recorded by an officer — see [Recording deposits and withdrawals](/docs/cooperatives/deposits-and-withdrawals). Savings held against an active loan can't be withdrawn at all until the loan is repaid, see [Your savings rule and held savings](/docs/cooperatives/savings-rule-and-held-savings).
-</Callout>
+Nothing is added to your savings yet. Your payment shows under **My Pending Payments** as *Awaiting confirmation*. When an officer confirms the money arrived, every line is added to your savings at once; if they can't, you are told why so you can fix it. See [Your cooperative pages](/docs/cooperatives/your-cooperative-pages).

@@ -38,6 +38,9 @@ import {
   assertWithdrawable,
 } from './cooperative-rules';
 import { accountingIntegrationService } from '../../services/accounting-integration.service';
+import type { SavingsTransactionType } from '@prisma/client';
+import { applySavingsMovement, syncSavingsToAccounting } from './savings-posting';
+import { cooperativeTypesService } from './cooperative-types.service';
 import {
   assertWithinSavingsRule,
   createLienForLoan,
@@ -222,22 +225,39 @@ export const cooperativesService = {
 
     const accountNumber = await generateSavingsAccountNumber(associationId);
 
+    // The association's own account type. Left out, its first active type is used (one is created for a cooperative that has none yet).
+    let accountType = data.accountTypeId
+      ? await prisma.cooperativeAccountType.findFirst({ where: { id: data.accountTypeId, associationId, isActive: true } })
+      : null;
+    if (data.accountTypeId && !accountType) {
+      throw new RuleError('That account type is not available.', 400, 'TYPE_UNAVAILABLE');
+    }
+    if (!accountType) {
+      await cooperativeTypesService.ensureDefaultAccountType(associationId);
+      accountType = await prisma.cooperativeAccountType.findFirst({
+        where: { associationId, isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      });
+    }
+
     const account = await prisma.savingsAccount.create({
       data: {
         associationId,
         memberId: data.memberId,
         accountNumber,
         accountType: data.accountType || 'REGULAR',
+        accountTypeId: accountType?.id ?? null,
         targetAmount: data.targetAmount ? new Decimal(data.targetAmount) : null,
         monthlyContribution: data.monthlyContribution
           ? new Decimal(data.monthlyContribution)
-          : null,
+          : accountType?.defaultMonthlyAmount ?? null,
         interestRate: new Decimal(data.interestRate || 0),
         maturityDate: data.maturityDate ? new Date(data.maturityDate) : null,
         notes: data.notes,
       },
       include: {
         member: { select: { firstName: true, lastName: true, memberId: true } },
+        accountTypeRef: { select: { name: true, accountClass: true } },
       },
     });
 
@@ -254,6 +274,7 @@ export const cooperativesService = {
       limit?: number;
       memberId?: number;
       accountType?: string;
+      accountTypeId?: number;
       status?: string;
       search?: string;
       sortBy?: string;
@@ -268,6 +289,7 @@ export const cooperativesService = {
 
     if (options.memberId) whereClause.memberId = options.memberId;
     if (options.accountType) whereClause.accountType = options.accountType;
+    if (options.accountTypeId) whereClause.accountTypeId = options.accountTypeId;
     if (options.status) whereClause.status = options.status;
     if (options.search) {
       whereClause.OR = [
@@ -282,6 +304,7 @@ export const cooperativesService = {
         where: whereClause,
         include: {
           member: { select: { firstName: true, lastName: true, memberId: true } },
+          accountTypeRef: { select: { name: true, accountClass: true } },
         },
         orderBy: { [options.sortBy || 'openedAt']: options.sortOrder || 'desc' },
         skip,
@@ -313,6 +336,7 @@ export const cooperativesService = {
       where: { id: accountId, associationId },
       include: {
         member: { select: { firstName: true, lastName: true, memberId: true } },
+        accountTypeRef: { select: { name: true, accountClass: true } },
       },
     });
 
@@ -328,285 +352,33 @@ export const cooperativesService = {
     data: SavingsTransactionInput
   ): Promise<SavingsTransactionResponse> {
     const amount = new Decimal(data.amount);
-    const isCredit = ['DEPOSIT', 'INTEREST', 'TRANSFER_IN'].includes(data.type);
 
-    // One database transaction: the account is read, checked and changed together, and the balance moves in a single atomic step, so two
-    // deposits or withdrawals at the same moment can't overwrite each other or take an account below zero.
-    const transaction = await prisma.$transaction(async (tx) => {
-      const account = await tx.savingsAccount.findFirst({
-        where: { id: data.savingsAccountId, associationId, status: 'ACTIVE' },
-      });
+    // One database transaction: the account is read, checked and changed together (see applySavingsMovement), so two deposits or
+    // withdrawals at the same moment can't overwrite each other or take an account below zero.
+    const transaction = await prisma.$transaction((tx) =>
+      applySavingsMovement(tx, {
+        associationId,
+        userId,
+        savingsAccountId: data.savingsAccountId,
+        type: data.type as SavingsTransactionType,
+        amount,
+        paymentMethod: data.paymentMethod,
+        reference: data.reference,
+        notes: data.notes,
+      }),
+    );
 
-      if (!account) {
-        throw new RuleError('Savings account not found or inactive', 404, 'ACCOUNT_NOT_FOUND');
-      }
-
-      if (!isCredit) {
-        assertWithdrawable(account.balance, amount);
-
-        // Savings held against an active loan can't be withdrawn or moved out.
-        if (data.type === 'WITHDRAWAL' || data.type === 'TRANSFER_OUT') {
-          const position = await getSavingsPosition(tx, associationId, account.memberId);
-          if (position.locked.gt(0) && amount.gt(position.available)) {
-            throw new RuleError(
-              `Only ₦${position.available.toNumber().toLocaleString('en-NG', { minimumFractionDigits: 2 })} of the savings is available — the rest is held against an active loan`,
-              409,
-              'SAVINGS_HELD',
-            );
-          }
-        }
-      }
-
-      const moved = await tx.savingsAccount.updateMany({
-        where: { id: data.savingsAccountId, status: 'ACTIVE', ...(isCredit ? {} : { balance: { gte: amount } }) },
-        data: {
-          balance: isCredit ? { increment: amount } : { decrement: amount },
-          ...(data.type === 'DEPOSIT' ? { totalDeposits: { increment: amount } } : {}),
-          ...(data.type === 'WITHDRAWAL' ? { totalWithdrawals: { increment: amount } } : {}),
-        },
-      });
-      if (moved.count === 0) {
-        throw new RuleError('Insufficient balance for this withdrawal.', 409, 'INSUFFICIENT_BALANCE');
-      }
-
-      const updated = await tx.savingsAccount.findUniqueOrThrow({ where: { id: data.savingsAccountId }, select: { balance: true } });
-
-      return tx.savingsTransaction.create({
-        data: {
-          associationId,
-          savingsAccountId: data.savingsAccountId,
-          type: data.type as any,
-          amount,
-          balanceAfter: updated.balance,
-          paymentMethod: data.paymentMethod,
-          reference: data.reference,
-          processedBy: userId,
-          notes: data.notes,
-        },
-        include: {
-          processor: { select: { email: true } },
-        },
-      });
-    });
-
-    // Accounting integration: Sync savings transaction to accounting module
-    try {
-      // Fetch full account details for accounting sync
-      const fullAccount = await prisma.savingsAccount.findUnique({
-        where: { id: data.savingsAccountId },
-        include: {
-          member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
-        },
-      });
-      
-      if (fullAccount) {
-        if (data.type === 'DEPOSIT') {
-          await accountingIntegrationService.onSavingsDeposit(transaction, fullAccount, userId);
-        } else if (data.type === 'WITHDRAWAL') {
-          await accountingIntegrationService.onSavingsWithdrawal(transaction, fullAccount, userId);
-        }
-      }
-    } catch (syncError) {
-      console.error('Accounting sync failed (non-critical):', syncError);
-      // Don't throw - transaction succeeded
-    }
-
+    // Accounting integration: sync the savings transaction to the accounting module (best effort, after the commit).
+    await syncSavingsToAccounting(transaction, data.savingsAccountId, userId);
     return this.formatSavingsTransactionResponse(transaction);
   },
 
-  // ==========================================
-  // SAVINGS DEPOSIT REQUESTS
-  // A member says "I paid the cooperative's bank account, here is my receipt"; the balance only moves when an
-  // officer approves, which goes through processSavingsTransaction (balance, totals and accounting sync).
-  // ==========================================
-
-  /**
-   * Throws unless the account is the member's own and ACTIVE. Called before the receipt is uploaded so a
-   * rejected request never leaves an orphaned file behind.
-   */
-  async assertOwnActiveSavingsAccount(associationId: number, memberId: number, savingsAccountId: number) {
-    const account = await prisma.savingsAccount.findFirst({
-      where: { id: savingsAccountId, associationId, memberId, status: 'ACTIVE' },
-    });
-    if (!account) {
-      throw new Error('Savings account not found or inactive');
-    }
-    return account;
-  },
-
-  async createSavingsDepositRequest(
-    associationId: number,
-    memberId: number,
-    data: SavingsDepositInput,
-    receipt: SavingsDepositReceipt
-  ): Promise<SavingsDepositResponse> {
-    await this.assertOwnActiveSavingsAccount(associationId, memberId, data.savingsAccountId);
-
-    if (data.bankAccountId) {
-      const bank = await prisma.associationBankAccount.findFirst({
-        where: { id: data.bankAccountId, associationId, isActive: true },
-      });
-      if (!bank) {
-        throw new Error('Bank account not found');
-      }
-    }
-
-    const created = await prisma.savingsDepositRequest.create({
-      data: {
-        associationId,
-        savingsAccountId: data.savingsAccountId,
-        memberId,
-        amount: new Decimal(data.amount),
-        paymentDate: data.paymentDate,
-        bankAccountId: data.bankAccountId,
-        reference: data.reference,
-        memberNote: data.memberNote,
-        filename: receipt.filename,
-        filepath: receipt.filepath,
-        fileSize: receipt.fileSize,
-        mimeType: receipt.mimeType,
-      },
-      include: this.savingsDepositInclude,
-    });
-
-    void this.notifyApprovers(associationId, [PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE], {
-      memberId,
-      entityId: created.id,
-      pushType: 'savings.deposit_submitted',
-      title: 'Savings deposit awaiting confirmation',
-      what: (name) => `${name} submitted a ₦${Number(data.amount).toLocaleString('en-NG')} savings deposit to confirm.`,
-    });
-
-    return this.formatSavingsDepositResponse(created);
-  },
-
-  savingsDepositInclude: {
-    savingsAccount: { select: { accountNumber: true } },
-    member: { select: { firstName: true, lastName: true, memberId: true } },
-  },
-
-  async listSavingsDepositRequests(
-    associationId: number,
-    options: { page?: number; limit?: number; status?: string; memberId?: number; savingsAccountId?: number } = {}
-  ): Promise<{ deposits: SavingsDepositResponse[]; pagination: any }> {
-    const page = options.page || 1;
-    const limit = options.limit || 20;
-    const skip = (page - 1) * limit;
-
-    const whereClause: any = { associationId };
-    if (options.status) whereClause.status = options.status;
-    if (options.memberId) whereClause.memberId = options.memberId;
-    if (options.savingsAccountId) whereClause.savingsAccountId = options.savingsAccountId;
-
-    const [rows, totalCount] = await Promise.all([
-      prisma.savingsDepositRequest.findMany({
-        where: whereClause,
-        include: this.savingsDepositInclude,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.savingsDepositRequest.count({ where: whereClause }),
-    ]);
-
-    return {
-      deposits: rows.map((r) => this.formatSavingsDepositResponse(r)),
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-        hasMore: skip + rows.length < totalCount,
-      },
-    };
-  },
-
-  /** Raw row (with the storage key) — for ownership checks and receipt download, never sent to a client. */
-  async getSavingsDepositRow(associationId: number, id: number) {
-    return prisma.savingsDepositRequest.findFirst({ where: { id, associationId } });
-  },
-
-  /** Nobody decides a deposit or repayment request that is their own; another officer has to. */
-  async assertNotOwnQueueItem(kind: 'deposit' | 'repayment', associationId: number, id: number, deciderUserId: number) {
-    const row =
-      kind === 'deposit'
-        ? await prisma.savingsDepositRequest.findFirst({ where: { id, associationId }, select: { memberId: true } })
-        : await prisma.loanRepaymentRequest.findFirst({ where: { id, associationId }, select: { memberId: true } });
+  /** Nobody decides a repayment request that is their own; another officer has to. */
+  async assertNotOwnQueueItem(kind: 'repayment', associationId: number, id: number, deciderUserId: number) {
+    const row = await prisma.loanRepaymentRequest.findFirst({ where: { id, associationId }, select: { memberId: true } });
     if (!row) return; // the claim below answers "not found / already reviewed"
     const owner = await prisma.member.findUnique({ where: { id: row.memberId }, select: { userId: true } });
     assertNotOwnRequest(deciderUserId, owner?.userId);
-  },
-
-  async approveSavingsDepositRequest(
-    associationId: number,
-    id: number,
-    reviewerUserId: number
-  ): Promise<SavingsDepositResponse> {
-    await this.assertNotOwnQueueItem('deposit', associationId, id, reviewerUserId);
-
-    // Claim the request first so two officers (or a double click) can never credit it twice.
-    const claimed = await prisma.savingsDepositRequest.updateMany({
-      where: { id, associationId, status: 'PENDING' },
-      data: { status: 'APPROVED', reviewedBy: reviewerUserId, reviewedAt: new Date() },
-    });
-    if (claimed.count !== 1) {
-      throw new RuleError('This deposit request does not exist or has already been reviewed', 409, 'ALREADY_DECIDED');
-    }
-
-    const request = await prisma.savingsDepositRequest.findFirstOrThrow({ where: { id, associationId } });
-
-    try {
-      const transaction = await this.processSavingsTransaction(associationId, reviewerUserId, {
-        savingsAccountId: request.savingsAccountId,
-        type: 'DEPOSIT',
-        amount: request.amount.toNumber(),
-        paymentMethod: 'BANK_TRANSFER',
-        reference: request.reference || `DEP-REQ-${request.id}`,
-        notes: `Member deposit request #${request.id}, approved`,
-      });
-      await prisma.savingsDepositRequest.update({
-        where: { id },
-        data: { savingsTransactionId: transaction.id },
-      });
-    } catch (error) {
-      // Nothing was credited (e.g. the account was closed meanwhile) — put it back in the queue.
-      await prisma.savingsDepositRequest.update({
-        where: { id },
-        data: { status: 'PENDING', reviewedBy: null, reviewedAt: null },
-      });
-      throw error;
-    }
-
-    const approved = await prisma.savingsDepositRequest.findFirstOrThrow({
-      where: { id, associationId },
-      include: this.savingsDepositInclude,
-    });
-    await this.notifyDepositDecision(approved, 'approved');
-    return this.formatSavingsDepositResponse(approved);
-  },
-
-  async rejectSavingsDepositRequest(
-    associationId: number,
-    id: number,
-    reviewerUserId: number,
-    reason: string
-  ): Promise<SavingsDepositResponse> {
-    await this.assertNotOwnQueueItem('deposit', associationId, id, reviewerUserId);
-
-    const claimed = await prisma.savingsDepositRequest.updateMany({
-      where: { id, associationId, status: 'PENDING' },
-      data: { status: 'REJECTED', reviewedBy: reviewerUserId, reviewedAt: new Date(), rejectionReason: reason },
-    });
-    if (claimed.count !== 1) {
-      throw new RuleError('This deposit request does not exist or has already been reviewed', 409, 'ALREADY_DECIDED');
-    }
-
-    const rejected = await prisma.savingsDepositRequest.findFirstOrThrow({
-      where: { id, associationId },
-      include: this.savingsDepositInclude,
-    });
-    await this.notifyDepositDecision(rejected, 'rejected');
-    return this.formatSavingsDepositResponse(rejected);
   },
 
   /**
@@ -652,51 +424,6 @@ export const cooperativesService = {
     } catch (error) {
       console.error('Approver notification failed (non-critical):', error);
     }
-  },
-
-  /** Best-effort in-app notification to the member; never fails the review. */
-  async notifyDepositDecision(request: any, decision: 'approved' | 'rejected') {
-    try {
-      const member = await prisma.member.findUnique({ where: { id: request.memberId }, select: { userId: true } });
-      if (!member?.userId) return;
-      const amount = Number(request.amount).toLocaleString('en-NG');
-      await dispatchNotification({
-        associationId: request.associationId,
-        userId: member.userId,
-        kind: 'system',
-        entityId: request.id,
-        pushType: 'savings.deposit_decision',
-        title: decision === 'approved' ? 'Savings deposit approved' : 'Savings deposit rejected',
-        message:
-          decision === 'approved'
-            ? `Your savings deposit of ₦${amount} has been confirmed and added to your savings.`
-            : `Your savings deposit of ₦${amount} was not approved${request.rejectionReason ? `: ${request.rejectionReason}` : '.'}`,
-      });
-    } catch (error) {
-      console.error('Deposit decision notification failed (non-critical):', error);
-    }
-  },
-
-  formatSavingsDepositResponse(row: any): SavingsDepositResponse {
-    return {
-      id: row.id,
-      savingsAccountId: row.savingsAccountId,
-      accountNumber: row.savingsAccount?.accountNumber ?? '',
-      memberId: row.memberId,
-      memberName: row.member ? `${row.member.firstName} ${row.member.lastName}`.trim() : '',
-      memberNumber: row.member?.memberId ?? '',
-      amount: row.amount,
-      paymentDate: row.paymentDate,
-      bankAccountId: row.bankAccountId,
-      reference: row.reference,
-      memberNote: row.memberNote,
-      filename: row.filename,
-      hasReceipt: !!row.filepath,
-      status: row.status,
-      reviewedAt: row.reviewedAt,
-      rejectionReason: row.rejectionReason,
-      createdAt: row.createdAt,
-    };
   },
 
   // ==========================================
@@ -993,13 +720,23 @@ export const cooperativesService = {
   /**
    * Create a loan product
    */
+  /** A product's category has to be one of this association's own, and still in use. */
+  async assertLoanCategory(associationId: number, loanCategoryId: number | null | undefined) {
+    if (!loanCategoryId) return;
+    const category = await prisma.loanCategory.findFirst({ where: { id: loanCategoryId, associationId, isActive: true }, select: { id: true } });
+    if (!category) throw new RuleError('That loan category is not available.', 400, 'CATEGORY_UNAVAILABLE');
+  },
+
   async createLoanProduct(
     associationId: number,
     data: LoanProductInput
   ): Promise<LoanProductResponse> {
+    await this.assertLoanCategory(associationId, data.loanCategoryId);
     const product = await prisma.loanProduct.create({
+      include: { category: { select: { name: true, isGoods: true } } },
       data: {
         associationId,
+        loanCategoryId: data.loanCategoryId ?? null,
         name: data.name,
         description: data.description,
         minAmount: new Decimal(data.minAmount),
@@ -1055,6 +792,7 @@ export const cooperativesService = {
     const [products, totalCount] = await Promise.all([
       prisma.loanProduct.findMany({
         where: whereClause,
+        include: { category: { select: { name: true, isGoods: true } } },
         orderBy: { name: 'asc' },
         skip,
         take: limit,
@@ -1127,10 +865,15 @@ export const cooperativesService = {
       updateData.lateFeePercent = new Decimal(data.lateFeePercent);
     if (data.lateFeeFixed !== undefined) updateData.lateFeeFixed = new Decimal(data.lateFeeFixed);
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.loanCategoryId !== undefined) {
+      await this.assertLoanCategory(associationId, data.loanCategoryId);
+      updateData.loanCategoryId = data.loanCategoryId;
+    }
 
     const updated = await prisma.loanProduct.update({
       where: { id: productId },
       data: updateData,
+      include: { category: { select: { name: true, isGoods: true } } },
     });
 
     return this.formatLoanProductResponse(updated);
@@ -1161,10 +904,17 @@ export const cooperativesService = {
     // Get loan product
     const product = await prisma.loanProduct.findFirst({
       where: { id: data.loanProductId, associationId, isActive: true },
+      include: { category: { select: { isGoods: true } } },
     });
 
     if (!product) {
       throw new Error('Loan product not found or inactive');
+    }
+
+    // A goods (commodity) loan is applied for with a description of what the member wants.
+    const itemDescription = data.itemDescription?.trim();
+    if (product.category?.isGoods && !itemDescription) {
+      throw new RuleError('Describe the item you are applying for.', 400, 'ITEM_REQUIRED');
     }
 
     // Validate amount
@@ -1226,10 +976,11 @@ export const cooperativesService = {
         status: initialStatus as any,
         collateralDescription: data.collateralDescription,
         collateralValue: data.collateralValue ? new Decimal(data.collateralValue) : null,
+        itemDescription: product.category?.isGoods ? itemDescription : null,
       },
       include: {
         member: { select: { firstName: true, lastName: true, memberId: true } },
-        loanProduct: { select: { name: true } },
+        loanProduct: { select: { name: true, category: { select: { isGoods: true } } } },
         guarantors: {
           include: {
             guarantorMember: { select: { firstName: true, lastName: true } },
@@ -2447,6 +2198,7 @@ export const cooperativesService = {
     // Get eligible loan products
     const loanProducts = await prisma.loanProduct.findMany({
       where: { associationId, isActive: true },
+      include: { category: { select: { name: true, isGoods: true } } },
     });
 
     const eligibleProducts: any[] = [];
@@ -2553,6 +2305,9 @@ export const cooperativesService = {
         : null,
       accountNumber: account.accountNumber,
       accountType: account.accountType,
+      accountTypeId: account.accountTypeId ?? null,
+      accountTypeName: account.accountTypeRef?.name ?? null,
+      accountClass: account.accountTypeRef?.accountClass ?? null,
       balance: account.balance,
       targetAmount: account.targetAmount,
       monthlyContribution: account.monthlyContribution,
@@ -2605,6 +2360,9 @@ export const cooperativesService = {
       lateFeePercent: product.lateFeePercent,
       lateFeeFixed: product.lateFeeFixed,
       isActive: product.isActive,
+      loanCategoryId: product.loanCategoryId ?? null,
+      categoryName: product.category?.name ?? null,
+      isGoodsLoan: product.category?.isGoods ?? false,
       createdAt: product.createdAt,
     };
   },
@@ -2642,6 +2400,8 @@ export const cooperativesService = {
       status: application.status,
       collateralDescription: application.collateralDescription,
       collateralValue: application.collateralValue,
+      itemDescription: application.itemDescription ?? null,
+      isGoodsLoan: application.loanProduct?.category?.isGoods ?? !!application.itemDescription,
       guarantors: (application.guarantors || []).map((g: any) =>
         this.formatLoanGuarantorResponse(g)
       ),

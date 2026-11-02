@@ -19,7 +19,6 @@ const mockPrisma: any = {
   loan: { ...tx.loan, count: jest.fn() },
   savingsAccount: { ...tx.savingsAccount, count: jest.fn() },
   member: { findUnique: jest.fn() },
-  savingsDepositRequest: { findFirst: jest.fn(), updateMany: jest.fn() },
   loanRepaymentRequest: { findFirst: jest.fn(), updateMany: jest.fn() },
   $transaction: jest.fn(async (fn: any) => fn(tx)),
 };
@@ -165,14 +164,7 @@ describe('reviewLoanApplication', () => {
 });
 
 describe('deciding a member request', () => {
-  it('an officer cannot approve or reject their own deposit', async () => {
-    mockPrisma.savingsDepositRequest.findFirst.mockResolvedValue({ memberId: 3 });
-    mockPrisma.member.findUnique.mockResolvedValue({ userId: 99 });
-    await expect(cooperativesService.approveSavingsDepositRequest(1, 5, 99)).rejects.toMatchObject({ code: 'OWN_REQUEST' });
-    await expect(cooperativesService.rejectSavingsDepositRequest(1, 5, 99, 'no')).rejects.toMatchObject({ code: 'OWN_REQUEST' });
-    expect(mockPrisma.savingsDepositRequest.updateMany).not.toHaveBeenCalled();
-  });
-
+  // (A member's own savings payment is covered against a real database in cooperative-enhancements.integration.test.ts.)
   it('an officer cannot approve or reject their own repayment', async () => {
     mockPrisma.loanRepaymentRequest.findFirst.mockResolvedValue({ memberId: 3 });
     mockPrisma.member.findUnique.mockResolvedValue({ userId: 99 });
@@ -182,10 +174,10 @@ describe('deciding a member request', () => {
   });
 
   it('another officer can decide it, and an already-decided request is a 409', async () => {
-    mockPrisma.savingsDepositRequest.findFirst.mockResolvedValue({ memberId: 3 });
+    mockPrisma.loanRepaymentRequest.findFirst.mockResolvedValue({ memberId: 3 });
     mockPrisma.member.findUnique.mockResolvedValue({ userId: 30 });
-    mockPrisma.savingsDepositRequest.updateMany.mockResolvedValue({ count: 0 });
-    await expect(cooperativesService.approveSavingsDepositRequest(1, 5, 99)).rejects.toMatchObject({ status: 409, code: 'ALREADY_DECIDED' });
+    mockPrisma.loanRepaymentRequest.updateMany.mockResolvedValue({ count: 0 });
+    await expect(cooperativesService.approveLoanRepaymentRequest(1, 5, 99)).rejects.toMatchObject({ status: 409, code: 'ALREADY_DECIDED' });
   });
 });
 

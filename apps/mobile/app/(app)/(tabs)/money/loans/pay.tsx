@@ -36,7 +36,7 @@ import { COOPERATIVE_LOAN_REPAY_ACCESS } from '@/lib/permissions';
  */
 export default function PayLoanScreen() {
   const router = useRouter();
-  const { loanId: loanIdParam } = useLocalSearchParams<{ loanId?: string }>();
+  const { loanId: loanIdParam, amount: amountParam } = useLocalSearchParams<{ loanId?: string; amount?: string }>();
   const loanId = Number(loanIdParam);
 
   const canRepay = useCan(COOPERATIVE_LOAN_REPAY_ACCESS);
@@ -68,7 +68,8 @@ export default function PayLoanScreen() {
 
   const { control, handleSubmit } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { amount: '', paymentDate: new Date().toISOString(), reference: '', memberNote: '', receipt: null },
+    // Opened from Loan Repayment's Optimal / Max buttons, the amount arrives filled in.
+    defaultValues: { amount: amountParam && !isNaN(Number(amountParam)) ? amountParam : '', paymentDate: new Date().toISOString(), reference: '', memberNote: '', receipt: null },
   });
 
   const back = () => router.back();

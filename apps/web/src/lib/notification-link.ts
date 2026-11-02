@@ -6,9 +6,13 @@ export function notificationHref(pushType?: string | null, entityId?: number | n
     case 'support.ticket_reply':
       return entityId ? `/dashboard/help/tickets/${entityId}` : '/dashboard/help/tickets';
     case 'savings.deposit_submitted':
-      return '/dashboard/cooperatives/savings-deposits';
+      return '/dashboard/cooperatives/payment-requests';
     case 'savings.deposit_decision':
-      return '/dashboard/cooperatives/my-savings';
+      return '/dashboard/cooperatives/my-pending-payments';
+    case 'savings.withdrawal_submitted':
+      return '/dashboard/cooperatives/withdrawals';
+    case 'savings.withdrawal_decision':
+      return '/dashboard/cooperatives/my-withdrawal';
     case 'loan.repayment_submitted':
       return '/dashboard/cooperatives/loan-repayments';
     case 'loan.repayment_decision':

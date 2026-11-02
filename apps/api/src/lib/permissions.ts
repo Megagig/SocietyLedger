@@ -136,6 +136,11 @@ export const PERMISSIONS = {
   COOPERATIVE_GUARANTOR_OWN: 'cooperatives.guarantor_own',
   COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own',
   COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own',
+  COOPERATIVE_WITHDRAW_OWN: 'cooperatives.withdraw_own',
+  // Officer side: shaping the cooperative, and the two stages of a withdrawal.
+  COOPERATIVE_MANAGE_TYPES: 'cooperatives.manage_types',
+  COOPERATIVE_WITHDRAWAL_REVIEW: 'cooperatives.withdrawals.review',
+  COOPERATIVE_WITHDRAWAL_APPROVE: 'cooperatives.withdrawals.approve',
   
   // Member Self-Service Finance
   MEMBER_FINANCE_VIEW: 'ledger.view_own',

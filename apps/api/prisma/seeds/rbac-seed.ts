@@ -494,6 +494,30 @@ const PERMISSION_REGISTRY = [
     module: "Cooperatives",
     examples: ["POST /api/cooperatives/loan-repayment-requests"]
   },
+  {
+    key: "cooperatives.withdraw_own",
+    description: "Ask to withdraw from your own withdrawable savings, and follow or cancel the request.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/withdrawal-requests", "POST /api/cooperatives/withdrawal-requests/:id/cancel"]
+  },
+  {
+    key: "cooperatives.manage_types",
+    description: "Create and edit the association's savings account types and loan categories.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/account-types", "POST /api/cooperatives/loan-categories"]
+  },
+  {
+    key: "cooperatives.withdrawals.review",
+    description: "Stage one of a member's withdrawal: check eligibility and balance, then pass it on for approval or reject it. Never your own request.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/withdrawal-requests/:id/review"]
+  },
+  {
+    key: "cooperatives.withdrawals.approve",
+    description: "Stage two of a member's withdrawal: approve it and record the payout, or reject it. Never your own request, and never one you reviewed.",
+    module: "Cooperatives",
+    examples: ["POST /api/cooperatives/withdrawal-requests/:id/approve"]
+  },
   // Help & Support
   {
     key: "help.view",

@@ -12,6 +12,7 @@ import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SectionCard } from '@/components/layout/SectionCard';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Money } from '@/components/ui/Money';
@@ -25,12 +26,13 @@ import { useCan } from '@/hooks/useCan';
 import { useMemberId } from '@/hooks/useMemberId';
 import { useModuleDisabled } from '@/hooks/useModuleAccess';
 import { formatMoney, sumMoney, toDecimal } from '@/lib/money';
-import { COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
+import { COOPERATIVE_SAVINGS_DEPOSIT_ACCESS, COOPERATIVE_SAVINGS_VIEW_ACCESS } from '@/lib/permissions';
 
 /** project-overview.md §6.4 M15 — My Savings: total / held / available, accounts, and my receipt-backed deposits. */
 export default function MySavingsScreen() {
   const router = useRouter();
   const canView = useCan(COOPERATIVE_SAVINGS_VIEW_ACCESS);
+  const canDeposit = useCan(COOPERATIVE_SAVINGS_DEPOSIT_ACCESS);
   const locked = useModuleDisabled('cooperatives');
   const memberId = useMemberId();
 
@@ -111,6 +113,12 @@ export default function MySavingsScreen() {
             <Text variant="caption" tone="secondary">
               Held savings stay in your account as security for your loan and are released as you repay it.
             </Text>
+          ) : null}
+
+          {canDeposit ? (
+            <Button variant="primary" onPress={() => router.push('/money/savings/pay' as never)} testID="savings-pay">
+              Pay into savings
+            </Button>
           ) : null}
 
           {pending.length > 0 ? (

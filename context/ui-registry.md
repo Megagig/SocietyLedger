@@ -836,6 +836,98 @@ New hooks: `useInitializePaystackPayment`, `useSubmitPaymentProof`, `usePaymentI
 
 ---
 
+# Web app (`apps/web`) — Cooperative (Track C)
+
+Shared building blocks for the cooperative pages in `apps/web/src/components/coop/`. All use the semantic colour tokens from `tailwind.config.ts` / `globals.css` (`bg-surface`, `text-ink`, `border-line`, `success-*`, `danger-*`, `warning-*`, `info-*`), never a hex value or a raw Tailwind colour. Data comes from `src/lib/coop/` (`api.ts`, `hooks.ts`, `types.ts`); every read sits in the `cooperatives` money domain of `@societyledger/query`, every write invalidates the `cooperative.changed` event.
+
+### Naira
+- **Surface:** web · **Path:** `components/coop/Naira.tsx` · **Added:** C4 (2026-11-01)
+- **Purpose:** An amount in full (₦10,000.00), never shortened; a missing amount shows a dash; `masked` hides it (the dashboard's Hide button) without making a screen reader read dots.
+- **Props:** `value: string | number | null | undefined` · `className?` · `masked?: boolean`
+- **Used in:** every cooperative page. **Notes:** never format money by hand on these pages.
+
+### StatTile
+- **Surface:** web · **Path:** `components/coop/StatTile.tsx` · **Added:** C4
+- **Purpose:** A labelled figure. `tone` is meaning, not decoration: `success` (savings), `info` (shares, loans collected), `warning` (special, interest), `danger` (money owed), `neutral`.
+- **Props:** `label` · `value` · `hint?: ReactNode` · `tone?` · `icon?` · `masked?`
+- **Used in:** dashboard, Savings, My Withdrawal, My Transactions, My Cashbook, My Loans (via `LoanTiles`).
+
+### StatusPill
+- **Surface:** web · **Path:** `components/coop/StatusPill.tsx` · **Added:** C4
+- **Purpose:** A status in words inside a coloured pill (colour only backs the words up). Knows `PENDING`, `APPROVED`, `REJECTED`, `PENDING_REVIEW`, `PENDING_APPROVAL`, `CANCELLED`; pass `label`/`tone` for anything else.
+
+### PageHead
+- **Surface:** web · **Path:** `components/coop/PageHead.tsx` · **Added:** C4
+- **Purpose:** The title block every cooperative page opens with: heading, one-line purpose, the page's actions, and the docs `HelpLink`.
+
+### RangeBar
+- **Surface:** web · **Path:** `components/coop/RangeBar.tsx` · **Added:** C4
+- **Purpose:** From / To dates with an Apply button. Nothing is fetched until Apply; a start after the end is refused in words (`role="alert"`).
+- **Props:** `from` · `to` · `onApply({ from, to })` · `children?` (extra buttons).
+
+### CoopLoading / CoopEmpty / CoopError
+- **Surface:** web · **Path:** `components/coop/CoopStates.tsx` · **Added:** C4
+- **Purpose:** The three states every data screen has. Loading is skeletons (no spinner); empty says what will appear and when; a 403/404 reads "not available to you" and anything else offers **Try again**.
+
+### ContributionTable
+- **Surface:** web · **Path:** `components/coop/ContributionTable.tsx` · **Added:** C4
+- **Purpose:** What was paid FOR each month against what was expected, one row per savings type plus an "All types" row. Paid, part paid and defaulted have different fills **and** each cell has screen-reader text, so colour is never the only signal. The scroller is `relative` on purpose: the `sr-only` text is absolutely positioned and would otherwise escape the scroller and widen the page on a phone.
+
+### MonthlyBars
+- **Surface:** web · **Path:** `components/coop/MonthlyBars.tsx` · **Added:** C4
+- **Purpose:** Twelve monthly bars with full-figure axis labels (₦300,000.00, never 300k) and a hidden data table. Bars are drawn with a **style** fill (`var(--c-…)` does not work as an SVG attribute) and animation is off (deterministic, respects reduced motion).
+
+### LoanTiles
+- **Surface:** web · **Path:** `components/coop/LoanTiles.tsx` · **Added:** C4
+- **Purpose:** "collected" and "outstanding" tiles for every loan category the cooperative has (Normal, Commodity, or whatever its officers created). Renders nothing on failure, because the loans themselves are listed below.
+
+### ReceiptButton
+- **Surface:** web · **Path:** `components/coop/ReceiptButton.tsx` · **Added:** C4
+- **Purpose:** Opens a proof of payment in a new tab. The short-lived link is requested only on press and never cached.
+
+### CashbookScreen
+- **Surface:** web · **Path:** `components/coop/CashbookScreen.tsx` · **Added:** C5 (2026-11-01)
+- **Purpose:** The whole cashbook statement (date range, tiles, shares / savings / loans / loan interest columns with DR, CR and balance, totals, entry details, print, Excel). One screen for the member's own page and the officer's view of one member.
+- **Props:** `title` · `subtitle` · `filename` · `memberId?` (left out = the signed-in member's own). Both data hooks are always called; only the one that applies is enabled.
+- **Used in:** `/dashboard/cooperatives/my-cashbook`, `/dashboard/cooperatives/members/[id]/cashbook`.
+
+### coopMemberNav / navGroups
+- **Surface:** web · **Path:** `components/layout/coopMemberNav.tsx`, `lib/coop/navGroups.ts` · **Added:** C5
+- **Purpose:** The member's cooperative menu as one list (`COOP_MEMBER_NAV`) shared by `MemberSidebar` and `AdminSidebar`, so an officer who is also a member sees the same menu in their member area. `useCoopMemberNav()` returns it only when the plan has the `cooperatives` module and the person holds a cooperative own-permission. `coopGroupForPath(pathname)` names the group to open.
+
+**Officer pages (no new shared components):** `payment-requests`, `withdrawals` (two stages, buttons by permission, a note instead of a button when the officer reviewed it), `setup` (account types, loan categories, the two-stage switch). They use the same coop building blocks above.
+
+**Pitfalls found in review (apply to any new web table or button):** (1) a raw `<button>` inherits a grey fill and border from the global stylesheet, so give it `border-0 bg-transparent p-0` or use Mantine's `Button`; (2) a raw `<ul>` shows bullets and indent, so use `m-0 list-none p-0`; (3) put `relative` on every `overflow-x-auto` wrapper that holds a table with `sr-only` cells.
+
+**Sidebar:** `MemberSidebar` shows the cooperative section (Cooperative Dashboard, Savings, Transactions, Loans, Cooperative Bank Accounts) only when the association's plan includes the `cooperatives` module (`/modules/mine`) and the member holds a cooperative own-permission; a plan without it hides the section instead of showing it locked.
+
+---
+
+# Mobile (`apps/mobile`) — Cooperative (Track C)
+
+Feature folder `src/features/coopEnhanced/`; screens under `app/(app)/(tabs)/money/cooperative/` (member) and `app/(app)/(tabs)/manage/cooperatives/` (officer). Equal parity with the web pages in the web section above. Data: `src/api/endpoints/coopEnhanced.ts`, `src/types/api/coopEnhanced.ts`, `queries.ts` (money screens: refetched on open, never saved on the phone; every write refreshes the whole `[tenant, 'cooperatives']` root).
+
+### OwnPage
+- **Path:** `features/coopEnhanced/components/OwnPage.tsx` · **Added:** C6 (2026-11-02)
+- **Purpose:** The frame every member cooperative page shares: module locked, no member profile, no permission, then the page. Props: `title` · `subject` · `access` · `docsKey?` · `refreshing?` · `onRefresh?` · `keyboard?` · `rightActions?`.
+
+### CoopTile
+- **Path:** `features/coopEnhanced/components/CoopTile.tsx` · **Added:** C6
+- **Purpose:** A labelled figure; tone is meaning (success, info, warning, danger, neutral). Always full naira; `masked` hides it and tells a screen reader.
+
+### ContributionTable / MonthlyBars
+- **Path:** `features/coopEnhanced/components/` · **Added:** C6
+- **Purpose:** The month grid (scrolls sideways so every figure stays in full; each cell has its status in words) and the twelve-bar chart (full-figure axis, spoken summary, no animation).
+
+### CashbookView / RangeFilter / ProofButton / PayoutSheet / TypeSheets
+- **Path:** `features/coopEnhanced/components/` · **Added:** C6–C7
+- **Purpose:** the shared cashbook statement (member's own and an officer's view of one member), the From/To filter with Apply, the proof opener (image viewer or in-app browser; link fetched only on press), the final-approval payout sheet, and the account-type and loan-category sheets.
+- **Rule:** `withdrawalActions()` in `labels.ts` decides which buttons an officer sees (never your own request; the reviewer can't also approve under two stages; each stage needs its own permission). It is a pure function with tests.
+
+**Entry points:** the Money tab's Cooperative section is grouped as in the web menu (Cooperative, Savings, Transactions, Loans, Pay to). Officer: Manage → Cooperatives gains Payment requests (replaces Deposit requests, reusing `RequestQueue`), Withdrawals and Setup.
+
+---
+
 # Docs site (`apps/docs`)
 
 ## Docs layout (`components/layout`)

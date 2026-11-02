@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { NoPermission } from '@/components/feedback/NoPermission';
 import { AmountField } from '@/components/forms/AmountField';
 import { SelectSheet } from '@/components/forms/SelectSheet';
+import { useLoanCategoriesV2 } from '@/features/coopEnhanced/queries';
 import { Switch } from '@/components/forms/Switch';
 import { TextField } from '@/components/forms/TextField';
 import { Screen } from '@/components/layout/Screen';
@@ -37,6 +38,8 @@ export default function ProductFormScreen() {
   const list = useLoanProducts();
   const create = useCreateProduct();
   const update = useUpdateProduct(editId ?? 0);
+  const categories = useLoanCategoriesV2();
+  const categoryOptions = (categories.data ?? []).map((c) => ({ value: String(c.id), label: c.isGoods ? `${c.name} (goods)` : c.name }));
   const { control, handleSubmit, reset } = useForm<ProductFormValues>({ resolver: zodResolver(productFormSchema), defaultValues: emptyProductValues(), mode: 'onTouched' });
   const requiresGuarantor = useWatch({ control, name: 'requiresGuarantor' });
   const back = () => router.back();
@@ -102,6 +105,7 @@ export default function ProductFormScreen() {
           <View className="gap-4">
             <TextField control={control} name="name" label="Name" placeholder="Emergency loan" autoCapitalize="sentences" testID="product-name" />
             <TextField control={control} name="description" label="Description (optional)" multiline />
+            <SelectSheet control={control} name="loanCategoryId" label="Loan category" options={categoryOptions} placeholder="Choose a category (optional)" />
           </View>
         </Section>
 

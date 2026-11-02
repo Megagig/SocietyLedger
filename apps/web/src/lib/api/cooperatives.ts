@@ -31,6 +31,7 @@ export async function getSavingsAccounts(params?: {
   limit?: number;
   memberId?: number;
   accountType?: string;
+  accountTypeId?: number;
   status?: string;
   search?: string;
 }) {
@@ -39,6 +40,7 @@ export async function getSavingsAccounts(params?: {
   if (params?.limit) searchParams.set('limit', params.limit.toString());
   if (params?.memberId) searchParams.set('memberId', params.memberId.toString());
   if (params?.accountType) searchParams.set('accountType', params.accountType);
+  if (params?.accountTypeId) searchParams.set('accountTypeId', params.accountTypeId.toString());
   if (params?.status) searchParams.set('status', params.status);
   if (params?.search) searchParams.set('search', params.search);
 
@@ -56,6 +58,7 @@ export async function getSavingsAccount(id: number) {
 export async function createSavingsAccount(data: {
   memberId: number;
   accountType?: string;
+  accountTypeId?: number;
   targetAmount?: number;
   monthlyContribution?: number;
   interestRate?: number;
@@ -125,6 +128,7 @@ export async function getLoanProducts(params?: {
 }
 
 export async function createLoanProduct(data: {
+  loanCategoryId?: number | null;
   name: string;
   description?: string;
   minAmount: number;
@@ -154,6 +158,7 @@ export async function createLoanProduct(data: {
 export async function updateLoanProduct(
   id: number,
   data: Partial<{
+    loanCategoryId: number | null;
     name: string;
     description: string;
     minAmount: number;
@@ -217,6 +222,7 @@ export async function createLoanApplication(data: {
   guarantorIds?: number[];
   collateralDescription?: string;
   collateralValue?: number;
+  itemDescription?: string;
 }) {
   const response = await apiPost(`${API_URL}/api/cooperatives/loan-applications`, data);
   if (!response.ok) {
@@ -450,6 +456,7 @@ export async function submitLoanRepaymentRequest(data: {
   loanId: number;
   amount: number;
   paymentDate: string;
+  bankAccountId?: number;
   reference?: string;
   memberNote?: string;
   file: File;
@@ -458,6 +465,7 @@ export async function submitLoanRepaymentRequest(data: {
   formData.append('loanId', String(data.loanId));
   formData.append('amount', String(data.amount));
   formData.append('paymentDate', data.paymentDate);
+  if (data.bankAccountId) formData.append('bankAccountId', String(data.bankAccountId));
   if (data.reference) formData.append('reference', data.reference);
   if (data.memberNote) formData.append('memberNote', data.memberNote);
   formData.append('file', data.file);

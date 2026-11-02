@@ -53,6 +53,8 @@ import {
   IconWebhook,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
+import { useCoopMemberNav } from './coopMemberNav';
+import { coopGroupForPath } from '@/lib/coop/navGroups';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { THRIFT_ONLY_ADMIN_LABELS, THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
 import { THRIFT_SETTINGS_HREFS, thriftWord } from '@/lib/ajo/thriftScope';
@@ -89,6 +91,12 @@ export function AdminSidebar() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Open the cooperative group that holds the page the officer is on (their own member pages).
+  useEffect(() => {
+    const group = coopGroupForPath(pathname);
+    if (group) setExpandedItems((prev) => (prev.includes(group) ? prev : [...prev, group]));
+  }, [pathname]);
 
   // Auto-expand Finance section if on Nigerian Payments page
   useEffect(() => {
@@ -165,6 +173,7 @@ export function AdminSidebar() {
   const payBadge = ajoNav.locked ? 'Locked' : waiting.data && waiting.data.transfersToConfirm > 0 ? String(waiting.data.transfersToConfirm) : undefined;
 
   // MEMBER SECTION - Admin's personal member features
+  const coopItems = useCoopMemberNav();
   const memberNavItems: NavItem[] = [
     {
       label: 'My Dashboard',
@@ -229,13 +238,7 @@ export function AdminSidebar() {
       icon: <IconCalendarEvent size={20} />,
       href: '/dashboard/member/my-meetings',
     },
-    {
-      label: 'My Cooperatives',
-      icon: <IconBuildingCommunity size={20} />,
-      href: '/dashboard/cooperatives/my-savings',
-      permission: PERMISSIONS.COOPERATIVE_VIEW,
-      badge: 'Enterprise',
-    },
+    ...coopItems,
     {
       label: 'My Thrift',
       icon: <IconPigMoney size={20} />,
@@ -572,9 +575,9 @@ export function AdminSidebar() {
           permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
         },
         {
-          label: 'Savings Deposits',
+          label: 'Payment Requests',
           icon: <IconReceipt size={18} />,
-          href: '/dashboard/cooperatives/savings-deposits',
+          href: '/dashboard/cooperatives/payment-requests',
           permission: PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE,
         },
         {

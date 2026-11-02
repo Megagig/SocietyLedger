@@ -87,6 +87,7 @@ export type AttentionKey =
   | 'loanApplications'
   | 'loanRepayments'
   | 'savingsDeposits'
+  | 'savingsWithdrawals'
   | 'welfarePayouts'
   | 'welfareContributions'
   | 'electionNominations'

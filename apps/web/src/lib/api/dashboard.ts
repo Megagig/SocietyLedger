@@ -159,6 +159,7 @@ export type AttentionKey =
   | 'loanApplications'
   | 'loanRepayments'
   | 'savingsDeposits'
+  | 'savingsWithdrawals'
   | 'welfarePayouts';
 
 export interface AttentionItem {

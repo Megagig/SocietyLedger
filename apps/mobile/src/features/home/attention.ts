@@ -77,8 +77,14 @@ export const ATTENTION_LINES: Partial<Record<AttentionKey, AttentionLine>> = {
   savingsDeposits: {
     icon: PiggyBank,
     tone: 'info',
-    label: (n) => `${plural(n, 'savings deposit', 'savings deposits')} to confirm`,
-    href: '/(app)/(tabs)/manage/cooperatives/deposits',
+    label: (n) => `${plural(n, 'savings payment', 'savings payments')} to confirm`,
+    href: '/(app)/(tabs)/manage/cooperatives/payments',
+  },
+  savingsWithdrawals: {
+    icon: PiggyBank,
+    tone: 'warning',
+    label: (n) => `${plural(n, 'withdrawal request', 'withdrawal requests')} to decide`,
+    href: '/(app)/(tabs)/manage/cooperatives/withdrawals',
   },
   welfarePayouts: {
     icon: HandHeart,

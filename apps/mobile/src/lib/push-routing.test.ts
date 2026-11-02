@@ -18,10 +18,12 @@ describe('routePushNotification — Phase 4 notification types', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it.each([
-    ['savings.deposit_decision', '/(app)/(tabs)/money/savings'],
+    ['savings.deposit_decision', '/(app)/(tabs)/money/cooperative/pending-payments'],
+    ['savings.withdrawal_decision', '/(app)/(tabs)/money/cooperative/withdrawal'],
+    ['savings.withdrawal_submitted', '/(app)/(tabs)/manage/cooperatives/withdrawals'],
     ['loan.repayment_decision', '/(app)/(tabs)/money/loans'],
     ['guarantor.requested', '/(app)/(tabs)/money/guarantor-requests'],
-    ['savings.deposit_submitted', '/(app)/(tabs)/manage'],
+    ['savings.deposit_submitted', '/(app)/(tabs)/manage/cooperatives/payments'],
     ['loan.repayment_submitted', '/(app)/(tabs)/manage'],
     ['loan.application_submitted', '/(app)/(tabs)/manage'],
     ['user.approval_pending', '/(app)/(tabs)/manage'],

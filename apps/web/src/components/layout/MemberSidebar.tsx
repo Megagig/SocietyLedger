@@ -28,6 +28,7 @@ import {
   IconCreditCard,
   IconBadge,
   IconBuildingBank,
+  IconCashBanknote,
   IconPigMoney,
   IconClipboardCheck,
   IconChartPie,
@@ -40,6 +41,8 @@ import {
   IconExternalLink,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/store/authStore';
+import { useCoopMemberNav } from './coopMemberNav';
+import { coopGroupForPath } from '@/lib/coop/navGroups';
 import { PERMISSIONS, hasAnyPermission } from '@/lib/permissions';
 import { THRIFT_ONLY_MEMBER_LABELS, useAjoNav } from '@/lib/ajo/useAjoNav';
 import { thriftWord } from '@/lib/ajo/thriftScope';
@@ -74,6 +77,12 @@ export function MemberSidebar() {
     setIsMounted(true);
   }, []);
 
+  // Open the cooperative group that holds the page the member is on.
+  useEffect(() => {
+    const group = coopGroupForPath(pathname);
+    if (group) setExpandedItems((prev) => (prev.includes(group) ? prev : [...prev, group]));
+  }, [pathname]);
+
   // Auto-expand Notifications section if on notifications page
   useEffect(() => {
     if (pathname.startsWith('/dashboard/notifications')) {
@@ -104,6 +113,9 @@ export function MemberSidebar() {
     PERMISSIONS.ELECTION_RESULTS_PUBLISH,
     PERMISSIONS.POLL_MANAGE,
   ]);
+
+  // Cooperative: the shared member menu, shown only when the plan has the module and the person may see their own pages.
+  const coopItems = useCoopMemberNav();
 
   // Ajo / Thrift: shown by permission, marked "Locked" when the add-on is not on the account.
   const ajoNav = useAjoNav();
@@ -241,38 +253,7 @@ export function MemberSidebar() {
     ...(ajoNav.staff ? [{ label: 'Payments', icon: <IconCurrencyNaira size={20} />, href: '/dashboard/ajo/payments', badge: payBadge }] : []),
     ...(ajoNav.collect ? [{ label: 'Collect', icon: <IconCurrencyNaira size={20} />, href: '/dashboard/ajo/collect', badge: ajoBadge }] : []),
     ...(ajoNav.reports ? [{ label: 'Thrift Reports', icon: <IconFileAnalytics size={20} />, href: '/dashboard/ajo/reports', badge: ajoBadge }] : []),
-    {
-      label: 'Cooperatives',
-      icon: <IconBuildingCommunity size={20} />,
-      // badge: 'Enterprise',
-      children: [
-        {
-          label: 'Overview',
-          icon: <IconLayoutDashboard size={18} />,
-          href: '/dashboard/cooperatives',
-        },
-        {
-          label: 'My Savings',
-          icon: <IconCurrencyNaira size={18} />,
-          href: '/dashboard/cooperatives/my-savings',
-        },
-        {
-          label: 'My Loans',
-          icon: <IconWallet size={18} />,
-          href: '/dashboard/cooperatives/my-loans',
-        },
-        {
-          label: 'Apply for Loan',
-          icon: <IconFileAnalytics size={18} />,
-          href: '/dashboard/cooperatives/apply',
-        },
-        {
-          label: 'Guarantor Requests',
-          icon: <IconUsers size={18} />,
-          href: '/dashboard/cooperatives/guarantors',
-        },
-      ],
-    },
+    ...coopItems,
     {
       label: 'Welfare',
       icon: <IconHeart size={20} />,

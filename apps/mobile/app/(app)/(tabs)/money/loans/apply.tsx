@@ -38,7 +38,7 @@ import { cn } from '@/lib/cn';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import type { GuarantorCandidateDTO, LoanProductDTO } from '@/types/api/loans';
 
-type FormValues = { amount: string; tenure: string; purpose: string };
+type FormValues = { amount: string; tenure: string; purpose: string; itemDescription: string };
 
 const STEPS = ['Loan product', 'Amount & term', 'Purpose & guarantors', 'Review'] as const;
 const MIN_PURPOSE = 10;
@@ -64,8 +64,8 @@ export default function ApplyForLoanScreen() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const { control, handleSubmit } = useForm<FormValues>({ defaultValues: { amount: '', tenure: '', purpose: '' } });
-  const [amountText, tenureText, purposeText] = useWatch({ control, name: ['amount', 'tenure', 'purpose'] });
+  const { control, handleSubmit } = useForm<FormValues>({ defaultValues: { amount: '', tenure: '', purpose: '', itemDescription: '' } });
+  const [amountText, tenureText, purposeText, itemText] = useWatch({ control, name: ['amount', 'tenure', 'purpose', 'itemDescription'] });
 
   const products = productsQuery.data?.products ?? [];
   const product: LoanProductDTO | null = products.find((p) => p.id === productId) ?? null;
@@ -98,7 +98,7 @@ export default function ApplyForLoanScreen() {
   const canProceed =
     step === 0 ? !!product :
     step === 1 ? !!estimate :
-    step === 2 ? purposeText.trim().length >= MIN_PURPOSE && picked.length >= minGuarantors :
+    step === 2 ? purposeText.trim().length >= MIN_PURPOSE && (!product?.isGoodsLoan || itemText.trim().length > 0) && picked.length >= minGuarantors :
     true;
 
   const back = () => (step === 0 ? router.back() : setStep(step - 1));
@@ -134,6 +134,7 @@ export default function ApplyForLoanScreen() {
         amount: Number(values.amount),
         tenureMonths: Number(values.tenure),
         purpose: values.purpose.trim(),
+        itemDescription: product.isGoodsLoan ? values.itemDescription.trim() : undefined,
         guarantorIds: picked.map((p) => p.id),
       },
       {
@@ -243,6 +244,9 @@ export default function ApplyForLoanScreen() {
 
         {step === 2 && product ? (
           <>
+            {product.isGoodsLoan ? (
+              <TextField control={control} name="itemDescription" label="What item do you want?" helper="This is a goods loan. Describe the item, and where it will be bought if you know." placeholder="For example: a 5kVA generator" multiline />
+            ) : null}
             <TextField
               control={control}
               name="purpose"
@@ -294,6 +298,12 @@ export default function ApplyForLoanScreen() {
               <ListItem title="Processing fee (est.)" trailing={<Money value={estimate.processingFee} />} />
               {held ? <ListItem title="Savings held" trailing={<Money value={held} />} /> : null}
             </SectionCard>
+            {product?.isGoodsLoan ? (
+              <Card className="gap-1">
+                <Text variant="caption" tone="secondary">Item</Text>
+                <Text variant="body">{itemText.trim()}</Text>
+              </Card>
+            ) : null}
             <Card className="gap-1">
               <Text variant="caption" tone="secondary">Purpose</Text>
               <Text variant="body">{purposeText.trim()}</Text>

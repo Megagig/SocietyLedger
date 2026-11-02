@@ -1,0 +1,44 @@
+---
+title: "Approving member withdrawals (two stages)"
+description: "Review a withdrawal request, then have a different officer approve and record the payout."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/cooperatives/withdrawals", "/manage/cooperatives/withdrawals"]
+status: published
+lastVerified: "2026-11-02"
+related: ["/docs/cooperatives/withdrawing-from-your-savings", "/docs/cooperatives/cooperative-setup", "/docs/cooperatives/deposits-and-withdrawals"]
+---
+
+Members ask to withdraw; two different officers decide. The member, the reviewer and the approver are always three different people, and the balance moves only at final approval.
+
+## Before you start
+
+Each stage has its own permission, which your association assigns to whichever roles it chooses:
+
+- **Review** (`cooperatives.withdrawals.review`): by default the Treasurer and the Financial Secretary.
+- **Approve** (`cooperatives.withdrawals.approve`): by default the Administrator.
+
+## Stage one: review
+
+<Steps>
+<Step>Open <MenuPath items={["Cooperatives", "Withdrawals"]} /> (on the phone: **Manage → Cooperatives → Withdrawals**) and the **To review** tab.</Step>
+<Step>Check the request: the amount, the account, and the member's reason.</Step>
+<Step>Select **Pass on for approval**, or **Reject** and give a reason the member will read.</Step>
+</Steps>
+
+## Stage two: approve and pay
+
+<Steps>
+<Step>Open the **To approve** tab. You'll only see **Approve and pay** if you hold the approve permission and you didn't review this request.</Step>
+<Step>Select **Approve and pay**, say how it was paid out (bank transfer, cash, cheque or other), and add a reference.</Step>
+<Step>Confirm. The balance, any savings held for a loan, and the monthly limit are checked once more, then the withdrawal is recorded and the member is told.</Step>
+</Steps>
+
+<Callout type="note" title="The system records the payout, it doesn't send money">
+You pay the member out of the cooperative's bank account yourself; approving records it in the member's savings and the books.
+</Callout>
+
+## If your cooperative has only one or two officers
+
+An administrator can switch off two-stage approval in [Cooperative setup](/docs/cooperatives/cooperative-setup). Then one officer decides each request. A request already waiting keeps the rule it was made under.
