@@ -85,3 +85,8 @@ apps/api/prisma/migrations/migration_lock.toml
 apps/web/.next-resp/
 apps/web/responsive/artifacts/
 apps/web/.next-resp-dev/
+
+# Demo seed credentials sheet (contains every demo login and password)
+demo-accounts.local.md
+demo-accounts.local.*
+apps/api/demo-accounts.local.*
