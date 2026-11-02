@@ -23,17 +23,24 @@ import { useDeleteRule, useUpdateRule } from '@/features/donationsPenalties/muta
 import { FINANCE_VIEW_ACCESS, FUND_CREATE_ACCESS, FUND_EDIT_ACCESS, PENALTY_APPROVE_ACCESS, RULE_DELETE_ACCESS, usePenaltyRules, usePenaltyStats, useWaivers } from '@/features/donationsPenalties/queries';
 import { ChargeRow } from '@/features/finance/components/ChargeRow';
 import { CHARGE_CREATE_ACCESS, useCharges } from '@/features/finance/queries';
+import { CollectionBar } from '@/features/collections/components/CollectionBar';
+import { RecordPaymentSheet, type RecordPaymentTarget } from '@/features/collections/components/RecordPaymentSheet';
+import { RECORD_ACCESS } from '@/features/collections/queries';
 import { CategoryRow } from '@/features/financeSetup/components/CategoryRow';
 import { positionOf } from '@/features/financeSetup/components/GroupedRow';
 import { PagedList } from '@/features/financeSetup/components/PagedList';
 import { SETUP_CREATE_ACCESS, SETUP_EDIT_ACCESS, useCategories } from '@/features/financeSetup/queries';
 import { useCan } from '@/hooks/useCan';
 import { formatMoney } from '@/lib/money';
+import type { SettlementFilter } from '@/types/api/collections';
 import type { ChargeListItemDTO } from '@/types/api/financeManage';
 import type { PenaltyRuleDTO } from '@/types/api/donationsPenalties';
 import type { CategoryDTO } from '@/types/api/financeSetup';
 
 type Tab = 'types' | 'rules' | 'applied' | 'waivers';
+
+/** The charge statuses the server filters on, for each choice. */
+const PENALTY_STATUS: Record<SettlementFilter, string | undefined> = { all: undefined, owing: 'owing', unpaid: 'pending', part: 'partial', paid: 'paid' };
 
 /**
  * project-overview.md §6.9 FN11 — penalties: the kinds of penalty, the late-fee rules, the penalties charged, and the waivers granted.
@@ -49,7 +56,12 @@ export default function PenaltiesScreen() {
   const canEditRule = useCan(FUND_EDIT_ACCESS);
   const canDeleteRule = useCan(RULE_DELETE_ACCESS);
   const canCharge = useCan(CHARGE_CREATE_ACCESS);
+  const canPay = useCan(RECORD_ACCESS);
   const [tab, setTab] = useState<Tab>('types');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<SettlementFilter>('all');
+  const [payTarget, setPayTarget] = useState<RecordPaymentTarget | null>(null);
+  const payRef = useRef<BottomSheetModal>(null);
   const [pickedType, setPickedType] = useState<CategoryDTO | null>(null);
   const [pickedRule, setPickedRule] = useState<PenaltyRuleDTO | null>(null);
   const [pickedCharge, setPickedCharge] = useState<ChargeListItemDTO | null>(null);
@@ -60,7 +72,7 @@ export default function PenaltiesScreen() {
   const stats = usePenaltyStats().data;
   const typesQuery = useCategories({ type: 'penalty' });
   const rulesQuery = usePenaltyRules();
-  const appliedQuery = useCharges({ type: 'penalty' });
+  const appliedQuery = useCharges({ type: 'penalty', status: PENALTY_STATUS[status], search: search || undefined });
   const waiversQuery = useWaivers();
   const updateRule = useUpdateRule(pickedRule?.id ?? 0);
   const deleteRule = useDeleteRule();
@@ -189,6 +201,10 @@ export default function PenaltiesScreen() {
           }
         />
       ) : tab === 'applied' ? (
+        <>
+        <View className="pb-3">
+          <CollectionBar screen="penalties" search={search} onSearch={setSearch} status={status} onStatus={setStatus} />
+        </View>
         <PagedList
           query={appliedQuery}
           items={applied}
@@ -196,8 +212,15 @@ export default function PenaltiesScreen() {
           renderItem={(c, i, n) => (
             <ChargeRow charge={c} position={positionOf(i, n)} onPress={(charge) => { setPickedCharge(charge); chargeSheetRef.current?.present(); }} />
           )}
-          empty={<EmptyState icon={Scale} title="No penalties charged yet" description="Penalties charged to members, by a rule or by hand, show up here." />}
+          empty={
+            <EmptyState
+              icon={Scale}
+              title={search || status !== 'all' ? 'Nobody matches this search and filter' : 'No penalties charged yet'}
+              description={search || status !== 'all' ? 'Try a different name or choose Everyone.' : 'Penalties charged to members, by a rule or by hand, show up here.'}
+            />
+          }
         />
+        </>
       ) : (
         <PagedList
           query={waiversQuery}
@@ -297,6 +320,19 @@ export default function PenaltiesScreen() {
               Waive this penalty
             </Button>
           ) : null}
+          {pickedCharge && canPay && !pickedCharge.isVoided && Number(pickedCharge.balance) > 0 && pickedCharge.status !== 'waived' ? (
+            <Button
+              variant="primary"
+              onPress={() => {
+                chargeSheetRef.current?.dismiss();
+                setPayTarget({ memberId: pickedCharge.member.id, preselectTransactionId: pickedCharge.id });
+                payRef.current?.present();
+              }}
+              testID="penalty-record-payment"
+            >
+              Record payment
+            </Button>
+          ) : null}
           {pickedCharge ? (
             <Button
               variant="secondary"
@@ -316,6 +352,7 @@ export default function PenaltiesScreen() {
           ) : null}
         </View>
       </BottomSheet>
+      <RecordPaymentSheet ref={payRef} target={payTarget} source="penalties" onRecorded={() => void appliedQuery.refetch()} />
     </Screen>
   );
 }

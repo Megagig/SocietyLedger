@@ -15,10 +15,13 @@ import { PaymentButton } from '@/components/finance/PaymentButton';
 import { EditTransactionModal } from '@/components/finance/EditTransactionModal';
 import { VoidAndReplaceModal } from '@/components/finance/VoidAndReplaceModal';
 import { EditHistoryModal } from '@/components/finance/EditHistoryModal';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface TransactionDetail {
   id: number;
   referenceNumber: string;
+  purpose?: string | null;
+  title?: string | null;
   amount: number;
   status: string;
   dueDate?: string;
@@ -346,7 +349,7 @@ export default function TransactionDetailPage() {
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-gray-500">Category</dt>
-              <dd className="min-w-0 text-right font-medium text-gray-900 dark:text-white">{transaction.category.name}</dd>
+              <dd className="min-w-0 text-right font-medium text-gray-900 dark:text-white"><ChargeName name={transaction.category.name} purpose={transaction.purpose} /></dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-gray-500">Type</dt>
@@ -542,6 +545,7 @@ export default function TransactionDetailPage() {
             amount: transaction.amount,
             dueDate: transaction.dueDate,
             notes: transaction.notes,
+            title: transaction.title,
             status: transaction.status,
             totalPaid: transaction.totalPaid,
           }}

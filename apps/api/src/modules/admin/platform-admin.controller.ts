@@ -1123,22 +1123,23 @@ export class PlatformAdminController {
 
       // Get tenant counts
       const [totalTenants, activeTenants, suspendedTenants, deletedTenants, trialingTenants] = await Promise.all([
-        prisma.association.count(),
-        prisma.association.count({ where: { status: 'ACTIVE', deletedAt: null } }),
-        prisma.association.count({ where: { status: 'SUSPENDED' } }),
-        prisma.association.count({ where: { deletedAt: { not: null } } }),
-        prisma.subscription.count({ where: { status: 'TRIALING' } }),
+        prisma.association.count({ where: { isDemo: false } }),
+        prisma.association.count({ where: { isDemo: false, status: 'ACTIVE', deletedAt: null } }),
+        prisma.association.count({ where: { isDemo: false, status: 'SUSPENDED' } }),
+        prisma.association.count({ where: { isDemo: false, deletedAt: { not: null } } }),
+        prisma.subscription.count({ where: { association: { isDemo: false }, status: 'TRIALING' } }),
       ]);
 
       // Get new tenants this month vs last month
       const [newThisMonth, newLastMonth] = await Promise.all([
-        prisma.association.count({ where: { createdAt: { gte: startOfMonth } } }),
-        prisma.association.count({ where: { createdAt: { gte: startOfLastMonth, lt: startOfMonth } } }),
+        prisma.association.count({ where: { isDemo: false, createdAt: { gte: startOfMonth } } }),
+        prisma.association.count({ where: { isDemo: false, createdAt: { gte: startOfLastMonth, lt: startOfMonth } } }),
       ]);
 
       // Get subscription distribution
       const subscriptionStats = await prisma.subscription.groupBy({
         by: ['status'],
+        where: { association: { isDemo: false } },
         _count: { status: true },
       });
 
@@ -1146,7 +1147,7 @@ export class PlatformAdminController {
       const tierStats = await prisma.association.groupBy({
         by: ['tier'],
         _count: { tier: true },
-        where: { deletedAt: null },
+        where: { deletedAt: null, isDemo: false },
       });
 
       // Get revenue metrics (from payment history)
@@ -1167,7 +1168,7 @@ export class PlatformAdminController {
 
       // Get user and member counts
       const [totalUsers, totalMembers, activeUsers30d] = await Promise.all([
-        prisma.user.count(),
+        prisma.user.count({ where: { isDemo: false } }),
         prisma.member.count({ where: { status: 'active' } }),
         prisma.user.count({ where: { updatedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
       ]);
@@ -1239,7 +1240,7 @@ export class PlatformAdminController {
       });
 
       // Get total active associations
-      const totalAssociations = await prisma.association.count({ where: { status: 'ACTIVE', deletedAt: null } });
+      const totalAssociations = await prisma.association.count({ where: { isDemo: false, status: 'ACTIVE', deletedAt: null } });
 
       // Calculate adoption for each module
       const moduleAdoption = modules.map(module => {

@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 
+import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { Money } from '@/components/ui/Money';
 import { Text } from '@/components/ui/Text';
@@ -14,12 +15,14 @@ export type LedgerMemberRowProps = {
   member: LedgerMemberDTO;
   position: 'first' | 'middle' | 'last' | 'only';
   onPress: (member: LedgerMemberDTO) => void;
+  /** Offered to a member who owes, for an officer who may record payments. */
+  onRecord?: (member: LedgerMemberDTO) => void;
 };
 
 const STATE_TEXT = { owes: 'Owes', credit: 'Credit', settled: 'Settled' } as const;
 
 /** One member's ledger: who they are, and whether they owe, are in credit, or are settled. */
-function LedgerMemberRowBase({ member, position, onPress }: LedgerMemberRowProps) {
+function LedgerMemberRowBase({ member, position, onPress, onRecord }: LedgerMemberRowProps) {
   const { color } = useThemeTokens();
   const isFirst = position === 'first' || position === 'only';
   const isLast = position === 'last' || position === 'only';
@@ -61,6 +64,13 @@ function LedgerMemberRowBase({ member, position, onPress }: LedgerMemberRowProps
         </View>
         <ChevronRight size={20} color={color.textTertiary} strokeWidth={1.75} style={{ marginLeft: 8 }} />
       </Pressable>
+      {onRecord && member.balance > 0 ? (
+        <View className="flex-row justify-end px-4 pb-3">
+          <Button variant="secondary" size="sm" onPress={() => onRecord(member)} testID={`ledger-record-${member.id}`}>
+            Record payment
+          </Button>
+        </View>
+      ) : null}
     </View>
   );
 }

@@ -23,6 +23,10 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatTile } from '@/components/ui/StatTile';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
+import { CollectionBar } from '@/features/collections/components/CollectionBar';
+import { RecordPaymentSheet, type RecordPaymentTarget } from '@/features/collections/components/RecordPaymentSheet';
+import { matchesSearch, matchesSettlement } from '@/features/collections/labels';
+import { RECORD_ACCESS } from '@/features/collections/queries';
 import { ASSIGNMENT_STATUS_LABELS, assignmentCanRemove, CAMPAIGN_STATUS_LABELS, campaignCanAssign, campaignCanClose, campaignCanEdit, campaignStatusKey, deadlineLabel, stillOwedLine } from '@/features/financeSetup/labels';
 import { useRemoveAssignment, useUpdateCampaign } from '@/features/financeSetup/mutations';
 import { ASSIGN_ACCESS, ASSIGN_REMOVE_ACCESS, FINANCE_VIEW_ACCESS, SETUP_EDIT_ACCESS, useCampaign } from '@/features/financeSetup/queries';
@@ -30,6 +34,7 @@ import { FactRow } from '@/features/members/components/FactRow';
 import { useCan } from '@/hooks/useCan';
 import { formatDate } from '@/lib/dates';
 import { formatMoney } from '@/lib/money';
+import type { SettlementFilter } from '@/types/api/collections';
 import type { CampaignAssignmentDTO } from '@/types/api/financeSetup';
 
 /**
@@ -47,7 +52,12 @@ export default function CampaignDetailScreen() {
   const query = useCampaign(id);
   const update = useUpdateCampaign(id);
   const removeAssignment = useRemoveAssignment(id);
+  const canPay = useCan(RECORD_ACCESS);
   const [picked, setPicked] = useState<CampaignAssignmentDTO | null>(null);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<SettlementFilter>('all');
+  const [payTarget, setPayTarget] = useState<RecordPaymentTarget | null>(null);
+  const payRef = useRef<BottomSheetModal>(null);
   const menuRef = useRef<BottomSheetModal>(null);
   const closeRef = useRef<BottomSheetModal>(null);
   const memberRef = useRef<BottomSheetModal>(null);
@@ -108,6 +118,9 @@ export default function CampaignDetailScreen() {
 
   const owing = campaign ? campaign.progress.assignedMembers - campaign.progress.paidCount : 0;
   const memberName = (a: CampaignAssignmentDTO) => `${a.member.firstName} ${a.member.lastName}`.trim();
+  // Paid, part paid or not paid comes from the money the server worked out, so it is right even when a stored status is stale.
+  const settlementOf = (a: CampaignAssignmentDTO) => (a.calculatedStatus === 'paid' ? 'paid' : a.calculatedStatus === 'partial' ? 'part' : 'unpaid');
+  const visible = (campaign?.assignments ?? []).filter((a) => matchesSettlement(settlementOf(a), status) && matchesSearch(search, memberName(a), a.member.memberId));
 
   return (
     <Screen edges={['top', 'bottom']} refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
@@ -171,14 +184,22 @@ export default function CampaignDetailScreen() {
             </ListGroup>
           </Section>
 
-          <Section title={campaign.assignments.length === 0 ? 'Members' : `Members · ${campaign.assignments.length}`}>
+          <Section title={campaign.assignments.length === 0 ? 'Members' : visible.length === campaign.assignments.length ? `Members · ${campaign.assignments.length}` : `Members · ${visible.length} of ${campaign.assignments.length}`}>
+            {campaign.assignments.length > 0 ? (
+              <View className="pb-3">
+                <CollectionBar screen="levy-campaign" id={campaign.id} search={search} onSearch={setSearch} status={status} onStatus={setStatus} />
+              </View>
+            ) : null}
             {campaign.assignments.length === 0 ? (
               <Text variant="body" tone="secondary">
                 No members have been put on this campaign yet.
               </Text>
             ) : (
               <ListGroup>
-                {campaign.assignments.map((a) => (
+                {visible.length === 0 ? (
+                  <ListItem title="Nobody matches this search and filter" meta="Try a different name or choose Everyone." />
+                ) : null}
+                {visible.map((a) => (
                   <ListItem
                     key={a.id}
                     title={memberName(a)}
@@ -251,9 +272,22 @@ export default function CampaignDetailScreen() {
               {`${formatMoney(picked.amount)} charged · ${formatMoney(picked.paidAmount)} paid · ${formatMoney(Math.max(0, picked.balance))} left`}
             </Text>
           ) : null}
-          {picked?.transaction ? (
+          {picked?.transaction && canPay && picked.balance > 0 ? (
             <Button
               variant="primary"
+              onPress={() => {
+                memberRef.current?.dismiss();
+                setPayTarget({ memberId: picked.member.id, preselectTransactionId: picked.transaction!.id });
+                payRef.current?.present();
+              }}
+              testID="assignment-record-payment"
+            >
+              Record payment
+            </Button>
+          ) : null}
+          {picked?.transaction ? (
+            <Button
+              variant={canPay && picked.balance > 0 ? 'secondary' : 'primary'}
               onPress={() => {
                 memberRef.current?.dismiss();
                 go(`transactions/${picked.transaction!.id}`);
@@ -288,6 +322,7 @@ export default function CampaignDetailScreen() {
         confirmLabel="Remove member"
         onConfirm={remove}
       />
+      <RecordPaymentSheet ref={payRef} target={payTarget} source="levy-campaign" onRecorded={() => void query.refetch()} />
     </Screen>
   );
 }

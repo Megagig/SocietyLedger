@@ -24,6 +24,7 @@ interface PaymentDetail {
     id: number;
     memberId: number;
     referenceNumber: string | null;
+    purpose?: string | null;
     member: { id: number; memberId: string; firstName: string; lastName: string };
     category: { id: number; name: string; type: string };
   } | null;
@@ -106,6 +107,7 @@ export default function PaymentDetailPage() {
             <Row label="For">
               <Anchor component={Link} href={`/dashboard/finance/transactions/${payment.transaction.id}`} data-testid="payment-charge">
                 {payment.transaction.category.name}
+                {payment.transaction.purpose ? ` · ${payment.transaction.purpose}` : ''}
                 {payment.transaction.referenceNumber ? ` · ${payment.transaction.referenceNumber}` : ''}
               </Anchor>
             </Row>

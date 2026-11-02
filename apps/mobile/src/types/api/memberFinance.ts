@@ -7,6 +7,8 @@ export type DueDTO = {
   id: number;
   referenceNumber: string;
   category: FinanceCategoryRefDTO;
+  /** The campaign, cause, penalty or title this charge is for, when more specific than the category. */
+  purpose?: string | null;
   amount: number;
   paid: number;
   balance: number;
@@ -49,6 +51,8 @@ export type PenaltyDTO = {
   id: number;
   referenceNumber: string;
   category: FinanceCategoryRefDTO;
+  /** The campaign, cause, penalty or title this charge is for, when more specific than the category. */
+  purpose?: string | null;
   amount: number;
   paid: number;
   balance: number;
@@ -102,6 +106,8 @@ export type OutstandingItemType = 'dues' | 'levy' | 'penalty' | 'donation';
 export type UpcomingPaymentDTO = {
   id: number;
   category: FinanceCategoryRefDTO;
+  /** The campaign, cause, penalty or title this charge is for, when more specific than the category. */
+  purpose?: string | null;
   amount: MoneyValue;
   balance: MoneyValue;
   dueDate: IsoDateString;
@@ -111,6 +117,8 @@ export type UpcomingPaymentDTO = {
 export type RecentTransactionDTO = {
   id: number;
   category: FinanceCategoryRefDTO;
+  /** The campaign, cause, penalty or title this charge is for, when more specific than the category. */
+  purpose?: string | null;
   amount: MoneyValue;
   paid: MoneyValue;
   balance: MoneyValue;
@@ -147,6 +155,8 @@ export type OutstandingItemDTO = {
   id: number;
   type: OutstandingItemType;
   category: FinanceCategoryRefDTO;
+  /** The campaign, cause, penalty or title this charge is for, when more specific than the category. */
+  purpose?: string | null;
   campaign?: { name: string };
   amount: MoneyValue;
   balance: MoneyValue;
@@ -211,6 +221,8 @@ export type MemberPaymentDTO = {
     id: number;
     referenceNumber: string;
     category: FinanceCategoryRefDTO;
+    /** The campaign, cause, penalty or title this charge is for, when more specific than the category. */
+    purpose?: string | null;
   };
   createdAt: IsoDateString;
 };

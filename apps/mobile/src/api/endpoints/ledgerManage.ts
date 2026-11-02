@@ -8,7 +8,7 @@ import type { LedgerMemberEntriesDTO, LedgerMembersDTO, LedgerMemberSummaryDTO, 
  */
 export const ledgerManageApi = {
   /** GET /member-ledger/ledger/members — every member with their running balance (positive = owes), by last name. */
-  async listMembers(params: { page: number; limit: number; search?: string }): Promise<LedgerMembersDTO> {
+  async listMembers(params: { page: number; limit: number; search?: string; balance?: 'owing' | 'paid' }): Promise<LedgerMembersDTO> {
     return unwrap<LedgerMembersDTO>(client.get('/member-ledger/ledger/members', { params }));
   },
 

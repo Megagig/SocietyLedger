@@ -61,7 +61,7 @@ describe('profile form', () => {
 });
 
 describe('financial form', () => {
-  const settings = { enableLateFees: false, lateFeeType: 'fixed' as const, lateFeeAmount: 0, defaultGracePeriodDays: 7, enablePartialPayments: true, receiptRequiredAbove: 5000 };
+  const settings = { enableLateFees: false, lateFeeType: 'fixed' as const, lateFeeAmount: 0, defaultGracePeriodDays: 7, enablePartialPayments: true, allowOfficerSelfPayment: false, receiptRequiredAbove: 5000 };
 
   it('round-trips the saved settings', () => {
     expect(toFinancialPayload(financialToFormValues(settings))).toEqual(settings);
@@ -169,5 +169,19 @@ describe('describeNextStep', () => {
     expect(describeNextStep({ ...base, cancelAtPeriodEnd: true })).toEqual({ label: 'Ends on', date: base.currentPeriodEnd });
     expect(describeNextStep({ ...base, status: 'EXPIRED' }).label).toBe('Ended on');
     expect(describeNextStep({ ...base, status: 'PAST_DUE' }).label).toBe('Payment was due');
+  });
+});
+
+describe('financial form, officers recording their own payments', () => {
+  const base = { enableLateFees: false, lateFeeType: 'fixed' as const, lateFeeAmount: 0, defaultGracePeriodDays: 7, enablePartialPayments: true, receiptRequiredAbove: 5000 };
+
+  it('is off unless the association has switched it on, even for settings saved before it existed', () => {
+    expect(financialToFormValues(base).allowOfficerSelfPayment).toBe(false);
+    expect(financialToFormValues({ ...base, allowOfficerSelfPayment: true }).allowOfficerSelfPayment).toBe(true);
+  });
+
+  it('is sent as saved', () => {
+    expect(toFinancialPayload({ ...financialToFormValues(base), allowOfficerSelfPayment: true }).allowOfficerSelfPayment).toBe(true);
+    expect(toFinancialPayload(financialToFormValues(base)).allowOfficerSelfPayment).toBe(false);
   });
 });

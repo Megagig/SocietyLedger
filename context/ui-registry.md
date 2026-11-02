@@ -912,6 +912,31 @@ Shared building blocks for the cooperative pages in `apps/web/src/components/coo
 
 ---
 
+# Web app (`apps/web`) — Record payments from the officer lists (Track D)
+
+Shared pieces in `components/finance/` and `lib/finance/collections.ts`. All use the semantic colour tokens; buttons use `CoopButton`.
+
+### `RecordPaymentDialog`
+- **Purpose:** Record a payment an officer has received: lists the member's open debts (checkbox, balance, an editable amount for a part payment), then how it was paid, the date and a note. Props: `opened`, `onClose`, `memberId` (database id), `memberLabel` (anonymous donors), `source` (which screen, kept in the audit log), `preselectTransactionId` (omit to tick every debt), `onRecorded`.
+- **States:** loading, error, "Nothing owing", own-debt refusal (warning box, form disabled), per-amount errors in full naira, a refused debt marked red with the server's reason and "Nothing was saved", and a receipts list on success (receipt number, amount, "Fully paid" or "Still owes").
+- **Used in:** `finance/levies/[id]`, `finance/member-ledger`, `finance/donations` (Recent Donations), `finance/penalties` (Applied Penalties).
+
+### `CollectionToolbar`
+- **Purpose:** Search (300ms pause, name or member number), the paid / yet-to-pay tabs (`StatusTabs`) and the Excel and PDF buttons. The export asks the server for exactly the current filter and search. Props: `screen`, `id`, `allocationId`, `search`, `onSearch`, `status`, `onStatus`, `tabs` (`SETTLEMENT_TABS` or `LEDGER_TABS`).
+- **Pitfall:** the debounce reads `onSearch` through a ref; an inline callback must never restart the wait.
+
+### `ChargeName` (`components/finance/ChargeName.tsx`)
+- **Purpose:** The category name with the real campaign, due, cause or penalty under it. Props: `name`, `purpose` (the server's `purpose`; null renders nothing extra), `className`. Second line is `block text-xs font-medium text-ink-soft`, `data-testid="charge-purpose"`.
+- **Rule:** wherever a charge's category name is shown, render it through `ChargeName` with the row's `purpose`; never show the category alone when a purpose exists. Used on Transactions (table and cards), a transaction's details, Overdue, Penalties, My Finances (dues, penalties, payments, pay, summary), member home and the Record payment dialog.
+
+### `SettlementPill`
+- Paid (success), Part paid (warning), Not paid (neutral), as words in a `StatusPill`; the same wording as the exports.
+
+### Record payment button on a row
+- `min-h-11 rounded-md border border-success-line bg-success-soft px-3 text-sm font-medium text-success-text`, with an `aria-label` naming the member; hidden unless the officer has `payments.manual_create` and the row still owes.
+
+---
+
 # Mobile (`apps/mobile`) — Cooperative (Track C)
 
 Feature folder `src/features/coopEnhanced/`; screens under `app/(app)/(tabs)/money/cooperative/` (member) and `app/(app)/(tabs)/manage/cooperatives/` (officer). Equal parity with the web pages in the web section above. Data: `src/api/endpoints/coopEnhanced.ts`, `src/types/api/coopEnhanced.ts`, `queries.ts` (money screens: refetched on open, never saved on the phone; every write refreshes the whole `[tenant, 'cooperatives']` root).
@@ -2023,3 +2048,22 @@ Web (`apps/web`, Tailwind tokens) and phone (`apps/mobile`, NativeWind) show the
 - **Tablet rail (768-1023px):** the three sidebars render a 72px icon rail when closed (`#app-sidebar[data-open='false']`); `sl-rail-hide` marks what disappears (labels, chevrons, badges, sub-menus, section headers, user text), `sl-rail-item` marks items that centre their icon. A new nav item needs `aria-label` (its label plus any badge text) and `title`, because its text is hidden in the rail. The bottom bar is `md:hidden`; the layout's content margin is `md:ml-[4.5rem] lg:ml-72`.
 - **Phones:** the bottom bar hides while a text field has focus (CSS `:has(input:focus)`).
 - **Money:** use `formatNairaFull(x)` (₦5,000.00) for every amount and `formatAxisNaira` for a money chart axis (give the axis a width of about 100). Never `₦{x.toLocaleString()}`, never 300k.
+
+---
+
+# Mobile (`apps/mobile`) — Record payments from the officer lists (Track D)
+
+Feature folder `src/features/collections/`.
+
+### `RecordPaymentSheet` (`components/RecordPaymentSheet.tsx`)
+- **Purpose:** The same dialog as the web, as an 85% bottom sheet. A `forwardRef` over `BottomSheetModal`; the screen holds a `target` (`memberId`, optional `memberLabel`, optional `preselectTransactionId`) and calls `ref.current?.present()`. Debts are plain-state checkboxes with `FieldInput` amounts; method, date and note are RHF fields.
+- **Used in:** `manage/finance/levies/[id]`, `ledgers`, `donations`, `penalties`.
+
+### `CollectionBar` (`components/CollectionBar.tsx`)
+- **Purpose:** `SearchField`, `FilterChip` row for Everyone / Yet to pay / Not paid / Part paid / Paid (ledgers use Everyone / Owing / Cleared) and **Excel** and **PDF** buttons (only with `exports.financial`), which fetch the file from the server and open the share sheet.
+
+### Charge purpose on rows
+- `ChargeRow`, the charge details header, the payment charge picker, the home recent-activity and upcoming lists and `RecordPaymentSheet` show the category, then `purpose` (caption, secondary tone; `body-strong` on the details header and the record sheet), `testID="charge-purpose"`. My payments puts it in the row's meta before the date. The shared `ChargeFormFields` has a **Title (optional)** field above Note.
+
+### Rules
+- Status always comes from the money (`labels.ts` `settle`), never from a stored label. Amounts show in full naira. A refusal about one debt arrives as `ApiError.transactionId` and the sheet marks that debt. Screens never import the API: `queries.ts` holds the hooks and `shareCollection`. Rows that can take a payment: ledger rows get a **Record payment** button; campaign, donation and penalty rows open their action sheet, which gains **Record payment**.

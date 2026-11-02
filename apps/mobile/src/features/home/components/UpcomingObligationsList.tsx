@@ -79,6 +79,11 @@ function ObligationRow({ item }: { item: FinanceSummaryDTO['upcomingPayments'][n
         <Text variant="label" numberOfLines={1}>
           {item.category.name}
         </Text>
+        {item.purpose ? (
+          <Text variant="caption" tone="secondary" numberOfLines={1} testID="charge-purpose">
+            {item.purpose}
+          </Text>
+        ) : null}
         <Text variant="caption" style={{ color: dueColor }}>
           Due {format(dueDate, 'MMM d, yyyy')}
           {overdue ? ' · Overdue' : isToday(dueDate) ? ' · Today' : ''}

@@ -104,6 +104,7 @@ export const financialFormSchema = z
       .refine((v) => v === '' || (/^\d+(\.\d{1,2})?$/.test(v) && Number(v) <= 100_000_000), 'Enter an amount like 500 or 2.5'),
     defaultGracePeriodDays: wholeNumber('the grace period in days', 0, 365),
     enablePartialPayments: z.boolean(),
+    allowOfficerSelfPayment: z.boolean(),
     receiptRequiredAbove: z
       .string()
       .trim()
@@ -126,6 +127,7 @@ export function financialToFormValues(s: FinancialSettingsDTO): FinancialFormVal
     lateFeeAmount: s.lateFeeAmount ? String(s.lateFeeAmount) : '',
     defaultGracePeriodDays: String(s.defaultGracePeriodDays),
     enablePartialPayments: s.enablePartialPayments,
+    allowOfficerSelfPayment: s.allowOfficerSelfPayment === true,
     receiptRequiredAbove: String(s.receiptRequiredAbove ?? 5000),
   };
 }
@@ -137,6 +139,7 @@ export function toFinancialPayload(v: FinancialFormValues): FinancialSettingsDTO
     lateFeeAmount: v.lateFeeAmount === '' ? 0 : Number(v.lateFeeAmount),
     defaultGracePeriodDays: Number(v.defaultGracePeriodDays),
     enablePartialPayments: v.enablePartialPayments,
+    allowOfficerSelfPayment: v.allowOfficerSelfPayment,
     receiptRequiredAbove: Number(v.receiptRequiredAbove),
   };
 }

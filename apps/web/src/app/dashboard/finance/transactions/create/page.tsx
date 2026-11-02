@@ -13,6 +13,7 @@ interface FormData {
   categoryId: string;
   amount: string;
   dueDate: string;
+  title: string;
   notes: string;
 }
 
@@ -23,6 +24,7 @@ export default function CreateTransactionPage() {
     categoryId: '',
     amount: '',
     dueDate: '',
+    title: '',
     notes: '',
   });
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
@@ -90,6 +92,7 @@ export default function CreateTransactionPage() {
             amount: parseFloat(formData.amount),
             dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
             notes: formData.notes || null,
+            title: formData.title.trim() || null,
           }
         );
 
@@ -108,6 +111,7 @@ export default function CreateTransactionPage() {
             amount: parseFloat(formData.amount),
             dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
             notes: formData.notes || null,
+            title: formData.title.trim() || null,
           }
         );
 
@@ -244,6 +248,20 @@ export default function CreateTransactionPage() {
                 type="date"
                 value={formData.dueDate}
                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Title
+              </label>
+              <input
+                type="text"
+                maxLength={120}
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="What this charge is for, e.g. Annual dues 2026"
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>

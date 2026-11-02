@@ -45,7 +45,7 @@ export default function DuesScreen() {
   const wanted = params.categoryId ? Number(params.categoryId) : null;
   const { control, handleSubmit, setValue } = useForm<BulkFormValues>({
     resolver: zodResolver(bulkFormSchema),
-    defaultValues: { categoryId: wanted ? String(wanted) : '', amount: '', dueDate: '', notes: '' },
+    defaultValues: { categoryId: wanted ? String(wanted) : '', amount: '', dueDate: '', title: '', notes: '' },
     mode: 'onTouched',
   });
   const categoryId = useWatch({ control, name: 'categoryId' });
@@ -114,7 +114,7 @@ export default function DuesScreen() {
       return;
     }
     createMany.mutate(
-      { categoryId: Number(values.categoryId), memberIds, amount: parseAmount(values.amount) ?? 0, dueDate: dueDateToIso(values.dueDate), notes: values.notes.trim() || null },
+      { categoryId: Number(values.categoryId), memberIds, amount: parseAmount(values.amount) ?? 0, dueDate: dueDateToIso(values.dueDate), notes: values.notes.trim() || null, title: values.title.trim() || null },
       {
         onSuccess: () => {
           toast.success(`Charged ${memberIds.length} ${memberIds.length === 1 ? 'member' : 'members'}`);

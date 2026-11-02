@@ -36,15 +36,20 @@ describe('charge form', () => {
   });
 
   it('builds the API body: amount as a number, blank due date and note as null', () => {
-    expect(toChargePayload(valid)).toEqual({ memberId: 7, categoryId: 3, amount: 5000, dueDate: null, notes: null });
+    expect(toChargePayload(valid)).toEqual({ memberId: 7, categoryId: 3, amount: 5000, dueDate: null, notes: null, title: null });
     expect(dueDateToIso('2026-11-01')).toBe(new Date('2026-11-01').toISOString());
+  });
+
+  it('sends the title the officer typed, trimmed, so the charge is named everywhere', () => {
+    expect(toChargePayload({ ...valid, title: '  Annual dues 2026 ' }).title).toBe('Annual dues 2026');
   });
 });
 
 describe('bulk and payment forms', () => {
   it('bulk needs a category and an amount', () => {
-    expect(bulkFormSchema.safeParse({ categoryId: '3', amount: '2000', dueDate: '', notes: '' }).success).toBe(true);
-    expect(bulkFormSchema.safeParse({ categoryId: '', amount: '2000', dueDate: '', notes: '' }).success).toBe(false);
+    expect(bulkFormSchema.safeParse({ categoryId: '3', amount: '2000', dueDate: '', title: '', notes: '' }).success).toBe(true);
+    expect(bulkFormSchema.safeParse({ categoryId: '', amount: '2000', dueDate: '', title: '', notes: '' }).success).toBe(false);
+    expect(bulkFormSchema.safeParse({ categoryId: '3', amount: '2000', dueDate: '', title: 'x'.repeat(121), notes: '' }).success).toBe(false);
   });
 
   it('a payment needs an amount, a method and a date', () => {

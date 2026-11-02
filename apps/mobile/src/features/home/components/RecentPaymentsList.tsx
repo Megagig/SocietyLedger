@@ -49,7 +49,7 @@ export function RecentPaymentsList({ query, onPressPayment }: RecentPaymentsList
         <ListItem
           key={payment.id}
           title={payment.transaction.category.name}
-          meta={formatDate(payment.paymentDate, 'short')}
+          meta={[payment.transaction.purpose, formatDate(payment.paymentDate, 'short')].filter(Boolean).join(' · ')}
           trailing={
             <View className="items-end gap-1">
               <Money value={payment.amount} />

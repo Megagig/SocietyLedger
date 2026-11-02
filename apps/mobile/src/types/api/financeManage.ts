@@ -20,7 +20,7 @@ export type FinanceDashboardDTO = {
     paymentMethod: string | null;
     receiptNumber: string | null;
     transactionId?: number;
-    transaction: { member: { firstName: string; lastName: string } | null; category: { name: string; type: string } | null };
+    transaction: { member: { firstName: string; lastName: string } | null; category: { name: string; type: string } | null; purpose?: string | null };
   }[];
 };
 
@@ -47,6 +47,10 @@ export type ChargeListItemDTO = {
   dueDate: string | null;
   paymentDate: string | null;
   notes: string | null;
+  /** What the officer called this charge, when it belongs to no campaign or cause. */
+  title?: string | null;
+  /** The campaign, cause, penalty or title this charge is for, when more specific than the category. */
+  purpose?: string | null;
   isVoided: boolean;
   voidReason: string | null;
   createdAt: string;
@@ -87,8 +91,8 @@ export type ChargeDetailDTO = Omit<ChargeListItemDTO, 'payments'> & {
 
 export type FinanceCategoryDTO = { id: number; name: string; type: string; amount: MoneyValue | null; frequency: string | null; isActive: boolean };
 
-export type CreateChargePayload = { memberId: number; categoryId: number; amount: number; dueDate?: string | null; notes?: string | null };
-export type BulkChargePayload = { categoryId: number; memberIds: number[]; amount: number; dueDate?: string | null; notes?: string | null };
+export type CreateChargePayload = { memberId: number; categoryId: number; amount: number; dueDate?: string | null; notes?: string | null; title?: string | null };
+export type BulkChargePayload = { categoryId: number; memberIds: number[]; amount: number; dueDate?: string | null; notes?: string | null; title?: string | null };
 export type EditChargePayload = Partial<CreateChargePayload> & { editReason: string };
 export type VoidReplacePayload = { voidReason: string; password: string; newTransaction: CreateChargePayload };
 

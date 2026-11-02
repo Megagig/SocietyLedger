@@ -129,11 +129,15 @@ model Association {
   // Phase 22: Hybrid Super Admin Architecture
   isPlatformAssociation Boolean @default(false) @map("is_platform_association")
 
+  /// Demo tenant created by the demo seed. Never billed, never emailed/SMSed, hidden from platform analytics.
+  isDemo Boolean @default(false) @map("is_demo")
+
   // A1.3 — Impersonation handoff back-relation
   impersonationHandoffs ImpersonationHandoff[]
 
   @@index([deletedAt])
   @@index([isPlatformAssociation])
+  @@index([isDemo])
   @@map("associations")
 }
 
@@ -240,6 +244,9 @@ model User {
 
   // F0.3 — Mobile refresh-token sessions
   refreshTokens RefreshToken[]
+
+  /// Created by the demo seed. Cannot change its own email, phone or password; --reset-demo restores them.
+  isDemo Boolean @default(false) @map("is_demo")
 
   @@unique([associationId, email])
   @@index([associationId, email])
@@ -392,10 +399,12 @@ model Transaction {
   referenceNumber     String?                     @map("reference_number")
   status              String                      @default("pending")
   notes               String?
+  // What this charge is for, in the officer's words ("Annual dues 2026"), for charges that belong to no campaign or cause.
+  title               String?
   createdBy           Int                         @map("created_by")
   createdAt           DateTime                    @default(now()) @map("created_at")
   updatedAt           DateTime                    @updatedAt @map("updated_at")
-  
+
   // R3.4/G43: tracks when the last automated payment reminder was sent, so
   // the daily job doesn't re-send the same reminder more than once per day.
   lastReminderSentAt  DateTime?                   @map("last_reminder_sent_at")
@@ -5224,4 +5233,16 @@ model AjoCircleNotice {
 
   @@index([groupId])
   @@map("ajo_circle_notices")
+}
+
+/// Records which one-time seeds have been applied (e.g. key "demo", version 1). A seed whose version is already here exits without changes.
+model SystemSeed {
+  id        Int      @id @default(autoincrement())
+  key       String
+  version   Int
+  appliedAt DateTime @default(now()) @map("applied_at")
+  summary   Json?
+
+  @@unique([key, version])
+  @@map("system_seeds")
 }

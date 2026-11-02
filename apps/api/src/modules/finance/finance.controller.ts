@@ -18,8 +18,11 @@ import { confirmPassword, reauthFailure } from '../../lib/reauth';
 import { reminderText, splitByCooldown } from './reminder-rules';
 import { isOverdue, overdueWhere } from './overdue-rules';
 import { syncLedgerDebit } from './ledger-sync';
+import { paymentRecordingService, PaymentRuleError } from './payment-recording.service';
+import { RuleError } from './rule-error';
 import { restoreChargeExtras } from './restore-rules';
 import { unwindDeletedCharges } from './charge-unwind';
+import { PURPOSE_INCLUDE, purposeOf, withPurpose } from './charge-purpose';
 
 // ============================================
 // VALIDATION SCHEMAS
@@ -59,6 +62,15 @@ const categoryQuerySchema = z.object({
 
 // Transaction Schemas
 const transactionStatusTypes = ['pending', 'paid', 'overdue', 'waived', 'partial'] as const;
+// What a charge is for when it belongs to no campaign or cause ("Annual dues 2026"). Blank clears it.
+const titleField = z
+  .string()
+  .trim()
+  .max(120, 'Use 120 characters or fewer')
+  .optional()
+  .nullable()
+  .transform((v) => (v ? v : v === undefined ? undefined : null));
+
 const paymentMethodTypes = ['cash', 'bank_transfer', 'card', 'mobile_money', 'cheque', 'other'] as const;
 
 const createTransactionSchema = z.object({
@@ -67,6 +79,7 @@ const createTransactionSchema = z.object({
   amount: z.number().positive('Amount must be positive'),
   dueDate: z.string().datetime().optional().nullable(),
   notes: z.string().optional().nullable(),
+  title: titleField,
 });
 
 const updateTransactionSchema = z.object({
@@ -74,6 +87,7 @@ const updateTransactionSchema = z.object({
   dueDate: z.string().datetime().optional().nullable(),
   status: z.enum(transactionStatusTypes).optional(),
   notes: z.string().optional().nullable(),
+  title: titleField,
 });
 
 // Edit transaction schema (for unpaid/pending transactions only)
@@ -83,6 +97,7 @@ const editTransactionSchema = z.object({
   amount: z.number().positive('Amount must be positive').optional(),
   dueDate: z.string().datetime().optional().nullable(),
   notes: z.string().optional().nullable(),
+  title: titleField,
   editReason: z.string().min(5, 'Please provide a reason for editing (min 5 characters)'),
 });
 
@@ -96,6 +111,7 @@ const voidAndReplaceSchema = z.object({
     amount: z.number().positive('Amount must be positive'),
     dueDate: z.string().datetime().optional().nullable(),
     notes: z.string().optional().nullable(),
+    title: titleField,
   }),
 });
 
@@ -106,6 +122,7 @@ const bulkEditSchema = z.object({
     categoryId: z.number().int().positive().optional(),
     dueDate: z.string().datetime().optional().nullable(),
     notes: z.string().optional().nullable(),
+    title: titleField,
   }),
   editReason: z.string().min(5, 'Please provide a reason for bulk editing (min 5 characters)'),
 });
@@ -116,6 +133,7 @@ const bulkTransactionSchema = z.object({
   amount: z.number().positive('Amount must be positive'),
   dueDate: z.string().datetime().optional().nullable(),
   notes: z.string().optional().nullable(),
+  title: titleField,
 });
 
 const bulkDeleteSchema = z.object({
@@ -144,6 +162,18 @@ const recordPaymentSchema = z.object({
   paymentDate: z.string().datetime().optional(),
   paymentMethod: z.enum(paymentMethodTypes).optional(),
   notes: z.string().optional().nullable(),
+});
+
+const batchPaymentSchema = z.object({
+  items: z
+    .array(z.object({ transactionId: z.number().int().positive(), amountPaid: z.number().positive('Amount must be positive') }))
+    .min(1, 'Choose at least one charge to pay.')
+    .max(50, 'Record at most 50 charges at a time.'),
+  paymentDate: z.string().datetime().optional(),
+  paymentMethod: z.enum(paymentMethodTypes).optional(),
+  notes: z.string().max(500).optional().nullable(),
+  /** Which screen it was recorded from; kept in the audit log. */
+  source: z.enum(['levy-campaign', 'member-ledger', 'donations', 'penalties', 'api']).default('api'),
 });
 
 const bulkPaymentSchema = z.object({
@@ -578,6 +608,9 @@ export const financeController = {
 
       if (queryParams.status === 'overdue') {
         Object.assign(where, overdueWhere());
+      } else if ((queryParams.status as string) === 'owing') {
+        // "Yet to pay": nothing paid yet, or part paid.
+        where.status = { in: ['pending', 'partial'] };
       } else if (queryParams.status) {
         where.status = queryParams.status;
       }
@@ -600,8 +633,12 @@ export const financeController = {
         where.OR = [
           { referenceNumber: { contains: queryParams.search, mode: 'insensitive' } },
           { notes: { contains: queryParams.search, mode: 'insensitive' } },
+          { title: { contains: queryParams.search, mode: 'insensitive' } },
+          { levyAssignment: { campaign: { name: { contains: queryParams.search, mode: 'insensitive' } } } },
+          { donationRecord: { allocation: { name: { contains: queryParams.search, mode: 'insensitive' } } } },
           { member: { firstName: { contains: queryParams.search, mode: 'insensitive' } } },
           { member: { lastName: { contains: queryParams.search, mode: 'insensitive' } } },
+          { member: { memberId: { contains: queryParams.search, mode: 'insensitive' } } },
         ];
       }
 
@@ -621,6 +658,7 @@ export const financeController = {
             payments: {
               select: { id: true, amountPaid: true, paymentDate: true, paymentMethod: true },
             },
+            ...PURPOSE_INCLUDE,
           },
         }),
         prisma.transaction.count({ where }),
@@ -633,7 +671,7 @@ export const financeController = {
           new Decimal(0)
         );
         return {
-          ...txn,
+          ...withPurpose(txn),
           totalPaid,
           balance: new Decimal(txn.amount).minus(totalPaid),
         };
@@ -682,6 +720,7 @@ export const financeController = {
             },
           },
           creator: { select: { id: true, email: true } },
+          ...PURPOSE_INCLUDE,
         },
       });
 
@@ -697,7 +736,7 @@ export const financeController = {
       return res.status(200).json({
         success: true,
         data: {
-          ...transaction,
+          ...withPurpose(transaction),
           totalPaid,
           balance: new Decimal(transaction.amount).minus(totalPaid),
         },
@@ -750,6 +789,7 @@ export const financeController = {
           referenceNumber,
           status: 'pending',
           notes: validatedData.notes,
+          title: validatedData.title ?? null,
           createdBy: req.user!.id,
         },
         include: {
@@ -850,6 +890,7 @@ export const financeController = {
               referenceNumber: `TXN${String(txnCount + index + 1).padStart(6, '0')}`,
               status: 'pending',
               notes: validatedData.notes,
+              title: validatedData.title ?? null,
               createdBy: req.user!.id,
             },
           })
@@ -940,6 +981,7 @@ export const financeController = {
           dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
           status: validatedData.status,
           notes: validatedData.notes,
+          title: validatedData.title,
         },
         include: {
           member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
@@ -1238,6 +1280,7 @@ export const financeController = {
           amount: validatedData.amount,
           dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
           notes: validatedData.notes,
+          title: validatedData.title,
           lastEditedBy: userId,
           lastEditedAt: new Date(),
           editHistory: {
@@ -1360,6 +1403,7 @@ export const financeController = {
             amount: validatedData.newTransaction.amount,
             dueDate: validatedData.newTransaction.dueDate ? new Date(validatedData.newTransaction.dueDate) : null,
             notes: validatedData.newTransaction.notes || `Replacement for voided transaction ${originalTransaction.referenceNumber || originalTransaction.id}`,
+            title: validatedData.newTransaction.title ?? originalTransaction.title,
             referenceNumber: newReferenceNumber,
             status: 'pending',
             createdBy: userId,
@@ -1496,6 +1540,7 @@ export const financeController = {
               categoryId: validatedData.updates.categoryId,
               dueDate: validatedData.updates.dueDate ? new Date(validatedData.updates.dueDate) : undefined,
               notes: validatedData.updates.notes,
+              title: validatedData.updates.title,
               lastEditedBy: userId,
               lastEditedAt: new Date(),
               editHistory: {
@@ -1771,201 +1816,76 @@ export const financeController = {
       }
 
       const validatedData = recordPaymentSchema.parse(req.body);
-
-      // Get transaction with payments
-      const transaction = await prisma.transaction.findFirst({
-        where: { id: validatedData.transactionId, associationId },
-        include: { payments: true },
+      const [saved] = await paymentRecordingService.record(associationId, req.user!.id, {
+        items: [{ transactionId: validatedData.transactionId, amountPaid: validatedData.amountPaid }],
+        paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : undefined,
+        paymentMethod: validatedData.paymentMethod,
+        notes: validatedData.notes,
+        source: 'api',
       });
-
-      if (!transaction) {
-        return res.status(404).json({ success: false, message: 'Transaction not found' });
-      }
-
-      if (transaction.isVoided) {
-        return res.status(400).json({ success: false, message: 'This charge was voided, so it can no longer be paid. Pay its replacement instead.' });
-      }
-
-      // R4.6/G53: Payment Settings' enabledChannels was saved but never
-      // read — reject a method the association hasn't enabled.
-      if (validatedData.paymentMethod) {
-        const paymentSettings = await SettingsService.getSettings(associationId, 'payments');
-        const enabledChannels: string[] = paymentSettings.enabledChannels || [];
-        if (enabledChannels.length > 0 && !enabledChannels.includes(validatedData.paymentMethod)) {
-          return res.status(400).json({
-            success: false,
-            message: `Payment method "${validatedData.paymentMethod}" is not enabled for this association`,
-          });
-        }
-      }
-
-      // Calculate current paid amount
-      const currentPaid = transaction.payments.reduce(
-        (sum, p) => sum.plus(p.amountPaid),
-        new Decimal(0)
-      );
-      const balance = new Decimal(transaction.amount).minus(currentPaid);
-
-      if (balance.lessThanOrEqualTo(0)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Transaction is already fully paid',
-        });
-      }
-
-      // R4.6/G53: Financial Settings' enablePartialPayments was saved but
-      // never read — reject an amount that doesn't fully settle the
-      // balance when the association has disabled partial payments.
-      // G87: Payment Settings has an identically-named, independently-toggleable
-      // enablePartialPayments field that was never checked at all — either one
-      // being off blocks a partial payment.
-      if (new Decimal(validatedData.amountPaid).lessThan(balance)) {
-        const [financialSettings, paymentSettings] = await Promise.all([
-          SettingsService.getSettings(associationId, 'financial'),
-          SettingsService.getSettings(associationId, 'payments'),
-        ]);
-        if (financialSettings.enablePartialPayments === false || paymentSettings.enablePartialPayments === false) {
-          return res.status(400).json({
-            success: false,
-            message: 'Partial payments are not enabled for this association. The full balance must be paid.',
-          });
-        }
-      }
-
-      if (new Decimal(validatedData.amountPaid).greaterThan(balance)) {
-        return res.status(400).json({
-          success: false,
-          message: `Payment amount exceeds balance. Maximum: ${balance}`,
-        });
-      }
-
-      // Generate unique receipt number with timestamp to avoid collisions
-      const timestamp = Date.now().toString().slice(-6);
-      const paymentCount = await prisma.payment.count({ where: { associationId } });
-      const receiptNumber = `RCP${String(paymentCount + 1).padStart(6, '0')}-${timestamp}`;
-
-      // Create payment and update transaction status
-      const newPaidTotal = currentPaid.plus(validatedData.amountPaid);
-      const newStatus = newPaidTotal.greaterThanOrEqualTo(transaction.amount) ? 'paid' : 'partial';
-
-      const [payment] = await prisma.$transaction([
-        prisma.payment.create({
-          data: {
-            associationId,
-            transactionId: validatedData.transactionId,
-            amountPaid: validatedData.amountPaid,
-            paymentDate: validatedData.paymentDate ? new Date(validatedData.paymentDate) : new Date(),
-            paymentMethod: validatedData.paymentMethod,
-            receiptNumber,
-            confirmedBy: req.user!.id,
-            confirmedAt: new Date(),
-          },
-        }),
-        prisma.transaction.update({
-          where: { id: validatedData.transactionId },
-          data: {
-            status: newStatus,
-            paymentDate: newStatus === 'paid' ? new Date() : undefined,
-            paymentMethod: validatedData.paymentMethod,
-          },
-        }),
-      ]);
-
-      await prisma.auditLog.create({
-        data: {
-          associationId,
-          userId: req.user!.id,
-          action: 'CREATE',
-          tableName: 'payments',
-          recordId: payment.id,
-          newValues: payment,
-        },
-      });
-
-      // Phase 12: Invalidate cache
-      await cacheInvalidationService.onPaymentChange(associationId);
-
-      // Ledger sync: create CREDIT entry for this payment
-      try {
-        await memberLedgerService.createFromPayment(payment.id, req.user!.id);
-      } catch (ledgerError) {
-        console.error('Ledger sync failed (non-critical):', ledgerError);
-      }
-
-      // Fetch full payment with transaction relations for accounting sync + receipt email
-      const fullPayment = await prisma.payment.findUnique({
-        where: { id: payment.id },
-        include: {
-          transaction: {
-            include: {
-              member: { select: { id: true, memberId: true, firstName: true, lastName: true, userId: true } },
-              category: { select: { id: true, name: true, type: true } },
-            },
-          },
-        },
-      });
-
-      // Accounting integration: Sync payment to accounting module
-      try {
-        if (fullPayment) {
-          await accountingIntegrationService.onPaymentRecorded(fullPayment, req.user!.id);
-        }
-      } catch (syncError) {
-        console.error('Accounting sync failed (non-critical):', syncError);
-        // Don't throw - payment recording succeeded
-      }
-
-      // R4.6/G53: Payment Settings' receiptAutoGenerate was saved but never
-      // read by anything — gate the (previously orphaned) 'payment-receipt'
-      // email template on it instead of leaving it unsent unconditionally.
-      try {
-        const receiptAutoGenerate = await SettingsService.getSetting(associationId, 'payments', 'receiptAutoGenerate');
-        const memberUserId = fullPayment?.transaction.member?.userId;
-        if (receiptAutoGenerate !== false && memberUserId) {
-          const association = await prisma.association.findUnique({
-            where: { id: associationId },
-            select: { name: true },
-          });
-
-          await dispatchNotification({
-            associationId,
-            userId: memberUserId,
-            title: 'Payment Received',
-            message: `Your payment of ₦${validatedData.amountPaid.toLocaleString()} has been received and confirmed.`,
-            kind: 'payment_received',
-            sendEmail: true,
-            emailSubject: 'Payment Receipt',
-            emailTemplate: 'payment-receipt',
-            emailData: {
-              memberName: `${fullPayment!.transaction.member!.firstName} ${fullPayment!.transaction.member!.lastName}`,
-              receiptNumber,
-              amount: validatedData.amountPaid,
-              categoryName: fullPayment!.transaction.category?.name || 'Payment',
-              paymentMethod: validatedData.paymentMethod || 'N/A',
-              paymentDate: new Date().toLocaleDateString(),
-              associationName: association?.name || 'Your Association',
-            },
-          });
-        }
-      } catch (receiptError) {
-        console.error('Receipt email failed (non-critical):', receiptError);
-      }
 
       return res.status(201).json({
         success: true,
         message: 'Payment recorded successfully',
+        data: { payment: saved.payment, transactionStatus: saved.transactionStatus, remainingBalance: saved.remainingBalance },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
+      }
+      if (error instanceof RuleError) {
+        return res.status(error.status).json({ success: false, message: error.message, code: error.code });
+      }
+      console.error('Error recording payment:', error);
+      return res.status(500).json({ success: false, message: 'Failed to record payment' });
+    }
+  },
+
+  /**
+   * Record payments for several charges at once (the Record payment dialog). All or nothing: if any charge breaks a rule, nothing is saved and
+   * the answer names the charge and the reason.
+   */
+  async recordPaymentsBatch(req: Request, res: Response) {
+    try {
+      const associationId = req.user?.associationId;
+      if (!associationId) {
+        return res.status(400).json({ success: false, message: 'Association ID is required' });
+      }
+      const data = batchPaymentSchema.parse(req.body);
+      const saved = await paymentRecordingService.record(associationId, req.user!.id, {
+        items: data.items,
+        paymentDate: data.paymentDate ? new Date(data.paymentDate) : undefined,
+        paymentMethod: data.paymentMethod,
+        notes: data.notes,
+        source: data.source,
+      });
+      return res.status(201).json({
+        success: true,
+        message: saved.length === 1 ? 'Payment recorded successfully' : `${saved.length} payments recorded successfully`,
         data: {
-          payment,
-          transactionStatus: newStatus,
-          remainingBalance: new Decimal(transaction.amount).minus(newPaidTotal),
+          payments: saved.map((p) => ({
+            paymentId: p.payment.id,
+            transactionId: p.transactionId,
+            label: p.label,
+            amountPaid: p.payment.amountPaid,
+            receiptNumber: p.payment.receiptNumber,
+            transactionStatus: p.transactionStatus,
+            remainingBalance: p.remainingBalance,
+          })),
         },
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ success: false, message: 'Validation error', errors: error.errors });
       }
-      console.error('Error recording payment:', error);
-      return res.status(500).json({ success: false, message: 'Failed to record payment' });
+      if (error instanceof PaymentRuleError) {
+        return res.status(error.status).json({ success: false, message: error.message, code: error.code, transactionId: error.transactionId });
+      }
+      if (error instanceof RuleError) {
+        return res.status(error.status).json({ success: false, message: error.message, code: error.code });
+      }
+      console.error('Error recording payments:', error);
+      return res.status(500).json({ success: false, message: 'Failed to record payments' });
     }
   },
 
@@ -2161,6 +2081,7 @@ export const financeController = {
             include: {
               member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
               category: { select: { id: true, name: true, type: true } },
+              ...PURPOSE_INCLUDE,
             },
           },
           confirmer: { select: { id: true, email: true } },
@@ -2169,7 +2090,7 @@ export const financeController = {
       if (!payment) {
         return res.status(404).json({ success: false, message: 'Payment not found' });
       }
-      return res.status(200).json({ success: true, data: payment });
+      return res.status(200).json({ success: true, data: { ...payment, transaction: withPurpose(payment.transaction) } });
     } catch (error) {
       console.error('Error getting payment:', error);
       return res.status(500).json({ success: false, message: 'Failed to get payment' });
@@ -2210,6 +2131,7 @@ export const financeController = {
               include: {
                 member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
                 category: { select: { id: true, name: true, type: true } },
+                ...PURPOSE_INCLUDE,
               },
             },
             confirmer: { select: { id: true, email: true } },
@@ -2221,7 +2143,7 @@ export const financeController = {
       return res.status(200).json({
         success: true,
         data: {
-          payments,
+          payments: payments.map((p) => ({ ...p, transaction: withPurpose(p.transaction) })),
           pagination: {
             page,
             limit,
@@ -2265,6 +2187,7 @@ export const financeController = {
         include: {
           category: { select: { id: true, name: true, type: true } },
           payments: true,
+          ...PURPOSE_INCLUDE,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -2304,7 +2227,7 @@ export const financeController = {
           },
           byCategory,
           recentTransactions: transactions.slice(0, 10).map(txn => ({
-            ...txn,
+            ...withPurpose(txn),
             totalPaid: txn.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0)),
           })),
         },
@@ -2361,6 +2284,7 @@ export const financeController = {
               include: {
                 member: { select: { firstName: true, lastName: true } },
                 category: { select: { name: true, type: true } },
+                ...PURPOSE_INCLUDE,
               },
             },
           },
@@ -2392,7 +2316,7 @@ export const financeController = {
             totalOutstanding: owing.summary.totalOutstanding,
             totalCollected: allPayments._sum.amountPaid || 0,
           },
-          recentPayments,
+          recentPayments: recentPayments.map((p) => ({ ...p, transaction: withPurpose(p.transaction) })),
         },
       });
     } catch (error) {
@@ -2618,6 +2542,7 @@ export const financeController = {
           member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true, phone: true, userId: true } },
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { amountPaid: true } },
+          ...PURPOSE_INCLUDE,
         },
         orderBy: [{ member: { lastName: 'asc' } }, { dueDate: 'asc' }],
       });
@@ -2638,6 +2563,7 @@ export const financeController = {
           id: number;
           referenceNumber: string;
           category: string;
+          purpose: string | null;
           amount: number;
           balance: number;
           dueDate: Date | null;
@@ -2676,6 +2602,7 @@ export const financeController = {
           id: txn.id,
           referenceNumber: txn.referenceNumber || '',
           category: txn.category.name,
+          purpose: purposeOf(txn),
           amount: Number(txn.amount),
           balance,
           dueDate: txn.dueDate,

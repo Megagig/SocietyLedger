@@ -1,0 +1,73 @@
+---
+title: "Recording payments from the lists"
+description: "Record a payment, find who has paid and who hasn't, and export the list, straight from a levy campaign, Member Ledgers, Donations or Penalties."
+type: task
+audience: ["officer"]
+platforms: ["web", "mobile"]
+covers: ["/dashboard/finance/levies/[id]", "/dashboard/finance/member-ledger", "/dashboard/finance/donations", "/dashboard/finance/penalties", "/manage/finance/levies/[id]", "/manage/finance/ledgers", "/manage/finance/donations", "/manage/finance/penalties"]
+status: published
+lastVerified: "2026-11-02"
+related: ["/docs/finance/recording-a-payment", "/docs/finance/levy-campaigns", "/docs/finance/member-ledgers", "/docs/finance/donations-and-causes", "/docs/finance/penalties-and-late-fees", "/docs/settings/financial-settings"]
+---
+
+You don't have to open each charge to record the money a member handed you. Four screens let you do it from the list itself, and each has the same **search**, **paid / yet-to-pay filter** and **Excel / PDF export**:
+
+- a **levy campaign** (every member assigned to it),
+- **Member Ledgers**,
+- **Donations** (gifts and pledges),
+- **Penalties & Fines** (the *Applied Penalties* tab on the web, *Charged* on the phone).
+
+## Before you start
+
+You need the **record payments** permission to record a payment, and the **export financial data** permission to export. Administrators and Treasurers have both by default.
+
+<Callout type="danger" title="Only record money you have received">
+Recording a payment updates the member's balance straight away. Do it once the money is in your hand or in the bank.
+</Callout>
+
+## Record a payment
+
+<Steps>
+<Step>Find the member. Type part of their name or member number in the **search** box; the list narrows as you type.</Step>
+<Step>Select **Record payment** on their row (on the phone, tap their row first on a campaign, donation or penalty).</Step>
+<Step>The dialog lists everything that member still owes: levies, dues, penalties and pledges. On a campaign, a donation or a penalty only that one debt is ticked. On **Member Ledgers** every debt is ticked at its full balance.</Step>
+<Step>Tick the debts this payment settles. To record a part payment, change the **Amount received** on that debt. It can't be more than what is left.</Step>
+<Step>Choose how it was paid, the date received, and add a note if you like.</Step>
+<Step>Select **Record payment**.</Step>
+</Steps>
+
+Everything you ticked is saved together or not at all. If one debt can't be recorded (for example it was voided, or the amount is more than the balance), nothing is saved, and the dialog marks that debt and says why. Each debt gets its own receipt, shown when you finish.
+
+<Callout type="note" title="Partial payments">
+If your association has switched partial payments off in [Financial settings](/docs/settings/financial-settings), only a debt's full balance can be recorded.
+</Callout>
+
+## You can't record your own payment
+
+By default an officer can't record a payment against **their own** debt. The button is disabled and the dialog says "Another officer needs to record your payment." This stops anyone marking their own debt paid without handing over money.
+
+An association with only one officer can allow it: switch on **Let officers record their own payments** in [Financial settings](/docs/settings/financial-settings). Leave it off if you can.
+
+## Find who has paid and who hasn't
+
+Under the search box, choose who to show:
+
+| Choice | Shows |
+|---|---|
+| **Everyone** | Everyone on the list |
+| **Yet to pay** | Part paid and not paid together, the people you still need to chase |
+| **Not paid** | Nothing paid yet |
+| **Part paid** | Something paid, a balance left |
+| **Paid** | Nothing left to pay |
+
+Who counts as paid is worked out from the money actually recorded, so it is right even if a status label is out of date. On **Member Ledgers** the choices are **Everyone**, **Owing** and **Cleared**.
+
+## Export the list
+
+Select **Excel** or **PDF**. The file holds exactly what you have filtered and searched, and every matching person, not just the page you can see. A "Yet to pay" file lists only the people who still owe.
+
+Each file starts with the association's name, what the list is, the filter and search used, and the date. Below that are the totals for the people listed (expected, paid and outstanding) and one row per person with their member number, name, amount, paid, balance, status and last payment date. Amounts are written in full, like ₦3,000.00. On the phone the file opens in your share sheet, so you can send it on WhatsApp or save it.
+
+<Callout type="note" title="Donations from anonymous donors">
+An anonymous donor is listed as **Anonymous** with no member number, in the screen and in the file. You can still record their payment.
+</Callout>

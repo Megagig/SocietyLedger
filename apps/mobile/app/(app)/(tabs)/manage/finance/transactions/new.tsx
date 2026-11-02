@@ -44,7 +44,7 @@ export default function NewChargeScreen() {
   const back = () => router.back();
 
   const single = useForm<ChargeFormValues>({ resolver: zodResolver(singleSchema), defaultValues: emptyChargeValues(), mode: 'onTouched' });
-  const bulk = useForm<BulkFormValues>({ resolver: zodResolver(bulkFormSchema), defaultValues: { categoryId: '', amount: '', dueDate: '', notes: '' }, mode: 'onTouched' });
+  const bulk = useForm<BulkFormValues>({ resolver: zodResolver(bulkFormSchema), defaultValues: { categoryId: '', amount: '', dueDate: '', title: '', notes: '' }, mode: 'onTouched' });
 
   if (!canCreate) {
     return (
@@ -108,7 +108,7 @@ export default function NewChargeScreen() {
       return;
     }
     createMany.mutate(
-      { categoryId: Number(values.categoryId), memberIds, amount: parseAmount(values.amount) ?? 0, dueDate: dueDateToIso(values.dueDate), notes: values.notes.trim() || null },
+      { categoryId: Number(values.categoryId), memberIds, amount: parseAmount(values.amount) ?? 0, dueDate: dueDateToIso(values.dueDate), notes: values.notes.trim() || null, title: values.title.trim() || null },
       {
         onSuccess: () => {
           toast.success(`Charged ${memberIds.length} ${memberIds.length === 1 ? 'member' : 'members'}`);

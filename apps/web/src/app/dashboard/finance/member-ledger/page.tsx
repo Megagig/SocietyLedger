@@ -11,6 +11,11 @@ import {
 import { toast } from '@/lib/toast';
 import { getAllMemberBalances, bulkSyncLedgers, forceResyncAllLedgers, MemberBalance } from '@/lib/api/member-ledger';
 import { useConfirm } from '@/hooks/useConfirm';
+import { Can } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/lib/permissions';
+import { CollectionToolbar } from '@/components/finance/CollectionToolbar';
+import { RecordPaymentDialog } from '@/components/finance/RecordPaymentDialog';
+import { LEDGER_TABS, type SettlementFilter } from '@/lib/finance/collections';
 
 export default function MemberLedgerPage() {
   const { confirm, element: confirmElement } = useConfirm();
@@ -22,6 +27,8 @@ export default function MemberLedgerPage() {
   const [sortBy, setSortBy] = useState('balance');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [balanceFilter, setBalanceFilter] = useState<SettlementFilter>('all');
+  const [payFor, setPayFor] = useState<MemberBalance | null>(null);
 
   // Summary stats
   const [stats, setStats] = useState({
@@ -33,7 +40,7 @@ export default function MemberLedgerPage() {
 
   useEffect(() => {
     fetchMembers();
-  }, [pagination.page, search, sortBy, sortOrder]);
+  }, [pagination.page, search, sortBy, sortOrder, balanceFilter]);
 
   const fetchMembers = async () => {
     try {
@@ -44,6 +51,7 @@ export default function MemberLedgerPage() {
         search: search || undefined,
         sortBy,
         sortOrder,
+        balance: balanceFilter === 'owing' ? 'owing' : balanceFilter === 'paid' ? 'paid' : undefined,
       });
       
       // API returns { data: { members: [...], pagination: {...} } }
@@ -128,6 +136,13 @@ export default function MemberLedgerPage() {
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
       {confirmElement}
+      <RecordPaymentDialog
+        opened={payFor !== null}
+        onClose={() => setPayFor(null)}
+        memberId={payFor?.memberId ?? null}
+        source="member-ledger"
+        onRecorded={fetchMembers}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
@@ -211,13 +226,24 @@ export default function MemberLedgerPage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
-            <TextInput
-              placeholder="Search by name or member ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              leftSection={<IconSearch size={16} />}
-              className="w-full sm:w-64"
-            />
+            <div className="w-full">
+              <CollectionToolbar
+                screen="member-ledger"
+                search={search}
+                onSearch={(value) => {
+                  setSearch(value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                }}
+                status={balanceFilter}
+                onStatus={(value) => {
+                  setBalanceFilter(value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                }}
+                tabs={LEDGER_TABS}
+                tabsLabel="Who owes"
+                columns="grid-cols-3 sm:inline-flex"
+              />
+            </div>
             <div className="flex gap-3 sm:gap-4">
               <Select
                 placeholder="Sort by"
@@ -281,7 +307,21 @@ export default function MemberLedgerPage() {
                 <span className="text-xs text-gray-500">{formatDate(member.lastActivity)}</span>
               </div>
               
-              <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex justify-end gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+                {member.balance > 0 && (
+                  <Can permission={PERMISSIONS.PAYMENT_CREATE}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPayFor(member);
+                      }}
+                      className="min-h-11 rounded-md border border-success-line bg-success-soft px-3 text-sm font-medium text-success-text"
+                    >
+                      Record payment
+                    </button>
+                  </Can>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -335,6 +375,22 @@ export default function MemberLedgerPage() {
                   </Table.Td>
                   <Table.Td className="text-sm text-gray-500">{formatDate(member.lastActivity)}</Table.Td>
                   <Table.Td className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                    {member.balance > 0 && (
+                      <Can permission={PERMISSIONS.PAYMENT_CREATE}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPayFor(member);
+                          }}
+                          aria-label={`Record payment for ${member.memberName}`}
+                          className="min-h-11 rounded-md border border-success-line bg-success-soft px-3 text-sm font-medium text-success-text hover:bg-success-line focus:outline-none focus:ring-2 focus:ring-success-focus"
+                        >
+                          Record payment
+                        </button>
+                      </Can>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -345,6 +401,7 @@ export default function MemberLedgerPage() {
                     >
                       <IconEye size={18} />
                     </button>
+                    </div>
                   </Table.Td>
                 </Table.Tr>
               )) : (

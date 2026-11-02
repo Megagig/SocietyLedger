@@ -10,6 +10,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { tenantMiddleware } from './middleware/tenant.middleware';
+import { demoGuard } from './middleware/demo-guard.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
 import { startSubscriptionJobs, stopSubscriptionJobs } from './jobs/subscription-jobs';
 import { startMeetingJobs, stopMeetingJobs } from './jobs/meeting-jobs';
@@ -212,6 +213,9 @@ app.use(tenantMiddleware);
 // Phase 22: Context middleware for Hybrid Super Admin Architecture
 // Must be after tenant middleware, attaches execution context to requests
 app.use(contextMiddleware);
+
+// Demo tenants: no gateway charges, no outbound SMS/invites, no password changes, small uploads (middleware/demo-guard.middleware.ts)
+app.use(demoGuard);
 
 // Logging middleware
 app.use(morgan('dev'));

@@ -19,6 +19,21 @@ jest.mock('@/components/layout/StickyFooter', () => ({ StickyFooter: ({ children
 jest.mock('@/components/ui/BottomSheet', () => ({ BottomSheet: ({ children }: { children: ReactNode }) => children }));
 jest.mock('@/components/ui/Skeleton', () => ({ Skeleton: () => null }));
 jest.mock('@/components/feedback/ConfirmSheet', () => ({ ConfirmSheet: () => null }));
+// Recording a payment and exporting the list have their own tests; here they must not pull in the API client and phone storage.
+jest.mock('@/features/collections/components/CollectionBar', () => {
+  const { Pressable } = jest.requireActual('react-native');
+  return {
+    CollectionBar: ({ onSearch, onStatus }: { onSearch: (v: string) => void; onStatus: (v: string) => void }) => (
+      <>
+        <Pressable testID="bar-owing" onPress={() => onStatus('owing')} />
+        <Pressable testID="bar-paid" onPress={() => onStatus('paid')} />
+        <Pressable testID="bar-search-bola" onPress={() => onSearch('bola')} />
+      </>
+    ),
+  };
+});
+jest.mock('@/features/collections/components/RecordPaymentSheet', () => ({ RecordPaymentSheet: () => null }));
+jest.mock('@/features/collections/queries', () => ({ RECORD_ACCESS: 'PAYMENT_CREATE', EXPORT_ACCESS: 'EXPORT_FINANCIAL' }));
 jest.mock('@/features/financeSetup/mutations', () => ({
   useUpdateCampaign: () => ({ mutate: jest.fn(), isPending: false }),
   useRemoveAssignment: () => ({ mutate: jest.fn(), isPending: false }),
@@ -79,5 +94,26 @@ describe('Campaign detail', () => {
     expect(screen.queryByTestId('assignment-remove')).toBeNull(); // Ada has paid
     await fireEvent.press(screen.getByTestId('assignment-2'));
     expect(screen.getByTestId('assignment-remove')).toBeTruthy(); // Bola has not
+  });
+
+  it('offers Record payment only on a member who still owes', async () => {
+    await render(<CampaignDetailScreen />);
+    await fireEvent.press(screen.getByTestId('assignment-1'));
+    expect(screen.queryByTestId('assignment-record-payment')).toBeNull(); // Ada is paid
+    await fireEvent.press(screen.getByTestId('assignment-2'));
+    expect(screen.getByTestId('assignment-record-payment')).toBeTruthy(); // Bola owes
+  });
+
+  it('narrows the list to who has paid or is yet to pay, and by name, and says when nobody matches', async () => {
+    await render(<CampaignDetailScreen />);
+    await fireEvent.press(screen.getByTestId('bar-owing'));
+    expect(screen.queryByText('Ada Obi')).toBeNull();
+    expect(screen.getByText('Bola Eze')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('bar-paid'));
+    expect(screen.getByText('Ada Obi')).toBeTruthy();
+    expect(screen.queryByText('Bola Eze')).toBeNull();
+    await fireEvent.press(screen.getByTestId('bar-search-bola'));
+    expect(screen.getByText('Nobody matches this search and filter')).toBeTruthy();
+    expect(screen.getByText(/Members · 0 of 2/)).toBeTruthy();
   });
 });

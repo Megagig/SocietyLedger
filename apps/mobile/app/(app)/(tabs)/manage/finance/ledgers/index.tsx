@@ -1,20 +1,25 @@
 import { FlashList } from '@shopify/flash-list';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import { BookOpen } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { NoPermission } from '@/components/feedback/NoPermission';
-import { SearchField } from '@/components/forms/SearchField';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Spinner } from '@/components/ui/Spinner';
+import { CollectionBar } from '@/features/collections/components/CollectionBar';
+import { RecordPaymentSheet, type RecordPaymentTarget } from '@/features/collections/components/RecordPaymentSheet';
+import { LEDGER_OPTIONS } from '@/features/collections/labels';
+import { RECORD_ACCESS } from '@/features/collections/queries';
 import { LedgerMemberRow } from '@/features/ledgers/LedgerMemberRow';
 import { LEDGERS_VIEW_ACCESS, useLedgerMembers } from '@/features/ledgers/queries';
 import { useCan } from '@/hooks/useCan';
+import type { SettlementFilter } from '@/types/api/collections';
 import type { LedgerMemberDTO } from '@/types/api/ledgerManage';
 
 function positionOf(index: number, count: number): 'first' | 'middle' | 'last' | 'only' {
@@ -27,12 +32,20 @@ function positionOf(index: number, count: number): 'first' | 'middle' | 'last' |
 export default function LedgersScreen() {
   const router = useRouter();
   const canView = useCan(LEDGERS_VIEW_ACCESS);
+  const canRecord = useCan(RECORD_ACCESS);
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<SettlementFilter>('all');
+  const [payTarget, setPayTarget] = useState<RecordPaymentTarget | null>(null);
+  const payRef = useRef<BottomSheetModal>(null);
   const term = search.trim();
-  const query = useLedgerMembers(term);
+  const query = useLedgerMembers(term, status === 'owing' ? 'owing' : status === 'paid' ? 'paid' : undefined);
   const members = useMemo(() => query.data?.pages.flatMap((page) => page.members) ?? [], [query.data]);
   const back = () => router.back();
   const open = (member: LedgerMemberDTO) => router.push(`/(app)/(tabs)/manage/finance/ledgers/${member.id}` as never);
+  const record = (member: LedgerMemberDTO) => {
+    setPayTarget({ memberId: member.id });
+    payRef.current?.present();
+  };
 
   if (!canView) {
     return (
@@ -48,7 +61,7 @@ export default function LedgersScreen() {
       <ScreenHeader title="Member ledgers" onBack={back} docsKey="FN13" />
 
       <View className="pb-3">
-        <SearchField value={search} onChangeText={setSearch} placeholder="Search name, member ID or email" />
+        <CollectionBar screen="member-ledger" search={search} onSearch={setSearch} status={status} onStatus={setStatus} options={LEDGER_OPTIONS} placeholder="Search name, member ID or email" />
       </View>
 
       {query.isPending ? (
@@ -63,7 +76,7 @@ export default function LedgersScreen() {
         <FlashList
           data={members}
           keyExtractor={(member) => String(member.id)}
-          renderItem={({ item, index }) => <LedgerMemberRow member={item} position={positionOf(index, members.length)} onPress={open} />}
+          renderItem={({ item, index }) => <LedgerMemberRow member={item} position={positionOf(index, members.length)} onPress={open} onRecord={canRecord ? record : undefined} />}
           ListEmptyComponent={<EmptyState icon={BookOpen} title={term ? 'No members match' : 'No members yet'} description={term ? 'Try a different name or ID.' : 'Members and what they owe show up here.'} />}
           ListFooterComponent={
             query.isFetchingNextPage ? (
@@ -83,6 +96,8 @@ export default function LedgersScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <RecordPaymentSheet ref={payRef} target={payTarget} source="member-ledger" onRecorded={() => void query.refetch()} />
     </Screen>
   );
 }

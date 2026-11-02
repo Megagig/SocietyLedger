@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { SETTLEMENT_FILTERS, type SettlementFilter } from '../collections/settlement';
 import { z } from 'zod';
 import { leviesService } from './levies.service';
 import { donationsService } from './donations.service';
@@ -415,6 +416,8 @@ export const advancedController = {
         memberId: req.query.memberId ? parseInt(req.query.memberId as string) : undefined,
         startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
         endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+        status: SETTLEMENT_FILTERS.includes(req.query.status as SettlementFilter) ? (req.query.status as SettlementFilter) : undefined,
+        search: typeof req.query.search === 'string' ? req.query.search.slice(0, 100) : undefined,
         page: parseInt(req.query.page as string) || 1,
         limit: parseInt(req.query.limit as string) || 20,
       });

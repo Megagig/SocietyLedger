@@ -7,7 +7,7 @@ import type { PermissionAlias } from '@/lib/permissions';
 
 export const ledgerKeys = {
   all: (tenant: string) => [tenant, 'memberLedger', 'officer'] as const,
-  members: (tenant: string, search: string) => [...ledgerKeys.all(tenant), 'members', search] as const,
+  members: (tenant: string, search: string, balance: string) => [...ledgerKeys.all(tenant), 'members', search, balance] as const,
   summary: (tenant: string, memberId: number) => [...ledgerKeys.all(tenant), 'summary', memberId] as const,
   entries: (tenant: string, memberId: number) => [...ledgerKeys.all(tenant), 'entries', memberId] as const,
 };
@@ -19,12 +19,12 @@ export const LEDGERS_RESYNC_ACCESS: PermissionAlias = 'FINANCE_APPROVE';
 
 export const LEDGERS_PAGE_SIZE = 30;
 
-export function useLedgerMembers(search: string) {
+export function useLedgerMembers(search: string, balance?: 'owing' | 'paid') {
   const tenant = useTenantKey();
   const enabled = useCan(LEDGERS_VIEW_ACCESS);
   return useInfiniteQuery({
-    queryKey: ledgerKeys.members(tenant, search),
-    queryFn: ({ pageParam }) => ledgerManageApi.listMembers({ page: pageParam, limit: LEDGERS_PAGE_SIZE, search: search || undefined }),
+    queryKey: ledgerKeys.members(tenant, search, balance ?? 'all'),
+    queryFn: ({ pageParam }) => ledgerManageApi.listMembers({ page: pageParam, limit: LEDGERS_PAGE_SIZE, search: search || undefined, balance }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.pagination.page < last.pagination.totalPages ? last.pagination.page + 1 : undefined),
     enabled,

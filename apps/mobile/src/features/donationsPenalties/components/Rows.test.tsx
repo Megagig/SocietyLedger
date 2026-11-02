@@ -10,7 +10,7 @@ jest.mock('@/providers/ThemeProvider', () => ({
 const donation = (over: Partial<DonationListItemDTO> = {}): DonationListItemDTO => ({
   id: 12, receiptNumber: 'DON-1', amount: 25000, paidAmount: 25000, status: 'paid', isVoided: false, dueDate: null, isPledge: false,
   donor: { id: 3, memberId: 'M3', name: 'Ada Obi' }, category: 'Building fund', allocation: { id: 2, name: 'Hall roof', type: 'project' },
-  donorMessage: null, createdAt: '2026-10-20T10:00:00.000Z', ...over,
+  donorMessage: null, createdAt: '2026-10-20T10:00:00.000Z', balance: 0, settlement: 'paid', transactionId: 40, memberDbId: 3, ...over,
 });
 
 const rule = (over: Partial<PenaltyRuleDTO> = {}): PenaltyRuleDTO => ({

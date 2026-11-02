@@ -46,6 +46,8 @@ export type FinancialSettingsDTO = {
   lateFeeAmount: number;
   defaultGracePeriodDays: number;
   enablePartialPayments: boolean;
+  /** Off by default: an officer cannot record a payment against their own debt; another officer has to. */
+  allowOfficerSelfPayment?: boolean;
   /** Spending above this needs its receipt attached; at or below it a reason is enough. */
   receiptRequiredAbove: number;
 };

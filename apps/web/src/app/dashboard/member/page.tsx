@@ -17,12 +17,13 @@ import {
 import Link from 'next/link';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { apiGet } from '@/utils/api';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface FinanceSummary {
   totalOutstanding: number;
   paidThisMonth: number;
-  recentTransactions: { id: number; category: { name: string }; balance: number; status: string; createdAt: string }[];
-  upcomingPayments: { id: number; category: { name: string }; balance: number; dueDate: string }[];
+  recentTransactions: { id: number; category: { name: string }; purpose?: string | null; balance: number; status: string; createdAt: string }[];
+  upcomingPayments: { id: number; category: { name: string }; purpose?: string | null; balance: number; dueDate: string }[];
 }
 
 function AssociationMemberDashboardPage() {
@@ -148,7 +149,7 @@ function AssociationMemberDashboardPage() {
               {summary.recentTransactions.map((txn) => (
                 <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{txn.category?.name}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100"><ChargeName name={txn.category?.name} purpose={txn.purpose} /></p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(txn.createdAt)}</p>
                   </div>
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatCurrency(txn.balance)} due</p>
@@ -177,7 +178,7 @@ function AssociationMemberDashboardPage() {
               {summary.upcomingPayments.map((txn) => (
                 <div key={txn.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{txn.category?.name}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100"><ChargeName name={txn.category?.name} purpose={txn.purpose} /></p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Due {formatDate(txn.dueDate)}</p>
                   </div>
                   <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">{formatCurrency(txn.balance)}</p>

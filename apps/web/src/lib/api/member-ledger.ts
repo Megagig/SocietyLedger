@@ -179,6 +179,8 @@ export async function getAllMemberBalances(params?: {
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  /** owing = a balance above zero; paid = cleared. Left out, everyone. */
+  balance?: 'owing' | 'paid';
 }): Promise<{ data: { members: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } } }> {
   const searchParams = new URLSearchParams();
   if (params?.page) searchParams.set('page', params.page.toString());
@@ -186,6 +188,7 @@ export async function getAllMemberBalances(params?: {
   if (params?.search) searchParams.set('search', params.search);
   if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
   if (params?.sortOrder) searchParams.set('sortOrder', params.sortOrder);
+  if (params?.balance) searchParams.set('balance', params.balance);
 
   const response = await apiGet(`${API_URL}/api/member-ledger/ledger/members?${searchParams}`);
   if (!response.ok) {

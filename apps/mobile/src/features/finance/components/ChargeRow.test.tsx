@@ -33,6 +33,14 @@ describe('ChargeRow', () => {
     expect(screen.getByText(/left/)).toBeTruthy();
   });
 
+  it('names the real campaign, due or cause under the category, and shows no extra line without one', async () => {
+    const { rerender } = await render(<ChargeRow charge={charge({ category: { id: 5, name: 'wedding Levy', type: 'levy' }, purpose: 'Levy For Emma Wedding' })} position="only" onPress={() => undefined} />);
+    expect(screen.getByText('wedding Levy')).toBeTruthy();
+    expect(screen.getByText('Levy For Emma Wedding')).toBeTruthy();
+    await rerender(<ChargeRow charge={charge()} position="only" onPress={() => undefined} />);
+    expect(screen.queryByTestId('charge-purpose')).toBeNull();
+  });
+
   it('marks a voided charge', async () => {
     await render(<ChargeRow charge={charge({ isVoided: true })} position="only" onPress={() => undefined} />);
     expect(screen.getByText('Voided')).toBeTruthy();

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { memberBalances } from '../finance/collections/collections.service';
 import { prisma } from '../../lib/prisma';
 import { memberLedgerService, LedgerReportOptions } from './member-ledger.service';
 import { z } from 'zod';
@@ -387,29 +388,18 @@ export const memberLedgerController = {
       }
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 50;
-      const search = req.query.search as string;
-      const whereClause: any = { associationId };
-      if (search) {
-        whereClause.OR = [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-          { memberId: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-        ];
+      const search = typeof req.query.search === 'string' ? req.query.search.slice(0, 100) : undefined;
+      // owing = a balance above zero; paid = cleared (zero or in credit). Anything else lists everyone.
+      const status = req.query.balance === 'owing' ? 'owing' : req.query.balance === 'paid' ? 'paid' : 'all';
+      const everyone = await memberBalances(associationId, { search, status });
+      if (req.query.sortBy === 'balance') {
+        const direction = req.query.sortOrder === 'asc' ? 1 : -1;
+        everyone.sort((x, y) => (x.balance - y.balance) * direction);
       }
-      const [members, total] = await Promise.all([
-        prisma.member.findMany({ where: whereClause, select: { id: true, memberId: true, firstName: true, lastName: true, email: true, status: true }, skip: (page - 1) * limit, take: limit, orderBy: { lastName: 'asc' } }),
-        prisma.member.count({ where: whereClause }),
-      ]);
-      // One query for the latest running balance of every member on the page (it used to be one query per member).
-      const latest = members.length === 0 ? [] : await prisma.memberFinancialLedger.findMany({
-        where: { associationId, memberId: { in: members.map((m) => m.id) } },
-        orderBy: [{ memberId: 'asc' }, { createdAt: 'desc' }],
-        distinct: ['memberId'],
-        select: { memberId: true, runningBalance: true },
-      });
-      const balanceByMember = new Map(latest.map((row) => [row.memberId, Number(row.runningBalance)]));
-      const membersWithBalances = members.map((m) => ({ ...m, balance: balanceByMember.get(m.id) ?? 0 }));
+      const total = everyone.length;
+      const membersWithBalances = everyone
+        .slice((page - 1) * limit, page * limit)
+        .map(({ id, memberId, firstName, lastName, email, status: memberStatus, balance }) => ({ id, memberId, firstName, lastName, email, status: memberStatus, balance }));
       return res.status(200).json({ success: true, data: { members: membersWithBalances, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } } });
     } catch (error) {
       console.error('Error fetching member balances:', error);

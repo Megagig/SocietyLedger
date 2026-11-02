@@ -6,6 +6,7 @@ import { Badge, Select } from '@mantine/core';
 import { IconCreditCard, IconCheck, IconClock, IconReceipt } from '@tabler/icons-react';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface PaymentItem {
   id: number;
@@ -17,6 +18,7 @@ interface PaymentItem {
     id: number;
     referenceNumber: string;
     category: { id: number; name: string; type: string };
+    purpose?: string | null;
   };
   createdAt: string;
 }
@@ -134,7 +136,7 @@ export default function PaymentHistoryPage() {
                       {formatDate(payment.paymentDate)}
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-medium text-gray-900 dark:text-white">{payment.transaction.category.name}</p>
+                      <p className="font-medium text-gray-900 dark:text-white"><ChargeName name={payment.transaction.category.name} purpose={payment.transaction.purpose} /></p>
                       {payment.reference && (
                         <p className="text-xs text-gray-500">Receipt: {payment.reference}</p>
                       )}

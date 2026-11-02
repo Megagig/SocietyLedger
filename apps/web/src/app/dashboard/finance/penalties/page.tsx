@@ -9,11 +9,17 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { CollectionToolbar } from '@/components/finance/CollectionToolbar';
+import { RecordPaymentDialog } from '@/components/finance/RecordPaymentDialog';
+import { SettlementPill } from '@/components/finance/SettlementPill';
+import { StatusPill } from '@/components/coop/StatusPill';
+import { SETTLEMENT_TABS, type Settlement, type SettlementFilter } from '@/lib/finance/collections';
 import { HelpLink } from '@/components/docs/HelpLink';
 import { 
   Gavel, Plus, Edit, Trash2, AlertTriangle,
   Clock, CheckCircle, Search, Settings, History, XCircle, TrendingUp
 } from 'lucide-react';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface PenaltyCategory {
   id: number;
@@ -46,10 +52,17 @@ interface AppliedPenalty {
   status: string;
   referenceNumber: string | null;
   createdAt: string;
-  member: { firstName: string; lastName: string; memberId: string };
+  member: { id?: number; firstName: string; lastName: string; memberId: string };
   category: { name: string };
+  purpose?: string | null;
   payments: { amountPaid: number }[];
 }
+
+/** Paid, part paid or not paid, from the money. */
+const settlementOfPenalty = (amount: number, paid: number): Settlement => (paid >= amount ? 'paid' : paid > 0 ? 'part' : 'unpaid');
+
+/** The charge statuses the server filters on, for each choice of tab. */
+const PENALTY_STATUS_PARAM: Record<SettlementFilter, string> = { all: '', owing: 'owing', unpaid: 'pending', part: 'partial', paid: 'paid' };
 
 interface PenaltyWaiver {
   id: number;
@@ -85,6 +98,9 @@ export default function PenaltiesPage() {
   const [rules, setRules] = useState<PenaltyRule[]>([]);
   const [waivers, setWaivers] = useState<PenaltyWaiver[]>([]);
   const [appliedPenalties, setAppliedPenalties] = useState<AppliedPenalty[]>([]);
+  const [penaltySearch, setPenaltySearch] = useState('');
+  const [penaltyStatus, setPenaltyStatus] = useState<SettlementFilter>('all');
+  const [payFor, setPayFor] = useState<AppliedPenalty | null>(null);
   const [stats, setStats] = useState<PenaltyStats | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,7 +157,6 @@ export default function PenaltiesPage() {
     fetchPenalties();
     fetchRules();
     fetchWaivers();
-    fetchAppliedPenalties();
     fetchStats();
     fetchMembers();
   }, []);
@@ -190,10 +205,16 @@ export default function PenaltiesPage() {
     }
   };
 
+  // The list is read again whenever the search or the paid / yet-to-pay filter changes (this also loads it the first time).
+  useEffect(() => {
+    fetchAppliedPenalties();
+  }, [penaltySearch, penaltyStatus]);
+
   const fetchAppliedPenalties = async () => {
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions?type=penalty&limit=100&sortBy=createdAt&sortOrder=desc`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/transactions?type=penalty&limit=100&sortBy=createdAt&sortOrder=desc` +
+          `&status=${PENALTY_STATUS_PARAM[penaltyStatus]}&search=${encodeURIComponent(penaltySearch)}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -862,14 +883,36 @@ export default function PenaltiesPage() {
 
         <Tabs.Panel value="applied" pt="md">
           {/* Applied Penalties */}
+          <RecordPaymentDialog
+            opened={payFor !== null}
+            onClose={() => setPayFor(null)}
+            memberId={payFor?.member.id ?? null}
+            preselectTransactionId={payFor?.id}
+            source="penalties"
+            onRecorded={() => {
+              fetchAppliedPenalties();
+              fetchStats();
+            }}
+          />
+          <div className="mb-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+            <CollectionToolbar
+              screen="penalties"
+              search={penaltySearch}
+              onSearch={setPenaltySearch}
+              status={penaltyStatus}
+              onStatus={setPenaltyStatus}
+              tabs={SETTLEMENT_TABS}
+              tabsLabel="Who has paid their penalty"
+            />
+          </div>
           {appliedPenalties.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
               <AlertTriangle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                No Penalties Applied Yet
+                {penaltySearch || penaltyStatus !== 'all' ? 'Nobody matches this search and filter' : 'No Penalties Applied Yet'}
               </h3>
               <p className="text-gray-500">
-                Penalty transactions will appear here once applied to members
+                {penaltySearch || penaltyStatus !== 'all' ? 'Try a different name or choose Everyone.' : 'Penalty transactions will appear here once applied to members'}
               </p>
             </div>
           ) : (
@@ -899,18 +942,29 @@ export default function PenaltiesPage() {
                             <p className="text-sm text-gray-500">{txn.member.memberId}</p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">{txn.category.name}</td>
+                        <td className="px-4 py-3 text-sm"><ChargeName name={txn.category.name} purpose={txn.purpose} /></td>
                         <td className="px-4 py-3 text-red-600">{formatNairaFull(Number(txn.amount))}</td>
                         <td className="px-4 py-3">{formatNairaFull(outstanding)}</td>
                         <td className="px-4 py-3">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 capitalize">
-                            {txn.status}
-                          </span>
+                          {txn.status === 'waived' ? <StatusPill label="Waived" tone="neutral" /> : <SettlementPill status={settlementOfPenalty(Number(txn.amount), paid)} />}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {new Date(txn.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                          {waivable && (
+                            <Can permission={PERMISSIONS.PAYMENT_CREATE}>
+                              <button
+                                type="button"
+                                onClick={() => setPayFor(txn)}
+                                aria-label={`Record payment for ${txn.member.firstName} ${txn.member.lastName}`}
+                                className="min-h-11 rounded-md border border-success-line bg-success-soft px-3 text-sm font-medium text-success-text hover:bg-success-line focus:outline-none focus:ring-2 focus:ring-success-focus"
+                              >
+                                Record payment
+                              </button>
+                            </Can>
+                          )}
                           <Can permission={PERMISSIONS.FINANCE_EDIT}>
                             {waivable && (
                               <button
@@ -921,6 +975,7 @@ export default function PenaltiesPage() {
                               </button>
                             )}
                           </Can>
+                          </div>
                         </td>
                       </tr>
                     );

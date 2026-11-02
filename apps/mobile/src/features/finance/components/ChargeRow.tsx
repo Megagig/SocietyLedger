@@ -35,7 +35,7 @@ function ChargeRowBase({ charge, position, onPress }: ChargeRowProps) {
       <Pressable
         onPress={() => onPress(charge)}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${charge.category.name}, ${statusLabel}`}
+        accessibilityLabel={`${name}, ${charge.category.name}${charge.purpose ? `, ${charge.purpose}` : ''}, ${statusLabel}`}
         android_ripple={{ color: `${color.primary}1F` }}
         className="min-h-[72px] flex-row items-center px-4 py-3"
         testID={`charge-row-${charge.id}`}
@@ -47,6 +47,11 @@ function ChargeRowBase({ charge, position, onPress }: ChargeRowProps) {
           <Text variant="caption" tone="secondary" numberOfLines={1}>
             {charge.category.name}
           </Text>
+          {charge.purpose ? (
+            <Text variant="caption" tone="secondary" numberOfLines={1} testID="charge-purpose">
+              {charge.purpose}
+            </Text>
+          ) : null}
           <Text variant="caption" tone="secondary" numberOfLines={1}>
             {second}
           </Text>

@@ -11,7 +11,7 @@ export { FINANCE_VIEW_ACCESS } from '@/features/finance/queries';
 /** Keys sit under the finance root, so a charge, payment or waiver that refreshes finance refreshes these too. */
 export const donationKeys = {
   stats: (tenant: string) => [...financeKeys.all(tenant), 'donations', 'stats'] as const,
-  list: (tenant: string) => [...financeKeys.all(tenant), 'donations', 'list'] as const,
+  list: (tenant: string, filters: object = {}) => [...financeKeys.all(tenant), 'donations', 'list', filters] as const,
   receipt: (tenant: string, id: number) => [...financeKeys.all(tenant), 'donations', 'receipt', id] as const,
   allocations: (tenant: string, filters: object) => [...financeKeys.all(tenant), 'donations', 'allocations', filters] as const,
 };
@@ -41,12 +41,13 @@ export function useDonationStats() {
   return useQuery({ queryKey: donationKeys.stats(tenant), queryFn: () => donationsPenaltiesApi.getDonationStats(), enabled });
 }
 
-export function useDonations() {
+/** Donations and pledges, optionally only those paid / yet to pay, or one donor's (name or member number). */
+export function useDonations(filters: { status?: string; search?: string } = {}) {
   const tenant = useTenantKey();
   const enabled = useCan('FINANCE_VIEW');
   return useInfiniteQuery({
-    queryKey: donationKeys.list(tenant),
-    queryFn: ({ pageParam }) => donationsPenaltiesApi.listDonations({ page: pageParam, limit: PAGE }),
+    queryKey: donationKeys.list(tenant, filters),
+    queryFn: ({ pageParam }) => donationsPenaltiesApi.listDonations({ page: pageParam, limit: PAGE, ...filters }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.pagination.hasMore ? last.pagination.page + 1 : undefined),
     enabled,

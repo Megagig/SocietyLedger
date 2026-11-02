@@ -10,6 +10,7 @@
 
 import { Resend } from 'resend';
 import { escapeHtml } from './escape-html';
+import { isDemoEmail } from './demo';
 
 interface EmailOptions {
   to: string;
@@ -98,6 +99,12 @@ async function withRetry<T>(
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
   const { to, subject, template, data, fromName } = options;
+
+  // Demo accounts never receive real mail (lib/demo.ts)
+  if (isDemoEmail(to)) {
+    console.log(`📧 [EMAIL] Skipped ${template}: demo recipient`);
+    return;
+  }
 
   try {
     // Get configuration

@@ -14,10 +14,12 @@ import {
   Search, Plus, Eye, Trash2, CheckSquare, Square,
   CheckCircle, Clock, AlertTriangle, XCircle, Calendar, Info, Edit3
 } from 'lucide-react';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface TransactionWithDetails extends Transaction {
   member?: { id: number; memberId: string; firstName: string; lastName: string };
   category?: { id: number; name: string; type: string };
+  purpose?: string | null;
   payments?: { id: number; amountPaid: number; paymentDate: string }[];
   totalPaid?: number;
   balance?: number;
@@ -644,7 +646,7 @@ export default function TransactionsPage() {
                       </div>
                       
                       <div className="flex items-center justify-between text-sm mt-2">
-                        <span className="text-gray-500">{txn.category?.name}</span>
+                        <span className="text-gray-500"><ChargeName name={txn.category?.name} purpose={txn.purpose} /></span>
                         <span className="text-xs text-gray-400 font-mono">{txn.referenceNumber}</span>
                       </div>
                       
@@ -771,9 +773,8 @@ export default function TransactionsPage() {
                         <span className="text-xs text-gray-500">{txn.member?.memberId}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {txn.category?.name}
-                        <br />
-                        <span className="text-xs capitalize">{txn.category?.type}</span>
+                        <ChargeName name={txn.category?.name} purpose={txn.purpose} />
+                        <span className="block text-xs capitalize">{txn.category?.type}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {formatCurrency(txn.amount)}
