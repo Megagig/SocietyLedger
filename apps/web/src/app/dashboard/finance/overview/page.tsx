@@ -269,7 +269,7 @@ export default function FinanceOverviewPage() {
                       {payment.transaction?.member?.firstName} {payment.transaction?.member?.lastName}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {payment.transaction?.category?.name} • {formatDate(payment.paymentDate)}
+                      {payment.transaction?.category?.name}{payment.transaction?.purpose ? ` · ${payment.transaction.purpose}` : ''} • {formatDate(payment.paymentDate)}
                     </p>
                   </div>
                   <p className="font-semibold text-green-600">

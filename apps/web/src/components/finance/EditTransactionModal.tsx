@@ -26,6 +26,7 @@ interface EditTransactionModalProps {
     amount: number;
     dueDate?: string;
     notes?: string;
+    title?: string | null;
     status: string;
     totalPaid?: number;
   };
@@ -39,6 +40,7 @@ export function EditTransactionModal({ transaction, onClose, onSuccess }: EditTr
     categoryId: transaction.categoryId,
     amount: String(transaction.amount || ''),
     dueDate: transaction.dueDate?.split('T')[0] || '',
+    title: transaction.title || '',
     notes: transaction.notes || '',
     editReason: '',
   });
@@ -90,6 +92,7 @@ export function EditTransactionModal({ transaction, onClose, onSuccess }: EditTr
         ...formData,
         amount: parseFloat(formData.amount),
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : undefined,
+        title: formData.title.trim() || null,
       };
       
       const response = await apiPut(
@@ -211,6 +214,20 @@ export function EditTransactionModal({ transaction, onClose, onSuccess }: EditTr
                   type="date"
                   value={formData.dueDate}
                   onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  maxLength={120}
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="What this charge is for, e.g. Annual dues 2026"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>

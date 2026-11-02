@@ -104,6 +104,11 @@ function ActivityRow({ item }: { item: FinanceSummaryDTO['recentTransactions'][n
         <Text variant="label" numberOfLines={1}>
           {item.category.name}
         </Text>
+        {item.purpose ? (
+          <Text variant="caption" tone="secondary" numberOfLines={1} testID="charge-purpose">
+            {item.purpose}
+          </Text>
+        ) : null}
         <Text variant="caption" tone="secondary">
           {format(new Date(item.createdAt), 'MMM d, yyyy')}
         </Text>

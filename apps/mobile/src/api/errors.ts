@@ -13,6 +13,7 @@ export type ApiErrorInit = {
   accessKind?: AccessProblemKind;
   module?: string;
   serverMessage?: string;
+  transactionId?: number;
 };
 
 type ApiErrorBody = {
@@ -22,6 +23,7 @@ type ApiErrorBody = {
   error?: string;
   errors?: { path: (string | number)[]; message: string }[];
   module?: string;
+  transactionId?: number;
 };
 
 /** code-standards.md §10 — every thrown API error is one of these. */
@@ -50,10 +52,13 @@ export class ApiError extends Error {
   module?: string;
   /** What the server actually wrote, kept for logs; `message` holds the plain wording for an access problem. */
   serverMessage?: string;
+  /** Set when a refusal was about one specific charge (recording several payments at once names the one that stopped it). */
+  transactionId?: number;
 
-  constructor({ status, code, message, fieldErrors, isNetwork = false, isTimeout = false, accessKind, module, serverMessage }: ApiErrorInit) {
+  constructor({ status, code, message, fieldErrors, isNetwork = false, isTimeout = false, accessKind, module, serverMessage, transactionId }: ApiErrorInit) {
     super(message);
     this.name = 'ApiError';
+    this.transactionId = transactionId;
     this.status = status;
     this.code = code;
     this.fieldErrors = fieldErrors;
@@ -95,6 +100,7 @@ export class ApiError extends Error {
       accessKind,
       module,
       serverMessage: data?.message,
+      transactionId: typeof data?.transactionId === 'number' ? data.transactionId : undefined,
     });
   }
 }

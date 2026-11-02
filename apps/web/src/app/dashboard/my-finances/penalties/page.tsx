@@ -7,11 +7,13 @@ import { Badge, Button } from '@mantine/core';
 import { IconBadge, IconCurrencyNaira, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface PenaltyItem {
   id: number;
   referenceNumber: string;
   category: { id: number; name: string; type: string };
+  purpose?: string | null;
   amount: number;
   paid: number;
   balance: number;
@@ -116,7 +118,7 @@ export default function MyPenaltiesPage() {
                     <IconBadge className={penalty.status === 'paid' ? 'text-green-600' : 'text-red-600'} size={24} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{penalty.category.name}</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white"><ChargeName name={penalty.category.name} purpose={penalty.purpose} /></h3>
                     {penalty.reason && (
                       <p className="text-sm text-gray-500">Reason: {penalty.reason}</p>
                     )}

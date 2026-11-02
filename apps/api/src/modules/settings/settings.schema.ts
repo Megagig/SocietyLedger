@@ -96,6 +96,7 @@ export const financialSchema = z
     maxLateFeeAmount: z.number().min(0).max(100_000_000).nullable(),
     enablePartialPayments: z.boolean(),
     requirePaymentApproval: z.boolean(),
+    allowOfficerSelfPayment: z.boolean(),
     approvalThreshold: z.number().min(0).max(100_000_000_000).nullable(),
     receiptRequiredAbove: z.number().min(0, 'The receipt limit cannot be negative.').max(100_000_000_000, 'That receipt limit is too large.'),
     fiscalYearStart: month,

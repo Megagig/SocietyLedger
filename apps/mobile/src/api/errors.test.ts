@@ -110,3 +110,17 @@ describe('an error that comes back as bytes (a report file that was refused)', (
     expect(error.message).toBe('Request failed with status code 500');
   });
 });
+
+describe('ApiError.fromAxiosError, a refusal about one charge', () => {
+  it('keeps the charge the server named, so the screen can mark it', () => {
+    const error = ApiError.fromAxiosError({ response: { status: 400, data: { success: false, code: 'OVER_BALANCE', message: 'Payment amount exceeds balance. Maximum: 3000', transactionId: 42 } } } as never);
+    expect(error.transactionId).toBe(42);
+    expect(error.message).toBe('Payment amount exceeds balance. Maximum: 3000');
+  });
+
+  it('keeps an officer’s own-debt refusal in its own words, not as a permission problem', () => {
+    const error = ApiError.fromAxiosError({ response: { status: 403, data: { success: false, code: 'SELF_PAYMENT_NOT_ALLOWED', message: 'Another officer needs to record your payment.', transactionId: 7 } } } as never);
+    expect(error.message).toBe('Another officer needs to record your payment.');
+    expect(error.accessKind).toBeUndefined();
+  });
+});

@@ -9,6 +9,10 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { CollectionToolbar } from '@/components/finance/CollectionToolbar';
+import { RecordPaymentDialog } from '@/components/finance/RecordPaymentDialog';
+import { SettlementPill } from '@/components/finance/SettlementPill';
+import { SETTLEMENT_TABS, type Settlement, type SettlementFilter } from '@/lib/finance/collections';
 import { 
   Gift, Plus, Edit, Trash2, Heart,
   CheckCircle, Clock, FileText, Download, TrendingUp, Target
@@ -49,6 +53,12 @@ interface DonationRecord {
     category: { name: string };
   };
   allocation?: { name: string };
+  /** From the server: what is still owed on this gift or pledge, and the member to record a payment against. */
+  balance?: number;
+  paidAmount?: number;
+  settlement?: Settlement;
+  transactionId?: number;
+  memberDbId?: number;
 }
 
 interface Member {
@@ -118,14 +128,21 @@ export default function DonationsPage() {
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [donationSearch, setDonationSearch] = useState('');
+  const [donationStatus, setDonationStatus] = useState<SettlementFilter>('all');
+  const [payFor, setPayFor] = useState<DonationRecord | null>(null);
 
   useEffect(() => {
     fetchDonations();
     fetchAllocations();
-    fetchRecentDonations();
     fetchDonationStats();
     fetchMembers();
   }, []);
+
+  // The list is read again whenever the search or the paid / yet-to-pay filter changes (this also loads it the first time).
+  useEffect(() => {
+    fetchRecentDonations(1);
+  }, [donationSearch, donationStatus]);
 
   const fetchDonations = async () => {
     setIsLoading(true);
@@ -160,7 +177,8 @@ export default function DonationsPage() {
   const fetchRecentDonations = async (page = 1) => {
     try {
       const response = await apiGet(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/donations?page=${page}&limit=${donationsPagination.limit}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/finance/advanced/donations?page=${page}&limit=${donationsPagination.limit}` +
+          `&status=${donationStatus}&search=${encodeURIComponent(donationSearch)}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -709,14 +727,38 @@ export default function DonationsPage() {
 
         <Tabs.Panel value="recent" pt="md">
           {/* Recent Donations */}
+          <RecordPaymentDialog
+            opened={payFor !== null}
+            onClose={() => setPayFor(null)}
+            memberId={payFor?.memberDbId ?? null}
+            memberLabel={payFor?.isAnonymous ? 'Anonymous donor' : undefined}
+            preselectTransactionId={payFor?.transactionId}
+            source="donations"
+            onRecorded={() => {
+              fetchRecentDonations(donationsPagination.page);
+              fetchDonationStats();
+            }}
+          />
+          <div className="mb-4 rounded-lg bg-white p-4 shadow dark:bg-gray-800">
+            <CollectionToolbar
+              screen="donations"
+              search={donationSearch}
+              onSearch={setDonationSearch}
+              status={donationStatus}
+              onStatus={setDonationStatus}
+              tabs={SETTLEMENT_TABS}
+              tabsLabel="Who has paid their donation or pledge"
+              placeholder="Search by donor name or member number"
+            />
+          </div>
           {recentDonations.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
               <Heart className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                No Donations Yet
+                {donationSearch || donationStatus !== 'all' ? 'Nobody matches this search and filter' : 'No Donations Yet'}
               </h3>
               <p className="text-gray-500">
-                Donations will appear here once recorded
+                {donationSearch || donationStatus !== 'all' ? 'Try a different name or choose Everyone.' : 'Donations will appear here once recorded'}
               </p>
             </div>
           ) : (
@@ -727,6 +769,9 @@ export default function DonationsPage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt #</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Donor</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -750,11 +795,27 @@ export default function DonationsPage() {
                       <td className="px-4 py-3 font-semibold text-green-600">
                         {formatNairaFull(Number(donation.amount || donation.transaction?.amount || 0))}
                       </td>
+                      <td className="px-4 py-3 text-sm text-ink">{formatNairaFull(Number(donation.paidAmount ?? 0))}</td>
+                      <td className="px-4 py-3 text-sm text-ink">{formatNairaFull(Number(donation.balance ?? 0))}</td>
+                      <td className="px-4 py-3">{donation.settlement && <SettlementPill status={donation.settlement} />}</td>
                       <td className="px-4 py-3 text-sm">{donation.category || donation.transaction?.category?.name || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {new Date(donation.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                        {(donation.balance ?? 0) > 0 && donation.memberDbId && (
+                          <Can permission={PERMISSIONS.PAYMENT_CREATE}>
+                            <button
+                              type="button"
+                              onClick={() => setPayFor(donation)}
+                              aria-label={`Record payment for ${donation.isAnonymous ? 'an anonymous donor' : donation.donor?.name ?? 'this donor'}`}
+                              className="min-h-11 rounded-md border border-success-line bg-success-soft px-3 text-sm font-medium text-success-text hover:bg-success-line focus:outline-none focus:ring-2 focus:ring-success-focus"
+                            >
+                              Record payment
+                            </button>
+                          </Can>
+                        )}
                         <button
                           onClick={() => {
                             setSelectedReceipt(donation);
@@ -765,6 +826,7 @@ export default function DonationsPage() {
                         >
                           <FileText className="w-4 h-4" />
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

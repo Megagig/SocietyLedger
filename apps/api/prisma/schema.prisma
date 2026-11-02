@@ -399,10 +399,12 @@ model Transaction {
   referenceNumber     String?                     @map("reference_number")
   status              String                      @default("pending")
   notes               String?
+  // What this charge is for, in the officer's words ("Annual dues 2026"), for charges that belong to no campaign or cause.
+  title               String?
   createdBy           Int                         @map("created_by")
   createdAt           DateTime                    @default(now()) @map("created_at")
   updatedAt           DateTime                    @updatedAt @map("updated_at")
-  
+
   // R3.4/G43: tracks when the last automated payment reminder was sent, so
   // the daily job doesn't re-send the same reminder more than once per day.
   lastReminderSentAt  DateTime?                   @map("last_reminder_sent_at")

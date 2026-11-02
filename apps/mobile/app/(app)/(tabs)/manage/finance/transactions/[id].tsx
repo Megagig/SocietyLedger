@@ -115,6 +115,11 @@ export default function ChargeDetailScreen() {
             <Text variant="body" tone="secondary">
               {charge.category.name}
             </Text>
+            {charge.purpose ? (
+              <Text variant="body-strong" numberOfLines={1} testID="charge-purpose">
+                {charge.purpose}
+              </Text>
+            ) : null}
             <Money value={charge.amount} size="h1" />
             <StatusChip status={chargeStatusKey(charge)} label={chargeStatusLabel(charge)} />
             {!charge.isVoided && Number(charge.totalPaid) > 0 ? (

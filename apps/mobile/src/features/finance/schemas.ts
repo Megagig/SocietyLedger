@@ -28,6 +28,7 @@ export function buildChargeFormSchema(mode: ChargeMode) {
     categoryId: z.string().min(1, 'Choose the category'),
     amount: amountField,
     dueDate: z.string(),
+    title: z.string().trim().max(120, 'Keep the title under 120 characters'),
     notes: z.string().trim().max(500, 'Keep the note under 500 characters'),
     reason:
       mode === 'edit'
@@ -42,7 +43,7 @@ export function buildChargeFormSchema(mode: ChargeMode) {
 export type ChargeFormValues = z.infer<ReturnType<typeof buildChargeFormSchema>>;
 
 export function emptyChargeValues(): ChargeFormValues {
-  return { member: null, categoryId: '', amount: '', dueDate: '', notes: '', reason: '', password: '' };
+  return { member: null, categoryId: '', amount: '', dueDate: '', title: '', notes: '', reason: '', password: '' };
 }
 
 export function chargeToFormValues(charge: ChargeDetailDTO | ChargeListItemDTO): ChargeFormValues {
@@ -51,6 +52,7 @@ export function chargeToFormValues(charge: ChargeDetailDTO | ChargeListItemDTO):
     categoryId: String(charge.categoryId),
     amount: String(Number(charge.amount)),
     dueDate: charge.dueDate ? charge.dueDate.slice(0, 10) : '',
+    title: charge.title ?? '',
     notes: charge.notes ?? '',
     reason: '',
     password: '',
@@ -64,6 +66,7 @@ export function toChargePayload(values: ChargeFormValues): CreateChargePayload {
     amount: parseAmount(values.amount) ?? 0,
     dueDate: dueDateToIso(values.dueDate),
     notes: values.notes.trim() || null,
+    title: values.title.trim() || null,
   };
 }
 
@@ -75,6 +78,7 @@ export const bulkFormSchema = z.object({
   categoryId: z.string().min(1, 'Choose the category'),
   amount: amountField,
   dueDate: z.string(),
+  title: z.string().trim().max(120, 'Keep the title under 120 characters'),
   notes: z.string().trim().max(500, 'Keep the note under 500 characters'),
 });
 

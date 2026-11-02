@@ -7,11 +7,13 @@ import { Badge, Select, Button } from '@mantine/core';
 import { IconReceipt, IconCurrencyNaira, IconCheck, IconClock, IconAlertTriangle } from '@tabler/icons-react';
 import { apiGet } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface DueItem {
   id: number;
   referenceNumber: string;
   category: { id: number; name: string; type: string; frequency?: string };
+  purpose?: string | null;
   amount: number;
   paid: number;
   balance: number;
@@ -139,7 +141,7 @@ export default function MyDuesPage() {
                     <IconReceipt className={due.status === 'paid' ? 'text-green-600' : due.status === 'overdue' ? 'text-red-600' : 'text-blue-600'} size={24} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{due.category.name}</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white"><ChargeName name={due.category.name} purpose={due.purpose} /></h3>
                     <p className="text-sm text-gray-500">Due: {formatDate(due.dueDate)}</p>
                     {due.status === 'partial' && (
                       <p className="text-sm text-amber-600">Paid: {formatCurrency(due.paid)} of {formatCurrency(due.amount)}</p>

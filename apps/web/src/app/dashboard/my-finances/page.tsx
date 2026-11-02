@@ -12,6 +12,7 @@ import {
 import { apiGet, apiPost } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface FinanceSummary {
   totalDue: number;
@@ -363,7 +364,7 @@ export default function MyFinancesPage() {
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                 >
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{payment.category?.name}</p>
+                    <p className="font-medium text-gray-900 dark:text-white"><ChargeName name={payment.category?.name} purpose={payment.purpose} /></p>
                     <p className="text-sm text-gray-500">
                       Due: {formatDate(payment.dueDate)}
                     </p>

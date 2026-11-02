@@ -160,6 +160,11 @@ export default function RecordPaymentScreen() {
                         <Text variant="body-strong" numberOfLines={1}>
                           {c.category.name}
                         </Text>
+                        {c.purpose ? (
+                          <Text variant="caption" tone="secondary" numberOfLines={1} testID="charge-purpose">
+                            {c.purpose}
+                          </Text>
+                        ) : null}
                         <Text variant="caption" tone="secondary">
                           {c.dueDate ? `Due ${formatDate(c.dueDate, 'long')}` : `Created ${formatDate(c.createdAt, 'long')}`}
                         </Text>

@@ -3,6 +3,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { AssociationBranding } from './exports.types';
 import { reportsService } from '../reports/reports.service';
 import { prisma } from '../../lib/prisma';
+import { PURPOSE_INCLUDE, purposeOf } from '../finance/charge-purpose';
 
 // ============================================
 // EXCEL SERVICE
@@ -502,12 +503,13 @@ export const excelService = {
           lastName: { header: 'Last Name', extractor: (t) => t.member?.lastName || '', width: 15 },
           email: { header: 'Email', extractor: (t) => t.member?.email || '', width: 25 },
           categoryName: { header: 'Category Name', extractor: (t) => t.category?.name || '', width: 20 },
+          purpose: { header: 'Campaign / Due / Cause', extractor: (t) => purposeOf(t) || '', width: 28 },
           categoryType: { header: 'Category Type', extractor: (t) => t.category?.type || '', width: 15 },
           amount: { header: 'Amount', extractor: (t) => this.formatCurrency(t.amount), width: 15 },
           dueDate: { header: 'Due Date', extractor: (t) => this.formatDate(t.dueDate), width: 15 },
           status: { header: 'Status', extractor: (t) => t.status?.toUpperCase() || '', width: 12 },
           createdAt: { header: 'Created Date', extractor: (t) => this.formatDate(t.createdAt), width: 15 },
-          description: { header: 'Description', extractor: (t) => t.description || '', width: 30 },
+          description: { header: 'Description', extractor: (t) => t.notes || '', width: 30 },
         };
         break;
 
@@ -519,6 +521,8 @@ export const excelService = {
           firstName: { header: 'First Name', extractor: (p) => p.transaction?.member?.firstName || '', width: 15 },
           lastName: { header: 'Last Name', extractor: (p) => p.transaction?.member?.lastName || '', width: 15 },
           email: { header: 'Email', extractor: (p) => p.transaction?.member?.email || '', width: 25 },
+          categoryName: { header: 'Category Name', extractor: (p) => p.transaction?.category?.name || '', width: 20 },
+          purpose: { header: 'Campaign / Due / Cause', extractor: (p) => (p.transaction ? purposeOf(p.transaction) : '') || '', width: 28 },
           amount: { header: 'Amount', extractor: (p) => this.formatCurrency(p.amountPaid), width: 15 },
           paymentMethod: { header: 'Payment Method', extractor: (p) => p.paymentMethod || '', width: 15 },
           paymentDate: { header: 'Payment Date', extractor: (p) => this.formatDate(p.paymentDate), width: 15 },
@@ -549,9 +553,10 @@ export const excelService = {
           firstName: { header: 'First Name', extractor: (d) => d.member?.firstName || '', width: 15 },
           lastName: { header: 'Last Name', extractor: (d) => d.member?.lastName || '', width: 15 },
           categoryName: { header: 'Category Name', extractor: (d) => d.category?.name || '', width: 20 },
+          purpose: { header: 'Campaign / Due / Cause', extractor: (d) => purposeOf(d) || '', width: 28 },
           amount: { header: 'Amount', extractor: (d) => this.formatCurrency(d.amount), width: 15 },
           donationDate: { header: 'Donation Date', extractor: (d) => this.formatDate(d.createdAt), width: 15 },
-          allocationName: { header: 'Allocation', extractor: (d) => d.allocation?.name || '', width: 20 },
+          allocationName: { header: 'Allocation', extractor: (d) => d.donationRecord?.allocation?.name || '', width: 20 },
           status: { header: 'Status', extractor: (d) => d.status?.toUpperCase() || '', width: 12 },
         };
         break;
@@ -563,9 +568,10 @@ export const excelService = {
           firstName: { header: 'First Name', extractor: (l) => l.member?.firstName || '', width: 15 },
           lastName: { header: 'Last Name', extractor: (l) => l.member?.lastName || '', width: 15 },
           categoryName: { header: 'Category Name', extractor: (l) => l.category?.name || '', width: 20 },
+          purpose: { header: 'Campaign / Due / Cause', extractor: (l) => purposeOf(l) || '', width: 28 },
           amount: { header: 'Amount', extractor: (l) => this.formatCurrency(l.amount), width: 15 },
           dueDate: { header: 'Due Date', extractor: (l) => this.formatDate(l.dueDate), width: 15 },
-          campaignName: { header: 'Campaign Name', extractor: (l) => l.campaign?.name || '', width: 20 },
+          campaignName: { header: 'Campaign Name', extractor: (l) => l.levyAssignment?.campaign.name || '', width: 20 },
           status: { header: 'Status', extractor: (l) => l.status?.toUpperCase() || '', width: 12 },
         };
         break;
@@ -658,6 +664,7 @@ export const excelService = {
       include: {
         member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true } },
         category: { select: { id: true, name: true, type: true } },
+        ...PURPOSE_INCLUDE,
       },
       orderBy: { createdAt: 'desc' },
       take: 10000,
@@ -671,6 +678,8 @@ export const excelService = {
         transaction: {
           include: {
             member: { select: { id: true, memberId: true, firstName: true, lastName: true, email: true } },
+            category: { select: { id: true, name: true, type: true } },
+            ...PURPOSE_INCLUDE,
           },
         },
       },
@@ -728,6 +737,7 @@ export const excelService = {
       include: {
         member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
         category: { select: { id: true, name: true, type: true } },
+        ...PURPOSE_INCLUDE,
       },
       orderBy: { createdAt: 'desc' },
       take: 10000,
@@ -743,6 +753,7 @@ export const excelService = {
       include: {
         member: { select: { id: true, memberId: true, firstName: true, lastName: true } },
         category: { select: { id: true, name: true, type: true } },
+        ...PURPOSE_INCLUDE,
       },
       orderBy: { createdAt: 'desc' },
       take: 10000,

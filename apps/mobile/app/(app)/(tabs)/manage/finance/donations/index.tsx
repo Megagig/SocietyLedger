@@ -18,11 +18,15 @@ import { AllocationRow, DonationRow } from '@/features/donationsPenalties/compon
 import { donationHasReceipt } from '@/features/donationsPenalties/labels';
 import { DONATION_RECORD_ACCESS, FINANCE_VIEW_ACCESS, FUND_CREATE_ACCESS, FUND_EDIT_ACCESS, useAllocations, useDonations, useDonationStats } from '@/features/donationsPenalties/queries';
 import { CategoryRow } from '@/features/financeSetup/components/CategoryRow';
+import { CollectionBar } from '@/features/collections/components/CollectionBar';
+import { RecordPaymentSheet, type RecordPaymentTarget } from '@/features/collections/components/RecordPaymentSheet';
+import { RECORD_ACCESS } from '@/features/collections/queries';
 import { PagedList } from '@/features/financeSetup/components/PagedList';
 import { positionOf } from '@/features/financeSetup/components/GroupedRow';
 import { SETUP_CREATE_ACCESS, SETUP_EDIT_ACCESS, useCategories } from '@/features/financeSetup/queries';
 import { useCan } from '@/hooks/useCan';
 import { formatMoney } from '@/lib/money';
+import type { SettlementFilter } from '@/types/api/collections';
 import type { CategoryDTO } from '@/types/api/financeSetup';
 import type { DonationListItemDTO } from '@/types/api/donationsPenalties';
 
@@ -40,13 +44,20 @@ export default function DonationsScreen() {
   const canEditCause = useCan(SETUP_EDIT_ACCESS);
   const canCreateFund = useCan(FUND_CREATE_ACCESS);
   const canEditFund = useCan(FUND_EDIT_ACCESS);
+  const canPay = useCan(RECORD_ACCESS);
   const [tab, setTab] = useState<Tab>('causes');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<SettlementFilter>('all');
+  const [pickedDonation, setPickedDonation] = useState<DonationListItemDTO | null>(null);
+  const [payTarget, setPayTarget] = useState<RecordPaymentTarget | null>(null);
+  const donationSheetRef = useRef<BottomSheetModal>(null);
+  const payRef = useRef<BottomSheetModal>(null);
   const [picked, setPicked] = useState<CategoryDTO | null>(null);
   const causeSheetRef = useRef<BottomSheetModal>(null);
   const stats = useDonationStats().data;
   const causesQuery = useCategories({ type: 'donation' });
   const fundsQuery = useAllocations();
-  const donationsQuery = useDonations();
+  const donationsQuery = useDonations({ status: status === 'all' ? undefined : status, search: search || undefined });
   const causes = useMemo(() => causesQuery.data?.pages.flatMap((p) => p.categories) ?? [], [causesQuery.data]);
   const funds = useMemo(() => fundsQuery.data?.pages.flatMap((p) => p.allocations) ?? [], [fundsQuery.data]);
   const donations = useMemo(() => donationsQuery.data?.pages.flatMap((p) => p.donations) ?? [], [donationsQuery.data]);
@@ -135,16 +146,70 @@ export default function DonationsScreen() {
           }
         />
       ) : (
+        <>
+        <View className="pb-3">
+          <CollectionBar screen="donations" search={search} onSearch={setSearch} status={status} onStatus={setStatus} placeholder="Search donor name or member number" />
+        </View>
         <PagedList
           query={donationsQuery}
           items={donations}
           keyOf={(d) => String(d.id)}
           renderItem={(d: DonationListItemDTO, i, n) => (
-            <DonationRow item={d} position={positionOf(i, n)} onPress={donationHasReceipt(d) ? (donation) => go(`donations/receipt?id=${donation.id}`) : undefined} />
+            <DonationRow
+              item={d}
+              position={positionOf(i, n)}
+              onPress={
+                (canPay && d.balance > 0) || donationHasReceipt(d)
+                  ? (donation) => {
+                      setPickedDonation(donation);
+                      donationSheetRef.current?.present();
+                    }
+                  : undefined
+              }
+            />
           )}
-          empty={<EmptyState icon={Receipt} title="No donations yet" description="Gifts and pledges you record show up here, with a receipt for each one received." />}
+          empty={
+            <EmptyState
+              icon={Receipt}
+              title={search || status !== 'all' ? 'Nobody matches this search and filter' : 'No donations yet'}
+              description={search || status !== 'all' ? 'Try a different name or choose Everyone.' : 'Gifts and pledges you record show up here, with a receipt for each one received.'}
+            />
+          }
         />
+        </>
       )}
+
+      <BottomSheet ref={donationSheetRef} title={pickedDonation?.donor.name ?? 'Donation'} snapPoints={['40%']}>
+        <View className="gap-3 pb-6">
+          {pickedDonation && canPay && pickedDonation.balance > 0 ? (
+            <Button
+              variant="primary"
+              onPress={() => {
+                donationSheetRef.current?.dismiss();
+                setPayTarget({ memberId: pickedDonation.memberDbId, memberLabel: pickedDonation.donor.name === 'Anonymous' ? 'Anonymous donor' : undefined, preselectTransactionId: pickedDonation.transactionId });
+                payRef.current?.present();
+              }}
+              testID="donation-record-payment"
+            >
+              Record payment
+            </Button>
+          ) : null}
+          {pickedDonation && donationHasReceipt(pickedDonation) ? (
+            <Button
+              variant="secondary"
+              onPress={() => {
+                donationSheetRef.current?.dismiss();
+                go(`donations/receipt?id=${pickedDonation.id}`);
+              }}
+              testID="donation-receipt"
+            >
+              View receipt
+            </Button>
+          ) : null}
+        </View>
+      </BottomSheet>
+
+      <RecordPaymentSheet ref={payRef} target={payTarget} source="donations" onRecorded={() => void donationsQuery.refetch()} />
 
       <BottomSheet ref={causeSheetRef} title={picked?.name ?? 'Cause'} snapPoints={['40%']}>
         <View className="gap-3 pb-6">

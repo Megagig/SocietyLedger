@@ -14,6 +14,7 @@ import {
   AlertTriangle, Clock, DollarSign, Users, 
   CheckCircle, XCircle, Eye, RefreshCw
 } from 'lucide-react';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface OverdueTransaction {
   id: number;
@@ -36,6 +37,7 @@ interface OverdueTransaction {
     name: string;
     type: string;
   };
+  purpose?: string | null;
   totalPaid: number;
   balance: number;
 }
@@ -416,7 +418,7 @@ export default function OverduePage() {
                       </span>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{txn.category.name}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400"><ChargeName name={txn.category.name} purpose={txn.purpose} /></span>
                       <span className="font-semibold text-red-600">{formatNairaFull(Number(txn.balance))}</span>
                     </div>
                     <div className="mt-2 flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -500,7 +502,7 @@ export default function OverduePage() {
                     </td>
                     <td className="px-4 py-4">
                       <span className="text-sm text-gray-900 dark:text-white">
-                        {txn.category.name}
+                        <ChargeName name={txn.category.name} purpose={txn.purpose} />
                       </span>
                     </td>
                     <td className="px-4 py-4">

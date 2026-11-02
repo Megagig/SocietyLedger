@@ -1,4 +1,5 @@
 import { periodRange } from '../reports/report-rules';
+import { PURPOSE_INCLUDE, purposeOf } from '../finance/charge-purpose';
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
@@ -94,6 +95,7 @@ export const memberFinanceController = {
         include: {
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { amountPaid: true, paymentDate: true } },
+          ...PURPOSE_INCLUDE,
         },
       });
 
@@ -178,6 +180,7 @@ export const memberFinanceController = {
           return {
             id: txn.id,
             category: txn.category,
+            purpose: purposeOf(txn),
             amount: txn.amount,
             balance: new Decimal(txn.amount).minus(paid),
             dueDate: txn.dueDate,
@@ -194,6 +197,7 @@ export const memberFinanceController = {
           return {
             id: txn.id,
             category: txn.category,
+            purpose: purposeOf(txn),
             amount: txn.amount,
             paid,
             balance: new Decimal(txn.amount).minus(paid),
@@ -268,6 +272,7 @@ export const memberFinanceController = {
         include: {
           category: { select: { id: true, name: true, type: true, frequency: true } },
           payments: { select: { id: true, amountPaid: true, paymentDate: true, paymentMethod: true } },
+          ...PURPOSE_INCLUDE,
         },
         orderBy: { dueDate: 'asc' },
       });
@@ -281,6 +286,7 @@ export const memberFinanceController = {
           id: txn.id,
           referenceNumber: txn.referenceNumber,
           category: txn.category,
+          purpose: purposeOf(txn),
           amount: Number(txn.amount),
           paid: Number(paid),
           balance: Number(balance),
@@ -395,7 +401,7 @@ export const memberFinanceController = {
               id: -txn.id, // negative to avoid colliding with real assignment ids
               campaign: {
                 id: 0,
-                name: txn.notes?.replace(/^Levy Campaign:\s*/i, '') || txn.category.name,
+                name: txn.title || txn.notes?.replace(/^Levy Campaign:\s*/i, '') || txn.category.name,
                 description: null,
                 targetAmount: Number(txn.amount),
                 deadline: txn.dueDate ? txn.dueDate.toISOString() : null,
@@ -448,6 +454,7 @@ export const memberFinanceController = {
         include: {
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { id: true, amountPaid: true, paymentDate: true, paymentMethod: true } },
+          ...PURPOSE_INCLUDE,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -460,6 +467,7 @@ export const memberFinanceController = {
           id: txn.id,
           referenceNumber: txn.referenceNumber,
           category: txn.category,
+          purpose: purposeOf(txn),
           amount: Number(txn.amount),
           paid: Number(paid),
           balance: Number(balance),
@@ -507,7 +515,7 @@ export const memberFinanceController = {
         include: {
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { id: true, amountPaid: true, paymentDate: true, paymentMethod: true } },
-          donationRecord: true,
+          donationRecord: { include: { allocation: { select: { id: true, name: true } } } },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -530,7 +538,7 @@ export const memberFinanceController = {
           balance: figures.balance, // still to pay on a pledge
           isPledge: figures.isPledge,
           dueDate: txn.dueDate,
-          purpose: txn.category.name,
+          purpose: purposeOf(txn) ?? txn.category.name,
           isAnonymous: txn.donationRecord?.isAnonymous || false,
           receiptNumber: txn.donationRecord?.receiptNumber,
           payments: txn.payments,
@@ -573,6 +581,7 @@ export const memberFinanceController = {
           transaction: {
             include: {
               category: { select: { id: true, name: true, type: true } },
+              ...PURPOSE_INCLUDE,
             },
           },
         },
@@ -589,6 +598,7 @@ export const memberFinanceController = {
           id: payment.transaction.id,
           referenceNumber: payment.transaction.referenceNumber,
           category: payment.transaction.category,
+          purpose: purposeOf(payment.transaction),
         },
         createdAt: payment.createdAt,
       }));
@@ -681,11 +691,7 @@ export const memberFinanceController = {
         include: {
           category: { select: { id: true, name: true, type: true } },
           payments: { select: { amountPaid: true } },
-          levyAssignment: {
-            include: {
-              campaign: { select: { name: true } },
-            },
-          },
+          ...PURPOSE_INCLUDE,
         },
         orderBy: { dueDate: 'asc' },
       });
@@ -702,6 +708,7 @@ export const memberFinanceController = {
             type: txn.category.type as 'dues' | 'levy' | 'penalty',
             category: txn.category,
             campaign: txn.levyAssignment?.campaign,
+            purpose: purposeOf(txn),
             amount: Number(txn.amount),
             balance: Number(balance),
             dueDate: txn.dueDate,

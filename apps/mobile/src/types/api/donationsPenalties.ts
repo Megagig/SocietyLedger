@@ -52,6 +52,11 @@ export type DonationListItemDTO = {
   allocation: { id: number; name: string; type: string } | null;
   donorMessage: string | null;
   createdAt: string;
+  /** What is still owed, whether it is paid, part paid or not paid, and what Record payment needs. */
+  balance: number;
+  settlement: 'paid' | 'part' | 'unpaid';
+  transactionId: number;
+  memberDbId: number;
 };
 
 export type DonationListDTO = { donations: DonationListItemDTO[]; pagination: Pagination };

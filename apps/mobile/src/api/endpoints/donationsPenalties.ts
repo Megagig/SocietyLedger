@@ -32,7 +32,7 @@ export const donationsPenaltiesApi = {
     return unwrap<DonationStatsDTO>(client.get(`${BASE}/donations/stats`));
   },
 
-  async listDonations(params: { page?: number; limit?: number; allocationId?: number }): Promise<DonationListDTO> {
+  async listDonations(params: { page?: number; limit?: number; allocationId?: number; status?: string; search?: string }): Promise<DonationListDTO> {
     return unwrap<DonationListDTO>(client.get(`${BASE}/donations`, { params }));
   },
 

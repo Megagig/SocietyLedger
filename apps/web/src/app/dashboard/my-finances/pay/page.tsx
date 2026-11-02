@@ -8,6 +8,7 @@ import { IconCreditCard, IconBuildingBank, IconCheck, IconArrowLeft, IconUpload,
 import { apiGet, apiPost, apiPostFormData } from '@/utils/api';
 import { toast } from '@/lib/toast';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { ChargeName } from '@/components/finance/ChargeName';
 
 interface OutstandingItem {
   id: number;
@@ -17,6 +18,7 @@ interface OutstandingItem {
   balance: number;
   dueDate?: string;
   campaign?: { name: string };
+  purpose?: string | null;
 }
 
 interface BankAccount {
@@ -237,7 +239,7 @@ export default function MakePaymentPage() {
                         />
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {item.campaign?.name || item.category.name}
+                            <ChargeName name={item.category.name} purpose={item.purpose ?? item.campaign?.name} />
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge color={getTypeColor(item.type)} size="sm">{item.type === 'donation' ? 'pledge' : item.type}</Badge>

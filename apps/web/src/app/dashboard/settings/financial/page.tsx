@@ -17,6 +17,7 @@ interface FinancialSettings {
   maxLateFeeAmount?: number;
   enablePartialPayments: boolean;
   requirePaymentApproval: boolean;
+  allowOfficerSelfPayment?: boolean;
   approvalThreshold?: number;
   receiptRequiredAbove?: number;
   fiscalYearStart: number;
@@ -60,6 +61,7 @@ export default function FinancialSettingsPage() {
     lateFeeAmount: 0,
     enablePartialPayments: true,
     requirePaymentApproval: false,
+    allowOfficerSelfPayment: false,
     receiptRequiredAbove: 5000,
     fiscalYearStart: 1,
     currencyCode: 'NGN',
@@ -438,6 +440,27 @@ export default function FinancialSettingsPage() {
                 </p>
               </div>
             )}
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <label htmlFor="allow-self-payment" className="font-medium text-gray-900 dark:text-white">
+                  Let officers record their own payments
+                </label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Off by default: an officer cannot record a payment against their own debt, so another officer has to. This is a safeguard against marking your own debt paid without receiving money. Switch it on only if your association has a single officer who handles payments.
+                </p>
+              </div>
+              <label className="relative inline-flex shrink-0 items-center cursor-pointer">
+                <input
+                  id="allow-self-payment"
+                  type="checkbox"
+                  checked={formData.allowOfficerSelfPayment === true}
+                  onChange={(e) => handleChange('allowOfficerSelfPayment', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 dark:peer-focus:ring-teal-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600"></div>
+              </label>
+            </div>
           </div>
         </div>
 

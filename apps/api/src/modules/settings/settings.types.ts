@@ -63,6 +63,8 @@ export interface FinancialSettings {
   maxLateFeeAmount?: number;
   enablePartialPayments: boolean;
   requirePaymentApproval: boolean;
+  /** Off by default: an officer cannot record a payment against their own debt; another officer has to. A small association with one officer can switch it on. */
+  allowOfficerSelfPayment?: boolean;
   approvalThreshold?: number;
   /** Spending above this needs its receipt attached; at or below it a reason is enough. */
   receiptRequiredAbove?: number;

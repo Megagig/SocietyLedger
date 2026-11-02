@@ -22,6 +22,7 @@ You need the **create transactions** permission, which Administrators and Treasu
 <Step>Go to <MenuPath items={["Finance", "Transactions"]} />, then select **Record Transaction**.</Step>
 <Step>Choose the **Category** — the amount fills in automatically if the category has a fixed amount.</Step>
 <Step>Select the **Member**, set a **Due Date**, and adjust the amount if needed.</Step>
+<Step>Give the charge a **Title** — what it is for, like "Annual dues 2026" — so you can tell it apart from other charges in the same category. It is optional.</Step>
 <Step>Select **Create Transaction**.</Step>
 </Steps>
 
@@ -31,10 +32,21 @@ You need the **create transactions** permission, which Administrators and Treasu
 
 Switch to **Bulk Assignment** instead of Single Transaction, then select every member who should get the charge before submitting — one transaction is created per member, all with the same category, amount and due date.
 
+## Which levy, due or cause is it?
+
+A category only says the kind of charge, such as "wedding Levy" or "Annual dues". Wherever a category appears — Transactions, Payments, Overdue, the Record payment window, receipts and exports — the real name shows underneath it:
+
+- a levy shows its **campaign** ("Levy For Emma Wedding")
+- a donation or pledge shows its **cause**
+- a penalty shows its **rule** and the charge it was put on
+- any other charge shows its **Title**, if you gave it one
+
+A charge with none of these shows just its category. You can add or change a title later from the charge's **Edit** window.
+
 ## What happens next
 
 Each new charge appears on the member's account immediately as <StatusChip status="pending" />, and in [Transactions](/docs/finance/editing-voiding-and-deleting) for you to track.
 
 ## In the app
 
-Go to <MenuPath items={["Manage", "Finance", "Charge members"]} />. Choose **One member** (pick them, then the category, amount and due date) or **Many members** — all active members, or the ones you choose — to give everyone the same charge in one go. Open **Manage → Finance → Charges** to search and filter every charge by status or kind.
+Go to <MenuPath items={["Manage", "Finance", "Charge members"]} />. Choose **One member** (pick them, then the category, amount, due date and an optional title) or **Many members** — all active members, or the ones you choose — to give everyone the same charge in one go. Open **Manage → Finance → Charges** to search and filter every charge by status or kind.

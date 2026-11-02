@@ -1,6 +1,7 @@
 import { requireFeature } from '../../middleware/module-feature.middleware';
 import { Router } from 'express';
 import { financeController } from './finance.controller';
+import { collectionsController } from './collections/collections.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac';
@@ -159,6 +160,22 @@ router.get('/payments/:id',
 router.post('/payments',
   requirePermission(PERMISSIONS.PAYMENT_CREATE),
   financeController.recordPayment
+);
+
+// The filtered "who has paid" lists as Excel or PDF, and a member's open debts for the Record payment dialog
+router.get('/collections/export',
+  requirePermission(PERMISSIONS.EXPORT_FINANCIAL),
+  collectionsController.exportFile
+);
+router.get('/collections/members/:memberId/open-charges',
+  requirePermission(PERMISSIONS.PAYMENT_CREATE),
+  collectionsController.openCharges
+);
+
+// Record payments for several charges at once, all or nothing (the Record payment dialog)
+router.post('/payments/batch',
+  requirePermission(PERMISSIONS.PAYMENT_CREATE),
+  financeController.recordPaymentsBatch
 );
 
 // Bulk mark as paid

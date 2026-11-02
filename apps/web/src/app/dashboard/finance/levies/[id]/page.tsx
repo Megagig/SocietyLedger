@@ -9,6 +9,10 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { Can } from '@/hooks/usePermissions';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/utils/api';
 import { toast } from '@/lib/toast';
+import { CollectionToolbar } from '@/components/finance/CollectionToolbar';
+import { RecordPaymentDialog } from '@/components/finance/RecordPaymentDialog';
+import { SettlementPill } from '@/components/finance/SettlementPill';
+import { SETTLEMENT_TABS, type Settlement, type SettlementFilter } from '@/lib/finance/collections';
 import { 
   ArrowLeft, Target, Users, Calendar, DollarSign, 
   CheckCircle, Clock, AlertCircle, UserPlus, Trash2,
@@ -45,7 +49,15 @@ interface CampaignAssignment {
     status: string;
     payments: { amountPaid: number }[];
   };
+  /** Worked out by the server from the payments, so it is right even when the stored status is stale. */
+  calculatedStatus?: 'paid' | 'partial' | 'pending';
+  paidAmount?: number;
+  balance?: number;
 }
+
+/** Paid, part paid or not paid, from the money. */
+const settlementOf = (a: CampaignAssignment): Settlement =>
+  a.calculatedStatus === 'paid' ? 'paid' : a.calculatedStatus === 'partial' ? 'part' : 'unpaid';
 
 interface CampaignProgress {
   campaign: LevyCampaign;
@@ -81,6 +93,9 @@ export default function LevyCampaignDetailPage() {
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [customAmount, setCustomAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [settlement, setSettlement] = useState<SettlementFilter>('all');
+  const [payFor, setPayFor] = useState<{ memberId: number; transactionId?: number } | null>(null);
 
   useEffect(() => {
     fetchCampaignProgress();
@@ -210,16 +225,6 @@ export default function LevyCampaignDetailPage() {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'partial': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'pending': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-      case 'waived': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const getCampaignStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE': return 'bg-green-100 text-green-800';
@@ -262,6 +267,14 @@ export default function LevyCampaignDetailPage() {
 
   const { campaign, totalAssigned, totalCollected, stillOwed, totalMembers, paidMembers, progressPercentage } = progress;
   const assignments = campaign.assignments || [];
+  const needle = search.trim().toLowerCase();
+  const visible = assignments.filter((a) => {
+    const status = settlementOf(a);
+    if (settlement === 'owing' ? status === 'paid' : settlement !== 'all' && status !== settlement) return false;
+    if (!needle) return true;
+    const haystack = `${a.member.firstName} ${a.member.lastName} ${a.member.memberId}`.toLowerCase();
+    return needle.split(/s+/).every((word) => haystack.includes(word));
+  });
   const daysRemaining = Math.ceil((new Date(campaign.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
   return (
@@ -412,9 +425,24 @@ export default function LevyCampaignDetailPage() {
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-purple-600" />
-            Member Assignments ({assignments.length})
+            Member Assignments ({visible.length === assignments.length ? assignments.length : `${visible.length} of ${assignments.length}`})
           </h2>
         </div>
+        {assignments.length > 0 && (
+          <div className="border-b border-line p-4">
+            <CollectionToolbar
+              screen="levy-campaign"
+              id={campaign.id}
+              search={search}
+              onSearch={setSearch}
+              status={settlement}
+              onStatus={setSettlement}
+              tabs={SETTLEMENT_TABS}
+              tabsLabel="Who has paid this levy"
+              columns="grid-cols-3 sm:inline-flex"
+            />
+          </div>
+        )}
         
         {assignments.length === 0 ? (
           <div className="p-8 text-center">
@@ -444,8 +472,14 @@ export default function LevyCampaignDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {assignments.map(assignment => {
-                  const paidAmount = assignment.transaction?.payments.reduce((sum, p) => sum + Number(p.amountPaid), 0) || 0;
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-ink-muted">Nobody matches this search and filter.</td>
+                  </tr>
+                )}
+                {visible.map(assignment => {
+                  const paidAmount = assignment.paidAmount ?? (assignment.transaction?.payments.reduce((sum, p) => sum + Number(p.amountPaid), 0) || 0);
+                  const owes = (assignment.balance ?? Number(assignment.amount) - paidAmount) > 0;
                   return (
                     <tr key={assignment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-4 py-3">
@@ -463,14 +497,25 @@ export default function LevyCampaignDetailPage() {
                         {formatNairaFull(paidAmount)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(assignment.status)}`}>
-                          {assignment.status}
-                        </span>
+                        <SettlementPill status={settlementOf(assignment)} />
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {new Date(assignment.assignedAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                        {owes && assignment.transaction && (
+                          <Can permission={PERMISSIONS.PAYMENT_CREATE}>
+                            <button
+                              type="button"
+                              onClick={() => setPayFor({ memberId: assignment.member.id, transactionId: assignment.transaction?.id })}
+                              aria-label={`Record payment for ${assignment.member.firstName} ${assignment.member.lastName}`}
+                              className="min-h-11 rounded-md border border-success-line bg-success-soft px-3 text-sm font-medium text-success-text hover:bg-success-line focus:outline-none focus:ring-2 focus:ring-success-focus"
+                            >
+                              Record payment
+                            </button>
+                          </Can>
+                        )}
                         <Can permission={PERMISSIONS.TRANSACTION_DELETE}>
                           {assignment.status === 'pending' && (
                             <button
@@ -484,6 +529,7 @@ export default function LevyCampaignDetailPage() {
                             </button>
                           )}
                         </Can>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -494,6 +540,15 @@ export default function LevyCampaignDetailPage() {
         )}
       </div>
 
+
+      <RecordPaymentDialog
+        opened={payFor !== null}
+        onClose={() => setPayFor(null)}
+        memberId={payFor?.memberId ?? null}
+        preselectTransactionId={payFor?.transactionId}
+        source="levy-campaign"
+        onRecorded={fetchCampaignProgress}
+      />
 
       {/* Assign Members Modal */}
       {showAssignModal && (

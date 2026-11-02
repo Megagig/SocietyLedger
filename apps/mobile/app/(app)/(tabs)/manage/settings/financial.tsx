@@ -96,6 +96,13 @@ function FinancialForm({ settings, canEdit }: { settings: FinancialSettingsDTO; 
 
         <Section title="Paying">
           <Switch control={control} name="enablePartialPayments" label="Allow part payments" helper="A member can pay some of a charge and the rest later" testID="fin-partial" />
+          <Switch
+            control={control}
+            name="allowOfficerSelfPayment"
+            label="Let officers record their own payments"
+            helper="Off by default: another officer has to record an officer's own payment, so nobody can mark their own debt paid without handing over money. Switch on only if one officer handles all payments."
+            testID="fin-self-payment"
+          />
         </Section>
       </View>
 

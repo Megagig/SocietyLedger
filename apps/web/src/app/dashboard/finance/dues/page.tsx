@@ -44,6 +44,7 @@ export default function DuesPage() {
   const [selectedCategory, setSelectedCategory] = useState<number | ''>('');
   const [customAmount, setCustomAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [selectAll, setSelectAll] = useState(false);
   
@@ -145,6 +146,7 @@ export default function DuesPage() {
           amount: parseFloat(amount.toString()),
           dueDate: dueDate ? new Date(dueDate).toISOString() : null,
           notes: notes || null,
+          title: title.trim() || null,
         }
       );
 
@@ -281,6 +283,21 @@ export default function DuesPage() {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  maxLength={120}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="What this charge is for, e.g. Annual dues 2026"
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>

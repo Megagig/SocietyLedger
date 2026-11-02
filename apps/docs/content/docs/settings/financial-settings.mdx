@@ -24,6 +24,7 @@ You need the **edit settings** permission to change anything; only Administrator
 <Step>Go to <MenuPath items={["Settings", "Financial Settings"]} />.</Step>
 <Step>Set **Grace Period (Days)**, switch on **Enable Late Fees**, then choose a **Late Fee Type** (Fixed or Percentage) and the amount.</Step>
 <Step>Switch **Enable Partial Payments** on or off.</Step>
+<Step>Decide whether officers may record their own payments: **Let officers record their own payments**. It is off by default.</Step>
 <Step>Under **Spending**, set **A receipt is needed above**.</Step>
 <Step>Select <UiLabel>Save Changes</UiLabel>.</Step>
 </Steps>
@@ -33,6 +34,7 @@ You need the **edit settings** permission to change anything; only Administrator
 <Step>Go to <MenuPath items={["Manage", "Settings", "Financial settings"]} />.</Step>
 <Step>Switch on **Charge late fees**, then choose whether the fee is a fixed amount or a percentage, and enter it. Set the **Grace period in days**.</Step>
 <Step>Switch **Allow part payments** on or off.</Step>
+<Step>Decide whether officers may record their own payments: **Let officers record their own payments**. It is off by default.</Step>
 <Step>Under **Spending**, set **A receipt is needed above**.</Step>
 <Step>Tap **Save changes**.</Step>
 </Steps>
@@ -44,6 +46,7 @@ You need the **edit settings** permission to change anything; only Administrator
 ## How these are used
 
 - **Late fee and grace period.** They are used only while you have no late-fee rule under [Penalties and late fees](/docs/finance/penalties-and-late-fees). With no rule, applying late fees uses these settings. Once you add a rule, the rule is used instead and these are ignored.
+- **Officers recording their own payments.** Off by default, so an officer can't record a payment against their own debt and another officer has to. That stops anyone marking their own debt paid without handing over money. Switch it on only if one officer handles all your payments. See [Recording payments from the lists](/docs/finance/record-payments-from-the-lists).
 - **Part payments.** When off, a payment must cover the whole balance of a charge. Part payments are also switched off if they are off under [Payment settings](/docs/settings/payment-settings).
 
 A percentage late fee cannot be more than 100.

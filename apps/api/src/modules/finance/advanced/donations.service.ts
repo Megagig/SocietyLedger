@@ -1,3 +1,4 @@
+import { settle, transactionStatusesFor, type SettlementFilter } from '../collections/settlement';
 import { prisma } from '../../../lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { accountingIntegrationService } from '../../../services/accounting-integration.service';
@@ -525,6 +526,10 @@ export const donationsService = {
       memberId?: number;
       startDate?: Date;
       endDate?: Date;
+      /** paid, part, unpaid, or owing (part paid and not paid): from the charge's status, which every payment path keeps up to date. */
+      status?: SettlementFilter;
+      /** A donor's name or member number. */
+      search?: string;
       page?: number;
       limit?: number;
     } = {}
@@ -543,6 +548,31 @@ export const donationsService = {
 
     if (options.memberId) {
       where.transaction.memberId = options.memberId;
+    }
+
+    const statuses = options.status ? transactionStatusesFor(options.status) : null;
+    if (statuses) {
+      where.transaction.status = { in: statuses };
+      where.transaction.isVoided = false;
+    }
+
+    if (options.search?.trim()) {
+      // Every word has to match the donor's first name, last name or member number; an anonymous donor is never found by name.
+      where.isAnonymous = false;
+      where.AND = options.search
+        .trim()
+        .split(/s+/)
+        .map((word) => ({
+          transaction: {
+            member: {
+              OR: [
+                { firstName: { contains: word, mode: 'insensitive' } },
+                { lastName: { contains: word, mode: 'insensitive' } },
+                { memberId: { contains: word, mode: 'insensitive' } },
+              ],
+            },
+          },
+        }));
     }
 
     if (options.startDate || options.endDate) {
@@ -585,6 +615,10 @@ export const donationsService = {
       isVoided: d.transaction.isVoided,
       dueDate: d.transaction.dueDate,
       isPledge: d.transaction.status !== 'paid' && d.transaction.payments.length === 0,
+      transactionId: d.transaction.id,
+      memberDbId: d.transaction.member.id, // the officer's Record payment needs the member even when the donor's name is hidden
+      balance: settle(d.transaction.amount, d.transaction.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0))).balance.toNumber(),
+      settlement: settle(d.transaction.amount, d.transaction.payments.reduce((sum, p) => sum.plus(p.amountPaid), new Decimal(0))).status,
       donor: d.isAnonymous
         ? { name: 'Anonymous' }
         : {
