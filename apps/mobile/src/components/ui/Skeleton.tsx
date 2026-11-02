@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import { useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 
 import { cn } from '@/lib/cn';
+import { AnimatedView } from './AnimatedView';
 
 export type SkeletonRadius = 'xs' | 'sm' | 'md' | 'lg' | 'full';
 
@@ -35,7 +36,7 @@ export function Skeleton({ width, height, radius = 'sm', className }: SkeletonPr
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <Animated.View
+    <AnimatedView
       style={[{ width, height }, animatedStyle]}
       className={cn('bg-surface-sunken', RADIUS_CLASSES[radius], className)}
     />

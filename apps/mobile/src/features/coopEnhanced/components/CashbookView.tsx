@@ -14,7 +14,7 @@ import { Text } from '@/components/ui/Text';
 import { formatDate } from '@/lib/dates';
 import type { CashbookDTO, CashbookRowDTO } from '@/types/api/coopEnhanced';
 import { shareCsv } from '../csv';
-import { useCoopCashbookV2 } from '../queries';
+import { shareCashbookPdf, useCoopCashbookV2 } from '../queries';
 import { CoopTile } from './CoopTile';
 import { RangeFilter, isoDay } from './RangeFilter';
 
@@ -54,7 +54,7 @@ function Entry({ row }: { row: CashbookRowDTO }) {
           <>
             <Line label="Interest charged" value={row.interest.dr} />
             <Line label="Interest paid" value={row.interest.cr} />
-            <Line label="Interest balance" value={row.interest.balance} />
+            <Line label="Interest still to pay" value={row.interest.balance} />
           </>
         ) : null}
       </View>
@@ -67,7 +67,7 @@ const cell = (value: string | null | undefined) => value ?? '';
 async function exportCashbook(book: CashbookDTO, filename: string) {
   await shareCsv(
     filename,
-    ['Date', 'Narration', 'Shares', 'Savings desc', 'Savings DR', 'Savings CR', 'Savings balance', 'Loans desc', 'Loans DR', 'Loans CR', 'Loans balance', 'Interest DR', 'Interest CR', 'Interest balance'],
+    ['Date', 'Narration', 'Shares', 'Savings desc', 'Savings DR', 'Savings CR', 'Savings balance', 'Loans desc', 'Loans DR', 'Loans CR', 'Loans balance', 'Interest charged', 'Interest paid', 'Interest still to pay'],
     book.rows.map((r) => [
       isoDay(r.date),
       r.narration,
@@ -106,6 +106,14 @@ export function CashbookView({ memberId, filename }: { memberId?: number; filena
     }
   };
 
+  const sharePdf = async () => {
+    try {
+      await shareCashbookPdf(range, memberId, filename);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not create the PDF.');
+    }
+  };
+
   return (
     <View className="gap-4 pb-8">
       <Text variant="body" tone="secondary">
@@ -134,15 +142,20 @@ export function CashbookView({ memberId, filename }: { memberId?: number; filena
             </View>
             <View className="flex-row gap-3">
               <CoopTile label="Total loans" value={d.tiles.totalLoans} tone="neutral" />
-              <CoopTile label="Total loan interest" value={d.tiles.totalLoanInterest} tone="warning" />
+              <CoopTile label="Interest still to pay" value={d.tiles.totalLoanInterest} tone="warning" hint="Charged when each loan was paid out, less what you have repaid" />
             </View>
           </View>
 
           <View className="flex-row items-center justify-between">
             <Text variant="caption" tone="secondary">{`${d.rows.length} transaction${d.rows.length === 1 ? '' : 's'}`}</Text>
-            <Button variant="secondary" size="sm" onPress={() => void share()} testID="cashbook-export">
-              Export
-            </Button>
+            <View className="flex-row gap-2">
+              <Button variant="secondary" size="sm" onPress={() => void sharePdf()} testID="cashbook-pdf">
+                PDF
+              </Button>
+              <Button variant="secondary" size="sm" onPress={() => void share()} testID="cashbook-export">
+                Spreadsheet
+              </Button>
+            </View>
           </View>
 
           {d.rows.length === 0 ? (

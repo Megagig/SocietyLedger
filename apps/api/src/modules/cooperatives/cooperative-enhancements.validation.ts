@@ -124,6 +124,12 @@ export const cooperativeSettingsSchema = z.object({
 const dateOnly = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}/, 'Use a date like 2026-10-31')
+  // 2026-13-45 has the right shape but would become an Invalid Date that quietly filters everything out.
+  .refine((value) => {
+    const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+    const parsed = new Date(Date.UTC(y, m - 1, d));
+    return parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d;
+  }, 'That date does not exist')
   .transform((value) => new Date(value));
 
 export const dashboardQuerySchema = z.object({

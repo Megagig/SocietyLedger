@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { Button } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { IconInbox, IconUpload } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateFor } from '@societyledger/query';
@@ -107,12 +108,12 @@ export default function LoanRepaymentPage() {
               <div className="flex items-center justify-between">
                 <label htmlFor="repay-amount" className="text-sm font-medium text-ink-soft">Repayment amount</label>
                 <span className="flex gap-1">
-                  <Button size="compact-xs" variant="light" color="blue" disabled={!loan || optimal === null} onClick={() => optimal !== null && setAmount(String(optimal))}>
+                  <CoopButton tone="info-soft" size="compact-xs" disabled={!loan || optimal === null} onClick={() => optimal !== null && setAmount(String(optimal))}>
                     Optimal
-                  </Button>
-                  <Button size="compact-xs" variant="light" color="green" disabled={!loan} onClick={() => setAmount(String(owed))}>
+                  </CoopButton>
+                  <CoopButton tone="soft" size="compact-xs" disabled={!loan} onClick={() => setAmount(String(owed))}>
                     Max
-                  </Button>
+                  </CoopButton>
                 </span>
               </div>
               <input id="repay-amount" type="number" inputMode="decimal" min="0" step="0.01" value={amount} disabled={!loan} onChange={(e) => setAmount(e.target.value)} placeholder="NGN 0.00" className={fieldClass} />
@@ -167,7 +168,7 @@ export default function LoanRepaymentPage() {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Button component={Link} href="/dashboard/cooperatives/my-pending-payments" variant="subtle">See my pending payments</Button>
-                <Button color="green" onClick={send} loading={submit.isPending} disabled={!amount || !proof}>Submit payment</Button>
+                <CoopButton tone="primary" onClick={send} loading={submit.isPending} disabled={!amount || !proof}>Submit payment</CoopButton>
               </div>
             </div>
           )}

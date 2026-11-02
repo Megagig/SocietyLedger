@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Modal } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { useDisclosure } from '@mantine/hooks';
 import { IconCalendarEvent, IconHistory, IconWallet } from '@tabler/icons-react';
 import { useCancelWithdrawal, useMyWithdrawals, useRequestWithdrawal, useWithdrawalSummary } from '@/lib/coop/hooks';
@@ -75,9 +76,9 @@ export default function MyWithdrawalPage() {
         title="Withdrawal history"
         subtitle="Manage and track your withdrawal requests."
         actions={
-          <Button color="green" onClick={open} disabled={accounts.length === 0}>
+          <CoopButton tone="primary" onClick={open} disabled={accounts.length === 0}>
             New withdrawal request
-          </Button>
+          </CoopButton>
         }
       />
 
@@ -128,9 +129,7 @@ export default function MyWithdrawalPage() {
               {w.reason && <p className="mt-1 text-sm text-ink-muted">Your reason: {w.reason}</p>}
               {(w.status === 'PENDING_REVIEW' || w.status === 'PENDING_APPROVAL') && (
                 <div className="mt-3">
-                  <Button
-                    variant="light"
-                    color="red"
+                  <CoopButton tone="danger-soft"
                     size="xs"
                     loading={cancel.isPending && cancel.variables === w.id}
                     onClick={async () => {
@@ -143,7 +142,7 @@ export default function MyWithdrawalPage() {
                     }}
                   >
                     Cancel request
-                  </Button>
+                  </CoopButton>
                 </div>
               )}
             </li>
@@ -190,9 +189,9 @@ export default function MyWithdrawalPage() {
             <Button variant="default" onClick={close}>
               Cancel
             </Button>
-            <Button color="green" onClick={send} loading={request.isPending}>
+            <CoopButton tone="primary" onClick={send} loading={request.isPending}>
               Request withdrawal
-            </Button>
+            </CoopButton>
           </div>
         </div>
       </Modal>

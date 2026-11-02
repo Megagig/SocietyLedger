@@ -99,12 +99,20 @@ async function findOrOpenAccount(tx: Prisma.TransactionClient, associationId: nu
 
   const type = await tx.cooperativeAccountType.findFirstOrThrow({ where: { id: typeId, associationId } });
   const year = new Date().getFullYear().toString().slice(-2);
-  const count = await tx.savingsAccount.count({ where: { associationId } });
+  // Two approvals opening accounts at once would both count the same total and pick the same number. The lock makes them take turns
+  // (it is released when the transaction ends), and the loop skips a number that a deleted or imported account already holds.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${associationId}::int, 7301::int)`;
+  let next = (await tx.savingsAccount.count({ where: { associationId } })) + 1;
+  let accountNumber = `SAV-${year}-${String(next).padStart(6, '0')}`;
+  while (await tx.savingsAccount.findFirst({ where: { associationId, accountNumber }, select: { id: true } })) {
+    next += 1;
+    accountNumber = `SAV-${year}-${String(next).padStart(6, '0')}`;
+  }
   return tx.savingsAccount.create({
     data: {
       associationId,
       memberId,
-      accountNumber: `SAV-${year}-${String(count + 1).padStart(6, '0')}`,
+      accountNumber,
       accountType: 'REGULAR',
       accountTypeId: type.id,
       monthlyContribution: type.defaultMonthlyAmount,
@@ -194,11 +202,30 @@ export const cooperativePaymentsService = {
   ) {
     const page = options.page || 1;
     const limit = options.limit || 20;
+    // A request not yet approved has no account on its lines, only a type: it belongs to the member's account of that type.
+    let accountFilter: Prisma.CooperativePaymentRequestWhereInput = {};
+    if (options.savingsAccountId) {
+      const account = await prisma.savingsAccount.findFirst({
+        where: { id: options.savingsAccountId, associationId },
+        select: { memberId: true, accountTypeId: true },
+      });
+      accountFilter = {
+        lines: {
+          some: {
+            OR: [
+              { savingsAccountId: options.savingsAccountId },
+              ...(account?.accountTypeId ? [{ savingsAccountId: null, accountTypeId: account.accountTypeId }] : []),
+            ],
+          },
+        },
+        ...(account ? { memberId: account.memberId } : {}),
+      };
+    }
     const where: Prisma.CooperativePaymentRequestWhereInput = {
       associationId,
       ...(options.status ? { status: options.status } : {}),
       ...(options.memberId ? { memberId: options.memberId } : {}),
-      ...(options.savingsAccountId ? { lines: { some: { savingsAccountId: options.savingsAccountId } } } : {}),
+      ...accountFilter,
       ...(options.from || options.to ? { createdAt: { ...(options.from ? { gte: options.from } : {}), ...(options.to ? { lte: options.to } : {}) } } : {}),
     };
     const [rows, totalCount] = await Promise.all([

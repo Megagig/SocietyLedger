@@ -2,8 +2,6 @@ import { Inbox } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { coopEnhancedApi } from '@/api/endpoints/coopEnhanced';
-import { loansApi } from '@/api/endpoints/loans';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { SegmentedControl } from '@/components/forms/SegmentedControl';
@@ -17,7 +15,7 @@ import { OwnPage } from '@/features/coopEnhanced/components/OwnPage';
 import { ProofButton } from '@/features/coopEnhanced/components/ProofButton';
 import { RangeFilter } from '@/features/coopEnhanced/components/RangeFilter';
 import { PAYMENT_STATUS_KEYS, PAYMENT_STATUS_LABELS } from '@/features/coopEnhanced/labels';
-import { useMyPendingPayments } from '@/features/coopEnhanced/queries';
+import { loadPendingProof, useMyPendingPayments } from '@/features/coopEnhanced/queries';
 import { formatDate } from '@/lib/dates';
 import { COOPERATIVE_OWN_PAGES_ACCESS } from '@/lib/permissions';
 
@@ -106,7 +104,7 @@ export default function MyPendingPaymentsScreen() {
                 {item.hasReceipt ? (
                   <View className="mt-2 flex-row">
                     <ProofButton
-                      load={() => (item.kind === 'SAVINGS' ? coopEnhancedApi.getPaymentReceiptUrl(item.id) : loansApi.getRepaymentRequestReceiptUrl(item.id))}
+                      load={() => loadPendingProof(item)}
                       testID={`pending-proof-${item.kind}-${item.id}`}
                     />
                   </View>

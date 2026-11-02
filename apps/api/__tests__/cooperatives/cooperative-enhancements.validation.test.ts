@@ -6,6 +6,7 @@ import {
   createAccountTypeSchema,
   createLoanCategorySchema,
   createPaymentRequestSchema,
+  rangeQuerySchema,
   reviewWithdrawalSchema,
   updateAccountTypeSchema,
 } from '../../src/modules/cooperatives/cooperative-enhancements.validation';
@@ -57,5 +58,15 @@ describe('withdrawal review', () => {
     expect(reviewWithdrawalSchema.safeParse({ decision: 'REJECT' }).success).toBe(false);
     expect(reviewWithdrawalSchema.safeParse({ decision: 'REJECT', reason: 'No' }).success).toBe(false);
     expect(reviewWithdrawalSchema.safeParse({ decision: 'REJECT', reason: 'Loan guarantee outstanding' }).success).toBe(true);
+  });
+});
+
+describe('date ranges', () => {
+  it('accepts real days and refuses ones that only look like dates', () => {
+    expect(rangeQuerySchema.safeParse({ from: '2026-02-28', to: '2026-03-31' }).success).toBe(true);
+    expect(rangeQuerySchema.safeParse({ from: '2024-02-29' }).success).toBe(true);
+    expect(rangeQuerySchema.safeParse({ from: '2026-13-45' }).success).toBe(false);
+    expect(rangeQuerySchema.safeParse({ to: '2026-02-30' }).success).toBe(false);
+    expect(rangeQuerySchema.safeParse({ from: '2025-02-29' }).success).toBe(false);
   });
 });

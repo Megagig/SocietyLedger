@@ -11,6 +11,7 @@ import { cooperativeTypesService } from './cooperative-types.service';
 import { cooperativePaymentsService } from './cooperative-payments.service';
 import { cooperativeWithdrawalsService } from './cooperative-withdrawals.service';
 import { cooperativeMemberService } from './cooperative-member.service';
+import { cashbookPdf } from './cooperative-cashbook-pdf';
 import { getTwoStageWithdrawal, setTwoStageWithdrawal } from './cooperative-settings';
 import {
   approveWithdrawalSchema,
@@ -76,7 +77,6 @@ export const cooperativeEnhancementsController = {
     try {
       const { associationId } = ctx(req);
       const manager = await seesAll(req, [PERMISSIONS.COOPERATIVE_MANAGE_TYPES]);
-      if (manager) await cooperativeTypesService.ensureDefaultAccountType(associationId);
       const data = await cooperativeTypesService.listAccountTypes(associationId, { includeInactive: manager && req.query.includeInactive === 'true' });
       return res.json({ success: true, data });
     } catch (error) {
@@ -110,7 +110,6 @@ export const cooperativeEnhancementsController = {
     try {
       const { associationId } = ctx(req);
       const manager = await seesAll(req, [PERMISSIONS.COOPERATIVE_MANAGE_TYPES]);
-      if (manager) await cooperativeTypesService.ensureDefaultLoanCategory(associationId);
       const data = await cooperativeTypesService.listLoanCategories(associationId, { includeInactive: manager && req.query.includeInactive === 'true' });
       return res.json({ success: true, data });
     } catch (error) {
@@ -353,6 +352,26 @@ export const cooperativeEnhancementsController = {
       return res.json({ success: true, data: await cooperativeMemberService.transactions(associationId, memberId, rangeQuerySchema.parse(req.query)) });
     } catch (error) {
       return fail(res, error, 'Failed to get your transactions');
+    }
+  },
+
+  /** The cashbook as a PDF, for phones (which share the file) and for anyone who wants a copy: the member's own, or an officer's view of one member. */
+  async cashbookPdfFile(req: Request, res: Response) {
+    try {
+      const own = req.params.id === undefined;
+      const { associationId } = ctx(req);
+      const memberId = own ? memberCtx(req).memberId : parseInt(req.params.id);
+      const range = rangeQuerySchema.parse(req.query);
+      const [data, association] = await Promise.all([
+        cooperativeMemberService.cashbook(associationId, memberId, range),
+        prisma.association.findUnique({ where: { id: associationId }, select: { name: true } }),
+      ]);
+      const file = await cashbookPdf(data, association?.name ?? 'Cooperative');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="cashbook.pdf"');
+      return res.send(file);
+    } catch (error) {
+      return fail(res, error, 'Failed to create the cashbook PDF');
     }
   },
 

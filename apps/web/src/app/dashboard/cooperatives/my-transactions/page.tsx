@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { Button } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useCoopTransactions } from '@/lib/coop/hooks';
 import { downloadXlsx } from '@/lib/coop/exportXlsx';
@@ -10,16 +11,17 @@ import { Naira } from '@/components/coop/Naira';
 import { PageHead } from '@/components/coop/PageHead';
 import { RangeBar } from '@/components/coop/RangeBar';
 import { StatTile } from '@/components/coop/StatTile';
+import { StatusTabs } from '@/components/coop/StatusTabs';
 import { toast } from '@/lib/toast';
 import { formatDate } from '@/utils/format';
 import type { CoopTransactions } from '@/lib/coop/types';
 
 type Tab = 'overview' | 'loans' | 'contributions' | 'shares';
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'loans', label: 'Loans' },
-  { id: 'contributions', label: 'Contributions' },
-  { id: 'shares', label: 'Shares' },
+const TABS: Array<{ value: Tab; label: string }> = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'loans', label: 'Loans' },
+  { value: 'contributions', label: 'Contributions' },
+  { value: 'shares', label: 'Shares' },
 ];
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
@@ -50,15 +52,6 @@ export default function MyTransactionsPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [range, setRange] = useState(defaultRange);
   const data = useCoopTransactions(range);
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const next = event.key === 'ArrowRight' ? (index + 1) % TABS.length : event.key === 'ArrowLeft' ? (index + TABS.length - 1) % TABS.length : null;
-    if (next === null) return;
-    event.preventDefault();
-    setTab(TABS[next]!.id);
-    tabRefs.current[next]?.focus();
-  };
 
   const exportExcel = async () => {
     if (!data.data) return;
@@ -97,35 +90,16 @@ export default function MyTransactionsPage() {
             <Button variant="default" leftSection={<IconRefresh size={16} />} loading={data.isFetching && !data.isLoading} onClick={() => data.refetch()}>
               Refresh
             </Button>
-            <Button color="green" leftSection={<IconDownload size={16} />} onClick={exportExcel} disabled={!d}>
+            <CoopButton tone="primary" leftSection={<IconDownload size={16} />} onClick={exportExcel} disabled={!d}>
               Excel
-            </Button>
+            </CoopButton>
           </>
         }
       />
 
       {tab !== 'overview' && <RangeBar from={range.from} to={range.to} onApply={setRange} />}
 
-      <div role="tablist" aria-label="Transaction views" className="grid grid-cols-2 gap-1 rounded-lg bg-surface-sunken p-1 sm:grid-cols-4">
-        {TABS.map((t, i) => (
-          <button
-            key={t.id}
-            ref={(el) => {
-              tabRefs.current[i] = el;
-            }}
-            role="tab"
-            id={`tab-${t.id}`}
-            aria-selected={tab === t.id}
-            aria-controls={`panel-${t.id}`}
-            tabIndex={tab === t.id ? 0 : -1}
-            onClick={() => setTab(t.id)}
-            onKeyDown={(e) => onTabKey(e, i)}
-            className={`h-11 rounded-md px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-success-focus ${tab === t.id ? 'border border-transparent bg-success-solid text-on-solid' : 'border border-transparent bg-transparent text-ink-muted hover:text-ink'}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <StatusTabs label="Transaction views" tabs={TABS} value={tab} onChange={setTab} panelId={`panel-${tab}`} columns="grid-cols-2 sm:grid-cols-4" />
 
       {data.isLoading ? (
         <CoopLoading rows={3} height={96} />

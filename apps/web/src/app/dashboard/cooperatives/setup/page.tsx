@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Modal, Switch } from '@mantine/core';
+import { CoopButton, CoopSwitch } from '@/components/coop/CoopButton';
 import { IconPlus } from '@tabler/icons-react';
 import { useAccountTypes, useCoopSettings, useLoanCategories, useSaveAccountType, useSaveCoopSettings, useSaveLoanCategory } from '@/lib/coop/hooks';
 import { coopErrorMessage } from '@/lib/coop/api';
@@ -141,7 +142,7 @@ export default function CooperativeSetupPage() {
             <h2 id="types-h" className="text-xl font-semibold text-ink">Savings account types</h2>
             <p className="text-sm text-ink-muted">Each type picks what it can do; members pay into them and see a tile for each.</p>
           </div>
-          <Button color="green" leftSection={<IconPlus size={16} />} onClick={() => openType()}>New account type</Button>
+          <CoopButton tone="primary" leftSection={<IconPlus size={16} />} onClick={() => openType()}>New account type</CoopButton>
         </div>
         {types.isLoading ? (
           <CoopLoading rows={2} />
@@ -187,7 +188,7 @@ export default function CooperativeSetupPage() {
             <h2 id="cats-h" className="text-xl font-semibold text-ink">Loan categories</h2>
             <p className="text-sm text-ink-muted">Group your loan products (Normal, Commodity, Emergency…). A goods loan asks the member what they want.</p>
           </div>
-          <Button color="green" leftSection={<IconPlus size={16} />} onClick={() => openCategory()}>New loan category</Button>
+          <CoopButton tone="primary" leftSection={<IconPlus size={16} />} onClick={() => openCategory()}>New loan category</CoopButton>
         </div>
         {categories.isLoading ? (
           <CoopLoading rows={2} />
@@ -231,12 +232,11 @@ export default function CooperativeSetupPage() {
           <CoopError error={settings.error} onRetry={() => settings.refetch()} />
         ) : (
           <>
-            <Switch
+            <CoopSwitch
               checked={settings.data.requireTwoStageWithdrawal}
               onChange={(e) => toggleTwoStage(e.currentTarget.checked)}
               disabled={saveSettings.isPending}
               label="Require two-stage approval for withdrawals"
-              color="green"
             />
             <p className="text-sm text-ink-muted">
               {settings.data.requireTwoStageWithdrawal
@@ -282,10 +282,10 @@ export default function CooperativeSetupPage() {
                 </label>
               )}
             </div>
-            {typeDraft.id && <Switch checked={typeDraft.isActive} onChange={(e) => setTypeDraft({ ...typeDraft, isActive: e.currentTarget.checked })} label="In use (members can pay into it)" color="green" />}
+            {typeDraft.id && <CoopSwitch checked={typeDraft.isActive} onChange={(e) => setTypeDraft({ ...typeDraft, isActive: e.currentTarget.checked })} label="In use (members can pay into it)" />}
             <div className="flex justify-end gap-2">
               <Button variant="default" onClick={() => setTypeDraft(null)}>Cancel</Button>
-              <Button color="green" onClick={submitType} loading={saveType.isPending}>Save</Button>
+              <CoopButton tone="primary" onClick={submitType} loading={saveType.isPending}>Save</CoopButton>
             </div>
           </div>
         )}
@@ -302,18 +302,17 @@ export default function CooperativeSetupPage() {
               Description (optional)
               <input type="text" value={categoryDraft.description} maxLength={300} onChange={(e) => setCategoryDraft({ ...categoryDraft, description: e.target.value })} className={fieldClass} />
             </label>
-            <Switch
+            <CoopSwitch
               checked={categoryDraft.isGoods}
               disabled={categoryDraft.locked}
               onChange={(e) => setCategoryDraft({ ...categoryDraft, isGoods: e.currentTarget.checked })}
               label="A goods (commodity) loan: paid out as goods, and the member describes what they want"
-              color="green"
             />
             {categoryDraft.locked && <p className="text-xs text-ink-muted">Loan products already use this category, so it can no longer switch between cash and goods.</p>}
-            {categoryDraft.id && <Switch checked={categoryDraft.isActive} onChange={(e) => setCategoryDraft({ ...categoryDraft, isActive: e.currentTarget.checked })} label="In use" color="green" />}
+            {categoryDraft.id && <CoopSwitch checked={categoryDraft.isActive} onChange={(e) => setCategoryDraft({ ...categoryDraft, isActive: e.currentTarget.checked })} label="In use" />}
             <div className="flex justify-end gap-2">
               <Button variant="default" onClick={() => setCategoryDraft(null)}>Cancel</Button>
-              <Button color="green" onClick={submitCategory} loading={saveCategory.isPending}>Save</Button>
+              <CoopButton tone="primary" onClick={submitCategory} loading={saveCategory.isPending}>Save</CoopButton>
             </div>
           </div>
         )}

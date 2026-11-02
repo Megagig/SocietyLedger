@@ -1,5 +1,7 @@
+import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
+import { Button } from '@/components/ui/Button';
 import { ListGroup } from '@/components/layout/ListItem';
 import { toDecimal } from '@/lib/money';
 import { useMemberCooperative } from '../queries';
@@ -8,6 +10,7 @@ import { TabState } from './TabState';
 
 /** MG2 Cooperative tab — savings, loans and guarantor exposure. Money rows only; the officer tools for them land in Phase 6. */
 export function MemberCooperativeTab({ memberId }: { memberId: number }) {
+  const router = useRouter();
   const query = useMemberCooperative(memberId, true);
   const profile = query.data;
 
@@ -27,6 +30,9 @@ export function MemberCooperativeTab({ memberId }: { memberId: number }) {
             <FactRow label="Guaranteed for others" amount={profile.guarantorExposure} />
             <FactRow label="Credit score" value={`${profile.creditScore} / 100`} />
           </ListGroup>
+          <Button variant="secondary" onPress={() => router.push(`/(app)/(tabs)/manage/cooperatives/cashbook?memberId=${memberId}` as never)} testID="member-cashbook">
+            View member cashbook
+          </Button>
         </View>
       ) : null}
     </TabState>

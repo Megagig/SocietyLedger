@@ -102,6 +102,9 @@ export default function SavingsAccountDetailPage() {
         <p className="text-gray-600 dark:text-gray-400">
           {account.member.firstName} {account.member.lastName} ({account.member.membershipId})
         </p>
+        <Button variant="light" mt="sm" onClick={() => router.push(`/dashboard/cooperatives/members/${account.member.id}/cashbook`)}>
+          View member cashbook
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

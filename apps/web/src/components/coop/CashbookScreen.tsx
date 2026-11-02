@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Modal } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { downloadXlsx } from '@/lib/coop/exportXlsx';
 import { CoopEmpty, CoopError, CoopLoading } from '@/components/coop/CoopStates';
@@ -56,7 +57,7 @@ export function CashbookScreen({
           { header: 'Date' }, { header: 'Narration', width: 28 }, { header: 'Shares', money: true },
           { header: 'Savings desc', width: 20 }, { header: 'Savings DR', money: true }, { header: 'Savings CR', money: true }, { header: 'Savings balance', money: true },
           { header: 'Loans desc', width: 20 }, { header: 'Loans DR', money: true }, { header: 'Loans CR', money: true }, { header: 'Loans balance', money: true },
-          { header: 'Interest DR', money: true }, { header: 'Interest CR', money: true }, { header: 'Interest balance', money: true },
+          { header: 'Interest charged', money: true }, { header: 'Interest paid', money: true }, { header: 'Interest still to pay', money: true },
         ],
         book.data.rows.map((r) => [
           formatDate(r.date), r.narration, m(r.shares),
@@ -84,9 +85,9 @@ export function CashbookScreen({
               <Button variant="default" onClick={() => window.print()} disabled={!d}>
                 Print PDF
               </Button>
-              <Button color="green" onClick={exportExcel} disabled={!d}>
+              <CoopButton tone="primary" onClick={exportExcel} disabled={!d}>
                 Export Excel
-              </Button>
+              </CoopButton>
             </>
           }
         />
@@ -115,7 +116,7 @@ export function CashbookScreen({
             <StatTile label="Total shares" value={d.tiles.totalShares} tone="info" />
             <StatTile label="Total savings" value={d.tiles.totalSavings} tone="success" />
             <StatTile label="Total loans" value={d.tiles.totalLoans} tone="neutral" />
-            <StatTile label="Total loan interest" value={d.tiles.totalLoanInterest} tone="warning" />
+            <StatTile label="Interest still to pay" value={d.tiles.totalLoanInterest} tone="warning" hint="Charged when each loan was paid out, less what you have repaid" />
           </div>
 
           <p data-no-print className="flex items-center gap-2 text-sm text-ink-muted">
@@ -133,10 +134,10 @@ export function CashbookScreen({
                     <th colSpan={2} scope="colgroup" className={group}>Shares</th>
                     <th colSpan={4} scope="colgroup" className={group}>Savings</th>
                     <th colSpan={4} scope="colgroup" className={group}>Loans</th>
-                    <th colSpan={3} scope="colgroup" className={group}>Loan interest</th>
+                    <th colSpan={3} scope="colgroup" className={group}>Loan interest (charged, then paid)</th>
                   </tr>
                   <tr>
-                    {['Shares', 'Desc.', 'Desc.', 'Savings DR', 'Savings CR', 'Balance', 'Desc.', 'Loans DR', 'Loans CR', 'Balance', 'Interest DR', 'Interest CR', 'Balance'].map((h, i) => (
+                    {['Shares', 'Desc.', 'Desc.', 'Savings DR', 'Savings CR', 'Balance', 'Desc.', 'Loans DR', 'Loans CR', 'Balance', 'Charged', 'Paid', 'Still to pay'].map((h, i) => (
                       <th key={i} scope="col" className={sub}>{h}</th>
                     ))}
                   </tr>

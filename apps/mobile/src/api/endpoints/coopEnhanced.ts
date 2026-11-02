@@ -40,6 +40,12 @@ export const coopEnhancedApi = {
   getTransactions: (range: Range) => unwrap<CoopTransactionsDTO>(client.get('/cooperatives/my-transactions', { params: clean(range) })),
   /** GET /cooperatives/my-cashbook */
   getCashbook: (range: Range) => unwrap<CashbookDTO>(client.get('/cooperatives/my-cashbook', { params: clean(range) })),
+  /** GET /cooperatives/my-cashbook.pdf, or /members/:id/cashbook.pdf for an officer — the statement as a PDF to share. */
+  async getCashbookPdf(range: Range, memberId?: number): Promise<ArrayBuffer> {
+    const path = memberId === undefined ? '/cooperatives/my-cashbook.pdf' : `/cooperatives/members/${memberId}/cashbook.pdf`;
+    const response = await client.get<ArrayBuffer>(path, { params: clean(range), responseType: 'arraybuffer', timeout: 60_000 });
+    return response.data;
+  },
   /** GET /cooperatives/my-pending-payments */
   getPendingPayments: (params: Range & { type?: 'SAVINGS' | 'LOAN_REPAYMENT'; status?: CoopRequestStatus; sort?: 'newest' | 'oldest' }) =>
     unwrap<PendingPaymentsDTO>(client.get('/cooperatives/my-pending-payments', { params: clean(params) })),

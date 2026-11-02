@@ -198,6 +198,20 @@ suite('Cooperative enhancements (database)', () => {
       await expect(payments.reject(w.A, request.id, w.member.userId, 'no')).rejects.toMatchObject({ code: 'OWN_REQUEST' });
     });
 
+    it('gives every account opened by simultaneous approvals its own number', async () => {
+      const w = await world();
+      const a = await types.createAccountType(w.A, { name: 'Alpha' });
+      const b = await types.createAccountType(w.A, { name: 'Beta' });
+      const c = await types.createAccountType(w.A, { name: 'Gamma' });
+      const pay = (typeId: number) =>
+        payments.createRequest(w.A, w.member.id, { paymentDate: new Date('2026-03-04'), lines: [{ accountTypeId: typeId, amount: 1000, periodMonth: 3, periodYear: 2026 }] }, receipt);
+      const [r1, r2, r3] = await Promise.all([pay(a.id), pay(b.id), pay(c.id)]);
+      await Promise.all([r1, r2, r3].map((r) => payments.approve(w.A, r.id, w.officer1.id)));
+      const accounts = await prisma.savingsAccount.findMany({ where: { associationId: w.A } });
+      expect(accounts).toHaveLength(3);
+      expect(new Set(accounts.map((x) => x.accountNumber)).size).toBe(3);
+    });
+
     it('refuses a type from another association, and an inactive one', async () => {
       const w = await world();
       const other = await world();
@@ -313,6 +327,20 @@ suite('Cooperative enhancements (database)', () => {
       await expect(withdrawals.create(w.A, w.member.id, { savingsAccountId: account.id, amount: 1000 }, now)).rejects.toMatchObject({ code: 'WITHDRAWAL_PENDING' });
     });
 
+    it('lets only one of two simultaneous requests through (the database enforces it)', async () => {
+      const w = await world();
+      const account = await specialAccount(w, 100000, null);
+      const attempts = await Promise.allSettled([
+        withdrawals.create(w.A, w.member.id, { savingsAccountId: account.id, amount: 5000 }, now),
+        withdrawals.create(w.A, w.member.id, { savingsAccountId: account.id, amount: 6000 }, now),
+        withdrawals.create(w.A, w.member.id, { savingsAccountId: account.id, amount: 7000 }, now),
+      ]);
+      expect(attempts.filter((a) => a.status === 'fulfilled')).toHaveLength(1);
+      for (const a of attempts.filter((x) => x.status === 'rejected')) {
+        expect((a as PromiseRejectedResult).reason).toMatchObject({ code: 'WITHDRAWAL_PENDING' });
+      }
+    });
+
     it('never lets share capital be withdrawn', async () => {
       const w = await world();
       const shares = await types.createAccountType(w.A, { name: 'Shares', accountClass: 'SHARES' });
@@ -379,6 +407,47 @@ suite('Cooperative enhancements (database)', () => {
     it('defaults to two-stage for a society that never opened the setting', async () => {
       const w = await world();
       expect(await settings.getTwoStageWithdrawal(w.A)).toBe(true);
+    });
+  });
+
+  describe('rollout migration', () => {
+    const sql = require('fs').readFileSync(require('path').join(__dirname, '../../prisma/migrations/20261126_cooperative_permissions_rollout/migration.sql'), 'utf8') as string;
+    // Statements end at a semicolon at the end of a line; comment lines are dropped.
+    const statements = sql
+      .split(/;[ \t]*\r?\n/)
+      .map((part) => part.split(/\r?\n/).filter((l) => !l.trim().startsWith('--')).join('\n').trim())
+      .filter(Boolean);
+    const runMigration = async () => {
+      for (const statement of statements) await prisma.$executeRawUnsafe(statement);
+    };
+    const keysOf = async (roleId: number) =>
+      (await prisma.rolePermission.findMany({ where: { roleId }, include: { permission: true } })).map((rp) => rp.permission.key).sort();
+
+    it('gives the built-in roles their new permissions without the seed, and can be run twice', async () => {
+      const w = await world();
+      const make = (name: string, isSystemRole = true, associationId = w.A) =>
+        prisma.role.create({ data: { associationId, name, displayName: name, isSystemRole } });
+      const admin = await make('admin');
+      const treasurer = await make('treasurer');
+      const plainMember = await make('member');
+      const custom = await make('admin', false, (await world()).A);
+      await runMigration();
+      await runMigration();
+      expect(await keysOf(admin.id)).toEqual(
+        expect.arrayContaining(['cooperatives.withdraw_own', 'cooperatives.manage_types', 'cooperatives.withdrawals.review', 'cooperatives.withdrawals.approve', 'cooperatives.view_own']),
+      );
+      expect(await keysOf(treasurer.id)).toEqual(expect.arrayContaining(['cooperatives.manage_types', 'cooperatives.withdrawals.review']));
+      expect(await keysOf(treasurer.id)).not.toContain('cooperatives.withdrawals.approve');
+      expect(await keysOf(plainMember.id)).toEqual(['cooperatives.withdraw_own']);
+      expect(await keysOf(custom.id)).toEqual([]);
+    });
+
+    it('leaves a standalone thrift group without cooperative permissions', async () => {
+      const w = await world();
+      await prisma.association.update({ where: { id: w.A }, data: { kind: 'THRIFT_GROUP' } });
+      const role = await prisma.role.create({ data: { associationId: w.A, name: 'member', displayName: 'Member', isSystemRole: true } });
+      await runMigration();
+      expect(await keysOf(role.id)).toEqual([]);
     });
   });
 });

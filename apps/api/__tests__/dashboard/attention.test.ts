@@ -12,7 +12,6 @@ const prismaMock: any = {
   supportTicket: { count: count() },
   loanApplication: { count: count() },
   loanRepaymentRequest: { count: count() },
-  savingsDepositRequest: { count: count() },
   welfarePayoutRequest: { count: count() },
   welfareContribution: { count: count() },
   candidate: { count: count() },

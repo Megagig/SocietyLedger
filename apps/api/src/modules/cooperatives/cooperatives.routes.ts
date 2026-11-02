@@ -430,10 +430,12 @@ router.put('/settings', requirePermission(PERMISSIONS.COOPERATIVE_MANAGE_TYPES),
 router.get('/my-dashboard', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myDashboard);
 router.get('/my-transactions', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myTransactions);
 router.get('/my-cashbook', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myCashbook);
+router.get('/my-cashbook.pdf', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.cashbookPdfFile);
 router.get('/my-pending-payments', requirePermission(PERMISSIONS.COOPERATIVE_VIEW_OWN), cooperativeEnhancementsController.myPendingPayments);
 router.get('/bank-accounts', requireAnyPermission([PERMISSIONS.COOPERATIVE_VIEW_OWN, PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE]), cooperativeEnhancementsController.bankAccounts);
 router.get('/members/:id/dashboard', requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE), cooperativeEnhancementsController.memberDashboard);
 router.get('/members/:id/cashbook', requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE), cooperativeEnhancementsController.memberCashbook);
+router.get('/members/:id/cashbook.pdf', requirePermission(PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE), cooperativeEnhancementsController.cashbookPdfFile);
 
 
 export default router;

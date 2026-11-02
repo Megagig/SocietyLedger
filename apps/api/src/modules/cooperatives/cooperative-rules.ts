@@ -121,9 +121,9 @@ export function assertCanApprove(input: {
 export type ContributionCell = 'PAID' | 'PARTIAL' | 'DEFAULTED' | 'DUE' | 'NONE';
 
 /**
- * One month of the contribution table. A month is DEFAULTED only once it is over (earlier than `currentMonth`) and less than the
- * expected amount was paid for it; the current month is just DUE until it ends. No expected amount means we can't call anything a default,
- * so an unpaid month is NONE.
+ * One month of the contribution table. PAID: the expected amount (or more) came in. PARTIAL: something came in, but less than expected, in any
+ * month, so a shortfall stays visible and is never lumped in with a month where nothing was paid. DEFAULTED: the month is over and nothing was
+ * paid. DUE: this month or later and nothing paid yet. No expected amount means we can't call anything a default, so an unpaid month is NONE.
  */
 export function contributionCell(input: {
   expected: Decimal | null;

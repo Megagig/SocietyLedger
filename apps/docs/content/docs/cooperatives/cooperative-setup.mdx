@@ -16,6 +16,8 @@ Nothing about your cooperative's savings types is fixed. You create the types yo
 
 You need the **cooperatives.manage_types** permission (by default the Administrator and the Treasurer).
 
+If your association made its own roles, those roles do not receive the cooperative permissions automatically. Add `cooperatives.manage_types` (and, for withdrawals, `cooperatives.withdrawals.review` or `cooperatives.withdrawals.approve`) to the role in **Settings → Roles**. The built-in Administrator, Treasurer, Financial Secretary and member roles already have what they need.
+
 ## Savings account types
 
 Each type picks one of three behaviours, which decides what it can do:
@@ -32,6 +34,8 @@ Each type picks one of three behaviours, which decides what it can do:
 <Step>Enter a **Name**, choose what it **Behaves like**, and optionally set a **usual monthly amount** (it fills in when a member pays) and a **monthly withdrawal limit**.</Step>
 <Step>Save. The type is available to members straight away.</Step>
 </Steps>
+
+Fixed Deposit and Target Savings types carried over from the earlier version are set to **not withdrawable**, so locked money stays locked. Switch a type to withdrawable only if your cooperative really lets members take it out early.
 
 Once members hold accounts of a type, what it behaves like can no longer change, so the rules never change under them. Create a new type instead. A type you no longer want can be set to **Retired**; members keep what they hold in it.
 

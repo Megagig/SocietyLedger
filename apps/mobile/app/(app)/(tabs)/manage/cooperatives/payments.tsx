@@ -1,8 +1,7 @@
-import { coopEnhancedApi } from '@/api/endpoints/coopEnhanced';
 import { RequestQueue } from '@/features/coopManage/components/RequestQueue';
 import type { RequestLike } from '@/features/coopManage/components/RequestCard';
 import { COOP_SAVINGS_ACCESS } from '@/features/coopManage/queries';
-import { useApprovePaymentRequest, usePaymentRequestQueue, useRejectPaymentRequest } from '@/features/coopEnhanced/queries';
+import { loadPaymentProof, useApprovePaymentRequest, usePaymentRequestQueue, useRejectPaymentRequest } from '@/features/coopEnhanced/queries';
 import { formatMoney } from '@/lib/money';
 import type { PaymentRequestDTO, PaymentRequestsDTO } from '@/types/api/coopEnhanced';
 
@@ -26,7 +25,6 @@ const toRow = (r: PaymentRequestDTO): Row => ({
 
 const itemsOf = (page: PaymentRequestsDTO) => page.requests.map(toRow);
 const contextOf = (row: Row) => row.lines;
-const loadReceipt = (id: number) => coopEnhancedApi.getPaymentReceiptUrl(id);
 const approvedMessage = (row: Row) => `Added ${formatMoney(row.amount)} to ${row.memberName}'s savings`;
 
 /**
@@ -42,7 +40,7 @@ export default function PaymentRequestsScreen() {
       useRequests={usePaymentRequestQueue}
       itemsOf={itemsOf}
       contextOf={contextOf}
-      loadReceipt={loadReceipt}
+      loadReceipt={loadPaymentProof}
       useApprove={useApprovePaymentRequest}
       useReject={useRejectPaymentRequest}
       approvedMessage={approvedMessage}

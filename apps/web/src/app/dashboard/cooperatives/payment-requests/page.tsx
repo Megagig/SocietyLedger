@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { Button, Modal, Pagination } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import { useDecidePayment, usePaymentRequests } from '@/lib/coop/hooks';
 import { coopApi, coopErrorMessage } from '@/lib/coop/api';
 import { CoopEmpty, CoopError, CoopLoading } from '@/components/coop/CoopStates';
 import { Naira } from '@/components/coop/Naira';
 import { PageHead } from '@/components/coop/PageHead';
+import { StatusTabs } from '@/components/coop/StatusTabs';
 import { ReceiptButton } from '@/components/coop/ReceiptButton';
 import { StatusPill } from '@/components/coop/StatusPill';
 import { toast } from '@/lib/toast';
@@ -65,22 +67,16 @@ export default function PaymentRequestsPage() {
     <div className="space-y-6">
       <PageHead title="Payment requests" subtitle="Check each proof against the bank statement, then approve or reject it." />
 
-      <div role="tablist" aria-label="Request status" className="grid grid-cols-3 gap-1 rounded-lg bg-surface-sunken p-1 sm:inline-flex">
-        {TABS.map((t) => (
-          <button
-            key={t.value}
-            role="tab"
-            aria-selected={status === t.value}
-            onClick={() => {
-              setStatus(t.value);
-              setPage(1);
-            }}
-            className={`h-11 rounded-md border border-transparent px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-success-focus ${status === t.value ? 'bg-success-solid text-on-solid' : 'bg-transparent text-ink-muted hover:text-ink'}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <StatusTabs
+        label="Request status"
+        tabs={TABS}
+        value={status}
+        onChange={(next) => {
+          setStatus(next);
+          setPage(1);
+        }}
+        columns="grid-cols-3 sm:inline-flex"
+      />
 
       {queue.isLoading ? (
         <CoopLoading />
@@ -137,12 +133,12 @@ export default function PaymentRequestsPage() {
                   {r.hasReceipt && <ReceiptButton getUrl={() => coopApi.paymentReceiptUrl(r.id)} />}
                   {r.status === 'PENDING' && (
                     <>
-                      <Button color="green" size="xs" leftSection={<IconCheck size={14} />} onClick={() => setApproving(r)}>
+                      <CoopButton tone="primary" size="xs" leftSection={<IconCheck size={14} />} onClick={() => setApproving(r)}>
                         Approve
-                      </Button>
-                      <Button color="red" variant="light" size="xs" leftSection={<IconX size={14} />} onClick={() => setRejecting(r)}>
+                      </CoopButton>
+                      <CoopButton tone="danger-soft" size="xs" leftSection={<IconX size={14} />} onClick={() => setRejecting(r)}>
                         Reject
-                      </Button>
+                      </CoopButton>
                     </>
                   )}
                 </div>
@@ -176,7 +172,7 @@ export default function PaymentRequestsPage() {
             </ul>
             <div className="flex justify-end gap-2">
               <Button variant="default" onClick={() => setApproving(null)}>Cancel</Button>
-              <Button color="green" onClick={approve} loading={decide.isPending}>Approve</Button>
+              <CoopButton tone="primary" onClick={approve} loading={decide.isPending}>Approve</CoopButton>
             </div>
           </div>
         )}
@@ -190,7 +186,7 @@ export default function PaymentRequestsPage() {
           </label>
           <div className="flex justify-end gap-2">
             <Button variant="default" onClick={() => { setRejecting(null); setReason(''); }}>Cancel</Button>
-            <Button color="red" onClick={reject} loading={decide.isPending}>Reject payment</Button>
+            <CoopButton tone="danger" onClick={reject} loading={decide.isPending}>Reject payment</CoopButton>
           </div>
         </div>
       </Modal>

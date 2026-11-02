@@ -164,18 +164,26 @@ export const cooperativeWithdrawalsService = {
     }
 
     const twoStage = await getTwoStageWithdrawal(associationId);
-    const created = await prisma.savingsWithdrawalRequest.create({
-      data: {
-        associationId,
-        memberId,
-        savingsAccountId: account.id,
-        amount,
-        reason: input.reason,
-        twoStage,
-        status: twoStage ? 'PENDING_REVIEW' : 'PENDING_APPROVAL',
-      },
-      include,
-    });
+    // The count above is a friendly early answer; the database's one-open-request-per-account index is what stops two racing requests.
+    const created = await prisma.savingsWithdrawalRequest
+      .create({
+        data: {
+          associationId,
+          memberId,
+          savingsAccountId: account.id,
+          amount,
+          reason: input.reason,
+          twoStage,
+          status: twoStage ? 'PENDING_REVIEW' : 'PENDING_APPROVAL',
+        },
+        include,
+      })
+      .catch((error: unknown) => {
+        if ((error as { code?: string })?.code === 'P2002') {
+          throw new RuleError('You already have a withdrawal waiting for a decision on this account.', 409, 'WITHDRAWAL_PENDING');
+        }
+        throw error;
+      });
 
     void notifyOfficers(
       associationId,

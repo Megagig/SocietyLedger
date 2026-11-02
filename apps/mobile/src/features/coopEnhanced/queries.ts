@@ -1,6 +1,9 @@
+import { invalidateFor } from '@societyledger/query';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { coopEnhancedApi } from '@/api/endpoints/coopEnhanced';
+import { loansApi } from '@/api/endpoints/loans';
+import { PDF_MIME, saveAndShareFile } from '@/features/ajo/shareFile';
 import { useMemberId } from '@/hooks/useMemberId';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useTenantKey } from '@/hooks/useTenantKey';
@@ -17,6 +20,18 @@ import type {
 } from '@/types/api/coopEnhanced';
 
 export const COOP_MODULE = 'cooperatives';
+
+/** A short-lived link to the proof of a savings payment. Asked for only when someone opens it; the screens never import the API. */
+export const loadPaymentProof = (id: number) => coopEnhancedApi.getPaymentReceiptUrl(id);
+
+/** The cashbook as a PDF, saved and handed to the share sheet. The server draws it, as it does every other statement. */
+export async function shareCashbookPdf(range: { from?: string; to?: string }, memberId: number | undefined, filename: string) {
+  await saveAndShareFile(filename.endsWith('.pdf') ? filename : `${filename}.pdf`, await coopEnhancedApi.getCashbookPdf(range, memberId), PDF_MIME);
+}
+
+/** The proof behind a pending-payment row, whichever kind it is. */
+export const loadPendingProof = (item: { kind: 'SAVINGS' | 'LOAN_REPAYMENT'; id: number }) =>
+  item.kind === 'SAVINGS' ? coopEnhancedApi.getPaymentReceiptUrl(item.id) : loansApi.getRepaymentRequestReceiptUrl(item.id);
 
 /**
  * Everything here sits under `[tenant, 'cooperatives', 'v2']`, inside the older cooperative root `[tenant, 'cooperatives']`. A write refreshes
@@ -132,11 +147,11 @@ export function useCoopSettings() {
 }
 
 // ----------------------------------------------------------------- writes
-/** Refreshes the whole cooperative root once the server has answered: a payment, withdrawal or setup change is never confirmed optimistically. */
+/** Names the event, so the shared table refreshes every screen that shows the money (cooperative pages, member totals, dashboard, reports). Never optimistic. */
 function useRefreshCoop() {
   const queryClient = useQueryClient();
   const tenant = useTenantKey();
-  return () => queryClient.invalidateQueries({ queryKey: coopV2Keys.root(tenant) });
+  return () => invalidateFor(queryClient, tenant, 'cooperative.changed');
 }
 
 export function useSubmitPayment() {

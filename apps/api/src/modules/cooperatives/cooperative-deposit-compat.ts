@@ -22,12 +22,20 @@ import { cooperativeEnhancementsController } from './cooperative-enhancements.co
 type PaymentRequestView = ReturnType<typeof formatPaymentRequest>;
 
 /** The old response shape, from a payment request. A request with several lines (made on the web) reports its total and first account. */
-export function toLegacyDeposit(request: PaymentRequestView) {
+export type AccountLookup = Map<string, { id: number; accountNumber: string }>;
+const lookupKey = (memberId: number, typeId: number) => `${memberId}:${typeId}`;
+
+/**
+ * A request still waiting has no account on its lines, only a type. For those, report the member's existing account of that type so an
+ * older phone still files the deposit under the right account; if the member has none yet, it is 0 (the account opens on approval).
+ */
+export function toLegacyDeposit(request: PaymentRequestView, accounts?: AccountLookup) {
   const first = request.lines[0];
+  const guessed = first && !first.savingsAccountId ? accounts?.get(lookupKey(request.memberId, first.accountTypeId)) : undefined;
   return {
     id: request.id,
-    savingsAccountId: first?.savingsAccountId ?? 0,
-    accountNumber: first?.accountNumber ?? '',
+    savingsAccountId: first?.savingsAccountId ?? guessed?.id ?? 0,
+    accountNumber: first?.accountNumber ?? guessed?.accountNumber ?? '',
     memberId: request.memberId,
     memberName: request.memberName,
     memberNumber: request.memberNumber,
@@ -43,6 +51,22 @@ export function toLegacyDeposit(request: PaymentRequestView) {
     rejectionReason: request.rejectionReason,
     createdAt: request.createdAt,
   };
+}
+
+async function accountsFor(associationId: number, requests: PaymentRequestView[]): Promise<AccountLookup> {
+  const wanted = requests.filter((r) => r.lines[0] && !r.lines[0].savingsAccountId);
+  const map: AccountLookup = new Map();
+  if (wanted.length === 0) return map;
+  const rows = await prisma.savingsAccount.findMany({
+    where: { associationId, status: 'ACTIVE', memberId: { in: [...new Set(wanted.map((r) => r.memberId))] }, accountTypeId: { in: [...new Set(wanted.map((r) => r.lines[0].accountTypeId))] } },
+    select: { id: true, memberId: true, accountTypeId: true, accountNumber: true },
+    orderBy: { openedAt: 'asc' },
+  });
+  for (const row of rows) {
+    const key = lookupKey(row.memberId, row.accountTypeId as number);
+    if (!map.has(key)) map.set(key, { id: row.id, accountNumber: row.accountNumber });
+  }
+  return map;
 }
 
 function fail(res: Response, error: unknown, fallback: string) {
@@ -150,7 +174,8 @@ export const cooperativeDepositCompat = {
         memberId: all ? (query.memberId ? parseInt(query.memberId) : undefined) : req.user?.memberId,
         savingsAccountId: query.savingsAccountId ? parseInt(query.savingsAccountId) : undefined,
       });
-      return res.json({ success: true, data: { deposits: result.requests.map(toLegacyDeposit), pagination: result.pagination } });
+      const lookup = await accountsFor(associationId, result.requests);
+      return res.json({ success: true, data: { deposits: result.requests.map((r) => toLegacyDeposit(r, lookup)), pagination: result.pagination } });
     } catch (error) {
       return fail(res, error, 'Failed to get savings deposits');
     }

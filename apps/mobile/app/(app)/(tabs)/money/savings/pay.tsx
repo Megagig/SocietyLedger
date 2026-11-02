@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Trash2 } from 'lucide-react-native';
+import { Trash2, PiggyBank } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { View } from 'react-native';
@@ -19,6 +19,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Money } from '@/components/ui/Money';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { PayToCard } from '@/features/cooperatives/components/PayToCard';
 import { OwnPage } from '@/features/coopEnhanced/components/OwnPage';
@@ -131,6 +132,8 @@ export default function SavingsPayScreen() {
         </View>
       ) : types.isError ? (
         <ErrorState error={types.error} onRetry={() => types.refetch()} />
+      ) : (types.data ?? []).length === 0 ? (
+        <EmptyState icon={PiggyBank} title="No savings types yet" description="Your cooperative's officers haven't set up the savings types you can pay into. Ask them to add one." />
       ) : (
         <View className="gap-5 pb-24">
           <Text variant="body" tone="secondary">

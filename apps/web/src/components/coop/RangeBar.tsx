@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { useState, type ReactNode } from 'react';
 
 const inputClass =
@@ -39,9 +40,9 @@ export function RangeBar({
         <input type="date" value={draftTo} min={draftFrom || undefined} onChange={(e) => setDraftTo(e.target.value)} className={inputClass} />
       </label>
       <div className="flex items-center gap-2">
-        <Button type="submit" color="green" disabled={invalid} className="h-11">
+        <CoopButton tone="primary" type="submit" disabled={invalid} className="h-11">
           Apply
-        </Button>
+        </CoopButton>
         {children}
       </div>
       {invalid && (

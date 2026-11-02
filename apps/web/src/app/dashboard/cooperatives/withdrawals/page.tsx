@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { Button, Modal, Pagination } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import { useApproveWithdrawal, useRejectWithdrawal, useReviewWithdrawal, useWithdrawalQueue } from '@/lib/coop/hooks';
 import { coopErrorMessage } from '@/lib/coop/api';
 import { CoopEmpty, CoopError, CoopLoading } from '@/components/coop/CoopStates';
 import { Naira } from '@/components/coop/Naira';
 import { PageHead } from '@/components/coop/PageHead';
+import { StatusTabs } from '@/components/coop/StatusTabs';
 import { StatusPill } from '@/components/coop/StatusPill';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -105,22 +107,15 @@ export default function WithdrawalsPage() {
     <div className="space-y-6">
       <PageHead title="Withdrawals" subtitle="Member withdrawal requests, decided in two stages by two different officers." />
 
-      <div role="tablist" aria-label="Withdrawal status" className="grid grid-cols-2 gap-1 rounded-lg bg-surface-sunken p-1 sm:inline-flex">
-        {TABS.map((t) => (
-          <button
-            key={t.value}
-            role="tab"
-            aria-selected={status === t.value}
-            onClick={() => {
-              setStatus(t.value);
-              setPage(1);
-            }}
-            className={`h-11 rounded-md border border-transparent px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-success-focus ${status === t.value ? 'bg-success-solid text-on-solid' : 'bg-transparent text-ink-muted hover:text-ink'}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <StatusTabs
+        label="Withdrawal status"
+        tabs={TABS}
+        value={status}
+        onChange={(next) => {
+          setStatus(next);
+          setPage(1);
+        }}
+      />
 
       {queue.isLoading ? (
         <CoopLoading />
@@ -163,22 +158,22 @@ export default function WithdrawalsPage() {
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {'review' in act && act.review && (
                       <>
-                        <Button color="green" size="xs" leftSection={<IconCheck size={14} />} onClick={() => setDialog({ kind: 'forward', w })}>
+                        <CoopButton tone="primary" size="xs" leftSection={<IconCheck size={14} />} onClick={() => setDialog({ kind: 'forward', w })}>
                           Pass on for approval
-                        </Button>
-                        <Button color="red" variant="light" size="xs" leftSection={<IconX size={14} />} onClick={() => setDialog({ kind: 'reject-review', w })}>
+                        </CoopButton>
+                        <CoopButton tone="danger-soft" size="xs" leftSection={<IconX size={14} />} onClick={() => setDialog({ kind: 'reject-review', w })}>
                           Reject
-                        </Button>
+                        </CoopButton>
                       </>
                     )}
                     {'approve' in act && act.approve && (
                       <>
-                        <Button color="green" size="xs" leftSection={<IconCheck size={14} />} onClick={() => setDialog({ kind: 'approve', w })}>
+                        <CoopButton tone="primary" size="xs" leftSection={<IconCheck size={14} />} onClick={() => setDialog({ kind: 'approve', w })}>
                           Approve and pay
-                        </Button>
-                        <Button color="red" variant="light" size="xs" leftSection={<IconX size={14} />} onClick={() => setDialog({ kind: 'reject-final', w })}>
+                        </CoopButton>
+                        <CoopButton tone="danger-soft" size="xs" leftSection={<IconX size={14} />} onClick={() => setDialog({ kind: 'reject-final', w })}>
                           Reject
-                        </Button>
+                        </CoopButton>
                       </>
                     )}
                     {'note' in act && act.note && <p className="text-sm text-ink-muted">{act.note}</p>}
@@ -238,9 +233,9 @@ export default function WithdrawalsPage() {
             )}
             <div className="flex justify-end gap-2">
               <Button variant="default" onClick={close}>Cancel</Button>
-              <Button color={dialog.kind === 'reject-review' || dialog.kind === 'reject-final' ? 'red' : 'green'} onClick={submit} loading={busy}>
+              <CoopButton tone={dialog.kind === 'reject-review' || dialog.kind === 'reject-final' ? 'danger' : 'primary'} onClick={submit} loading={busy}>
                 {dialog.kind === 'forward' ? 'Pass on' : dialog.kind === 'approve' ? 'Approve' : 'Reject'}
-              </Button>
+              </CoopButton>
             </div>
           </div>
         )}

@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useMemo, useRef, useState } from 'react';
 import { Button } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { IconInfoCircle, IconLock, IconPigMoney, IconPlus, IconTrash, IconUpload } from '@tabler/icons-react';
 import { useAccountTypes, useCoopBankAccounts, useCoopDashboard, useSubmitPayment } from '@/lib/coop/hooks';
 import { coopErrorMessage } from '@/lib/coop/api';
 import { getMyCooperativeProfile } from '@/lib/api/cooperatives';
 import { useScopedQuery } from '@/lib/query';
-import { CoopError, CoopLoading } from '@/components/coop/CoopStates';
+import { CoopEmpty, CoopError, CoopLoading } from '@/components/coop/CoopStates';
 import { Naira } from '@/components/coop/Naira';
 import { PageHead } from '@/components/coop/PageHead';
 import { StatTile, type TileTone } from '@/components/coop/StatTile';
@@ -161,6 +162,10 @@ export default function MySavingsPage() {
           <div className="mt-4">
             <CoopError error={types.error} onRetry={() => types.refetch()} />
           </div>
+        ) : (types.data?.length ?? 0) === 0 ? (
+          <div className="mt-4">
+            <CoopEmpty title="No savings types yet" hint="Your cooperative's officers haven't set up the savings types you can pay into. Ask them to add one." />
+          </div>
         ) : (
           <>
             <div className="mt-5 grid items-end gap-3 md:grid-cols-[2fr_1fr_1fr_auto]">
@@ -183,9 +188,9 @@ export default function MySavingsPage() {
                 Month-Year
                 <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className={fieldClass} />
               </label>
-              <Button onClick={addLine} leftSection={<IconPlus size={16} />} color="green" className="h-11">
+              <CoopButton tone="primary" onClick={addLine} leftSection={<IconPlus size={16} />} className="h-11">
                 Add
-              </Button>
+              </CoopButton>
             </div>
 
             <div className="relative mt-4 overflow-x-auto rounded-lg border border-line">
@@ -214,9 +219,9 @@ export default function MySavingsPage() {
                         <td className="px-4 py-2">{line.name}</td>
                         <td className="px-4 py-2 text-right tabular-nums">{formatNairaFull(line.amount)}</td>
                         <td className="px-4 py-2 text-right">
-                          <Button variant="subtle" color="red" size="xs" aria-label={`Remove ${line.name} for ${periodLabel(line.period)}`} onClick={() => setLines((c) => c.filter((l) => l !== line))}>
+                          <CoopButton tone="danger-ghost" size="xs" aria-label={`Remove ${line.name} for ${periodLabel(line.period)}`} onClick={() => setLines((c) => c.filter((l) => l !== line))}>
                             <IconTrash size={16} />
-                          </Button>
+                          </CoopButton>
                         </td>
                       </tr>
                     ))
@@ -270,9 +275,9 @@ export default function MySavingsPage() {
             </div>
 
             <div className="mt-5 flex justify-end">
-              <Button color="green" size="md" onClick={send} loading={submit.isPending} disabled={lines.length === 0 || !proof}>
+              <CoopButton tone="primary" size="md" onClick={send} loading={submit.isPending} disabled={lines.length === 0 || !proof}>
                 Submit payment
-              </Button>
+              </CoopButton>
             </div>
           </>
         )}

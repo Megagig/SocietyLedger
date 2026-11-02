@@ -895,6 +895,15 @@ Shared building blocks for the cooperative pages in `apps/web/src/components/coo
 - **Surface:** web · **Path:** `components/layout/coopMemberNav.tsx`, `lib/coop/navGroups.ts` · **Added:** C5
 - **Purpose:** The member's cooperative menu as one list (`COOP_MEMBER_NAV`) shared by `MemberSidebar` and `AdminSidebar`, so an officer who is also a member sees the same menu in their member area. `useCoopMemberNav()` returns it only when the plan has the `cooperatives` module and the person holds a cooperative own-permission. `coopGroupForPath(pathname)` names the group to open.
 
+### `StatusTabs` (`components/coop/StatusTabs.tsx`)
+- **Purpose:** The strip of tabs for switching a cooperative page between statuses or views (withdrawals, payment requests, My Transactions). Props: `label`, `tabs` (`{value,label}[]`), `value`, `onChange`, optional `panelId` (each tab gets `aria-controls`), optional `columns` (Tailwind grid classes; default `grid-cols-2 sm:inline-flex`).
+- **Behaviour:** a grid on phones so labels never wrap off screen, an inline strip from `sm`; the chosen tab is the only one in the tab order; arrow keys wrap, Home and End jump. Tabs are 44px tall (`h-11`), the chosen one `bg-success-solid text-on-solid`.
+- **Used in:** `withdrawals`, `payment-requests`, `my-transactions`.
+
+### `CoopButton` and `CoopSwitch` (`components/coop/CoopButton.tsx`)
+- **Purpose:** Coloured Mantine buttons and switches that take their colour from the design tokens (`--c-success-solid`, `--c-danger-*`, `--c-info-*`), so no page uses a named Mantine colour (`color="green"`) for state.
+- **Tones:** `primary` (green fill), `soft` (green tint), `info-soft`, `danger` (red fill), `danger-soft` (red tint, for Reject), `danger-ghost` (remove). Use these instead of `color="green"` / `color="red"` on every cooperative page.
+
 **Officer pages (no new shared components):** `payment-requests`, `withdrawals` (two stages, buttons by permission, a note instead of a button when the officer reviewed it), `setup` (account types, loan categories, the two-stage switch). They use the same coop building blocks above.
 
 **Pitfalls found in review (apply to any new web table or button):** (1) a raw `<button>` inherits a grey fill and border from the global stylesheet, so give it `border-0 bg-transparent p-0` or use Mantine's `Button`; (2) a raw `<ul>` shows bullets and indent, so use `m-0 list-none p-0`; (3) put `relative` on every `overflow-x-auto` wrapper that holds a table with `sr-only` cells.
@@ -923,6 +932,8 @@ Feature folder `src/features/coopEnhanced/`; screens under `app/(app)/(tabs)/mon
 - **Path:** `features/coopEnhanced/components/` · **Added:** C6–C7
 - **Purpose:** the shared cashbook statement (member's own and an officer's view of one member), the From/To filter with Apply, the proof opener (image viewer or in-app browser; link fetched only on press), the final-approval payout sheet, and the account-type and loan-category sheets.
 - **Rule:** `withdrawalActions()` in `labels.ts` decides which buttons an officer sees (never your own request; the reviewer can't also approve under two stages; each stage needs its own permission). It is a pure function with tests.
+
+**Cashbook export (mobile):** two buttons, **PDF** (the server draws it at `/cooperatives/my-cashbook.pdf` or `/members/:id/cashbook.pdf`, then the share sheet) and **Spreadsheet** (CSV). Money in the PDF is written `NGN 10,000.00` because the built-in PDF fonts have no naira sign. Interest columns read *Interest charged / Interest paid / Interest still to pay* on every surface. Screens never import the API: proofs and the PDF go through `loadPaymentProof`, `loadPendingProof` and `shareCashbookPdf` in `queries.ts`. `AnimatedView` (`components/ui/AnimatedView.ts`) is Reanimated's `Animated.View` typed to accept `className`.
 
 **Entry points:** the Money tab's Cooperative section is grouped as in the web menu (Cooperative, Savings, Transactions, Loans, Pay to). Officer: Manage → Cooperatives gains Payment requests (replaces Deposit requests, reusing `RequestQueue`), Withdrawals and Setup.
 

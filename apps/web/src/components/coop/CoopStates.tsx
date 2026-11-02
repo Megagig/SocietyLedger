@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Skeleton } from '@mantine/core';
+import { CoopButton } from '@/components/coop/CoopButton';
 import { IconAlertTriangle, IconInbox } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { coopErrorMessage, coopErrorStatus } from '@/lib/coop/api';
@@ -39,9 +40,9 @@ export function CoopError({ error, onRetry }: { error: unknown; onRetry?: () => 
         {coopErrorMessage(error, notAllowed ? 'Ask an officer of your cooperative if you think this is a mistake.' : 'Check your connection and try again.')}
       </p>
       {onRetry && !notAllowed && (
-        <Button variant="light" color="red" size="xs" className="mt-3" onClick={onRetry}>
+        <CoopButton tone="danger-soft" size="xs" className="mt-3" onClick={onRetry}>
           Try again
-        </Button>
+        </CoopButton>
       )}
     </div>
   );
