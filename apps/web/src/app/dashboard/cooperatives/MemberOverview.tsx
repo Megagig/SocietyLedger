@@ -1,154 +1,157 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Badge } from '@mantine/core';
-import {
-  IconWallet, IconCurrencyNaira, IconLock, IconArrowRight, IconFileAnalytics, IconUsers, IconClock
-} from '@tabler/icons-react';
-import {
-  getMyCooperativeProfile, getSavingsDeposits, getLoanRepaymentRequests, getPendingGuarantorRequests
-} from '@/lib/api/cooperatives';
+import Link from 'next/link';
+import { useState } from 'react';
+import { Button } from '@mantine/core';
+import { IconBuildingBank, IconCoin, IconEye, IconEyeOff, IconPigMoney, IconRefresh, IconTrendingUp, IconWallet } from '@tabler/icons-react';
+import { useCoopDashboard, useMyPendingPayments } from '@/lib/coop/hooks';
+import { CoopError, CoopLoading } from '@/components/coop/CoopStates';
+import { ContributionTable } from '@/components/coop/ContributionTable';
+import { MonthlyBars } from '@/components/coop/MonthlyBars';
+import { Naira } from '@/components/coop/Naira';
+import { PageHead } from '@/components/coop/PageHead';
+import { StatTile, type TileTone } from '@/components/coop/StatTile';
+import { formatDate } from '@/utils/format';
+import type { AccountClass, LastEntry } from '@/lib/coop/types';
 
-interface Profile {
-  memberName: string;
-  savingsAccounts: unknown[];
-  totalSavings: string;
-  lockedSavings: string;
-  availableSavings: string;
-  activeLoans: unknown[];
-  totalOutstandingLoans: string;
-  loanEligibility: { maxLoanAmount: string };
+const SAVINGS_TONE: Record<AccountClass, TileTone> = { CONTRIBUTION: 'success', SHARES: 'info', SPECIAL: 'warning' };
+
+function greeting(now = new Date()) {
+  const hour = now.getHours();
+  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+}
+
+/** "+₦5,000.00 as at 4 Mar 2026": the last thing that moved on the tile. */
+function lastEntryHint(entry: LastEntry | null, masked: boolean) {
+  if (!entry) return 'Nothing recorded yet';
+  return (
+    <>
+      {entry.type === 'WITHDRAWAL' ? '−' : '+'}
+      <Naira value={entry.amount} masked={masked} /> as at {formatDate(entry.date)}
+    </>
+  );
 }
 
 /**
- * What a member sees at /dashboard/cooperatives: their own savings, loans and anything waiting on someone.
- * Officers get the association-wide dashboard instead (it needs ledger.view / payments.approve).
+ * What a member sees at /dashboard/cooperatives: a tile for every savings type and loan category their cooperative offers, what they were
+ * expected to pay each month against what they paid, and the year's activity. Officers get the association-wide dashboard instead.
  */
 export default function MemberOverview() {
-  const router = useRouter();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [pendingDeposits, setPendingDeposits] = useState(0);
-  const [pendingRepayments, setPendingRepayments] = useState(0);
-  const [guarantorRequests, setGuarantorRequests] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const thisYear = new Date().getFullYear();
+  const [year, setYear] = useState(thisYear);
+  const [masked, setMasked] = useState(false);
+  const dashboard = useCoopDashboard(year);
+  const waiting = useMyPendingPayments({ status: 'PENDING' });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [profileRes, depositsRes, repaymentsRes, guarantorRes] = await Promise.all([
-          getMyCooperativeProfile(),
-          getSavingsDeposits({ status: 'PENDING', limit: 1 }).catch(() => null),
-          getLoanRepaymentRequests({ status: 'PENDING', limit: 1 }).catch(() => null),
-          getPendingGuarantorRequests().catch(() => null),
-        ]);
-        setProfile(profileRes.data);
-        setPendingDeposits(depositsRes?.data?.pagination?.totalCount ?? 0);
-        setPendingRepayments(repaymentsRes?.data?.pagination?.totalCount ?? 0);
-        setGuarantorRequests(guarantorRes?.data?.requests?.length ?? 0);
-      } catch {
-        setError('We could not load your cooperative details. Your account may not be linked to a member record yet — please contact your association admin.');
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
-
-  const formatCurrency = (amount: string | number) =>
-    `₦${Number(amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-600 dark:text-gray-400">Loading your cooperative...</div>
-      </div>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px] text-center px-4">
-        <div className="text-gray-600 dark:text-gray-400 max-w-md">{error}</div>
-      </div>
-    );
-  }
-
-  const locked = Number(profile.lockedSavings || 0);
-  const waiting = pendingDeposits + pendingRepayments;
-
-  const links = [
-    { label: 'My Savings', hint: 'Balances and deposits', href: '/dashboard/cooperatives/my-savings', icon: <IconCurrencyNaira size={20} /> },
-    { label: 'My Loans', hint: 'Balances and payments', href: '/dashboard/cooperatives/my-loans', icon: <IconWallet size={20} /> },
-    { label: 'Apply for Loan', hint: 'See how much you can borrow', href: '/dashboard/cooperatives/apply', icon: <IconFileAnalytics size={20} /> },
-    { label: 'Guarantor Requests', hint: 'Members asking you to vouch', href: '/dashboard/cooperatives/guarantors', icon: <IconUsers size={20} />, badge: guarantorRequests },
-  ];
+  const years = Array.from({ length: 5 }, (_, i) => thisYear - i);
+  const waitingCount = waiting.data?.pendingCount ?? 0;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">
-          My Cooperative
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Your savings and loans at a glance</p>
-      </div>
+      <PageHead
+        title={`${greeting()}${dashboard.data?.memberName ? `, ${dashboard.data.memberName.split(' ')[0]}` : ''}!`}
+        subtitle="Track your cooperative contributions, loans, and financial progress."
+        actions={
+          <>
+            <Button variant="default" leftSection={<IconRefresh size={16} />} loading={dashboard.isFetching && !dashboard.isLoading} onClick={() => dashboard.refetch()}>
+              Refresh
+            </Button>
+            <Button variant="default" leftSection={masked ? <IconEye size={16} /> : <IconEyeOff size={16} />} onClick={() => setMasked((m) => !m)} aria-pressed={masked}>
+              {masked ? 'Show' : 'Hide'}
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-          <p className="text-sm text-gray-500">Total savings</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrency(profile.totalSavings)}</p>
-          <p className="text-xs text-gray-500 mt-1">{profile.savingsAccounts.length} account(s)</p>
-          {locked > 0 && (
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-3 flex items-center gap-1">
-              <IconLock size={13} /> {formatCurrency(locked)} held against your loan · {formatCurrency(profile.availableSavings)} available
-            </p>
-          )}
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-          <p className="text-sm text-gray-500">Loans you owe</p>
-          <p className="text-2xl font-bold text-red-600 mt-1">{formatCurrency(profile.totalOutstandingLoans)}</p>
-          <p className="text-xs text-gray-500 mt-1">{profile.activeLoans.length} active loan(s)</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-          <p className="text-sm text-gray-500">You can borrow up to</p>
-          <p className="text-2xl font-bold text-teal-600 mt-1">{formatCurrency(profile.loanEligibility?.maxLoanAmount || 0)}</p>
-          <p className="text-xs text-gray-500 mt-1">Based on your available savings</p>
-        </div>
-      </div>
-
-      {waiting > 0 && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
-          <IconClock size={20} className="text-yellow-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-gray-700 dark:text-gray-200">
-            {pendingDeposits > 0 && <>{pendingDeposits} savings deposit{pendingDeposits > 1 ? 's' : ''} </>}
-            {pendingDeposits > 0 && pendingRepayments > 0 && 'and '}
-            {pendingRepayments > 0 && <>{pendingRepayments} loan payment{pendingRepayments > 1 ? 's' : ''} </>}
-            waiting for an officer to confirm the money arrived.
-          </p>
-        </div>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {links.map((link) => (
-          <button
-            key={link.href}
-            onClick={() => router.push(link.href)}
-            className="flex items-center justify-between gap-3 p-4 text-left bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
-          >
+      {dashboard.isLoading ? (
+        <CoopLoading rows={4} height={96} />
+      ) : dashboard.isError || !dashboard.data ? (
+        <CoopError error={dashboard.error} onRetry={() => dashboard.refetch()} />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-success-line bg-success-soft p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600">{link.icon}</div>
+              <IconCoin size={28} className="text-success" aria-hidden="true" />
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">{link.label}</p>
-                <p className="text-xs text-gray-500">{link.hint}</p>
+                <p className="text-sm font-medium text-success-text">Monthly contribution</p>
+                <p className="text-2xl font-bold text-success-strong">
+                  <Naira value={dashboard.data.monthlyContribution} masked={masked} />
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {!!link.badge && <Badge color="red" size="sm">{link.badge}</Badge>}
-              <IconArrowRight size={16} className="text-gray-400" />
+            <Button component={Link} href="/dashboard/cooperatives/bank-accounts" variant="default" leftSection={<IconBuildingBank size={16} />}>
+              Where to pay
+            </Button>
+          </div>
+
+          {waitingCount > 0 && (
+            <Link
+              href="/dashboard/cooperatives/my-pending-payments"
+              className="block rounded-lg border border-warning-line bg-warning-soft p-4 text-sm text-warning-strong hover:underline"
+            >
+              {waitingCount} payment{waitingCount > 1 ? 's are' : ' is'} waiting for an officer to confirm the money arrived. See your pending payments.
+            </Link>
+          )}
+
+          <section aria-label="Your balances" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {dashboard.data.savingsTiles.map((tile) => (
+              <StatTile
+                key={`s${tile.accountTypeId}`}
+                label={tile.name}
+                value={tile.balance}
+                tone={SAVINGS_TONE[tile.accountClass]}
+                icon={tile.accountClass === 'SHARES' ? <IconTrendingUp size={20} /> : <IconPigMoney size={20} />}
+                hint={lastEntryHint(tile.lastEntry, masked)}
+                masked={masked}
+              />
+            ))}
+            {dashboard.data.loanTiles.map((tile) => (
+              <StatTile
+                key={`l${tile.loanCategoryId}`}
+                label={tile.name}
+                value={tile.outstanding}
+                tone={Number(tile.outstanding) > 0 ? 'danger' : 'neutral'}
+                icon={<IconWallet size={20} />}
+                hint={
+                  <>
+                    {tile.isGoods ? 'Goods loans owed' : 'Loans owed'}
+                    {tile.activeLoans > 0 ? ` · ${tile.activeLoans} active` : ''}
+                  </>
+                }
+                masked={masked}
+              />
+            ))}
+          </section>
+
+          <section className="rounded-lg border border-line bg-surface p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-ink">Contribution table</h2>
+              <label className="flex items-center gap-2 text-sm text-ink-muted">
+                Year
+                <select
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="h-11 rounded-md border border-line-strong bg-surface px-3 text-sm text-ink focus:border-success focus:outline-none focus:ring-2 focus:ring-success-focus"
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-          </button>
-        ))}
-      </div>
+            <ContributionTable table={dashboard.data.contributionTable} />
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <MonthlyBars title="My contributions" subtitle={`Monthly contribution activity, ${year}`} data={dashboard.data.charts.savingsByMonth.CONTRIBUTION} />
+            <MonthlyBars title="Loan repayments" subtitle={`What you paid towards loans, ${year}`} data={dashboard.data.charts.loansByMonth.repaid} tone="info" />
+            <MonthlyBars title="Special savings" subtitle={`Special contribution activity, ${year}`} data={dashboard.data.charts.savingsByMonth.SPECIAL} />
+            <MonthlyBars title="Loans collected" subtitle={`Loans paid out to you, ${year}`} data={dashboard.data.charts.loansByMonth.disbursed} tone="info" />
+          </div>
+        </>
+      )}
     </div>
   );
 }

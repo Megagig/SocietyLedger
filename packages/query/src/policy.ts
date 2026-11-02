@@ -78,6 +78,8 @@ export const DOMAINS: Readonly<Record<string, DomainPolicy>> = {
   ajoSavings: p('money'),
   ajoPayments: p('money'),
   ajoPayouts: p('money'),
+  // The cooperative's savings, payment requests, withdrawals and loans for the signed-in member (and the officers' queues).
+  cooperatives: p('money'),
 };
 
 const DEFAULT_POLICY: DomainPolicy = { freshness: 'directory', persist: false };

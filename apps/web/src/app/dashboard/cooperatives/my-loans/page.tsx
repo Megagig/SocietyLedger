@@ -18,6 +18,7 @@ import { toast } from '@/lib/toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/lib/permissions';
 import { HelpLink } from '@/components/docs/HelpLink';
+import { LoanTiles } from '@/components/coop/LoanTiles';
 
 interface Loan {
   id: number;
@@ -256,26 +257,11 @@ export default function MyLoansPage() {
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">View your loans and make repayments</p>
         </div>
         <Button onClick={() => router.push('/dashboard/cooperatives/apply')} leftSection={<IconWallet size={16} />} className="w-full sm:w-auto">
-          Apply for Loan
+          Start new loan application
         </Button>
       </div>
 
-      {/* Outstanding Balance Card */}
-      {profile?.totalOutstandingLoans && Number(profile.totalOutstandingLoans) > 0 && (
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg shadow-lg p-4 sm:p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm sm:text-base text-blue-100">Total Outstanding Balance</p>
-              <p className="text-2xl sm:text-4xl font-bold mt-2">{formatCurrency(profile.totalOutstandingLoans)}</p>
-              <p className="text-sm sm:text-base text-blue-100 mt-1">{profile.activeLoans?.length || 0} active loan(s)</p>
-            </div>
-            <div className="p-3 sm:p-4 bg-white/20 rounded-full">
-              <IconWallet size={32} className="sm:hidden" />
-              <IconWallet size={40} className="hidden sm:block" />
-            </div>
-          </div>
-        </div>
-      )}
+      <LoanTiles />
 
       {/* Loans List */}
       {!profile?.activeLoans?.length ? (

@@ -9,6 +9,7 @@ import { ModuleLockedScreen } from '@/components/feedback/ModuleLockedScreen';
 import { NoMemberProfile } from '@/components/feedback/NoMemberProfile';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { LoanCategoryTiles } from '@/features/coopEnhanced/components/LoanCategoryTiles';
 import { SectionCard } from '@/components/layout/SectionCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -143,6 +144,7 @@ export default function MyLoansScreen() {
       <ScreenHeader title="My Loans" onBack={() => router.back()} docsKey="M17" />
 
       <View className="gap-4 pb-6">
+        <LoanCategoryTiles />
         {canApply ? (
           <Button variant="primary" onPress={() => router.push('/money/loans/apply' as never)}>
             Apply for a loan

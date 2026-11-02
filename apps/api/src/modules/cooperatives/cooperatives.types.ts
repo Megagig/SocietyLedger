@@ -12,6 +12,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 export interface SavingsAccountInput {
   memberId: number;
   accountType: SavingsAccountType;
+  accountTypeId?: number;
   targetAmount?: number;
   monthlyContribution?: number;
   interestRate?: number;
@@ -26,6 +27,9 @@ export interface SavingsAccountResponse {
   member: { id: number; firstName: string; lastName: string; membershipId: string } | null;
   accountNumber: string;
   accountType: SavingsAccountType;
+  accountTypeId: number | null;
+  accountTypeName: string | null;
+  accountClass: 'CONTRIBUTION' | 'SHARES' | 'SPECIAL' | null;
   balance: Decimal;
   targetAmount: Decimal | null;
   monthlyContribution: Decimal | null;
@@ -91,6 +95,7 @@ export interface LoanProductInput {
   minGuarantors?: number;
   maxLoanToSavingsRatio?: number;
   lockSavings?: boolean;
+  loanCategoryId?: number | null;
   gracePeriodDays?: number;
   lateFeePercent?: number;
   lateFeeFixed?: number;
@@ -117,6 +122,9 @@ export interface LoanProductResponse {
   lateFeePercent: Decimal;
   lateFeeFixed: Decimal;
   isActive: boolean;
+  loanCategoryId: number | null;
+  categoryName: string | null;
+  isGoodsLoan: boolean;
   createdAt: Date;
 }
 
@@ -134,6 +142,7 @@ export interface LoanApplicationInput {
   guarantorIds?: number[];
   collateralDescription?: string;
   collateralValue?: number;
+  itemDescription?: string;
 }
 
 export interface LoanApplicationResponse {
@@ -157,6 +166,8 @@ export interface LoanApplicationResponse {
   status: LoanApplicationStatus;
   collateralDescription: string | null;
   collateralValue: Decimal | null;
+  itemDescription: string | null;
+  isGoodsLoan: boolean;
   guarantors: LoanGuarantorResponse[];
   appliedAt: Date;
   reviewedBy: number | null;

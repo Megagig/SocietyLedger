@@ -19,6 +19,7 @@ export type AttentionKey =
   | 'loanApplications'
   | 'loanRepayments'
   | 'savingsDeposits'
+  | 'savingsWithdrawals'
   | 'welfarePayouts'
   | 'welfareContributions'
   | 'electionNominations'
@@ -93,7 +94,15 @@ export const ATTENTION_SOURCES: AttentionSource[] = [
     key: 'savingsDeposits',
     permissions: [PERMISSIONS.COOPERATIVE_SAVINGS_MANAGE],
     module: 'cooperatives',
-    count: ({ associationId }) => prisma.savingsDepositRequest.count({ where: { associationId, status: 'PENDING' } }),
+    count: ({ associationId }) => prisma.cooperativePaymentRequest.count({ where: { associationId, status: 'PENDING' } }),
+  },
+  {
+    // Withdrawals waiting for THIS officer's stage: review for those who review, final approval for those who approve.
+    key: 'savingsWithdrawals',
+    permissions: [PERMISSIONS.COOPERATIVE_WITHDRAWAL_REVIEW, PERMISSIONS.COOPERATIVE_WITHDRAWAL_APPROVE],
+    module: 'cooperatives',
+    count: ({ associationId }) =>
+      prisma.savingsWithdrawalRequest.count({ where: { associationId, status: { in: ['PENDING_REVIEW', 'PENDING_APPROVAL'] } } }),
   },
   {
     key: 'welfarePayouts',

@@ -1,4 +1,4 @@
-import { buildRecordSavingsSchema, buildRepaymentSchema, disburseSchema, emptyOpenAccountValues, emptyProductValues, openAccountSchema, productFormSchema, rejectSchema, toDisbursePayload, toProductPayload } from './schemas';
+import { buildRecordSavingsSchema, buildRepaymentSchema, disburseSchema, emptyOpenAccountValues, emptyProductValues, openAccountSchema, productFormSchema, rejectSchema, toDisbursePayload, toOpenAccountPayload, toProductPayload } from './schemas';
 
 describe('recording a deposit or withdrawal', () => {
   const base = { paymentMethod: 'CASH', reference: '', notes: '' };
@@ -54,10 +54,19 @@ describe('disbursing', () => {
 });
 
 describe('opening an account', () => {
-  it('needs a member and a kind; the goals may be blank', () => {
-    expect(openAccountSchema.safeParse({ ...emptyOpenAccountValues(), member: { id: 3, name: 'Ada' } }).success).toBe(true);
+  it("needs a member and one of the cooperative's own account types; the goals may be blank", () => {
+    expect(openAccountSchema.safeParse({ ...emptyOpenAccountValues(), member: { id: 3, name: 'Ada' }, accountType: '7' }).success).toBe(true);
+    expect(openAccountSchema.safeParse({ ...emptyOpenAccountValues(), member: { id: 3, name: 'Ada' } }).success).toBe(false); // no type chosen
     expect(openAccountSchema.safeParse(emptyOpenAccountValues()).success).toBe(false);
-    expect(openAccountSchema.safeParse({ ...emptyOpenAccountValues(), member: { id: 3, name: 'Ada' }, interestRate: '150' }).success).toBe(false);
+    expect(openAccountSchema.safeParse({ ...emptyOpenAccountValues(), member: { id: 3, name: 'Ada' }, accountType: '7', interestRate: '150' }).success).toBe(false);
+  });
+});
+
+describe('opening an account: what is sent', () => {
+  it('sends the id of the chosen account type, not an old enum value', () => {
+    const payload = toOpenAccountPayload({ ...emptyOpenAccountValues(), member: { id: 3, name: 'Ada' }, accountType: '7' });
+    expect(payload.accountTypeId).toBe(7);
+    expect(payload.accountType).toBeUndefined();
   });
 });
 

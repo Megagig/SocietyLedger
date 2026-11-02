@@ -31,6 +31,7 @@ export async function getSavingsAccounts(params?: {
   limit?: number;
   memberId?: number;
   accountType?: string;
+  accountTypeId?: number;
   status?: string;
   search?: string;
 }) {
@@ -39,6 +40,7 @@ export async function getSavingsAccounts(params?: {
   if (params?.limit) searchParams.set('limit', params.limit.toString());
   if (params?.memberId) searchParams.set('memberId', params.memberId.toString());
   if (params?.accountType) searchParams.set('accountType', params.accountType);
+  if (params?.accountTypeId) searchParams.set('accountTypeId', params.accountTypeId.toString());
   if (params?.status) searchParams.set('status', params.status);
   if (params?.search) searchParams.set('search', params.search);
 
@@ -56,6 +58,7 @@ export async function getSavingsAccount(id: number) {
 export async function createSavingsAccount(data: {
   memberId: number;
   accountType?: string;
+  accountTypeId?: number;
   targetAmount?: number;
   monthlyContribution?: number;
   interestRate?: number;
@@ -125,6 +128,7 @@ export async function getLoanProducts(params?: {
 }
 
 export async function createLoanProduct(data: {
+  loanCategoryId?: number | null;
   name: string;
   description?: string;
   minAmount: number;
@@ -154,6 +158,7 @@ export async function createLoanProduct(data: {
 export async function updateLoanProduct(
   id: number,
   data: Partial<{
+    loanCategoryId: number | null;
     name: string;
     description: string;
     minAmount: number;
@@ -217,6 +222,7 @@ export async function createLoanApplication(data: {
   guarantorIds?: number[];
   collateralDescription?: string;
   collateralValue?: number;
+  itemDescription?: string;
 }) {
   const response = await apiPost(`${API_URL}/api/cooperatives/loan-applications`, data);
   if (!response.ok) {
@@ -335,95 +341,7 @@ export async function getLoanRepayments(params?: {
   return response.json();
 }
 
-// Savings deposit requests — a member declares a deposit paid to the cooperative (with a receipt); an officer
-// approves it, which is what credits the balance.
 export type SavingsDepositStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-
-export interface SavingsDeposit {
-  id: number;
-  savingsAccountId: number;
-  accountNumber: string;
-  memberId: number;
-  memberName: string;
-  memberNumber: string;
-  amount: string;
-  paymentDate: string;
-  reference: string | null;
-  memberNote: string | null;
-  filename: string;
-  hasReceipt: boolean;
-  status: SavingsDepositStatus;
-  reviewedAt: string | null;
-  rejectionReason: string | null;
-  createdAt: string;
-}
-
-export async function submitSavingsDeposit(data: {
-  savingsAccountId: number;
-  amount: number;
-  paymentDate: string;
-  reference?: string;
-  memberNote?: string;
-  file: File;
-}) {
-  const formData = new FormData();
-  formData.append('savingsAccountId', String(data.savingsAccountId));
-  formData.append('amount', String(data.amount));
-  formData.append('paymentDate', data.paymentDate);
-  if (data.reference) formData.append('reference', data.reference);
-  if (data.memberNote) formData.append('memberNote', data.memberNote);
-  formData.append('file', data.file);
-
-  const response = await apiPostFormData(`${API_URL}/api/cooperatives/savings-deposits`, formData);
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.errors?.[0]?.message || error.message || 'Failed to submit deposit');
-  }
-  return response.json();
-}
-
-export async function getSavingsDeposits(params?: {
-  page?: number;
-  limit?: number;
-  status?: SavingsDepositStatus;
-  savingsAccountId?: number;
-}) {
-  const searchParams = new URLSearchParams();
-  if (params?.page) searchParams.set('page', params.page.toString());
-  if (params?.limit) searchParams.set('limit', params.limit.toString());
-  if (params?.status) searchParams.set('status', params.status);
-  if (params?.savingsAccountId) searchParams.set('savingsAccountId', params.savingsAccountId.toString());
-
-  const response = await apiGet(`${API_URL}/api/cooperatives/savings-deposits?${searchParams}`);
-  if (!response.ok) throw new Error('Failed to fetch savings deposits');
-  return response.json();
-}
-
-/** A short-lived link to the receipt file (the API only hands it to the member who uploaded it, or an officer). */
-export async function getSavingsDepositReceiptUrl(id: number): Promise<{ url: string; filename: string }> {
-  const response = await apiGet(`${API_URL}/api/cooperatives/savings-deposits/${id}/receipt?format=json`);
-  if (!response.ok) throw new Error('Could not open the receipt');
-  const body = await response.json();
-  return body.data;
-}
-
-export async function approveSavingsDeposit(id: number) {
-  const response = await apiPost(`${API_URL}/api/cooperatives/savings-deposits/${id}/approve`);
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || 'Failed to approve deposit');
-  }
-  return response.json();
-}
-
-export async function rejectSavingsDeposit(id: number, reason: string) {
-  const response = await apiPost(`${API_URL}/api/cooperatives/savings-deposits/${id}/reject`, { reason });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.errors?.[0]?.message || error.message || 'Failed to reject deposit');
-  }
-  return response.json();
-}
 
 // Loan repayment requests — a member declares a payment towards their own loan (with a receipt); an officer
 // confirms it, which is what records the repayment.
@@ -450,6 +368,7 @@ export async function submitLoanRepaymentRequest(data: {
   loanId: number;
   amount: number;
   paymentDate: string;
+  bankAccountId?: number;
   reference?: string;
   memberNote?: string;
   file: File;
@@ -458,6 +377,7 @@ export async function submitLoanRepaymentRequest(data: {
   formData.append('loanId', String(data.loanId));
   formData.append('amount', String(data.amount));
   formData.append('paymentDate', data.paymentDate);
+  if (data.bankAccountId) formData.append('bankAccountId', String(data.bankAccountId));
   if (data.reference) formData.append('reference', data.reference);
   if (data.memberNote) formData.append('memberNote', data.memberNote);
   formData.append('file', data.file);

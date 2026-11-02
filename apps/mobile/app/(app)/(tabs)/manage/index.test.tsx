@@ -13,6 +13,8 @@ jest.mock('@/hooks/useModuleAccess', () => ({ useModuleDisabled: () => false, us
 jest.mock('@/features/coopManage/queries', () => ({ COOP_ADMIN_ACCESS: [], COOP_MODULE: 'cooperatives' }));
 jest.mock('@/features/welfareManage/queries', () => ({ WELFARE_ADMIN_ACCESS: [], WELFARE_MODULE: 'welfare' }));
 jest.mock('@/hooks/useTenantKey', () => ({ useTenantKey: () => 't' }));
+// The Ajo menu check reads the API client and phone storage, which need the native modules a unit test doesn't have.
+jest.mock('@/features/ajo/useAjoNav', () => ({ useAjoNav: () => ({ member: false, collect: false, staff: false, any: false, locked: false, thriftOnly: false, circles: [], resolving: false }) }));
 jest.mock('@/providers/ThemeProvider', () => ({
   useThemeTokens: () => ({ color: new Proxy({}, { get: () => '#000000' }), chart: ['#000000'] }),
 }));

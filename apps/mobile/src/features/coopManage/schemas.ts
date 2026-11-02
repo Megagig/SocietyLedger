@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { parseAmount } from '@/features/finance/schemas';
 import type { DisbursementMethod, LoanProductPayload, OfficerLoanProductDTO, OpenAccountPayload, RecordSavingsPayload } from '@/types/api/coopManage';
 import type { InterestType } from '@/types/api/loans';
-import type { SavingsAccountType } from '@/types/api/cooperatives';
 
 const optionalAmount = z.string().trim().refine((v) => v === '' || parseAmount(v) !== null, 'Enter an amount above ₦0, or leave it blank');
 const naira = (n: number) => `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
@@ -23,12 +22,13 @@ export const openAccountSchema = z.object({
 });
 export type OpenAccountValues = z.infer<typeof openAccountSchema>;
 
-export const emptyOpenAccountValues = (): OpenAccountValues => ({ member: null, accountType: 'REGULAR', targetAmount: '', monthlyContribution: '', interestRate: '', notes: '' });
+export const emptyOpenAccountValues = (): OpenAccountValues => ({ member: null, accountType: '', targetAmount: '', monthlyContribution: '', interestRate: '', notes: '' });
 
 export function toOpenAccountPayload(values: OpenAccountValues): OpenAccountPayload {
   return {
     memberId: values.member!.id,
-    accountType: values.accountType as SavingsAccountType,
+    // The form field holds the id of the cooperative's own account type.
+    accountTypeId: Number(values.accountType),
     targetAmount: parseAmount(values.targetAmount) ?? undefined,
     monthlyContribution: parseAmount(values.monthlyContribution) ?? undefined,
     interestRate: toNumber(values.interestRate),
@@ -136,6 +136,7 @@ export const productFormSchema = z
     minGuarantors: z.string().trim().refine((v) => v === '' || (/^\d+$/.test(v) && Number(v) <= 10), 'Enter a whole number up to 10'),
     maxLoanToSavingsRatio: z.string().trim().refine((v) => v === '' || Number(v) >= 0, 'Enter a number, or leave it blank'),
     lockSavings: z.boolean(),
+    loanCategoryId: z.string(),
     gracePeriodDays: z.string().trim().refine((v) => v === '' || (/^\d+$/.test(v) && Number(v) <= 90), 'Enter a whole number up to 90'),
     lateFeePercent: z.string().trim().refine((v) => v === '' || (Number(v) >= 0 && Number(v) <= 100), 'Enter a percentage between 0 and 100'),
     lateFeeFixed: optionalAmount,
@@ -155,7 +156,7 @@ export type ProductFormValues = z.infer<typeof productFormSchema>;
 
 export const emptyProductValues = (): ProductFormValues => ({
   name: '', description: '', minAmount: '', maxAmount: '', interestRate: '', interestType: 'REDUCING_BALANCE', minTenureMonths: '3', maxTenureMonths: '12',
-  processingFeePercent: '', processingFeeFixed: '', requiresGuarantor: true, minGuarantors: '1', maxLoanToSavingsRatio: '', lockSavings: false,
+  processingFeePercent: '', processingFeeFixed: '', requiresGuarantor: true, minGuarantors: '1', maxLoanToSavingsRatio: '', lockSavings: false, loanCategoryId: '',
   gracePeriodDays: '', lateFeePercent: '', lateFeeFixed: '', isActive: true,
 });
 
@@ -176,6 +177,7 @@ export function productToFormValues(product: OfficerLoanProductDTO): ProductForm
     minGuarantors: String(product.minGuarantors),
     maxLoanToSavingsRatio: num(product.maxLoanToSavingsRatio),
     lockSavings: product.lockSavings,
+    loanCategoryId: product.loanCategoryId ? String(product.loanCategoryId) : '',
     gracePeriodDays: product.gracePeriodDays ? String(product.gracePeriodDays) : '',
     lateFeePercent: num(product.lateFeePercent),
     lateFeeFixed: num(product.lateFeeFixed),
@@ -199,6 +201,7 @@ export function toProductPayload(values: ProductFormValues): LoanProductPayload 
     minGuarantors: values.requiresGuarantor ? (toNumber(values.minGuarantors) ?? 1) : 0,
     maxLoanToSavingsRatio: toNumber(values.maxLoanToSavingsRatio),
     lockSavings: values.lockSavings,
+    loanCategoryId: values.loanCategoryId ? Number(values.loanCategoryId) : null,
     gracePeriodDays: toNumber(values.gracePeriodDays) ?? 0,
     lateFeePercent: toNumber(values.lateFeePercent) ?? 0,
     lateFeeFixed: parseAmount(values.lateFeeFixed) ?? 0,

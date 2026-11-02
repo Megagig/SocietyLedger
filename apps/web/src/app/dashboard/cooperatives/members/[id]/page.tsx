@@ -74,6 +74,9 @@ export default function MemberCooperativeProfilePage() {
       >
         Back to Member Profile
       </Button>
+      <Button variant="light" color="green" ml="sm" mb="md" onClick={() => router.push(`/dashboard/cooperatives/members/${memberId}/cashbook`)}>
+        View cashbook
+      </Button>
 
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 dark:from-teal-400 dark:to-green-400 bg-clip-text text-transparent mb-2">

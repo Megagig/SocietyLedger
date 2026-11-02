@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { Bell, BookOpen, CreditCard, FileText, Gift, HandCoins, PiggyBank, ShieldAlert, TrendingDown, TrendingUp, Users } from 'lucide-react-native';
+import { Banknote, Bell, BookOpen, CreditCard, FileText, Gift, HandCoins, Inbox, Landmark, LayoutDashboard, PiggyBank, ReceiptText, ShieldAlert, TrendingDown, TrendingUp, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { IconButton } from '@/components/ui/IconButton';
@@ -148,35 +148,43 @@ function AssociationMoneyScreen() {
 
         <ThriftEntry />
 
-        {/* Cooperative savings — hidden for members without cooperatives access or once the plan's module is off */}
+        {/* The cooperative, grouped as in the web menu: dashboard, savings, transactions, loans, bank accounts. Hidden for people without
+            cooperatives access, and once the plan's module is off. */}
         {canViewSavings && !cooperativesLocked ? (
-          <Section title="Cooperative">
-            <ListGroup>
-              <ListItem
-                leading={<PiggyBank size={20} color={color.warning} strokeWidth={1.75} />}
-                title="My Savings"
-                meta="Balance, deposits & history"
-                showChevron
-                onPress={() => router.push('/money/savings' as never)}
-              />
-              <ListItem
-                leading={<HandCoins size={20} color={color.primary} strokeWidth={1.75} />}
-                title="My Loans"
-                meta="Balances, payments & applications"
-                showChevron
-                onPress={() => router.push('/money/loans' as never)}
-              />
-              {canGuarantee ? (
-                <ListItem
-                  leading={<Users size={20} color={color.primary} strokeWidth={1.75} />}
-                  title="Guarantor Requests"
-                  meta="Answer requests & see loans you guarantee"
-                  showChevron
-                  onPress={() => router.push('/money/guarantor-requests' as never)}
-                />
-              ) : null}
-            </ListGroup>
-          </Section>
+          <>
+            <Section title="Cooperative">
+              <ListGroup>
+                <ListItem leading={<LayoutDashboard size={20} color={color.primary} strokeWidth={1.75} />} title="Cooperative Dashboard" meta="Balances, contribution table & activity" showChevron onPress={() => router.push('/money/cooperative' as never)} testID="coop-dashboard" />
+              </ListGroup>
+            </Section>
+            <Section title="Savings">
+              <ListGroup>
+                <ListItem leading={<PiggyBank size={20} color={color.warning} strokeWidth={1.75} />} title="Savings" meta="Your savings & how to pay in" showChevron onPress={() => router.push('/money/savings' as never)} />
+                <ListItem leading={<Banknote size={20} color={color.primary} strokeWidth={1.75} />} title="My Withdrawal" meta="Request and track withdrawals" showChevron onPress={() => router.push('/money/cooperative/withdrawal' as never)} />
+              </ListGroup>
+            </Section>
+            <Section title="Transactions">
+              <ListGroup>
+                <ListItem leading={<ReceiptText size={20} color={color.primary} strokeWidth={1.75} />} title="My Transactions" meta="Contributions, shares & loans" showChevron onPress={() => router.push('/money/cooperative/transactions' as never)} />
+                <ListItem leading={<BookOpen size={20} color={color.primary} strokeWidth={1.75} />} title="My Cashbook" meta="Your statement, with export" showChevron onPress={() => router.push('/money/cooperative/cashbook' as never)} />
+                <ListItem leading={<Inbox size={20} color={color.warning} strokeWidth={1.75} />} title="My Pending Payments" meta="Payments waiting to be confirmed" showChevron onPress={() => router.push('/money/cooperative/pending-payments' as never)} />
+              </ListGroup>
+            </Section>
+            <Section title="Loans">
+              <ListGroup>
+                <ListItem leading={<HandCoins size={20} color={color.primary} strokeWidth={1.75} />} title="My Loans" meta="Balances, payments & applications" showChevron onPress={() => router.push('/money/loans' as never)} />
+                <ListItem leading={<CreditCard size={20} color={color.primary} strokeWidth={1.75} />} title="Loan Repayment" meta="Pay what is due, or everything owed" showChevron onPress={() => router.push('/money/cooperative/loan-repayment' as never)} />
+                {canGuarantee ? (
+                  <ListItem leading={<Users size={20} color={color.primary} strokeWidth={1.75} />} title="Guarantor Requests" meta="Answer requests & see loans you guarantee" showChevron onPress={() => router.push('/money/guarantor-requests' as never)} />
+                ) : null}
+              </ListGroup>
+            </Section>
+            <Section title="Pay to">
+              <ListGroup>
+                <ListItem leading={<Landmark size={20} color={color.primary} strokeWidth={1.75} />} title="Cooperative Bank Accounts" meta="Where to send your payments" showChevron onPress={() => router.push('/money/cooperative/bank-accounts' as never)} />
+              </ListGroup>
+            </Section>
+          </>
         ) : null}
 
         {/* Breakdown — dues, levies, penalties, donations */}

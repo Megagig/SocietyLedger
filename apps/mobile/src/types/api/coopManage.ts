@@ -59,7 +59,9 @@ export type CooperativeDashboardDTO = {
 
 export type OpenAccountPayload = {
   memberId: number;
-  accountType: SavingsAccountType;
+  /** The cooperative's own account type (officer-created). Left out, the first active type is used. */
+  accountTypeId?: number;
+  accountType?: SavingsAccountType;
   targetAmount?: number;
   monthlyContribution?: number;
   interestRate?: number;
@@ -98,6 +100,7 @@ export type LoanProductPayload = {
   minGuarantors?: number;
   maxLoanToSavingsRatio?: number;
   lockSavings?: boolean;
+  loanCategoryId?: number | null;
   gracePeriodDays?: number;
   lateFeePercent?: number;
   lateFeeFixed?: number;

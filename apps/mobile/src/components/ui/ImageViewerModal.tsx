@@ -3,13 +3,14 @@ import { Modal, Pressable, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { X } from 'lucide-react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Spinner } from '@/components/ui/Spinner';
 import { Text } from '@/components/ui/Text';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { clampScale, clampTranslate, containedSize, nextDoubleTapScale, shouldDismiss } from '@/lib/imageZoom';
+import { AnimatedView } from './AnimatedView';
 
 export type ImageViewerModalProps = {
   visible: boolean;
@@ -120,11 +121,11 @@ export function ImageViewerModal({ visible, uri, title, onClose }: ImageViewerMo
   return (
     <Modal visible={visible} transparent animationType="fade" onShow={handleShow} onRequestClose={onClose} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Animated.View className="absolute inset-0 bg-overlay" style={backdropStyle} />
+        <AnimatedView className="absolute inset-0 bg-overlay" style={backdropStyle} />
 
         {uri ? (
           <GestureDetector gesture={gesture}>
-            <Animated.View className="flex-1 items-center justify-center" style={imageStyle} accessibilityLabel={title ? `${title}, image. Pinch to zoom.` : 'Image. Pinch to zoom.'}>
+            <AnimatedView className="flex-1 items-center justify-center" style={imageStyle} accessibilityLabel={title ? `${title}, image. Pinch to zoom.` : 'Image. Pinch to zoom.'}>
               <Image
                 source={{ uri }}
                 contentFit="contain"
@@ -135,7 +136,7 @@ export function ImageViewerModal({ visible, uri, title, onClose }: ImageViewerMo
                 }}
                 onError={() => setState('error')}
               />
-            </Animated.View>
+            </AnimatedView>
           </GestureDetector>
         ) : null}
 

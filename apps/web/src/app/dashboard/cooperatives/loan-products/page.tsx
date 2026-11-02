@@ -2,6 +2,7 @@
 
 import { formatNairaFull } from '@/utils/format';
 import { useState, useEffect } from 'react';
+import { useLoanCategories } from '@/lib/coop/hooks';
 import { Modal, TextInput, NumberInput, Textarea, Select, Switch, Button, Badge, Pagination } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconPlus, IconSearch, IconReceipt, IconEdit, IconCurrencyNaira } from '@tabler/icons-react';
@@ -27,6 +28,9 @@ interface LoanProduct {
   /** e.g. "2.00" = a member can borrow up to twice their available savings; null = no savings requirement. */
   maxLoanToSavingsRatio?: string | null;
   lockSavings?: boolean;
+  loanCategoryId?: number | null;
+  categoryName?: string | null;
+  isGoodsLoan?: boolean;
   isActive: boolean;
 }
 
@@ -34,10 +38,11 @@ const initialFormData = {
   name: '', description: '', minAmount: '', maxAmount: '', interestRate: '',
   interestType: 'FLAT', minTenureMonths: '1', maxTenureMonths: '12',
   processingFeePercent: '', requiresGuarantor: false, minGuarantors: '1',
-  maxLoanToSavingsRatio: '', lockSavings: true, gracePeriodDays: '0', lateFeePercent: '', isActive: true
+  maxLoanToSavingsRatio: '', lockSavings: true, gracePeriodDays: '0', lateFeePercent: '', isActive: true, loanCategoryId: ''
 };
 
 export default function LoanProductsPage() {
+  const loanCategories = useLoanCategories();
   const [products, setProducts] = useState<LoanProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -90,6 +95,7 @@ export default function LoanProductsPage() {
       gracePeriodDays: (product.gracePeriodDays ?? 0).toString(),
       lateFeePercent: product.lateFeePercent && parseFloat(product.lateFeePercent) ? parseFloat(product.lateFeePercent).toString() : '',
       isActive: product.isActive,
+      loanCategoryId: product.loanCategoryId ? String(product.loanCategoryId) : '',
     });
     openCreate();
   };
@@ -118,6 +124,7 @@ export default function LoanProductsPage() {
           // 0 clears the savings requirement
           maxLoanToSavingsRatio: ratio,
           lockSavings: formData.lockSavings,
+          loanCategoryId: formData.loanCategoryId ? parseInt(formData.loanCategoryId) : null,
           gracePeriodDays: formData.gracePeriodDays ? parseInt(formData.gracePeriodDays) : 0,
           lateFeePercent: formData.lateFeePercent ? parseFloat(formData.lateFeePercent) : 0,
           isActive: formData.isActive,
@@ -143,6 +150,7 @@ export default function LoanProductsPage() {
         minGuarantors: formData.requiresGuarantor ? parseInt(formData.minGuarantors) : undefined,
         maxLoanToSavingsRatio: ratio > 0 ? ratio : undefined,
         lockSavings: formData.lockSavings,
+        loanCategoryId: formData.loanCategoryId ? parseInt(formData.loanCategoryId) : undefined,
         gracePeriodDays: formData.gracePeriodDays ? parseInt(formData.gracePeriodDays) : undefined,
         lateFeePercent: formData.lateFeePercent ? parseFloat(formData.lateFeePercent) : undefined
       });
@@ -220,6 +228,7 @@ export default function LoanProductsPage() {
                   Edit
                 </Button>
               </div>
+              {product.categoryName && <p className="mb-2 text-xs font-medium text-info-text">{product.categoryName}{product.isGoodsLoan ? ' · goods' : ''}</p>}
               {product.description && <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 line-clamp-2">{product.description}</p>}
               <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Amount Range:</span><span className="font-medium">{formatCurrency(product.minAmount)} - {formatCurrency(product.maxAmount)}</span></div>
@@ -257,6 +266,7 @@ export default function LoanProductsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <NumberInput label="Interest Rate (%)" value={formData.interestRate ? parseFloat(formData.interestRate) : ''} onChange={(v) => setFormData({ ...formData, interestRate: v?.toString() || '' })} decimalScale={2} required />
+            <Select label="Loan category" placeholder="Choose a category" clearable data={(loanCategories.data ?? []).map((c) => ({ value: String(c.id), label: c.isGoods ? `${c.name} (goods)` : c.name }))} value={formData.loanCategoryId || null} onChange={(v) => setFormData({ ...formData, loanCategoryId: v || '' })} />
             <Select label="Interest Type" data={[{ value: 'FLAT', label: 'Flat Rate' }, { value: 'REDUCING_BALANCE', label: 'Reducing Balance' }]} value={formData.interestType} onChange={(v) => setFormData({ ...formData, interestType: v || 'FLAT' })} />
           </div>
           <div className="grid grid-cols-2 gap-4">

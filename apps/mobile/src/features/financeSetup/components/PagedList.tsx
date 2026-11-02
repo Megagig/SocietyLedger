@@ -44,8 +44,8 @@ export function PagedList<T>({
     <FlashList
       data={items}
       keyExtractor={keyOf}
-      renderItem={({ item, index }) => renderItem(item, index, items.length)}
-      ListHeaderComponent={header}
+      renderItem={({ item, index }) => <>{renderItem(item, index, items.length)}</>}
+      ListHeaderComponent={header ? <>{header}</> : null}
       ListEmptyComponent={<>{empty}</>}
       ListFooterComponent={
         query.isFetchingNextPage ? (

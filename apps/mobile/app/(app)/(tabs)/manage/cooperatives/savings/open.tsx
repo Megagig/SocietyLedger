@@ -17,18 +17,17 @@ import { Button } from '@/components/ui/Button';
 import { useOpenAccount } from '@/features/coopManage/mutations';
 import { COOP_MODULE, COOP_SAVINGS_ACCESS } from '@/features/coopManage/queries';
 import { emptyOpenAccountValues, openAccountSchema, toOpenAccountPayload, type OpenAccountValues } from '@/features/coopManage/schemas';
-import { ACCOUNT_TYPE_LABELS } from '@/features/cooperatives/labels';
+import { useAccountTypesV2 } from '@/features/coopEnhanced/queries';
 import { MemberPickerField } from '@/features/members/components/MemberPickerField';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
-import type { SavingsAccountType } from '@/types/api/cooperatives';
-
-const TYPE_OPTIONS = (Object.keys(ACCOUNT_TYPE_LABELS) as SavingsAccountType[]).map((value) => ({ value, label: ACCOUNT_TYPE_LABELS[value] }));
 
 /** project-overview.md §6.9 CP2 — open a savings account for a member. It starts at ₦0.00; record deposits on the account afterwards. */
 export default function OpenAccountScreen() {
   const router = useRouter();
   const allowed = useModuleAccess(COOP_SAVINGS_ACCESS, COOP_MODULE);
   const open = useOpenAccount();
+  const accountTypes = useAccountTypesV2();
+  const typeOptions = (accountTypes.data ?? []).map((t) => ({ value: String(t.id), label: t.name }));
   const { control, handleSubmit } = useForm<OpenAccountValues>({ resolver: zodResolver(openAccountSchema), defaultValues: emptyOpenAccountValues(), mode: 'onTouched' });
   const back = () => router.back();
 
@@ -58,7 +57,7 @@ export default function OpenAccountScreen() {
         <Section title="The account">
           <View className="gap-4">
             <MemberPickerField control={control} name="member" label="Member" testID="open-member" />
-            <SelectSheet control={control} name="accountType" label="Kind of account" options={TYPE_OPTIONS} placeholder="Choose the kind" />
+            <SelectSheet control={control} name="accountType" label="Kind of account" options={typeOptions} placeholder={accountTypes.isPending ? 'Loading…' : 'Choose the kind'} />
           </View>
         </Section>
 

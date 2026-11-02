@@ -285,7 +285,7 @@ function OfficerDashboard() {
             </button>
 
             <button
-              onClick={() => router.push('/dashboard/cooperatives/savings-deposits')}
+              onClick={() => router.push('/dashboard/cooperatives/payment-requests')}
               className="w-full flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
             >
               <div className="flex items-center gap-3">

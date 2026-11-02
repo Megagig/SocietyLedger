@@ -14,6 +14,8 @@ import { domainPrefix, type TenantId } from './keys';
 export const INVALIDATION = {
   // A payment or contribution was recorded, confirmed, turned down or reversed, by anyone, in Ajo or in the association.
   'payment.changed': ['payments', 'dues', 'balances', 'memberFinance', 'memberLedger', 'cash', 'contributions', 'ajo', 'ajoSavings', 'ajoPayments', 'ajoBoard', 'dashboard', 'reports', 'ajoReports'],
+  // A cooperative payment, withdrawal, repayment, loan or account type changed: the member's pages, the officers' queues and the totals.
+  'cooperative.changed': ['cooperatives', 'memberFinance', 'memberLedger', 'balances', 'dashboard', 'reports'],
   // A payout was prepared, approved, paid, voided or reversed.
   'payout.changed': ['payouts', 'ajoPayouts', 'ajo', 'ajoSavings', 'ajoBoard', 'dashboard', 'reports', 'ajoReports', 'balances'],
   // Dues, levies, charges or late fees were created, edited, waived or settled.

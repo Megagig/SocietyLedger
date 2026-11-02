@@ -8,7 +8,7 @@ jest.mock('@/providers/ThemeProvider', () => ({
 }));
 
 const charge = (over: Partial<ChargeListItemDTO> = {}): ChargeListItemDTO => ({
-  id: 12, memberId: 7, categoryId: 3, amount: '10000', referenceNumber: 'TXN1', status: 'pending', dueDate: '2026-11-01T00:00:00.000Z', paymentDate: null, notes: null,
+  id: 12, memberId: 7, categoryId: 3, amount: '10000', referenceNumber: 'TXN1', status: 'pending', dueDate: new Date(Date.now() + 30 * 86_400_000).toISOString(), paymentDate: null, notes: null,
   isVoided: false, voidReason: null, createdAt: '2026-10-20T09:00:00.000Z',
   member: { id: 7, memberId: 'M-007', firstName: 'Ada', lastName: 'Obi', email: null }, category: { id: 3, name: 'Annual dues', type: 'due' },
   payments: [], totalPaid: '0', balance: '10000', ...over,

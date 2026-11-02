@@ -30,6 +30,9 @@ interface LoanProduct {
   maxLoanToSavingsRatio?: string | null;
   /** When true, principal / ratio of the member's savings is held until the loan is repaid. */
   lockSavings?: boolean;
+  /** A goods (commodity) loan: the member says what they want. */
+  isGoodsLoan?: boolean;
+  categoryName?: string | null;
 }
 
 interface SavingsPosition {
@@ -66,6 +69,7 @@ export default function ApplyForLoanPage() {
     amount: '',
     tenureMonths: '',
     purpose: '',
+    itemDescription: '',
     guarantorIds: [] as string[],
     collateralDescription: ''
   });
@@ -183,6 +187,10 @@ export default function ApplyForLoanPage() {
   }, [formData.amount, formData.tenureMonths, selectedProduct]);
 
   const handleSubmit = async () => {
+    if (selectedProduct?.isGoodsLoan && !formData.itemDescription.trim()) {
+      toast.error('Describe the item you are applying for');
+      return;
+    }
     if (!formData.loanProductId || !formData.amount || !formData.tenureMonths || !formData.purpose) {
       toast.error('Please fill in all required fields');
       return;
@@ -200,6 +208,7 @@ export default function ApplyForLoanPage() {
         amount: parseFloat(formData.amount),
         tenureMonths: parseInt(formData.tenureMonths),
         purpose: formData.purpose,
+        itemDescription: selectedProduct?.isGoodsLoan ? formData.itemDescription.trim() : undefined,
         guarantorIds: formData.guarantorIds.map(id => parseInt(id)),
         collateralDescription: formData.collateralDescription || undefined
       });
@@ -224,7 +233,7 @@ export default function ApplyForLoanPage() {
         const amount = parseFloat(formData.amount);
         return amount >= parseFloat(selectedProduct.minAmount) && amount <= maxBorrowable(selectedProduct).max;
       }
-      case 2: return !!formData.purpose && (!selectedProduct?.requiresGuarantor || formData.guarantorIds.length >= (selectedProduct?.minGuarantors || 0));
+      case 2: return !!formData.purpose && (!selectedProduct?.isGoodsLoan || !!formData.itemDescription.trim()) && (!selectedProduct?.requiresGuarantor || formData.guarantorIds.length >= (selectedProduct?.minGuarantors || 0));
       default: return true;
     }
   };
@@ -417,6 +426,17 @@ export default function ApplyForLoanPage() {
             <h3 className="text-base sm:text-lg font-semibold mb-4">Purpose & Guarantors</h3>
             
             <div className="space-y-4">
+              {selectedProduct?.isGoodsLoan && (
+                <Textarea
+                  label="What item do you want?"
+                  description="This is a goods loan. Describe the item (and, if you know it, where it will be bought)."
+                  placeholder="For example: a 5kVA generator"
+                  value={formData.itemDescription}
+                  onChange={(e) => setFormData({ ...formData, itemDescription: e.target.value })}
+                  minRows={2}
+                  required
+                />
+              )}
               <Textarea
                 label="Loan Purpose"
                 placeholder="Describe what you will use this loan for..."

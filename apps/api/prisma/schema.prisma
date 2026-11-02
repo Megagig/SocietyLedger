@@ -69,8 +69,11 @@ model Association {
   paymentProofs              PaymentProof[]
   // Phase 8.5: Cooperatives & Loans
   savingsAccounts            SavingsAccount[]
-  savingsDepositRequests     SavingsDepositRequest[]
   loanRepaymentRequests      LoanRepaymentRequest[]
+  cooperativeAccountTypes    CooperativeAccountType[]
+  loanCategories             LoanCategory[]
+  cooperativePaymentRequests CooperativePaymentRequest[]
+  savingsWithdrawalRequests  SavingsWithdrawalRequest[]
   savingsLiens               SavingsLien[]
   cashCollections             CashCollection[]
   cashReceipts                CashReceipt[]
@@ -298,8 +301,9 @@ model Member {
   paymentProofs                PaymentProof[]
   // Phase 8.5: Cooperatives & Loans
   savingsAccounts              SavingsAccount[]
-  savingsDepositRequests       SavingsDepositRequest[]
   loanRepaymentRequests        LoanRepaymentRequest[]
+  cooperativePaymentRequests   CooperativePaymentRequest[]
+  savingsWithdrawalRequests    SavingsWithdrawalRequest[]
   savingsLiens                 SavingsLien[]
   cashReceipts                CashReceipt[]
   loanApplications             LoanApplication[]
@@ -1583,6 +1587,8 @@ model SavingsAccount {
   memberId            Int                  @map("member_id")
   accountNumber       String               @map("account_number")
   accountType         SavingsAccountType   @default(REGULAR) @map("account_type")
+  // The association's own account type (officer-created). The enum above is kept for older code paths; this is the source of truth.
+  accountTypeId       Int?                 @map("account_type_id")
   balance             Decimal              @default(0) @db.Decimal(12, 2)
   targetAmount        Decimal?             @map("target_amount") @db.Decimal(12, 2)
   monthlyContribution Decimal?             @map("monthly_contribution") @db.Decimal(12, 2)
@@ -1600,11 +1606,14 @@ model SavingsAccount {
   association         Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
   member              Member               @relation(fields: [memberId], references: [id], onDelete: Cascade)
   transactions        SavingsTransaction[]
-  depositRequests     SavingsDepositRequest[]
+  accountTypeRef      CooperativeAccountType? @relation(fields: [accountTypeId], references: [id])
+  paymentLines        CooperativePaymentLine[]
+  withdrawalRequests  SavingsWithdrawalRequest[]
 
   @@unique([associationId, accountNumber])
   @@index([associationId, status])
   @@index([memberId])
+  @@index([accountTypeId])
   @@map("savings_accounts")
 }
 
@@ -1634,41 +1643,6 @@ model SavingsTransaction {
   @@index([savingsAccountId])
   @@index([createdAt])
   @@map("savings_transactions")
-}
-
-// A member's claim that they paid money into the cooperative's bank account, with a receipt attached.
-// It is pending until an officer confirms the money landed; only approval creates the real
-// SavingsTransaction and raises the balance (the balance never moves on a pending request).
-model SavingsDepositRequest {
-  id                   Int                  @id @default(autoincrement())
-  associationId        Int                  @map("association_id")
-  savingsAccountId     Int                  @map("savings_account_id")
-  memberId             Int                  @map("member_id")
-  amount               Decimal              @db.Decimal(12, 2)
-  paymentDate          DateTime             @map("payment_date")
-  bankAccountId        Int?                 @map("bank_account_id")
-  reference            String?
-  memberNote           String?              @map("member_note")
-  filename             String
-  filepath             String // MinIO object key
-  fileSize             Int?                 @map("file_size")
-  mimeType             String?              @map("mime_type")
-  status               SavingsDepositStatus @default(PENDING)
-  reviewedBy           Int?                 @map("reviewed_by")
-  reviewedAt           DateTime?            @map("reviewed_at")
-  rejectionReason      String?              @map("rejection_reason")
-  savingsTransactionId Int?                 @map("savings_transaction_id")
-  createdAt            DateTime             @default(now()) @map("created_at")
-  updatedAt            DateTime             @updatedAt @map("updated_at")
-
-  association    Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  savingsAccount SavingsAccount @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
-  member         Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
-
-  @@index([associationId, status])
-  @@index([memberId])
-  @@index([savingsAccountId])
-  @@map("savings_deposit_requests")
 }
 
 enum SavingsDepositStatus {
@@ -1768,9 +1742,11 @@ model LoanProduct {
   lateFeePercent        Decimal           @default(0) @map("late_fee_percent") @db.Decimal(5, 2)
   lateFeeFixed          Decimal           @default(0) @map("late_fee_fixed") @db.Decimal(10, 2)
   isActive              Boolean           @default(true) @map("is_active")
+  loanCategoryId        Int?              @map("loan_category_id")
   createdAt             DateTime          @default(now()) @map("created_at")
   updatedAt             DateTime          @updatedAt @map("updated_at")
   association           Association       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  category              LoanCategory?     @relation(fields: [loanCategoryId], references: [id])
   applications          LoanApplication[]
   loans                 Loan[]
 
@@ -1798,6 +1774,8 @@ model LoanApplication {
   status                LoanApplicationStatus @default(DRAFT)
   collateralDescription String?               @map("collateral_description")
   collateralValue       Decimal?              @map("collateral_value") @db.Decimal(12, 2)
+  // For a goods (commodity) loan: what the member is asking for. Cash loans leave this empty.
+  itemDescription       String?               @map("item_description")
   appliedAt             DateTime              @default(now()) @map("applied_at")
   reviewedBy            Int?                  @map("reviewed_by")
   reviewedAt            DateTime?             @map("reviewed_at")
@@ -1953,6 +1931,155 @@ model LoanRepayment {
   @@index([loanId])
   @@index([paidAt])
   @@map("loan_repayments")
+}
+
+// ============================================
+// COOPERATIVE ENHANCEMENTS: officer-defined account types and loan categories,
+// batched payment requests (one transfer, one proof), two-stage withdrawals
+// ============================================
+
+// What an account type DOES. Officers can create any number of account types; each one picks exactly one class, and the class (not the
+// name) drives withdrawal rules, report columns and accounting sync.
+enum CooperativeAccountClass {
+  CONTRIBUTION // ordinary withdrawable savings; feeds the Savings columns
+  SHARES       // share capital; not withdrawable; feeds the Shares column
+  SPECIAL      // withdrawable savings with an optional monthly limit
+}
+
+model CooperativeAccountType {
+  id                     Int                      @id @default(autoincrement())
+  associationId          Int                      @map("association_id")
+  name                   String
+  description            String?
+  accountClass           CooperativeAccountClass  @default(CONTRIBUTION) @map("account_class")
+  defaultMonthlyAmount   Decimal?                 @map("default_monthly_amount") @db.Decimal(12, 2)
+  isWithdrawable         Boolean                  @default(true) @map("is_withdrawable")
+  monthlyWithdrawalLimit Decimal?                 @map("monthly_withdrawal_limit") @db.Decimal(12, 2)
+  sortOrder              Int                      @default(0) @map("sort_order")
+  isActive               Boolean                  @default(true) @map("is_active")
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @updatedAt @map("updated_at")
+  association            Association              @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  accounts               SavingsAccount[]
+  paymentLines           CooperativePaymentLine[]
+
+  @@unique([associationId, name])
+  @@index([associationId, isActive])
+  @@map("cooperative_account_types")
+}
+
+model LoanCategory {
+  id            Int           @id @default(autoincrement())
+  associationId Int           @map("association_id")
+  name          String
+  description   String?
+  // A goods (commodity) loan is applied for with an item description and paid out as goods, not cash.
+  isGoods       Boolean       @default(false) @map("is_goods")
+  sortOrder     Int           @default(0) @map("sort_order")
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  association   Association   @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  products      LoanProduct[]
+
+  @@unique([associationId, name])
+  @@index([associationId, isActive])
+  @@map("loan_categories")
+}
+
+// One bank transfer, one proof file, one or more lines. Approved or rejected as a whole; approval posts every line in a single database
+// transaction, so either all of them post or none does. The balance never moves while a request is pending.
+model CooperativePaymentRequest {
+  id              Int                      @id @default(autoincrement())
+  associationId   Int                      @map("association_id")
+  memberId        Int                      @map("member_id")
+  totalAmount     Decimal                  @map("total_amount") @db.Decimal(12, 2)
+  paymentDate     DateTime                 @map("payment_date")
+  bankAccountId   Int?                     @map("bank_account_id")
+  reference       String?
+  memberNote      String?                  @map("member_note")
+  filename        String
+  filepath        String // MinIO object key
+  fileSize        Int?                     @map("file_size")
+  mimeType        String?                  @map("mime_type")
+  status          SavingsDepositStatus     @default(PENDING)
+  reviewedBy      Int?                     @map("reviewed_by")
+  reviewedAt      DateTime?                @map("reviewed_at")
+  rejectionReason String?                  @map("rejection_reason")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+  association     Association              @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member          Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  lines           CooperativePaymentLine[]
+
+  @@index([associationId, status])
+  @@index([memberId])
+  @@map("cooperative_payment_requests")
+}
+
+model CooperativePaymentLine {
+  id                   Int                       @id @default(autoincrement())
+  requestId            Int                       @map("request_id")
+  accountTypeId        Int                       @map("account_type_id")
+  // Set when the request is approved (the member's account of this type is found or opened then).
+  savingsAccountId     Int?                      @map("savings_account_id")
+  amount               Decimal                   @db.Decimal(12, 2)
+  // The month this payment is FOR. Fills the Contribution Table (Paid / Defaulted by month).
+  periodMonth          Int                       @map("period_month")
+  periodYear           Int                       @map("period_year")
+  savingsTransactionId Int?                      @map("savings_transaction_id")
+  request              CooperativePaymentRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  accountType          CooperativeAccountType    @relation(fields: [accountTypeId], references: [id])
+  savingsAccount       SavingsAccount?           @relation(fields: [savingsAccountId], references: [id])
+
+  @@index([requestId])
+  @@index([savingsAccountId, periodYear, periodMonth])
+  @@map("cooperative_payment_lines")
+}
+
+enum WithdrawalRequestStatus {
+  PENDING_REVIEW
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// A member asks to take money out of a withdrawable savings account. Stage 1 (review) and stage 2 (approve and pay) are done by two
+// different officers, neither of them the member; when the association turns two-stage off, review is skipped and one officer decides.
+// The balance moves only at final approval.
+model SavingsWithdrawalRequest {
+  id                   Int                     @id @default(autoincrement())
+  associationId        Int                     @map("association_id")
+  memberId             Int                     @map("member_id")
+  savingsAccountId     Int                     @map("savings_account_id")
+  amount               Decimal                 @db.Decimal(12, 2)
+  reason               String?
+  status               WithdrawalRequestStatus @default(PENDING_REVIEW)
+  // Whether this request needs a separate review stage. Fixed when the request is made, so changing the setting later can't strand it.
+  twoStage             Boolean                 @default(true) @map("two_stage")
+  reviewedBy           Int?                    @map("reviewed_by")
+  reviewedAt           DateTime?               @map("reviewed_at")
+  reviewComment        String?                 @map("review_comment")
+  approvedBy           Int?                    @map("approved_by")
+  approvedAt           DateTime?               @map("approved_at")
+  approvalComment      String?                 @map("approval_comment")
+  rejectedBy           Int?                    @map("rejected_by")
+  rejectedAt           DateTime?               @map("rejected_at")
+  rejectionReason      String?                 @map("rejection_reason")
+  payoutMethod         String?                 @map("payout_method")
+  payoutReference      String?                 @map("payout_reference")
+  savingsTransactionId Int?                    @map("savings_transaction_id")
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+  association          Association             @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member               Member                  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  savingsAccount       SavingsAccount          @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, status])
+  @@index([memberId])
+  @@index([savingsAccountId, status])
+  @@map("savings_withdrawal_requests")
 }
 
 // Enums for Cooperatives

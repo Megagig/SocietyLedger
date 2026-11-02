@@ -307,13 +307,25 @@ export function routePushNotification(data: PushData, currentTenantId?: number):
     // these land on the Manage hub rather than a route that doesn't exist yet.
     case 'loan.application_submitted':
     case 'loan.repayment_submitted':
-    case 'savings.deposit_submitted':
     case 'support.platform_ticket':
       router.push('/(app)/(tabs)/manage' as never);
       break;
 
+    case 'savings.deposit_submitted':
+      router.push('/(app)/(tabs)/manage/cooperatives/payments' as never);
+      break;
+
     case 'savings.deposit_decision':
-      router.push('/(app)/(tabs)/money/savings' as never);
+      router.push('/(app)/(tabs)/money/cooperative/pending-payments' as never);
+      break;
+
+    // Withdrawals: an officer is taken to the queue, the member to their own withdrawals.
+    case 'savings.withdrawal_submitted':
+      router.push('/(app)/(tabs)/manage/cooperatives/withdrawals' as never);
+      break;
+
+    case 'savings.withdrawal_decision':
+      router.push('/(app)/(tabs)/money/cooperative/withdrawal' as never);
       break;
 
     case 'loan.repayment_decision':

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import type { Decimal } from 'decimal.js-light';
 import { Eye, EyeOff } from 'lucide-react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/Text';
 import { t } from '@/lib/i18n';
 import { useThemeTokens } from '@/providers/ThemeProvider';
 import { usePrefsStore } from '@/stores/prefs';
+import { AnimatedView } from './AnimatedView';
 
 export type PassbookProps = {
   label: string;
@@ -97,14 +98,14 @@ export function Passbook({ label, amount, metaLine, stampLabel, actionLabel, onA
         ))}
       </View>
 
-      <Animated.View
+      <AnimatedView
         style={stampAnimatedStyle}
         className="absolute right-5 top-5 rounded-sm border-2 border-passbook-stamp px-2 py-1"
       >
         <Text variant="micro" tone="onPassbook" className="uppercase tracking-wide">
           {stampLabel}
         </Text>
-      </Animated.View>
+      </AnimatedView>
 
       <View className="gap-1">
         <View className="flex-row items-center gap-2">

@@ -19,7 +19,8 @@ export const ATTENTION_LINES: Record<AttentionKey, AttentionLine> = {
   supportTickets: { label: (n) => `${plural(n, 'support ticket', 'support tickets')} need a reply`, href: '/dashboard/help/tickets' },
   loanApplications: { label: (n) => `${plural(n, 'loan application', 'loan applications')} to review`, href: '/dashboard/cooperatives/applications' },
   loanRepayments: { label: (n) => `${plural(n, 'loan repayment', 'loan repayments')} to confirm`, href: '/dashboard/cooperatives/loan-repayments' },
-  savingsDeposits: { label: (n) => `${plural(n, 'savings deposit', 'savings deposits')} to confirm`, href: '/dashboard/cooperatives/savings-deposits' },
+  savingsDeposits: { label: (n) => `${plural(n, 'savings payment', 'savings payments')} to confirm`, href: '/dashboard/cooperatives/payment-requests' },
+  savingsWithdrawals: { label: (n) => `${plural(n, 'withdrawal request', 'withdrawal requests')} to decide`, href: '/dashboard/cooperatives/withdrawals' },
   welfarePayouts: { label: (n) => `${plural(n, 'welfare request', 'welfare requests')} to review`, href: '/dashboard/welfare/requests' },
 };
 

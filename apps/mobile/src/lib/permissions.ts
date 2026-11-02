@@ -133,6 +133,11 @@ export const PERMISSIONS = {
   COOPERATIVE_GUARANTOR_OWN: 'cooperatives.guarantor_own',
   COOPERATIVE_SAVINGS_DEPOSIT_OWN: 'cooperatives.savings_deposit_own',
   COOPERATIVE_REPAY_OWN: 'cooperatives.repay_own',
+  COOPERATIVE_WITHDRAW_OWN: 'cooperatives.withdraw_own',
+  // Officer side: shaping the cooperative, and the two stages of a member's withdrawal.
+  COOPERATIVE_MANAGE_TYPES: 'cooperatives.manage_types',
+  COOPERATIVE_WITHDRAWAL_REVIEW: 'cooperatives.withdrawals.review',
+  COOPERATIVE_WITHDRAWAL_APPROVE: 'cooperatives.withdrawals.approve',
 
   // Member Self-Service Finance
   MEMBER_FINANCE_VIEW: 'ledger.view_own',
@@ -300,6 +305,13 @@ export const COOPERATIVE_LOANS_APPLY_ACCESS: PermissionAlias[] = ['COOPERATIVE_A
 export const COOPERATIVE_LOAN_REPAY_ACCESS: PermissionAlias = 'COOPERATIVE_REPAY_OWN';
 /** Declaring a deposit with a receipt — the API gates POST /cooperatives/savings-deposits on this one key only. */
 export const COOPERATIVE_SAVINGS_DEPOSIT_ACCESS: PermissionAlias = 'COOPERATIVE_SAVINGS_DEPOSIT_OWN';
+
+/** The member's own cooperative pages (dashboard, transactions, cashbook, pending payments, bank accounts): cooperatives.view_own, which officers hold too. */
+export const COOPERATIVE_OWN_PAGES_ACCESS: PermissionAlias = 'COOPERATIVE_VIEW_OWN';
+/** Asking to withdraw from your own savings. */
+export const COOPERATIVE_WITHDRAW_ACCESS: PermissionAlias = 'COOPERATIVE_WITHDRAW_OWN';
+/** The withdrawals queue: either stage (or the savings-manage officer). */
+export const COOPERATIVE_WITHDRAWAL_QUEUE_ACCESS: PermissionAlias[] = ['COOPERATIVE_WITHDRAWAL_REVIEW', 'COOPERATIVE_WITHDRAWAL_APPROVE', 'COOPERATIVE_SAVINGS_MANAGE'];
 
 /** Seeing welfare: officers via ledger.view, members via welfare.view_own. */
 export const WELFARE_VIEW_ACCESS: PermissionAlias[] = ['WELFARE_VIEW', 'WELFARE_VIEW_OWN'];

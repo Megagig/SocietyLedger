@@ -124,8 +124,8 @@ export default function SavingsAccountScreen() {
         />
 
         {account.status === 'ACTIVE' && canDeposit ? (
-          <Button variant="primary" onPress={() => router.push({ pathname: '/money/savings/deposit', params: { accountId: String(account.id) } } as never)}>
-            Make a deposit
+          <Button variant="primary" onPress={() => router.push('/money/savings/pay' as never)}>
+            Pay into savings
           </Button>
         ) : null}
 
